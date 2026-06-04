@@ -492,7 +492,7 @@ export default function BellsMarker() {
         </p>
       </div>
       <div className="px-4 py-4 mt-4">
-        <Button variant="outline" className="w-full h-10 text-sm" onClick={handleLeaveToDashboard}>
+        <Button variant="outline" className="w-full h-10 text-sm" onClick={() => handleLeave("/dashboard")}>
           <ArrowLeft className="w-4 h-4 mr-1.5" />
           Back to Dashboard
         </Button>

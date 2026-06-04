@@ -396,7 +396,7 @@ export default function BellsMarker() {
 
       <div className="px-4 mt-3 mb-20 max-w-2xl mx-auto space-y-4">
         <button
-          onClick={() => navigate("/tournaments")}
+          onClick={() => handleLeave("/tournaments")}
           className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
         >
           <ArrowLeft className="w-4 h-4" /> Back to tournaments

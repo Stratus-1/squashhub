@@ -15,6 +15,7 @@ import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getTournamentFormat } from "@/lib/tournament-formats";
+import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };

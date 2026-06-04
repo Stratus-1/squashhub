@@ -1575,6 +1575,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setMatchDuration(30);
     setScoringMode("standard");
     setGroupDurations({});
+    setGroupBreakMinutes({});
+    setDefaultBreakMinutes(0);
     setCourtRotationMinutes(null);
     setRoundFormat("single_round_robin");
     setByeHandling("no_match");

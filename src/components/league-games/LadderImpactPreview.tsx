@@ -329,6 +329,29 @@ async function loadImpactData(fixtureId: string): Promise<LoadedState> {
     if (awayLeague && row.league_id === awayLeague.id) originalByPos.away.set(row.position, row.club_member_id);
   }
 
+  // Fallback: if no lineup snapshot was saved for a side, treat any member
+  // currently registered to that league as "original" (not a sub). Without
+  // this, every opponent shows as a sub whenever the captain didn't save a
+  // lineup for the week.
+  const homeHasLineup = originalByPos.home.size > 0;
+  const awayHasLineup = originalByPos.away.size > 0;
+  const registeredHome = new Set<string>();
+  const registeredAway = new Set<string>();
+  const leagueIdsForRegs = [
+    !homeHasLineup && homeLeague?.id ? homeLeague.id : null,
+    !awayHasLineup && awayLeague?.id ? awayLeague.id : null,
+  ].filter(Boolean) as string[];
+  if (leagueIdsForRegs.length > 0) {
+    const { data: regs } = await supabase
+      .from("member_league_registrations" as any)
+      .select("league_id, club_member_id")
+      .in("league_id", leagueIdsForRegs);
+    for (const r of (regs || []) as any[]) {
+      if (!homeHasLineup && homeLeague && r.league_id === homeLeague.id) registeredHome.add(r.club_member_id);
+      if (!awayHasLineup && awayLeague && r.league_id === awayLeague.id) registeredAway.add(r.club_member_id);
+    }
+  }
+
   // Match results.
   const { data: matches } = await supabase
     .from("league_match_results" as any)

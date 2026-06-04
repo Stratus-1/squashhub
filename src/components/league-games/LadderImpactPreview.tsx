@@ -261,22 +261,47 @@ async function loadImpactData(fixtureId: string): Promise<LoadedState> {
   if (fxErr) throw fxErr;
   if (!fixture) throw new Error("Fixture not found");
 
-  const { data: assoc } = await supabase
+  // The fixture's association_id usually points to the PLATFORM association
+  // (the league-code namespace, e.g. NIL). The actual leagues + the
+  // affects_ladder flag live on TENANT associations that reference it via
+  // platform_association_id. Resolve both directions so the lookup works.
+  const fixtureAssocId = fixture.association_id;
+  const { data: directAssoc } = await supabase
     .from("league_associations" as any)
-    .select("id, name, scope, affects_ladder")
-    .eq("id", fixture.association_id)
+    .select("id, name, scope, affects_ladder, platform_association_id")
+    .eq("id", fixtureAssocId)
     .maybeSingle();
 
-  const affectsLadder = !!(assoc as any)?.affects_ladder && (assoc as any)?.scope === "internal";
+  const { data: tenantAssocs } = await supabase
+    .from("league_associations" as any)
+    .select("id, name, scope, affects_ladder, platform_association_id")
+    .eq("platform_association_id", fixtureAssocId);
+
+  const candidateAssocs: any[] = [
+    ...(directAssoc ? [directAssoc as any] : []),
+    ...(((tenantAssocs as any[]) || [])),
+  ];
+  // Prefer a tenant internal-scoped association with affects_ladder enabled.
+  const assoc =
+    candidateAssocs.find((a) => a.scope === "internal" && a.affects_ladder) ||
+    candidateAssocs.find((a) => a.scope === "internal") ||
+    candidateAssocs[0] ||
+    null;
+
+  const affectsLadder = !!assoc?.affects_ladder && assoc?.scope === "internal";
 
   const homeCode = (fixture.home_team_code || "").toUpperCase();
   const awayCode = (fixture.away_team_code || "").toUpperCase();
 
-  // Find the leagues that correspond to this fixture's two team codes within this association.
-  const { data: leagues } = await supabase
-    .from("leagues")
-    .select("id, club_id, code, nsa_team_code, name")
-    .eq("association_id", fixture.association_id);
+  // Find the leagues that correspond to the two team codes within ANY of the
+  // candidate associations (platform + its tenants).
+  const assocIds = candidateAssocs.map((a) => a.id).filter(Boolean);
+  const { data: leagues } = assocIds.length
+    ? await supabase
+        .from("leagues")
+        .select("id, club_id, code, nsa_team_code, name, association_id")
+        .in("association_id", assocIds)
+    : ({ data: [] as any[] } as any);
   const matchLeague = (code: string) =>
     (leagues || []).find((l: any) =>
       (l.nsa_team_code || "").toUpperCase() === code ||
@@ -287,6 +312,7 @@ async function loadImpactData(fixtureId: string): Promise<LoadedState> {
 
   // For internal leagues both sides should share a club; pick it.
   const clubId: string | null = homeLeague?.club_id || awayLeague?.club_id || null;
+
 
   // Lineup snapshot (original players) by fixture+league.
   const { data: lineups } = await supabase

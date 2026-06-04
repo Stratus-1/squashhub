@@ -404,14 +404,25 @@ async function loadImpactData(fixtureId: string): Promise<LoadedState> {
   const rubbers: Rubber[] = ((matches || []) as any[]).map((m) => {
     const homeCodeKey = String(m.home_player_code || "").toUpperCase();
     const awayCodeKey = String(m.away_player_code || "").toUpperCase();
+    const playedHome = codeToMember.get(homeCodeKey) || null;
+    const playedAway = codeToMember.get(awayCodeKey) || null;
+    // Determine the "original" member for this position: prefer the lineup
+    // snapshot; fall back to "any registered member" so unset-lineup fixtures
+    // don't flag every player as a sub.
+    const lineupHome = originalByPos.home.get(m.position) || null;
+    const lineupAway = originalByPos.away.get(m.position) || null;
+    const originalHome = lineupHome
+      ?? (!homeHasLineup && playedHome && registeredHome.has(playedHome) ? playedHome : null);
+    const originalAway = lineupAway
+      ?? (!awayHasLineup && playedAway && registeredAway.has(playedAway) ? playedAway : null);
     return {
       fixtureId,
       position: m.position,
       winnerSide: m.winner === "home" || m.winner === "away" ? m.winner : ("" as any),
-      homeMemberId: codeToMember.get(homeCodeKey) || null,
-      awayMemberId: codeToMember.get(awayCodeKey) || null,
-      homeOriginalMemberId: originalByPos.home.get(m.position) || null,
-      awayOriginalMemberId: originalByPos.away.get(m.position) || null,
+      homeMemberId: playedHome,
+      awayMemberId: playedAway,
+      homeOriginalMemberId: originalHome,
+      awayOriginalMemberId: originalAway,
       isForfeit: !!m.is_forfeit,
       homeName: m.home_player_name || homeCodeKey,
       awayName: m.away_player_name || awayCodeKey,

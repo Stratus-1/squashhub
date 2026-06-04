@@ -72,11 +72,28 @@ export default function BellsMarker() {
     if (!match) return;
     setPointsA(match.side_a_points ?? 0);
     setPointsB(match.side_b_points ?? 0);
-    setRemaining(capMinutes * 60);
     setFinished(match.status === "completed");
-    setRunning(false);
+
+    // Resume timer from persisted state so a second marker continues from
+    // where the first left off (don't reset to the full cap).
+    if (match.status === "completed") {
+      setRemaining(0);
+      setRunning(false);
+    } else if (match.bell_ends_at) {
+      const endMs = new Date(match.bell_ends_at).getTime();
+      const r = Math.max(0, Math.round((endMs - Date.now()) / 1000));
+      setRemaining(r);
+      setRunning(r > 0);
+    } else if (typeof match.bell_paused_seconds === "number" && match.bell_paused_seconds > 0) {
+      setRemaining(match.bell_paused_seconds);
+      setRunning(false);
+    } else {
+      setRemaining(capMinutes * 60);
+      setRunning(false);
+    }
     hydratedRef.current = true;
   }, [match, capMinutes]);
+
 
   // Hold the PWA update poller while a Bells match is live (not finished).
   useEffect(() => {

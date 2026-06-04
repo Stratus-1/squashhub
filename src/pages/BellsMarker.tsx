@@ -431,12 +431,13 @@ export default function BellsMarker() {
             <div className="flex flex-wrap gap-2 justify-center">
               {!finished && (
                 <Button
-                  onClick={() => setRunning((r) => !r)}
+                  onClick={toggleStart}
                   variant={running ? "outline" : "default"}
                   className="gap-1"
                 >
                   {running ? <><Pause className="w-4 h-4" /> Pause</> : <><Play className="w-4 h-4" /> Start</>}
                 </Button>
+
               )}
               {!finished && (
                 <Button onClick={ringBellNow} variant="destructive" className="gap-1">

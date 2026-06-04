@@ -1622,6 +1622,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setMatchDuration(champ.match_duration_minutes || 30);
     setScoringMode(((champ as any).scoring_mode as any) || "standard");
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
+    setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
+    setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
     setRoundFormat((champ.round_format as any) || "single_round_robin");
     setByeHandling((champ.bye_handling as any) || "no_match");

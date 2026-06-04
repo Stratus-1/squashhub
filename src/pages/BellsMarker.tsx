@@ -215,15 +215,22 @@ export default function BellsMarker() {
     persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "scheduled" });
   };
 
-  // When marker leaves via Back-to-dashboard, clear the LIVE flag in the upcoming
-  // games list (set status back to scheduled). Keep points and timer state so a
-  // second marker can resume seamlessly.
-  const handleLeaveToDashboard = () => {
+  // When marker leaves the page (Back to tournament/dashboard), clear the LIVE
+  // flag so another marker can take over. Keep points + paused remaining so
+  // the next marker resumes exactly where this one stopped.
+  const handleLeave = (to: string) => {
     if (!finished && match) {
-      persistTimer({ status: "scheduled" });
+      if (liveSyncRef.current) window.clearTimeout(liveSyncRef.current);
+      const patch: any = { status: "scheduled" };
+      if (running) {
+        patch.bell_ends_at = null;
+        patch.bell_paused_seconds = remaining;
+      }
+      persistTimer(patch);
     }
-    navigate("/dashboard");
+    navigate(to);
   };
+
 
 
   const saveResult = async () => {
@@ -389,7 +396,7 @@ export default function BellsMarker() {
 
       <div className="px-4 mt-3 mb-20 max-w-2xl mx-auto space-y-4">
         <button
-          onClick={() => navigate("/tournaments")}
+          onClick={() => handleLeave("/tournaments")}
           className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
         >
           <ArrowLeft className="w-4 h-4" /> Back to tournaments
@@ -485,7 +492,7 @@ export default function BellsMarker() {
         </p>
       </div>
       <div className="px-4 py-4 mt-4">
-        <Button variant="outline" className="w-full h-10 text-sm" onClick={handleLeaveToDashboard}>
+        <Button variant="outline" className="w-full h-10 text-sm" onClick={() => handleLeave("/dashboard")}>
           <ArrowLeft className="w-4 h-4 mr-1.5" />
           Back to Dashboard
         </Button>

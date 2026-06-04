@@ -484,7 +484,13 @@ export default function BellsMarker() {
           Tap each pair's number (or +) to add a point. When the bell rings, confirm the score to save.
         </p>
       </div>
-      <BackToDashboard />
+      <div className="px-4 py-4 mt-4">
+        <Button variant="outline" className="w-full h-10 text-sm" onClick={handleLeaveToDashboard}>
+          <ArrowLeft className="w-4 h-4 mr-1.5" />
+          Back to Dashboard
+        </Button>
+      </div>
+
     </div>
   );
 }

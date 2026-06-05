@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsClubAdmin } from "@/hooks/use-club";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";

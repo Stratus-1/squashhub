@@ -346,6 +346,7 @@ export default function Bookings() {
   const { data: myClubData } = useMyClub();
   const isFullAdmin = useIsClubAdmin();
   const canBypassBookingLimits = useHasPermission("bookings_unlimited");
+  const canBypassNonPeak = useHasPermission("bookings_unlimited_non_peak");
   const bookingLimitsBypassed = isFullAdmin || canBypassBookingLimits;
   const myClub = myClubData?.club;
   const externalProvider = ((myClub as any)?.external_booking_provider as string | null) ||
@@ -720,8 +721,11 @@ export default function Bookings() {
       ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)
       : null;
 
-    // 1. Enforce total-per-day cap (skipped for club admins / delegates / super-admins)
-    if (!bookingLimitsBypassed) {
+    // 1. Enforce total-per-day cap (skipped for club admins / delegates / super-admins
+    //    and for non-peak slots when the member has bookings_unlimited_non_peak)
+    const isPeak = isPeakSlot(selectedDate, bookingDialog.time, myClub);
+    const limitsApply = !bookingLimitsBypassed && !(canBypassNonPeak && !isPeak);
+    if (limitsApply) {
       const myTotal = bookingsFor(activeMember?.id, user?.id).length;
       if (myTotal >= maxBookingsPerDay) {
         toast.error(`Daily booking limit reached (max ${maxBookingsPerDay} per day).`);
@@ -736,7 +740,7 @@ export default function Bookings() {
       }
 
       // 2. Enforce peak-hour cap
-      if (isPeakSlot(selectedDate, bookingDialog.time, myClub)) {
+      if (isPeak) {
         const peakCountFor = (memberId?: string | null, userId?: string | null) =>
           bookingsFor(memberId, userId).filter((b: any) =>
             isPeakSlot(selectedDate, String(b.start_time || ""), myClub)

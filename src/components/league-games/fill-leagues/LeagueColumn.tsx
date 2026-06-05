@@ -48,8 +48,10 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
     >
       <div className="space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="default" className="text-xs">{league.code || league.name}</Badge>
-          <span className="font-semibold text-sm">{league.name}</span>
+          <Badge variant="default" className="text-xs">{league.code || league.name || "—"}</Badge>
+          {league.name && league.name !== league.code && (
+            <span className="font-semibold text-sm">{league.name}</span>
+          )}
           {isCaptain && <Badge variant="secondary" className="text-[10px]">You captain this</Badge>}
           {isComplete ? (
             <Badge className="text-[10px] gap-1 bg-primary text-primary-foreground hover:bg-primary border-transparent">
@@ -70,16 +72,22 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
           <div className="flex items-center gap-2 text-xs flex-wrap">
             <span className="flex items-center gap-1 text-foreground">
               <Calendar className="w-3.5 h-3.5 text-primary" />
-              <span className="font-medium">{format(new Date(fixture.fixture_date), "EEE dd MMM")}</span>
+              <span className="font-medium">
+                {fixture.fixture_date
+                  ? format(new Date(fixture.fixture_date), "EEE dd MMM")
+                  : <span className="italic text-muted-foreground">Date TBA</span>}
+              </span>
             </span>
-            <Badge
-              variant={isHome ? "default" : "secondary"}
-              className="text-[10px] gap-1"
-            >
-              <MapPin className="w-3 h-3" />
-              {isHome ? "HOME" : "AWAY"} · {fixture.venue_name}
-            </Badge>
-            {opponentCode && (
+            {(fixture.venue_name || isHome) && (
+              <Badge
+                variant={isHome ? "default" : "secondary"}
+                className="text-[10px] gap-1"
+              >
+                <MapPin className="w-3 h-3" />
+                {isHome ? "HOME" : "AWAY"}{fixture.venue_name ? ` · ${fixture.venue_name}` : ""}
+              </Badge>
+            )}
+            {opponentCode && opponentCode.trim() && (
               <Badge variant="outline" className="text-[10px]">
                 {isHome ? "vs" : "@"} {opponentCode}
               </Badge>

@@ -62,7 +62,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { activeMember, isAdmin } = useMemberContext();
   const isFullAdmin = useIsClubAdmin();
   const canBypassBookingLimits = useHasPermission("bookings_unlimited");
-  const adminBypass = isAdmin || isFullAdmin || canBypassBookingLimits;
+  const canBypassNonPeak = useHasPermission("bookings_unlimited_non_peak");
+  const adminBypass = isAdmin || isFullAdmin || canBypassBookingLimits || canBypassNonPeak;
   const { data: myClubData } = useQuery({
     queryKey: ["my-club-fallback"],
     queryFn: async () => {

@@ -344,6 +344,8 @@ export default function Bookings() {
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();
   const isFullAdmin = useIsClubAdmin();
+  const canBypassBookingLimits = useHasPermission("bookings_unlimited");
+  const bookingLimitsBypassed = isFullAdmin || canBypassBookingLimits;
   const myClub = myClubData?.club;
   const externalProvider = ((myClub as any)?.external_booking_provider as string | null) ||
     ((myClub as any)?.uses_gobook ? "gobook" : null);

@@ -239,9 +239,16 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
   // a matching role (which can be revoked) and are listed in the editable section below.
   const adminMembers = members.filter((m) => m.role === "admin" || isGrantedFullAdmin(m.id));
 
-  const assignableMembers = members.filter(
-    (m) => m.role !== "admin" && !isGrantedFullAdmin(m.id)
-  );
+  const assignableMembers = members
+    .filter((m) => m.role !== "admin" && !isGrantedFullAdmin(m.id))
+    .sort((a, b) => {
+      const pa = permMap.get(a.id);
+      const pb = permMap.get(b.id);
+      const aHas = !!(pa?.permission_role_id || pa?.custom_permissions?.length);
+      const bHas = !!(pb?.permission_role_id || pb?.custom_permissions?.length);
+      if (aHas !== bHas) return aHas ? -1 : 1;
+      return (a.name || "").localeCompare(b.name || "");
+    });
 
   const handleAssignRole = async (memberId: string, roleId: string | null) => {
     try {

@@ -56,6 +56,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
 import { useMyClub, useIsSuperAdmin, useIsClubAdmin } from "@/hooks/use-club";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import { fromExt } from "@/lib/supabase-ext";
 import { enqueueOutbox } from "@/lib/outbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -344,6 +345,8 @@ export default function Bookings() {
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();
   const isFullAdmin = useIsClubAdmin();
+  const canBypassBookingLimits = useHasPermission("bookings_unlimited");
+  const bookingLimitsBypassed = isFullAdmin || canBypassBookingLimits;
   const myClub = myClubData?.club;
   const externalProvider = ((myClub as any)?.external_booking_provider as string | null) ||
     ((myClub as any)?.uses_gobook ? "gobook" : null);
@@ -718,7 +721,7 @@ export default function Bookings() {
       : null;
 
     // 1. Enforce total-per-day cap (skipped for club admins / delegates / super-admins)
-    if (!isFullAdmin) {
+    if (!bookingLimitsBypassed) {
       const myTotal = bookingsFor(activeMember?.id, user?.id).length;
       if (myTotal >= maxBookingsPerDay) {
         toast.error(`Daily booking limit reached (max ${maxBookingsPerDay} per day).`);

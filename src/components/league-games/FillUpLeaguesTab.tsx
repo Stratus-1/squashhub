@@ -298,16 +298,12 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     [selectedWeekOverride, autoWeekStart, candidateWeeks],
   );
 
-  // Fixtures play on Mon–Fri of the calendar week that follows the planning anchor (e.g. Wed deadline).
-  // Compute that Monday from weekStart, then look ahead 5 days through Friday.
+  // Fixtures are any games played within the 7-day squash week starting at weekStart
+  // (e.g. Wed → Tue inclusive when league_week_start_dow = Wed).
   const fixtureRange = useMemo(() => {
     const ws = new Date(weekStart);
-    const day = ws.getDay(); // 0=Sun..6=Sat
-    // Days to add to reach the next Monday strictly AFTER weekStart
-    const daysToMon = ((1 - day + 7) % 7) || 7;
-    const playMonday = addDays(ws, daysToMon);
-    const playSaturday = addDays(playMonday, 5); // exclusive end → covers Mon–Fri
-    return { start: format(playMonday, "yyyy-MM-dd"), end: format(playSaturday, "yyyy-MM-dd") };
+    const end = addDays(ws, 7); // exclusive end → covers full 7 days of the squash week
+    return { start: format(ws, "yyyy-MM-dd"), end: format(end, "yyyy-MM-dd") };
   }, [weekStart]);
   const weekEnd = fixtureRange.end;
 

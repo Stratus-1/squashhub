@@ -72,10 +72,10 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
           <div className="flex items-center gap-2 text-xs flex-wrap">
             <span className="flex items-center gap-1 text-foreground">
               <Calendar className="w-3.5 h-3.5 text-primary" />
-              <span className="font-medium">
+              <span className="font-semibold text-foreground">
                 {fixture.fixture_date
                   ? format(new Date(fixture.fixture_date), "EEE dd MMM")
-                  : <span className="italic text-muted-foreground">Date TBA</span>}
+                  : <span className="italic text-foreground/70">Date TBA</span>}
               </span>
             </span>
             {(fixture.venue_name || isHome) && (
@@ -94,7 +94,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic">
+          <div className="flex items-center gap-1.5 text-xs text-foreground/70 italic">
             <Calendar className="w-3.5 h-3.5" />
             No upcoming fixture
           </div>

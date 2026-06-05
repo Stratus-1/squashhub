@@ -721,7 +721,7 @@ export default function Bookings() {
       : null;
 
     // 1. Enforce total-per-day cap (skipped for club admins / delegates / super-admins)
-    if (!isFullAdmin) {
+    if (!bookingLimitsBypassed) {
       const myTotal = bookingsFor(activeMember?.id, user?.id).length;
       if (myTotal >= maxBookingsPerDay) {
         toast.error(`Daily booking limit reached (max ${maxBookingsPerDay} per day).`);

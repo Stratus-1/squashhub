@@ -1457,7 +1457,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
             </div>
           )}
           <p className="text-xs text-muted-foreground">
-            <strong>
+            <strong className="text-foreground">
               Planning {chosenWeekIndex === 0 ? "this week (in progress)" : chosenWeekIndex === 1 ? "next week" : `${chosenWeekIndex} weeks ahead`}: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}
             </strong> —
             Lower leagues can start picking teams now so cascaded players land correctly. Drag players from the

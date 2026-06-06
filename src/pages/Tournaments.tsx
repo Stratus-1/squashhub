@@ -126,21 +126,28 @@ export default function Tournaments() {
     const today = matchDate && isToday(matchDate);
     const markRoute = tournamentFormat.markerRoute(m.id);
 
+    const live = isLive(m);
+    const aPts = m.side_a_points ?? 0;
+    const bPts = m.side_b_points ?? 0;
+    const aAhead = live && aPts > bPts;
+    const bAhead = live && bPts > aPts;
+    const teamAClass = aAhead
+      ? "bg-green-500/20 text-green-700 dark:text-green-300 px-1 rounded"
+      : bAhead
+        ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 px-1 rounded"
+        : "";
+    const teamBClass = bAhead
+      ? "bg-green-500/20 text-green-700 dark:text-green-300 px-1 rounded"
+      : aAhead
+        ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 px-1 rounded"
+        : "";
+
     return (
-      
       <div
         key={m.id}
         className={cn(
           "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded",
-          isLive(m)
-            ? ((m.side_a_points ?? 0) > (m.side_b_points ?? 0)
-                ? "bg-green-500/15 border border-green-500/30"
-                : (m.side_b_points ?? 0) > (m.side_a_points ?? 0)
-                  ? "bg-rose-500/15 border border-rose-500/30"
-                  : "bg-muted/50")
-            : today
-              ? "bg-primary/10 border border-primary/20"
-              : "bg-muted/50",
+          today ? "bg-primary/10 border border-primary/20" : "bg-muted/50",
         )}
       >
         <button
@@ -153,7 +160,9 @@ export default function Tournaments() {
           </span>
           <span className="text-muted-foreground shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
           <span className="font-medium text-xs sm:text-sm truncate basis-full sm:basis-auto sm:flex-1 sm:min-w-0">
-            {teamA} vs {teamB}
+            <span className={teamAClass}>{teamA}</span>
+            <span className="text-muted-foreground"> vs </span>
+            <span className={teamBClass}>{teamB}</span>
           </span>
           {champ && (
             <Badge variant="outline" className="text-[10px] shrink-0 max-w-[140px] truncate">

@@ -483,7 +483,7 @@ export default function BellsMarker() {
         {/* Save */}
         <Button
           className="w-full h-12 gap-2 text-base"
-          disabled={saving || (pointsA === 0 && pointsB === 0)}
+          disabled={saving || !finished || (pointsA === 0 && pointsB === 0)}
           onClick={saveResult}
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -491,7 +491,7 @@ export default function BellsMarker() {
         </Button>
 
         <p className="text-[11px] text-muted-foreground text-center">
-          Tap each pair's number (or +) to add a point. When the bell rings, confirm the score to save.
+          Tap each pair's number (or +) to add a point. Ring the bell, then confirm the score to save.
         </p>
       </div>
       <div className="px-4 py-4 mt-4">

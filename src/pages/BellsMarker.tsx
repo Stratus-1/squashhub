@@ -114,6 +114,7 @@ export default function BellsMarker() {
         _bell_ends_at: match.bell_ends_at ?? null,
         _bell_paused_seconds: match.bell_paused_seconds ?? null,
         _status: "in_progress",
+        _patch_timer: false,
       })
         .then(({ error }) => {
           if (error) console.warn("Live score sync failed:", error.message);
@@ -180,6 +181,7 @@ export default function BellsMarker() {
       _bell_ends_at: patch.bell_ends_at ?? match.bell_ends_at ?? null,
       _bell_paused_seconds: patch.bell_paused_seconds ?? null,
       _status: patch.status ?? "in_progress",
+      _patch_timer: true,
     }).then(({ error }) => {
       if (error) console.warn("Timer sync failed:", error.message);
     });

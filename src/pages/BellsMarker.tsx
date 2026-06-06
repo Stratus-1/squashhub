@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fromExt } from "@/lib/supabase-ext";
+import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 
@@ -107,13 +107,14 @@ export default function BellsMarker() {
     if (!hydratedRef.current || !match || finished) return;
     if (liveSyncRef.current) window.clearTimeout(liveSyncRef.current);
     liveSyncRef.current = window.setTimeout(() => {
-      fromExt("club_champs_matches")
-        .update({
-          side_a_points: pointsA,
-          side_b_points: pointsB,
-          status: "in_progress",
-        })
-        .eq("id", match.id)
+      rpcExt("sync_bells_match_state", {
+        _match_id: match.id,
+        _side_a_points: pointsA,
+        _side_b_points: pointsB,
+        _bell_ends_at: match.bell_ends_at ?? null,
+        _bell_paused_seconds: match.bell_paused_seconds ?? null,
+        _status: "in_progress",
+      })
         .then(({ error }) => {
           if (error) console.warn("Live score sync failed:", error.message);
         });
@@ -172,7 +173,14 @@ export default function BellsMarker() {
   // ----- Timer persistence helpers -----
   const persistTimer = (patch: { bell_ends_at?: string | null; bell_paused_seconds?: number | null; status?: string }) => {
     if (!match) return;
-    fromExt("club_champs_matches").update(patch as any).eq("id", match.id).then(({ error }) => {
+    rpcExt("sync_bells_match_state", {
+      _match_id: match.id,
+      _side_a_points: pointsA,
+      _side_b_points: pointsB,
+      _bell_ends_at: patch.bell_ends_at ?? match.bell_ends_at ?? null,
+      _bell_paused_seconds: patch.bell_paused_seconds ?? null,
+      _status: patch.status ?? "in_progress",
+    }).then(({ error }) => {
       if (error) console.warn("Timer sync failed:", error.message);
     });
   };
@@ -203,7 +211,7 @@ export default function BellsMarker() {
     if (tickRef.current) window.clearInterval(tickRef.current);
     setRunning(false);
     setFinished(true);
-    persistTimer({ bell_ends_at: null, bell_paused_seconds: null });
+    persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "in_progress" });
   };
 
   const resetAll = () => {
@@ -221,9 +229,9 @@ export default function BellsMarker() {
   const handleLeave = (to: string) => {
     if (!finished && match) {
       if (liveSyncRef.current) window.clearTimeout(liveSyncRef.current);
-      // Keep status as in_progress so spectators continue to see the match as
-      // LIVE while the bell timer keeps ticking. Any marker can re-open the
-      // match and resume — we don't downgrade the flag on leave.
+      if (!running && pointsA === 0 && pointsB === 0) {
+        persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "scheduled" });
+      }
     }
     navigate(to);
   };
@@ -241,15 +249,11 @@ export default function BellsMarker() {
       const scoreStr = BellsFormat.formatScore(pointsA, pointsB);
       const { data: auth } = await supabase.auth.getUser();
 
-      const { error } = await fromExt("club_champs_matches")
-        .update({
-          side_a_points: pointsA,
-          side_b_points: pointsB,
-          score: scoreStr,
-          winner_member_id: winnerMemberId,
-          status: "completed",
-        })
-        .eq("id", match.id);
+      const { error } = await rpcExt("save_bells_match_result", {
+        _match_id: match.id,
+        _side_a_points: pointsA,
+        _side_b_points: pointsB,
+      });
       if (error) throw error;
 
       // Best-effort: also drop a row into matches so it shows up in players' history

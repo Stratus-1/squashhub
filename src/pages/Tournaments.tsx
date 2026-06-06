@@ -127,7 +127,7 @@ export default function Tournaments() {
     const markRoute = tournamentFormat.markerRoute(m.id);
 
     return (
-      {(() => null)()}
+      
       <div
         key={m.id}
         className={cn(

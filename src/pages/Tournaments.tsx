@@ -78,12 +78,26 @@ export default function Tournaments() {
   });
 
   const today = format(new Date(), "yyyy-MM-dd");
+  // A match is "live" if either:
+  //  - status is in_progress, OR
+  //  - the bell clock is still ticking (bell_ends_at in the future), OR
+  //  - it has been paused mid-game (bell_paused_seconds > 0).
+  // The last two cover cases where an older client demoted the status back
+  // to "scheduled" when the marker navigated away.
+  const isLive = (m: any) => {
+    if (m.status === "in_progress") return true;
+    if (m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now()) return true;
+    if (typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0) return true;
+    return false;
+  };
   const upcomingMatches = allMatches
-    .filter((m: any) => (m.status === "scheduled" || m.status === "in_progress") && (!m.scheduled_date || m.scheduled_date >= today))
+    .filter((m: any) => (m.status === "scheduled" || m.status === "in_progress" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))
     .sort((a: any, b: any) => {
       // Live matches float to the top
-      if (a.status === "in_progress" && b.status !== "in_progress") return -1;
-      if (b.status === "in_progress" && a.status !== "in_progress") return 1;
+      const aLive = isLive(a);
+      const bLive = isLive(b);
+      if (aLive && !bLive) return -1;
+      if (bLive && !aLive) return 1;
       const aKey = `${a.scheduled_date || "9999-12-31"} ${a.scheduled_time || "23:59:59"}`;
       const bKey = `${b.scheduled_date || "9999-12-31"} ${b.scheduled_time || "23:59:59"}`;
       return aKey.localeCompare(bKey);
@@ -143,12 +157,12 @@ export default function Tournaments() {
             </Badge>
           )}
           {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
-          {m.status === "in_progress" && (
+          {isLive(m) && (
             <Badge className="text-[10px] shrink-0 bg-red-600 hover:bg-red-600 text-white gap-1 animate-pulse">
               <span className="w-1.5 h-1.5 rounded-full bg-white" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
             </Badge>
           )}
-          {today && m.status !== "in_progress" && <Badge className="text-[10px] shrink-0">Today</Badge>}
+          {today && !isLive(m) && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
         <Button
           size="sm"

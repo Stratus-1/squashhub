@@ -885,20 +885,29 @@ export default function ClubChampsView() {
                       )}
 
                       {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
-                      <Badge
-                        variant={completed ? "default" : "secondary"}
-                        className={cn(
-                          "text-[10px]",
-                          completed && "bg-primary",
-                          m.status === "in_progress" && "bg-red-500 text-white animate-pulse",
-                        )}
-                      >
-                        {completed
-                          ? (winnerIsA ? `${getPlayerName(m.player_a)} won` : winnerIsB ? `${getPlayerName(m.player_b)} won` : "Completed")
-                          : m.status === "in_progress"
-                            ? `LIVE ${m.side_a_points ?? 0}-${m.side_b_points ?? 0}`
-                            : m.status}
-                      </Badge>
+                      {(() => {
+                        const isLive = !completed && (
+                          m.status === "in_progress" ||
+                          (m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now()) ||
+                          (typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0)
+                        );
+                        return (
+                          <Badge
+                            variant={completed ? "default" : "secondary"}
+                            className={cn(
+                              "text-[10px]",
+                              completed && "bg-primary",
+                              isLive && "bg-red-500 text-white animate-pulse",
+                            )}
+                          >
+                            {completed
+                              ? (winnerIsA ? `${getPlayerName(m.player_a)} won` : winnerIsB ? `${getPlayerName(m.player_b)} won` : "Completed")
+                              : isLive
+                                ? `LIVE ${m.side_a_points ?? 0}-${m.side_b_points ?? 0}`
+                                : m.status}
+                          </Badge>
+                        );
+                      })()}
                       {canManage && !completed && m.scheduled_date && m.scheduled_time && (
                         <SwapFixtureButton
                           match={m}

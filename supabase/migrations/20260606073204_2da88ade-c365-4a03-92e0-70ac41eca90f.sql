@@ -1,0 +1,3 @@
+DROP FUNCTION IF EXISTS public.sync_bells_match_state(uuid, integer, integer, timestamp with time zone, integer, text);
+REVOKE ALL ON FUNCTION public.sync_bells_match_state(uuid, integer, integer, timestamp with time zone, integer, text, boolean) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.sync_bells_match_state(uuid, integer, integer, timestamp with time zone, integer, text, boolean) TO authenticated, service_role;

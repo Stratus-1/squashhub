@@ -127,11 +127,20 @@ export default function Tournaments() {
     const markRoute = tournamentFormat.markerRoute(m.id);
 
     return (
+      {(() => null)()}
       <div
         key={m.id}
         className={cn(
           "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded",
-          today ? "bg-primary/10 border border-primary/20" : "bg-muted/50",
+          isLive(m)
+            ? ((m.side_a_points ?? 0) > (m.side_b_points ?? 0)
+                ? "bg-green-500/15 border border-green-500/30"
+                : (m.side_b_points ?? 0) > (m.side_a_points ?? 0)
+                  ? "bg-rose-500/15 border border-rose-500/30"
+                  : "bg-muted/50")
+            : today
+              ? "bg-primary/10 border border-primary/20"
+              : "bg-muted/50",
         )}
       >
         <button

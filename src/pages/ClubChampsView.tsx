@@ -59,6 +59,7 @@ export default function ClubChampsView() {
       return data || [];
     },
     enabled: !!champId,
+    refetchInterval: 5000,
   });
 
   const isDoubles = champ?.match_type === "doubles";

@@ -5954,6 +5954,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_bells_participant_member: {
+        Args: { _member_id: string }
+        Returns: boolean
+      }
       is_club_admin: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean

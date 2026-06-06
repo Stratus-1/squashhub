@@ -221,10 +221,9 @@ export default function BellsMarker() {
   const handleLeave = (to: string) => {
     if (!finished && match) {
       if (liveSyncRef.current) window.clearTimeout(liveSyncRef.current);
-      // Clear LIVE flag so another marker can take over, but DO NOT pause the
-      // timer. The clock keeps running in real time via bell_ends_at so the
-      // game continues regardless of whether anyone is actively marking.
-      persistTimer({ status: "scheduled" });
+      // Keep status as in_progress so spectators continue to see the match as
+      // LIVE while the bell timer keeps ticking. Any marker can re-open the
+      // match and resume — we don't downgrade the flag on leave.
     }
     navigate(to);
   };

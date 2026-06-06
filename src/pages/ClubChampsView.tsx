@@ -891,11 +891,19 @@ export default function ClubChampsView() {
                         {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
                       </span>
                       <span className="text-muted-foreground w-12 shrink-0 text-xs">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
-                      <span className={cn("font-medium", winnerIsA && "text-primary")}>
+                      <span className={cn(
+                        "font-medium px-2 py-0.5 rounded",
+                        completed && winnerIsA && "bg-green-500/20 text-green-700 dark:text-green-300",
+                        completed && winnerIsB && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+                      )}>
                         {getMatchTeamA(m)}
                       </span>
                       <span className="text-muted-foreground text-xs">vs</span>
-                      <span className={cn("font-medium", winnerIsB && "text-primary")}>
+                      <span className={cn(
+                        "font-medium px-2 py-0.5 rounded",
+                        completed && winnerIsB && "bg-green-500/20 text-green-700 dark:text-green-300",
+                        completed && winnerIsA && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+                      )}>
                         {getMatchTeamB(m)}
                       </span>
 
@@ -915,29 +923,24 @@ export default function ClubChampsView() {
 
                       {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
                       {(() => {
-                        // Only treat as LIVE when there's real, recent activity — not a stale
-                        // `in_progress` row left behind by an abandoned marker session.
                         const bellActive = !!m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now();
                         const paused = typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0;
                         const hasPoints = (m.side_a_points ?? 0) > 0 || (m.side_b_points ?? 0) > 0;
                         const isLive = !completed && (bellActive || paused || (m.status === "in_progress" && hasPoints));
+                        if (completed) return null;
                         return (
                           <Badge
-                            variant={completed ? "default" : "secondary"}
+                            variant="secondary"
                             className={cn(
                               "text-[10px]",
-                              completed && "bg-primary",
                               isLive && "bg-red-500 text-white animate-pulse",
                             )}
                           >
-                            {completed
-                              ? (winnerIsA ? `${getPlayerName(m.player_a)} won` : winnerIsB ? `${getPlayerName(m.player_b)} won` : "Completed")
-                              : isLive
-                                ? `LIVE ${m.side_a_points ?? 0}-${m.side_b_points ?? 0}`
-                                : m.status}
+                            {isLive ? `LIVE ${m.side_a_points ?? 0}-${m.side_b_points ?? 0}` : m.status}
                           </Badge>
                         );
                       })()}
+
                       {canManage && !completed && m.scheduled_date && m.scheduled_time && (
                         <SwapFixtureButton
                           match={m}

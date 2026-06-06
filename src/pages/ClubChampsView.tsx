@@ -882,6 +882,13 @@ export default function ClubChampsView() {
                     );
                   }
 
+                  const bellActive = !!m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now();
+                  const paused = typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0;
+                  const hasPoints = (m.side_a_points ?? 0) > 0 || (m.side_b_points ?? 0) > 0;
+                  const isLiveMatch = !completed && (bellActive || paused || (m.status === "in_progress" && hasPoints));
+                  const liveAAhead = isLiveMatch && (m.side_a_points ?? 0) > (m.side_b_points ?? 0);
+                  const liveBAhead = isLiveMatch && (m.side_b_points ?? 0) > (m.side_a_points ?? 0);
+
                   return (
                     <div key={m.id} className={cn(
                       "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm p-2 rounded",
@@ -893,16 +900,16 @@ export default function ClubChampsView() {
                       <span className="text-muted-foreground w-12 shrink-0 text-xs">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
                       <span className={cn(
                         "font-medium px-2 py-0.5 rounded",
-                        completed && winnerIsA && "bg-green-500/20 text-green-700 dark:text-green-300",
-                        completed && winnerIsB && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+                        ((completed && winnerIsA) || liveAAhead) && "bg-green-500/20 text-green-700 dark:text-green-300",
+                        ((completed && winnerIsB) || liveBAhead) && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
                       )}>
                         {getMatchTeamA(m)}
                       </span>
                       <span className="text-muted-foreground text-xs">vs</span>
                       <span className={cn(
                         "font-medium px-2 py-0.5 rounded",
-                        completed && winnerIsB && "bg-green-500/20 text-green-700 dark:text-green-300",
-                        completed && winnerIsA && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+                        ((completed && winnerIsB) || liveBAhead) && "bg-green-500/20 text-green-700 dark:text-green-300",
+                        ((completed && winnerIsA) || liveAAhead) && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
                       )}>
                         {getMatchTeamB(m)}
                       </span>

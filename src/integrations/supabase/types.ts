@@ -6128,48 +6128,92 @@ export type Database = {
         Args: { p_club_member_id: string }
         Returns: undefined
       }
-      sync_bells_match_state: {
-        Args: {
-          _bell_ends_at?: string
-          _bell_paused_seconds?: number
-          _match_id: string
-          _side_a_points: number
-          _side_b_points: number
-          _status?: string
-        }
-        Returns: {
-          bell_ends_at: string | null
-          bell_paused_seconds: number | null
-          bye_member_id: string | null
-          champ_id: string
-          court_id: number | null
-          created_at: string
-          game_scores: string | null
-          group_number: number
-          id: string
-          is_bye: boolean
-          leg: string | null
-          partner_a_member_id: string | null
-          partner_b_member_id: string | null
-          player_a_member_id: string
-          player_b_member_id: string
-          round_number: number
-          scheduled_date: string | null
-          scheduled_time: string | null
-          score: string | null
-          side_a_points: number | null
-          side_b_points: number | null
-          status: string
-          updated_at: string
-          winner_member_id: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "club_champs_matches"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      sync_bells_match_state:
+        | {
+            Args: {
+              _bell_ends_at?: string
+              _bell_paused_seconds?: number
+              _match_id: string
+              _side_a_points: number
+              _side_b_points: number
+              _status?: string
+            }
+            Returns: {
+              bell_ends_at: string | null
+              bell_paused_seconds: number | null
+              bye_member_id: string | null
+              champ_id: string
+              court_id: number | null
+              created_at: string
+              game_scores: string | null
+              group_number: number
+              id: string
+              is_bye: boolean
+              leg: string | null
+              partner_a_member_id: string | null
+              partner_b_member_id: string | null
+              player_a_member_id: string
+              player_b_member_id: string
+              round_number: number
+              scheduled_date: string | null
+              scheduled_time: string | null
+              score: string | null
+              side_a_points: number | null
+              side_b_points: number | null
+              status: string
+              updated_at: string
+              winner_member_id: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "club_champs_matches"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              _bell_ends_at?: string
+              _bell_paused_seconds?: number
+              _match_id: string
+              _patch_timer?: boolean
+              _side_a_points: number
+              _side_b_points: number
+              _status?: string
+            }
+            Returns: {
+              bell_ends_at: string | null
+              bell_paused_seconds: number | null
+              bye_member_id: string | null
+              champ_id: string
+              court_id: number | null
+              created_at: string
+              game_scores: string | null
+              group_number: number
+              id: string
+              is_bye: boolean
+              leg: string | null
+              partner_a_member_id: string | null
+              partner_b_member_id: string | null
+              player_a_member_id: string
+              player_b_member_id: string
+              round_number: number
+              scheduled_date: string | null
+              scheduled_time: string | null
+              score: string | null
+              side_a_points: number | null
+              side_b_points: number | null
+              status: string
+              updated_at: string
+              winner_member_id: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "club_champs_matches"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       viewer_is_opposing_captain_for_registration: {
         Args: {
           _reg_club_member_id: string

@@ -887,11 +887,12 @@ export default function ClubChampsView() {
 
                       {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
                       {(() => {
-                        const isLive = !completed && (
-                          m.status === "in_progress" ||
-                          (m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now()) ||
-                          (typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0)
-                        );
+                        // Only treat as LIVE when there's real, recent activity — not a stale
+                        // `in_progress` row left behind by an abandoned marker session.
+                        const bellActive = !!m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now();
+                        const paused = typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0;
+                        const hasPoints = (m.side_a_points ?? 0) > 0 || (m.side_b_points ?? 0) > 0;
+                        const isLive = !completed && (bellActive || paused || (m.status === "in_progress" && hasPoints));
                         return (
                           <Badge
                             variant={completed ? "default" : "secondary"}

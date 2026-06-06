@@ -5784,6 +5784,10 @@ export type Database = {
         Args: { _club_id: string; _member_id: string; _role_name: string }
         Returns: undefined
       }
+      can_mark_bells_match: {
+        Args: { _match_id: string; _user_id: string }
+        Returns: boolean
+      }
       captain_list_unclaimed_teammates: {
         Args: { _club_member_id: string }
         Returns: {

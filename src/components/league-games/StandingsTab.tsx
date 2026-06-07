@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart3, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InternalStandingsTab } from "./InternalStandingsTab";
+import { rankTint } from "@/lib/rank-tint";
 
 type ClubLeague = {
   id: string;

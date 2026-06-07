@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Users, RefreshCw } from "lucide-react";
+import { rankTint } from "@/lib/rank-tint";
 
 type ClubLeague = {
   id: string;

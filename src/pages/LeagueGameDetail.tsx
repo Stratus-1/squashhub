@@ -2772,7 +2772,7 @@ export default function LeagueGameDetail() {
                           <>
                             <span className="text-[9px] font-mono px-1 text-muted-foreground truncate">{pos.awayCode}</span>
                             <span className="text-xs px-1 font-medium flex items-center gap-1 min-w-0">
-                              <span className="truncate">{pos.awayName || "—"}</span>
+                              <span className={cn("truncate transition-colors", awayNameTint)}>{pos.awayName || "—"}</span>
                               {isCaptainCode(pos.awayCode, "away") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold shrink-0" title="Team captain">C</Badge>
                               )}

@@ -2475,6 +2475,23 @@ export default function LeagueGameDetail() {
                 // Total points = sum of all individual game scores
                 const homeTotalPts = pos.scores.reduce((sum, s) => sum + s.home, 0);
                 const awayTotalPts = pos.scores.reduce((sum, s) => sum + s.away, 0);
+                // Live-aware: include the in-progress game so the ahead/behind
+                // tint updates point-by-point during marking.
+                const liveHomeTotal = displayScores.reduce((sum, s) => sum + s.home, 0);
+                const liveAwayTotal = displayScores.reduce((sum, s) => sum + s.away, 0);
+                const anyProgress = pos.completed || pos.scores.length > 0 || !!pos.currentGame;
+                const homeAhead = anyProgress && liveHomeTotal > liveAwayTotal;
+                const awayAhead = anyProgress && liveAwayTotal > liveHomeTotal;
+                const homeNameTint = homeAhead
+                  ? "bg-green-500/20 text-green-700 dark:text-green-300 rounded px-1"
+                  : awayAhead
+                  ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 rounded px-1"
+                  : "";
+                const awayNameTint = awayAhead
+                  ? "bg-green-500/20 text-green-700 dark:text-green-300 rounded px-1"
+                  : homeAhead
+                  ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 rounded px-1"
+                  : "";
                 return (
                   <tr key={idx} className={cn("border-t", pos.isForfeit && "bg-destructive/10")}>
                     <td className="p-0" colSpan={bestOf + 6}>
@@ -2585,7 +2602,7 @@ export default function LeagueGameDetail() {
                           <>
                             <span className="text-[9px] font-mono px-1 text-muted-foreground truncate">{pos.homeCode}</span>
                             <span className="text-xs px-1 font-medium flex items-center gap-1 min-w-0">
-                              <span className="truncate">{pos.homeName || "—"}</span>
+                              <span className={cn("truncate transition-colors", homeNameTint)}>{pos.homeName || "—"}</span>
                               {isCaptainCode(pos.homeCode, "home") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold shrink-0" title="Team captain">C</Badge>
                               )}
@@ -2755,7 +2772,7 @@ export default function LeagueGameDetail() {
                           <>
                             <span className="text-[9px] font-mono px-1 text-muted-foreground truncate">{pos.awayCode}</span>
                             <span className="text-xs px-1 font-medium flex items-center gap-1 min-w-0">
-                              <span className="truncate">{pos.awayName || "—"}</span>
+                              <span className={cn("truncate transition-colors", awayNameTint)}>{pos.awayName || "—"}</span>
                               {isCaptainCode(pos.awayCode, "away") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold shrink-0" title="Team captain">C</Badge>
                               )}

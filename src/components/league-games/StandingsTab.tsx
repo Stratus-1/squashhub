@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart3, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InternalStandingsTab } from "./InternalStandingsTab";
+import { rankTint } from "@/lib/rank-tint";
 
 type ClubLeague = {
   id: string;
@@ -289,7 +290,7 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
                         ? ourLeague.name
                         : null;
                     return (
-                      <TableRow key={s.team_code} className={mine ? "bg-primary/10 font-medium" : ""}>
+                      <TableRow key={s.team_code} className={mine ? "font-medium ring-1 ring-primary/40" : ""} style={rankTint(i, result.rows.length)}>
                         <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
                         <TableCell className="font-mono text-xs">
                           {s.team_code}

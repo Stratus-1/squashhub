@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Users, RefreshCw } from "lucide-react";
+import { rankTint } from "@/lib/rank-tint";
 
 type ClubLeague = {
   id: string;
@@ -379,7 +380,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             </TableHeader>
             <TableBody>
               {rows.map((r, i) => (
-                <TableRow key={r.player_code}>
+                <TableRow key={r.player_code} style={rankTint(i, rows.length)}>
                   <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
                   <TableCell className="text-xs">
                     <div className="flex items-center gap-2">

@@ -13,6 +13,7 @@ import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TeamLogo } from "./TeamLogo";
+import { rankTint } from "@/lib/rank-tint";
 
 type ClubLeague = {
   id: string;
@@ -398,7 +399,8 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                         return (
                           <TableRow
                             key={s.team_code}
-                            className={mine ? "bg-primary/10 font-medium" : ""}
+                            className={mine ? "font-medium ring-1 ring-primary/40" : ""}
+                            style={rankTint(i, rows.length)}
                           >
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {i + 1}

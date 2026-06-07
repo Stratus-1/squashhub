@@ -399,7 +399,8 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                         return (
                           <TableRow
                             key={s.team_code}
-                            className={mine ? "bg-primary/10 font-medium" : ""}
+                            className={mine ? "font-medium ring-1 ring-primary/40" : ""}
+                            style={rankTint(i, rows.length)}
                           >
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {i + 1}

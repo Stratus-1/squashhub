@@ -380,7 +380,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             </TableHeader>
             <TableBody>
               {rows.map((r, i) => (
-                <TableRow key={r.player_code}>
+                <TableRow key={r.player_code} style={rankTint(i, rows.length)}>
                   <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
                   <TableCell className="text-xs">
                     <div className="flex items-center gap-2">

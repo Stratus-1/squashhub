@@ -290,7 +290,7 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
                         ? ourLeague.name
                         : null;
                     return (
-                      <TableRow key={s.team_code} className={mine ? "bg-primary/10 font-medium" : ""}>
+                      <TableRow key={s.team_code} className={mine ? "font-medium ring-1 ring-primary/40" : ""} style={rankTint(i, result.rows.length)}>
                         <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
                         <TableCell className="font-mono text-xs">
                           {s.team_code}

@@ -13,6 +13,7 @@ import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TeamLogo } from "./TeamLogo";
+import { rankTint } from "@/lib/rank-tint";
 
 type ClubLeague = {
   id: string;

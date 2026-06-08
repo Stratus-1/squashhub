@@ -189,8 +189,27 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: !!clubId,
   });
 
+  // Filter out events whose last instance has already ended (past events)
+  const upcomingEvents = useMemo(() => {
+    const now = new Date();
+    return (events || []).filter((e: any) => {
+      if (!e.start_date) return true;
+      const endTime = String(e.end_time || "23:59").slice(0, 5);
+      const start = new Date(`${e.start_date}T00:00:00`);
+      const count = Math.max(1, Number(e.num_instances) || 1);
+      const rec = e.recurrence || "once";
+      const last = new Date(start);
+      if (rec === "weekly") last.setDate(last.getDate() + (count - 1) * 7);
+      else if (rec === "monthly") last.setMonth(last.getMonth() + (count - 1));
+      else if (rec === "yearly") last.setFullYear(last.getFullYear() + (count - 1));
+      const [hh, mm] = endTime.split(":").map(Number);
+      last.setHours(hh || 23, mm || 59, 59, 999);
+      return last >= now;
+    });
+  }, [events]);
+
   // Get RSVP counts + confirmed member names
-  const eventIds = useMemo(() => (events || []).map((e: any) => e.id), [events]);
+  const eventIds = useMemo(() => upcomingEvents.map((e: any) => e.id), [upcomingEvents]);
   const { data: rsvpData } = useQuery({
     queryKey: ["club-event-rsvps-data", eventIds.join(",")],
     queryFn: async () => {

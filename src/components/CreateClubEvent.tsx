@@ -977,9 +977,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         <div className="flex justify-center py-4">
           <Loader2 className="w-4 h-4 animate-spin text-primary" />
         </div>
-      ) : events && events.length > 0 ? (
+      ) : upcomingEvents && upcomingEvents.length > 0 ? (
         <div className="space-y-2">
-          {events.map((e: any) => {
+          {upcomingEvents.map((e: any) => {
             const counts = rsvpCounts?.[e.id];
             const myRsvpList = myRsvps?.[e.id] || [];
             const courtNames = (e.club_event_courts || []).map((c: any) => (courts || []).find((ct: any) => ct.id === c.court_id)?.name || `Court ${c.court_id}`).join(", ");

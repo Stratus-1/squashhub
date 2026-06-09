@@ -449,6 +449,14 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           onOpenChange={(o) => !o && setEditAssoc(null)}
         />
       )}
+
+      {rulesAssoc && (
+        <AssociationRulesPenaltiesDialog
+          association={rulesAssoc}
+          open={!!rulesAssoc}
+          onOpenChange={(o) => !o && setRulesAssoc(null)}
+        />
+      )}
     </div>
   );
 }

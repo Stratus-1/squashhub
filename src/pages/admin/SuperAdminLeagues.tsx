@@ -124,9 +124,11 @@ export default function SuperAdminLeagues() {
   const { data: associations } = useQuery({
     queryKey: ["admin-associations"],
     queryFn: async () => {
+      // Internal (tenant-owned) leagues are managed by the club admin, not here.
       const { data, error } = await supabase
         .from("platform_league_associations")
         .select("*")
+        .or("is_internal.is.null,is_internal.eq.false")
         .order("name");
       if (error) throw error;
       return data;

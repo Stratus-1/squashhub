@@ -23,6 +23,10 @@ import { AddReservesDialog } from "./AddReservesDialog";
 import { UserPlus } from "lucide-react";
 import { TeamLogoUpload } from "@/components/league-games/TeamLogoUpload";
 import { TeamLogo } from "@/components/league-games/TeamLogo";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
+import AssociationPenaltiesTab from "@/components/super-admin/league/AssociationPenaltiesTab";
+import { Settings2 } from "lucide-react";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -124,6 +128,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const { data: members = [] } = useClubMembers(clubId);
   const [addAssocOpen, setAddAssocOpen] = useState(false);
   const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
+  const [rulesAssoc, setRulesAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
   const [editSetup, setEditSetup] = useState<null | {
@@ -307,6 +312,9 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                     </Link>
                   </Button>
                 )}
+                <Button size="sm" variant="outline" onClick={() => setRulesAssoc(a)}>
+                  <Settings2 className="w-4 h-4 mr-1" />Rules & Penalties
+                </Button>
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
                   <Trash2 className="w-4 h-4" />
@@ -439,6 +447,14 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           association={editAssoc}
           open={!!editAssoc}
           onOpenChange={(o) => !o && setEditAssoc(null)}
+        />
+      )}
+
+      {rulesAssoc && (
+        <AssociationRulesPenaltiesDialog
+          association={rulesAssoc}
+          open={!!rulesAssoc}
+          onOpenChange={(o) => !o && setRulesAssoc(null)}
         />
       )}
     </div>
@@ -2445,6 +2461,42 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
             Add {entries.length} League(s)
           </Button>
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Rules & Penalties Dialog (per association) ───
+function AssociationRulesPenaltiesDialog({ association, open, onOpenChange }: { association: LeagueAssociation; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const isInternal = (association as any).scope === "internal";
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {association.name} — Rules & Penalties
+            <Badge variant={isInternal ? "outline" : "default"} className="ml-2 text-[10px] h-5 align-middle">
+              {isInternal ? "Internal" : "Regional"}
+            </Badge>
+          </DialogTitle>
+        </DialogHeader>
+        {!isInternal && (
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            Regional leagues inherit defaults from the league organiser. Edits saved here become a club-level override that only applies to your club.
+          </div>
+        )}
+        <Tabs defaultValue="rules" className="w-full">
+          <TabsList>
+            <TabsTrigger value="rules">Rules</TabsTrigger>
+            <TabsTrigger value="penalties">Penalties</TabsTrigger>
+          </TabsList>
+          <TabsContent value="rules" className="mt-3">
+            <AssociationRulesTab associationId={association.id} />
+          </TabsContent>
+          <TabsContent value="penalties" className="mt-3">
+            <AssociationPenaltiesTab associationId={association.id} />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

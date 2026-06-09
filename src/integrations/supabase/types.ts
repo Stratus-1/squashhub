@@ -4916,6 +4916,7 @@ export type Database = {
           external_season: string | null
           external_source: string | null
           id: string
+          is_internal: boolean
           last_fixtures_sync_at: string | null
           last_fixtures_sync_summary: string | null
           last_members_sync_at: string | null
@@ -4932,6 +4933,7 @@ export type Database = {
           external_season?: string | null
           external_source?: string | null
           id?: string
+          is_internal?: boolean
           last_fixtures_sync_at?: string | null
           last_fixtures_sync_summary?: string | null
           last_members_sync_at?: string | null
@@ -4948,6 +4950,7 @@ export type Database = {
           external_season?: string | null
           external_source?: string | null
           id?: string
+          is_internal?: boolean
           last_fixtures_sync_at?: string | null
           last_fixtures_sync_summary?: string | null
           last_members_sync_at?: string | null

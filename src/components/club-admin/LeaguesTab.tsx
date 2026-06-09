@@ -2465,3 +2465,39 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     </Dialog>
   );
 }
+
+// ─── Rules & Penalties Dialog (per association) ───
+function AssociationRulesPenaltiesDialog({ association, open, onOpenChange }: { association: LeagueAssociation; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const isInternal = (association as any).scope === "internal";
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {association.name} — Rules & Penalties
+            <Badge variant={isInternal ? "outline" : "default"} className="ml-2 text-[10px] h-5 align-middle">
+              {isInternal ? "Internal" : "Regional"}
+            </Badge>
+          </DialogTitle>
+        </DialogHeader>
+        {!isInternal && (
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            Regional leagues inherit defaults from the league organiser. Edits saved here become a club-level override that only applies to your club.
+          </div>
+        )}
+        <Tabs defaultValue="rules" className="w-full">
+          <TabsList>
+            <TabsTrigger value="rules">Rules</TabsTrigger>
+            <TabsTrigger value="penalties">Penalties</TabsTrigger>
+          </TabsList>
+          <TabsContent value="rules" className="mt-3">
+            <AssociationRulesTab associationId={association.id} />
+          </TabsContent>
+          <TabsContent value="penalties" className="mt-3">
+            <AssociationPenaltiesTab associationId={association.id} />
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}

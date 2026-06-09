@@ -325,9 +325,16 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           <h3 className="font-semibold">Leagues</h3>
           <div className="flex gap-2 flex-wrap">
             <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
-            <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
-              <Plus className="w-4 h-4 mr-1" />Step by Step League Setup
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
+                    <Plus className="w-4 h-4 mr-1" />Step by Step League Setup
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">Typical for internal leagues, not inter-club leagues.</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 

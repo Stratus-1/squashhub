@@ -325,9 +325,16 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           <h3 className="font-semibold">Leagues</h3>
           <div className="flex gap-2 flex-wrap">
             <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
-            <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
-              <Plus className="w-4 h-4 mr-1" />Step by Step League Setup
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
+                    <Plus className="w-4 h-4 mr-1" />Step by Step League Setup
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">Typical for internal leagues, not inter-club leagues.</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
@@ -2355,7 +2362,14 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Quick Top Down League Setup</Button></DialogTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Quick Top Down League Setup</Button></DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">Typical for inter-club regional leagues like NSA.</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Quick Top Down League Setup</DialogTitle></DialogHeader>
         <div className="space-y-4">

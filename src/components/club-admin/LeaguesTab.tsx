@@ -284,8 +284,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         <div className="space-y-2">
           {associations.map((a: any) => (
             <Card key={a.id} className="p-3 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                <p className="font-medium truncate">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
+              <div className="flex items-center gap-2 min-w-0 flex-wrap flex-1">
+                <p className="font-medium break-words min-w-0 basis-full sm:basis-auto sm:flex-1">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
                 {a.platform_association_id && (
                   <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">Platform</Badge>
                 )}

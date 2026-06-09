@@ -312,6 +312,9 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                     </Link>
                   </Button>
                 )}
+                <Button size="sm" variant="outline" onClick={() => setRulesAssoc(a)}>
+                  <Settings2 className="w-4 h-4 mr-1" />Rules & Penalties
+                </Button>
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
                   <Trash2 className="w-4 h-4" />

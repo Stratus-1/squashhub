@@ -128,6 +128,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const { data: members = [] } = useClubMembers(clubId);
   const [addAssocOpen, setAddAssocOpen] = useState(false);
   const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
+  const [rulesAssoc, setRulesAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
   const [editSetup, setEditSetup] = useState<null | {

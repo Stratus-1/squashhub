@@ -23,6 +23,10 @@ import { AddReservesDialog } from "./AddReservesDialog";
 import { UserPlus } from "lucide-react";
 import { TeamLogoUpload } from "@/components/league-games/TeamLogoUpload";
 import { TeamLogo } from "@/components/league-games/TeamLogo";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
+import AssociationPenaltiesTab from "@/components/super-admin/league/AssociationPenaltiesTab";
+import { Settings2 } from "lucide-react";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 

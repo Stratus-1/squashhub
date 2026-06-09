@@ -2058,7 +2058,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add Association</Button></DialogTrigger>
+      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Select your regional league or add your own</Button></DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>Add League Association</DialogTitle></DialogHeader>
         <div className="space-y-3">

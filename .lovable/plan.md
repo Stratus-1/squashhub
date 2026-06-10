@@ -1,38 +1,74 @@
-# Internal-league Rules & Penalties → Club Admin only
+# Tournament expansion: league invitees & league-ranking handicap (v3)
 
-## Correct architecture (per user)
-- **`platform_league_associations`** = regional / inter-club leagues only (NSA, Lowveld). Super Admin owns these and sets rules + penalties.
-- **`league_associations` with `scope='internal'`** = a single club's internal league (Lakeside, NIL). Lives only at the tenant. Super Admin should **not** see or edit them.
+Adds your latest clarification: the league-based invite list is just the **starting roster**. After that, admin can swap in any player from any league at any time (no cutoff), and the handicap recomputes automatically for the new pairing.
 
-## What's wrong today
-1. `Nelspruit Internal League (NIL)` is incorrectly present in `platform_league_associations`, so Super Admin can edit its rules even though it's an internal league.
-2. Lakeside's internal league correctly only exists in `league_associations` (`scope='internal'`, no `platform_association_id`), but the tenant has **no UI** to manage its rules/penalties → unmanageable.
+## 1. Invite by league (with reserves)
 
-## Fix
+In **Invite-only** registration mode, add an "Invite source" picker:
 
-### 1. Tenant UI — Club Admin → Leagues
-Add **Rules** and **Penalties** controls to each association row in `src/components/club-admin/LeaguesTab.tsx`:
-- A single "Rules & Penalties" button per association, opening a dialog with two tabs.
-- Tabs reuse the existing shared components `AssociationRulesTab` and `AssociationPenaltiesTab` (the same ones Super Admin uses), passed `associationId={a.id}`.
-- For `scope='internal'` rows the button is prominent (this is the only place to manage them).
-- For `scope='region'` rows the button is shown but the dialog renders a read-only banner: "Rules are managed by the league organiser in Super Admin." (Hides editor or disables Save — to be decided in implementation; default = read-only view.)
+- **Manual member tick-list** (default, current behaviour).
+- **By league** — pick one or more leagues (e.g. "4th League") and choose:
+  - Include reserves (default on).
+  - Auto-add new players that join the league before entries lock (toggle).
 
-No schema changes. `league_rules` is already keyed by `association_id`; `useAssociationRules` / `useUpdateAssociationRules` work as-is against the tenant `league_associations.id`.
+Admin can untick individuals; excluded IDs are stored so re-syncs don't re-add them. This only governs the **initial invite list**. Once the tournament is running, admin can pull in anyone from any league as a sub via the existing player-swap UI on the fixture — no cutoff date.
 
-### 2. Clean up platform table
-Remove `Nelspruit Internal League` from `platform_league_associations` so Super Admin no longer surfaces it. Steps in the migration:
-- Re-point any tenant `league_associations.platform_association_id = '3b0ca049-…'` rows to NULL (keep them as tenant-internal rows, no parent).
-- Move any `league_rules` row keyed to the NIL platform id to the tenant NIL association id (so the existing rules don't get lost), then delete the platform NIL row.
-- Verify nothing else references `3b0ca049-…` (fixtures, members) — if it does, fail loudly so we can decide migration order before deleting.
+Storage on `club_champs`:
+- `invite_source text` default `'manual'` (`'manual' | 'leagues'`)
+- `invite_include_reserves boolean` default `true`
+- `invite_excluded_member_ids uuid[]` default `'{}'`
+- (reuses existing `source_league_ids uuid[]`)
 
-### 3. Super Admin guard (defence in depth)
-In `SuperAdminLeagues.tsx` the list comes from `platform_league_associations` so internal rows are excluded naturally after step 2. No code change needed there. (Optional: add a comment noting that only regional/inter-club leagues belong in that table.)
+On Save, "By league" expands into `club_champs_registrations` invite rows (`invited_by_admin=true`, `status='invited'`), pulling reserves from `member_league_registrations` where `is_reserve=true`.
+
+## 2. League-ranking handicap (singles)
+
+New toggle in tournament setup: **"Use league-ranking handicap"** (off by default; singles only).
+
+Each player has exactly one league + ladder position (`member_league_registrations → league_number, ladder_position`). Reserves use the league they reserve for.
+
+### Formula (no cap)
+
+Concatenate leagues in order into a single global ladder:
+
+```
+globalIndex(player) = sum(size of every league above player's league) + ladder_position
+diff                = globalIndex(weaker) − globalIndex(stronger)
+strongerStart       = −diff      (e.g. −3, −7, −10, …)
+weakerStart         = 0
+```
+
+Examples (3rd league size 8):
+- 3rd #1 vs 3rd #4 → −3 / 0
+- 3rd #1 vs 4th #2 → −10 / 0
+- 2nd-league sub #5 vs 3rd #4 → 2nd-league sub starts on −7
+
+### On the marker
+
+Scoreboard opens at e.g. `−3 / 0`. Both players score normally until the bell. **Final stored score = handicap + points scored**, so Bells-style "total points scored" standings naturally include it. Admin can override starting numbers per fixture.
+
+### Recomputing on substitutions
+
+Because subs can come from any league at any time, the handicap helper runs every time a fixture's player_a/b/partner_a/b changes — overwriting `handicap_a/b` on that match row (unless admin has manually pinned a value). Matches that have already started or finished are left alone.
+
+### Storage
+
+- `club_champs.handicap_mode text` default `'none'` (`'none' | 'league_rank'`)
+- `club_champs_matches.handicap_a int` default `0`
+- `club_champs_matches.handicap_b int` default `0`
+- `club_champs_matches.handicap_locked boolean` default `false` (set when admin manually edits the offset, prevents auto-recompute)
+
+Doubles hides the toggle for this pass.
 
 ## Files touched
-- `src/components/club-admin/LeaguesTab.tsx` — add Rules/Penalties dialog wiring.
-- New migration — repoint + delete NIL platform row, relocate its `league_rules`.
 
-## Out of scope
-- Changes to inheritance logic (`useAssociationRules` already falls back to `platform_association_id`; with internal rows now having a null parent they read their own row directly, which is what we want).
-- Permission/role changes — the existing club-admin guard on the Leagues tab is sufficient.
-- Migrating any other suspect rows in `platform_league_associations`; only NIL is misclassified today.
+- `supabase/migrations/<new>.sql` — six new columns above, safe defaults, no RLS changes.
+- `src/components/club-admin/ClubChampsTab.tsx` — wizard UI for both features, league-expansion on Save, persistence, manual-override editor for starting scores.
+- `src/lib/tournament-formats/handicap.ts` (new) — pure `computeHandicap(playerA, playerB, leagueSizes)` + bulk applier; called from fixture generation and from the player-swap path.
+- `src/lib/tournament-formats/standard.ts` and `bells.ts` — invoke the helper when `handicap_mode='league_rank'`.
+- `src/components/tournaments/SwapFixtureButton.tsx` (and wherever the swap mutation lives) — recompute handicap for the affected match after a sub.
+- `src/pages/MatchMarker.tsx` — seed scoreboard with `handicap_a/b`; show small "HCP −3" chip beside each name.
+- `src/pages/ClubChampsView.tsx` — show handicap on the fixture card.
+- `src/integrations/supabase/types.ts` — regenerated.
+
+Say "build it" and I'll ship.

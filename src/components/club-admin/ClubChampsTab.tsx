@@ -3113,7 +3113,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   </div>
                 </div>
               )}
-            </div>
+
 
 
 

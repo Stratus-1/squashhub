@@ -14,7 +14,17 @@ import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { RoundConfigDialog, type RoundDraft } from "./fixtures/RoundConfigDialog";
 import { FixtureEditorTable, type EditableFixture } from "./fixtures/FixtureEditorTable";
-import { allocateRoundRobinByDate } from "./fixtures/scheduler";
+import {
+  allocateRoundRobinByDate,
+  allocatePairingsWithCourtFairness,
+  buildPriorCourtUsage,
+  reversePairingsFromPrior,
+  inferTiersFromPriorFixtures,
+  fairCourtAssignmentForExistingFixtures,
+  roundRobin,
+  type PriorFixture,
+} from "./fixtures/scheduler";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsClubAdmin } from "@/hooks/use-club";
 
@@ -292,8 +302,43 @@ function RoundCard({
 
   const [selectedTeams, setSelectedTeams] = useState<string[]>(teams.map((t) => t.code));
   const [draft, setDraft] = useState<EditableFixture[] | null>(null);
+  const [tier, setTier] = useState<string>("__all__");
+  const [reverseFromPrev, setReverseFromPrev] = useState<boolean>(false);
+  const [showTeamGrid, setShowTeamGrid] = useState<boolean>(false);
+
+  // Prior rounds in the same association (read-only — never mutated).
+  const { data: priorFixtures } = useQuery({
+    queryKey: ["prior-round-fixtures", round.association_id, round.round_number],
+    queryFn: async () => {
+      const { data: roundRows, error: rErr } = await fromExt("league_rounds")
+        .select("id, round_number, name")
+        .eq("association_id", round.association_id)
+        .lt("round_number", round.round_number);
+      if (rErr) throw rErr;
+      const priorRoundIds = (roundRows ?? []).map((r: any) => r.id);
+      if (!priorRoundIds.length) return [] as PriorFixture[];
+      const meta = new Map<string, { round_number: number; name: string }>(
+        (roundRows ?? []).map((r: any) => [r.id as string, { round_number: r.round_number, name: r.name }]),
+      );
+      const { data: fxs, error: fErr } = await fromExt("platform_league_fixtures")
+        .select("home_team_code, away_team_code, court_id, fixture_date, start_time, round_id")
+        .in("round_id", priorRoundIds);
+      if (fErr) throw fErr;
+      return ((fxs ?? []) as any[]).map((f) => ({
+        ...f,
+        round_number: meta.get(f.round_id)?.round_number ?? null,
+        round_name: meta.get(f.round_id)?.name ?? null,
+      })) as PriorFixture[];
+    },
+    enabled: open && !!round.association_id,
+  });
+
+  const tierGroups = useMemo(
+    () => inferTiersFromPriorFixtures(priorFixtures ?? []),
+    [priorFixtures],
+  );
+
   // Keep the team checkboxes aligned with saved fixtures when viewing a round.
-  // If a team was unticked before saving, it must stay unticked on reopen.
   useEffect(() => {
     if (!open || !teams.length || draft || fixtures === undefined) return;
     const savedCodes = new Set<string>();
@@ -303,6 +348,15 @@ function RoundCard({
     }
     setSelectedTeams(savedCodes.size ? teams.filter((t) => savedCodes.has(t.code)).map((t) => t.code) : teams.map((t) => t.code));
   }, [open, fixtures, teams, draft]);
+
+  // Selecting a tier auto-checks exactly that tier's teams.
+  useEffect(() => {
+    if (tier === "__all__" || tier === "__custom__") return;
+    const codes = tierGroups.get(tier) ?? [];
+    const valid = codes.filter((c) => teams.some((t) => t.code === c));
+    if (valid.length) setSelectedTeams(valid);
+  }, [tier, tierGroups, teams]);
+
   const list = draft ?? fixtures ?? [];
 
   const autoDistribute = () => {
@@ -318,17 +372,62 @@ function RoundCard({
       toast.error("Round is missing start/end time or slot length.");
       return;
     }
-    const { slots, byes, error } = allocateRoundRobinByDate(
-      selectedTeams,
-      round.court_ids,
-      round.start_time,
-      round.end_time,
-      round.slot_minutes,
-      round.round_date,
-      round.end_date,
-      (round as any).play_dows ?? [],
-      false,
-    );
+    const teamSet = new Set(selectedTeams);
+    const prior = priorFixtures ?? [];
+    const priorUsage = buildPriorCourtUsage(prior, teamSet);
+
+    let allocation;
+    if (reverseFromPrev) {
+      const reversed = reversePairingsFromPrior(prior, teamSet);
+      if (!reversed) {
+        toast.error("No matching previous round found for these teams. Falling back to round-robin.");
+      }
+      if (reversed) {
+        // Treat as one batch (same matchday). Spread across dates if multiple.
+        allocation = allocatePairingsWithCourtFairness(
+          [reversed],
+          round.court_ids,
+          round.start_time,
+          round.end_time,
+          round.slot_minutes,
+          round.round_date,
+          round.end_date,
+          (round as any).play_dows ?? [],
+          priorUsage,
+        );
+      }
+    }
+    if (!allocation) {
+      // Use fairness allocator over full round-robin batches when prior usage exists,
+      // otherwise fall back to the simple modulo allocator.
+      if (priorUsage.size > 0) {
+        const batches = roundRobin(selectedTeams);
+        allocation = allocatePairingsWithCourtFairness(
+          batches,
+          round.court_ids,
+          round.start_time,
+          round.end_time,
+          round.slot_minutes,
+          round.round_date,
+          round.end_date,
+          (round as any).play_dows ?? [],
+          priorUsage,
+        );
+      } else {
+        allocation = allocateRoundRobinByDate(
+          selectedTeams,
+          round.court_ids,
+          round.start_time,
+          round.end_time,
+          round.slot_minutes,
+          round.round_date,
+          round.end_date,
+          (round as any).play_dows ?? [],
+          false,
+        );
+      }
+    }
+    const { slots, byes, error } = allocation;
     console.log("[autoDistribute]", { selectedTeams, court_ids: round.court_ids, start: round.start_time, end: round.end_time, slot: round.slot_minutes, range: [round.round_date, round.end_date], play_dows: (round as any).play_dows, slots, byes });
     if (error) {
       toast.error(error);
@@ -370,10 +469,9 @@ function RoundCard({
   };
 
   /**
-   * Reassign only the court for each existing fixture so teams rotate between
-   * courts across play dates. Pairings, dates and start times are preserved.
-   * Within each date we keep the existing court ordering and shift it by the
-   * date index (relative to the sorted unique dates in the round).
+   * Re-balance courts on the current fixtures using a fairness scorer that
+   * considers prior-round usage. Only court_id changes; pairings/dates/times
+   * are preserved. Prior rounds are read only.
    */
   const rotateCourtsOnly = () => {
     const courtIds = round.court_ids ?? [];
@@ -385,18 +483,24 @@ function RoundCard({
       toast.error("No fixtures to rotate yet — generate or save fixtures first.");
       return;
     }
-    const dates = Array.from(new Set(list.map((f) => f.fixture_date).filter(Boolean) as string[])).sort();
-    const dateIdx = new Map(dates.map((d, i) => [d, i] as const));
-    const next = list.map((f) => {
-      if (!f.court_id || !f.fixture_date || f.away_team_code === "__BYE__") return f;
-      const curIdx = courtIds.indexOf(f.court_id);
-      if (curIdx < 0) return f;
-      const offset = dateIdx.get(f.fixture_date) ?? 0;
-      const newIdx = (curIdx + offset) % courtIds.length;
-      return { ...f, court_id: courtIds[newIdx] };
+    const teamSet = new Set<string>();
+    list.forEach((f) => { if (f.home_team_code) teamSet.add(f.home_team_code); if (f.away_team_code && f.away_team_code !== "__BYE__") teamSet.add(f.away_team_code); });
+    const priorUsage = buildPriorCourtUsage(priorFixtures ?? [], teamSet);
+    const assignments = fairCourtAssignmentForExistingFixtures(
+      list.map((f, i) => ({ ...f, id: f.id ?? `idx:${i}` })) as any,
+      courtIds,
+      priorUsage,
+    );
+    const byKey = new Map(assignments.map((a) => [a.id, a.court_id] as const));
+    const next = list.map((f, i) => {
+      if (!f.fixture_date || !f.start_time || f.away_team_code === "__BYE__") return f;
+      const k = f.id ?? `idx:${i}`;
+      const c = byKey.get(k);
+      return c ? { ...f, court_id: c } : f;
     });
     setDraft(next);
-    toast.success(`Rotated courts across ${dates.length} date(s) — pairings unchanged.`);
+    const dateCount = new Set(list.map((f) => f.fixture_date).filter(Boolean)).size;
+    toast.success(`Re-balanced courts across ${dateCount} date(s) using prior-round usage — pairings unchanged.`);
   };
 
   const saveFixtures = useMutation({
@@ -721,29 +825,73 @@ function RoundCard({
         <div className="p-3 border-t space-y-3">
           {isAdmin && (
             <div className="rounded border bg-muted/20 p-2 space-y-2">
-              <div className="text-xs font-medium">Teams in this round</div>
-              <div className="flex flex-wrap gap-2">
-                {teams.map((t) => (
-                  <label key={t.code} className="flex items-center gap-1.5 text-xs">
-                    <Checkbox
-                      checked={selectedTeams.includes(t.code)}
-                      onCheckedChange={(v) =>
-                        setSelectedTeams((prev) =>
-                          v ? [...new Set([...prev, t.code])] : prev.filter((x) => x !== t.code),
-                        )
-                      }
-                    />
-                    {t.name}
-                  </label>
-                ))}
-                {!teams.length && <span className="text-xs text-muted-foreground">No teams in this association</span>}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-xs font-medium">Teams in this round</div>
+                {tierGroups.size > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs">Tier</Label>
+                    <Select value={tier} onValueChange={setTier}>
+                      <SelectTrigger className="h-8 w-44 text-xs">
+                        <SelectValue placeholder="Pick a tier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">All teams</SelectItem>
+                        {Array.from(tierGroups.keys()).map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t} ({tierGroups.get(t)?.length ?? 0})
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__custom__">Custom…</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                {selectedTeams.length
+                  ? selectedTeams
+                      .map((c) => teams.find((t) => t.code === c)?.name ?? c)
+                      .join(" · ")
+                  : <span className="text-muted-foreground">No teams selected</span>}
+              </div>
+              <button
+                type="button"
+                className="text-[11px] underline text-muted-foreground"
+                onClick={() => setShowTeamGrid((v) => !v)}
+              >
+                {showTeamGrid ? "Hide team list" : "Edit team list"}
+              </button>
+              {showTeamGrid && (
+                <div className="flex flex-wrap gap-2 pt-1 border-t">
+                  {teams.map((t) => (
+                    <label key={t.code} className="flex items-center gap-1.5 text-xs">
+                      <Checkbox
+                        checked={selectedTeams.includes(t.code)}
+                        onCheckedChange={(v) => {
+                          setTier("__custom__");
+                          setSelectedTeams((prev) =>
+                            v ? [...new Set([...prev, t.code])] : prev.filter((x) => x !== t.code),
+                          );
+                        }}
+                      />
+                      {t.name}
+                    </label>
+                  ))}
+                  {!teams.length && <span className="text-xs text-muted-foreground">No teams in this association</span>}
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2 pt-1 flex-wrap border-t">
                 <div className="flex items-center gap-4 flex-wrap">
                   <label className="flex items-center gap-2 text-xs">
                     <Checkbox checked={autoCreateBookings} onCheckedChange={(v) => setAutoCreateBookings(!!v)} />
                     <CalendarPlus className="h-3.5 w-3.5" /> Auto-create court bookings on save
                   </label>
+                  {(priorFixtures?.length ?? 0) > 0 && (
+                    <label className="flex items-center gap-2 text-xs" title="Swap home/away from the most recent prior round covering these teams">
+                      <Checkbox checked={reverseFromPrev} onCheckedChange={(v) => setReverseFromPrev(!!v)} />
+                      Reverse home/away from previous round
+                    </label>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -753,7 +901,7 @@ function RoundCard({
                     disabled={!list.length || (round.court_ids?.length ?? 0) < 2}
                     title="Shift courts across dates without changing pairings or times"
                   >
-                    Rotate courts
+                    Re-balance courts
                   </Button>
                   <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
                     <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute

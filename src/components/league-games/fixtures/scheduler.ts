@@ -218,3 +218,186 @@ export function allocateRoundRobinByDate(
 
   return { slots, byes };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Prior-round helpers (read-only on prior rounds — never mutate them)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type PriorFixture = {
+  home_team_code: string;
+  away_team_code: string;
+  court_id: number | null;
+  fixture_date?: string | null;
+  start_time?: string | null;
+  round_id?: string | null;
+  round_number?: number | null;
+  round_name?: string | null;
+};
+
+/** team_code → (court_id → times played on that court) */
+export type CourtUsage = Map<string, Map<number, number>>;
+
+export function buildPriorCourtUsage(prior: PriorFixture[], teamSet?: Set<string>): CourtUsage {
+  const usage: CourtUsage = new Map();
+  for (const f of prior) {
+    if (!f.court_id || f.away_team_code === "__BYE__") continue;
+    for (const team of [f.home_team_code, f.away_team_code]) {
+      if (teamSet && !teamSet.has(team)) continue;
+      let inner = usage.get(team);
+      if (!inner) { inner = new Map(); usage.set(team, inner); }
+      inner.set(f.court_id, (inner.get(f.court_id) ?? 0) + 1);
+    }
+  }
+  return usage;
+}
+
+const usageScore = (u: CourtUsage, team: string, court: number): number =>
+  u.get(team)?.get(court) ?? 0;
+
+/**
+ * Reverse home/away for the most recent prior round whose pairings cover the
+ * supplied team set. Returns swapped Pairing[] or null if no suitable round.
+ */
+export function reversePairingsFromPrior(
+  prior: PriorFixture[],
+  teamSet: Set<string>,
+): Pairing[] | null {
+  const byRound = new Map<string, PriorFixture[]>();
+  for (const f of prior) {
+    if (!f.round_id || f.away_team_code === "__BYE__") continue;
+    if (!teamSet.has(f.home_team_code) || !teamSet.has(f.away_team_code)) continue;
+    const arr = byRound.get(f.round_id) ?? [];
+    arr.push(f);
+    byRound.set(f.round_id, arr);
+  }
+  if (!byRound.size) return null;
+  let best: { pairings: Pairing[]; rn: number } | null = null;
+  for (const fixtures of byRound.values()) {
+    const teamsInRound = new Set<string>();
+    fixtures.forEach((f) => { teamsInRound.add(f.home_team_code); teamsInRound.add(f.away_team_code); });
+    let covers = true;
+    for (const t of teamSet) if (!teamsInRound.has(t)) { covers = false; break; }
+    if (!covers) continue;
+    const rn = fixtures[0].round_number ?? 0;
+    const pairings: Pairing[] = fixtures.map((f) => ({ home: f.away_team_code, away: f.home_team_code }));
+    if (!best || rn > best.rn) best = { pairings, rn };
+  }
+  return best?.pairings ?? null;
+}
+
+/**
+ * Allocate batches of pairings across dates × time slots × courts, picking the
+ * court that minimises combined prior+current usage for the two teams.
+ */
+export function allocatePairingsWithCourtFairness(
+  pairingBatches: Pairing[][],
+  courtIds: number[],
+  startTime: string,
+  endTime: string,
+  slotMinutes: number,
+  startDate: string,
+  endDate: string,
+  playDows: number[] | undefined,
+  priorUsage: CourtUsage,
+): RoundRobinAllocation {
+  if (!courtIds.length) return { slots: [], byes: [], error: "No courts assigned to this round." };
+  const dates = eachDate(startDate, endDate || startDate, playDows);
+  const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
+  if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the date range, time window, and slot length." };
+  if (pairingBatches.length > dates.length) {
+    return { slots: [], byes: [], error: `Need at least ${pairingBatches.length} play date(s).` };
+  }
+  const spacing = pairingBatches.length > 1 ? Math.max(1, Math.floor((dates.length - 1) / (pairingBatches.length - 1))) : 1;
+  const usage: CourtUsage = new Map();
+  for (const [team, inner] of priorUsage) usage.set(team, new Map(inner));
+
+  const slots: SlotAssignment[] = [];
+  pairingBatches.forEach((batch, batchIdx) => {
+    const date = dates[Math.min(batchIdx * spacing, dates.length - 1)];
+    batch.forEach((pair, matchIdx) => {
+      const time = slotTimes[Math.floor(matchIdx / courtIds.length) % slotTimes.length];
+      const used = new Set(slots.filter((s) => s.date === date && s.startTime === time).map((s) => s.courtId));
+      let bestCourt = courtIds[0];
+      let bestScore = Infinity;
+      for (const c of courtIds) {
+        if (used.has(c)) continue;
+        const score = usageScore(usage, pair.home, c) + usageScore(usage, pair.away, c);
+        if (score < bestScore) { bestScore = score; bestCourt = c; }
+      }
+      slots.push({ home: pair.home, away: pair.away, courtId: bestCourt, startTime: time, date });
+      for (const team of [pair.home, pair.away]) {
+        let inner = usage.get(team);
+        if (!inner) { inner = new Map(); usage.set(team, inner); }
+        inner.set(bestCourt, (inner.get(bestCourt) ?? 0) + 1);
+      }
+    });
+  });
+  return { slots, byes: [] };
+}
+
+/**
+ * Re-balance courts on already-saved fixtures in a single round. Only court_id
+ * changes; pairings, dates, and times stay locked.
+ */
+export function fairCourtAssignmentForExistingFixtures<T extends PriorFixture & { id?: string }>(
+  fixtures: T[],
+  courtIds: number[],
+  priorUsage: CourtUsage,
+): { id?: string; court_id: number }[] {
+  const usage: CourtUsage = new Map();
+  for (const [team, inner] of priorUsage) usage.set(team, new Map(inner));
+  const groups = new Map<string, T[]>();
+  for (const f of fixtures) {
+    if (!f.fixture_date || !f.start_time || f.away_team_code === "__BYE__") continue;
+    const key = `${f.fixture_date}|${String(f.start_time).slice(0, 5)}`;
+    const arr = groups.get(key) ?? [];
+    arr.push(f);
+    groups.set(key, arr);
+  }
+  const out: { id?: string; court_id: number }[] = [];
+  for (const group of groups.values()) {
+    const used = new Set<number>();
+    for (const f of group) {
+      let bestCourt = courtIds[0];
+      let bestScore = Infinity;
+      for (const c of courtIds) {
+        if (used.has(c)) continue;
+        const score = usageScore(usage, f.home_team_code, c) + usageScore(usage, f.away_team_code, c);
+        if (score < bestScore) { bestScore = score; bestCourt = c; }
+      }
+      used.add(bestCourt);
+      out.push({ id: f.id, court_id: bestCourt });
+      for (const team of [f.home_team_code, f.away_team_code]) {
+        let inner = usage.get(team);
+        if (!inner) { inner = new Map(); usage.set(team, inner); }
+        inner.set(bestCourt, (inner.get(bestCourt) ?? 0) + 1);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Infer tier groups from prior fixtures. Each team is bucketed by the name of
+ * the most recent prior round it appeared in.
+ */
+export function inferTiersFromPriorFixtures(
+  prior: PriorFixture[],
+): Map<string, string[]> {
+  const sorted = [...prior].sort((a, b) => (b.round_number ?? 0) - (a.round_number ?? 0));
+  const teamTier = new Map<string, string>();
+  for (const f of sorted) {
+    if (f.away_team_code === "__BYE__") continue;
+    const tier = f.round_name || `Round ${f.round_number ?? "?"}`;
+    if (!teamTier.has(f.home_team_code)) teamTier.set(f.home_team_code, tier);
+    if (!teamTier.has(f.away_team_code)) teamTier.set(f.away_team_code, tier);
+  }
+  const out = new Map<string, string[]>();
+  for (const [team, tier] of teamTier) {
+    const arr = out.get(tier) ?? [];
+    arr.push(team);
+    out.set(tier, arr);
+  }
+  return out;
+}
+

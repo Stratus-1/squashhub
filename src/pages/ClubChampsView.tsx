@@ -249,8 +249,12 @@ export default function ClubChampsView() {
 
   const groupNumbers = [...new Set(entries.map((e: any) => e.group_number as number))].sort();
 
-  const getMatchTeamA = (m: any) => isDoubles ? getTeamName(m.player_a, m.partner_a) : getPlayerName(m.player_a);
-  const getMatchTeamB = (m: any) => isDoubles ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b);
+  const hcLabel = (h: any) => {
+    const n = Number(h) || 0;
+    return n !== 0 ? ` (HCP ${n > 0 ? "+" : ""}${n})` : "";
+  };
+  const getMatchTeamA = (m: any) => (isDoubles ? getTeamName(m.player_a, m.partner_a) : getPlayerName(m.player_a)) + hcLabel(m.handicap_a);
+  const getMatchTeamB = (m: any) => (isDoubles ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b)) + hcLabel(m.handicap_b);
 
   const isMyMatch = (m: any) =>
     myMemberId && (m.player_a_member_id === myMemberId || m.player_b_member_id === myMemberId ||

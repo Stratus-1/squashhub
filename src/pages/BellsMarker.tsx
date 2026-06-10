@@ -175,8 +175,11 @@ export default function BellsMarker() {
   };
 
   const getName = (p: any) => p?.name || "—";
-  const pairAName = `${getName(match?.player_a)}${match?.partner_a ? " & " + getName(match.partner_a) : ""}`;
-  const pairBName = `${getName(match?.player_b)}${match?.partner_b ? " & " + getName(match.partner_b) : ""}`;
+  const hcA = Number(match?.handicap_a) || 0;
+  const hcB = Number(match?.handicap_b) || 0;
+  const hcSuffix = (h: number) => (h !== 0 ? ` · HCP ${h > 0 ? "+" : ""}${h}` : "");
+  const pairAName = `${getName(match?.player_a)}${match?.partner_a ? " & " + getName(match.partner_a) : ""}${hcSuffix(hcA)}`;
+  const pairBName = `${getName(match?.player_b)}${match?.partner_b ? " & " + getName(match.partner_b) : ""}${hcSuffix(hcB)}`;
 
   // ----- Timer persistence helpers -----
   const persistTimer = (patch: { bell_ends_at?: string | null; bell_paused_seconds?: number | null; status?: string }) => {

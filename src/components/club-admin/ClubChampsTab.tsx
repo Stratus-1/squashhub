@@ -2188,17 +2188,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <div>
                 <Label className="text-sm font-semibold">Round Format <span className="text-destructive">*</span></Label>
                 <Select value={roundFormat} onValueChange={(v) => setRoundFormat(v as any)}>
-                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="" disabled>Please select</SelectItem>
                     <SelectItem value="single_round_robin">Single round-robin (each plays once)</SelectItem>
                     <SelectItem value="double_round_robin">Double round-robin (home &amp; away, 2 rounds)</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {roundFormat === "double_round_robin"
-                    ? "All teams play one another twice — first round home, second round away."
-                    : "All teams play one another once."}
-                </p>
+                {roundFormat ? (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {roundFormat === "double_round_robin"
+                      ? "All teams play one another twice — first round home, second round away."
+                      : "All teams play one another once."}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground mt-1">Choose a round format to see details.</p>
+                )}
               </div>
               <div>
                 <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>

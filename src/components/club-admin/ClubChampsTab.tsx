@@ -133,6 +133,87 @@ function memberMatchesTournamentGender(memberGender: string | null | undefined, 
   return matchValues.includes(normalized);
 }
 
+// Format datetime-local / ISO strings nicely for invite text.
+function formatInviteDate(value: string | null | undefined, withTime = false): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  const date = d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+  if (!withTime) return date;
+  const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return `${date} ${time}`;
+}
+
+// Build the descriptive bullet lines that appear in both the in-app
+// notification body and the email invitation. Keeps preview + actual send
+// perfectly in sync.
+function buildInviteDetailLines(opts: {
+  gender: GenderCategory;
+  matchType: "singles" | "doubles";
+  scoringMode: string;
+  roundFormat: "single_round_robin" | "double_round_robin";
+  byeHandling: "no_match" | "walkover_win" | "neutral";
+  partnerMode: "admin" | "players";
+  startDate: string;
+  endDate: string;
+  registrationOpensAt: string;
+  registrationClosesAt: string;
+  entryFeeRand: string;
+}): string[] {
+  const lines: string[] = [];
+  const isDoubles = opts.matchType === "doubles";
+  lines.push(`Category: ${GENDER_LABELS[opts.gender]} ${isDoubles ? "Doubles" : "Singles"}`);
+
+  try {
+    const fmt = getTournamentFormat(opts.scoringMode);
+    lines.push(`Scoring format: ${fmt.label}`);
+  } catch {
+    /* unknown format key — skip */
+  }
+
+  lines.push(
+    `Round format: ${opts.roundFormat === "double_round_robin"
+      ? "Double round-robin (home & away)"
+      : "Single round-robin (each plays once)"}`
+  );
+
+  const byeLabel =
+    opts.byeHandling === "walkover_win"
+      ? "Walkover win — full points"
+      : opts.byeHandling === "neutral"
+      ? "Neutral — excluded from averages"
+      : "No match — bye not recorded";
+  lines.push(`Bye handling: ${byeLabel}`);
+
+  if (isDoubles) {
+    lines.push(
+      `Partner selection: ${opts.partnerMode === "players"
+        ? "Players choose their own partner"
+        : "Admin pairs all players"}`
+    );
+  }
+
+  const start = formatInviteDate(opts.startDate);
+  const end = formatInviteDate(opts.endDate);
+  if (start && end) {
+    lines.push(start === end ? `Date: ${start}` : `Dates: ${start} → ${end}`);
+  } else if (start) {
+    lines.push(`Starts: ${start}`);
+  }
+
+  const regOpens = formatInviteDate(opts.registrationOpensAt, true);
+  const regCloses = formatInviteDate(opts.registrationClosesAt, true);
+  if (regOpens) lines.push(`Registration opens: ${regOpens}`);
+  if (regCloses) lines.push(`Registration closes: ${regCloses}`);
+
+  const fee = Number(opts.entryFeeRand) || 0;
+  lines.push(fee > 0 ? `Entry fee: R${fee.toFixed(2)}` : "Entry fee: Free");
+
+  return lines;
+}
+
+
+
 function SortableRow({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {

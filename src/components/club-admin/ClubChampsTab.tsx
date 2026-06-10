@@ -3112,7 +3112,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     </p>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
+
 
 
 

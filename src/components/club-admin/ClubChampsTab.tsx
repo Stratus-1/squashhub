@@ -3435,8 +3435,16 @@ function InvitePreviewDialog({
   tournamentName,
   description,
   methods,
+  gender,
+  matchType,
+  scoringMode,
+  roundFormat,
+  byeHandling,
+  partnerMode,
   startDate,
   endDate,
+  registrationOpensAt,
+  registrationClosesAt,
   entryFeeRand,
 }: {
   open: boolean;
@@ -3444,21 +3452,26 @@ function InvitePreviewDialog({
   tournamentName: string;
   description: string;
   methods: Set<"app" | "email">;
+  gender: GenderCategory;
+  matchType: "singles" | "doubles";
+  scoringMode: string;
+  roundFormat: "single_round_robin" | "double_round_robin";
+  byeHandling: "no_match" | "walkover_win" | "neutral";
+  partnerMode: "admin" | "players";
   startDate: string;
   endDate: string;
+  registrationOpensAt: string;
+  registrationClosesAt: string;
   entryFeeRand: string;
 }) {
-  const fee = Number(entryFeeRand) || 0;
-  const dateLine =
-    startDate && endDate
-      ? startDate === endDate
-        ? `Date: ${startDate}`
-        : `Dates: ${startDate} → ${endDate}`
-      : null;
-  const feeLine = fee > 0 ? `Entry fee: R${fee.toFixed(2)}` : "Entry fee: Free";
+  const detailLines = buildInviteDetailLines({
+    gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+    startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+  });
 
   const appBody =
     `You have been invited to ${tournamentName}.` +
+    `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` +
     (description?.trim() ? `\n\n${description.trim()}` : "");
 
   return (
@@ -3503,12 +3516,10 @@ function InvitePreviewDialog({
               <Separator />
               <p>Hi there,</p>
               <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
-              {(dateLine || feeLine) && (
-                <ul className="text-xs text-muted-foreground list-disc pl-5">
-                  {dateLine && <li>{dateLine}</li>}
-                  <li>{feeLine}</li>
-                </ul>
-              )}
+              <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
+                {detailLines.map((l, i) => <li key={i}>{l}</li>)}
+              </ul>
+
               {description?.trim() && (
                 <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">
                   {description.trim()}

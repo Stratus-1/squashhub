@@ -352,8 +352,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [sourceLeagueIds, setSourceLeagueIds] = useState<Set<string>>(new Set());
 
   // Registration & payment
-  const [registrationMode, setRegistrationMode] = useState<"open" | "invite">("open");
-  const [partnerMode, setPartnerMode] = useState<"admin" | "players">("admin");
+  const [registrationMode, setRegistrationMode] = useState<"" | "open" | "invite">("");
+  const [partnerMode, setPartnerMode] = useState<"" | "admin" | "players">("");
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
@@ -1730,23 +1730,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setGender("men");
     setMatchType("singles");
     setEnablePlayoffs(false);
-    setNumGroups(2);
+    setNumGroups(0);
     setChampName("");
     setStartDate("");
     setEndDate("");
     setPlayDays(new Set());
     setStartTime("18:00");
     setEndTime("20:00");
-    setMatchDuration(30);
-    setScoringMode("standard");
-    setPointsPerGame(11);
-    setBestOf(5);
+    setMatchDuration(0);
+    setScoringMode("");
+    setPointsPerGame(0);
+    setBestOf(0);
     setGroupDurations({});
     setGroupBreakMinutes({});
     setDefaultBreakMinutes(0);
     setCourtRotationMinutes(null);
-    setRoundFormat("single_round_robin");
-    setByeHandling("no_match");
+    setRoundFormat("");
+    setByeHandling("");
     setSelectedCourtIds(new Set());
     setSelectedPlayerIds(new Set());
     setGroupAssignments(new Map());
@@ -1755,8 +1755,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPairGroupAssignments(new Map());
     setPairOrder([]);
     setSourceLeagueIds(new Set());
-    setRegistrationMode("open");
-    setPartnerMode("admin");
+    setRegistrationMode("");
+    setPartnerMode("");
     setRegistrationOpensAt("");
     setRegistrationClosesAt("");
     setEntryFeeRand("0");

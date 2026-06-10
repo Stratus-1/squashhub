@@ -2062,6 +2062,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
                   This format requires doubles — match type will be set to Doubles.
                 </p>
+              )}
               {scoringMode === "standard" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                   <div>

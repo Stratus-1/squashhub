@@ -2047,8 +2047,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
 
             {/* Scoring format — driven by the tournament-format registry */}
-            <div className="rounded-lg border p-3 bg-muted/30">
-              <Label className="text-sm font-medium">Scoring format</Label>
+            <div className="rounded-lg border-2 border-border p-3 bg-muted/60 shadow-sm">
+              <Label className="text-sm font-semibold">Scoring format <span className="text-destructive">*</span></Label>
               <Select
                 value={scoringMode}
                 onValueChange={(v) => {
@@ -2106,9 +2106,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border p-3 bg-muted/30">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border-2 border-border p-3 bg-muted/60 shadow-sm">
               <div>
-                <Label className="text-sm font-medium">Round Format</Label>
+                <Label className="text-sm font-semibold">Round Format <span className="text-destructive">*</span></Label>
                 <Select value={roundFormat} onValueChange={(v) => setRoundFormat(v as any)}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -2123,7 +2123,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </p>
               </div>
               <div>
-                <Label className="text-sm font-medium">Bye Handling</Label>
+                <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>
                 <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -2139,7 +2139,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
 
             <div>
-              <Label className="text-sm font-medium mb-2 block">Gender Category</Label>
+              <Label className="text-sm font-semibold mb-2 block">Gender Category <span className="text-destructive">*</span></Label>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {(["men", "ladies", "mixed", "open"] as GenderCategory[]).map((g) => (
@@ -2168,7 +2168,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
 
             <div>
-              <Label className="text-sm font-medium mb-2 block">Match Type</Label>
+              <Label className="text-sm font-semibold mb-2 block">Match Type <span className="text-destructive">*</span></Label>
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   variant={matchType === "singles" ? "default" : "outline"}

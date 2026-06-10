@@ -2090,13 +2090,43 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   </label>
                 </div>
                 {inviteSource === "leagues" && (
-                  <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
-                    <Checkbox
-                      checked={inviteIncludeReserves}
-                      onCheckedChange={(c) => setInviteIncludeReserves(!!c)}
-                    />
-                    Include reserves
-                  </label>
+                  <div className="space-y-2 pt-1">
+                    <Label className="text-xs text-muted-foreground">Pick which leagues to seed from</Label>
+                    {availableLeagues.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic">No leagues found for this club.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto rounded border border-border/50 bg-background/60 p-2">
+                        {availableLeagues.map((lg: any) => {
+                          const assocName = lg.league_associations?.name;
+                          const label = assocName ? `${assocName} — ${lg.name}` : lg.name;
+                          return (
+                            <label key={lg.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1.5 py-1">
+                              <Checkbox
+                                checked={sourceLeagueIds.has(lg.id)}
+                                onCheckedChange={() => toggleSourceLeague(lg.id)}
+                              />
+                              <span className="truncate">{label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
+                      <Checkbox
+                        checked={inviteIncludeReserves}
+                        onCheckedChange={(c) => {
+                          setInviteIncludeReserves(!!c);
+                          if (sourceLeagueIds.size > 0) applyLeaguePrefill(new Set(sourceLeagueIds));
+                        }}
+                      />
+                      Include reserves
+                    </label>
+                    {hasLeagueSelection && (
+                      <p className="text-xs text-muted-foreground">
+                        {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} seeded from {sourceLeagueIds.size} league{sourceLeagueIds.size === 1 ? "" : "s"}.
+                      </p>
+                    )}
+                  </div>
                 )}
                 <p className="text-xs text-muted-foreground">
                   This only seeds the starting roster. You can still pull in any player from any league as a sub at any time — no cutoff.

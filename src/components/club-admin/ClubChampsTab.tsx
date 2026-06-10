@@ -1987,6 +1987,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           m.push("At least one play day");
         }
         if (selectedCourtIds.size === 0) m.push("At least one court");
+        if (!matchDuration) m.push("Match duration");
         if (!awaitingPlayerPairs && schedulePreview && schedulePreview.totalSlots < schedulePreview.totalMatches) {
           m.push("Schedule has fewer slots than matches — add more days, courts, or hours");
         }

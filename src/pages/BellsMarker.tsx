@@ -70,8 +70,15 @@ export default function BellsMarker() {
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {
     if (!match) return;
-    setPointsA(match.side_a_points ?? 0);
-    setPointsB(match.side_b_points ?? 0);
+    // Seed from saved live points if present; otherwise from the league-rank
+    // handicap so the scoreboard opens at e.g. −3 / 0 instead of 0 / 0.
+    const hcA = Number(match.handicap_a) || 0;
+    const hcB = Number(match.handicap_b) || 0;
+    const liveA = match.side_a_points;
+    const liveB = match.side_b_points;
+    const hasLive = (liveA != null && liveA !== 0) || (liveB != null && liveB !== 0);
+    setPointsA(hasLive ? (liveA ?? 0) : hcA);
+    setPointsB(hasLive ? (liveB ?? 0) : hcB);
     setFinished(match.status === "completed");
 
     // Resume timer from persisted state so a second marker continues from

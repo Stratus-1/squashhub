@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2 } from "lucide-react";
+import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 
 export type EditableFixture = {
   id?: string;
@@ -78,6 +79,9 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
   const [bulkStart, setBulkStart] = useState(derived.start);
   const [bulkEnd, setBulkEnd] = useState(derived.end);
   const [bulkMode, setBulkMode] = useState<"empty" | "all">("empty");
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
+  const pendingFixture = pendingDelete !== null ? fixtures[pendingDelete] : null;
+  const teamName = (code: string) => teams.find((t) => t.code === code)?.name ?? code;
 
   const applyBulkTimes = () => {
     const next = fixtures.map((f) => {

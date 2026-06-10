@@ -528,6 +528,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       end_time: endTime,
       match_duration_minutes: matchDuration,
       scoring_mode: scoringMode,
+      points_per_game: pointsPerGame,
+      best_of: bestOf,
       group_durations: groupDurations,
       group_break_minutes: groupBreakMinutes,
       default_break_minutes: defaultBreakMinutes,
@@ -720,7 +722,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     return () => clearTimeout(t);
   }, [
     showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs,
-    startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode,
+    startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode, pointsPerGame, bestOf,
     groupDurations, courtRotationMinutes, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
     paymentMethods, paymentRequired, inviteMethods, includeVisitors,
@@ -1220,6 +1222,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             end_time: endTime,
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
+            points_per_game: pointsPerGame,
+            best_of: bestOf,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
             default_break_minutes: defaultBreakMinutes,
@@ -1263,6 +1267,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             end_time: endTime,
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
+            points_per_game: pointsPerGame,
+            best_of: bestOf,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
             default_break_minutes: defaultBreakMinutes,
@@ -1623,6 +1629,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const detailLines = descHasDetails ? [] : buildInviteDetailLines({
         gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
         startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+        pointsPerGame, bestOf,
       });
       const msg = `You have been invited to ${champName || "a tournament"}.` +
         (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
@@ -1706,6 +1713,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEndTime("20:00");
     setMatchDuration(30);
     setScoringMode("standard");
+    setPointsPerGame(11);
+    setBestOf(5);
     setGroupDurations({});
     setGroupBreakMinutes({});
     setDefaultBreakMinutes(0);
@@ -1757,6 +1766,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
     setMatchDuration(champ.match_duration_minutes || 30);
     setScoringMode(((champ as any).scoring_mode as any) || "standard");
+    setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : 11));
+    setBestOf((Number((champ as any).best_of) === 3 ? 3 : 5));
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
     setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
@@ -2534,6 +2545,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       const lines = buildInviteDetailLines({
                         gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
                         startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+                        pointsPerGame, bestOf,
                       });
                       const bullets = lines.map((l) => `• ${l}`).join("\n");
                       // Strip any previously inserted auto-block (between markers) then prepend fresh.
@@ -3404,6 +3416,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         registrationOpensAt={registrationOpensAt}
         registrationClosesAt={registrationClosesAt}
         entryFeeRand={entryFeeRand}
+        pointsPerGame={pointsPerGame}
+        bestOf={bestOf}
       />
 
     </div>
@@ -3507,6 +3521,8 @@ function InvitePreviewDialog({
   registrationOpensAt,
   registrationClosesAt,
   entryFeeRand,
+  pointsPerGame,
+  bestOf,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -3524,11 +3540,14 @@ function InvitePreviewDialog({
   registrationOpensAt: string;
   registrationClosesAt: string;
   entryFeeRand: string;
+  pointsPerGame: number;
+  bestOf: number;
 }) {
   const descHasDetails = /— Tournament details —/.test(description || "");
   const detailLines = descHasDetails ? [] : buildInviteDetailLines({
     gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
     startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+    pointsPerGame, bestOf,
   });
 
   const appBody =

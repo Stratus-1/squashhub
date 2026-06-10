@@ -3487,15 +3487,17 @@ function InvitePreviewDialog({
   registrationClosesAt: string;
   entryFeeRand: string;
 }) {
-  const detailLines = buildInviteDetailLines({
+  const descHasDetails = /— Tournament details —/.test(description || "");
+  const detailLines = descHasDetails ? [] : buildInviteDetailLines({
     gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
     startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
   });
 
   const appBody =
     `You have been invited to ${tournamentName}.` +
-    `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` +
+    (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
     (description?.trim() ? `\n\n${description.trim()}` : "");
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -1814,6 +1814,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     },
   });
 
+  const setChampStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await fromExt("club_champs").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(vars.status === "completed" ? "Tournament closed" : "Tournament re-opened");
+      qc.invalidateQueries({ queryKey: ["club-champs"] });
+    },
+  });
+
   const resetWizard = () => {
     setStep("category");
     setGender("men");

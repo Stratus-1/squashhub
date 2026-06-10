@@ -269,9 +269,9 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
           <Button
             disabled={saving}
             onClick={async () => {
-              if (datesInvalid) { toast.error("End date must be on or after start date."); return; }
               if (!draft.name?.trim()) { toast.error("Please enter a round name."); return; }
-              if (!draft.round_date || !draft.end_date) { toast.error("Please pick start and end dates."); return; }
+              if (!draft.round_date) { toast.error("Please pick a start date."); return; }
+
               if (!draft.venue_name?.trim() || draft.venue_name === "__custom__") { toast.error("Please select a venue."); return; }
               if (!draft.court_ids.length) { toast.error("Please select at least one court."); return; }
               setSaving(true);

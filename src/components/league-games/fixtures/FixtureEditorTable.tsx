@@ -179,7 +179,8 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                     BYE — no match this round
                   </td>
                   <td className="p-1 text-right">
-                    <Button size="icon" variant="ghost" onClick={() => remove(i)}>
+                    <Button size="icon" variant="ghost" onClick={() => setPendingDelete(i)}>
+
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </td>
@@ -248,7 +249,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                   />
                 </td>
                 <td className="p-1 text-right">
-                  <Button size="icon" variant="ghost" onClick={() => remove(i)}>
+                  <Button size="icon" variant="ghost" onClick={() => setPendingDelete(i)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </td>
@@ -268,6 +269,30 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
         <Button size="sm" variant="outline" onClick={add}>+ Add fixture</Button>
       </div>
       </div>
+      <ConfirmDeleteDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => { if (!o) setPendingDelete(null); }}
+        title="Delete fixture?"
+        description={
+          pendingFixture ? (
+            <span>
+              This will remove the fixture{" "}
+              <strong>
+                {teamName(pendingFixture.home_team_code)}
+                {pendingFixture.away_team_code === "__BYE__"
+                  ? " (BYE)"
+                  : ` vs ${teamName(pendingFixture.away_team_code)}`}
+              </strong>
+              {pendingFixture.fixture_date ? ` on ${pendingFixture.fixture_date}` : ""}.
+              Changes apply when you save the round.
+            </span>
+          ) : null
+        }
+        onConfirm={() => {
+          if (pendingDelete !== null) remove(pendingDelete);
+          setPendingDelete(null);
+        }}
+      />
     </div>
   );
 }

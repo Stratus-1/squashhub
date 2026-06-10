@@ -378,17 +378,23 @@ export function fairCourtAssignmentForExistingFixtures<T extends PriorFixture & 
     groups.set(key, arr);
   }
   const out: { id?: string; court_id: number }[] = [];
+  let overflowCounter = 0;
   for (const group of groups.values()) {
     const used = new Set<number>();
     for (const f of group) {
-      let bestCourt = courtIds[0];
+      let bestCourt = -1;
       let bestScore = Infinity;
       for (const c of courtIds) {
         if (used.has(c)) continue;
         const score = usageScore(usage, f.home_team_code, c) + usageScore(usage, f.away_team_code, c);
         if (score < bestScore) { bestScore = score; bestCourt = c; }
       }
-      used.add(bestCourt);
+      if (bestCourt === -1) {
+        bestCourt = courtIds[overflowCounter % courtIds.length];
+        overflowCounter++;
+      } else {
+        used.add(bestCourt);
+      }
       out.push({ id: f.id, court_id: bestCourt });
       for (const team of [f.home_team_code, f.away_team_code]) {
         let inner = usage.get(team);

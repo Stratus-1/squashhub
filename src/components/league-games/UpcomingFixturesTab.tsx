@@ -530,9 +530,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         const submitted = result?.status === "submitted" || result?.status === "confirmed";
                         const isPast = !!(f.fixture_date && f.fixture_date < todayStr);
                         const needsAdminMode = !f.isTournament && (isPast || submitted);
-                        const canEnter = isClubAdmin || isSuperAdmin;
-                        const blocked = needsAdminMode && !canEnter;
                         const isCaptain = isCaptainOfFixture(f);
+                        // NSA league captains can also enter/edit past or already-submitted results.
+                        // Other associations (e.g. Nelspruit) still require club/super admin.
+                        const isNsaCaptain = isCaptain && externalSource === "nsa";
+                        const canEnter = isClubAdmin || isSuperAdmin || isNsaCaptain;
+                        const blocked = needsAdminMode && !canEnter;
                         // Set Up & Mark restricted to: captain of one of the teams,
                         // members assigned to play, members in that league, or admins.
                         // Everyone else gets a View-only button.

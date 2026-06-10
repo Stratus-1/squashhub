@@ -2172,11 +2172,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <div>
                     <Label className="text-xs font-medium">Best of</Label>
                     <Select
-                      value={String(bestOf)}
+                      value={bestOf > 0 ? String(bestOf) : ""}
                       onValueChange={(v) => setBestOf(Number(v) as 3 | 5)}
                     >
-                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="" disabled>Please select</SelectItem>
                         <SelectItem value="3">Best of 3 (first to 2 games)</SelectItem>
                         <SelectItem value="5">Best of 5 (first to 3 games)</SelectItem>
                       </SelectContent>

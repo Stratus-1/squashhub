@@ -1,74 +1,97 @@
-# Tournament expansion: league invitees & league-ranking handicap (v3)
+# Round 2 — tier picker, home/away swap, smarter court rotation
 
-Adds your latest clarification: the league-based invite list is just the **starting roster**. After that, admin can swap in any player from any league at any time (no cutoff), and the handicap recomputes automatically for the new pairing.
+## Goal
 
-## 1. Invite by league (with reserves)
+Make round 2 (and any later round) faster and fairer to set up:
 
-In **Invite-only** registration mode, add an "Invite source" picker:
+1. Pick teams by **league tier** (1st / 2nd / 3rd / 4th) instead of ticking every team — reserves for that tier are included automatically.
+2. **Reverse home/away vs the previous round** in one click.
+3. **Court rotation** that actually spreads each team across all courts over the rounds.
 
-- **Manual member tick-list** (default, current behaviour).
-- **By league** — pick one or more leagues (e.g. "4th League") and choose:
-  - Include reserves (default on).
-  - Auto-add new players that join the league before entries lock (toggle).
+**Safety:** existing rounds (round 1) are never modified. We only read prior fixtures to inform round-2 choices. Saved scorecards, lineups and bookings stay untouched (the existing non-destructive save guard already protects them).
 
-Admin can untick individuals; excluded IDs are stored so re-syncs don't re-add them. This only governs the **initial invite list**. Once the tournament is running, admin can pull in anyone from any league as a sub via the existing player-swap UI on the fixture — no cutoff date.
+---
 
-Storage on `club_champs`:
-- `invite_source text` default `'manual'` (`'manual' | 'leagues'`)
-- `invite_include_reserves boolean` default `true`
-- `invite_excluded_member_ids uuid[]` default `'{}'`
-- (reuses existing `source_league_ids uuid[]`)
+## 1. Group teams by league tier (no schema change)
 
-On Save, "By league" expands into `club_champs_registrations` invite rows (`invited_by_admin=true`, `status='invited'`), pulling reserves from `member_league_registrations` where `is_reserve=true`.
+Reuse the same fixture-based tier inference already used in `LeaguesTab`:
 
-## 2. League-ranking handicap (singles)
+- For this association, fetch all prior `league_rounds` and their `platform_league_fixtures`.
+- Parse each round's name with `/(\d+)(?:st|nd|rd|th)\s*League/i` → tier number.
+- Map every `team_code` that appeared in those fixtures to its tier.
+- Reserves (leagues named like "1st L Reserves", "2nd Reserves") are tagged by the same regex on the league name.
 
-New toggle in tournament setup: **"Use league-ranking handicap"** (off by default; singles only).
+UI inside the expanded round (replaces the long checkbox grid):
 
-Each player has exactly one league + ladder position (`member_league_registrations → league_number, ladder_position`). Reserves use the league they reserve for.
-
-### Formula (no cap)
-
-Concatenate leagues in order into a single global ladder:
-
-```
-globalIndex(player) = sum(size of every league above player's league) + ladder_position
-diff                = globalIndex(weaker) − globalIndex(stronger)
-strongerStart       = −diff      (e.g. −3, −7, −10, …)
-weakerStart         = 0
+```text
+Pick league:  [ 1st league ▾ ]   [x] Include reserves
+Teams in this round: Apex Eagles, Canopy Kings, Leadwood Legends, …  (chips)
+[Edit team list ▾]   ← old per-team checkbox grid, collapsed by default
 ```
 
-Examples (3rd league size 8):
-- 3rd #1 vs 3rd #4 → −3 / 0
-- 3rd #1 vs 4th #2 → −10 / 0
-- 2nd-league sub #5 vs 3rd #4 → 2nd-league sub starts on −7
+- Tier dropdown lists every tier we found in prior rounds for this association.
+- Default selection = the tier parsed from the *current round's own name* (e.g. "2nd League round 1" → 2nd).
+- Selecting a tier rebuilds `selectedTeams` = all teams with that tier (plus matching reserves if the toggle is on).
+- Manual checkbox grid stays available behind a collapse for exceptions.
+- If no prior rounds exist for that tier yet, the dropdown shows "Custom" and the grid opens automatically.
 
-### On the marker
+---
 
-Scoreboard opens at e.g. `−3 / 0`. Both players score normally until the bell. **Final stored score = handicap + points scored**, so Bells-style "total points scored" standings naturally include it. Admin can override starting numbers per fixture.
+## 2. Reverse home/away vs previous round
 
-### Recomputing on substitutions
+In the round editor add a checkbox next to "Auto-distribute":
 
-Because subs can come from any league at any time, the handicap helper runs every time a fixture's player_a/b/partner_a/b changes — overwriting `handicap_a/b` on that match row (unless admin has manually pinned a value). Matches that have already started or finished are left alone.
+```text
+[ ] Reverse home/away from previous round
+```
 
-### Storage
+When ticked, `autoDistribute` will:
 
-- `club_champs.handicap_mode text` default `'none'` (`'none' | 'league_rank'`)
-- `club_champs_matches.handicap_a int` default `0`
-- `club_champs_matches.handicap_b int` default `0`
-- `club_champs_matches.handicap_locked boolean` default `false` (set when admin manually edits the offset, prevents auto-recompute)
+1. Find the most recent prior round (same `association_id`, lower `round_number`) whose fixtures cover the currently selected team set.
+2. Pull its saved fixtures.
+3. Build pairings by swapping `home_team_code` ↔ `away_team_code` for each unique pair found there.
+4. Slot them onto this round's dates/times/courts using the fairness allocator from item 3.
+5. If no usable prior round is found, toast and fall back to standard round-robin.
 
-Doubles hides the toggle for this pass.
+This only runs at generation time; admins can still drag pairings afterwards. Round 1 fixtures are never touched.
 
-## Files touched
+---
 
-- `supabase/migrations/<new>.sql` — six new columns above, safe defaults, no RLS changes.
-- `src/components/club-admin/ClubChampsTab.tsx` — wizard UI for both features, league-expansion on Save, persistence, manual-override editor for starting scores.
-- `src/lib/tournament-formats/handicap.ts` (new) — pure `computeHandicap(playerA, playerB, leagueSizes)` + bulk applier; called from fixture generation and from the player-swap path.
-- `src/lib/tournament-formats/standard.ts` and `bells.ts` — invoke the helper when `handicap_mode='league_rank'`.
-- `src/components/tournaments/SwapFixtureButton.tsx` (and wherever the swap mutation lives) — recompute handicap for the affected match after a sub.
-- `src/pages/MatchMarker.tsx` — seed scoreboard with `handicap_a/b`; show small "HCP −3" chip beside each name.
-- `src/pages/ClubChampsView.tsx` — show handicap on the fixture card.
-- `src/integrations/supabase/types.ts` — regenerated.
+## 3. Real court rotation
 
-Say "build it" and I'll ship.
+`rotateCourtsOnly` today only shifts the court index per date, so teams that played on Court 1 in round 1 often land on Court 1 again. Replace with a **fairness scorer**:
+
+- Build a per-team court-usage histogram from all prior saved fixtures of the same teams in earlier rounds of this association, plus fixtures already placed in this round.
+- For each slot, pick the court with the lowest combined `usage(home, court) + usage(away, court)`, ties broken by court id. Two fixtures in the same date+time slot never share a court.
+- Process the most "court-starved" pairing first inside each matchday so it gets first dibs on a fresh court.
+
+Used by both:
+- `allocateRoundRobinByDate` (when generating fixtures) — replaces the simplistic `(matchIdx + roundIdx) % courtIds.length`.
+- The standalone "Rotate courts" button — only `court_id` changes; pairings, dates, and times stay locked.
+
+Toast after rotation: "Rotated courts — each team is now spread across courts as evenly as possible."
+
+---
+
+## Technical notes
+
+Files touched:
+
+- `src/components/league-games/fixtures/scheduler.ts`
+  - New helpers: `buildPriorCourtUsage`, `reversePairingsFromPrior`, `allocatePairingsWithCourtFairness`, `fairCourtAssignmentForExistingFixtures`.
+- `src/components/league-games/FixturesTab.tsx` (`RoundCard`)
+  - Fetch prior rounds + their fixtures (one query keyed on association + selected team set).
+  - Derive tier map; new tier `Select` + reserves toggle; collapse old checkbox grid behind "Edit team list".
+  - New "Reverse home/away from previous round" checkbox.
+  - Wire `autoDistribute` to use reversed pairings (when ticked) and the fairness allocator (always).
+  - Rewrite `rotateCourtsOnly` to call `fairCourtAssignmentForExistingFixtures`.
+
+No DB migration. No changes to scoring, lineups, results, or the non-destructive save path.
+
+---
+
+## Out of scope (locked in)
+
+- **Reshuffling already-played/scheduled rounds.** Round 1 fixtures, court bookings, scorecards and lineups stay exactly as saved — we only *read* them.
+- Cross-tier fixtures (mixing 1st and 2nd league teams in one round) — admin can still override via the checkbox grid if they really want.
+- Auto-creating round 2's dates / venue / courts — admin still clicks "Add round" and fills in date range, courts and times.

@@ -255,6 +255,32 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const navigate = useNavigate();
   const { data: members = [] } = useClubMembers(clubId);
 
+  // Club-level payment config — drives the "Accepted payment methods" picker on the Registration step.
+  // We read the configured online gateway (clubs.payment_gateway) and check whether bank details
+  // exist in club_secrets to decide which EFT option to expose.
+  const { data: clubPaymentConfig } = useQuery({
+    queryKey: ["club-payment-config", clubId],
+    queryFn: async () => {
+      const [clubRes, secretsRes] = await Promise.all([
+        fromExt("clubs").select("payment_gateway").eq("id", clubId).maybeSingle(),
+        fromExt("club_secrets").select("bank_name,bank_account_number").eq("club_id", clubId).maybeSingle(),
+      ]);
+      const gw = (clubRes.data as any)?.payment_gateway as string | null;
+      const sec = secretsRes.data as any;
+      const eftConfigured = !!(sec?.bank_name || sec?.bank_account_number);
+      const GW_LABELS: Record<string, string> = {
+        payfast: "PayFast", yoco: "Yoco", peach: "Peach Payments", ozow: "Ozow",
+        snapscan: "SnapScan", paystack: "Paystack", stripe: "Stripe",
+      };
+      return {
+        gateway: gw,
+        gatewayLabel: gw ? (GW_LABELS[gw] || gw) : null,
+        eftConfigured,
+      };
+    },
+    enabled: !!clubId,
+  });
+
   const { data: courts = [] } = useQuery({
     queryKey: ["club-courts", clubId],
     queryFn: async () => {
@@ -331,7 +357,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
-  const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft">>(new Set(["card"]));
+  const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft" | "cash">>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
   const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email">>(new Set(["app"]));
   // Controls WHEN invites go out: 'manual' (admin clicks Send later — default),
@@ -1783,7 +1809,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setRegistrationOpensAt(champ.registration_opens_at ? new Date(champ.registration_opens_at).toISOString().slice(0,16) : "");
     setRegistrationClosesAt(champ.registration_closes_at ? new Date(champ.registration_closes_at).toISOString().slice(0,16) : "");
     setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
-    setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft")[])));
+    setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft"|"cash")[])));
     setPaymentRequired(champ.payment_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
     setInviteSource(((champ as any).invite_source as any) || "manual");
@@ -2437,57 +2463,89 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             </div>
 
-            {/* Entry fee */}
-            <div className="space-y-2">
-              <Label className="text-sm">Entry fee (ZAR)</Label>
-              <Input
-                type="number" min={0} step="1" inputMode="decimal"
-                value={entryFeeRand}
-                onChange={(e) => setEntryFeeRand(e.target.value)}
-                placeholder="0 = free"
-              />
-              <p className="text-xs text-muted-foreground">Set 0 for a free tournament.</p>
-            </div>
+            {/* Entry fee + payment methods — payment-methods panel slides in beside the fee when amount > 0 */}
+            <div className={Number(entryFeeRand) > 0 ? "grid grid-cols-1 md:grid-cols-2 gap-4 items-start" : ""}>
+              <div className="space-y-2">
+                <Label className="text-sm">Entry fee (ZAR)</Label>
+                <Input
+                  type="number" min={0} step="1" inputMode="decimal"
+                  value={entryFeeRand}
+                  onChange={(e) => setEntryFeeRand(e.target.value)}
+                  placeholder="0 = free"
+                />
+                <p className="text-xs text-muted-foreground">Set 0 for a free tournament.</p>
+              </div>
 
-            {/* Payment methods */}
-            {Number(entryFeeRand) > 0 && (
-              <>
-                <div className="space-y-2">
-                  <Label className="text-sm">Accepted payment methods</Label>
-                  <div className="flex items-center gap-4">
+              {Number(entryFeeRand) > 0 && (
+                <div className="rounded-lg border-2 border-border bg-muted/60 shadow-sm p-3 space-y-2">
+                  <Label className="text-sm font-semibold">
+                    Accepted payment methods <span className="text-destructive">*</span>
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Tick the methods you'll accept for this tournament. Configure your online gateway and bank details in Club Admin → Banking.
+                  </p>
+                  <div className="space-y-1.5">
+                    {/* Online gateway — only when the club has configured one */}
+                    {clubPaymentConfig?.gateway ? (
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={paymentMethods.has("card")}
+                          onCheckedChange={(c) => {
+                            const next = new Set(paymentMethods);
+                            c ? next.add("card") : next.delete("card");
+                            setPaymentMethods(next);
+                          }}
+                        />
+                        Online ({clubPaymentConfig.gatewayLabel}) — card / instant pay
+                      </label>
+                    ) : (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                        No online gateway configured. Add one in Club Admin → Banking to accept card / instant payments.
+                      </p>
+                    )}
+
+                    {/* EFT — only when bank details exist */}
+                    {clubPaymentConfig?.eftConfigured ? (
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={paymentMethods.has("eft")}
+                          onCheckedChange={(c) => {
+                            const next = new Set(paymentMethods);
+                            c ? next.add("eft") : next.delete("eft");
+                            setPaymentMethods(next);
+                          }}
+                        />
+                        EFT (bank transfer — admin marks paid)
+                      </label>
+                    ) : (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                        EFT unavailable — add bank details in Club Admin → Banking to enable.
+                      </p>
+                    )}
+
+                    {/* Cash at club — always available */}
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
                       <Checkbox
-                        checked={paymentMethods.has("card")}
+                        checked={paymentMethods.has("cash")}
                         onCheckedChange={(c) => {
                           const next = new Set(paymentMethods);
-                          c ? next.add("card") : next.delete("card");
+                          c ? next.add("cash") : next.delete("cash");
                           setPaymentMethods(next);
                         }}
                       />
-                      Card (online)
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={paymentMethods.has("eft")}
-                        onCheckedChange={(c) => {
-                          const next = new Set(paymentMethods);
-                          c ? next.add("eft") : next.delete("eft");
-                          setPaymentMethods(next);
-                        }}
-                      />
-                      EFT (admin marks paid)
+                      Cash at club (admin marks paid)
                     </label>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <Switch id="payment-required" checked={paymentRequired} onCheckedChange={setPaymentRequired} />
-                  <Label htmlFor="payment-required" className="text-sm">
-                    Player must pay before they qualify to play
-                  </Label>
+                  <div className="flex items-center gap-3 pt-2 border-t border-border/60">
+                    <Switch id="payment-required" checked={paymentRequired} onCheckedChange={setPaymentRequired} />
+                    <Label htmlFor="payment-required" className="text-xs">
+                      Player must pay before they qualify to play
+                    </Label>
+                  </div>
                 </div>
-              </>
-            )}
+              )}
+            </div>
 
             {/* Invite methods */}
 

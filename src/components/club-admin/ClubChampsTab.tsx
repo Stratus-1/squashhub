@@ -2102,10 +2102,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 No visitors registered yet. Visitors can register from the club sign-in page.
               </p>
             )}
-
-
-
+          </CardContent>
+        </Card>
       )}
+
 
       {/* ── STEP: REGISTRATION & PAYMENT ── */}
       {step === "registration" && (

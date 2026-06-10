@@ -341,7 +341,10 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                     <Info className="w-3.5 h-3.5 ml-1.5 opacity-70" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs">Typical for internal leagues, not inter-club leagues. You can also use tournaments and call them leagues instead of just teams.</TooltipContent>
+                <TooltipContent className="max-w-xs space-y-2">
+                  <p>Typical for internal leagues, not inter-club leagues. You can also use tournaments and call them leagues instead of just teams.</p>
+                  <p>You can also create your league teams here and use them in tournaments.</p>
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>

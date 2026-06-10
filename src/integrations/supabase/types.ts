@@ -831,6 +831,7 @@ export type Database = {
       }
       club_champs: {
         Row: {
+          best_of: number
           bye_handling: string
           club_id: string
           court_ids: number[]
@@ -862,6 +863,7 @@ export type Database = {
           payment_methods: string[]
           payment_required: boolean
           play_days: number[]
+          points_per_game: number
           registration_closes_at: string | null
           registration_mode: string
           registration_opens_at: string | null
@@ -876,6 +878,7 @@ export type Database = {
           visitor_clubs: string[]
         }
         Insert: {
+          best_of?: number
           bye_handling?: string
           club_id: string
           court_ids?: number[]
@@ -907,6 +910,7 @@ export type Database = {
           payment_methods?: string[]
           payment_required?: boolean
           play_days?: number[]
+          points_per_game?: number
           registration_closes_at?: string | null
           registration_mode?: string
           registration_opens_at?: string | null
@@ -921,6 +925,7 @@ export type Database = {
           visitor_clubs?: string[]
         }
         Update: {
+          best_of?: number
           bye_handling?: string
           club_id?: string
           court_ids?: number[]
@@ -952,6 +957,7 @@ export type Database = {
           payment_methods?: string[]
           payment_required?: boolean
           play_days?: number[]
+          points_per_game?: number
           registration_closes_at?: string | null
           registration_mode?: string
           registration_opens_at?: string | null

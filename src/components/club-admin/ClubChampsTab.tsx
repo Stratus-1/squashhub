@@ -2223,7 +2223,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               >
                 <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" disabled>Please select</SelectItem>
+                  <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                   {listTournamentFormats().map((fmt) => (
                     <SelectItem key={fmt.key} value={fmt.key}>{fmt.label}</SelectItem>
                   ))}
@@ -2251,7 +2251,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     >
                       <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="" disabled>Please select</SelectItem>
+                        <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                         <SelectItem value="11">Par 11 (win by 2) — WSF standard</SelectItem>
                         <SelectItem value="15">Par 15 (win by 2)</SelectItem>
                       </SelectContent>
@@ -2265,7 +2265,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     >
                       <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="" disabled>Please select</SelectItem>
+                        <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                         <SelectItem value="3">Best of 3 (first to 2 games)</SelectItem>
                         <SelectItem value="5">Best of 5 (first to 3 games)</SelectItem>
                       </SelectContent>
@@ -2281,7 +2281,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <Select value={roundFormat} onValueChange={(v) => setRoundFormat(v as any)}>
                   <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" disabled>Please select</SelectItem>
+                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                     <SelectItem value="single_round_robin">Single round-robin (each plays once)</SelectItem>
                     <SelectItem value="double_round_robin">Double round-robin (home &amp; away, 2 rounds)</SelectItem>
                   </SelectContent>
@@ -2301,7 +2301,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
                   <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" disabled>Please select</SelectItem>
+                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                     <SelectItem value="no_match">No match — bye not recorded</SelectItem>
                     <SelectItem value="walkover_win">Walkover win — full points</SelectItem>
                     <SelectItem value="neutral">Neutral — excluded from averages</SelectItem>
@@ -2436,7 +2436,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
                 <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" disabled>Please select</SelectItem>
+                  <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                   <SelectItem value="open">Open — any eligible club member</SelectItem>
                   <SelectItem value="invite">Invite-only — admin shortlists members</SelectItem>
                 </SelectContent>
@@ -2819,7 +2819,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 >
                   <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent position="popper" sideOffset={4} onCloseAutoFocus={(e) => e.preventDefault()}>
-                    <SelectItem value="" disabled>Please select</SelectItem>
+                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                     <SelectItem value="admin">Admin pairs all players</SelectItem>
                     <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
                   </SelectContent>
@@ -3005,7 +3005,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               }}>
                 <SelectTrigger className="w-32 mt-1"><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" disabled>Please select</SelectItem>
+                  <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                   {Array.from({ length: Math.floor(entityCount / 2) }, (_, i) => i + 1).map((n) => (
                     <SelectItem key={n} value={String(n)}>{n} league{n > 1 ? "s" : ""}</SelectItem>
                   ))}
@@ -3170,7 +3170,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
                   <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" disabled>Please select</SelectItem>
+                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                     <SelectItem value="20">20 min</SelectItem>
                     <SelectItem value="30">30 min</SelectItem>
                     <SelectItem value="45">45 min</SelectItem>

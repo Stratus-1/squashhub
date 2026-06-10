@@ -313,7 +313,7 @@ export function MarkerSetup({ onStart }: Props) {
         .from("club_champs_matches")
         .select(`
           id, group_number, round_number, scheduled_date, scheduled_time, status,
-          champ_id, court_id,
+          champ_id, court_id, handicap_a, handicap_b,
           player_a_member_id, player_b_member_id,
           partner_a_member_id, partner_b_member_id
         `)

@@ -133,6 +133,87 @@ function memberMatchesTournamentGender(memberGender: string | null | undefined, 
   return matchValues.includes(normalized);
 }
 
+// Format datetime-local / ISO strings nicely for invite text.
+function formatInviteDate(value: string | null | undefined, withTime = false): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  const date = d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+  if (!withTime) return date;
+  const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return `${date} ${time}`;
+}
+
+// Build the descriptive bullet lines that appear in both the in-app
+// notification body and the email invitation. Keeps preview + actual send
+// perfectly in sync.
+function buildInviteDetailLines(opts: {
+  gender: GenderCategory;
+  matchType: "singles" | "doubles";
+  scoringMode: string;
+  roundFormat: "single_round_robin" | "double_round_robin";
+  byeHandling: "no_match" | "walkover_win" | "neutral";
+  partnerMode: "admin" | "players";
+  startDate: string;
+  endDate: string;
+  registrationOpensAt: string;
+  registrationClosesAt: string;
+  entryFeeRand: string;
+}): string[] {
+  const lines: string[] = [];
+  const isDoubles = opts.matchType === "doubles";
+  lines.push(`Category: ${GENDER_LABELS[opts.gender]} ${isDoubles ? "Doubles" : "Singles"}`);
+
+  try {
+    const fmt = getTournamentFormat(opts.scoringMode);
+    lines.push(`Scoring format: ${fmt.label}`);
+  } catch {
+    /* unknown format key — skip */
+  }
+
+  lines.push(
+    `Round format: ${opts.roundFormat === "double_round_robin"
+      ? "Double round-robin (home & away)"
+      : "Single round-robin (each plays once)"}`
+  );
+
+  const byeLabel =
+    opts.byeHandling === "walkover_win"
+      ? "Walkover win — full points"
+      : opts.byeHandling === "neutral"
+      ? "Neutral — excluded from averages"
+      : "No match — bye not recorded";
+  lines.push(`Bye handling: ${byeLabel}`);
+
+  if (isDoubles) {
+    lines.push(
+      `Partner selection: ${opts.partnerMode === "players"
+        ? "Players choose their own partner"
+        : "Admin pairs all players"}`
+    );
+  }
+
+  const start = formatInviteDate(opts.startDate);
+  const end = formatInviteDate(opts.endDate);
+  if (start && end) {
+    lines.push(start === end ? `Date: ${start}` : `Dates: ${start} → ${end}`);
+  } else if (start) {
+    lines.push(`Starts: ${start}`);
+  }
+
+  const regOpens = formatInviteDate(opts.registrationOpensAt, true);
+  const regCloses = formatInviteDate(opts.registrationClosesAt, true);
+  if (regOpens) lines.push(`Registration opens: ${regOpens}`);
+  if (regCloses) lines.push(`Registration closes: ${regCloses}`);
+
+  const fee = Number(opts.entryFeeRand) || 0;
+  lines.push(fee > 0 ? `Entry fee: R${fee.toFixed(2)}` : "Entry fee: Free");
+
+  return lines;
+}
+
+
+
 function SortableRow({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
@@ -1530,8 +1611,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
       const sendApp = methods.includes("app");
       const sendEmail = methods.includes("email");
+      const detailLines = buildInviteDetailLines({
+        gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+        startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+      });
       const msg = `You have been invited to ${champName || "a tournament"}.` +
+        `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` +
         (description.trim() ? `\n\n${description.trim()}` : "");
+
       const notifRows = rows.map((r: any) => ({
         club_member_id: r.club_member_id,
         title: "Tournament invitation",
@@ -3245,10 +3332,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
         description={description}
         methods={inviteMethods}
+        gender={gender}
+        matchType={matchType}
+        scoringMode={scoringMode}
+        roundFormat={roundFormat}
+        byeHandling={byeHandling}
+        partnerMode={partnerMode}
         startDate={startDate}
         endDate={endDate}
+        registrationOpensAt={registrationOpensAt}
+        registrationClosesAt={registrationClosesAt}
         entryFeeRand={entryFeeRand}
       />
+
     </div>
   );
 }
@@ -3339,8 +3435,16 @@ function InvitePreviewDialog({
   tournamentName,
   description,
   methods,
+  gender,
+  matchType,
+  scoringMode,
+  roundFormat,
+  byeHandling,
+  partnerMode,
   startDate,
   endDate,
+  registrationOpensAt,
+  registrationClosesAt,
   entryFeeRand,
 }: {
   open: boolean;
@@ -3348,21 +3452,26 @@ function InvitePreviewDialog({
   tournamentName: string;
   description: string;
   methods: Set<"app" | "email">;
+  gender: GenderCategory;
+  matchType: "singles" | "doubles";
+  scoringMode: string;
+  roundFormat: "single_round_robin" | "double_round_robin";
+  byeHandling: "no_match" | "walkover_win" | "neutral";
+  partnerMode: "admin" | "players";
   startDate: string;
   endDate: string;
+  registrationOpensAt: string;
+  registrationClosesAt: string;
   entryFeeRand: string;
 }) {
-  const fee = Number(entryFeeRand) || 0;
-  const dateLine =
-    startDate && endDate
-      ? startDate === endDate
-        ? `Date: ${startDate}`
-        : `Dates: ${startDate} → ${endDate}`
-      : null;
-  const feeLine = fee > 0 ? `Entry fee: R${fee.toFixed(2)}` : "Entry fee: Free";
+  const detailLines = buildInviteDetailLines({
+    gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+    startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+  });
 
   const appBody =
     `You have been invited to ${tournamentName}.` +
+    `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` +
     (description?.trim() ? `\n\n${description.trim()}` : "");
 
   return (
@@ -3407,12 +3516,10 @@ function InvitePreviewDialog({
               <Separator />
               <p>Hi there,</p>
               <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
-              {(dateLine || feeLine) && (
-                <ul className="text-xs text-muted-foreground list-disc pl-5">
-                  {dateLine && <li>{dateLine}</li>}
-                  <li>{feeLine}</li>
-                </ul>
-              )}
+              <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
+                {detailLines.map((l, i) => <li key={i}>{l}</li>)}
+              </ul>
+
               {description?.trim() && (
                 <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">
                   {description.trim()}

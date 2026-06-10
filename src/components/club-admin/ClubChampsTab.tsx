@@ -2131,17 +2131,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   }
                 }}
               >
-                <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="" disabled>Please select</SelectItem>
                   {listTournamentFormats().map((fmt) => (
                     <SelectItem key={fmt.key} value={fmt.key}>{fmt.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {getTournamentFormat(scoringMode).description}
-              </p>
-              {getTournamentFormat(scoringMode).requiresDoubles && !isDoubles && (
+              {scoringMode ? (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {getTournamentFormat(scoringMode).description}
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground mt-1">Choose a scoring format to see details.</p>
+              )}
+              {scoringMode && getTournamentFormat(scoringMode).requiresDoubles && !isDoubles && (
                 <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
                   This format requires doubles — match type will be set to Doubles.
                 </p>

@@ -43,6 +43,8 @@ export interface MarkerConfig {
   source: MatchSource;
   sourceId?: string; // tournament match id or booking id
   sourcePosition?: number | string;
+  handicapA?: number; // league-rank handicap, side A starting score offset
+  handicapB?: number; // league-rank handicap, side B starting score offset
   clubId?: string;
 }
 

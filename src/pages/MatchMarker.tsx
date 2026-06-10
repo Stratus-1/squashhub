@@ -195,6 +195,11 @@ export default function MatchMarker() {
         ) : (
           <MarkerScoreboard
             config={config}
+            initialScores={
+              config.source === "tournament" && ((config as any).handicapA || (config as any).handicapB)
+                ? [{ a: Number((config as any).handicapA) || 0, b: Number((config as any).handicapB) || 0 }]
+                : undefined
+            }
             onMatchComplete={handleMatchComplete}
             onReset={resetMatch}
           />

@@ -1814,6 +1814,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     },
   });
 
+  const setChampStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await fromExt("club_champs").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(vars.status === "completed" ? "Tournament closed" : "Tournament re-opened");
+      qc.invalidateQueries({ queryKey: ["club-champs"] });
+    },
+  });
+
   const resetWizard = () => {
     setStep("category");
     setGender("men");
@@ -2105,37 +2116,74 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
         ) : existingChamps.length === 0 ? (
           <Card><CardContent className="py-8 text-center text-muted-foreground">No tournaments planned yet.</CardContent></Card>
-        ) : (
-          <div className="space-y-3">
-            {existingChamps.map((c: any) => (
-              <Card key={c.id}>
-                <CardContent className="flex items-center justify-between py-4">
-                  <div>
-                    <p className="font-medium">{c.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {GENDER_LABELS[c.gender as GenderCategory] || c.gender} · {c.match_type === "doubles" ? "Doubles" : "Singles"} · {c.num_groups} groups · {c.status}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{c.start_date} to {c.end_date}</p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
-                      <Eye className="w-4 h-4 mr-1" /> View
+        ) : (() => {
+          const activeChamps = existingChamps.filter((c: any) => c.status !== "completed");
+          const completedChamps = existingChamps.filter((c: any) => c.status === "completed");
+          const renderCard = (c: any, isCompleted: boolean) => (
+            <Card key={c.id} className={isCompleted ? "opacity-75" : ""}>
+              <CardContent className="flex items-center justify-between py-4">
+                <div>
+                  <p className="font-medium">{c.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {GENDER_LABELS[c.gender as GenderCategory] || c.gender} · {c.match_type === "doubles" ? "Doubles" : "Singles"} · {c.num_groups} groups · {c.status}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{c.start_date} to {c.end_date}</p>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
+                    <Eye className="w-4 h-4 mr-1" /> View
+                  </Button>
+                  {!isCompleted && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => setRegistrationsChamp(c)}>
+                        <UsersIcon className="w-4 h-4 mr-1" /> Registrations
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => loadChampForEdit(c)}>
+                        <Pencil className="w-4 h-4 mr-1" /> Edit
+                      </Button>
+                      <Button
+                        variant="outline" size="sm"
+                        disabled={setChampStatus.isPending}
+                        onClick={() => setChampStatus.mutate({ id: c.id, status: "completed" })}
+                      >
+                        Close
+                      </Button>
+                    </>
+                  )}
+                  {isCompleted && (
+                    <Button
+                      variant="outline" size="sm"
+                      disabled={setChampStatus.isPending}
+                      onClick={() => setChampStatus.mutate({ id: c.id, status: "active" })}
+                    >
+                      Re-open
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setRegistrationsChamp(c)}>
-                      <UsersIcon className="w-4 h-4 mr-1" /> Registrations
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => loadChampForEdit(c)}>
-                      <Pencil className="w-4 h-4 mr-1" /> Edit
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                  )}
+                  <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })}>
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+          return (
+            <div className="space-y-6">
+              <div className="space-y-3">
+                {activeChamps.length === 0 ? (
+                  <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">No active tournaments.</CardContent></Card>
+                ) : (
+                  activeChamps.map((c: any) => renderCard(c, false))
+                )}
+              </div>
+              {completedChamps.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Completed</h3>
+                  {completedChamps.map((c: any) => renderCard(c, true))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
           <DialogContent className="max-w-sm">

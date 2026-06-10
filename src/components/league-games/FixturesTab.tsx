@@ -14,6 +14,7 @@ import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { RoundConfigDialog, type RoundDraft } from "./fixtures/RoundConfigDialog";
 import { FixtureEditorTable, type EditableFixture } from "./fixtures/FixtureEditorTable";
+import { ConfirmDeleteDialog } from "./fixtures/ConfirmDeleteDialog";
 import {
   allocateRoundRobinByDate,
   allocatePairingsWithCourtFairness,
@@ -47,6 +48,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
   const [openRoundId, setOpenRoundId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRound, setEditingRound] = useState<Partial<RoundDraft> | undefined>();
+  const [pendingDeleteRound, setPendingDeleteRound] = useState<Round | null>(null);
 
   const { data: rounds } = useQuery({
     queryKey: ["league-rounds", associationId],
@@ -216,9 +218,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
             setEditingRound(r);
             setDialogOpen(true);
           }}
-          onDelete={() => {
-            if (confirm(`Delete ${r.name}?`)) deleteRound.mutate(r.id);
-          }}
+          onDelete={() => setPendingDeleteRound(r)}
         />
       ))}
 
@@ -230,6 +230,23 @@ export function FixturesTab({ clubId, associationId }: Props) {
         initial={editingRound}
         onSave={async (r) => {
           await saveRound.mutateAsync(r);
+        }}
+      />
+
+      <ConfirmDeleteDialog
+        open={!!pendingDeleteRound}
+        onOpenChange={(o) => { if (!o) setPendingDeleteRound(null); }}
+        title={`Delete ${pendingDeleteRound?.name ?? "round"}?`}
+        description={
+          <span>
+            This permanently deletes <strong>{pendingDeleteRound?.name}</strong> and all its
+            fixtures. This action cannot be undone.
+          </span>
+        }
+        confirmLabel="Delete round"
+        onConfirm={async () => {
+          if (pendingDeleteRound) await deleteRound.mutateAsync(pendingDeleteRound.id);
+          setPendingDeleteRound(null);
         }}
       />
     </div>

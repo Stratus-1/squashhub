@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
+import { applyHandicapsToChamp } from "@/lib/tournament-formats/handicap";
 import { useClubMembers, type ClubMember } from "@/hooks/use-club";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -251,6 +252,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [description, setDescription] = useState("");
   const [showInvitePreview, setShowInvitePreview] = useState(false);
 
+  // Invite by league (just for the initial roster — admin can still sub from any league later)
+  const [inviteSource, setInviteSource] = useState<"manual" | "leagues">("manual");
+  const [inviteIncludeReserves, setInviteIncludeReserves] = useState<boolean>(true);
+  const [inviteExcludedMemberIds, setInviteExcludedMemberIds] = useState<Set<string>>(new Set());
+
+  // League-ranking handicap (singles only)
+  const [handicapMode, setHandicapMode] = useState<"none" | "league_rank">("none");
+
   // For partnerMode === "players": auto-load confirmed pairs from registrations
   const { data: confirmedPairRegs = [] } = useQuery({
     queryKey: ["champ-confirmed-pairs", editingChampId],
@@ -305,16 +314,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       return;
     }
     const { data: regs, error } = await fromExt("member_league_registrations")
-      .select("club_member_id")
+      .select("club_member_id, is_reserve")
       .in("league_id", Array.from(leagueIds));
     if (error) {
       toast.error("Failed to load league players");
       return;
     }
-    const ids = new Set<string>((regs || []).map((r: any) => r.club_member_id).filter(Boolean));
+    const filtered = (regs || []).filter((r: any) => inviteIncludeReserves || !r.is_reserve);
+    const ids = new Set<string>(filtered.map((r: any) => r.club_member_id).filter(Boolean));
+    // Honour any admin exclusions
+    inviteExcludedMemberIds.forEach((id) => ids.delete(id));
     setSelectedPlayerIds(ids);
     if (ids.size > 0) {
-      toast.success(`Pre-filled ${ids.size} player${ids.size === 1 ? "" : "s"} from ${leagueIds.size} league${leagueIds.size === 1 ? "" : "s"}`);
+      toast.success(`Pre-filled ${ids.size} player${ids.size === 1 ? "" : "s"} from ${leagueIds.size} league${leagueIds.size === 1 ? "" : "s"}${inviteIncludeReserves ? " (incl. reserves)" : ""}`);
     } else {
       toast.info("No registered players found in the selected leagues");
     }
@@ -443,6 +455,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       payment_methods: Array.from(paymentMethods),
       payment_required: paymentRequired,
       invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
+      invite_source: inviteSource,
+      invite_include_reserves: inviteIncludeReserves,
+      invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
+      handicap_mode: matchType === "singles" ? handicapMode : "none",
       include_visitors: includeVisitors,
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
@@ -1131,6 +1147,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
+            invite_source: inviteSource,
+            invite_include_reserves: inviteIncludeReserves,
+            invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
+            handicap_mode: matchType === "singles" ? handicapMode : "none",
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
@@ -1170,6 +1190,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
+            invite_source: inviteSource,
+            invite_include_reserves: inviteIncludeReserves,
+            invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
+            handicap_mode: matchType === "singles" ? handicapMode : "none",
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
@@ -1280,6 +1304,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         const { error: matchErr } = await fromExt("club_champs_matches").insert(matches);
         if (matchErr) throw matchErr;
       }
+
+      // League-ranking handicap: compute starting-score offsets for every match.
+      if (matchType === "singles" && handicapMode === "league_rank") {
+        try {
+          const n = await applyHandicapsToChamp(champId, clubId);
+          if (n > 0) toast.success(`Applied league handicap to ${n} match${n === 1 ? "" : "es"}`);
+        } catch (e) {
+          console.warn("Handicap computation failed:", e);
+        }
+      }
+
 
       // Auto-book courts
       const memberUserMap = new Map<string, string>();
@@ -1596,6 +1631,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPaymentMethods(new Set(["card"]));
     setPaymentRequired(true);
     setInviteMethods(new Set(["app"]));
+    setInviteSource("manual");
+    setInviteIncludeReserves(true);
+    setInviteExcludedMemberIds(new Set());
+    setHandicapMode("none");
     setInviteTiming("manual");
     setInviteScheduledAt("");
     setDescription("");
@@ -1639,6 +1678,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft")[])));
     setPaymentRequired(champ.payment_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
+    setInviteSource(((champ as any).invite_source as any) || "manual");
+    setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
+    setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
+    setHandicapMode(((champ as any).handicap_mode as any) || "none");
     setIncludeVisitors(!!champ.include_visitors);
     setSelectedVisitorClubs(new Set((champ.visitor_clubs as string[] | null) || []));
     const loadedDay = ((champ as any).day_schedules as DaySchedule[] | null) || [];
@@ -2021,6 +2064,75 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Invite source — only meaningful in invite mode */}
+            {registrationMode === "invite" && (
+              <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                <Label className="text-sm">Initial invite list comes from…</Label>
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="invite-source"
+                      checked={inviteSource === "manual"}
+                      onChange={() => setInviteSource("manual")}
+                    />
+                    Manual tick-list
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="invite-source"
+                      checked={inviteSource === "leagues"}
+                      onChange={() => setInviteSource("leagues")}
+                    />
+                    By league (pick on the Players step)
+                  </label>
+                </div>
+                {inviteSource === "leagues" && (
+                  <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
+                    <Checkbox
+                      checked={inviteIncludeReserves}
+                      onCheckedChange={(c) => setInviteIncludeReserves(!!c)}
+                    />
+                    Include reserves
+                  </label>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  This only seeds the starting roster. You can still pull in any player from any league as a sub at any time — no cutoff.
+                </p>
+              </div>
+            )}
+
+            {/* League-ranking handicap — singles only */}
+            {matchType === "singles" && (
+              <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                <Label className="text-sm">Handicap scoring</Label>
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="handicap-mode"
+                      checked={handicapMode === "none"}
+                      onChange={() => setHandicapMode("none")}
+                    />
+                    None
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="handicap-mode"
+                      checked={handicapMode === "league_rank"}
+                      onChange={() => setHandicapMode("league_rank")}
+                    />
+                    By league ranking
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Stronger player starts on a negative score equal to the position gap (e.g. 3rd league #1 vs 3rd league #4 → −3 / 0; vs 4th league #2 → −10 / 0). Recomputed automatically when a sub is pulled in.
+                </p>
+              </div>
+            )}
 
             {/* Invite methods */}
             <div className="space-y-2">

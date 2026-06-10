@@ -43,6 +43,8 @@ export interface MarkerConfig {
   source: MatchSource;
   sourceId?: string; // tournament match id or booking id
   sourcePosition?: number | string;
+  handicapA?: number; // league-rank handicap, side A starting score offset
+  handicapB?: number; // league-rank handicap, side B starting score offset
   clubId?: string;
 }
 
@@ -311,7 +313,7 @@ export function MarkerSetup({ onStart }: Props) {
         .from("club_champs_matches")
         .select(`
           id, group_number, round_number, scheduled_date, scheduled_time, status,
-          champ_id, court_id,
+          champ_id, court_id, handicap_a, handicap_b,
           player_a_member_id, player_b_member_id,
           partner_a_member_id, partner_b_member_id
         `)
@@ -994,6 +996,12 @@ export function MarkerSetup({ onStart }: Props) {
             deuceRule,
             source,
             sourceId: selectedSourceId || undefined,
+            handicapA: source === "tournament" && selectedSourceId
+              ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_a) || 0
+              : undefined,
+            handicapB: source === "tournament" && selectedSourceId
+              ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_b) || 0
+              : undefined,
             clubId: clubId || undefined,
           })
         }

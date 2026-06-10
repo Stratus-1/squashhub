@@ -37,7 +37,7 @@ export default function BellsMarker() {
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_matches")
         .select(
-          "id, champ_id, group_number, status, scheduled_date, scheduled_time, side_a_points, side_b_points, score, bell_ends_at, bell_paused_seconds, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name), champ:champ_id(id, name, scoring_mode, match_duration_minutes, group_durations, group_break_minutes, default_break_minutes)",
+          "id, champ_id, group_number, status, scheduled_date, scheduled_time, side_a_points, side_b_points, score, bell_ends_at, bell_paused_seconds, handicap_a, handicap_b, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name), champ:champ_id(id, name, scoring_mode, match_duration_minutes, group_durations, group_break_minutes, default_break_minutes, handicap_mode)",
         )
         .eq("id", matchId!)
         .single();
@@ -70,8 +70,15 @@ export default function BellsMarker() {
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {
     if (!match) return;
-    setPointsA(match.side_a_points ?? 0);
-    setPointsB(match.side_b_points ?? 0);
+    // Seed from saved live points if present; otherwise from the league-rank
+    // handicap so the scoreboard opens at e.g. −3 / 0 instead of 0 / 0.
+    const hcA = Number(match.handicap_a) || 0;
+    const hcB = Number(match.handicap_b) || 0;
+    const liveA = match.side_a_points;
+    const liveB = match.side_b_points;
+    const hasLive = (liveA != null && liveA !== 0) || (liveB != null && liveB !== 0);
+    setPointsA(hasLive ? (liveA ?? 0) : hcA);
+    setPointsB(hasLive ? (liveB ?? 0) : hcB);
     setFinished(match.status === "completed");
 
     // Resume timer from persisted state so a second marker continues from
@@ -168,8 +175,11 @@ export default function BellsMarker() {
   };
 
   const getName = (p: any) => p?.name || "—";
-  const pairAName = `${getName(match?.player_a)}${match?.partner_a ? " & " + getName(match.partner_a) : ""}`;
-  const pairBName = `${getName(match?.player_b)}${match?.partner_b ? " & " + getName(match.partner_b) : ""}`;
+  const hcA = Number(match?.handicap_a) || 0;
+  const hcB = Number(match?.handicap_b) || 0;
+  const hcSuffix = (h: number) => (h !== 0 ? ` · HCP ${h > 0 ? "+" : ""}${h}` : "");
+  const pairAName = `${getName(match?.player_a)}${match?.partner_a ? " & " + getName(match.partner_a) : ""}${hcSuffix(hcA)}`;
+  const pairBName = `${getName(match?.player_b)}${match?.partner_b ? " & " + getName(match.partner_b) : ""}${hcSuffix(hcB)}`;
 
   // ----- Timer persistence helpers -----
   const persistTimer = (patch: { bell_ends_at?: string | null; bell_paused_seconds?: number | null; status?: string }) => {
@@ -217,8 +227,10 @@ export default function BellsMarker() {
   };
 
   const resetAll = () => {
-    setPointsA(0);
-    setPointsB(0);
+    const hcA = Number(match?.handicap_a) || 0;
+    const hcB = Number(match?.handicap_b) || 0;
+    setPointsA(hcA);
+    setPointsB(hcB);
     setRemaining(capMinutes * 60);
     setRunning(false);
     setFinished(false);

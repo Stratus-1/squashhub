@@ -847,9 +847,13 @@ export type Database = {
           gender: string
           group_break_minutes: Json
           group_durations: Json
+          handicap_mode: string
           id: string
           include_visitors: boolean
+          invite_excluded_member_ids: string[]
+          invite_include_reserves: boolean
           invite_methods: string[]
+          invite_source: string
           match_duration_minutes: number
           match_type: string
           name: string
@@ -888,9 +892,13 @@ export type Database = {
           gender: string
           group_break_minutes?: Json
           group_durations?: Json
+          handicap_mode?: string
           id?: string
           include_visitors?: boolean
+          invite_excluded_member_ids?: string[]
+          invite_include_reserves?: boolean
           invite_methods?: string[]
+          invite_source?: string
           match_duration_minutes?: number
           match_type?: string
           name: string
@@ -929,9 +937,13 @@ export type Database = {
           gender?: string
           group_break_minutes?: Json
           group_durations?: Json
+          handicap_mode?: string
           id?: string
           include_visitors?: boolean
+          invite_excluded_member_ids?: string[]
+          invite_include_reserves?: boolean
           invite_methods?: string[]
+          invite_source?: string
           match_duration_minutes?: number
           match_type?: string
           name?: string
@@ -1046,6 +1058,9 @@ export type Database = {
           created_at: string
           game_scores: string | null
           group_number: number
+          handicap_a: number
+          handicap_b: number
+          handicap_locked: boolean
           id: string
           is_bye: boolean
           leg: string | null
@@ -1072,6 +1087,9 @@ export type Database = {
           created_at?: string
           game_scores?: string | null
           group_number: number
+          handicap_a?: number
+          handicap_b?: number
+          handicap_locked?: boolean
           id?: string
           is_bye?: boolean
           leg?: string | null
@@ -1098,6 +1116,9 @@ export type Database = {
           created_at?: string
           game_scores?: string | null
           group_number?: number
+          handicap_a?: number
+          handicap_b?: number
+          handicap_locked?: boolean
           id?: string
           is_bye?: boolean
           leg?: string | null
@@ -6100,6 +6121,9 @@ export type Database = {
           created_at: string
           game_scores: string | null
           group_number: number
+          handicap_a: number
+          handicap_b: number
+          handicap_locked: boolean
           id: string
           is_bye: boolean
           leg: string | null
@@ -6158,6 +6182,9 @@ export type Database = {
           created_at: string
           game_scores: string | null
           group_number: number
+          handicap_a: number
+          handicap_b: number
+          handicap_locked: boolean
           id: string
           is_bye: boolean
           leg: string | null

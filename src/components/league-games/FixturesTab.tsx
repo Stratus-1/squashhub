@@ -14,7 +14,17 @@ import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { RoundConfigDialog, type RoundDraft } from "./fixtures/RoundConfigDialog";
 import { FixtureEditorTable, type EditableFixture } from "./fixtures/FixtureEditorTable";
-import { allocateRoundRobinByDate } from "./fixtures/scheduler";
+import {
+  allocateRoundRobinByDate,
+  allocatePairingsWithCourtFairness,
+  buildPriorCourtUsage,
+  reversePairingsFromPrior,
+  inferTiersFromPriorFixtures,
+  fairCourtAssignmentForExistingFixtures,
+  roundRobin,
+  type PriorFixture,
+} from "./fixtures/scheduler";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsClubAdmin } from "@/hooks/use-club";
 

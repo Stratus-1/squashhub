@@ -89,6 +89,27 @@ function eachDate(startDate: string, endDate: string, allowedDows?: number[]): s
 }
 
 /**
+ * Generate `count` consecutive play-day dates starting on/after `startDate`,
+ * honouring `allowedDows`. Used when no end date is supplied — the scheduler
+ * walks forward week by week until it has enough matchdays.
+ */
+function nextNPlayDates(startDate: string, count: number, allowedDows?: number[]): string[] {
+  if (count <= 0) return [];
+  const out: string[] = [];
+  const filter = allowedDows && allowedDows.length > 0 ? new Set(allowedDows) : null;
+  let cur = parse(startDate, "yyyy-MM-dd", new Date());
+  const hardCap = count * 14 + 366;
+  let steps = 0;
+  while (out.length < count && steps < hardCap) {
+    if (!filter || filter.has(cur.getDay())) out.push(format(cur, "yyyy-MM-dd"));
+    cur = addMinutes(cur, 24 * 60);
+    steps++;
+  }
+  return out;
+}
+
+
+/**
  * Allocate pairings across (dates × time slots × courts), avoiding back-to-back
  * conflicts for any single team where possible. Spreads matches over the full
  * date window of the round.

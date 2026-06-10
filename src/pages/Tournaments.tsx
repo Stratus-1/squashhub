@@ -84,7 +84,7 @@ export default function Tournaments() {
     refetchInterval: 10000,
   });
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = todayStr;
   // A match is "live" if either:
   //  - status is in_progress, OR
   //  - the bell clock is still ticking (bell_ends_at in the future), OR

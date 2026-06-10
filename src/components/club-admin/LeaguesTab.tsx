@@ -2387,7 +2387,10 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
           <TooltipTrigger asChild>
             <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Quick Top Down League Setup<Info className="w-3.5 h-3.5 ml-1.5 opacity-80" /></Button></DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent className="max-w-xs">Typical for inter-club regional leagues like NSA.</TooltipContent>
+          <TooltipContent className="max-w-xs space-y-2">
+            <p>Typical for inter-club regional leagues like NSA.</p>
+            <p>Easy and quick way for a club to generate the league teams for the next season.</p>
+          </TooltipContent>
         </Tooltip>
       </TooltipProvider>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

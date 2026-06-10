@@ -1304,6 +1304,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (matchErr) throw matchErr;
       }
 
+      // League-ranking handicap: compute starting-score offsets for every match.
+      if (matchType === "singles" && handicapMode === "league_rank") {
+        try {
+          const n = await applyHandicapsToChamp(champId, clubId);
+          if (n > 0) toast.success(`Applied league handicap to ${n} match${n === 1 ? "" : "es"}`);
+        } catch (e) {
+          console.warn("Handicap computation failed:", e);
+        }
+      }
+
+
       // Auto-book courts
       const memberUserMap = new Map<string, string>();
       members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });

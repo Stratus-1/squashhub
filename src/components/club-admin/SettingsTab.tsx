@@ -20,6 +20,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateSecrets = useUpdateClubSecrets();
   const [sendingTest, setSendingTest] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState(user?.email || "");
+  const [prefixUnlocked, setPrefixUnlocked] = useState(false);
 
   const [form, setForm] = useState({
     member_number_prefix: club.member_number_prefix || "",
@@ -187,8 +188,28 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
         <p className="text-sm text-muted-foreground">Configure how member numbers are generated (e.g. WRT-0001).</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1">
-            <Label>Prefix</Label>
-            <Input value={form.member_number_prefix} onChange={set("member_number_prefix")} placeholder="e.g. WRT" />
+            <div className="flex items-center justify-between">
+              <Label>Prefix</Label>
+              {(club.member_number_prefix || "").trim() !== "" && (
+                <button
+                  type="button"
+                  onClick={() => setPrefixUnlocked(u => !u)}
+                  className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                >
+                  {prefixUnlocked ? "Lock" : "Unlock to edit"}
+                </button>
+              )}
+            </div>
+            <Input
+              value={form.member_number_prefix}
+              onChange={set("member_number_prefix")}
+              placeholder="e.g. WRT"
+              readOnly={(club.member_number_prefix || "").trim() !== "" && !prefixUnlocked}
+              className={(club.member_number_prefix || "").trim() !== "" && !prefixUnlocked ? "bg-muted cursor-not-allowed" : ""}
+            />
+            {(club.member_number_prefix || "").trim() !== "" && !prefixUnlocked && (
+              <p className="text-[11px] text-muted-foreground">Locked to prevent accidental changes. Unlock to edit.</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label>Number Length (digits)</Label>

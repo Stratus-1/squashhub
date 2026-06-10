@@ -825,29 +825,73 @@ function RoundCard({
         <div className="p-3 border-t space-y-3">
           {isAdmin && (
             <div className="rounded border bg-muted/20 p-2 space-y-2">
-              <div className="text-xs font-medium">Teams in this round</div>
-              <div className="flex flex-wrap gap-2">
-                {teams.map((t) => (
-                  <label key={t.code} className="flex items-center gap-1.5 text-xs">
-                    <Checkbox
-                      checked={selectedTeams.includes(t.code)}
-                      onCheckedChange={(v) =>
-                        setSelectedTeams((prev) =>
-                          v ? [...new Set([...prev, t.code])] : prev.filter((x) => x !== t.code),
-                        )
-                      }
-                    />
-                    {t.name}
-                  </label>
-                ))}
-                {!teams.length && <span className="text-xs text-muted-foreground">No teams in this association</span>}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-xs font-medium">Teams in this round</div>
+                {tierGroups.size > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs">Tier</Label>
+                    <Select value={tier} onValueChange={setTier}>
+                      <SelectTrigger className="h-8 w-44 text-xs">
+                        <SelectValue placeholder="Pick a tier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">All teams</SelectItem>
+                        {Array.from(tierGroups.keys()).map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t} ({tierGroups.get(t)?.length ?? 0})
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__custom__">Custom…</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                {selectedTeams.length
+                  ? selectedTeams
+                      .map((c) => teams.find((t) => t.code === c)?.name ?? c)
+                      .join(" · ")
+                  : <span className="text-muted-foreground">No teams selected</span>}
+              </div>
+              <button
+                type="button"
+                className="text-[11px] underline text-muted-foreground"
+                onClick={() => setShowTeamGrid((v) => !v)}
+              >
+                {showTeamGrid ? "Hide team list" : "Edit team list"}
+              </button>
+              {showTeamGrid && (
+                <div className="flex flex-wrap gap-2 pt-1 border-t">
+                  {teams.map((t) => (
+                    <label key={t.code} className="flex items-center gap-1.5 text-xs">
+                      <Checkbox
+                        checked={selectedTeams.includes(t.code)}
+                        onCheckedChange={(v) => {
+                          setTier("__custom__");
+                          setSelectedTeams((prev) =>
+                            v ? [...new Set([...prev, t.code])] : prev.filter((x) => x !== t.code),
+                          );
+                        }}
+                      />
+                      {t.name}
+                    </label>
+                  ))}
+                  {!teams.length && <span className="text-xs text-muted-foreground">No teams in this association</span>}
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2 pt-1 flex-wrap border-t">
                 <div className="flex items-center gap-4 flex-wrap">
                   <label className="flex items-center gap-2 text-xs">
                     <Checkbox checked={autoCreateBookings} onCheckedChange={(v) => setAutoCreateBookings(!!v)} />
                     <CalendarPlus className="h-3.5 w-3.5" /> Auto-create court bookings on save
                   </label>
+                  {(priorFixtures?.length ?? 0) > 0 && (
+                    <label className="flex items-center gap-2 text-xs" title="Swap home/away from the most recent prior round covering these teams">
+                      <Checkbox checked={reverseFromPrev} onCheckedChange={(v) => setReverseFromPrev(!!v)} />
+                      Reverse home/away from previous round
+                    </label>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button

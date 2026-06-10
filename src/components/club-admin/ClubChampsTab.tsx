@@ -2888,7 +2888,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           <CardContent className="space-y-4">
             <div>
               <Label>Divide {entityCount} {isDoubles ? "pairs" : "players"} into how many leagues?</Label>
-              <Select value={String(numGroups)} onValueChange={(v) => {
+              <Select value={numGroups > 0 ? String(numGroups) : ""} onValueChange={(v) => {
                 const n = Number(v);
                 setNumGroups(n);
                 if (isDoubles) {
@@ -2909,8 +2909,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   setGroupAssignments(newMap);
                 }
               }}>
-                <SelectTrigger className="w-32 mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-32 mt-1"><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="" disabled>Please select</SelectItem>
                   {Array.from({ length: Math.floor(entityCount / 2) }, (_, i) => i + 1).map((n) => (
                     <SelectItem key={n} value={String(n)}>{n} league{n > 1 ? "s" : ""}</SelectItem>
                   ))}

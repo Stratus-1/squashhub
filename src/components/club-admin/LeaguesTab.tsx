@@ -337,7 +337,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1" />Step by Step League Setup
+                    <Plus className="w-4 h-4 mr-1" />Club League Creator
                     <Info className="w-3.5 h-3.5 ml-1.5 opacity-70" />
                   </Button>
                 </TooltipTrigger>

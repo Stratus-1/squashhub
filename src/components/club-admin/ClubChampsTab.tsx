@@ -2156,11 +2156,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <div>
                     <Label className="text-xs font-medium">Game length</Label>
                     <Select
-                      value={String(pointsPerGame)}
+                      value={pointsPerGame > 0 ? String(pointsPerGame) : ""}
                       onValueChange={(v) => setPointsPerGame(Number(v) as 11 | 15)}
                     >
-                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="" disabled>Please select</SelectItem>
                         <SelectItem value="11">Par 11 (win by 2) — WSF standard</SelectItem>
                         <SelectItem value="15">Par 15 (win by 2)</SelectItem>
                       </SelectContent>

@@ -2990,40 +2990,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               )}
             </div>
 
+            {scoringMode === "time_capped_points" && numGroups > 0 && (
+              <div className="rounded-lg border p-3 bg-muted/30 space-y-3">
 
-            {/* Scoring format — driven by the tournament-format registry */}
-            <div className="rounded-lg border p-3 bg-muted/30 space-y-3">
-              <div>
-                <Label className="text-sm font-medium">Scoring format</Label>
-                <Select
-                  value={scoringMode}
-                  onValueChange={(v) => {
-                    const fmt = getTournamentFormat(v);
-                    setScoringMode(v as any);
-                    // Format-driven match-type lock (Bells requires doubles).
-                    if (fmt.requiresDoubles && matchType !== "doubles") {
-                      setMatchType("doubles");
-                    }
-                  }}
-                >
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {listTournamentFormats().map((fmt) => (
-                      <SelectItem key={fmt.key} value={fmt.key}>{fmt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {getTournamentFormat(scoringMode).description}
-                </p>
-                {getTournamentFormat(scoringMode).requiresDoubles && !isDoubles && (
-                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
-                    This format requires doubles — match type will be set to Doubles.
-                  </p>
-                )}
-              </div>
-
-              {scoringMode === "time_capped_points" && numGroups > 0 && (
                 <div>
                   <div className="flex items-center gap-3 mb-1">
                     <Label className="text-sm font-medium">Slot &amp; bell timing per league</Label>

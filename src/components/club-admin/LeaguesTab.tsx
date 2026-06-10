@@ -338,6 +338,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 <TooltipTrigger asChild>
                   <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
                     <Plus className="w-4 h-4 mr-1" />Step by Step League Setup
+                    <Info className="w-3.5 h-3.5 ml-1.5 opacity-70" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">Typical for internal leagues, not inter-club leagues. You can also use tournaments and call them leagues instead of just teams.</TooltipContent>

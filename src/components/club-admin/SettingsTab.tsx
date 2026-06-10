@@ -20,6 +20,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateSecrets = useUpdateClubSecrets();
   const [sendingTest, setSendingTest] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState(user?.email || "");
+  const [prefixUnlocked, setPrefixUnlocked] = useState(false);
 
   const [form, setForm] = useState({
     member_number_prefix: club.member_number_prefix || "",

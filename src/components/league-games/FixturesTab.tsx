@@ -372,17 +372,62 @@ function RoundCard({
       toast.error("Round is missing start/end time or slot length.");
       return;
     }
-    const { slots, byes, error } = allocateRoundRobinByDate(
-      selectedTeams,
-      round.court_ids,
-      round.start_time,
-      round.end_time,
-      round.slot_minutes,
-      round.round_date,
-      round.end_date,
-      (round as any).play_dows ?? [],
-      false,
-    );
+    const teamSet = new Set(selectedTeams);
+    const prior = priorFixtures ?? [];
+    const priorUsage = buildPriorCourtUsage(prior, teamSet);
+
+    let allocation;
+    if (reverseFromPrev) {
+      const reversed = reversePairingsFromPrior(prior, teamSet);
+      if (!reversed) {
+        toast.error("No matching previous round found for these teams. Falling back to round-robin.");
+      }
+      if (reversed) {
+        // Treat as one batch (same matchday). Spread across dates if multiple.
+        allocation = allocatePairingsWithCourtFairness(
+          [reversed],
+          round.court_ids,
+          round.start_time,
+          round.end_time,
+          round.slot_minutes,
+          round.round_date,
+          round.end_date,
+          (round as any).play_dows ?? [],
+          priorUsage,
+        );
+      }
+    }
+    if (!allocation) {
+      // Use fairness allocator over full round-robin batches when prior usage exists,
+      // otherwise fall back to the simple modulo allocator.
+      if (priorUsage.size > 0) {
+        const batches = roundRobin(selectedTeams);
+        allocation = allocatePairingsWithCourtFairness(
+          batches,
+          round.court_ids,
+          round.start_time,
+          round.end_time,
+          round.slot_minutes,
+          round.round_date,
+          round.end_date,
+          (round as any).play_dows ?? [],
+          priorUsage,
+        );
+      } else {
+        allocation = allocateRoundRobinByDate(
+          selectedTeams,
+          round.court_ids,
+          round.start_time,
+          round.end_time,
+          round.slot_minutes,
+          round.round_date,
+          round.end_date,
+          (round as any).play_dows ?? [],
+          false,
+        );
+      }
+    }
+    const { slots, byes, error } = allocation;
     console.log("[autoDistribute]", { selectedTeams, court_ids: round.court_ids, start: round.start_time, end: round.end_time, slot: round.slot_minutes, range: [round.round_date, round.end_date], play_dows: (round as any).play_dows, slots, byes });
     if (error) {
       toast.error(error);

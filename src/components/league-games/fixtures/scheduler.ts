@@ -89,6 +89,27 @@ function eachDate(startDate: string, endDate: string, allowedDows?: number[]): s
 }
 
 /**
+ * Generate `count` consecutive play-day dates starting on/after `startDate`,
+ * honouring `allowedDows`. Used when no end date is supplied — the scheduler
+ * walks forward week by week until it has enough matchdays.
+ */
+function nextNPlayDates(startDate: string, count: number, allowedDows?: number[]): string[] {
+  if (count <= 0) return [];
+  const out: string[] = [];
+  const filter = allowedDows && allowedDows.length > 0 ? new Set(allowedDows) : null;
+  let cur = parse(startDate, "yyyy-MM-dd", new Date());
+  const hardCap = count * 14 + 366;
+  let steps = 0;
+  while (out.length < count && steps < hardCap) {
+    if (!filter || filter.has(cur.getDay())) out.push(format(cur, "yyyy-MM-dd"));
+    cur = addMinutes(cur, 24 * 60);
+    steps++;
+  }
+  return out;
+}
+
+
+/**
  * Allocate pairings across (dates × time slots × courts), avoiding back-to-back
  * conflicts for any single team where possible. Spreads matches over the full
  * date window of the round.
@@ -172,11 +193,19 @@ export function allocateRoundRobinByDate(
   const cleanTeams = [...new Set(teams.filter(Boolean))];
   if (cleanTeams.length < 2) return { slots: [], byes: [], error: "Select at least 2 teams to distribute." };
   if (!courtIds.length) return { slots: [], byes: [], error: "No courts assigned to this round." };
-  const dates = startDate ? eachDate(startDate, endDate || startDate, playDows) : [format(new Date(), "yyyy-MM-dd")];
-  const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
-  if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the date range, time window, and slot length." };
-
   const rounds = roundRobin(cleanTeams);
+  // If no explicit end date, generate exactly enough play dates for the round-robin.
+  const openEnded = !endDate || endDate === startDate;
+  const dates = startDate
+    ? (openEnded
+        ? nextNPlayDates(startDate, rounds.length, playDows)
+        : eachDate(startDate, endDate!, playDows))
+    : [format(new Date(), "yyyy-MM-dd")];
+  const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
+  if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the start date, time window, and slot length." };
+
+
+
   if (rounds.length > dates.length) {
     return { slots: [], byes: [], error: `Need at least ${rounds.length} play date(s) for ${cleanTeams.length} teams.` };
   }
@@ -301,9 +330,12 @@ export function allocatePairingsWithCourtFairness(
   priorUsage: CourtUsage,
 ): RoundRobinAllocation {
   if (!courtIds.length) return { slots: [], byes: [], error: "No courts assigned to this round." };
-  const dates = eachDate(startDate, endDate || startDate, playDows);
+  const openEnded = !endDate || endDate === startDate;
+  const dates = openEnded
+    ? nextNPlayDates(startDate, pairingBatches.length, playDows)
+    : eachDate(startDate, endDate, playDows);
   const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
-  if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the date range, time window, and slot length." };
+  if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the start date, time window, and slot length." };
   if (pairingBatches.length > dates.length) {
     return { slots: [], byes: [], error: `Need at least ${pairingBatches.length} play date(s).` };
   }

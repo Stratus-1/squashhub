@@ -1662,6 +1662,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft")[])));
     setPaymentRequired(champ.payment_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
+    setInviteSource(((champ as any).invite_source as any) || "manual");
+    setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
+    setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
+    setHandicapMode(((champ as any).handicap_mode as any) || "none");
     setIncludeVisitors(!!champ.include_visitors);
     setSelectedVisitorClubs(new Set((champ.visitor_clubs as string[] | null) || []));
     const loadedDay = ((champ as any).day_schedules as DaySchedule[] | null) || [];

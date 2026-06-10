@@ -224,8 +224,10 @@ export default function BellsMarker() {
   };
 
   const resetAll = () => {
-    setPointsA(0);
-    setPointsB(0);
+    const hcA = Number(match?.handicap_a) || 0;
+    const hcB = Number(match?.handicap_b) || 0;
+    setPointsA(hcA);
+    setPointsB(hcB);
     setRemaining(capMinutes * 60);
     setRunning(false);
     setFinished(false);

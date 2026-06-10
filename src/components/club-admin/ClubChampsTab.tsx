@@ -1905,28 +1905,74 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()) && !usedPlayerIds.has(m.id));
   }, [members, gender, usedPlayerIds]);
 
-  const canProceed = () => {
+  // Returns a list of friendly reasons why the current step can't advance.
+  // Empty array means the user can click Next.
+  const missingForStep = (): string[] => {
+    const m: string[] = [];
     switch (step) {
-      case "category": return true;
-      case "registration":
-        if (!startDate || !endDate) return false;
-        if (new Date(endDate) < new Date(startDate)) return false;
-        if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) return false;
-        if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) return false;
-        return true;
-      case "players":
-        if (selfPairInviteSelection) return selectedPlayerIds.size >= 2;
-        if (isDoubles) return doublesPairs.length >= 2;
-        return selectedPlayerIds.size >= 3;
-      case "groups":
-        return numGroups >= 1 && numGroups <= Math.floor(entityCount / 2);
-      case "schedule":
-        if (awaitingPlayerPairs) return startDate && endDate && (playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0)) && selectedCourtIds.size > 0;
-        return startDate && endDate && (playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0)) && selectedCourtIds.size > 0 && schedulePreview && schedulePreview.totalSlots >= schedulePreview.totalMatches;
-      case "review": return true;
-      default: return false;
+      case "category": {
+        if (!gender) m.push("Gender category");
+        if (!matchType) m.push("Match type (Singles or Doubles)");
+        if (!scoringMode) m.push("Scoring format");
+        if (scoringMode === "standard") {
+          if (!pointsPerGame) m.push("Game length (Par 11 or 15)");
+          if (!bestOf) m.push("Best of (3 or 5)");
+        }
+        if (!roundFormat) m.push("Round format");
+        if (!byeHandling) m.push("Bye handling");
+        break;
+      }
+      case "registration": {
+        if (!startDate) m.push("Tournament start date");
+        if (!endDate) m.push("Tournament end date");
+        if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+          m.push("End date must be on or after the start date");
+        }
+        if (!registrationOpensAt) m.push("Registration opens (date & time)");
+        if (!registrationClosesAt) m.push("Registration closes (date & time)");
+        if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
+          m.push("Registration close must be after registration open");
+        }
+        if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
+          m.push("At least one accepted payment method");
+        }
+        if (inviteMethods.size === 0) m.push("At least one invite delivery method");
+        break;
+      }
+      case "players": {
+        if (selfPairInviteSelection) {
+          if (selectedPlayerIds.size < 2) m.push("Select at least 2 players");
+        } else if (isDoubles) {
+          if (doublesPairs.length < 2) m.push("Build at least 2 doubles pairs");
+        } else if (selectedPlayerIds.size < 3) {
+          m.push("Select at least 3 players");
+        }
+        break;
+      }
+      case "groups": {
+        if (!(numGroups >= 1 && numGroups <= Math.floor(entityCount / 2))) {
+          m.push(`Number of groups must be between 1 and ${Math.max(1, Math.floor(entityCount / 2))}`);
+        }
+        break;
+      }
+      case "schedule": {
+        if (!startDate || !endDate) m.push("Tournament dates");
+        if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
+          m.push("At least one play day");
+        }
+        if (selectedCourtIds.size === 0) m.push("At least one court");
+        if (!awaitingPlayerPairs && schedulePreview && schedulePreview.totalSlots < schedulePreview.totalMatches) {
+          m.push("Schedule has fewer slots than matches — add more days, courts, or hours");
+        }
+        break;
+      }
+      case "review": break;
     }
+    return m;
   };
+
+  const canProceed = () => missingForStep().length === 0;
+
 
   // ── LIST VIEW ──
   if (!showWizard) {
@@ -2047,8 +2093,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
 
             {/* Scoring format — driven by the tournament-format registry */}
-            <div className="rounded-lg border p-3 bg-muted/30">
-              <Label className="text-sm font-medium">Scoring format</Label>
+            <div className="rounded-lg border-2 border-border p-3 bg-muted/60 shadow-sm">
+              <Label className="text-sm font-semibold">Scoring format <span className="text-destructive">*</span></Label>
               <Select
                 value={scoringMode}
                 onValueChange={(v) => {
@@ -2059,7 +2105,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   }
                 }}
               >
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1 bg-background border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {listTournamentFormats().map((fmt) => (
                     <SelectItem key={fmt.key} value={fmt.key}>{fmt.label}</SelectItem>
@@ -2082,7 +2128,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       value={String(pointsPerGame)}
                       onValueChange={(v) => setPointsPerGame(Number(v) as 11 | 15)}
                     >
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="mt-1 bg-background border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="11">Par 11 (win by 2) — WSF standard</SelectItem>
                         <SelectItem value="15">Par 15 (win by 2)</SelectItem>
@@ -2095,7 +2141,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       value={String(bestOf)}
                       onValueChange={(v) => setBestOf(Number(v) as 3 | 5)}
                     >
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="mt-1 bg-background border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="3">Best of 3 (first to 2 games)</SelectItem>
                         <SelectItem value="5">Best of 5 (first to 3 games)</SelectItem>
@@ -2106,11 +2152,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border p-3 bg-muted/30">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border-2 border-border p-3 bg-muted/60 shadow-sm">
               <div>
-                <Label className="text-sm font-medium">Round Format</Label>
+                <Label className="text-sm font-semibold">Round Format <span className="text-destructive">*</span></Label>
                 <Select value={roundFormat} onValueChange={(v) => setRoundFormat(v as any)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 bg-background border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="single_round_robin">Single round-robin (each plays once)</SelectItem>
                     <SelectItem value="double_round_robin">Double round-robin (home &amp; away, 2 rounds)</SelectItem>
@@ -2123,9 +2169,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </p>
               </div>
               <div>
-                <Label className="text-sm font-medium">Bye Handling</Label>
+                <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>
                 <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 bg-background border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="no_match">No match — bye not recorded</SelectItem>
                     <SelectItem value="walkover_win">Walkover win — full points</SelectItem>
@@ -2139,7 +2185,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
 
             <div>
-              <Label className="text-sm font-medium mb-2 block">Gender Category</Label>
+              <Label className="text-sm font-semibold mb-2 block">Gender Category <span className="text-destructive">*</span></Label>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {(["men", "ladies", "mixed", "open"] as GenderCategory[]).map((g) => (
@@ -2168,7 +2214,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
 
             <div>
-              <Label className="text-sm font-medium mb-2 block">Match Type</Label>
+              <Label className="text-sm font-semibold mb-2 block">Match Type <span className="text-destructive">*</span></Label>
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   variant={matchType === "singles" ? "default" : "outline"}
@@ -3377,6 +3423,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         </Card>
       )}
 
+      {/* Inline validation hint — lists missing required fields for the current step. */}
+      {(() => {
+        const missing = step === "review" ? [] : missingForStep();
+        if (missing.length === 0) return null;
+        return (
+          <div className="rounded-md border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+            <p className="font-semibold mb-1">Complete these before continuing:</p>
+            <ul className="list-disc pl-5 space-y-0.5">
+              {missing.map((r) => <li key={r}>{r}</li>)}
+            </ul>
+          </div>
+        );
+      })()}
+
       {/* Navigation */}
       <div className="flex justify-between items-center gap-2">
         <Button variant="outline" onClick={() => { if (stepIdx === 0) { setShowWizard(false); } else { setStep(activeSteps[stepIdx - 1]); void saveDraft(); } }}>
@@ -3391,11 +3451,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
           </Button>
         ) : (
-          <Button onClick={() => goToStep(activeSteps[stepIdx + 1])} disabled={!canProceed()}>
+          <Button
+            onClick={() => goToStep(activeSteps[stepIdx + 1])}
+            disabled={!canProceed()}
+            title={canProceed() ? undefined : `Complete: ${missingForStep().join(", ")}`}
+          >
             Next <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         )}
       </div>
+
 
 
       {/* Invite preview dialog — shows in-app notification + email side by side */}

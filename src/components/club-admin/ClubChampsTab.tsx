@@ -2208,8 +2208,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <div>
                 <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>
                 <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
-                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="" disabled>Please select</SelectItem>
                     <SelectItem value="no_match">No match — bye not recorded</SelectItem>
                     <SelectItem value="walkover_win">Walkover win — full points</SelectItem>
                     <SelectItem value="neutral">Neutral — excluded from averages</SelectItem>

@@ -3541,9 +3541,12 @@ function InvitePreviewDialog({
               <Separator />
               <p>Hi there,</p>
               <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
-              <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
-                {detailLines.map((l, i) => <li key={i}>{l}</li>)}
-              </ul>
+              {detailLines.length > 0 && (
+                <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
+                  {detailLines.map((l, i) => <li key={i}>{l}</li>)}
+                </ul>
+              )}
+
 
               {description?.trim() && (
                 <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">

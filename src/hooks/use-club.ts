@@ -329,11 +329,24 @@ export function useLeagueAssociations(clubId?: string) {
   return useQuery({
     queryKey: ["league-associations", clubId],
     queryFn: async () => {
+      // Guard against auth race: if there's no active session, throw so
+      // React Query keeps the last successful data instead of replacing it
+      // with an empty array (RLS would otherwise filter everything out and
+      // the UI would briefly show "no associations").
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        throw new Error("Auth not ready");
+      }
       const { data, error } = await fromExt("league_associations").select("*").eq("club_id", clubId!);
       if (error) throw error;
       return (data || []) as LeagueAssociation[];
     },
     enabled: !!clubId,
+    // Keep previous data visible during refetches (e.g. window focus) so
+    // the list never blanks out momentarily.
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
+    retry: 2,
   });
 }
 

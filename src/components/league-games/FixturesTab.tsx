@@ -317,7 +317,9 @@ function RoundCard({
       if (rErr) throw rErr;
       const priorRoundIds = (roundRows ?? []).map((r: any) => r.id);
       if (!priorRoundIds.length) return [] as PriorFixture[];
-      const meta = new Map((roundRows ?? []).map((r: any) => [r.id, r] as const));
+      const meta = new Map<string, { round_number: number; name: string }>(
+        (roundRows ?? []).map((r: any) => [r.id as string, { round_number: r.round_number, name: r.name }]),
+      );
       const { data: fxs, error: fErr } = await fromExt("platform_league_fixtures")
         .select("home_team_code, away_team_code, court_id, fixture_date, start_time, round_id")
         .in("round_id", priorRoundIds);

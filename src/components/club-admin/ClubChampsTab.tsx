@@ -2766,16 +2766,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   >
                     Fill from settings
                   </Button>
-                  {editingChampId && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => sendChampInvites(editingChampId, { confirm: true })}
-                    >
-                      Send / Re-send invites
-                    </Button>
-                  )}
                   <Button
                     type="button"
                     size="sm"
@@ -2793,10 +2783,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 onChange={(e) => setDescription(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — use “Send / Re-send invites” above.
+                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — use the “Send / Re-send invites” button below.
               </p>
+              {editingChampId && (
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => sendChampInvites(editingChampId, { confirm: true })}
+                  >
+                    Send / Re-send invites
+                  </Button>
+                </div>
+              )}
 
             </div>
+
+
 
 
 

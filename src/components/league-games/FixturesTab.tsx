@@ -302,8 +302,41 @@ function RoundCard({
 
   const [selectedTeams, setSelectedTeams] = useState<string[]>(teams.map((t) => t.code));
   const [draft, setDraft] = useState<EditableFixture[] | null>(null);
+  const [tier, setTier] = useState<string>("__all__");
+  const [reverseFromPrev, setReverseFromPrev] = useState<boolean>(false);
+  const [showTeamGrid, setShowTeamGrid] = useState<boolean>(false);
+
+  // Prior rounds in the same association (read-only — never mutated).
+  const { data: priorFixtures } = useQuery({
+    queryKey: ["prior-round-fixtures", round.association_id, round.round_number],
+    queryFn: async () => {
+      const { data: roundRows, error: rErr } = await fromExt("league_rounds")
+        .select("id, round_number, name")
+        .eq("association_id", round.association_id)
+        .lt("round_number", round.round_number);
+      if (rErr) throw rErr;
+      const priorRoundIds = (roundRows ?? []).map((r: any) => r.id);
+      if (!priorRoundIds.length) return [] as PriorFixture[];
+      const meta = new Map((roundRows ?? []).map((r: any) => [r.id, r] as const));
+      const { data: fxs, error: fErr } = await fromExt("platform_league_fixtures")
+        .select("home_team_code, away_team_code, court_id, fixture_date, start_time, round_id")
+        .in("round_id", priorRoundIds);
+      if (fErr) throw fErr;
+      return ((fxs ?? []) as any[]).map((f) => ({
+        ...f,
+        round_number: meta.get(f.round_id)?.round_number ?? null,
+        round_name: meta.get(f.round_id)?.name ?? null,
+      })) as PriorFixture[];
+    },
+    enabled: open && !!round.association_id,
+  });
+
+  const tierGroups = useMemo(
+    () => inferTiersFromPriorFixtures(priorFixtures ?? []),
+    [priorFixtures],
+  );
+
   // Keep the team checkboxes aligned with saved fixtures when viewing a round.
-  // If a team was unticked before saving, it must stay unticked on reopen.
   useEffect(() => {
     if (!open || !teams.length || draft || fixtures === undefined) return;
     const savedCodes = new Set<string>();
@@ -313,6 +346,15 @@ function RoundCard({
     }
     setSelectedTeams(savedCodes.size ? teams.filter((t) => savedCodes.has(t.code)).map((t) => t.code) : teams.map((t) => t.code));
   }, [open, fixtures, teams, draft]);
+
+  // Selecting a tier auto-checks exactly that tier's teams.
+  useEffect(() => {
+    if (tier === "__all__" || tier === "__custom__") return;
+    const codes = tierGroups.get(tier) ?? [];
+    const valid = codes.filter((c) => teams.some((t) => t.code === c));
+    if (valid.length) setSelectedTeams(valid);
+  }, [tier, tierGroups, teams]);
+
   const list = draft ?? fixtures ?? [];
 
   const autoDistribute = () => {

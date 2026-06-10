@@ -205,7 +205,7 @@ export function allocateRoundRobinByDate(
   if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the start date, time window, and slot length." };
 
 
-  const rounds = roundRobin(cleanTeams);
+
   if (rounds.length > dates.length) {
     return { slots: [], byes: [], error: `Need at least ${rounds.length} play date(s) for ${cleanTeams.length} teams.` };
   }

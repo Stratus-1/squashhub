@@ -469,10 +469,9 @@ function RoundCard({
   };
 
   /**
-   * Reassign only the court for each existing fixture so teams rotate between
-   * courts across play dates. Pairings, dates and start times are preserved.
-   * Within each date we keep the existing court ordering and shift it by the
-   * date index (relative to the sorted unique dates in the round).
+   * Re-balance courts on the current fixtures using a fairness scorer that
+   * considers prior-round usage. Only court_id changes; pairings/dates/times
+   * are preserved. Prior rounds are read only.
    */
   const rotateCourtsOnly = () => {
     const courtIds = round.court_ids ?? [];
@@ -484,18 +483,24 @@ function RoundCard({
       toast.error("No fixtures to rotate yet — generate or save fixtures first.");
       return;
     }
-    const dates = Array.from(new Set(list.map((f) => f.fixture_date).filter(Boolean) as string[])).sort();
-    const dateIdx = new Map(dates.map((d, i) => [d, i] as const));
-    const next = list.map((f) => {
-      if (!f.court_id || !f.fixture_date || f.away_team_code === "__BYE__") return f;
-      const curIdx = courtIds.indexOf(f.court_id);
-      if (curIdx < 0) return f;
-      const offset = dateIdx.get(f.fixture_date) ?? 0;
-      const newIdx = (curIdx + offset) % courtIds.length;
-      return { ...f, court_id: courtIds[newIdx] };
+    const teamSet = new Set<string>();
+    list.forEach((f) => { if (f.home_team_code) teamSet.add(f.home_team_code); if (f.away_team_code && f.away_team_code !== "__BYE__") teamSet.add(f.away_team_code); });
+    const priorUsage = buildPriorCourtUsage(priorFixtures ?? [], teamSet);
+    const assignments = fairCourtAssignmentForExistingFixtures(
+      list.map((f, i) => ({ ...f, id: f.id ?? `idx:${i}` })) as any,
+      courtIds,
+      priorUsage,
+    );
+    const byKey = new Map(assignments.map((a) => [a.id, a.court_id] as const));
+    const next = list.map((f, i) => {
+      if (!f.fixture_date || !f.start_time || f.away_team_code === "__BYE__") return f;
+      const k = f.id ?? `idx:${i}`;
+      const c = byKey.get(k);
+      return c ? { ...f, court_id: c } : f;
     });
     setDraft(next);
-    toast.success(`Rotated courts across ${dates.length} date(s) — pairings unchanged.`);
+    const dateCount = new Set(list.map((f) => f.fixture_date).filter(Boolean)).size;
+    toast.success(`Re-balanced courts across ${dateCount} date(s) using prior-round usage — pairings unchanged.`);
   };
 
   const saveFixtures = useMutation({

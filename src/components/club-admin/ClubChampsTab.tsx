@@ -313,23 +313,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [matchType, setMatchType] = useState<MatchType>("singles");
   const [enablePlayoffs, setEnablePlayoffs] = useState(false);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
-  const [numGroups, setNumGroups] = useState(2);
+  const [numGroups, setNumGroups] = useState(0);
   const [champName, setChampName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [playDays, setPlayDays] = useState<Set<number>>(new Set());
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
-  const [matchDuration, setMatchDuration] = useState(30);
-  const [scoringMode, setScoringMode] = useState<"standard" | "time_capped_points">("standard");
-  const [pointsPerGame, setPointsPerGame] = useState<11 | 15>(11);
-  const [bestOf, setBestOf] = useState<3 | 5>(5);
+  const [matchDuration, setMatchDuration] = useState(0);
+  const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points">("");
+  const [pointsPerGame, setPointsPerGame] = useState<0 | 11 | 15>(0);
+  const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
-  const [roundFormat, setRoundFormat] = useState<"single_round_robin" | "double_round_robin">("single_round_robin");
-  const [byeHandling, setByeHandling] = useState<"no_match" | "walkover_win" | "neutral">("no_match");
+  const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin">("");
+  const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   // Per-day schedule overrides — for short tournaments (Fri eve, Sat morning, Sat afternoon).
   // Each entry is one time window on one date. A date can appear multiple times (multi-session days).

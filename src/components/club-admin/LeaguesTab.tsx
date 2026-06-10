@@ -338,6 +338,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 <TooltipTrigger asChild>
                   <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
                     <Plus className="w-4 h-4 mr-1" />Step by Step League Setup
+                    <Info className="w-3.5 h-3.5 ml-1.5 opacity-70" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">Typical for internal leagues, not inter-club leagues. You can also use tournaments and call them leagues instead of just teams.</TooltipContent>
@@ -2381,7 +2382,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Quick Top Down League Setup</Button></DialogTrigger>
+            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Quick Top Down League Setup<Info className="w-3.5 h-3.5 ml-1.5 opacity-80" /></Button></DialogTrigger>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs">Typical for inter-club regional leagues like NSA.</TooltipContent>
         </Tooltip>

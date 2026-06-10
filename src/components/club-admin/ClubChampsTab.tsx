@@ -151,9 +151,9 @@ function buildInviteDetailLines(opts: {
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;
-  roundFormat: "single_round_robin" | "double_round_robin";
-  byeHandling: "no_match" | "walkover_win" | "neutral";
-  partnerMode: "admin" | "players";
+  roundFormat: "" | "single_round_robin" | "double_round_robin";
+  byeHandling: "" | "no_match" | "walkover_win" | "neutral";
+  partnerMode: "" | "admin" | "players";
   startDate: string;
   endDate: string;
   registrationOpensAt: string;

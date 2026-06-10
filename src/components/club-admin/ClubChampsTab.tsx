@@ -3073,9 +3073,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <div><Label>End Time</Label><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
               <div>
                 <Label>Match Duration</Label>
-                <Select value={String(matchDuration)} onValueChange={(v) => setMatchDuration(Number(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
+                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="" disabled>Please select</SelectItem>
                     <SelectItem value="20">20 min</SelectItem>
                     <SelectItem value="30">30 min</SelectItem>
                     <SelectItem value="45">45 min</SelectItem>

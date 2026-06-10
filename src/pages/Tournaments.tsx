@@ -216,16 +216,17 @@ export default function Tournaments() {
           <div className="flex justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : champs.length === 0 ? (
+        ) : allChamps.length === 0 ? (
           <Card className="p-6 text-center text-sm text-muted-foreground">
-            No active tournaments at the moment
+            No tournaments yet
           </Card>
         ) : (
-          <Tabs defaultValue="upcoming" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-auto">
+          <Tabs defaultValue={champs.length === 0 ? "past" : "upcoming"} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 h-auto">
               <TabsTrigger value="upcoming" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
-              <TabsTrigger value="fill" className="text-xs sm:text-sm py-2">Fill Up Tournaments</TabsTrigger>
+              <TabsTrigger value="fill" className="text-xs sm:text-sm py-2">Fill Up</TabsTrigger>
               <TabsTrigger value="standings" className="text-xs sm:text-sm py-2">Standings</TabsTrigger>
+              <TabsTrigger value="past" className="text-xs sm:text-sm py-2">Past</TabsTrigger>
             </TabsList>
 
             <TabsContent value="upcoming" className="mt-4 space-y-4">

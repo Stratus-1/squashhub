@@ -193,9 +193,17 @@ export function allocateRoundRobinByDate(
   const cleanTeams = [...new Set(teams.filter(Boolean))];
   if (cleanTeams.length < 2) return { slots: [], byes: [], error: "Select at least 2 teams to distribute." };
   if (!courtIds.length) return { slots: [], byes: [], error: "No courts assigned to this round." };
-  const dates = startDate ? eachDate(startDate, endDate || startDate, playDows) : [format(new Date(), "yyyy-MM-dd")];
+  const rounds = roundRobin(cleanTeams);
+  // If no explicit end date, generate exactly enough play dates for the round-robin.
+  const openEnded = !endDate || endDate === startDate;
+  const dates = startDate
+    ? (openEnded
+        ? nextNPlayDates(startDate, rounds.length, playDows)
+        : eachDate(startDate, endDate!, playDows))
+    : [format(new Date(), "yyyy-MM-dd")];
   const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
-  if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the date range, time window, and slot length." };
+  if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the start date, time window, and slot length." };
+
 
   const rounds = roundRobin(cleanTeams);
   if (rounds.length > dates.length) {

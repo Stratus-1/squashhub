@@ -901,7 +901,7 @@ function RoundCard({
                     disabled={!list.length || (round.court_ids?.length ?? 0) < 2}
                     title="Shift courts across dates without changing pairings or times"
                   >
-                    Rotate courts
+                    Re-balance courts
                   </Button>
                   <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
                     <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute

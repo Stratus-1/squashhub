@@ -79,7 +79,7 @@ export default function Dashboard() {
 
   // Check if club has any league associations (to show/hide League Games tile)
   const { data: clubLeagueAssociations } = useQuery({
-    queryKey: ["league-associations", clubId],
+    queryKey: ["league-associations-presence", clubId],
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await fromExt("league_associations").select("id").eq("club_id", clubId!).limit(1);

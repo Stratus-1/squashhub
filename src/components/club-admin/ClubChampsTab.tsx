@@ -1619,6 +1619,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPaymentMethods(new Set(["card"]));
     setPaymentRequired(true);
     setInviteMethods(new Set(["app"]));
+    setInviteSource("manual");
+    setInviteIncludeReserves(true);
+    setInviteExcludedMemberIds(new Set());
+    setHandicapMode("none");
     setInviteTiming("manual");
     setInviteScheduledAt("");
     setDescription("");

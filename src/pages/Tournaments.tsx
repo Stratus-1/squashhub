@@ -31,13 +31,12 @@ export default function Tournaments() {
   const memberId = activeMember?.id;
   const [finalizeChamp, setFinalizeChamp] = useState<any | null>(null);
 
-  const { data: champs = [], isLoading: champsLoading } = useQuery({
+  const { data: allChamps = [], isLoading: champsLoading } = useQuery({
     queryKey: ["tournaments-list", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs")
         .select("*")
         .eq("club_id", clubId!)
-        .neq("status", "completed")
         .order("start_date");
       if (error) throw error;
       return data || [];
@@ -45,7 +44,15 @@ export default function Tournaments() {
     enabled: !!clubId,
   });
 
-  const champIds = champs.map((c: any) => c.id);
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const isPastChamp = (c: any) =>
+    c.status === "completed" || (c.end_date && c.end_date < todayStr);
+  const champs = allChamps.filter((c: any) => !isPastChamp(c));
+  const pastChamps = allChamps
+    .filter(isPastChamp)
+    .sort((a: any, b: any) => (b.end_date || "").localeCompare(a.end_date || ""));
+
+  const champIds = allChamps.map((c: any) => c.id);
 
   const { data: allEntries = [] } = useQuery({
     queryKey: ["tournaments-all-entries", champIds],
@@ -77,7 +84,7 @@ export default function Tournaments() {
     refetchInterval: 10000,
   });
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = todayStr;
   // A match is "live" if either:
   //  - status is in_progress, OR
   //  - the bell clock is still ticking (bell_ends_at in the future), OR
@@ -90,8 +97,9 @@ export default function Tournaments() {
     if (typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0) return true;
     return false;
   };
+  const activeChampIds = new Set(champs.map((c: any) => c.id));
   const upcomingMatches = allMatches
-    .filter((m: any) => (m.status === "scheduled" || m.status === "in_progress" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))
+    .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))
     .sort((a: any, b: any) => {
       // Live matches float to the top
       const aLive = isLive(a);
@@ -208,16 +216,17 @@ export default function Tournaments() {
           <div className="flex justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : champs.length === 0 ? (
+        ) : allChamps.length === 0 ? (
           <Card className="p-6 text-center text-sm text-muted-foreground">
-            No active tournaments at the moment
+            No tournaments yet
           </Card>
         ) : (
-          <Tabs defaultValue="upcoming" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-auto">
+          <Tabs defaultValue={champs.length === 0 ? "past" : "upcoming"} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 h-auto">
               <TabsTrigger value="upcoming" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
-              <TabsTrigger value="fill" className="text-xs sm:text-sm py-2">Fill Up Tournaments</TabsTrigger>
+              <TabsTrigger value="fill" className="text-xs sm:text-sm py-2">Fill Up</TabsTrigger>
               <TabsTrigger value="standings" className="text-xs sm:text-sm py-2">Standings</TabsTrigger>
+              <TabsTrigger value="past" className="text-xs sm:text-sm py-2">Past</TabsTrigger>
             </TabsList>
 
             <TabsContent value="upcoming" className="mt-4 space-y-4">
@@ -506,6 +515,48 @@ export default function Tournaments() {
                   </CardHeader>
                 </Card>
               ))}
+            </TabsContent>
+
+            <TabsContent value="past" className="mt-4 space-y-3">
+              {pastChamps.length === 0 ? (
+                <Card className="p-6 text-center text-sm text-muted-foreground">
+                  No past tournaments yet. Completed events will be archived here.
+                </Card>
+              ) : (
+                pastChamps.map((champ: any) => {
+                  const isDoubles = champ.match_type === "doubles";
+                  return (
+                    <Card key={champ.id} className="opacity-90">
+                      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+                        <div className="min-w-0">
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <Trophy className="w-4 h-4 text-muted-foreground" />
+                            <span className="truncate">{champ.name}</span>
+                          </CardTitle>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"}
+                            {" · "}
+                            {champ.start_date} to {champ.end_date}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant="secondary" className="text-[10px]">
+                            {champ.status === "completed" ? "completed" : "ended"}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(`/club-champs/${champ.id}`)}
+                          >
+                            View <ChevronRight className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  );
+                })
+              )}
             </TabsContent>
           </Tabs>
         )}

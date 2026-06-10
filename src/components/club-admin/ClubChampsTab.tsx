@@ -159,6 +159,8 @@ function buildInviteDetailLines(opts: {
   registrationOpensAt: string;
   registrationClosesAt: string;
   entryFeeRand: string;
+  pointsPerGame?: number;
+  bestOf?: number;
 }): string[] {
   const lines: string[] = [];
   const isDoubles = opts.matchType === "doubles";

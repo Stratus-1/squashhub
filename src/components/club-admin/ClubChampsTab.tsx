@@ -3332,10 +3332,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
         description={description}
         methods={inviteMethods}
+        gender={gender}
+        matchType={matchType}
+        scoringMode={scoringMode}
+        roundFormat={roundFormat}
+        byeHandling={byeHandling}
+        partnerMode={partnerMode}
         startDate={startDate}
         endDate={endDate}
+        registrationOpensAt={registrationOpensAt}
+        registrationClosesAt={registrationClosesAt}
         entryFeeRand={entryFeeRand}
       />
+
     </div>
   );
 }

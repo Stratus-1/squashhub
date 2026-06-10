@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -83,11 +84,23 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
     [leagueOptions, myLeagueCode]
   );
 
-  // Selection: league id, or "ALL" for all-club-stacked
-  const [selection, setSelection] = useState<string>("");
+  // Selection: league id, or "ALL" for all-club-stacked — persisted in URL
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlLeague = searchParams.get("league");
+  const [selection, setSelection] = useState<string>(urlLeague || "");
   useEffect(() => {
     if (!selection && myLeague) setSelection(myLeague.id);
   }, [myLeague, selection]);
+
+  const handleSelectLeague = (val: string) => {
+    setSelection(val);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (val && val !== (myLeague?.id || "")) next.set("league", val);
+      else next.delete("league");
+      return next;
+    }, { replace: true });
+  };
 
   // Season selector — default current year, allow past years
   const [seasonYear, setSeasonYear] = useState<string>(String(CURRENT_YEAR));
@@ -187,7 +200,7 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
     <div className="space-y-4">
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={selection} onValueChange={setSelection}>
+        <Select value={selection} onValueChange={handleSelectLeague}>
           <SelectTrigger className="h-8 w-[260px] text-xs">
             <SelectValue placeholder="Select league" />
           </SelectTrigger>

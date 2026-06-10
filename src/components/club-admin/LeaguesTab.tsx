@@ -2394,7 +2394,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
         </Tooltip>
       </TooltipProvider>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Quick Top Down League Setup</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Regional League Creator</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>Association</Label>

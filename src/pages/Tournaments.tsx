@@ -52,7 +52,7 @@ export default function Tournaments() {
     .filter(isPastChamp)
     .sort((a: any, b: any) => (b.end_date || "").localeCompare(a.end_date || ""));
 
-  const champIds = champs.map((c: any) => c.id);
+  const champIds = allChamps.map((c: any) => c.id);
 
   const { data: allEntries = [] } = useQuery({
     queryKey: ["tournaments-all-entries", champIds],

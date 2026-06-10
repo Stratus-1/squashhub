@@ -312,17 +312,40 @@ export function allocatePairingsWithCourtFairness(
   for (const [team, inner] of priorUsage) usage.set(team, new Map(inner));
 
   const slots: SlotAssignment[] = [];
+  let overflowCounter = 0;
   pairingBatches.forEach((batch, batchIdx) => {
-    const date = dates[Math.min(batchIdx * spacing, dates.length - 1)];
-    batch.forEach((pair, matchIdx) => {
-      const time = slotTimes[Math.floor(matchIdx / courtIds.length) % slotTimes.length];
-      const used = new Set(slots.filter((s) => s.date === date && s.startTime === time).map((s) => s.courtId));
-      let bestCourt = courtIds[0];
+    let dateIdx = Math.min(batchIdx * spacing, dates.length - 1);
+    let timeIdx = 0;
+    let usedAtSlot = new Set<number>();
+    const advanceSlot = (): boolean => {
+      if (timeIdx < slotTimes.length - 1) {
+        timeIdx++;
+      } else if (dateIdx < dates.length - 1) {
+        dateIdx++;
+        timeIdx = 0;
+      } else {
+        return false; // capacity exhausted
+      }
+      usedAtSlot = new Set();
+      return true;
+    };
+    for (const pair of batch) {
+      if (usedAtSlot.size >= courtIds.length) advanceSlot();
+      const date = dates[dateIdx];
+      const time = slotTimes[timeIdx];
+      let bestCourt = -1;
       let bestScore = Infinity;
       for (const c of courtIds) {
-        if (used.has(c)) continue;
+        if (usedAtSlot.has(c)) continue;
         const score = usageScore(usage, pair.home, c) + usageScore(usage, pair.away, c);
         if (score < bestScore) { bestScore = score; bestCourt = c; }
+      }
+      if (bestCourt === -1) {
+        // capacity truly exhausted — keep rotating courts visibly
+        bestCourt = courtIds[overflowCounter % courtIds.length];
+        overflowCounter++;
+      } else {
+        usedAtSlot.add(bestCourt);
       }
       slots.push({ home: pair.home, away: pair.away, courtId: bestCourt, startTime: time, date });
       for (const team of [pair.home, pair.away]) {
@@ -330,7 +353,7 @@ export function allocatePairingsWithCourtFairness(
         if (!inner) { inner = new Map(); usage.set(team, inner); }
         inner.set(bestCourt, (inner.get(bestCourt) ?? 0) + 1);
       }
-    });
+    }
   });
   return { slots, byes: [] };
 }

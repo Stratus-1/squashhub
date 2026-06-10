@@ -2053,6 +2053,75 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </Select>
             </div>
 
+            {/* Invite source — only meaningful in invite mode */}
+            {registrationMode === "invite" && (
+              <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                <Label className="text-sm">Initial invite list comes from…</Label>
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="invite-source"
+                      checked={inviteSource === "manual"}
+                      onChange={() => setInviteSource("manual")}
+                    />
+                    Manual tick-list
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="invite-source"
+                      checked={inviteSource === "leagues"}
+                      onChange={() => setInviteSource("leagues")}
+                    />
+                    By league (pick on the Players step)
+                  </label>
+                </div>
+                {inviteSource === "leagues" && (
+                  <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
+                    <Checkbox
+                      checked={inviteIncludeReserves}
+                      onCheckedChange={(c) => setInviteIncludeReserves(!!c)}
+                    />
+                    Include reserves
+                  </label>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  This only seeds the starting roster. You can still pull in any player from any league as a sub at any time — no cutoff.
+                </p>
+              </div>
+            )}
+
+            {/* League-ranking handicap — singles only */}
+            {matchType === "singles" && (
+              <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                <Label className="text-sm">Handicap scoring</Label>
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="handicap-mode"
+                      checked={handicapMode === "none"}
+                      onChange={() => setHandicapMode("none")}
+                    />
+                    None
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="handicap-mode"
+                      checked={handicapMode === "league_rank"}
+                      onChange={() => setHandicapMode("league_rank")}
+                    />
+                    By league ranking
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Stronger player starts on a negative score equal to the position gap (e.g. 3rd league #1 vs 3rd league #4 → −3 / 0; vs 4th league #2 → −10 / 0). Recomputed automatically when a sub is pulled in.
+                </p>
+              </div>
+            )}
+
             {/* Invite methods */}
             <div className="space-y-2">
               <Label className="text-sm">Invite delivery method</Label>

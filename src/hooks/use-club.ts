@@ -454,11 +454,20 @@ export function useLeagues(clubId?: string) {
   return useQuery({
     queryKey: ["leagues", clubId],
     queryFn: async () => {
+      // Same auth-race guard as useLeagueAssociations: avoid wiping the
+      // cached list when the session is briefly absent during a refresh.
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        throw new Error("Auth not ready");
+      }
       const { data, error } = await fromExt("leagues").select("*").eq("club_id", clubId!);
       if (error) throw error;
       return (data || []) as League[];
     },
     enabled: !!clubId,
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
+    retry: 2,
   });
 }
 

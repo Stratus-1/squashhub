@@ -2719,14 +2719,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   onValueChange={(v) => setPartnerMode(v as any)}
                   onOpenChange={(open) => {
                     if (!open) return;
-                    // Workaround: Radix Select scroll-lock can reset the page scroll
-                    // position. Capture and restore it on the next tick.
                     const y = window.scrollY;
                     requestAnimationFrame(() => window.scrollTo({ top: y }));
                   }}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent position="popper" sideOffset={4} onCloseAutoFocus={(e) => e.preventDefault()}>
+                    <SelectItem value="" disabled>Please select</SelectItem>
                     <SelectItem value="admin">Admin pairs all players</SelectItem>
                     <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
                   </SelectContent>

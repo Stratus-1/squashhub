@@ -2105,7 +2105,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   }
                 }}
               >
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1 bg-background border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {listTournamentFormats().map((fmt) => (
                     <SelectItem key={fmt.key} value={fmt.key}>{fmt.label}</SelectItem>
@@ -2128,7 +2128,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       value={String(pointsPerGame)}
                       onValueChange={(v) => setPointsPerGame(Number(v) as 11 | 15)}
                     >
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="mt-1 bg-background border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="11">Par 11 (win by 2) — WSF standard</SelectItem>
                         <SelectItem value="15">Par 15 (win by 2)</SelectItem>
@@ -2141,7 +2141,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       value={String(bestOf)}
                       onValueChange={(v) => setBestOf(Number(v) as 3 | 5)}
                     >
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="mt-1 bg-background border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="3">Best of 3 (first to 2 games)</SelectItem>
                         <SelectItem value="5">Best of 5 (first to 3 games)</SelectItem>
@@ -2156,7 +2156,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <div>
                 <Label className="text-sm font-semibold">Round Format <span className="text-destructive">*</span></Label>
                 <Select value={roundFormat} onValueChange={(v) => setRoundFormat(v as any)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 bg-background border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="single_round_robin">Single round-robin (each plays once)</SelectItem>
                     <SelectItem value="double_round_robin">Double round-robin (home &amp; away, 2 rounds)</SelectItem>
@@ -2171,7 +2171,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <div>
                 <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>
                 <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 bg-background border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="no_match">No match — bye not recorded</SelectItem>
                     <SelectItem value="walkover_win">Walkover win — full points</SelectItem>

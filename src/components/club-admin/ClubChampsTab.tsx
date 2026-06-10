@@ -151,9 +151,9 @@ function buildInviteDetailLines(opts: {
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;
-  roundFormat: "single_round_robin" | "double_round_robin";
-  byeHandling: "no_match" | "walkover_win" | "neutral";
-  partnerMode: "admin" | "players";
+  roundFormat: "" | "single_round_robin" | "double_round_robin";
+  byeHandling: "" | "no_match" | "walkover_win" | "neutral";
+  partnerMode: "" | "admin" | "players";
   startDate: string;
   endDate: string;
   registrationOpensAt: string;
@@ -313,23 +313,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [matchType, setMatchType] = useState<MatchType>("singles");
   const [enablePlayoffs, setEnablePlayoffs] = useState(false);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
-  const [numGroups, setNumGroups] = useState(2);
+  const [numGroups, setNumGroups] = useState(0);
   const [champName, setChampName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [playDays, setPlayDays] = useState<Set<number>>(new Set());
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
-  const [matchDuration, setMatchDuration] = useState(30);
-  const [scoringMode, setScoringMode] = useState<"standard" | "time_capped_points">("standard");
-  const [pointsPerGame, setPointsPerGame] = useState<11 | 15>(11);
-  const [bestOf, setBestOf] = useState<3 | 5>(5);
+  const [matchDuration, setMatchDuration] = useState(0);
+  const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points">("");
+  const [pointsPerGame, setPointsPerGame] = useState<0 | 11 | 15>(0);
+  const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
-  const [roundFormat, setRoundFormat] = useState<"single_round_robin" | "double_round_robin">("single_round_robin");
-  const [byeHandling, setByeHandling] = useState<"no_match" | "walkover_win" | "neutral">("no_match");
+  const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin">("");
+  const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   // Per-day schedule overrides — for short tournaments (Fri eve, Sat morning, Sat afternoon).
   // Each entry is one time window on one date. A date can appear multiple times (multi-session days).
@@ -352,8 +352,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [sourceLeagueIds, setSourceLeagueIds] = useState<Set<string>>(new Set());
 
   // Registration & payment
-  const [registrationMode, setRegistrationMode] = useState<"open" | "invite">("open");
-  const [partnerMode, setPartnerMode] = useState<"admin" | "players">("admin");
+  const [registrationMode, setRegistrationMode] = useState<"" | "open" | "invite">("");
+  const [partnerMode, setPartnerMode] = useState<"" | "admin" | "players">("");
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
@@ -964,6 +964,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         courtIds,
       }));
     }
+    if (matchDuration <= 0) return null;
     if (sessions.length === 0) return null;
 
     // Distinct dates (for the summary card)
@@ -1730,23 +1731,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setGender("men");
     setMatchType("singles");
     setEnablePlayoffs(false);
-    setNumGroups(2);
+    setNumGroups(0);
     setChampName("");
     setStartDate("");
     setEndDate("");
     setPlayDays(new Set());
     setStartTime("18:00");
     setEndTime("20:00");
-    setMatchDuration(30);
-    setScoringMode("standard");
-    setPointsPerGame(11);
-    setBestOf(5);
+    setMatchDuration(0);
+    setScoringMode("");
+    setPointsPerGame(0);
+    setBestOf(0);
     setGroupDurations({});
     setGroupBreakMinutes({});
     setDefaultBreakMinutes(0);
     setCourtRotationMinutes(null);
-    setRoundFormat("single_round_robin");
-    setByeHandling("no_match");
+    setRoundFormat("");
+    setByeHandling("");
     setSelectedCourtIds(new Set());
     setSelectedPlayerIds(new Set());
     setGroupAssignments(new Map());
@@ -1755,8 +1756,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPairGroupAssignments(new Map());
     setPairOrder([]);
     setSourceLeagueIds(new Set());
-    setRegistrationMode("open");
-    setPartnerMode("admin");
+    setRegistrationMode("");
+    setPartnerMode("");
     setRegistrationOpensAt("");
     setRegistrationClosesAt("");
     setEntryFeeRand("0");
@@ -1790,22 +1791,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPlayDays(new Set(champ.play_days || []));
     setStartTime(champ.start_time?.slice(0, 5) || "18:00");
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
-    setMatchDuration(champ.match_duration_minutes || 30);
-    setScoringMode(((champ as any).scoring_mode as any) || "standard");
-    setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : 11));
-    setBestOf((Number((champ as any).best_of) === 3 ? 3 : 5));
+    setMatchDuration(champ.match_duration_minutes || 0);
+    setScoringMode(((champ as any).scoring_mode as any) || "");
+    setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
+    setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
     setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
-    setRoundFormat((champ.round_format as any) || "single_round_robin");
-    setByeHandling((champ.bye_handling as any) || "no_match");
+    setRoundFormat((champ.round_format as any) || "");
+    setByeHandling((champ.bye_handling as any) || "");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
       ? champ.source_league_ids
       : (champ.source_league_id ? [champ.source_league_id] : []);
     setSourceLeagueIds(new Set(initialLeagueIds));
-    setRegistrationMode((champ.registration_mode as any) || "open");
-    setPartnerMode((champ.partner_mode as any) || "admin");
+    setRegistrationMode((champ.registration_mode as any) || "");
+    setPartnerMode((champ.partner_mode as any) || "");
     setRegistrationOpensAt(champ.registration_opens_at ? new Date(champ.registration_opens_at).toISOString().slice(0,16) : "");
     setRegistrationClosesAt(champ.registration_closes_at ? new Date(champ.registration_closes_at).toISOString().slice(0,16) : "");
     setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
@@ -1987,6 +1988,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           m.push("At least one play day");
         }
         if (selectedCourtIds.size === 0) m.push("At least one court");
+        if (!matchDuration) m.push("Match duration");
         if (!awaitingPlayerPairs && schedulePreview && schedulePreview.totalSlots < schedulePreview.totalMatches) {
           m.push("Schedule has fewer slots than matches — add more days, courts, or hours");
         }
@@ -2131,17 +2133,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   }
                 }}
               >
-                <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="" disabled>Please select</SelectItem>
                   {listTournamentFormats().map((fmt) => (
                     <SelectItem key={fmt.key} value={fmt.key}>{fmt.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {getTournamentFormat(scoringMode).description}
-              </p>
-              {getTournamentFormat(scoringMode).requiresDoubles && !isDoubles && (
+              {scoringMode ? (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {getTournamentFormat(scoringMode).description}
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground mt-1">Choose a scoring format to see details.</p>
+              )}
+              {scoringMode && getTournamentFormat(scoringMode).requiresDoubles && !isDoubles && (
                 <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
                   This format requires doubles — match type will be set to Doubles.
                 </p>
@@ -2151,11 +2158,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <div>
                     <Label className="text-xs font-medium">Game length</Label>
                     <Select
-                      value={String(pointsPerGame)}
+                      value={pointsPerGame > 0 ? String(pointsPerGame) : ""}
                       onValueChange={(v) => setPointsPerGame(Number(v) as 11 | 15)}
                     >
-                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="" disabled>Please select</SelectItem>
                         <SelectItem value="11">Par 11 (win by 2) — WSF standard</SelectItem>
                         <SelectItem value="15">Par 15 (win by 2)</SelectItem>
                       </SelectContent>
@@ -2164,11 +2172,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <div>
                     <Label className="text-xs font-medium">Best of</Label>
                     <Select
-                      value={String(bestOf)}
+                      value={bestOf > 0 ? String(bestOf) : ""}
                       onValueChange={(v) => setBestOf(Number(v) as 3 | 5)}
                     >
-                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="" disabled>Please select</SelectItem>
                         <SelectItem value="3">Best of 3 (first to 2 games)</SelectItem>
                         <SelectItem value="5">Best of 5 (first to 3 games)</SelectItem>
                       </SelectContent>
@@ -2182,23 +2191,29 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <div>
                 <Label className="text-sm font-semibold">Round Format <span className="text-destructive">*</span></Label>
                 <Select value={roundFormat} onValueChange={(v) => setRoundFormat(v as any)}>
-                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="" disabled>Please select</SelectItem>
                     <SelectItem value="single_round_robin">Single round-robin (each plays once)</SelectItem>
                     <SelectItem value="double_round_robin">Double round-robin (home &amp; away, 2 rounds)</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {roundFormat === "double_round_robin"
-                    ? "All teams play one another twice — first round home, second round away."
-                    : "All teams play one another once."}
-                </p>
+                {roundFormat ? (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {roundFormat === "double_round_robin"
+                      ? "All teams play one another twice — first round home, second round away."
+                      : "All teams play one another once."}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground mt-1">Choose a round format to see details.</p>
+                )}
               </div>
               <div>
                 <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>
                 <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
-                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="" disabled>Please select</SelectItem>
                     <SelectItem value="no_match">No match — bye not recorded</SelectItem>
                     <SelectItem value="walkover_win">Walkover win — full points</SelectItem>
                     <SelectItem value="neutral">Neutral — excluded from averages</SelectItem>
@@ -2331,8 +2346,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             <div className="space-y-2">
               <Label className="text-sm">Who can register?</Label>
               <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="" disabled>Please select</SelectItem>
                   <SelectItem value="open">Open — any eligible club member</SelectItem>
                   <SelectItem value="invite">Invite-only — admin shortlists members</SelectItem>
                 </SelectContent>
@@ -2706,14 +2722,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   onValueChange={(v) => setPartnerMode(v as any)}
                   onOpenChange={(open) => {
                     if (!open) return;
-                    // Workaround: Radix Select scroll-lock can reset the page scroll
-                    // position. Capture and restore it on the next tick.
                     const y = window.scrollY;
                     requestAnimationFrame(() => window.scrollTo({ top: y }));
                   }}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent position="popper" sideOffset={4} onCloseAutoFocus={(e) => e.preventDefault()}>
+                    <SelectItem value="" disabled>Please select</SelectItem>
                     <SelectItem value="admin">Admin pairs all players</SelectItem>
                     <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
                   </SelectContent>
@@ -2876,7 +2891,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           <CardContent className="space-y-4">
             <div>
               <Label>Divide {entityCount} {isDoubles ? "pairs" : "players"} into how many leagues?</Label>
-              <Select value={String(numGroups)} onValueChange={(v) => {
+              <Select value={numGroups > 0 ? String(numGroups) : ""} onValueChange={(v) => {
                 const n = Number(v);
                 setNumGroups(n);
                 if (isDoubles) {
@@ -2897,8 +2912,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   setGroupAssignments(newMap);
                 }
               }}>
-                <SelectTrigger className="w-32 mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-32 mt-1"><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="" disabled>Please select</SelectItem>
                   {Array.from({ length: Math.floor(entityCount / 2) }, (_, i) => i + 1).map((n) => (
                     <SelectItem key={n} value={String(n)}>{n} league{n > 1 ? "s" : ""}</SelectItem>
                   ))}
@@ -3060,9 +3076,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <div><Label>End Time</Label><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
               <div>
                 <Label>Match Duration</Label>
-                <Select value={String(matchDuration)} onValueChange={(v) => setMatchDuration(Number(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
+                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="" disabled>Please select</SelectItem>
                     <SelectItem value="20">20 min</SelectItem>
                     <SelectItem value="30">30 min</SelectItem>
                     <SelectItem value="45">45 min</SelectItem>
@@ -3655,9 +3672,9 @@ function InvitePreviewDialog({
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;
-  roundFormat: "single_round_robin" | "double_round_robin";
-  byeHandling: "no_match" | "walkover_win" | "neutral";
-  partnerMode: "admin" | "players";
+  roundFormat: "" | "single_round_robin" | "double_round_robin";
+  byeHandling: "" | "no_match" | "walkover_win" | "neutral";
+  partnerMode: "" | "admin" | "players";
   startDate: string;
   endDate: string;
   registrationOpensAt: string;

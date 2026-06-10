@@ -1745,6 +1745,15 @@ export default function LeagueGameDetail() {
   // ---- Submit ----
   const handleSubmit = async () => {
     if (!fixtureId || !user) return;
+    // GUARD: if the league awards an original-player bonus, the snapshot of
+    // who counts as "original" depends on prefillLineup (week lineup +
+    // registrations). If that query hasn't resolved yet, OPB silently saves
+    // as 0 and the standings post short by the OPB amount (bug seen in NIL).
+    // Block submission until prefill data is loaded.
+    if (!!leagueRules?.original_player_bonus_enabled && !prefillLineup) {
+      toast.error("Still loading team lineup — please wait a moment and try again.");
+      return;
+    }
     setSubmitting(true);
     try {
       // Allow admins to finalize on or after the fixture date even without
@@ -1766,18 +1775,25 @@ export default function LeagueGameDetail() {
         existingSavedSquad?.home?.codes?.length || existingSavedSquad?.away?.codes?.length
         || existingSavedSquad?.home?.names?.length || existingSavedSquad?.away?.names?.length
       );
+      // Never freeze an EMPTY snapshot — that would lock OPB to 0 forever
+      // until someone re-edits the result (the exact bug we just hit). If
+      // the computed squad is empty, omit the snapshot so OPB can be
+      // recomputed from prefillLineup on the next open/save.
+      const computedHomeCodes = ((summary as any)._homePermanentSquadCodes as string[]) || [];
+      const computedAwayCodes = ((summary as any)._awayPermanentSquadCodes as string[]) || [];
+      const computedHomeNames = ((summary as any)._homePermanentSquadNames as string[]) || [];
+      const computedAwayNames = ((summary as any)._awayPermanentSquadNames as string[]) || [];
+      const computedHasAny =
+        computedHomeCodes.length || computedAwayCodes.length ||
+        computedHomeNames.length || computedAwayNames.length;
       const permanentSquadSnapshot = hasExistingSavedSquad
         ? existingSavedSquad!
-        : {
-            home: {
-              codes: (summary as any)._homePermanentSquadCodes as string[],
-              names: (summary as any)._homePermanentSquadNames as string[],
-            },
-            away: {
-              codes: (summary as any)._awayPermanentSquadCodes as string[],
-              names: (summary as any)._awayPermanentSquadNames as string[],
-            },
-          };
+        : (computedHasAny
+            ? {
+                home: { codes: computedHomeCodes, names: computedHomeNames },
+                away: { codes: computedAwayCodes, names: computedAwayNames },
+              }
+            : undefined);
       // Final submit: per-position scores are already live-saved via persistPositionScores.
       // Only re-assert player setup + forfeit state here — NEVER overwrite game_scores
       // or winner from local state (could clobber another captain's live progress).

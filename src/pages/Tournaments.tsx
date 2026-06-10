@@ -31,19 +31,26 @@ export default function Tournaments() {
   const memberId = activeMember?.id;
   const [finalizeChamp, setFinalizeChamp] = useState<any | null>(null);
 
-  const { data: champs = [], isLoading: champsLoading } = useQuery({
+  const { data: allChamps = [], isLoading: champsLoading } = useQuery({
     queryKey: ["tournaments-list", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs")
         .select("*")
         .eq("club_id", clubId!)
-        .neq("status", "completed")
         .order("start_date");
       if (error) throw error;
       return data || [];
     },
     enabled: !!clubId,
   });
+
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const isPastChamp = (c: any) =>
+    c.status === "completed" || (c.end_date && c.end_date < todayStr);
+  const champs = allChamps.filter((c: any) => !isPastChamp(c));
+  const pastChamps = allChamps
+    .filter(isPastChamp)
+    .sort((a: any, b: any) => (b.end_date || "").localeCompare(a.end_date || ""));
 
   const champIds = champs.map((c: any) => c.id);
 

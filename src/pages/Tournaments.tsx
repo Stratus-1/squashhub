@@ -516,6 +516,48 @@ export default function Tournaments() {
                 </Card>
               ))}
             </TabsContent>
+
+            <TabsContent value="past" className="mt-4 space-y-3">
+              {pastChamps.length === 0 ? (
+                <Card className="p-6 text-center text-sm text-muted-foreground">
+                  No past tournaments yet. Completed events will be archived here.
+                </Card>
+              ) : (
+                pastChamps.map((champ: any) => {
+                  const isDoubles = champ.match_type === "doubles";
+                  return (
+                    <Card key={champ.id} className="opacity-90">
+                      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+                        <div className="min-w-0">
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <Trophy className="w-4 h-4 text-muted-foreground" />
+                            <span className="truncate">{champ.name}</span>
+                          </CardTitle>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"}
+                            {" · "}
+                            {champ.start_date} to {champ.end_date}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant="secondary" className="text-[10px]">
+                            {champ.status === "completed" ? "completed" : "ended"}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(`/club-champs/${champ.id}`)}
+                          >
+                            View <ChevronRight className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  );
+                })
+              )}
+            </TabsContent>
           </Tabs>
         )}
       </div>

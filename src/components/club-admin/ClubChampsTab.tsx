@@ -2343,8 +2343,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             <div className="space-y-2">
               <Label className="text-sm">Who can register?</Label>
               <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="" disabled>Please select</SelectItem>
                   <SelectItem value="open">Open — any eligible club member</SelectItem>
                   <SelectItem value="invite">Invite-only — admin shortlists members</SelectItem>
                 </SelectContent>

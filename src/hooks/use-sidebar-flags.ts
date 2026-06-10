@@ -19,7 +19,7 @@ export function useSidebarFlags() {
   const clubId = effectiveClub?.id;
 
   const { data: clubLeagueAssociations } = useQuery({
-    queryKey: ["league-associations", clubId],
+    queryKey: ["league-associations-presence", clubId],
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await fromExt("league_associations")

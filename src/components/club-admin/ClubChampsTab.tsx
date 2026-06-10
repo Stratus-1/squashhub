@@ -2062,6 +2062,35 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
                   This format requires doubles — match type will be set to Doubles.
                 </p>
+              {scoringMode === "standard" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <Label className="text-xs font-medium">Game length</Label>
+                    <Select
+                      value={String(pointsPerGame)}
+                      onValueChange={(v) => setPointsPerGame(Number(v) as 11 | 15)}
+                    >
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="11">Par 11 (win by 2) — WSF standard</SelectItem>
+                        <SelectItem value="15">Par 15 (win by 2)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Best of</Label>
+                    <Select
+                      value={String(bestOf)}
+                      onValueChange={(v) => setBestOf(Number(v) as 3 | 5)}
+                    >
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">Best of 3 (first to 2 games)</SelectItem>
+                        <SelectItem value="5">Best of 5 (first to 3 games)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               )}
             </div>
 

@@ -421,6 +421,94 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     enabled: !!clubId,
   });
 
+  // Derive a tier label (e.g. "1st League", "2nd League") for each team-league row.
+  // Tiers live on league_rounds.name (e.g. "1st League round 1") and link to teams via
+  // platform_league_fixtures.home_team_code/away_team_code matched on league.code.
+  const { data: leagueTierMap } = useQuery({
+    queryKey: ["club-league-tiers", clubId, availableLeagues.map((l: any) => l.id).join(",")],
+    enabled: availableLeagues.length > 0,
+    queryFn: async () => {
+      const assocIds = Array.from(new Set(availableLeagues.map((l: any) => l.association_id).filter(Boolean)));
+      if (assocIds.length === 0) return new Map<string, string>();
+      const { data: assocs } = await fromExt("league_associations")
+        .select("id, platform_association_id")
+        .in("id", assocIds);
+      const platformByAssoc = new Map<string, string>();
+      (assocs || []).forEach((a: any) => platformByAssoc.set(a.id, a.platform_association_id || a.id));
+      const platformIds = Array.from(new Set(Array.from(platformByAssoc.values())));
+      const yr = new Date().getFullYear();
+      const { data: rounds } = await fromExt("league_rounds")
+        .select("id, name, round_number, association_id")
+        .in("association_id", platformIds)
+        .gte("round_date", `${yr}-01-01`)
+        .lte("round_date", `${yr}-12-31`);
+      const tierByRound = new Map<string, string>();
+      (rounds || []).forEach((r: any) => {
+        const tier = (r.name || `Round ${r.round_number}`)
+          .replace(/\s+(round|week|wk|rd)\s*\d+\s*$/i, "")
+          .trim();
+        tierByRound.set(r.id, tier || `Round ${r.round_number}`);
+      });
+      const roundIds = Array.from(tierByRound.keys());
+      const result = new Map<string, string>();
+      if (roundIds.length === 0) return result;
+      const { data: fixtures } = await fromExt("platform_league_fixtures" as any)
+        .select("round_id, home_team_code, away_team_code, association_id")
+        .in("round_id", roundIds);
+      const tierByTeam = new Map<string, string>();
+      (fixtures || []).forEach((f: any) => {
+        const tier = tierByRound.get(f.round_id);
+        if (!tier) return;
+        if (f.home_team_code) tierByTeam.set(`${f.association_id}::${f.home_team_code}`, tier);
+        if (f.away_team_code) tierByTeam.set(`${f.association_id}::${f.away_team_code}`, tier);
+      });
+      availableLeagues.forEach((l: any) => {
+        const platformAssoc = platformByAssoc.get(l.association_id);
+        if (!platformAssoc || !l.code) return;
+        const tier = tierByTeam.get(`${platformAssoc}::${l.code}`);
+        if (tier) result.set(l.id, tier);
+      });
+      return result;
+    },
+  });
+
+  // Group team-leagues into tier rows (e.g. "Nelspruit Internal League — 1st League").
+  // Leagues without a derivable tier (no fixtures yet) fall back to their own row.
+  const leagueGroups = useMemo(() => {
+    type Group = { key: string; label: string; leagueIds: string[]; tier: string | null; assocName: string; sortKey: number };
+    const grouped = new Map<string, Group>();
+    const ungrouped: Group[] = [];
+    const tierNum = (t: string) => {
+      const m = t.match(/(\d+)/);
+      return m ? parseInt(m[1], 10) : 999;
+    };
+    availableLeagues.forEach((l: any) => {
+      const assocName = l.league_associations?.name || "League";
+      const tier = leagueTierMap?.get(l.id) || null;
+      if (tier) {
+        const key = `${l.association_id}::${tier}`;
+        const ex = grouped.get(key);
+        if (ex) ex.leagueIds.push(l.id);
+        else grouped.set(key, { key, label: `${assocName} — ${tier}`, leagueIds: [l.id], tier, assocName, sortKey: tierNum(tier) });
+      } else {
+        ungrouped.push({ key: `solo::${l.id}`, label: `${assocName} — ${l.name}`, leagueIds: [l.id], tier: null, assocName, sortKey: 9999 });
+      }
+    });
+    const groupedArr = Array.from(grouped.values()).sort(
+      (a, b) => a.assocName.localeCompare(b.assocName) || a.sortKey - b.sortKey || (a.tier || "").localeCompare(b.tier || "")
+    );
+    ungrouped.sort((a, b) => a.label.localeCompare(b.label));
+    return [...groupedArr, ...ungrouped];
+  }, [availableLeagues, leagueTierMap]);
+
+  const toggleSourceGroup = (leagueIds: string[]) => {
+    const next = new Set(sourceLeagueIds);
+    const allOn = leagueIds.every((id) => next.has(id));
+    if (allOn) leagueIds.forEach((id) => next.delete(id));
+    else leagueIds.forEach((id) => next.add(id));
+    applyLeaguePrefill(next);
+  };
+
   // Re-fetch & merge players whenever the league selection changes
   const applyLeaguePrefill = async (leagueIds: Set<string>) => {
     setSourceLeagueIds(leagueIds);
@@ -2382,20 +2470,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 {inviteSource === "leagues" && (
                   <div className="space-y-2 pt-1">
                     <Label className="text-xs text-muted-foreground">Pick which leagues to seed from</Label>
-                    {availableLeagues.length === 0 ? (
+                    {leagueGroups.length === 0 ? (
                       <p className="text-xs text-muted-foreground italic">No leagues found for this club.</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto rounded border border-border/50 bg-background/60 p-2">
-                        {availableLeagues.map((lg: any) => {
-                          const assocName = lg.league_associations?.name;
-                          const label = assocName ? `${assocName} — ${lg.name}` : lg.name;
+                        {leagueGroups.map((g) => {
+                          const allOn = g.leagueIds.every((id) => sourceLeagueIds.has(id));
+                          const someOn = !allOn && g.leagueIds.some((id) => sourceLeagueIds.has(id));
                           return (
-                            <label key={lg.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1.5 py-1">
+                            <label key={g.key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1.5 py-1">
                               <Checkbox
-                                checked={sourceLeagueIds.has(lg.id)}
-                                onCheckedChange={() => toggleSourceLeague(lg.id)}
+                                checked={allOn ? true : someOn ? "indeterminate" : false}
+                                onCheckedChange={() => toggleSourceGroup(g.leagueIds)}
                               />
-                              <span className="truncate">{label}</span>
+                              <span className="truncate">{g.label}</span>
                             </label>
                           );
                         })}

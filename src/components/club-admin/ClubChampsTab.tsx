@@ -2486,6 +2486,26 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <div className="flex items-center justify-between gap-2">
                 <Label className="text-sm">Tournament details (shown in invites)</Label>
                 <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const lines = buildInviteDetailLines({
+                        gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+                        startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+                      });
+                      const bullets = lines.map((l) => `• ${l}`).join("\n");
+                      // Strip any previously inserted auto-block (between markers) then prepend fresh.
+                      const stripped = description
+                        .replace(/^[\s\S]*?— Tournament details —\n([\s\S]*?)\n— End details —\n?/m, "")
+                        .trimStart();
+                      const block = `— Tournament details —\n${bullets}\n— End details —`;
+                      setDescription(stripped ? `${block}\n\n${stripped}` : block);
+                    }}
+                  >
+                    Fill from settings
+                  </Button>
                   {editingChampId && (
                     <Button
                       type="button"
@@ -2507,14 +2527,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </div>
               </div>
               <Textarea
-                rows={5}
-                placeholder={`E.g.\nFormat: Round robin → top 2 to playoffs\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
+                rows={8}
+                placeholder={`Click "Fill from settings" to insert the tournament details (category, format, dates, registration window, fee) into this box, then add anything extra like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Appears inside the in-app notification and the email invitation. Creating or saving the tournament does NOT auto-notify — use "Send / Re-send invites" above.
+                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — use “Send / Re-send invites” above.
               </p>
+
             </div>
 
 

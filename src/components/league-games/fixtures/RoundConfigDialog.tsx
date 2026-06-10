@@ -137,45 +137,26 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
               <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>From date</Label>
-              <div className="relative">
-                <Input
-                  type="date"
-                  className="pr-9 cursor-pointer"
-                  value={draft.round_date}
-                  onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setDraft((d) => ({
-                      ...d,
-                      round_date: v,
-                      end_date: d.end_date < v ? v : d.end_date,
-                    }));
-                  }}
-                />
-                <CalendarIcon className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-              </div>
+          <div>
+            <Label>From date</Label>
+            <div className="relative">
+              <Input
+                type="date"
+                className="pr-9 cursor-pointer"
+                value={draft.round_date}
+                onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDraft((d) => ({ ...d, round_date: v, end_date: v }));
+                }}
+              />
+              <CalendarIcon className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
             </div>
-            <div>
-              <Label>To date</Label>
-              <div className="relative">
-                <Input
-                  type="date"
-                  min={draft.round_date}
-                  className="pr-9 cursor-pointer"
-                  value={draft.end_date}
-                  onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
-                  onChange={(e) => setDraft({ ...draft, end_date: e.target.value })}
-                />
-                <CalendarIcon className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-              </div>
-            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              The end date is calculated automatically from the play days and number of teams.
+            </p>
           </div>
-          {datesInvalid && (
-            <p className="text-xs text-destructive">End date must be on or after start date.</p>
-          )}
+
           <div>
             <Label>Venue</Label>
             <Select value={draft.venue_name} onValueChange={(v) => setDraft({ ...draft, venue_name: v })}>

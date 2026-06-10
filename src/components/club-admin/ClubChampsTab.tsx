@@ -313,16 +313,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       return;
     }
     const { data: regs, error } = await fromExt("member_league_registrations")
-      .select("club_member_id")
+      .select("club_member_id, is_reserve")
       .in("league_id", Array.from(leagueIds));
     if (error) {
       toast.error("Failed to load league players");
       return;
     }
-    const ids = new Set<string>((regs || []).map((r: any) => r.club_member_id).filter(Boolean));
+    const filtered = (regs || []).filter((r: any) => inviteIncludeReserves || !r.is_reserve);
+    const ids = new Set<string>(filtered.map((r: any) => r.club_member_id).filter(Boolean));
+    // Honour any admin exclusions
+    inviteExcludedMemberIds.forEach((id) => ids.delete(id));
     setSelectedPlayerIds(ids);
     if (ids.size > 0) {
-      toast.success(`Pre-filled ${ids.size} player${ids.size === 1 ? "" : "s"} from ${leagueIds.size} league${leagueIds.size === 1 ? "" : "s"}`);
+      toast.success(`Pre-filled ${ids.size} player${ids.size === 1 ? "" : "s"} from ${leagueIds.size} league${leagueIds.size === 1 ? "" : "s"}${inviteIncludeReserves ? " (incl. reserves)" : ""}`);
     } else {
       toast.info("No registered players found in the selected leagues");
     }

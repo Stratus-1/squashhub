@@ -173,6 +173,10 @@ function buildInviteDetailLines(opts: {
     /* unknown format key — skip */
   }
 
+  if (opts.scoringMode === "standard" && opts.pointsPerGame && opts.bestOf) {
+    lines.push(`Game length: Par ${opts.pointsPerGame} (win by 2), best of ${opts.bestOf}`);
+  }
+
   lines.push(
     `Round format: ${opts.roundFormat === "double_round_robin"
       ? "Double round-robin (home & away)"

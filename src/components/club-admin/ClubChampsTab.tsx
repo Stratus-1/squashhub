@@ -1905,28 +1905,74 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()) && !usedPlayerIds.has(m.id));
   }, [members, gender, usedPlayerIds]);
 
-  const canProceed = () => {
+  // Returns a list of friendly reasons why the current step can't advance.
+  // Empty array means the user can click Next.
+  const missingForStep = (): string[] => {
+    const m: string[] = [];
     switch (step) {
-      case "category": return true;
-      case "registration":
-        if (!startDate || !endDate) return false;
-        if (new Date(endDate) < new Date(startDate)) return false;
-        if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) return false;
-        if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) return false;
-        return true;
-      case "players":
-        if (selfPairInviteSelection) return selectedPlayerIds.size >= 2;
-        if (isDoubles) return doublesPairs.length >= 2;
-        return selectedPlayerIds.size >= 3;
-      case "groups":
-        return numGroups >= 1 && numGroups <= Math.floor(entityCount / 2);
-      case "schedule":
-        if (awaitingPlayerPairs) return startDate && endDate && (playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0)) && selectedCourtIds.size > 0;
-        return startDate && endDate && (playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0)) && selectedCourtIds.size > 0 && schedulePreview && schedulePreview.totalSlots >= schedulePreview.totalMatches;
-      case "review": return true;
-      default: return false;
+      case "category": {
+        if (!gender) m.push("Gender category");
+        if (!matchType) m.push("Match type (Singles or Doubles)");
+        if (!scoringMode) m.push("Scoring format");
+        if (scoringMode === "standard") {
+          if (!pointsPerGame) m.push("Game length (Par 11 or 15)");
+          if (!bestOf) m.push("Best of (3 or 5)");
+        }
+        if (!roundFormat) m.push("Round format");
+        if (!byeHandling) m.push("Bye handling");
+        break;
+      }
+      case "registration": {
+        if (!startDate) m.push("Tournament start date");
+        if (!endDate) m.push("Tournament end date");
+        if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+          m.push("End date must be on or after the start date");
+        }
+        if (!registrationOpensAt) m.push("Registration opens (date & time)");
+        if (!registrationClosesAt) m.push("Registration closes (date & time)");
+        if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
+          m.push("Registration close must be after registration open");
+        }
+        if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
+          m.push("At least one accepted payment method");
+        }
+        if (inviteMethods.size === 0) m.push("At least one invite delivery method");
+        break;
+      }
+      case "players": {
+        if (selfPairInviteSelection) {
+          if (selectedPlayerIds.size < 2) m.push("Select at least 2 players");
+        } else if (isDoubles) {
+          if (doublesPairs.length < 2) m.push("Build at least 2 doubles pairs");
+        } else if (selectedPlayerIds.size < 3) {
+          m.push("Select at least 3 players");
+        }
+        break;
+      }
+      case "groups": {
+        if (!(numGroups >= 1 && numGroups <= Math.floor(entityCount / 2))) {
+          m.push(`Number of groups must be between 1 and ${Math.max(1, Math.floor(entityCount / 2))}`);
+        }
+        break;
+      }
+      case "schedule": {
+        if (!startDate || !endDate) m.push("Tournament dates");
+        if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
+          m.push("At least one play day");
+        }
+        if (selectedCourtIds.size === 0) m.push("At least one court");
+        if (!awaitingPlayerPairs && schedulePreview && schedulePreview.totalSlots < schedulePreview.totalMatches) {
+          m.push("Schedule has fewer slots than matches — add more days, courts, or hours");
+        }
+        break;
+      }
+      case "review": break;
     }
+    return m;
   };
+
+  const canProceed = () => missingForStep().length === 0;
+
 
   // ── LIST VIEW ──
   if (!showWizard) {

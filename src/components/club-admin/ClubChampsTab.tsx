@@ -2470,20 +2470,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 {inviteSource === "leagues" && (
                   <div className="space-y-2 pt-1">
                     <Label className="text-xs text-muted-foreground">Pick which leagues to seed from</Label>
-                    {availableLeagues.length === 0 ? (
+                    {leagueGroups.length === 0 ? (
                       <p className="text-xs text-muted-foreground italic">No leagues found for this club.</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto rounded border border-border/50 bg-background/60 p-2">
-                        {availableLeagues.map((lg: any) => {
-                          const assocName = lg.league_associations?.name;
-                          const label = assocName ? `${assocName} — ${lg.name}` : lg.name;
+                        {leagueGroups.map((g) => {
+                          const allOn = g.leagueIds.every((id) => sourceLeagueIds.has(id));
+                          const someOn = !allOn && g.leagueIds.some((id) => sourceLeagueIds.has(id));
                           return (
-                            <label key={lg.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1.5 py-1">
+                            <label key={g.key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1.5 py-1">
                               <Checkbox
-                                checked={sourceLeagueIds.has(lg.id)}
-                                onCheckedChange={() => toggleSourceLeague(lg.id)}
+                                checked={allOn ? true : someOn ? "indeterminate" : false}
+                                onCheckedChange={() => toggleSourceGroup(g.leagueIds)}
                               />
-                              <span className="truncate">{label}</span>
+                              <span className="truncate">{g.label}</span>
                             </label>
                           );
                         })}

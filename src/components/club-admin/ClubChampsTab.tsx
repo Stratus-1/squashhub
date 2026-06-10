@@ -251,6 +251,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [description, setDescription] = useState("");
   const [showInvitePreview, setShowInvitePreview] = useState(false);
 
+  // Invite by league (just for the initial roster — admin can still sub from any league later)
+  const [inviteSource, setInviteSource] = useState<"manual" | "leagues">("manual");
+  const [inviteIncludeReserves, setInviteIncludeReserves] = useState<boolean>(true);
+  const [inviteExcludedMemberIds, setInviteExcludedMemberIds] = useState<Set<string>>(new Set());
+
+  // League-ranking handicap (singles only)
+  const [handicapMode, setHandicapMode] = useState<"none" | "league_rank">("none");
+
   // For partnerMode === "players": auto-load confirmed pairs from registrations
   const { data: confirmedPairRegs = [] } = useQuery({
     queryKey: ["champ-confirmed-pairs", editingChampId],

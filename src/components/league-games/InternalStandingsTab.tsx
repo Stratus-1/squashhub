@@ -312,7 +312,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={selection} onValueChange={setSelection}>
+        <Select value={selection} onValueChange={handleSelectTier}>
           <SelectTrigger className="h-8 w-[260px] text-xs">
             <SelectValue placeholder="Select league" />
           </SelectTrigger>

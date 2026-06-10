@@ -3423,6 +3423,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         </Card>
       )}
 
+      {/* Inline validation hint — lists missing required fields for the current step. */}
+      {(() => {
+        const missing = step === "review" ? [] : missingForStep();
+        if (missing.length === 0) return null;
+        return (
+          <div className="rounded-md border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+            <p className="font-semibold mb-1">Complete these before continuing:</p>
+            <ul className="list-disc pl-5 space-y-0.5">
+              {missing.map((r) => <li key={r}>{r}</li>)}
+            </ul>
+          </div>
+        );
+      })()}
+
       {/* Navigation */}
       <div className="flex justify-between items-center gap-2">
         <Button variant="outline" onClick={() => { if (stepIdx === 0) { setShowWizard(false); } else { setStep(activeSteps[stepIdx - 1]); void saveDraft(); } }}>
@@ -3437,11 +3451,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
           </Button>
         ) : (
-          <Button onClick={() => goToStep(activeSteps[stepIdx + 1])} disabled={!canProceed()}>
+          <Button
+            onClick={() => goToStep(activeSteps[stepIdx + 1])}
+            disabled={!canProceed()}
+            title={canProceed() ? undefined : `Complete: ${missingForStep().join(", ")}`}
+          >
             Next <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         )}
       </div>
+
 
 
       {/* Invite preview dialog — shows in-app notification + email side by side */}

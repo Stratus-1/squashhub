@@ -152,11 +152,23 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     ? new Map(Array.from(teamInfoByCode.entries()).map(([k, v]) => [k, v.name]))
     : undefined;
 
-  // Selection: a tier label or "ALL"
-  const [selection, setSelection] = useState<string>("");
+  // Selection: a tier label or "ALL" — persisted in URL
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTier = searchParams.get("tier");
+  const [selection, setSelection] = useState<string>(urlTier || "");
   useEffect(() => {
     if (!selection && tiers.length > 0) setSelection(tiers[0].tier);
   }, [tiers, selection]);
+
+  const handleSelectTier = (val: string) => {
+    setSelection(val);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (val && val !== (tiers[0]?.tier || "")) next.set("tier", val);
+      else next.delete("tier");
+      return next;
+    }, { replace: true });
+  };
 
   const isAllMode = selection === "ALL";
   const tiersToShow = useMemo(

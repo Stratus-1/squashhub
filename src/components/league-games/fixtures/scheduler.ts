@@ -330,9 +330,12 @@ export function allocatePairingsWithCourtFairness(
   priorUsage: CourtUsage,
 ): RoundRobinAllocation {
   if (!courtIds.length) return { slots: [], byes: [], error: "No courts assigned to this round." };
-  const dates = eachDate(startDate, endDate || startDate, playDows);
+  const openEnded = !endDate || endDate === startDate;
+  const dates = openEnded
+    ? nextNPlayDates(startDate, pairingBatches.length, playDows)
+    : eachDate(startDate, endDate, playDows);
   const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
-  if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the date range, time window, and slot length." };
+  if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the start date, time window, and slot length." };
   if (pairingBatches.length > dates.length) {
     return { slots: [], byes: [], error: `Need at least ${pairingBatches.length} play date(s).` };
   }

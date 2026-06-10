@@ -964,6 +964,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         courtIds,
       }));
     }
+    if (matchDuration <= 0) return null;
     if (sessions.length === 0) return null;
 
     // Distinct dates (for the summary card)

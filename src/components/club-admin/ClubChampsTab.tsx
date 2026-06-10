@@ -1790,22 +1790,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPlayDays(new Set(champ.play_days || []));
     setStartTime(champ.start_time?.slice(0, 5) || "18:00");
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
-    setMatchDuration(champ.match_duration_minutes || 30);
-    setScoringMode(((champ as any).scoring_mode as any) || "standard");
-    setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : 11));
-    setBestOf((Number((champ as any).best_of) === 3 ? 3 : 5));
+    setMatchDuration(champ.match_duration_minutes || 0);
+    setScoringMode(((champ as any).scoring_mode as any) || "");
+    setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
+    setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
     setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
-    setRoundFormat((champ.round_format as any) || "single_round_robin");
-    setByeHandling((champ.bye_handling as any) || "no_match");
+    setRoundFormat((champ.round_format as any) || "");
+    setByeHandling((champ.bye_handling as any) || "");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
       ? champ.source_league_ids
       : (champ.source_league_id ? [champ.source_league_id] : []);
     setSourceLeagueIds(new Set(initialLeagueIds));
-    setRegistrationMode((champ.registration_mode as any) || "open");
-    setPartnerMode((champ.partner_mode as any) || "admin");
+    setRegistrationMode((champ.registration_mode as any) || "");
+    setPartnerMode((champ.partner_mode as any) || "");
     setRegistrationOpensAt(champ.registration_opens_at ? new Date(champ.registration_opens_at).toISOString().slice(0,16) : "");
     setRegistrationClosesAt(champ.registration_closes_at ? new Date(champ.registration_closes_at).toISOString().slice(0,16) : "");
     setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());

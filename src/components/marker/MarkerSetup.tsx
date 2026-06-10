@@ -996,6 +996,12 @@ export function MarkerSetup({ onStart }: Props) {
             deuceRule,
             source,
             sourceId: selectedSourceId || undefined,
+            handicapA: source === "tournament" && selectedSourceId
+              ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_a) || 0
+              : undefined,
+            handicapB: source === "tournament" && selectedSourceId
+              ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_b) || 0
+              : undefined,
             clubId: clubId || undefined,
           })
         }

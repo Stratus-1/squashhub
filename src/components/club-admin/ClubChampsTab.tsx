@@ -1623,6 +1623,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (!champId) throw new Error("Save the tournament first before booking courts.");
 
       const isBellsMode = scoringMode === "time_capped_points";
+      const tournamentLabel = (champName || "Tournament").trim();
 
       let rows: any[];
 
@@ -1670,6 +1671,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             end_time: gEnd,
             status: "active",
             is_friendly: false,
+            guest_name: tournamentLabel,
             source: "club_event",
             external_id: `champ:${champId}:block:${date}:${cid}`,
           }))
@@ -1708,6 +1710,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             end_time: endTimeStr,
             status: "active",
             is_friendly: false,
+            guest_name: tournamentLabel,
             source: "club_event",
             external_id: `champ:${champId}:match:${m.id}`,
           };

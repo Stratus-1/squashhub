@@ -1637,32 +1637,64 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       const isBellsMode = scoringMode === "time_capped_points";
 
-      const rows = playable.map((m: any) => {
-        const bookerMemberId = m.partner_a_member_id || m.player_a_member_id;
-        const bookerUserId = memberUserMap.get(bookerMemberId) || memberUserMap.get(m.player_a_member_id);
-        const cap = isBellsMode
-          ? (Number(groupDurations[String(m.group_number)]) || matchDuration)
-          : matchDuration;
-        const start = String(m.scheduled_time).slice(0, 5);
-        const [h, min] = start.split(":").map(Number);
-        const endMins = h * 60 + min + cap;
-        const endH = Math.floor(endMins / 60) % 24;
-        const endM = endMins % 60;
-        const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-        return {
+      let rows: any[];
+
+      if (isBellsMode) {
+        // Bells = many short matches in shared time slots. Don't book per-match;
+        // instead reserve each (date, court) as one global tournament block for
+        // the whole playing window.
+        const seen = new Set<string>();
+        const blocks: Array<{ date: string; court_id: number }> = [];
+        for (const m of playable as any[]) {
+          const key = `${m.scheduled_date}|${m.court_id}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          blocks.push({ date: m.scheduled_date, court_id: m.court_id });
+        }
+        const gStart = String(startTime || "").slice(0, 5);
+        const gEnd = String(endTime || "").slice(0, 5);
+        if (!gStart || !gEnd) {
+          throw new Error("Set the tournament start and end time before booking courts.");
+        }
+        rows = blocks.map((b) => ({
           club_id: clubId,
-          court_id: m.court_id,
-          user_id: bookerUserId || null,
-          club_member_id: m.player_a_member_id,
-          date: m.scheduled_date,
-          start_time: start,
-          end_time: endTimeStr,
+          court_id: b.court_id,
+          user_id: null,
+          club_member_id: null,
+          date: b.date,
+          start_time: gStart,
+          end_time: gEnd,
           status: "active",
           is_friendly: false,
           source: "club_event",
-          external_id: `champ:${champId}:match:${m.id}`,
-        };
-      });
+          external_id: `champ:${champId}:block:${b.date}:${b.court_id}`,
+        }));
+      } else {
+        rows = playable.map((m: any) => {
+          const bookerMemberId = m.partner_a_member_id || m.player_a_member_id;
+          const bookerUserId = memberUserMap.get(bookerMemberId) || memberUserMap.get(m.player_a_member_id);
+          const cap = matchDuration;
+          const start = String(m.scheduled_time).slice(0, 5);
+          const [h, min] = start.split(":").map(Number);
+          const endMins = h * 60 + min + cap;
+          const endH = Math.floor(endMins / 60) % 24;
+          const endM = endMins % 60;
+          const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+          return {
+            club_id: clubId,
+            court_id: m.court_id,
+            user_id: bookerUserId || null,
+            club_member_id: m.player_a_member_id,
+            date: m.scheduled_date,
+            start_time: start,
+            end_time: endTimeStr,
+            status: "active",
+            is_friendly: false,
+            source: "club_event",
+            external_id: `champ:${champId}:match:${m.id}`,
+          };
+        });
+      }
 
       const { data: inserted, error: bErr } = await fromExt("bookings")
         .upsert(rows, { onConflict: "club_id,source,external_id", ignoreDuplicates: true })

@@ -3213,38 +3213,40 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             <div className="grid grid-cols-3 gap-4">
               <div><Label>Start Time</Label><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
               <div><Label>End Time</Label><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
-              <div>
-                <Label>Match Duration</Label>
-                <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
-                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="20">20 min</SelectItem>
-                    <SelectItem value="30">30 min</SelectItem>
-                    <SelectItem value="45">45 min</SelectItem>
-                    <SelectItem value="60">60 min</SelectItem>
-                  </SelectContent>
-                </Select>
-            </div>
+              {scoringMode !== "time_capped_points" && (
+                <div>
+                  <Label>Match Duration</Label>
+                  <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
+                    <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__placeholder" disabled>Please select</SelectItem>
+                      <SelectItem value="20">20 min</SelectItem>
+                      <SelectItem value="30">30 min</SelectItem>
+                      <SelectItem value="45">45 min</SelectItem>
+                      <SelectItem value="60">60 min</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-            <div>
-              <Label>Available Courts</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {courts.map((c) => (
-                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox
-                      checked={selectedCourtIds.has(c.id)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selectedCourtIds);
-                        checked ? next.add(c.id) : next.delete(c.id);
-                        setSelectedCourtIds(next);
-                      }}
-                    />
-                    <span className="text-sm">{c.name}</span>
-                  </label>
-                ))}
+              <div>
+                <Label>Available Courts</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {courts.map((c) => (
+                    <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
+                      <Checkbox
+                        checked={selectedCourtIds.has(c.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedCourtIds);
+                          checked ? next.add(c.id) : next.delete(c.id);
+                          setSelectedCourtIds(next);
+                        }}
+                      />
+                      <span className="text-sm">{c.name}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
             </div>
 
             {/* Per-day schedule overrides — useful for short tournaments (Fri eve, Sat morning, Sat afternoon). */}

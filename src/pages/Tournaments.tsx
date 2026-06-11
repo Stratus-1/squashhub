@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, ChevronRight, Loader2, Calendar, User, BarChart3, Gavel, Settings2 } from "lucide-react";
+import { Trophy, ChevronRight, Loader2, Calendar, User, BarChart3, Gavel, Settings2, Printer } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -205,6 +206,82 @@ export default function Tournaments() {
     );
   };
 
+  const buildScheduleHtml = (title: string, matches: any[]) => {
+    const rows = matches
+      .map((m) => {
+        const champ = allChamps.find((c: any) => c.id === m.champ_id);
+        const isDoubles = champ?.match_type === "doubles";
+        const teamA = isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a);
+        const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
+        const date = m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD";
+        const time = m.scheduled_time?.slice(0, 5) || "";
+        const court = m.court?.name || "";
+        const tName = champ?.name || "";
+        return `<tr><td>${date}</td><td>${time}</td><td>${court}</td><td>${teamA}</td><td>${teamB}</td><td>${tName}</td></tr>`;
+      })
+      .join("");
+    return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;padding:24px;color:#111}
+  h1{margin:0 0 4px;font-size:20px}
+  .sub{color:#666;font-size:12px;margin-bottom:16px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}
+  th{background:#1E3A5F;color:#fff}
+  tr:nth-child(even) td{background:#f7f7f9}
+  .toolbar{margin-bottom:12px}
+  button{padding:6px 12px;font-size:12px;cursor:pointer}
+  @media print{.toolbar{display:none}}
+</style></head><body>
+<div class="toolbar"><button onclick="window.print()">Print</button></div>
+<h1>${title}</h1>
+<div class="sub">${matches.length} match${matches.length === 1 ? "" : "es"} · Generated ${format(new Date(), "dd MMM yyyy HH:mm")}</div>
+<table><thead><tr><th>Date</th><th>Time</th><th>Court</th><th>Player / Team A</th><th>Player / Team B</th><th>Tournament</th></tr></thead>
+<tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:#888">No matches</td></tr>`}</tbody></table>
+</body></html>`;
+  };
+
+  const openSchedule = (title: string, matches: any[]) => {
+    const html = buildScheduleHtml(title, matches);
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
+  const downloadScheduleCsv = (title: string, matches: any[]) => {
+    const header = ["Date", "Time", "Court", "Player/Team A", "Player/Team B", "Tournament"];
+    const esc = (v: string) => `"${(v || "").replace(/"/g, '""')}"`;
+    const lines = [header.join(",")];
+    matches.forEach((m) => {
+      const champ = allChamps.find((c: any) => c.id === m.champ_id);
+      const isDoubles = champ?.match_type === "doubles";
+      const teamA = isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a);
+      const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
+      lines.push([
+        m.scheduled_date || "",
+        m.scheduled_time?.slice(0, 5) || "",
+        m.court?.name || "",
+        teamA,
+        teamB,
+        champ?.name || "",
+      ].map(esc).join(","));
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/[^a-z0-9]+/gi, "_")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const courtNames = Array.from(
+    new Set(upcomingMatches.map((m: any) => m.court?.name).filter(Boolean)),
+  ).sort() as string[];
+
+
 
   return (
     <div className="bottom-nav-safe">
@@ -287,9 +364,40 @@ export default function Tournaments() {
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Calendar className="w-4 h-4" /> All Upcoming Tournament Games
-                  </CardTitle>
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Calendar className="w-4 h-4" /> All Upcoming Tournament Games
+                    </CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-1 h-7">
+                          <Printer className="w-3.5 h-3.5" /> Print / Download
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>Full schedule</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => openSchedule("Full Tournament Schedule", upcomingMatches)}>
+                          <Printer className="w-3.5 h-3.5 mr-2" /> Print full schedule
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => downloadScheduleCsv("Full Tournament Schedule", upcomingMatches)}>
+                          <Calendar className="w-3.5 h-3.5 mr-2" /> Download CSV
+                        </DropdownMenuItem>
+                        {courtNames.length > 0 && <DropdownMenuSeparator />}
+                        {courtNames.length > 0 && <DropdownMenuLabel>Per court</DropdownMenuLabel>}
+                        {courtNames.map((c) => {
+                          const list = upcomingMatches.filter((m: any) => m.court?.name === c);
+                          return (
+                            <DropdownMenuItem
+                              key={c}
+                              onClick={() => openSchedule(`${c} – Schedule`, list)}
+                            >
+                              <Printer className="w-3.5 h-3.5 mr-2" /> {c} ({list.length})
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {upcomingMatches.length === 0 ? (

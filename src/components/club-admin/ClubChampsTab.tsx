@@ -3547,18 +3547,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     const totalCourtMin = capSessions.reduce((a, s) => a + Math.max(0, s.minutes) * s.courts, 0);
                     const tH = Math.floor(totalCourtMin / 60);
                     const tM = totalCourtMin % 60;
-                    const playersPerGame = isDoubles ? 4 : 2;
+                    // Round-robin: G games for N entities = N*(N-1)/2
+                    // → max N such that N*(N-1)/2 ≤ G  ⇒  N = floor((1+√(1+8G))/2)
+                    const maxEntitiesFor = (G: number) => Math.max(0, Math.floor((1 + Math.sqrt(1 + 8 * G)) / 2));
                     const leagues = Array.from({ length: numGroups }, (_, i) => i + 1);
                     const perLeague = leagues.map((gn) => {
                       const slot = Number(groupDurations[String(gn)]) || matchDuration || 20;
                       const games = capSessions.reduce((a, s) => a + Math.floor(s.minutes / slot) * s.courts, 0);
-                      return { gn, slot, games, players: games * playersPerGame };
+                      const entities = maxEntitiesFor(games); // players (singles) or pairs (doubles)
+                      const gamesUsed = (entities * (entities - 1)) / 2;
+                      const players = isDoubles ? entities * 2 : entities;
+                      return { gn, slot, games, gamesUsed, entities, players };
                     });
                     const sessionsCount = capSessions.length;
                     const courtsUsed = capSessions.reduce((a, s) => Math.max(a, s.courts), 0);
                     return (
                       <div className="mt-2 rounded-lg border p-3 bg-muted/40 text-xs space-y-2">
-                        <div className="font-medium text-sm">Capacity ({isDoubles ? "doubles" : "singles"})</div>
+                        <div className="font-medium text-sm">Capacity ({isDoubles ? "doubles" : "singles"}, round-robin)</div>
                         <div className="text-muted-foreground">
                           {sessionsCount} session{sessionsCount === 1 ? "" : "s"} · up to {courtsUsed} court{courtsUsed === 1 ? "" : "s"} · {tH}h {tM}m total court-time
                         </div>
@@ -3566,19 +3571,25 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           <div className="text-muted-foreground italic">Pick a number of leagues to see per-league capacity.</div>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                            {perLeague.map(({ gn, slot, games, players }) => (
-                              <div key={gn} className="flex items-center gap-2 p-1.5 rounded border bg-background">
-                                <span className="font-medium w-16">League {gn}</span>
-                                <span className="text-muted-foreground">{slot} min/slot</span>
-                                <span className="ml-auto">
-                                  <strong>{games}</strong> games · <strong>{players}</strong> player slots
-                                </span>
+                            {perLeague.map(({ gn, slot, games, gamesUsed, entities, players }) => (
+                              <div key={gn} className="flex flex-col gap-0.5 p-1.5 rounded border bg-background">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium w-16">League {gn}</span>
+                                  <span className="text-muted-foreground">{slot} min/slot</span>
+                                  <span className="ml-auto">
+                                    up to <strong>{players}</strong> players
+                                    {isDoubles && <> (<strong>{entities}</strong> pairs)</>}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-muted-foreground pl-[4.5rem]">
+                                  fits {games} game{games === 1 ? "" : "s"} · {gamesUsed} used for full round-robin
+                                </div>
                               </div>
                             ))}
                           </div>
                         )}
                         <div className="text-[11px] text-muted-foreground">
-                          Per-league figures assume that league has access to all selected courts for the full duration. When multiple leagues share courts, the scheduler splits them proportionally — see the actual fixture preview below.
+                          Round-robin: each {isDoubles ? "pair" : "player"} plays every other once ({isDoubles ? "P·(P−1)/2" : "N·(N−1)/2"} games). Per-league figures assume that league has access to all selected courts for the full duration.
                         </div>
                       </div>
                     );

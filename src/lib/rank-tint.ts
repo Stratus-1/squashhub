@@ -6,23 +6,24 @@
  *   <tr style={rankTint(i, rows.length)} />
  */
 export function rankTint(rank: number, total: number): React.CSSProperties {
-  if (total <= 1) return { backgroundColor: "hsl(140 55% 40% / 0.85)", color: "hsl(0 0% 100%)" };
+  // Light pastel tints so dark text (and emerald/rose cell colors) remain legible.
+  const darkText = "hsl(220 25% 15%)";
+  if (total <= 1) return { backgroundColor: "hsl(140 45% 88%)", color: darkText };
   const t = rank / (total - 1); // 0 = top, 1 = bottom
   let h: number, s: number, l: number;
   if (t <= 0.5) {
-    // Dark green -> light green
+    // Stronger light green -> very light green
     const k = t / 0.5;
     h = 140;
-    s = 50 - k * 15;        // 50% -> 35%
-    l = 38 + k * 50;        // 38% -> 88%
+    s = 45 - k * 10;        // 45% -> 35%
+    l = 78 + k * 14;        // 78% -> 92%
   } else {
-    // Light pink -> red
+    // Very light pink -> light red
     const k = (t - 0.5) / 0.5;
-    h = 350 - k * 10;       // 350 -> 340
-    s = 70 + k * 10;        // 70% -> 80%
-    l = 88 - k * 38;        // 88% -> 50%
+    h = 350 - k * 5;        // 350 -> 345
+    s = 55 + k * 10;        // 55% -> 65%
+    l = 92 - k * 14;        // 92% -> 78%
   }
   const bg = `hsl(${h.toFixed(0)} ${s.toFixed(0)}% ${l.toFixed(0)}%)`;
-  const color = l < 55 ? "hsl(0 0% 100%)" : "hsl(220 25% 15%)";
-  return { backgroundColor: bg, color };
+  return { backgroundColor: bg, color: darkText };
 }

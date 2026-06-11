@@ -322,6 +322,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [endTime, setEndTime] = useState("20:00");
   const [matchDuration, setMatchDuration] = useState(0);
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points">("");
+  const [showCapacity, setShowCapacity] = useState(false);
   const [pointsPerGame, setPointsPerGame] = useState<0 | 11 | 15>(0);
   const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});

@@ -1642,7 +1642,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const memberUserMap = new Map<string, string>();
       members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });
 
-      const isBellsMode = scoringMode === "time_capped_points";
+
+
 
       let rows: any[];
 

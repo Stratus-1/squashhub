@@ -17,8 +17,8 @@ export const BellsFormat: TournamentFormat = {
   key: "time_capped_points",
   label: "Bells — time-capped, ranked by points scored",
   description:
-    "Doubles pairs play until a per-league bell rings. Standings ranked by total points scored.",
-  requiresDoubles: true,
+    "Players (singles or doubles pairs) play until a per-league bell rings. Standings ranked by total points scored.",
+  requiresDoubles: false,
 
   markerRoute(matchId) {
     return `/bells-marker/${matchId}`;

@@ -1627,10 +1627,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         .eq("champ_id", champId);
       if (mErr) throw mErr;
 
+      const isBellsMode = scoringMode === "time_capped_points";
       const playable = (champMatches || []).filter((m: any) =>
-        !m.is_bye && m.scheduled_date && m.scheduled_time && m.court_id
+        !m.is_bye && m.scheduled_date && m.court_id && (isBellsMode || m.scheduled_time)
       );
-      if (playable.length === 0) throw new Error("No scheduled matches with date/time/court found.");
+      if (playable.length === 0) {
+        throw new Error(
+          isBellsMode
+            ? "No matches with a date and court found. Allocate courts/dates first."
+            : "No scheduled matches with date/time/court found."
+        );
+      }
 
       const memberUserMap = new Map<string, string>();
       members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });

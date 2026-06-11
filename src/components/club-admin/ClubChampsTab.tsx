@@ -1671,6 +1671,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             end_time: gEnd,
             status: "active",
             is_friendly: false,
+            guest_name: tournamentLabel,
             source: "club_event",
             external_id: `champ:${champId}:block:${date}:${cid}`,
           }))

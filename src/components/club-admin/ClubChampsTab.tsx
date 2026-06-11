@@ -392,6 +392,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     enabled: !!editingChampId && partnerMode === "players" && matchType === "doubles" && showWizard,
   });
 
+  // Bells format ignores Match Duration (slot times are defined per-league).
+  // Ensure schedulePreview's matchDuration guard passes by defaulting to 20.
+  useEffect(() => {
+    if (scoringMode === "time_capped_points" && (!matchDuration || matchDuration <= 0)) {
+      setMatchDuration(20);
+    }
+  }, [scoringMode, matchDuration]);
+
   useEffect(() => {
     if (partnerMode !== "players" || matchType !== "doubles") return;
     // Dedupe reciprocal rows: only keep one pair per unordered (a,b)

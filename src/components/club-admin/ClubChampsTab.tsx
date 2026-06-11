@@ -1137,7 +1137,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       return pair ? [pair.player1Id, pair.player2Id] : [entityId];
     };
 
-    const isBellsMode = scoringMode === "time_capped_points" && isDoubles;
+    const isBellsMode = scoringMode === "time_capped_points";
 
     if (isBellsMode) {
       // Bells: per-league time caps; auto-distribute courts across leagues, then
@@ -1553,7 +1553,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
           const [h, min] = m.time!.split(":").map(Number);
           // Bells: each league has its own time cap (group_durations[league]).
-          const isBellsMode = scoringMode === "time_capped_points" && isDoubles;
+          const isBellsMode = scoringMode === "time_capped_points";
           const cap = isBellsMode
             ? (Number(groupDurations[String(m.groupNum)]) || matchDuration)
             : matchDuration;
@@ -1635,7 +1635,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const memberUserMap = new Map<string, string>();
       members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });
 
-      const isBellsMode = scoringMode === "time_capped_points" && isDoubles;
+      const isBellsMode = scoringMode === "time_capped_points";
 
       const rows = playable.map((m: any) => {
         const bookerMemberId = m.partner_a_member_id || m.player_a_member_id;

@@ -1312,6 +1312,17 @@ export default function LeagueGameDetail() {
       const gamesToWin = bestOf === 5 ? 3 : 2;
       const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
       const explicitWinner = matchDecided ? (hw > aw ? "home" : "away") : null;
+      // ---- Unfreeze a completed rubber so edits actually persist. ----
+      // A DB trigger (freeze_completed_rubber) silently reverts game_scores
+      // when OLD.winner IS NOT NULL and NEW.winner IS NOT NULL. To allow a
+      // captain/admin to correct a previously-completed rubber, we first
+      // clear the winner — then the upsert below sets the new scores and
+      // recomputes the winner.
+      await supabase
+        .from("league_match_results" as any)
+        .update({ winner: null } as any)
+        .eq("fixture_id", fixtureId)
+        .eq("position", posIdx + 1);
       await supabase.from("league_match_results" as any).upsert({
         fixture_id: fixtureId, position: posIdx + 1,
         home_player_code: updatedPos.homeCode.toUpperCase(), away_player_code: updatedPos.awayCode.toUpperCase(),
@@ -1333,6 +1344,7 @@ export default function LeagueGameDetail() {
       console.error("Auto-save failed:", err);
     }
   }, [fixtureId, user, queryClient, bestOf]);
+
 
   // ---- Persist only the IN-PROGRESS rally (e.g. 7-3 in the current game).
   // Writes to `current_game` column so realtime viewers see live points without

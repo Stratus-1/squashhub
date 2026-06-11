@@ -322,6 +322,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [endTime, setEndTime] = useState("20:00");
   const [matchDuration, setMatchDuration] = useState(0);
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points">("");
+  const [showCapacity, setShowCapacity] = useState(false);
   const [pointsPerGame, setPointsPerGame] = useState<0 | 11 | 15>(0);
   const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
@@ -390,6 +391,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     },
     enabled: !!editingChampId && partnerMode === "players" && matchType === "doubles" && showWizard,
   });
+
+  // Bells format ignores Match Duration (slot times are defined per-league).
+  // Ensure schedulePreview's matchDuration guard passes by defaulting to 20.
+  useEffect(() => {
+    if (scoringMode === "time_capped_points" && (!matchDuration || matchDuration <= 0)) {
+      setMatchDuration(20);
+    }
+  }, [scoringMode, matchDuration]);
 
   useEffect(() => {
     if (partnerMode !== "players" || matchType !== "doubles") return;
@@ -3213,38 +3222,40 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             <div className="grid grid-cols-3 gap-4">
               <div><Label>Start Time</Label><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
               <div><Label>End Time</Label><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
-              <div>
-                <Label>Match Duration</Label>
-                <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
-                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="20">20 min</SelectItem>
-                    <SelectItem value="30">30 min</SelectItem>
-                    <SelectItem value="45">45 min</SelectItem>
-                    <SelectItem value="60">60 min</SelectItem>
-                  </SelectContent>
-                </Select>
-            </div>
+              {scoringMode !== "time_capped_points" && (
+                <div>
+                  <Label>Match Duration</Label>
+                  <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
+                    <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__placeholder" disabled>Please select</SelectItem>
+                      <SelectItem value="20">20 min</SelectItem>
+                      <SelectItem value="30">30 min</SelectItem>
+                      <SelectItem value="45">45 min</SelectItem>
+                      <SelectItem value="60">60 min</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-            <div>
-              <Label>Available Courts</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {courts.map((c) => (
-                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox
-                      checked={selectedCourtIds.has(c.id)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selectedCourtIds);
-                        checked ? next.add(c.id) : next.delete(c.id);
-                        setSelectedCourtIds(next);
-                      }}
-                    />
-                    <span className="text-sm">{c.name}</span>
-                  </label>
-                ))}
+              <div>
+                <Label>Available Courts</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {courts.map((c) => (
+                    <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
+                      <Checkbox
+                        checked={selectedCourtIds.has(c.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedCourtIds);
+                          checked ? next.add(c.id) : next.delete(c.id);
+                          setSelectedCourtIds(next);
+                        }}
+                      />
+                      <span className="text-sm">{c.name}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
             </div>
 
             {/* Per-day schedule overrides — useful for short tournaments (Fri eve, Sat morning, Sat afternoon). */}
@@ -3498,6 +3509,82 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Slot = how often games kick off on a court. Break = changeover time built into each slot — the bell rings at <em>slot − break</em>, leaving players time to swap on. Leave blank to use the defaults.
                   </p>
+
+                  <div className="mt-2 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setShowCapacity((v) => !v)}
+                    >
+                      {showCapacity ? "Hide capacity" : "Calculate capacity"}
+                    </Button>
+                    <span className="text-[11px] text-muted-foreground">
+                      How many games &amp; player slots fit in the selected time, given courts and per-league slot.
+                    </span>
+                  </div>
+
+                  {showCapacity && (() => {
+                    const parseHM = (s: string) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+                    type CapSession = { date: string; minutes: number; courts: number };
+                    let capSessions: CapSession[] = [];
+                    if (customizeDailySchedule && daySchedules.length > 0) {
+                      capSessions = daySchedules
+                        .map((d) => {
+                          const cs = (d.court_ids && d.court_ids.length > 0
+                            ? d.court_ids.filter((id) => selectedCourtIds.has(id))
+                            : Array.from(selectedCourtIds));
+                          return { date: d.date, minutes: parseHM(d.end_time) - parseHM(d.start_time), courts: cs.length };
+                        })
+                        .filter((s) => s.minutes > 0 && s.courts > 0);
+                    } else if (startDate && endDate && playDays.size > 0 && selectedCourtIds.size > 0) {
+                      const dates = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) })
+                        .filter((d) => playDays.has(getDay(d)));
+                      const mins = parseHM(endTime) - parseHM(startTime);
+                      capSessions = dates.map((d) => ({ date: format(d, "yyyy-MM-dd"), minutes: mins, courts: selectedCourtIds.size }));
+                    }
+                    const totalCourtMin = capSessions.reduce((a, s) => a + Math.max(0, s.minutes) * s.courts, 0);
+                    const tH = Math.floor(totalCourtMin / 60);
+                    const tM = totalCourtMin % 60;
+                    const playersPerGame = isDoubles ? 4 : 2;
+                    const leagues = Array.from({ length: numGroups }, (_, i) => i + 1);
+                    const perLeague = leagues.map((gn) => {
+                      const slot = Number(groupDurations[String(gn)]) || matchDuration || 20;
+                      const games = capSessions.reduce((a, s) => a + Math.floor(s.minutes / slot) * s.courts, 0);
+                      return { gn, slot, games, players: games * playersPerGame };
+                    });
+                    const sessionsCount = capSessions.length;
+                    const courtsUsed = capSessions.reduce((a, s) => Math.max(a, s.courts), 0);
+                    return (
+                      <div className="mt-2 rounded-lg border p-3 bg-muted/40 text-xs space-y-2">
+                        <div className="font-medium text-sm">Capacity ({isDoubles ? "doubles" : "singles"})</div>
+                        <div className="text-muted-foreground">
+                          {sessionsCount} session{sessionsCount === 1 ? "" : "s"} · up to {courtsUsed} court{courtsUsed === 1 ? "" : "s"} · {tH}h {tM}m total court-time
+                        </div>
+                        {perLeague.length === 0 ? (
+                          <div className="text-muted-foreground italic">Pick a number of leagues to see per-league capacity.</div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {perLeague.map(({ gn, slot, games, players }) => (
+                              <div key={gn} className="flex items-center gap-2 p-1.5 rounded border bg-background">
+                                <span className="font-medium w-16">League {gn}</span>
+                                <span className="text-muted-foreground">{slot} min/slot</span>
+                                <span className="ml-auto">
+                                  <strong>{games}</strong> games · <strong>{players}</strong> player slots
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-muted-foreground">
+                          Per-league figures assume that league has access to all selected courts for the full duration. When multiple leagues share courts, the scheduler splits them proportionally — see the actual fixture preview below.
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+
 
 
 

@@ -54,6 +54,14 @@ function globalIndex(p: PlayerRank, offsets: Record<number, number>): number | n
   return off + (p.ladder_position || 0);
 }
 
+/**
+ * Maximum handicap (in points) the stronger player can start on. Raw
+ * ladder-index gaps can be huge across many leagues (e.g. league 1 #1 vs
+ * league 5 #4 = ~94), which is nonsensical for a Bells-style match that
+ * typically lasts 8 minutes. Cap to a sensible competitive offset.
+ */
+export const MAX_HANDICAP = 10;
+
 /** Stronger player gets negative starting score; weaker starts on 0. */
 export function computeHandicap(
   playerA: PlayerRank,
@@ -64,7 +72,7 @@ export function computeHandicap(
   const ib = globalIndex(playerB, offsets);
   if (ia == null || ib == null) return { handicap_a: 0, handicap_b: 0 };
   if (ia === ib) return { handicap_a: 0, handicap_b: 0 };
-  const diff = Math.abs(ia - ib);
+  const diff = Math.min(Math.abs(ia - ib), MAX_HANDICAP);
   if (ia < ib) return { handicap_a: -diff, handicap_b: 0 };
   return { handicap_a: 0, handicap_b: -diff };
 }

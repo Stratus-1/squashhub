@@ -1710,6 +1710,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             end_time: endTimeStr,
             status: "active",
             is_friendly: false,
+            guest_name: tournamentLabel,
             source: "club_event",
             external_id: `champ:${champId}:match:${m.id}`,
           };

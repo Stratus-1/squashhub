@@ -364,9 +364,40 @@ export default function Tournaments() {
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Calendar className="w-4 h-4" /> All Upcoming Tournament Games
-                  </CardTitle>
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Calendar className="w-4 h-4" /> All Upcoming Tournament Games
+                    </CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-1 h-7">
+                          <Printer className="w-3.5 h-3.5" /> Print / Download
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>Full schedule</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => openSchedule("Full Tournament Schedule", upcomingMatches)}>
+                          <Printer className="w-3.5 h-3.5 mr-2" /> Print full schedule
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => downloadScheduleCsv("Full Tournament Schedule", upcomingMatches)}>
+                          <Calendar className="w-3.5 h-3.5 mr-2" /> Download CSV
+                        </DropdownMenuItem>
+                        {courtNames.length > 0 && <DropdownMenuSeparator />}
+                        {courtNames.length > 0 && <DropdownMenuLabel>Per court</DropdownMenuLabel>}
+                        {courtNames.map((c) => {
+                          const list = upcomingMatches.filter((m: any) => m.court?.name === c);
+                          return (
+                            <DropdownMenuItem
+                              key={c}
+                              onClick={() => openSchedule(`${c} – Schedule`, list)}
+                            >
+                              <Printer className="w-3.5 h-3.5 mr-2" /> {c} ({list.length})
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {upcomingMatches.length === 0 ? (

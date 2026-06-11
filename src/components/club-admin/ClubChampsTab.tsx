@@ -2649,6 +2649,28 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <p className="text-xs text-muted-foreground">
                   Stronger player starts on a negative score equal to the position gap (e.g. 3rd league #1 vs 3rd league #4 → −3 / 0; vs 4th league #2 → −10 / 0). Recomputed automatically when a sub is pulled in.
                 </p>
+                {editingChampId && handicapMode === "league_rank" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      if (!clubId) return;
+                      try {
+                        const n = await applyHandicapsToChamp(editingChampId, clubId);
+                        toast.success(
+                          n > 0
+                            ? `Recomputed handicaps on ${n} match${n === 1 ? "" : "es"}`
+                            : "Handicaps already up to date",
+                        );
+                      } catch (e: any) {
+                        toast.error(e?.message || "Failed to recompute handicaps");
+                      }
+                    }}
+                  >
+                    Recompute handicaps now
+                  </Button>
+                )}
               </div>
             )}
 

@@ -3510,6 +3510,82 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     Slot = how often games kick off on a court. Break = changeover time built into each slot — the bell rings at <em>slot − break</em>, leaving players time to swap on. Leave blank to use the defaults.
                   </p>
 
+                  <div className="mt-2 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setShowCapacity((v) => !v)}
+                    >
+                      {showCapacity ? "Hide capacity" : "Calculate capacity"}
+                    </Button>
+                    <span className="text-[11px] text-muted-foreground">
+                      How many games &amp; player slots fit in the selected time, given courts and per-league slot.
+                    </span>
+                  </div>
+
+                  {showCapacity && (() => {
+                    const parseHM = (s: string) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+                    type CapSession = { date: string; minutes: number; courts: number };
+                    let capSessions: CapSession[] = [];
+                    if (customizeDailySchedule && daySchedules.length > 0) {
+                      capSessions = daySchedules
+                        .map((d) => {
+                          const cs = (d.court_ids && d.court_ids.length > 0
+                            ? d.court_ids.filter((id) => selectedCourtIds.has(id))
+                            : Array.from(selectedCourtIds));
+                          return { date: d.date, minutes: parseHM(d.end_time) - parseHM(d.start_time), courts: cs.length };
+                        })
+                        .filter((s) => s.minutes > 0 && s.courts > 0);
+                    } else if (startDate && endDate && playDays.size > 0 && selectedCourtIds.size > 0) {
+                      const dates = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) })
+                        .filter((d) => playDays.has(getDay(d)));
+                      const mins = parseHM(endTime) - parseHM(startTime);
+                      capSessions = dates.map((d) => ({ date: format(d, "yyyy-MM-dd"), minutes: mins, courts: selectedCourtIds.size }));
+                    }
+                    const totalCourtMin = capSessions.reduce((a, s) => a + Math.max(0, s.minutes) * s.courts, 0);
+                    const tH = Math.floor(totalCourtMin / 60);
+                    const tM = totalCourtMin % 60;
+                    const playersPerGame = isDoubles ? 4 : 2;
+                    const leagues = Array.from({ length: numGroups }, (_, i) => i + 1);
+                    const perLeague = leagues.map((gn) => {
+                      const slot = Number(groupDurations[String(gn)]) || matchDuration || 20;
+                      const games = capSessions.reduce((a, s) => a + Math.floor(s.minutes / slot) * s.courts, 0);
+                      return { gn, slot, games, players: games * playersPerGame };
+                    });
+                    const sessionsCount = capSessions.length;
+                    const courtsUsed = capSessions.reduce((a, s) => Math.max(a, s.courts), 0);
+                    return (
+                      <div className="mt-2 rounded-lg border p-3 bg-muted/40 text-xs space-y-2">
+                        <div className="font-medium text-sm">Capacity ({isDoubles ? "doubles" : "singles"})</div>
+                        <div className="text-muted-foreground">
+                          {sessionsCount} session{sessionsCount === 1 ? "" : "s"} · up to {courtsUsed} court{courtsUsed === 1 ? "" : "s"} · {tH}h {tM}m total court-time
+                        </div>
+                        {perLeague.length === 0 ? (
+                          <div className="text-muted-foreground italic">Pick a number of leagues to see per-league capacity.</div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {perLeague.map(({ gn, slot, games, players }) => (
+                              <div key={gn} className="flex items-center gap-2 p-1.5 rounded border bg-background">
+                                <span className="font-medium w-16">League {gn}</span>
+                                <span className="text-muted-foreground">{slot} min/slot</span>
+                                <span className="ml-auto">
+                                  <strong>{games}</strong> games · <strong>{players}</strong> player slots
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-muted-foreground">
+                          Per-league figures assume that league has access to all selected courts for the full duration. When multiple leagues share courts, the scheduler splits them proportionally — see the actual fixture preview below.
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+
+
 
 
                   <div className="mt-3">

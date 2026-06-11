@@ -144,18 +144,40 @@ export default function BellsMarker() {
           setRunning(false);
           setFinished(true);
           try {
-            // Best-effort audio ping
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const o = ctx.createOscillator();
-            const g = ctx.createGain();
-            o.frequency.value = 880;
-            o.connect(g);
-            g.connect(ctx.destination);
-            g.gain.setValueAtTime(0.001, ctx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.05);
-            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-            o.start();
-            o.stop(ctx.currentTime + 1.3);
+            // Boxing-bell style ring: stacked harmonics with long decay, repeated 3x.
+            const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+            const ctx = new Ctx();
+            if (ctx.state === "suspended") ctx.resume().catch(() => {});
+            const ringAt = (t0: number) => {
+              const partials = [
+                { f: 880, g: 0.35 },
+                { f: 1320, g: 0.22 },
+                { f: 1760, g: 0.15 },
+                { f: 2640, g: 0.08 },
+              ];
+              partials.forEach(({ f, g }) => {
+                const o = ctx.createOscillator();
+                const gn = ctx.createGain();
+                o.type = "sine";
+                o.frequency.setValueAtTime(f, t0);
+                gn.gain.setValueAtTime(0.0001, t0);
+                gn.gain.exponentialRampToValueAtTime(g, t0 + 0.01);
+                gn.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
+                o.connect(gn);
+                gn.connect(ctx.destination);
+                o.start(t0);
+                o.stop(t0 + 1.9);
+              });
+            };
+            const t = ctx.currentTime;
+            ringAt(t);
+            ringAt(t + 0.6);
+            ringAt(t + 1.2);
+            setTimeout(() => ctx.close().catch(() => {}), 4000);
+            // Vibrate on supported mobile devices
+            if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+              try { navigator.vibrate([400, 150, 400, 150, 600]); } catch { /* noop */ }
+            }
           } catch { /* noop */ }
           toast.success("Bell! Time's up — confirm the score.");
           return 0;

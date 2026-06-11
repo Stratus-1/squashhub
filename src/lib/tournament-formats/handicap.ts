@@ -1,66 +1,63 @@
 /**
- * League-ranking handicap helper.
+ * League-rank handicap helper.
  *
- * Each player has exactly one league + ladder position. Leagues are
- * concatenated in order (league_number ascending) to form a single
- * "global ladder index":
+ * Each club organises its league as a list of TEAM rows in `leagues`,
+ * grouped into divisions ("1st League", "2nd League", …). Divisions
+ * aren't stored as a column — they're inferred from the ordered team
+ * `code` sequence with the "…Reserves" rows acting as dividers (same
+ * rule used by `src/pages/Ladder.tsx`).
  *
- *   globalIndex(player) = sum(size of every league above) + ladder_position
+ * Within a single division every team has the same number of player
+ * positions (e.g. 5). A player's handicap rank is simply their
+ * `player_rank` (1..N) inside their team — team identity within a
+ * division does NOT matter. Two #1s in the same division have a
+ * handicap of 0; #1 vs #4 in the same division = 3.
  *
- * For a singles match A vs B, the stronger player (smaller globalIndex)
- * starts on a negative score equal to the position gap; the weaker
- * player starts on 0. No cap.
+ * Across divisions we accumulate the size of each lower division so a
+ * player from a weaker division starts behind every player from a
+ * stronger one. So:
+ *   global(p) = sum(size(D) for D < p.division) + p.player_rank
+ *   handicap  = |global(A) − global(B)|
  *
- * In time-capped (Bells-style) play this offset is simply added to
- * side_a_points / side_b_points at match start, so total points
- * scored — which drives standings — already includes the handicap.
+ * The stronger player (smaller global) starts on `−handicap`; the
+ * weaker player starts on 0.
  */
 
 import { fromExt } from "@/lib/supabase-ext";
 
-export type LeagueInfo = {
-  league_number: number;
-  size: number; // total slots (registered + reserves)
-};
-
 export type PlayerRank = {
   member_id: string;
-  league_number: number;
-  ladder_position: number;
+  /** 1-based division index (1 = strongest). */
+  division: number;
+  /** 1..N position inside their team. */
+  player_rank: number;
 } | null;
 
 export type HandicapResult = { handicap_a: number; handicap_b: number };
 
-/**
- * Build a lookup of cumulative offsets, where offsets[N] = sum of sizes
- * of every league with league_number < N. Players in league N then have
- * globalIndex = offsets[N] + ladder_position.
- */
-export function buildLeagueOffsets(leagues: LeagueInfo[]): Record<number, number> {
-  const sorted = [...leagues].sort((a, b) => a.league_number - b.league_number);
+/** Per-division size (max player_rank seen among mains). */
+export type DivisionSizes = Record<number, number>;
+
+/** Cumulative offset table: offsets[D] = sum(size of every division < D). */
+export function buildDivisionOffsets(sizes: DivisionSizes): Record<number, number> {
+  const divs = Object.keys(sizes)
+    .map((k) => Number(k))
+    .sort((a, b) => a - b);
   const out: Record<number, number> = {};
   let cum = 0;
-  for (const l of sorted) {
-    out[l.league_number] = cum;
-    cum += Math.max(0, l.size || 0);
+  for (const d of divs) {
+    out[d] = cum;
+    cum += Math.max(0, sizes[d] || 0);
   }
   return out;
 }
 
 function globalIndex(p: PlayerRank, offsets: Record<number, number>): number | null {
   if (!p) return null;
-  const off = offsets[p.league_number];
+  const off = offsets[p.division];
   if (off == null) return null;
-  return off + (p.ladder_position || 0);
+  return off + (p.player_rank || 0);
 }
-
-/**
- * Maximum handicap (in points) the stronger player can start on. Raw
- * ladder-index gaps can be huge across many leagues (e.g. league 1 #1 vs
- * league 5 #4 = ~94), which is nonsensical for a Bells-style match that
- * typically lasts 8 minutes. Cap to a sensible competitive offset.
- */
-export const MAX_HANDICAP = 10;
 
 /** Stronger player gets negative starting score; weaker starts on 0. */
 export function computeHandicap(
@@ -72,90 +69,134 @@ export function computeHandicap(
   const ib = globalIndex(playerB, offsets);
   if (ia == null || ib == null) return { handicap_a: 0, handicap_b: 0 };
   if (ia === ib) return { handicap_a: 0, handicap_b: 0 };
-  const diff = Math.min(Math.abs(ia - ib), MAX_HANDICAP);
+  const diff = Math.abs(ia - ib);
   if (ia < ib) return { handicap_a: -diff, handicap_b: 0 };
   return { handicap_a: 0, handicap_b: -diff };
 }
 
+/** Parse first integer out of a league code like "NIL021" → 21. */
+function codeNum(c: string | null | undefined): number {
+  if (!c) return Number.NaN;
+  const m = c.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : Number.NaN;
+}
+
+const isReserveTeam = (name: string | null | undefined) =>
+  !!name && /reserve/i.test(name);
+
 /**
- * Derive a numeric league_number from a leagues.name like
- * "1st League", "4th League Men", "Mixed League 2". Falls back to a
- * stable order based on creation time when no digit is present.
+ * Walk team rows ordered by `code`, treating each "…Reserves" row as a
+ * divider. Returns a Map of league_id → { division, is_reserve_team }.
+ * Division is 1-based; reserve dividers are tagged with the division
+ * they cap (so "1st L Reserves" → division 1, is_reserve_team=true).
  */
-function deriveLeagueNumber(name: string | null | undefined, fallback: number): number {
-  if (!name) return fallback;
-  const m = name.match(/(\d+)/);
-  if (m) return parseInt(m[1], 10);
-  return fallback;
+function classifyLeaguesByDivision(
+  leagues: Array<{ id: string; name: string; code: string | null }>,
+): Map<string, { division: number; is_reserve_team: boolean }> {
+  const sorted = [...leagues]
+    .filter((l) => Number.isFinite(codeNum(l.code)))
+    .sort((a, b) => codeNum(a.code) - codeNum(b.code));
+
+  const out = new Map<string, { division: number; is_reserve_team: boolean }>();
+  let division = 1;
+  for (const l of sorted) {
+    if (isReserveTeam(l.name)) {
+      out.set(l.id, { division, is_reserve_team: true });
+      division += 1; // next non-reserve team starts the next division
+    } else {
+      out.set(l.id, { division, is_reserve_team: false });
+    }
+  }
+  // Leagues without parseable codes — fall back to whatever division
+  // came last (treat as the bottom tier so they don't get a free buff).
+  const fallbackDivision = Math.max(1, division);
+  for (const l of leagues) {
+    if (!out.has(l.id)) {
+      out.set(l.id, {
+        division: fallbackDivision,
+        is_reserve_team: isReserveTeam(l.name),
+      });
+    }
+  }
+  return out;
 }
 
 /**
- * Pulls every league for the given club, counts registrations per league
- * (registered + reserve), and returns a ready-to-use offsets map keyed
- * by league_number, plus a per-member ranking lookup.
- *
- * Returns null if the club has no leagues we can use.
+ * Pulls every league + registration for the club, infers divisions,
+ * picks each member's strongest registration, and returns ready-to-use
+ * offsets + per-member rank lookup.
  */
 export async function loadClubLadderContext(clubId: string): Promise<{
   offsets: Record<number, number>;
-  rankByMember: Map<string, { league_number: number; ladder_position: number }>;
+  rankByMember: Map<string, { division: number; player_rank: number }>;
 } | null> {
   const { data: leagues } = await fromExt("leagues")
-    .select("id, name, created_at")
+    .select("id, name, code")
     .eq("club_id", clubId);
   if (!leagues || leagues.length === 0) return null;
 
-  // Stable fallback ordering: by created_at.
-  const sortedByCreated = [...leagues].sort((a: any, b: any) =>
-    String(a.created_at || "").localeCompare(String(b.created_at || "")),
+  const classify = classifyLeaguesByDivision(
+    leagues as Array<{ id: string; name: string; code: string | null }>,
   );
-  const leagueNumberById = new Map<string, number>();
-  sortedByCreated.forEach((l: any, idx: number) => {
-    leagueNumberById.set(l.id, deriveLeagueNumber(l.name, idx + 1));
-  });
 
-  const leagueIds = leagues.map((l: any) => l.id);
+  const leagueIds = (leagues as any[]).map((l) => l.id);
   const { data: regs } = await fromExt("member_league_registrations")
     .select("club_member_id, league_id, player_rank, is_reserve, reserve_order")
     .in("league_id", leagueIds);
 
-  const sizeByLeagueNumber: Record<number, number> = {};
-  const rankByMember = new Map<string, { league_number: number; ladder_position: number }>();
-
-  for (const r of regs || []) {
-    const ln = leagueNumberById.get((r as any).league_id);
-    if (ln == null) continue;
-    sizeByLeagueNumber[ln] = (sizeByLeagueNumber[ln] || 0) + 1;
+  // Size per division = max player_rank seen among MAIN team registrations
+  // in any team belonging to that division. Falls back to 5 (common case).
+  const sizes: DivisionSizes = {};
+  for (const r of (regs || []) as any[]) {
+    const meta = classify.get(r.league_id);
+    if (!meta || meta.is_reserve_team) continue;
+    if (r.is_reserve) continue;
+    const d = meta.division;
+    const pr = Number(r.player_rank) || 0;
+    if (pr <= 0) continue;
+    sizes[d] = Math.max(sizes[d] || 0, pr);
+  }
+  // Make sure every division that has ANY team has a size entry, so the
+  // offset table grows monotonically even for empty divisions.
+  for (const meta of classify.values()) {
+    if (sizes[meta.division] == null) sizes[meta.division] = 5;
   }
 
-  // Recompute ladder_position per league based on player_rank (non-reserve)
-  // then reserves appended in reserve_order. Falls back to insertion order.
-  const byLeague = new Map<string, any[]>();
-  for (const r of regs || []) {
-    const arr = byLeague.get((r as any).league_id) || [];
-    arr.push(r);
-    byLeague.set((r as any).league_id, arr);
-  }
-  for (const [leagueId, arr] of byLeague.entries()) {
-    const ln = leagueNumberById.get(leagueId)!;
-    const mains = arr
-      .filter((r) => !r.is_reserve)
-      .sort((a, b) => (a.player_rank ?? 9999) - (b.player_rank ?? 9999));
-    const reserves = arr
-      .filter((r) => r.is_reserve)
-      .sort((a, b) => (a.reserve_order ?? 9999) - (b.reserve_order ?? 9999));
-    [...mains, ...reserves].forEach((r, idx) => {
-      rankByMember.set(r.club_member_id, {
-        league_number: ln,
-        ladder_position: idx + 1,
+  const offsets = buildDivisionOffsets(sizes);
+
+  // Pick the strongest registration per member:
+  //   1. non-reserve beats reserve
+  //   2. lower division beats higher
+  //   3. lower player_rank beats higher
+  type Pick = { division: number; player_rank: number; rank_score: number };
+  const best = new Map<string, Pick>();
+  for (const r of (regs || []) as any[]) {
+    const meta = classify.get(r.league_id);
+    if (!meta) continue;
+    // Skip reserve-team registrations entirely for handicap — they're
+    // not part of the main ladder. (Reserve players still get picked up
+    // via any main-team registration they hold.)
+    if (meta.is_reserve_team) continue;
+    if (r.is_reserve) continue;
+    const pr = Number(r.player_rank) || 0;
+    if (pr <= 0) continue;
+    const score = meta.division * 1000 + pr; // smaller = stronger
+    const prev = best.get(r.club_member_id);
+    if (!prev || score < prev.rank_score) {
+      best.set(r.club_member_id, {
+        division: meta.division,
+        player_rank: pr,
+        rank_score: score,
       });
-    });
+    }
   }
 
-  const leagueInfos: LeagueInfo[] = Object.entries(sizeByLeagueNumber).map(
-    ([n, s]) => ({ league_number: Number(n), size: s }),
+  const rankByMember = new Map<string, { division: number; player_rank: number }>();
+  best.forEach((v, k) =>
+    rankByMember.set(k, { division: v.division, player_rank: v.player_rank }),
   );
-  return { offsets: buildLeagueOffsets(leagueInfos), rankByMember };
+
+  return { offsets, rankByMember };
 }
 
 /**

@@ -279,7 +279,7 @@ export default function Tournaments() {
 
   const courtNames = Array.from(
     new Set(upcomingMatches.map((m: any) => m.court?.name).filter(Boolean)),
-  ).sort();
+  ).sort() as string[];
 
 
 

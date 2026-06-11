@@ -1623,7 +1623,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (!champId) throw new Error("Save the tournament first before booking courts.");
 
       const isBellsMode = scoringMode === "time_capped_points";
-      const tournamentLabel = (champName || defaultName || "Tournament").trim();
+      const tournamentLabel = (champName || "Tournament").trim();
 
       let rows: any[];
 

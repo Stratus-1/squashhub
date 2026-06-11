@@ -1622,62 +1622,72 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const champId = editingChampId;
       if (!champId) throw new Error("Save the tournament first before booking courts.");
 
-      const { data: champMatches, error: mErr } = await fromExt("club_champs_matches")
-        .select("id, scheduled_date, scheduled_time, court_id, player_a_member_id, partner_a_member_id, group_number, is_bye")
-        .eq("champ_id", champId);
-      if (mErr) throw mErr;
-
       const isBellsMode = scoringMode === "time_capped_points";
-      const playable = (champMatches || []).filter((m: any) =>
-        !m.is_bye && m.scheduled_date && m.court_id && (isBellsMode || m.scheduled_time)
-      );
-      if (playable.length === 0) {
-        throw new Error(
-          isBellsMode
-            ? "No matches with a date and court found. Allocate courts/dates first."
-            : "No scheduled matches with date/time/court found."
-        );
-      }
-
-      const memberUserMap = new Map<string, string>();
-      members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });
-
-
-
 
       let rows: any[];
 
       if (isBellsMode) {
         // Bells = many short matches in shared time slots. Don't book per-match;
         // instead reserve each (date, court) as one global tournament block for
-        // the whole playing window.
-        const seen = new Set<string>();
-        const blocks: Array<{ date: string; court_id: number }> = [];
-        for (const m of playable as any[]) {
-          const key = `${m.scheduled_date}|${m.court_id}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          blocks.push({ date: m.scheduled_date, court_id: m.court_id });
-        }
+        // the whole playing window. Derive blocks directly from the tournament's
+        // configured dates + courts (no dependency on per-match scheduled_date,
+        // which may be missing for Bells fixtures).
         const gStart = String(startTime || "").slice(0, 5);
         const gEnd = String(endTime || "").slice(0, 5);
         if (!gStart || !gEnd) {
           throw new Error("Set the tournament start and end time before booking courts.");
         }
-        rows = blocks.map((b) => ({
-          club_id: clubId,
-          court_id: b.court_id,
-          user_id: null,
-          club_member_id: null,
-          date: b.date,
-          start_time: gStart,
-          end_time: gEnd,
-          status: "active",
-          is_friendly: false,
-          source: "club_event",
-          external_id: `champ:${champId}:block:${b.date}:${b.court_id}`,
-        }));
+        if (!startDate || !endDate) {
+          throw new Error("Set the tournament start and end dates before booking courts.");
+        }
+        const courtIds = Array.from(selectedCourtIds);
+        if (courtIds.length === 0) {
+          throw new Error("Select at least one court before booking.");
+        }
+
+        // Enumerate play-day dates between startDate and endDate.
+        const dates: string[] = [];
+        const cur = new Date(startDate);
+        const end = new Date(endDate);
+        while (cur <= end) {
+          if (playDays.size === 0 || playDays.has(cur.getDay())) {
+            dates.push(format(cur, "yyyy-MM-dd"));
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+        if (dates.length === 0) {
+          throw new Error("No play days fall within the tournament date range.");
+        }
+
+        rows = dates.flatMap((date) =>
+          courtIds.map((cid) => ({
+            club_id: clubId,
+            court_id: cid,
+            user_id: null,
+            club_member_id: null,
+            date,
+            start_time: gStart,
+            end_time: gEnd,
+            status: "active",
+            is_friendly: false,
+            source: "club_event",
+            external_id: `champ:${champId}:block:${date}:${cid}`,
+          }))
+        );
       } else {
+        const { data: champMatches, error: mErr } = await fromExt("club_champs_matches")
+          .select("id, scheduled_date, scheduled_time, court_id, player_a_member_id, partner_a_member_id, group_number, is_bye")
+          .eq("champ_id", champId);
+        if (mErr) throw mErr;
+
+        const playable = (champMatches || []).filter((m: any) =>
+          !m.is_bye && m.scheduled_date && m.scheduled_time && m.court_id
+        );
+        if (playable.length === 0) throw new Error("No scheduled matches with date/time/court found.");
+
+        const memberUserMap = new Map<string, string>();
+        members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });
+
         rows = playable.map((m: any) => {
           const bookerMemberId = m.partner_a_member_id || m.player_a_member_id;
           const bookerUserId = memberUserMap.get(bookerMemberId) || memberUserMap.get(m.player_a_member_id);

@@ -143,42 +143,7 @@ export default function BellsMarker() {
           window.clearInterval(tickRef.current!);
           setRunning(false);
           setFinished(true);
-          try {
-            // Boxing-bell style ring: stacked harmonics with long decay, repeated 3x.
-            const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
-            const ctx = new Ctx();
-            if (ctx.state === "suspended") ctx.resume().catch(() => {});
-            const ringAt = (t0: number) => {
-              const partials = [
-                { f: 880, g: 0.35 },
-                { f: 1320, g: 0.22 },
-                { f: 1760, g: 0.15 },
-                { f: 2640, g: 0.08 },
-              ];
-              partials.forEach(({ f, g }) => {
-                const o = ctx.createOscillator();
-                const gn = ctx.createGain();
-                o.type = "sine";
-                o.frequency.setValueAtTime(f, t0);
-                gn.gain.setValueAtTime(0.0001, t0);
-                gn.gain.exponentialRampToValueAtTime(g, t0 + 0.01);
-                gn.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
-                o.connect(gn);
-                gn.connect(ctx.destination);
-                o.start(t0);
-                o.stop(t0 + 1.9);
-              });
-            };
-            const t = ctx.currentTime;
-            ringAt(t);
-            ringAt(t + 0.6);
-            ringAt(t + 1.2);
-            setTimeout(() => ctx.close().catch(() => {}), 4000);
-            // Vibrate on supported mobile devices
-            if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-              try { navigator.vibrate([400, 150, 400, 150, 600]); } catch { /* noop */ }
-            }
-          } catch { /* noop */ }
+          ringBellSound(3);
           toast.success("Bell! Time's up — confirm the score.");
           return 0;
         }
@@ -203,6 +168,43 @@ export default function BellsMarker() {
   const pairAName = `${getName(match?.player_a)}${match?.partner_a ? " & " + getName(match.partner_a) : ""}${hcSuffix(hcA)}`;
   const pairBName = `${getName(match?.player_b)}${match?.partner_b ? " & " + getName(match.partner_b) : ""}${hcSuffix(hcB)}`;
 
+  // Ring the boxing-bell sound (also vibrates on mobile). Used at start of
+  // play, when "Ring bell now" is pressed, and when the countdown expires.
+  const ringBellSound = (times = 3) => {
+    try {
+      const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+      const ctx = new Ctx();
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      const ringAt = (t0: number) => {
+        const partials = [
+          { f: 880, g: 0.35 },
+          { f: 1320, g: 0.22 },
+          { f: 1760, g: 0.15 },
+          { f: 2640, g: 0.08 },
+        ];
+        partials.forEach(({ f, g }) => {
+          const o = ctx.createOscillator();
+          const gn = ctx.createGain();
+          o.type = "sine";
+          o.frequency.setValueAtTime(f, t0);
+          gn.gain.setValueAtTime(0.0001, t0);
+          gn.gain.exponentialRampToValueAtTime(g, t0 + 0.01);
+          gn.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
+          o.connect(gn);
+          gn.connect(ctx.destination);
+          o.start(t0);
+          o.stop(t0 + 1.9);
+        });
+      };
+      const t = ctx.currentTime;
+      for (let i = 0; i < times; i++) ringAt(t + i * 0.6);
+      setTimeout(() => ctx.close().catch(() => {}), 1000 + times * 700);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        try { navigator.vibrate([400, 150, 400]); } catch { /* noop */ }
+      }
+    } catch { /* noop */ }
+  };
+
   // ----- Timer persistence helpers -----
   const persistTimer = (patch: { bell_ends_at?: string | null; bell_paused_seconds?: number | null; status?: string }) => {
     if (!match) return;
@@ -223,6 +225,8 @@ export default function BellsMarker() {
     if (finished || remaining <= 0) return;
     const end = new Date(Date.now() + remaining * 1000).toISOString();
     setRunning(true);
+    // Ring the bell to signal "play starts now" (single ring).
+    ringBellSound(1);
     persistTimer({ bell_ends_at: end, bell_paused_seconds: null, status: "in_progress" });
   };
 
@@ -245,8 +249,10 @@ export default function BellsMarker() {
     if (tickRef.current) window.clearInterval(tickRef.current);
     setRunning(false);
     setFinished(true);
+    ringBellSound(3);
     persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "in_progress" });
   };
+
 
   const resetAll = () => {
     const hcA = Number(match?.handicap_a) || 0;

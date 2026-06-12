@@ -225,6 +225,8 @@ export default function BellsMarker() {
     if (finished || remaining <= 0) return;
     const end = new Date(Date.now() + remaining * 1000).toISOString();
     setRunning(true);
+    // Ring the bell to signal "play starts now" (single ring).
+    ringBellSound(1);
     persistTimer({ bell_ends_at: end, bell_paused_seconds: null, status: "in_progress" });
   };
 
@@ -247,8 +249,10 @@ export default function BellsMarker() {
     if (tickRef.current) window.clearInterval(tickRef.current);
     setRunning(false);
     setFinished(true);
+    ringBellSound(3);
     persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "in_progress" });
   };
+
 
   const resetAll = () => {
     const hcA = Number(match?.handicap_a) || 0;

@@ -775,8 +775,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   };
 
   const handleManualSave = async () => {
-    if (!clubId || !startDate || !endDate) {
-      toast.error("Set a name and dates before saving");
+    if (!clubId) {
+      toast.error("No club selected");
+      return;
+    }
+    const missing: string[] = [];
+    if (!startDate) missing.push("start date");
+    if (!endDate) missing.push("end date");
+    if (missing.length) {
+      toast.error(`Pick a ${missing.join(" and ")} before saving (name can be left blank — we'll use a default)`);
       return;
     }
     try {

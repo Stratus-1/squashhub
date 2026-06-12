@@ -779,11 +779,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       toast.error("No club selected");
       return;
     }
-    const missing: string[] = [];
-    if (!startDate) missing.push("start date");
-    if (!endDate) missing.push("end date");
-    if (missing.length) {
-      toast.error(`Pick a ${missing.join(" and ")} before saving (name can be left blank — we'll use a default)`);
+    // Dates live on step 2 — if they aren't picked yet, the wizard state is
+    // already kept in-component, so just acknowledge and let the user move on.
+    if (!startDate || !endDate) {
+      toast.success("Progress kept — pick dates on the next step to save to the server");
       return;
     }
     try {

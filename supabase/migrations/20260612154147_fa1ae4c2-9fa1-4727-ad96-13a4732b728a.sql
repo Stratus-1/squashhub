@@ -1,0 +1,2 @@
+ALTER TABLE public.club_champs DROP CONSTRAINT IF EXISTS club_champs_best_of_check;
+ALTER TABLE public.club_champs ADD CONSTRAINT club_champs_best_of_check CHECK (best_of IS NULL OR best_of = ANY (ARRAY[1,3,5]));

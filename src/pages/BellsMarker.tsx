@@ -143,42 +143,7 @@ export default function BellsMarker() {
           window.clearInterval(tickRef.current!);
           setRunning(false);
           setFinished(true);
-          try {
-            // Boxing-bell style ring: stacked harmonics with long decay, repeated 3x.
-            const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
-            const ctx = new Ctx();
-            if (ctx.state === "suspended") ctx.resume().catch(() => {});
-            const ringAt = (t0: number) => {
-              const partials = [
-                { f: 880, g: 0.35 },
-                { f: 1320, g: 0.22 },
-                { f: 1760, g: 0.15 },
-                { f: 2640, g: 0.08 },
-              ];
-              partials.forEach(({ f, g }) => {
-                const o = ctx.createOscillator();
-                const gn = ctx.createGain();
-                o.type = "sine";
-                o.frequency.setValueAtTime(f, t0);
-                gn.gain.setValueAtTime(0.0001, t0);
-                gn.gain.exponentialRampToValueAtTime(g, t0 + 0.01);
-                gn.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
-                o.connect(gn);
-                gn.connect(ctx.destination);
-                o.start(t0);
-                o.stop(t0 + 1.9);
-              });
-            };
-            const t = ctx.currentTime;
-            ringAt(t);
-            ringAt(t + 0.6);
-            ringAt(t + 1.2);
-            setTimeout(() => ctx.close().catch(() => {}), 4000);
-            // Vibrate on supported mobile devices
-            if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-              try { navigator.vibrate([400, 150, 400, 150, 600]); } catch { /* noop */ }
-            }
-          } catch { /* noop */ }
+          ringBellSound(3);
           toast.success("Bell! Time's up — confirm the score.");
           return 0;
         }

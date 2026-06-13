@@ -591,8 +591,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [allVisitors, includeVisitors, selectedVisitorClubs, gender]);
 
   const isDoubles = matchType === "doubles";
-  const effectiveRegistrationMode = (registrationRequired ? (registrationMode || "open") : "invite") as "open" | "invite";
-  const registrationUsesInviteList = registrationRequired && effectiveRegistrationMode === "invite";
+  const effectiveRegistrationMode = ((registrationMode || "open")) as "open" | "invite";
+  const registrationUsesInviteList = effectiveRegistrationMode === "invite";
   const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationUsesInviteList;
   // Defer pair formation until registrations are in:
   //  - players self-pair mode: always wait for confirmed pairs
@@ -2169,13 +2169,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         break;
       }
       case "registration": {
+        if (!registrationMode) m.push("Choose who can register");
         if (registrationRequired) {
           if (!registrationOpensAt) m.push("Registration opens (date & time)");
           if (!registrationClosesAt) m.push("Registration closes (date & time)");
           if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
             m.push("Registration close must be after registration open");
           }
-          if (!registrationMode) m.push("Choose who can register");
           if (inviteMethods.size === 0) m.push("At least one invite delivery method");
         }
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
@@ -2959,13 +2959,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   Players need to register / be invited
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Turn off for closed tournaments where the admin just picks the players directly. The registration window, invite list and "who can register" controls below are then hidden.
+                  Turn on when entry is conditional on members opting in (e.g. paid tournaments, fixed deadlines). Turn off when the admin simply picks the roster — the registration window then disappears, but the "Who can register" / invite list controls below remain so you can still seed players from a shortlist or open audience.
                 </p>
               </div>
             </div>
 
-            {/* Registration mode */}
-            {registrationRequired && (
+            {/* Registration mode — always visible. Even when registration is not
+                required, this still controls how the admin seeds the player
+                roster (open audience vs invite shortlist). */}
             <div className="space-y-2">
               <Label className="text-sm">Who can register?</Label>
               <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
@@ -2977,7 +2978,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </SelectContent>
               </Select>
             </div>
-            )}
 
             {/* Invite source — only meaningful in invite mode */}
             {registrationUsesInviteList && (

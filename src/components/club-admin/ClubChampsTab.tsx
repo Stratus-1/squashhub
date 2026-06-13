@@ -3356,8 +3356,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     onClick={() => {
                       const lines = buildInviteDetailLines({
                         gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
-                        startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+                        startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
+                        registrationOpensAt, registrationClosesAt, entryFeeRand,
                         pointsPerGame, bestOf,
+                        registrationRequired, registrationMode: (registrationMode || "open") as any,
                       });
                       const bullets = lines.map((l) => `• ${l}`).join("\n");
                       // Strip any previously inserted auto-block (between markers) then prepend fresh.

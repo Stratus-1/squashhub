@@ -591,8 +591,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [allVisitors, includeVisitors, selectedVisitorClubs, gender]);
 
   const isDoubles = matchType === "doubles";
-  const effectiveRegistrationMode = (registrationRequired ? (registrationMode || "open") : "invite") as "open" | "invite";
-  const registrationUsesInviteList = registrationRequired && effectiveRegistrationMode === "invite";
+  const effectiveRegistrationMode = ((registrationMode || "open")) as "open" | "invite";
+  const registrationUsesInviteList = effectiveRegistrationMode === "invite";
   const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationUsesInviteList;
   // Defer pair formation until registrations are in:
   //  - players self-pair mode: always wait for confirmed pairs

@@ -36,9 +36,10 @@ type WizardStep = "category" | "courts" | "registration" | "players" | "groups" 
 type GenderCategory = "men" | "ladies" | "mixed" | "open";
 type MatchType = "singles" | "doubles";
 
-const STEPS: WizardStep[] = ["category", "registration", "players", "groups", "schedule", "review"];
+const STEPS: WizardStep[] = ["category", "courts", "registration", "players", "groups", "schedule", "review"];
 const STEP_LABELS: Record<WizardStep, string> = {
   category: "Category",
+  courts: "Courts",
   registration: "Registration",
   players: "Players",
   groups: "Leagues",

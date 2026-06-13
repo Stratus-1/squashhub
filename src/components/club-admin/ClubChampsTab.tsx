@@ -1889,8 +1889,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const descHasDetails = /— Tournament details —/.test(description);
       const detailLines = descHasDetails ? [] : buildInviteDetailLines({
         gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
-        startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+        startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
+        registrationOpensAt, registrationClosesAt, entryFeeRand,
         pointsPerGame, bestOf,
+        registrationRequired, registrationMode: (registrationMode || "open") as any,
       });
       const msg = `You have been invited to ${champName || "a tournament"}.` +
         (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +

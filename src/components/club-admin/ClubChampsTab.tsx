@@ -1407,6 +1407,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
+            registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
             invite_include_reserves: inviteIncludeReserves,

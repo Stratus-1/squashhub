@@ -2154,21 +2154,33 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (!byeHandling) m.push("Bye handling");
         break;
       }
-      case "registration": {
+      case "courts": {
         if (!startDate) m.push("Tournament start date");
         if (!endDate) m.push("Tournament end date");
         if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
           m.push("End date must be on or after the start date");
         }
-        if (!registrationOpensAt) m.push("Registration opens (date & time)");
-        if (!registrationClosesAt) m.push("Registration closes (date & time)");
-        if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
-          m.push("Registration close must be after registration open");
+        if (!startTime) m.push("Start time");
+        if (!endTime) m.push("End time");
+        if (selectedCourtIds.size === 0) m.push("At least one court");
+        if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
+          m.push("At least one play day");
+        }
+        break;
+      }
+      case "registration": {
+        if (registrationRequired) {
+          if (!registrationOpensAt) m.push("Registration opens (date & time)");
+          if (!registrationClosesAt) m.push("Registration closes (date & time)");
+          if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
+            m.push("Registration close must be after registration open");
+          }
+          if (!registrationMode) m.push("Choose who can register");
+          if (inviteMethods.size === 0) m.push("At least one invite delivery method");
         }
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
           m.push("At least one accepted payment method");
         }
-        if (inviteMethods.size === 0) m.push("At least one invite delivery method");
         break;
       }
       case "players": {

@@ -1712,7 +1712,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         );
         if (playable.length === 0) throw new Error("No scheduled matches with date/time/court found.");
 
-        rows = playable.map((m: any) => {
+        const slotMap = new Map<string, Slot>();
+        for (const m of playable) {
           const cap = matchDuration;
           const start = String(m.scheduled_time).slice(0, 5);
           const [h, min] = start.split(":").map(Number);
@@ -1720,25 +1721,39 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           const endH = Math.floor(endMins / 60) % 24;
           const endM = endMins % 60;
           const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-          return {
+          const key = `${m.scheduled_date}:${m.court_id}`;
+          const existing = slotMap.get(key);
+          if (!existing) {
+            slotMap.set(key, { date: m.scheduled_date, courtId: m.court_id, start, end: endTimeStr });
+          } else {
+            if (start < existing.start) existing.start = start;
+            if (endTimeStr > existing.end) existing.end = endTimeStr;
+          }
+        }
+
+        rows = Array.from(slotMap.values()).map((s) => ({
             club_id: clubId,
-            court_id: m.court_id,
+            court_id: s.courtId,
             user_id: null,
             club_member_id: null,
-            date: m.scheduled_date,
-            start_time: start,
-            end_time: endTimeStr,
+            date: s.date,
+            start_time: s.start,
+            end_time: s.end,
             status: "active",
             is_friendly: false,
             guest_name: tournamentLabel,
             source: "club_event",
-            external_id: `champ:${champId}:match:${m.id}`,
-          };
-        });
+            external_id: `champ:${champId}:block:${s.date}:${s.courtId}`,
+          }));
       }
 
+      await fromExt("bookings")
+        .delete()
+        .eq("club_id", clubId)
+        .eq("source", "club_event")
+        .like("external_id", `champ:${champId}:%`);
       const { data: inserted, error: bErr } = await fromExt("bookings")
-        .upsert(rows, { onConflict: "club_id,source,external_id", ignoreDuplicates: true })
+        .upsert(rows, { onConflict: "club_id,source,external_id" })
         .select("id");
       if (bErr) throw bErr;
 

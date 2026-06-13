@@ -157,11 +157,17 @@ function buildInviteDetailLines(opts: {
   partnerMode: "" | "admin" | "players";
   startDate: string;
   endDate: string;
+  startTime?: string;
+  endTime?: string;
+  customizeDailySchedule?: boolean;
+  daySchedules?: { date: string; start_time: string; end_time: string }[];
   registrationOpensAt: string;
   registrationClosesAt: string;
   entryFeeRand: string;
   pointsPerGame?: number;
   bestOf?: number;
+  registrationRequired?: boolean;
+  registrationMode?: "" | "open" | "invite";
 }): string[] {
   const lines: string[] = [];
   const isDoubles = opts.matchType === "doubles";
@@ -206,6 +212,41 @@ function buildInviteDetailLines(opts: {
     lines.push(start === end ? `Date: ${start}` : `Dates: ${start} → ${end}`);
   } else if (start) {
     lines.push(`Starts: ${start}`);
+  }
+
+  // Play times — either per-day windows or a single global window.
+  const ds = (opts.customizeDailySchedule && opts.daySchedules && opts.daySchedules.length > 0)
+    ? opts.daySchedules.filter((d) => d.date && d.start_time && d.end_time)
+    : [];
+  if (ds.length > 0) {
+    // Group windows by date and format like "Sat 17 Jun: 10:00–12:00, 14:00–16:00"
+    const byDate = new Map<string, string[]>();
+    for (const d of ds) {
+      const arr = byDate.get(d.date) || [];
+      arr.push(`${d.start_time.slice(0, 5)}–${d.end_time.slice(0, 5)}`);
+      byDate.set(d.date, arr);
+    }
+    const dates = Array.from(byDate.keys()).sort();
+    if (dates.length === 1) {
+      const dLabel = formatInviteDate(dates[0]) || dates[0];
+      lines.push(`Play times (${dLabel}): ${byDate.get(dates[0])!.join(", ")}`);
+    } else {
+      lines.push("Play times:");
+      for (const d of dates) {
+        const dLabel = formatInviteDate(d) || d;
+        lines.push(`  ${dLabel}: ${byDate.get(d)!.join(", ")}`);
+      }
+    }
+  } else if (opts.startTime && opts.endTime) {
+    lines.push(`Play time: ${opts.startTime.slice(0, 5)}–${opts.endTime.slice(0, 5)}`);
+  }
+
+  if (opts.registrationRequired === false) {
+    lines.push("Registration: Not required — admin selects players");
+  } else if (opts.registrationMode === "invite") {
+    lines.push("Registration: Invite-only");
+  } else if (opts.registrationMode === "open") {
+    lines.push("Registration: Open to all eligible members");
   }
 
   const regOpens = formatInviteDate(opts.registrationOpensAt, true);
@@ -1848,8 +1889,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const descHasDetails = /— Tournament details —/.test(description);
       const detailLines = descHasDetails ? [] : buildInviteDetailLines({
         gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
-        startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+        startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
+        registrationOpensAt, registrationClosesAt, entryFeeRand,
         pointsPerGame, bestOf,
+        registrationRequired, registrationMode: (registrationMode || "open") as any,
       });
       const msg = `You have been invited to ${champName || "a tournament"}.` +
         (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
@@ -3313,8 +3356,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     onClick={() => {
                       const lines = buildInviteDetailLines({
                         gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
-                        startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+                        startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
+                        registrationOpensAt, registrationClosesAt, entryFeeRand,
                         pointsPerGame, bestOf,
+                        registrationRequired, registrationMode: (registrationMode || "open") as any,
                       });
                       const bullets = lines.map((l) => `• ${l}`).join("\n");
                       // Strip any previously inserted auto-block (between markers) then prepend fresh.
@@ -4294,11 +4339,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         partnerMode={partnerMode}
         startDate={startDate}
         endDate={endDate}
+        startTime={startTime}
+        endTime={endTime}
+        customizeDailySchedule={customizeDailySchedule}
+        daySchedules={daySchedules}
         registrationOpensAt={registrationOpensAt}
         registrationClosesAt={registrationClosesAt}
         entryFeeRand={entryFeeRand}
         pointsPerGame={pointsPerGame}
         bestOf={bestOf}
+        registrationRequired={registrationRequired}
+        registrationMode={registrationMode}
       />
 
     </div>
@@ -4399,11 +4450,17 @@ function InvitePreviewDialog({
   partnerMode,
   startDate,
   endDate,
+  startTime,
+  endTime,
+  customizeDailySchedule,
+  daySchedules,
   registrationOpensAt,
   registrationClosesAt,
   entryFeeRand,
   pointsPerGame,
   bestOf,
+  registrationRequired,
+  registrationMode,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -4418,23 +4475,32 @@ function InvitePreviewDialog({
   partnerMode: "" | "admin" | "players";
   startDate: string;
   endDate: string;
+  startTime?: string;
+  endTime?: string;
+  customizeDailySchedule?: boolean;
+  daySchedules?: { date: string; start_time: string; end_time: string }[];
   registrationOpensAt: string;
   registrationClosesAt: string;
   entryFeeRand: string;
   pointsPerGame: number;
   bestOf: number;
+  registrationRequired?: boolean;
+  registrationMode?: "" | "open" | "invite";
 }) {
   const descHasDetails = /— Tournament details —/.test(description || "");
   const detailLines = descHasDetails ? [] : buildInviteDetailLines({
     gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
-    startDate, endDate, registrationOpensAt, registrationClosesAt, entryFeeRand,
+    startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
+    registrationOpensAt, registrationClosesAt, entryFeeRand,
     pointsPerGame, bestOf,
+    registrationRequired, registrationMode,
   });
 
   const appBody =
     `You have been invited to ${tournamentName}.` +
     (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
     (description?.trim() ? `\n\n${description.trim()}` : "");
+
 
 
   return (

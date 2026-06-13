@@ -2586,6 +2586,131 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       )}
 
 
+      {/* ── STEP: COURTS (date / time / courts → book ahead of player selection) ── */}
+      {step === "courts" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Dates, Times &amp; Courts</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Lock in when the tournament is played and which courts it owns. You can book the courts now — bookings appear under the tournament name in the courts grid so nothing else can be booked over them.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Tournament starts</Label>
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm">Tournament ends</Label>
+                <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Daily start time</Label>
+                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm">Daily end time</Label>
+                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm">Play days</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {DAY_NAMES.map((name, i) => (
+                  <label key={i} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={playDays.has(i)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(playDays);
+                        checked ? next.add(i) : next.delete(i);
+                        setPlayDays(next);
+                      }}
+                    />
+                    <span className="text-sm">{name}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                For a one-day tournament tick just that day. For a weekend, tick both.
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-sm">Courts used by the tournament</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {courts.map((c) => (
+                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={selectedCourtIds.has(c.id)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(selectedCourtIds);
+                        checked ? next.add(c.id) : next.delete(c.id);
+                        setSelectedCourtIds(next);
+                      }}
+                    />
+                    <span className="text-sm">{c.name}</span>
+                  </label>
+                ))}
+                {courts.length === 0 && (
+                  <span className="text-xs text-muted-foreground">No courts configured for this club yet.</span>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Book the courts now</p>
+                  <p className="text-xs text-muted-foreground">
+                    Reserves one block per court per play-day under the tournament name. Safe to re-run after editing dates / courts — blocks are upserted, not duplicated.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={
+                    !startDate || !endDate || !startTime || !endTime ||
+                    selectedCourtIds.size === 0 ||
+                    !(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0)) ||
+                    createBookings.isPending
+                  }
+                  onClick={async () => {
+                    // Make sure the tournament shell exists before booking.
+                    try {
+                      const id = await saveDraft();
+                      if (!id) {
+                        toast.error("Pick a name on the previous step before booking courts.");
+                        return;
+                      }
+                      // Force Bells/standard branch into the "shell" path that uses
+                      // start/end + dates + selectedCourtIds (no matches required).
+                      const previousMode = scoringMode;
+                      if (!previousMode) {
+                        // Temporarily treat as Bells-style block booking so the
+                        // mutation uses the start/end window directly.
+                        setScoringMode("time_capped_points");
+                        await new Promise((r) => setTimeout(r, 0));
+                      }
+                      await createBookings.mutateAsync();
+                      if (!previousMode) setScoringMode(previousMode);
+                    } catch (e: any) {
+                      toast.error(e?.message || "Could not book courts");
+                    }
+                  }}
+                >
+                  {createBookings.isPending ? "Booking…" : "Book courts now"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── STEP: REGISTRATION & PAYMENT ── */}
       {step === "registration" && (
         <Card>

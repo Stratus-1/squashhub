@@ -208,10 +208,11 @@ export function useBookings(date: string, clubId?: string) {
       if (userIds.length === 0) return bookings.map((b: any) => {
         const bookerMember = b.club_member_id ? memberMap.get(b.club_member_id) : null;
         const opponentMember = b.opponent_member_id ? memberMap.get(b.opponent_member_id) : null;
+        const isTournamentOrClubEvent = b.source === "club_event" && !!b.guest_name;
         return {
           ...b,
-          player_name: bookerMember?.name || b.external_booker_name || b.guest_name || null,
-          opponent_name: b.guest_name || opponentMember?.name || null,
+          player_name: isTournamentOrClubEvent ? b.guest_name : (bookerMember?.name || b.external_booker_name || b.guest_name || null),
+          opponent_name: isTournamentOrClubEvent ? null : (b.guest_name || opponentMember?.name || null),
         };
       });
 
@@ -258,12 +259,13 @@ export function useBookings(date: string, clubId?: string) {
         // Prioritise club_member_id name (supports family/switched accounts)
         const bookerMember = (b as any).club_member_id ? memberMap.get((b as any).club_member_id) : null;
         const opponentMember = (b as any).opponent_member_id ? memberMap.get((b as any).opponent_member_id) : null;
+        const isTournamentOrClubEvent = (b as any).source === "club_event" && !!(b as any).guest_name;
 
         return {
           ...b,
-          player_name: bookerMember?.name || getNameByUserId((b as any).user_id) || (b as any).external_booker_name || (b as any).guest_name || null,
+          player_name: isTournamentOrClubEvent ? (b as any).guest_name : (bookerMember?.name || getNameByUserId((b as any).user_id) || (b as any).external_booker_name || (b as any).guest_name || null),
           player_rank: null,
-          opponent_name: (b as any).guest_name || opponentMember?.name || getNameByUserId((b as any).opponent_id),
+          opponent_name: isTournamentOrClubEvent ? null : ((b as any).guest_name || opponentMember?.name || getNameByUserId((b as any).opponent_id)),
           opponent_rank: null,
           court_name: courtNameMap.get((b as any).court_id) || null,
         };

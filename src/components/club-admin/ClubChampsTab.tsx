@@ -687,7 +687,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     };
     try {
       if (editingChampId) {
-        await fromExt("club_champs").update(payload).eq("id", editingChampId);
+        const { error } = await fromExt("club_champs").update(payload).eq("id", editingChampId);
+        if (error) throw error;
       } else {
         const { data, error } = await fromExt("club_champs")
           .insert({ club_id: clubId, status: "planning", ...payload })
@@ -700,12 +701,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
       qc.invalidateQueries({ queryKey: ["club-champs"] });
       return editingChampId;
-    } catch (e) {
-      // Silent — don't block navigation on autosave failure
+    } catch (e: any) {
       console.warn("Tournament autosave failed:", e);
+      toast.error(`Save failed: ${e?.message || "unknown error"}`);
       return editingChampId;
     }
   };
+
 
   // Persist current player / pair selections + group assignments as a draft
   // to club_champs_entries. Safe because entries get wiped & rewritten when

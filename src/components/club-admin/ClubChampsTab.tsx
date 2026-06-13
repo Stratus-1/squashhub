@@ -2169,13 +2169,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         break;
       }
       case "registration": {
+        if (!registrationMode) m.push("Choose who can register");
         if (registrationRequired) {
           if (!registrationOpensAt) m.push("Registration opens (date & time)");
           if (!registrationClosesAt) m.push("Registration closes (date & time)");
           if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
             m.push("Registration close must be after registration open");
           }
-          if (!registrationMode) m.push("Choose who can register");
           if (inviteMethods.size === 0) m.push("At least one invite delivery method");
         }
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {

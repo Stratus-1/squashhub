@@ -2676,34 +2676,67 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   disabled={
                     !startDate || !endDate || !startTime || !endTime ||
                     selectedCourtIds.size === 0 ||
-                    !(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0)) ||
-                    createBookings.isPending
+                    !(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))
                   }
                   onClick={async () => {
-                    // Make sure the tournament shell exists before booking.
                     try {
                       const id = await saveDraft();
-                      if (!id) {
-                        toast.error("Pick a name on the previous step before booking courts.");
+                      if (!id || !clubId) {
+                        toast.error("Could not save tournament shell — try again.");
                         return;
                       }
-                      // Force Bells/standard branch into the "shell" path that uses
-                      // start/end + dates + selectedCourtIds (no matches required).
-                      const previousMode = scoringMode;
-                      if (!previousMode) {
-                        // Temporarily treat as Bells-style block booking so the
-                        // mutation uses the start/end window directly.
-                        setScoringMode("time_capped_points");
-                        await new Promise((r) => setTimeout(r, 0));
+                      const gStart = String(startTime).slice(0, 5);
+                      const gEnd = String(endTime).slice(0, 5);
+                      const courtIds = Array.from(selectedCourtIds);
+                      // Enumerate play-day dates between startDate and endDate.
+                      const dates: string[] = [];
+                      const cur = new Date(startDate);
+                      const end = new Date(endDate);
+                      while (cur <= end) {
+                        if (playDays.size === 0 || playDays.has(cur.getDay())) {
+                          dates.push(format(cur, "yyyy-MM-dd"));
+                        }
+                        cur.setDate(cur.getDate() + 1);
                       }
-                      await createBookings.mutateAsync();
-                      if (!previousMode) setScoringMode(previousMode);
+                      if (dates.length === 0) {
+                        toast.error("No play days fall within the tournament date range.");
+                        return;
+                      }
+                      const tournamentLabel = (champName || "Tournament").trim();
+                      const rows = dates.flatMap((date) =>
+                        courtIds.map((cid) => ({
+                          club_id: clubId,
+                          court_id: cid,
+                          user_id: null,
+                          club_member_id: null,
+                          date,
+                          start_time: gStart,
+                          end_time: gEnd,
+                          status: "active",
+                          is_friendly: false,
+                          guest_name: tournamentLabel,
+                          source: "club_event",
+                          external_id: `champ:${id}:block:${date}:${cid}`,
+                        }))
+                      );
+                      // Wipe any prior tournament blocks then upsert the new ones.
+                      await fromExt("bookings")
+                        .delete()
+                        .eq("club_id", clubId)
+                        .eq("source", "club_event")
+                        .like("external_id", `champ:${id}:%`);
+                      const { error: bErr } = await fromExt("bookings")
+                        .upsert(rows, { onConflict: "club_id,source,external_id" });
+                      if (bErr) throw bErr;
+                      qc.invalidateQueries({ queryKey: ["bookings"] });
+                      qc.invalidateQueries({ queryKey: ["my-bookings"] });
+                      toast.success(`${rows.length} court booking${rows.length === 1 ? "" : "s"} created under "${tournamentLabel}"`);
                     } catch (e: any) {
                       toast.error(e?.message || "Could not book courts");
                     }
                   }}
                 >
-                  {createBookings.isPending ? "Booking…" : "Book courts now"}
+                  Book courts now
                 </Button>
               </div>
             </div>

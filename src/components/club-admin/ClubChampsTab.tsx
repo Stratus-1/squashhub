@@ -1624,7 +1624,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       setShowWizard(false);
       resetWizard();
     },
-    onError: (err: any) => toast.error(err.message || "Failed to create tournament"),
+    onError: (err: any) => toast.error(`${err.message || "Failed to create tournament"}. Your progress is saved as a draft — edit it and retry.`),
   });
 
   // Create court bookings from the saved tournament matches.

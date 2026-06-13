@@ -361,6 +361,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
   const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft" | "cash">>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
+  // When false, the registration step is collapsed (no public registration window,
+  // no invite-list management) and the admin directly seeds the roster on the
+  // Players step. Default true to match existing behaviour.
+  const [registrationRequired, setRegistrationRequired] = useState<boolean>(true);
   const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email">>(new Set(["app"]));
   // Controls WHEN invites go out: 'manual' (admin clicks Send later — default),
   // 'now' (prompt on save), or 'scheduled' (admin gets a reminder for the chosen date).

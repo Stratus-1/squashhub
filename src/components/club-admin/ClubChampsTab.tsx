@@ -2751,30 +2751,29 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             )}
 
-            {/* Tournament dates */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Tournament starts</Label>
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-sm">Tournament ends</Label>
-                <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
+            {/* Tournament dates are set on the Courts step (one step earlier).
+                Shown here as a read-only summary so the admin doesn't have to
+                jump back to confirm them. */}
+            <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs">
+              <span className="font-medium text-foreground">Tournament dates:</span>{" "}
+              {startDate && endDate
+                ? <span>{startDate} → {endDate}</span>
+                : <span className="text-muted-foreground italic">Go back to the Courts step to set the dates.</span>}
             </div>
-            <p className="text-xs text-muted-foreground -mt-1">Shown to invitees so they know when the tournament will be played.</p>
 
-            {/* Registration window */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Registration opens</Label>
-                <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
+            {/* Registration window — only when registration is required */}
+            {registrationRequired && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm">Registration opens</Label>
+                  <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-sm">Registration closes</Label>
+                  <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
+                </div>
               </div>
-              <div>
-                <Label className="text-sm">Registration closes</Label>
-                <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
-              </div>
-            </div>
+            )}
 
             {/* Entry fee + payment methods — payment-methods panel slides in beside the fee when amount > 0 */}
             <div className={Number(entryFeeRand) > 0 ? "grid grid-cols-1 md:grid-cols-2 gap-4 items-start" : ""}>

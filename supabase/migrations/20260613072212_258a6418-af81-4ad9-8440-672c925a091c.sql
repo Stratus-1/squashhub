@@ -1,0 +1,1 @@
+ALTER TABLE public.club_champs ALTER COLUMN best_of DROP NOT NULL;

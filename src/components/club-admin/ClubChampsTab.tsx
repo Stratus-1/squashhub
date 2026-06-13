@@ -2895,7 +2895,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
             )}
 
-            {/* Invite send timing */}
+            {/* Invite send timing — only when invites/registration are used */}
+            {registrationRequired && (
             <div className="space-y-2">
               <Label className="text-sm">When to send invites</Label>
               <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -2946,6 +2947,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </p>
               )}
             </div>
+            )}
 
 
 

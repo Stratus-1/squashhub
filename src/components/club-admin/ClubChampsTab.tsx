@@ -4339,11 +4339,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         partnerMode={partnerMode}
         startDate={startDate}
         endDate={endDate}
+        startTime={startTime}
+        endTime={endTime}
+        customizeDailySchedule={customizeDailySchedule}
+        daySchedules={daySchedules}
         registrationOpensAt={registrationOpensAt}
         registrationClosesAt={registrationClosesAt}
         entryFeeRand={entryFeeRand}
         pointsPerGame={pointsPerGame}
         bestOf={bestOf}
+        registrationRequired={registrationRequired}
+        registrationMode={registrationMode}
       />
 
     </div>

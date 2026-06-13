@@ -806,14 +806,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
 
   const goToStep = (s: WizardStep) => {
-    if (s === "players" && (step === "category" || step === "courts" || step === "registration")) {
-      // Don't override if league pre-fill already set the player list
-      if (!isDoubles && !hasLeagueSelection && selectedPlayerIds.size === 0) {
-        const memberIds = genderMembers.map((m) => m.id);
-        const visitorIds = filteredVisitors.map((v) => `visitor-${v.id}`);
-        setSelectedPlayerIds(new Set([...memberIds, ...visitorIds]));
-      }
-    }
+    // Note: we intentionally do NOT auto-select all players when entering the
+    // players step. Admin picks individually (or via Select All / league
+    // pre-fill). Auto-selecting everyone made it too easy to ship a tournament
+    // with the wrong roster.
     if (s === "groups") {
       if (isDoubles) {
         if (pairGroupAssignments.size > 0) { setStep(s); void saveDraft(); return; }

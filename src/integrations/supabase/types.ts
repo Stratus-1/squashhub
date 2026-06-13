@@ -831,7 +831,7 @@ export type Database = {
       }
       club_champs: {
         Row: {
-          best_of: number
+          best_of: number | null
           bye_handling: string
           club_id: string
           court_ids: number[]
@@ -878,7 +878,7 @@ export type Database = {
           visitor_clubs: string[]
         }
         Insert: {
-          best_of?: number
+          best_of?: number | null
           bye_handling?: string
           club_id: string
           court_ids?: number[]
@@ -925,7 +925,7 @@ export type Database = {
           visitor_clubs?: string[]
         }
         Update: {
-          best_of?: number
+          best_of?: number | null
           bye_handling?: string
           club_id?: string
           court_ids?: number[]

@@ -1,48 +1,76 @@
-# Round 2 Fixture Generation — Implementation
+## Tournament wizard — fine-tuning changes
 
-The scheduler helpers (`buildPriorCourtUsage`, `reversePairingsFromPrior`, `allocatePairingsWithCourtFairness`, `fairCourtAssignmentForExistingFixtures`) already exist in `src/components/league-games/fixtures/scheduler.ts`. This step wires them into the round editor UI.
+Refactor the tournament planning wizard in `src/components/club-admin/ClubChampsTab.tsx` so it matches a more natural admin flow: pick category → lock dates/times and book courts → then invite players. Also make registration & payment optional rather than mandatory.
 
-## Safety guarantee (explicit)
+### 1. Registration is now optional
 
-- All new logic runs **only** for the round currently being edited.
-- Prior rounds' `platform_league_fixtures` are **read only** (to learn tier membership, prior pairings, and prior court usage).
-- No writes touch any other round. Existing scorecards, lineups, dates, courts, and pairings on prior rounds stay exactly as saved.
+On the "Registration & Payment" step add a checkbox at the top:
 
-## Changes
+- **"Players need to register / be invited for this tournament"** (default ON for existing tournaments, ON for new).
 
-### 1. Tier picker in Round editor (`FixturesTab.tsx` / `RoundCard`)
+When **OFF**:
+- Hide the "Who can register?" select, invite-source panel, registration-opens / registration-closes datetime fields.
+- `missingForStep("registration")` no longer requires `registrationMode`, `registrationOpensAt`, `registrationClosesAt`.
+- `registration_opens_at` / `registration_closes_at` saved as `null`.
+- Wizard treats this as "admin directly seeds the roster on the Players step" — same effect as today's invite-only flow but without dates.
 
-- Infer tier per team from prior rounds: for each team code, find the most recent prior round that contained it; group teams by that round's name (e.g. "3rd League").
-- Replace the long team checkbox grid with:
-  - **Tier dropdown** — lists distinct inferred tiers + "Custom".
-  - Selecting a tier auto-checks exactly that tier's teams.
-  - "Edit team list" disclosure reveals the existing checkbox grid for manual override.
-- When opening a saved round, infer its tier by majority of its own saved fixtures; fall back to "Custom" if mixed.
+Persist via a new boolean column `club_champs.registration_required` (default `true` for backward-compat).
 
-### 2. Reverse home/away from previous round
+### 2. Payment-required toggle (only when there is a fee)
 
-- New checkbox in the round editor: **"Reverse home/away from previous round"**.
-- When checked and `Auto-distribute` is clicked:
-  - Find the most recent prior round in the same association whose fixtures cover the currently selected team set.
-  - Call `reversePairingsFromPrior(priorFixtures, teamSet)` to get swapped pairings.
-  - Feed those pairings into `allocatePairingsWithCourtFairness` for slot/court placement.
-- If no suitable prior round exists, fall back to normal round-robin and show a toast.
+Next to the entry-fee input, when fee > 0, show a checkbox:
 
-### 3. Court fairness
+- **"Players must pay the entry fee before their entry is confirmed"** (default ON).
 
-- When `Rotate courts` is enabled on the round being edited:
-  - Build prior usage histogram via `buildPriorCourtUsage(priorFixtures, teamSet)`.
-  - Use `allocatePairingsWithCourtFairness` instead of the current modulo allocator.
-- New "Re-balance courts on this round" button (visible only on the active round) calls `fairCourtAssignmentForExistingFixtures` — updates only `court_id` on the current round's rows.
+When OFF, entries are confirmed immediately and the "unpaid" gate that currently blocks confirmation is bypassed. Persist via new boolean `club_champs.payment_required` (default `true`).
 
-## Out of scope (unchanged)
+The "Registration opens/closes" datetime fields only render when registration_required = true (point 1).
 
-- No reshuffling of any prior round.
-- No cross-tier fixtures auto-generated.
-- No auto-creation of round 2 dates/venue/courts — admin still creates the round shell.
+### 3. Move court booking earlier — new "Courts" step
 
-## Files
+Insert a new wizard step **after** Category and **before** Registration:
 
-- `src/components/league-games/FixturesTab.tsx` — tier picker, reverse checkbox, fairness wiring, re-balance button.
-- `src/components/league-games/fixtures/RoundCard.tsx` (if separate) — same.
-- No DB migration, no schema change, no edge function change.
+```text
+category → courts → registration → players → groups → schedule → review
+```
+
+The new Courts step lets the admin:
+
+- Pick the tournament date(s) — start date / end date (moved up from Registration step; Registration step keeps a read-only summary).
+- For each date, pick start time + end time and tick which courts are used.
+- Press **"Book courts now"** which calls the existing `createCourtBookings` / consolidated-block logic (already in this file) to write tournament-named blocks into `bookings`.
+
+After successful booking the wizard advances. If the admin edits dates/times later (Schedule step), the existing reconciliation logic re-runs and reuses the same `champ:${id}:block:${date}:${court}` external_ids so blocks are upserted, not duplicated.
+
+The existing Schedule step keeps its purpose (slot/match duration, breaks per league, time per court) but its court-picker now defaults to whatever was booked on the Courts step.
+
+### 4. State + persistence
+
+New `club_champs` columns:
+
+- `registration_required boolean not null default true`
+- `payment_required boolean not null default true`
+
+(Existing `entry_fee_cents`, `registration_opens_at`, `registration_closes_at` columns are unchanged — they simply become nullable in practice when the toggles are off.)
+
+Load these into wizard state in `openChampForEdit`, default to `true` for legacy rows, and save them in every `saveDraft` / persist branch.
+
+### 5. Validation updates (`missingForStep`)
+
+| Step | Required when |
+|---|---|
+| courts | `startDate`, `endDate`, at least one (date, court, start, end) row |
+| registration | `registrationMode` only if `registration_required` |
+| registration | dates only if `registration_required` |
+| players | unchanged |
+
+### Files touched
+
+- `supabase/migrations/<new>.sql` — add the two boolean columns.
+- `src/components/club-admin/ClubChampsTab.tsx` — wizard restructure, toggles, new Courts step, validation.
+
+### Out of scope (not changing)
+
+- The Bells / Standard format strategies, marker, standings.
+- The booking-display fixes already shipped (tournament-name blocks in the bookings grid).
+- League fee flow, member fees, etc.

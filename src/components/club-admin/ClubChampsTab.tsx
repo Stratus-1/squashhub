@@ -32,13 +32,14 @@ interface ClubChampsTabProps {
   clubId: string;
 }
 
-type WizardStep = "category" | "registration" | "players" | "groups" | "schedule" | "review";
+type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review";
 type GenderCategory = "men" | "ladies" | "mixed" | "open";
 type MatchType = "singles" | "doubles";
 
-const STEPS: WizardStep[] = ["category", "registration", "players", "groups", "schedule", "review"];
+const STEPS: WizardStep[] = ["category", "courts", "registration", "players", "groups", "schedule", "review"];
 const STEP_LABELS: Record<WizardStep, string> = {
   category: "Category",
+  courts: "Courts",
   registration: "Registration",
   players: "Players",
   groups: "Leagues",
@@ -360,6 +361,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
   const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft" | "cash">>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
+  // When false, the registration step is collapsed (no public registration window,
+  // no invite-list management) and the admin directly seeds the roster on the
+  // Players step. Default true to match existing behaviour.
+  const [registrationRequired, setRegistrationRequired] = useState<boolean>(true);
   const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email">>(new Set(["app"]));
   // Controls WHEN invites go out: 'manual' (admin clicks Send later — default),
   // 'now' (prompt on save), or 'scheduled' (admin gets a reminder for the chosen date).
@@ -597,8 +602,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const activeSteps = useMemo<WizardStep[]>(() => {
     if (!awaitingPlayerPairs) return STEPS;
     return selfPairInviteSelection
-      ? ["category", "registration", "players", "review"]
-      : ["category", "registration", "review"];
+      ? ["category", "courts", "registration", "players", "review"]
+      : ["category", "courts", "registration", "review"];
   }, [awaitingPlayerPairs, selfPairInviteSelection]);
   const stepIdx = activeSteps.indexOf(step);
 
@@ -668,6 +673,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
       payment_methods: Array.from(paymentMethods),
       payment_required: paymentRequired,
+      registration_required: registrationRequired,
       invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
       invite_source: inviteSource,
       invite_include_reserves: inviteIncludeReserves,
@@ -796,7 +802,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
 
   const goToStep = (s: WizardStep) => {
-    if (s === "players" && (step === "category" || step === "registration")) {
+    if (s === "players" && (step === "category" || step === "courts" || step === "registration")) {
       // Don't override if league pre-fill already set the player list
       if (!isDoubles && !hasLeagueSelection && selectedPlayerIds.size === 0) {
         const memberIds = genderMembers.map((m) => m.id);
@@ -854,7 +860,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode, pointsPerGame, bestOf,
     groupDurations, courtRotationMinutes, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
-    paymentMethods, paymentRequired, inviteMethods, includeVisitors,
+    paymentMethods, paymentRequired, registrationRequired, inviteMethods, includeVisitors,
     selectedVisitorClubs, description,
     customizeDailySchedule, daySchedules, selectedCourtIds,
     // Selection / pair / group assignment state — persist immediately when changed
@@ -1354,6 +1360,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
+            registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
             invite_include_reserves: inviteIncludeReserves,
@@ -1400,6 +1407,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
+            registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
             invite_include_reserves: inviteIncludeReserves,
@@ -2007,7 +2015,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setRegistrationClosesAt(champ.registration_closes_at ? new Date(champ.registration_closes_at).toISOString().slice(0,16) : "");
     setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft"|"cash")[])));
-    setPaymentRequired(champ.payment_required !== false);
+    setPaymentRequired((champ as any).payment_required !== false);
+    setRegistrationRequired((champ as any).registration_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
     setInviteSource(((champ as any).invite_source as any) || "manual");
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
@@ -2145,21 +2154,33 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (!byeHandling) m.push("Bye handling");
         break;
       }
-      case "registration": {
+      case "courts": {
         if (!startDate) m.push("Tournament start date");
         if (!endDate) m.push("Tournament end date");
         if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
           m.push("End date must be on or after the start date");
         }
-        if (!registrationOpensAt) m.push("Registration opens (date & time)");
-        if (!registrationClosesAt) m.push("Registration closes (date & time)");
-        if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
-          m.push("Registration close must be after registration open");
+        if (!startTime) m.push("Start time");
+        if (!endTime) m.push("End time");
+        if (selectedCourtIds.size === 0) m.push("At least one court");
+        if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
+          m.push("At least one play day");
+        }
+        break;
+      }
+      case "registration": {
+        if (registrationRequired) {
+          if (!registrationOpensAt) m.push("Registration opens (date & time)");
+          if (!registrationClosesAt) m.push("Registration closes (date & time)");
+          if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
+            m.push("Registration close must be after registration open");
+          }
+          if (!registrationMode) m.push("Choose who can register");
+          if (inviteMethods.size === 0) m.push("At least one invite delivery method");
         }
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
           m.push("At least one accepted payment method");
         }
-        if (inviteMethods.size === 0) m.push("At least one invite delivery method");
         break;
       }
       case "players": {
@@ -2565,6 +2586,164 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       )}
 
 
+      {/* ── STEP: COURTS (date / time / courts → book ahead of player selection) ── */}
+      {step === "courts" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Dates, Times &amp; Courts</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Lock in when the tournament is played and which courts it owns. You can book the courts now — bookings appear under the tournament name in the courts grid so nothing else can be booked over them.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Tournament starts</Label>
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm">Tournament ends</Label>
+                <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Daily start time</Label>
+                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm">Daily end time</Label>
+                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm">Play days</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {DAY_NAMES.map((name, i) => (
+                  <label key={i} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={playDays.has(i)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(playDays);
+                        checked ? next.add(i) : next.delete(i);
+                        setPlayDays(next);
+                      }}
+                    />
+                    <span className="text-sm">{name}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                For a one-day tournament tick just that day. For a weekend, tick both.
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-sm">Courts used by the tournament</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {courts.map((c) => (
+                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={selectedCourtIds.has(c.id)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(selectedCourtIds);
+                        checked ? next.add(c.id) : next.delete(c.id);
+                        setSelectedCourtIds(next);
+                      }}
+                    />
+                    <span className="text-sm">{c.name}</span>
+                  </label>
+                ))}
+                {courts.length === 0 && (
+                  <span className="text-xs text-muted-foreground">No courts configured for this club yet.</span>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Book the courts now</p>
+                  <p className="text-xs text-muted-foreground">
+                    Reserves one block per court per play-day under the tournament name. Safe to re-run after editing dates / courts — blocks are upserted, not duplicated.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={
+                    !startDate || !endDate || !startTime || !endTime ||
+                    selectedCourtIds.size === 0 ||
+                    !(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))
+                  }
+                  onClick={async () => {
+                    try {
+                      const id = await saveDraft();
+                      if (!id || !clubId) {
+                        toast.error("Could not save tournament shell — try again.");
+                        return;
+                      }
+                      const gStart = String(startTime).slice(0, 5);
+                      const gEnd = String(endTime).slice(0, 5);
+                      const courtIds = Array.from(selectedCourtIds);
+                      // Enumerate play-day dates between startDate and endDate.
+                      const dates: string[] = [];
+                      const cur = new Date(startDate);
+                      const end = new Date(endDate);
+                      while (cur <= end) {
+                        if (playDays.size === 0 || playDays.has(cur.getDay())) {
+                          dates.push(format(cur, "yyyy-MM-dd"));
+                        }
+                        cur.setDate(cur.getDate() + 1);
+                      }
+                      if (dates.length === 0) {
+                        toast.error("No play days fall within the tournament date range.");
+                        return;
+                      }
+                      const tournamentLabel = (champName || "Tournament").trim();
+                      const rows = dates.flatMap((date) =>
+                        courtIds.map((cid) => ({
+                          club_id: clubId,
+                          court_id: cid,
+                          user_id: null,
+                          club_member_id: null,
+                          date,
+                          start_time: gStart,
+                          end_time: gEnd,
+                          status: "active",
+                          is_friendly: false,
+                          guest_name: tournamentLabel,
+                          source: "club_event",
+                          external_id: `champ:${id}:block:${date}:${cid}`,
+                        }))
+                      );
+                      // Wipe any prior tournament blocks then upsert the new ones.
+                      await fromExt("bookings")
+                        .delete()
+                        .eq("club_id", clubId)
+                        .eq("source", "club_event")
+                        .like("external_id", `champ:${id}:%`);
+                      const { error: bErr } = await fromExt("bookings")
+                        .upsert(rows, { onConflict: "club_id,source,external_id" });
+                      if (bErr) throw bErr;
+                      qc.invalidateQueries({ queryKey: ["bookings"] });
+                      qc.invalidateQueries({ queryKey: ["my-bookings"] });
+                      toast.success(`${rows.length} court booking${rows.length === 1 ? "" : "s"} created under "${tournamentLabel}"`);
+                    } catch (e: any) {
+                      toast.error(e?.message || "Could not book courts");
+                    }
+                  }}
+                >
+                  Book courts now
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── STEP: REGISTRATION & PAYMENT ── */}
       {step === "registration" && (
         <Card>
@@ -2575,7 +2754,27 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
+            {/* Registration-required toggle — when off, the entire invite/window
+                section collapses and the admin seeds the roster directly on the
+                Players step. */}
+            <div className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3">
+              <Switch
+                id="registration-required"
+                checked={registrationRequired}
+                onCheckedChange={(v) => setRegistrationRequired(!!v)}
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="registration-required" className="text-sm font-medium cursor-pointer">
+                  Players need to register / be invited
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Turn off for closed tournaments where the admin just picks the players directly. The registration window, invite list and "who can register" controls below are then hidden.
+                </p>
+              </div>
+            </div>
+
             {/* Registration mode */}
+            {registrationRequired && (
             <div className="space-y-2">
               <Label className="text-sm">Who can register?</Label>
               <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
@@ -2587,6 +2786,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </SelectContent>
               </Select>
             </div>
+            )}
 
             {/* Invite source — only meaningful in invite mode */}
             {registrationMode === "invite" && (
@@ -2709,30 +2909,29 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             )}
 
-            {/* Tournament dates */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Tournament starts</Label>
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-sm">Tournament ends</Label>
-                <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
+            {/* Tournament dates are set on the Courts step (one step earlier).
+                Shown here as a read-only summary so the admin doesn't have to
+                jump back to confirm them. */}
+            <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs">
+              <span className="font-medium text-foreground">Tournament dates:</span>{" "}
+              {startDate && endDate
+                ? <span>{startDate} → {endDate}</span>
+                : <span className="text-muted-foreground italic">Go back to the Courts step to set the dates.</span>}
             </div>
-            <p className="text-xs text-muted-foreground -mt-1">Shown to invitees so they know when the tournament will be played.</p>
 
-            {/* Registration window */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Registration opens</Label>
-                <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
+            {/* Registration window — only when registration is required */}
+            {registrationRequired && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm">Registration opens</Label>
+                  <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-sm">Registration closes</Label>
+                  <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
+                </div>
               </div>
-              <div>
-                <Label className="text-sm">Registration closes</Label>
-                <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
-              </div>
-            </div>
+            )}
 
             {/* Entry fee + payment methods — payment-methods panel slides in beside the fee when amount > 0 */}
             <div className={Number(entryFeeRand) > 0 ? "grid grid-cols-1 md:grid-cols-2 gap-4 items-start" : ""}>
@@ -2818,8 +3017,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               )}
             </div>
 
-            {/* Invite methods */}
-
+            {/* Invite methods — only relevant when registration / invites are used */}
+            {registrationRequired && (
             <div className="space-y-2">
               <Label className="text-sm">Invite delivery method</Label>
               <div className="flex flex-wrap items-center gap-4">
@@ -2852,8 +3051,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 Choose how invited members are notified. Pick both for maximum reach.
               </p>
             </div>
+            )}
 
-            {/* Invite send timing */}
+            {/* Invite send timing — only when invites/registration are used */}
+            {registrationRequired && (
             <div className="space-y-2">
               <Label className="text-sm">When to send invites</Label>
               <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -2904,6 +3105,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </p>
               )}
             </div>
+            )}
 
 
 

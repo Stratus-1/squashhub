@@ -2015,7 +2015,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setRegistrationClosesAt(champ.registration_closes_at ? new Date(champ.registration_closes_at).toISOString().slice(0,16) : "");
     setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft"|"cash")[])));
-    setPaymentRequired(champ.payment_required !== false);
+    setPaymentRequired((champ as any).payment_required !== false);
+    setRegistrationRequired((champ as any).registration_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
     setInviteSource(((champ as any).invite_source as any) || "manual");
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);

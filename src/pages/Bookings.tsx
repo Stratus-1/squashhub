@@ -525,7 +525,8 @@ export default function Bookings() {
           scheduled_date,
           player_a:player_a_member_id(name, user_id, profiles:user_id(name)),
           player_b:player_b_member_id(name, user_id, profiles:user_id(name)),
-          champ:champ_id(match_duration_minutes)
+          group_number,
+          champ:champ_id(name, scoring_mode, match_duration_minutes, group_durations)
         `)
         .eq("scheduled_date", dateStr)
         .not("court_id", "is", null)
@@ -534,12 +535,13 @@ export default function Bookings() {
       if (error) throw error;
 
       return (data || []).map((m: any) => {
-        const playerA = m.player_a?.name || m.player_a?.profiles?.name || "Player A";
-        const playerB = m.player_b?.name || m.player_b?.profiles?.name || "Player B";
-        const playerAUserId = m.player_a?.user_id || null;
-        const playerBUserId = m.player_b?.user_id || null;
+        const tournamentName = m.champ?.name || "Tournament";
         const start = String(m.scheduled_time || "").slice(0, 5);
-        const duration = Number(m.champ?.match_duration_minutes) || 30;
+        const isBellsMode = m.champ?.scoring_mode === "time_capped_points";
+        const groupDurations = (m.champ?.group_durations || {}) as Record<string, number>;
+        const duration = isBellsMode
+          ? Number(groupDurations[String(m.group_number)] || m.champ?.match_duration_minutes) || 30
+          : Number(m.champ?.match_duration_minutes) || 30;
         const end = addMinutesToTime(start, duration);
 
         return {
@@ -549,13 +551,14 @@ export default function Bookings() {
           start_time: `${start}:00`,
           end_time: `${end}:00`,
           status: "active",
-          user_id: playerAUserId,
-          opponent_id: playerBUserId,
+          user_id: null,
+          opponent_id: null,
           is_friendly: false,
           is_champ: true,
-          guest_name: null,
-          player_name: playerA,
-          opponent_name: playerB,
+          guest_name: tournamentName,
+          player_name: tournamentName,
+          opponent_name: null,
+          source: "club_event",
           player_rank: null,
           opponent_rank: null,
           created_at: null,
@@ -1487,7 +1490,9 @@ export default function Bookings() {
                   // The em-dash separator is our reliable marker since `is_club_booking`
                   // is not a real column on the bookings table.
                   const looksLikeEventTitle = rawGuestName.includes(" — ");
-                  const isEventBooking = (!!(booking as any)?.is_club_booking && !!rawGuestName) || isLeagueBooking || looksLikeEventTitle;
+                  const isTournamentBooking = !!(booking as any)?.is_champ;
+                  const isClubEventBooking = (booking as any)?.source === "club_event" && !!rawGuestName;
+                  const isEventBooking = isClubEventBooking || isTournamentBooking || (!!(booking as any)?.is_club_booking && !!rawGuestName) || isLeagueBooking || looksLikeEventTitle;
                   // Normalise league fixture titles to a consistent compact format:
                   //   "<League ordinal> R<round> · Team A vs Team B"
                   // Source guest_names vary: "League - A vs B", "2nd League round 1 - A vs B", etc.

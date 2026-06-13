@@ -1548,39 +1548,56 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
 
 
-      // Auto-book courts — bookings are owned by the tournament, not individual players.
+      // Auto-book courts — one block per (date, court) covering the full
+      // tournament playing window, exactly like league fixture bookings.
+      // Bookings are owned by the tournament, never individual players.
       const tournamentLabel = (champName || "Tournament").trim();
-      const bookings = schedulePreview.allMatches
-        .filter((m) => !m.isBye && m.date && m.time && m.courtId)
-        .map((m: any, idx: number) => {
-          const [h, min] = m.time!.split(":").map(Number);
-          // Bells: each league has its own time cap (group_durations[league]).
-          const isBellsMode = scoringMode === "time_capped_points";
-          const cap = isBellsMode
-            ? (Number(groupDurations[String(m.groupNum)]) || matchDuration)
-            : matchDuration;
-          const endMins = h * 60 + min + cap;
-          const endH = Math.floor(endMins / 60) % 24;
-          const endM = endMins % 60;
-          const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-          return {
-            club_id: clubId,
-            court_id: m.courtId!,
-            user_id: null,
-            club_member_id: null,
-            date: m.date!,
-            start_time: m.time!,
-            end_time: endTimeStr,
-            status: "active",
-            is_friendly: false,
-            guest_name: tournamentLabel,
-            source: "club_event",
-            external_id: `champ:${champId}:auto:${m.date}:${m.time}:${m.courtId}:${idx}`,
-          };
-        })
-        .filter(Boolean);
+      type Slot = { date: string; courtId: number; start: string; end: string };
+      const slotMap = new Map<string, Slot>();
+      for (const m of schedulePreview.allMatches as any[]) {
+        if (m.isBye || !m.date || !m.time || !m.courtId) continue;
+        const isBellsMode = scoringMode === "time_capped_points";
+        const cap = isBellsMode
+          ? (Number(groupDurations[String(m.groupNum)]) || matchDuration)
+          : matchDuration;
+        const [h, min] = String(m.time).split(":").map(Number);
+        const endMins = h * 60 + min + cap;
+        const endH = Math.floor(endMins / 60) % 24;
+        const endM = endMins % 60;
+        const endStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+        const key = `${m.date}:${m.courtId}`;
+        const existing = slotMap.get(key);
+        if (!existing) {
+          slotMap.set(key, { date: m.date, courtId: m.courtId, start: m.time, end: endStr });
+        } else {
+          if (m.time < existing.start) existing.start = m.time;
+          if (endStr > existing.end) existing.end = endStr;
+        }
+      }
+
+      const bookings = Array.from(slotMap.values()).map((s) => ({
+        club_id: clubId,
+        court_id: s.courtId,
+        user_id: null,
+        club_member_id: null,
+        date: s.date,
+        start_time: s.start,
+        end_time: s.end,
+        status: "active",
+        is_friendly: false,
+        guest_name: tournamentLabel,
+        source: "club_event",
+        external_id: `champ:${champId}:block:${s.date}:${s.courtId}`,
+      }));
 
       if (bookings.length > 0) {
+        // Clear prior per-match bookings for this tournament so re-saves don't
+        // leave stale rows alongside the consolidated blocks.
+        await fromExt("bookings")
+          .delete()
+          .eq("club_id", clubId)
+          .eq("source", "club_event")
+          .like("external_id", `champ:${champId}:%`);
         const { error: bookErr } = await fromExt("bookings")
           .upsert(bookings, { onConflict: "club_id,source,external_id", ignoreDuplicates: true });
         if (bookErr) console.warn("Some bookings could not be created:", bookErr.message);

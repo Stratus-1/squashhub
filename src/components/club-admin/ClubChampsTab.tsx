@@ -1599,7 +1599,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           .eq("source", "club_event")
           .like("external_id", `champ:${champId}:%`);
         const { error: bookErr } = await fromExt("bookings")
-          .upsert(bookings, { onConflict: "club_id,source,external_id", ignoreDuplicates: true });
+          .upsert(bookings, { onConflict: "club_id,source,external_id" });
         if (bookErr) console.warn("Some bookings could not be created:", bookErr.message);
       }
 
@@ -1640,8 +1640,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   });
 
   // Create court bookings from the saved tournament matches.
-  // Idempotent: uses (club_id, source='club_event', external_id='champ:<champId>:match:<matchId>')
-  // unique index to skip matches that have already been booked.
+  // Idempotent: one tournament-owned block per (date, court), never per player.
   const createBookings = useMutation({
     mutationFn: async () => {
       const champId = editingChampId;
@@ -1649,6 +1648,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       const isBellsMode = scoringMode === "time_capped_points";
       const tournamentLabel = (champName || "Tournament").trim();
+      type Slot = { date: string; courtId: number; start: string; end: string };
 
       let rows: any[];
 

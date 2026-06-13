@@ -2596,7 +2596,27 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
+            {/* Registration-required toggle — when off, the entire invite/window
+                section collapses and the admin seeds the roster directly on the
+                Players step. */}
+            <div className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3">
+              <Switch
+                id="registration-required"
+                checked={registrationRequired}
+                onCheckedChange={(v) => setRegistrationRequired(!!v)}
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="registration-required" className="text-sm font-medium cursor-pointer">
+                  Players need to register / be invited
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Turn off for closed tournaments where the admin just picks the players directly. The registration window, invite list and "who can register" controls below are then hidden.
+                </p>
+              </div>
+            </div>
+
             {/* Registration mode */}
+            {registrationRequired && (
             <div className="space-y-2">
               <Label className="text-sm">Who can register?</Label>
               <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
@@ -2608,6 +2628,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </SelectContent>
               </Select>
             </div>
+            )}
 
             {/* Invite source — only meaningful in invite mode */}
             {registrationMode === "invite" && (

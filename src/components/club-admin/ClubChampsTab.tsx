@@ -1630,7 +1630,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       // For newly-created invite-mode tournaments, decide what to do with invites
       // based on the admin's chosen timing.
-      const isNewInvite = !editingChampId && awaitingPlayerPairs && registrationMode === "invite";
+      const isNewInvite = !editingChampId && awaitingPlayerPairs && registrationUsesInviteList;
       const inviteeCount = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-")).length;
       if (isNewInvite && inviteeCount > 0 && data?.id) {
         if (inviteTiming === "now") {
@@ -1796,7 +1796,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // an admin expanded the audience from a shortlist to "all members") get a
       // registration row and therefore receive the invite. We only insert
       // missing rows — existing rows (paid / cancelled / etc.) are left intact.
-      const shouldBackfillOpenAudience = editingChampId === champId && registrationMode === "open";
+      const shouldBackfillOpenAudience = editingChampId === champId && registrationRequired && effectiveRegistrationMode === "open";
       const audienceMemberIds = shouldBackfillOpenAudience
         ? members.filter((m) => memberMatchesTournamentGender(m.gender, gender)).map((m) => m.id)
         : Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
@@ -2984,7 +2984,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             )}
 
             {/* Invite source — only meaningful in invite mode */}
-            {registrationMode === "invite" && (
+            {registrationUsesInviteList && (
               <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
                 <Label className="text-sm">Initial invite list comes from…</Label>
                 <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -4169,7 +4169,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             <div className="text-sm space-y-2">
               <p><strong>Name:</strong> {champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}</p>
               <p><strong>Type:</strong> {GENDER_LABELS[gender]} {isDoubles ? "Doubles" : "Singles"}</p>
-          <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {awaitingPlayerPairs ? `${registrationMode === "invite" ? selectedPlayerIds.size : "Open"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
+          <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {awaitingPlayerPairs ? `${registrationUsesInviteList ? selectedPlayerIds.size : registrationRequired ? "Open" : "No"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
               <p><strong>Period:</strong> {startDate} to {endDate}</p>
               <p><strong>Days:</strong> {Array.from(playDays).sort().map((d) => DAY_NAMES[d]).join(", ")}</p>
               <p><strong>Time:</strong> {startTime} – {endTime}{scoringMode === "time_capped_points" ? "" : ` (${matchDuration} min per match)`}</p>

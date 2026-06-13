@@ -1299,18 +1299,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Create/update champ
   const createChamp = useMutation({
     mutationFn: async () => {
+      const draftChampId = await saveDraft();
       if (!schedulePreview && !awaitingPlayerPairs) throw new Error("No schedule generated");
 
       let champId: string;
+      const existingChampId = draftChampId || editingChampId;
       const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
 
-      if (editingChampId) {
+      if (existingChampId) {
         // SAFETY GUARD: never let Regenerate shrink the saved pair/player list.
         // If the wizard is loaded with fewer entrants than what's already saved
         // (e.g. registrations hadn't finished loading), abort instead of wiping.
         const { data: existingEntries } = await fromExt("club_champs_entries")
           .select("id")
-          .eq("champ_id", editingChampId);
+          .eq("champ_id", existingChampId);
         const savedCount = existingEntries?.length || 0;
         const currentCount = isDoubles
           ? doublesPairs.length
@@ -1320,23 +1322,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             `Refusing to regenerate: only ${currentCount} ${isDoubles ? "pair" : "player"}(s) loaded but ${savedCount} are saved. Close the wizard, reopen the tournament, and try again so all entries load first.`
           );
         }
-
-        // Remove previously-auto-booked court slots (matched via stable external_id,
-        // with a legacy fallback by date/time/court for older rows).
-        await fromExt("bookings").delete().like("external_id", `champ:${editingChampId}:%`);
-        const { data: oldMatches } = await fromExt("club_champs_matches")
-          .select("scheduled_date, scheduled_time, court_id")
-          .eq("champ_id", editingChampId);
-        for (const m of oldMatches || []) {
-          if (!m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
-          await fromExt("bookings").delete()
-            .eq("date", m.scheduled_date)
-            .eq("start_time", m.scheduled_time)
-            .eq("court_id", m.court_id)
-            .eq("source", "club_event");
-        }
-        await fromExt("club_champs_matches").delete().eq("champ_id", editingChampId);
-        await fromExt("club_champs_entries").delete().eq("champ_id", editingChampId);
 
         const { error: updateErr } = await fromExt("club_champs")
           .update({
@@ -1378,9 +1363,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
           })
-          .eq("id", editingChampId);
+          .eq("id", existingChampId);
         if (updateErr) throw updateErr;
-        champId = editingChampId;
+        champId = existingChampId;
+        if (!editingChampId) setEditingChampId(existingChampId);
       } else {
         const { data: champ, error: champErr } = await fromExt("club_champs")
           .insert({

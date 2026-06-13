@@ -2662,12 +2662,178 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             </div>
 
+            {/* Per-day schedule overrides — supports multiple time windows per date
+                (e.g. Sat 10:00–12:00 AND Sat 14:00–16:00, Sun different hours). */}
+            <div className="rounded-lg border p-3 space-y-3">
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={customizeDailySchedule}
+                  onCheckedChange={(v) => {
+                    const on = !!v;
+                    setCustomizeDailySchedule(on);
+                    if (on && daySchedules.length === 0 && startDate && endDate) {
+                      const dates = eachDayOfInterval({
+                        start: parseISO(startDate),
+                        end: parseISO(endDate),
+                      }).filter((d) => playDays.size === 0 || playDays.has(getDay(d)));
+                      setDaySchedules(
+                        dates.map((d) => ({
+                          date: format(d, "yyyy-MM-dd"),
+                          start_time: startTime,
+                          end_time: endTime,
+                          court_ids: null,
+                        }))
+                      );
+                    }
+                  }}
+                />
+                <span>
+                  <span className="font-medium">Customize times per day</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Set different time windows (and optionally specific courts) for each play-day — e.g. Saturday 10:00–12:00 and 14:00–16:00, Sunday different hours.
+                  </span>
+                </span>
+              </label>
+
+              {customizeDailySchedule && (
+                <div className="space-y-2">
+                  {daySchedules.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Pick dates and play days above, then add a window.</p>
+                  )}
+                  {daySchedules.map((d, idx) => {
+                    const allCourts = d.court_ids === null;
+                    return (
+                      <div key={idx} className="rounded border p-2 bg-muted/20 space-y-2">
+                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+                          <div>
+                            <Label className="text-xs">Date</Label>
+                            <Input
+                              type="date"
+                              value={d.date}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, date: v } : x));
+                              }}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Start</Label>
+                            <Input
+                              type="time"
+                              value={d.start_time}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, start_time: v } : x));
+                              }}
+                              className="h-8 text-sm w-28"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">End</Label>
+                            <Input
+                              type="time"
+                              value={d.end_time}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, end_time: v } : x));
+                              }}
+                              className="h-8 text-sm w-28"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8"
+                            onClick={() => setDaySchedules((prev) => prev.filter((_, i) => i !== idx))}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Checkbox
+                              checked={allCourts}
+                              onCheckedChange={(v) => {
+                                setDaySchedules((prev) => prev.map((x, i) =>
+                                  i === idx
+                                    ? { ...x, court_ids: v ? null : Array.from(selectedCourtIds) }
+                                    : x
+                                ));
+                              }}
+                            />
+                            <span className="text-xs">All selected courts</span>
+                          </div>
+                          {!allCourts && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {Array.from(selectedCourtIds).map((cid) => {
+                                const active = d.court_ids?.includes(cid);
+                                return (
+                                  <button
+                                    key={cid}
+                                    type="button"
+                                    onClick={() => {
+                                      setDaySchedules((prev) => prev.map((x, i) => {
+                                        if (i !== idx) return x;
+                                        const cur = x.court_ids ?? [];
+                                        const next = cur.includes(cid)
+                                          ? cur.filter((c) => c !== cid)
+                                          : [...cur, cid];
+                                        return { ...x, court_ids: next };
+                                      }));
+                                    }}
+                                    className={`px-2 py-0.5 rounded text-xs border ${
+                                      active
+                                        ? "bg-primary text-primary-foreground border-primary"
+                                        : "bg-background hover:bg-muted border-border"
+                                    }`}
+                                  >
+                                    {getCourtName(cid)}
+                                  </button>
+                                );
+                              })}
+                              {selectedCourtIds.size === 0 && (
+                                <span className="text-xs text-muted-foreground">Tick courts above first.</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const last = daySchedules[daySchedules.length - 1];
+                      setDaySchedules((prev) => [
+                        ...prev,
+                        {
+                          date: last?.date || startDate || format(new Date(), "yyyy-MM-dd"),
+                          start_time: startTime,
+                          end_time: endTime,
+                          court_ids: null,
+                        },
+                      ]);
+                    }}
+                  >
+                    + Add time window
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    Add the same date more than once to create multiple sessions on that day (e.g. morning + afternoon). When customized, the global Start/End times above are ignored.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="space-y-0.5">
                   <p className="text-sm font-medium">Book the courts now</p>
                   <p className="text-xs text-muted-foreground">
-                    Reserves one block per court per play-day under the tournament name. Safe to re-run after editing dates / courts — blocks are upserted, not duplicated.
+                    Reserves one block per (date, time-window, court) under the tournament name. Safe to re-run after editing — blocks are upserted, not duplicated.
                   </p>
                 </div>
                 <Button
@@ -2685,38 +2851,62 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                         toast.error("Could not save tournament shell — try again.");
                         return;
                       }
-                      const gStart = String(startTime).slice(0, 5);
-                      const gEnd = String(endTime).slice(0, 5);
                       const courtIds = Array.from(selectedCourtIds);
-                      // Enumerate play-day dates between startDate and endDate.
-                      const dates: string[] = [];
-                      const cur = new Date(startDate);
-                      const end = new Date(endDate);
-                      while (cur <= end) {
-                        if (playDays.size === 0 || playDays.has(cur.getDay())) {
-                          dates.push(format(cur, "yyyy-MM-dd"));
+                      const tournamentLabel = (champName || "Tournament").trim();
+
+                      // Build (date, start, end, courtIds) windows.
+                      type Window = { date: string; start: string; end: string; courts: number[] };
+                      const windows: Window[] = [];
+                      if (customizeDailySchedule && daySchedules.length > 0) {
+                        for (const d of daySchedules) {
+                          if (!d.date || !d.start_time || !d.end_time) continue;
+                          const cs = (d.court_ids && d.court_ids.length > 0
+                            ? d.court_ids.filter((cid) => selectedCourtIds.has(cid))
+                            : courtIds);
+                          if (cs.length === 0) continue;
+                          windows.push({
+                            date: d.date,
+                            start: String(d.start_time).slice(0, 5),
+                            end: String(d.end_time).slice(0, 5),
+                            courts: cs,
+                          });
                         }
-                        cur.setDate(cur.getDate() + 1);
+                      } else {
+                        const gStart = String(startTime).slice(0, 5);
+                        const gEnd = String(endTime).slice(0, 5);
+                        const cur = new Date(startDate);
+                        const end = new Date(endDate);
+                        while (cur <= end) {
+                          if (playDays.size === 0 || playDays.has(cur.getDay())) {
+                            windows.push({
+                              date: format(cur, "yyyy-MM-dd"),
+                              start: gStart,
+                              end: gEnd,
+                              courts: courtIds,
+                            });
+                          }
+                          cur.setDate(cur.getDate() + 1);
+                        }
                       }
-                      if (dates.length === 0) {
-                        toast.error("No play days fall within the tournament date range.");
+                      if (windows.length === 0) {
+                        toast.error("No play days / time windows configured.");
                         return;
                       }
-                      const tournamentLabel = (champName || "Tournament").trim();
-                      const rows = dates.flatMap((date) =>
-                        courtIds.map((cid) => ({
+                      const rows = windows.flatMap((w) =>
+                        w.courts.map((cid) => ({
                           club_id: clubId,
                           court_id: cid,
                           user_id: null,
                           club_member_id: null,
-                          date,
-                          start_time: gStart,
-                          end_time: gEnd,
+                          date: w.date,
+                          start_time: w.start,
+                          end_time: w.end,
                           status: "active",
                           is_friendly: false,
                           guest_name: tournamentLabel,
                           source: "club_event",
-                          external_id: `champ:${id}:block:${date}:${cid}`,
+                          // include start time so multiple windows per (date,court) don't collide
+                          external_id: `champ:${id}:block:${w.date}:${w.start}:${cid}`,
                         }))
                       );
                       // Wipe any prior tournament blocks then upsert the new ones.
@@ -2743,6 +2933,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           </CardContent>
         </Card>
       )}
+
 
       {/* ── STEP: REGISTRATION & PAYMENT ── */}
       {step === "registration" && (

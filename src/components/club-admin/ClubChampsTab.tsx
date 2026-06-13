@@ -2959,13 +2959,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   Players need to register / be invited
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Turn off for closed tournaments where the admin just picks the players directly. The registration window, invite list and "who can register" controls below are then hidden.
+                  Turn on when entry is conditional on members opting in (e.g. paid tournaments, fixed deadlines). Turn off when the admin simply picks the roster — the registration window then disappears, but the "Who can register" / invite list controls below remain so you can still seed players from a shortlist or open audience.
                 </p>
               </div>
             </div>
 
-            {/* Registration mode */}
-            {registrationRequired && (
+            {/* Registration mode — always visible. Even when registration is not
+                required, this still controls how the admin seeds the player
+                roster (open audience vs invite shortlist). */}
             <div className="space-y-2">
               <Label className="text-sm">Who can register?</Label>
               <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
@@ -2977,7 +2978,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </SelectContent>
               </Select>
             </div>
-            )}
 
             {/* Invite source — only meaningful in invite mode */}
             {registrationUsesInviteList && (

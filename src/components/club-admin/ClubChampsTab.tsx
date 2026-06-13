@@ -1437,6 +1437,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       if (!schedulePreview) throw new Error("No schedule generated");
 
+      // Destructive rebuild work happens only after the champ draft is saved and
+      // a valid in-memory schedule exists, so a later insert error still leaves
+      // the tournament available to edit/retry instead of losing the wizard.
+      await fromExt("bookings").delete().like("external_id", `champ:${champId}:%`);
+      const { data: oldMatches } = await fromExt("club_champs_matches")
+        .select("scheduled_date, scheduled_time, court_id")
+        .eq("champ_id", champId);
+      for (const m of oldMatches || []) {
+        if (!m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
+        await fromExt("bookings").delete()
+          .eq("date", m.scheduled_date)
+          .eq("start_time", m.scheduled_time)
+          .eq("court_id", m.court_id)
+          .eq("source", "club_event");
+      }
+      await fromExt("club_champs_matches").delete().eq("champ_id", champId);
+
       // Create entries
       if (isDoubles) {
         const entries = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
@@ -1448,8 +1465,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               order_index: orderIndex,
           }))
         );
-        const { error: entryErr } = await fromExt("club_champs_entries").insert(entries);
+        const { error: entryErr } = await fromExt("club_champs_entries").upsert(entries, { onConflict: "champ_id,club_member_id" });
         if (entryErr) throw entryErr;
+        const keepIds = entries.map((e) => e.club_member_id);
+        if (keepIds.length > 0) await fromExt("club_champs_entries").delete().eq("champ_id", champId).not("club_member_id", "in", `(${keepIds.join(",")})`);
       } else {
         const entries = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
           groupPlayers.map((p, orderIndex) => ({
@@ -1459,8 +1478,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             order_index: orderIndex,
           }))
         );
-        const { error: entryErr } = await fromExt("club_champs_entries").insert(entries);
+        const { error: entryErr } = await fromExt("club_champs_entries").upsert(entries, { onConflict: "champ_id,club_member_id" });
         if (entryErr) throw entryErr;
+        const keepIds = entries.map((e) => e.club_member_id);
+        if (keepIds.length > 0) await fromExt("club_champs_entries").delete().eq("champ_id", champId).not("club_member_id", "in", `(${keepIds.join(",")})`);
       }
 
       // Build pair lookup for doubles

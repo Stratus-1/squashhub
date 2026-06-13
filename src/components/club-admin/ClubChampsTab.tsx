@@ -1548,22 +1548,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
 
 
-      // Auto-book courts
-      const memberUserMap = new Map<string, string>();
-      members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });
-
+      // Auto-book courts — bookings are owned by the tournament, not individual players.
+      const tournamentLabel = (champName || "Tournament").trim();
       const bookings = schedulePreview.allMatches
         .filter((m) => !m.isBye && m.date && m.time && m.courtId)
-        .map((m) => {
-          let bookerId: string | undefined;
-          if (isDoubles) {
-            const pairA = pairMap.get(m.entityA);
-            bookerId = pairA ? memberUserMap.get(pairA.player1Id) : undefined;
-          } else {
-            bookerId = memberUserMap.get(m.entityA);
-          }
-          if (!bookerId) return null;
-
+        .map((m: any, idx: number) => {
           const [h, min] = m.time!.split(":").map(Number);
           // Bells: each league has its own time cap (group_durations[league]).
           const isBellsMode = scoringMode === "time_capped_points";
@@ -1571,23 +1560,29 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             ? (Number(groupDurations[String(m.groupNum)]) || matchDuration)
             : matchDuration;
           const endMins = h * 60 + min + cap;
-          const endH = Math.floor(endMins / 60);
+          const endH = Math.floor(endMins / 60) % 24;
           const endM = endMins % 60;
           const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
           return {
-            user_id: bookerId,
+            club_id: clubId,
             court_id: m.courtId!,
+            user_id: null,
+            club_member_id: null,
             date: m.date!,
             start_time: m.time!,
             end_time: endTimeStr,
             status: "active",
             is_friendly: false,
+            guest_name: tournamentLabel,
+            source: "club_event",
+            external_id: `champ:${champId}:auto:${m.date}:${m.time}:${m.courtId}:${idx}`,
           };
         })
         .filter(Boolean);
 
       if (bookings.length > 0) {
-        const { error: bookErr } = await fromExt("bookings").insert(bookings);
+        const { error: bookErr } = await fromExt("bookings")
+          .upsert(bookings, { onConflict: "club_id,source,external_id", ignoreDuplicates: true });
         if (bookErr) console.warn("Some bookings could not be created:", bookErr.message);
       }
 

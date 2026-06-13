@@ -573,10 +573,22 @@ export default function Bookings() {
       (b: any) => !b.status || b.status === "active"
     );
     const merged = new Map<string, any>();
+    const overlaps = (a: any, b: any) => {
+      if (a.court_id !== b.court_id || a.date !== b.date) return false;
+      const aStart = timeToMinutes(String(a.start_time || "").slice(0, 5));
+      const aEnd = timeToMinutes(String(a.end_time || "").slice(0, 5));
+      const bStart = timeToMinutes(String(b.start_time || "").slice(0, 5));
+      const bEnd = timeToMinutes(String(b.end_time || "").slice(0, 5));
+      return aStart < bEnd && bStart < aEnd;
+    };
 
     for (const b of normalBookings) {
       const key = `${b.court_id}-${String(b.start_time || "").slice(0, 5)}-${String(b.end_time || "").slice(0, 5)}`;
-      merged.set(key, b);
+      const isSavedTournamentBlock = b.source === "club_event" && String(b.external_id || "").startsWith("champ:");
+      const matchingTournament = isSavedTournamentBlock
+        ? (champsBookings as any[]).find((cb: any) => overlaps(b, cb))
+        : null;
+      merged.set(key, matchingTournament && !b.guest_name ? { ...b, guest_name: matchingTournament.guest_name, player_name: matchingTournament.guest_name, is_champ: true } : b);
     }
 
     for (const cb of champsBookings as any[]) {
@@ -1490,8 +1502,8 @@ export default function Bookings() {
                   // The em-dash separator is our reliable marker since `is_club_booking`
                   // is not a real column on the bookings table.
                   const looksLikeEventTitle = rawGuestName.includes(" — ");
-                  const isTournamentBooking = !!(booking as any)?.is_champ;
-                  const isClubEventBooking = (booking as any)?.source === "club_event" && !!rawGuestName;
+                  const isTournamentBooking = !!(booking as any)?.is_champ || String((booking as any)?.external_id || "").startsWith("champ:");
+                  const isClubEventBooking = (booking as any)?.source === "club_event" && (!!rawGuestName || isTournamentBooking);
                   const isEventBooking = isClubEventBooking || isTournamentBooking || (!!(booking as any)?.is_club_booking && !!rawGuestName) || isLeagueBooking || looksLikeEventTitle;
                   // Normalise league fixture titles to a consistent compact format:
                   //   "<League ordinal> R<round> · Team A vs Team B"
@@ -1514,7 +1526,7 @@ export default function Bookings() {
                     return matchup ? `${prefix} · ${matchup}` : prefix;
                   };
                   const eventLabel = isEventBooking
-                    ? (isLeagueBooking ? formatLeagueLabel(rawGuestName) : rawGuestName)
+                    ? (isLeagueBooking ? formatLeagueLabel(rawGuestName) : (rawGuestName || (booking as any)?.player_name || "Tournament"))
                     : null;
                   const a = (booking as any)?.player_name ? toInitialSurname(String((booking as any).player_name)) : null;
                   const b = !isEventBooking && (booking as any)?.opponent_name ? toInitialSurname(String((booking as any).opponent_name)) : null;

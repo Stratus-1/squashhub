@@ -1695,12 +1695,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         );
         if (playable.length === 0) throw new Error("No scheduled matches with date/time/court found.");
 
-        const memberUserMap = new Map<string, string>();
-        members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });
-
         rows = playable.map((m: any) => {
-          const bookerMemberId = m.partner_a_member_id || m.player_a_member_id;
-          const bookerUserId = memberUserMap.get(bookerMemberId) || memberUserMap.get(m.player_a_member_id);
           const cap = matchDuration;
           const start = String(m.scheduled_time).slice(0, 5);
           const [h, min] = start.split(":").map(Number);
@@ -1711,8 +1706,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           return {
             club_id: clubId,
             court_id: m.court_id,
-            user_id: bookerUserId || null,
-            club_member_id: m.player_a_member_id,
+            user_id: null,
+            club_member_id: null,
             date: m.scheduled_date,
             start_time: start,
             end_time: endTimeStr,

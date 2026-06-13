@@ -591,7 +591,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [allVisitors, includeVisitors, selectedVisitorClubs, gender]);
 
   const isDoubles = matchType === "doubles";
-  const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationMode === "invite";
+  const effectiveRegistrationMode = (registrationRequired ? (registrationMode || "open") : "invite") as "open" | "invite";
+  const registrationUsesInviteList = registrationRequired && effectiveRegistrationMode === "invite";
+  const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationUsesInviteList;
   // Defer pair formation until registrations are in:
   //  - players self-pair mode: always wait for confirmed pairs
   //  - admin-pair mode on NEW tournaments: save the shell first, form pairs later by editing
@@ -666,10 +668,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       bye_handling: byeHandling,
       source_league_id: Array.from(sourceLeagueIds)[0] || null,
       source_league_ids: Array.from(sourceLeagueIds),
-      registration_mode: registrationMode,
+      registration_mode: effectiveRegistrationMode,
       partner_mode: isDoubles ? (partnerMode || "admin") : "admin",
-      registration_opens_at: registrationOpensAt ? new Date(registrationOpensAt).toISOString() : null,
-      registration_closes_at: registrationClosesAt ? new Date(registrationClosesAt).toISOString() : null,
+      registration_opens_at: registrationRequired && registrationOpensAt ? new Date(registrationOpensAt).toISOString() : null,
+      registration_closes_at: registrationRequired && registrationClosesAt ? new Date(registrationClosesAt).toISOString() : null,
       entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
       payment_methods: Array.from(paymentMethods),
       payment_required: paymentRequired,

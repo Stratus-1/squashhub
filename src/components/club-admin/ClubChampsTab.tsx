@@ -860,7 +860,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode, pointsPerGame, bestOf,
     groupDurations, courtRotationMinutes, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
-    paymentMethods, paymentRequired, inviteMethods, includeVisitors,
+    paymentMethods, paymentRequired, registrationRequired, inviteMethods, includeVisitors,
     selectedVisitorClubs, description,
     customizeDailySchedule, daySchedules, selectedCourtIds,
     // Selection / pair / group assignment state — persist immediately when changed

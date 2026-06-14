@@ -1697,7 +1697,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (!champId) throw new Error("Save the tournament first before booking courts.");
 
       const isBellsMode = scoringMode === "time_capped_points";
-      const tournamentLabel = (champName || "Tournament").trim();
+      const { data: champRow } = await fromExt("club_champs").select("name").eq("id", champId).maybeSingle();
+      const tournamentLabel = ((champRow?.name as string) || champName || "Tournament").trim();
       type Slot = { date: string; courtId: number; start: string; end: string };
 
       let rows: any[];

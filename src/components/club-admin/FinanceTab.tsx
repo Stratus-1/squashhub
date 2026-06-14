@@ -1275,6 +1275,113 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bill Member Dialog */}
+      <Dialog open={billOpen} onOpenChange={setBillOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-4 h-4" /> Bill a Member
+            </DialogTitle>
+            <DialogDescription>
+              Raises a fee on the member's statement. Posts Dr Debtors / Cr the chosen income account, and creates a matching unpaid fee row.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Member</Label>
+              <Select value={billMemberId} onValueChange={setBillMemberId}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a member…" /></SelectTrigger>
+                <SelectContent>
+                  {(members || [])
+                    .slice()
+                    .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
+                    .map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name || m.profiles?.name || m.email || "Unnamed"}
+                        {m.club_member_number ? ` · ${m.club_member_number}` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Date</Label>
+                <Input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="h-9 text-xs" />
+              </div>
+              <div>
+                <Label className="text-xs">Amount (R)</Label>
+                <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={e => setBillAmount(e.target.value)} className="h-9 text-xs" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Fee description</Label>
+              <Input placeholder="e.g. Court hire — 12 June" value={billLabel} onChange={e => setBillLabel(e.target.value)} className="h-9 text-xs" />
+            </div>
+            <div>
+              <Label className="text-xs">Income account</Label>
+              <Select value={billIncome} onValueChange={setBillIncome}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="membership_income">Membership Income</SelectItem>
+                  <SelectItem value="league_fees_income">League Fees Income</SelectItem>
+                  <SelectItem value="national_body_income">National Body Fees Income</SelectItem>
+                  <SelectItem value="tournament_income">Tournament Income</SelectItem>
+                  <SelectItem value="light_fees_income">Light Fees Income</SelectItem>
+                  <SelectItem value="fee_income">Other Fee Income</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {billAmount && parseFloat(billAmount) > 0 && (
+              <div className="p-2 rounded bg-muted/60 text-[10px] space-y-0.5">
+                <p className="font-semibold text-foreground text-xs">GL Preview:</p>
+                <p>• Debit Accounts Receivable R{parseFloat(billAmount).toFixed(2)}</p>
+                <p>• Credit {getLabel(billIncome)} R{parseFloat(billAmount).toFixed(2)}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setBillOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleBillMember} disabled={billSubmitting}>
+              {billSubmitting ? "Posting…" : "Bill Member"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Row-action Confirm Dialog (Delete / Reverse) */}
+      <Dialog open={!!rowAction} onOpenChange={(o) => { if (!o) setRowAction(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {rowAction?.mode === "delete"
+                ? <><Trash2 className="w-4 h-4 text-destructive" /> Delete transaction</>
+                : <><Undo2 className="w-4 h-4 text-amber-600" /> Reverse transaction</>}
+            </DialogTitle>
+            <DialogDescription>
+              {rowAction?.mode === "delete"
+                ? "Permanently removes both sides of this double-entry. If the entry created a fee row, the unpaid fee is removed too. Use this only for entries posted by mistake."
+                : "Posts an equal-and-opposite entry dated today. The original line stays visible for audit, but the net effect on balances is zero."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-2 rounded bg-muted/60 text-[11px]">
+            <p className="font-semibold mb-1">Affected legs</p>
+            <p className="text-muted-foreground">{rowAction?.summary || "—"}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setRowAction(null)} disabled={rowActionBusy}>Cancel</Button>
+            <Button
+              size="sm"
+              variant={rowAction?.mode === "delete" ? "destructive" : "default"}
+              onClick={confirmRowAction}
+              disabled={rowActionBusy}
+            >
+              {rowActionBusy ? "Working…" : (rowAction?.mode === "delete" ? "Delete" : "Post reversal")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

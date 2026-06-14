@@ -97,6 +97,20 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [statementMemberId, setStatementMemberId] = useState<string>("");
   const [statementOpen, setStatementOpen] = useState(false);
 
+  // Bill Member dialog
+  const [billOpen, setBillOpen] = useState(false);
+  const [billMemberId, setBillMemberId] = useState<string>("");
+  const [billAmount, setBillAmount] = useState("");
+  const [billLabel, setBillLabel] = useState("");
+  const [billIncome, setBillIncome] = useState<string>("membership_income");
+  const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [billSubmitting, setBillSubmitting] = useState(false);
+
+  // Row-action confirm dialog (delete/reverse)
+  const [rowAction, setRowAction] = useState<null | { ref: string; mode: "delete" | "reverse"; summary: string }>(null);
+  const [rowActionBusy, setRowActionBusy] = useState(false);
+
+
 
   // Fetch journal entries
   const { data: journalEntries, isLoading } = useQuery({

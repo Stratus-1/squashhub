@@ -424,9 +424,9 @@ export function MembersTab({ clubId }: { clubId: string }) {
       case "national_body":
         return { side: "receivable", income: "national_body_income" };
       case "club_payable_assoc":
-        return { side: "payable", expense: "league_fees_expense" };
+        return { side: "payable", expense: "association_payable" };
       case "club_payable_national":
-        return { side: "payable", expense: "national_body_expense" };
+        return { side: "payable", expense: "association_payable" };
       default:
         return { side: "receivable", income: "fee_income" };
     }

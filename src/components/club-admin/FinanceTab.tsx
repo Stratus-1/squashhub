@@ -99,6 +99,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [statementMemberId, setStatementMemberId] = useState<string>("");
   const [statementOpen, setStatementOpen] = useState(false);
   const [statementSearch, setStatementSearch] = useState("");
+  const [balancesOpen, setBalancesOpen] = useState(false);
+  const [balancesFilter, setBalancesFilter] = useState<"outstanding" | "credit" | "all">("outstanding");
+  const [balancesSearch, setBalancesSearch] = useState("");
+
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
   const memberSearchRef = useRef<HTMLDivElement>(null);
 

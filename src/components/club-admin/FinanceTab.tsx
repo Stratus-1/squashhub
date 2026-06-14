@@ -636,23 +636,17 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <p className="text-sm text-muted-foreground">Select a member to view their statement.</p>
             ) : (() => {
               const memberEntries = (journalEntries || [])
-                .filter((e: any) => e.club_member_id === statementMemberId)
+                .filter((e: any) => e.club_member_id === statementMemberId && e.account === "debtors")
                 .slice()
                 .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-              const billed = memberEntries
-                .filter((e: any) => e.account === "debtors")
-                .reduce((s: number, e: any) => s + Number(e.debit || 0), 0);
-              const paid = memberEntries
-                .filter((e: any) => e.account === "debtors")
-                .reduce((s: number, e: any) => s + Number(e.credit || 0), 0);
+              const billed = memberEntries.reduce((s: number, e: any) => s + Number(e.debit || 0), 0);
+              const paid = memberEntries.reduce((s: number, e: any) => s + Number(e.credit || 0), 0);
               const outstanding = billed - paid;
               // Build running debtors balance per row
               let running = 0;
               const rowsDesc = memberEntries
                 .map((e: any) => {
-                  if (e.account === "debtors") {
-                    running += Number(e.debit || 0) - Number(e.credit || 0);
-                  }
+                  running += Number(e.debit || 0) - Number(e.credit || 0);
                   return { ...e, running };
                 })
                 .reverse();

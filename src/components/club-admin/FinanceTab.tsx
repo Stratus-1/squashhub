@@ -568,6 +568,25 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <Button size="sm" variant="outline" onClick={() => setStatementOpen(true)} className="gap-1.5 h-8 shrink-0">
               <BookOpen className="w-3.5 h-3.5" /> Member Statement
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5 h-8 shrink-0">
+                  <Wallet className="w-3.5 h-3.5" /> Member Balances
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => { setBalancesFilter("outstanding"); setBalancesSearch(""); setBalancesOpen(true); }}>
+                  Outstanding (owes club)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setBalancesFilter("credit"); setBalancesSearch(""); setBalancesOpen(true); }}>
+                  In Credit (overpaid)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => { setBalancesFilter("all"); setBalancesSearch(""); setBalancesOpen(true); }}>
+                  All members
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillOpen(true); }} className="gap-1.5 h-8 shrink-0">
               <Receipt className="w-3.5 h-3.5" /> Bill Member
             </Button>
@@ -575,6 +594,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <Plus className="w-3.5 h-3.5" /> Enter Transaction
             </Button>
           </div>
+
         </div>
 
         <TabsContent value="remittances">

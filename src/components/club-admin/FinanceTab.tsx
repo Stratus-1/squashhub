@@ -533,7 +533,6 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="journal" className="text-xs">Journal</TabsTrigger>
             <TabsTrigger value="by-account" className="text-xs">By Account</TabsTrigger>
-            <TabsTrigger value="member-statement" className="text-xs">Member Statement</TabsTrigger>
             <TabsTrigger value="pending" className="text-xs">
               Pending
               {(pendingTransactions || []).length > 0 && (

@@ -1105,22 +1105,36 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <DialogDescription>Select a member to view their account statement.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Select value={statementMemberId} onValueChange={setStatementMemberId}>
-              <SelectTrigger className="w-full h-9 text-xs">
-                <SelectValue placeholder="Select a member…" />
-              </SelectTrigger>
-              <SelectContent>
-                {(members || [])
-                  .slice()
-                  .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
-                  .map((m: any) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name || m.profiles?.name || m.email || "Unnamed"}
-                      {m.club_member_number ? ` · ${m.club_member_number}` : ""}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select value={statementMemberId} onValueChange={setStatementMemberId}>
+                <SelectTrigger className="flex-1 h-9 text-xs">
+                  <SelectValue placeholder="Select a member…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(members || [])
+                    .slice()
+                    .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
+                    .map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name || m.profiles?.name || m.email || "Unnamed"}
+                        {m.club_member_number ? ` · ${m.club_member_number}` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 gap-1.5 shrink-0"
+                onClick={() => {
+                  setBillMemberId(statementMemberId || "");
+                  setBillOpen(true);
+                }}
+              >
+                <Receipt className="w-3.5 h-3.5" /> Bill Member
+              </Button>
+            </div>
+
 
             {!statementMemberId ? (
               <p className="text-sm text-muted-foreground">Select a member to view their statement.</p>

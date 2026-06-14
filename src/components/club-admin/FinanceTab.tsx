@@ -25,7 +25,7 @@ import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 
 type GLAccount =
   | "debtors" | "creditors" | "bank_current" | "cash"
-  | "opening_balance_equity"
+  | "opening_balance_equity" | "member_credits" | "association_payable"
   | "fee_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income"
   | "bar_expense" | "league_fees_expense" | "national_body_expense"
   | "maintenance" | "electricity" | "rent" | "bank_charges" | "gateway_fees" | "general_expense";
@@ -44,6 +44,8 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   debtors:           { label: "Accounts Receivable", type: "BS", category: "Asset",     normal: "Dr" },
   // Balance Sheet – Liabilities / Equity
   creditors:         { label: "Accounts Payable",     type: "BS", category: "Liability", normal: "Cr" },
+  member_credits:    { label: "Member Credits",       type: "BS", category: "Liability", normal: "Cr" },
+  association_payable: { label: "Association Payable", type: "BS", category: "Liability", normal: "Cr" },
   opening_balance_equity: { label: "Opening Balance Equity", type: "BS", category: "Liability", normal: "Cr" },
   // Income
   fee_income:        { label: "Fee Income",           type: "IS", category: "Income",    normal: "Cr" },
@@ -229,7 +231,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         const desc = `Payment received: ${tx.description || "EFT"} — ${memberName}`;
         await fromExt("club_journal_entries").insert([
           { club_id: clubId, journal_ref: journalRef, account: "bank_current", debit: Math.abs(Number(tx.amount)), credit: 0, description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
-          { club_id: clubId, journal_ref: journalRef, account: "membership_income", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
+          { club_id: clubId, journal_ref: journalRef, account: "member_credits", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
         ]);
       }
 
@@ -437,8 +439,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           case "league_affiliation":    return { side: "receivable" as const, income: "league_fees_income" };
           case "national":
           case "national_body":         return { side: "receivable" as const, income: "national_body_income" };
-          case "club_payable_assoc":    return { side: "payable" as const, expense: "league_fees_expense" };
-          case "club_payable_national": return { side: "payable" as const, expense: "national_body_expense" };
+          case "club_payable_assoc":    return { side: "payable" as const, expense: "association_payable" };
+          case "club_payable_national": return { side: "payable" as const, expense: "association_payable" };
           default:                      return { side: "receivable" as const, income: "fee_income" };
         }
       };

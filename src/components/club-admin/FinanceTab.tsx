@@ -1001,37 +1001,65 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground z-10" />
                 <Input
-                  placeholder="Search members..."
+                  placeholder={statementMemberId ? "Change member…" : "Type a name to search…"}
                   value={statementSearch}
-                  onChange={e => setStatementSearch(e.target.value)}
+                  onChange={e => { setStatementSearch(e.target.value); setMemberDropdownOpen(true); }}
+                  onFocus={() => setMemberDropdownOpen(true)}
                   className="pl-8 h-9 text-xs"
                 />
-              </div>
-              <Select value={statementMemberId} onValueChange={setStatementMemberId}>
-                <SelectTrigger className="flex-1 h-9 text-xs">
-                  <SelectValue placeholder="Select a member…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(members || [])
-                    .slice()
-                    .filter((m: any) => {
+                {memberDropdownOpen && (
+                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-background border rounded-md shadow-lg max-h-52 overflow-y-auto">
+                    {(members || [])
+                      .slice()
+                      .filter((m: any) => {
+                        const term = statementSearch.toLowerCase();
+                        const name = (m.name || m.profiles?.name || "").toLowerCase();
+                        const email = (m.email || "").toLowerCase();
+                        const num = (m.club_member_number || "").toLowerCase();
+                        return !term || name.includes(term) || email.includes(term) || num.includes(term);
+                      })
+                      .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
+                      .map((m: any) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center gap-2"
+                          onClick={() => {
+                            setStatementMemberId(m.id);
+                            setStatementSearch(m.name || m.profiles?.name || m.email || "");
+                            setMemberDropdownOpen(false);
+                          }}
+                        >
+                          <span className="flex-1 truncate">
+                            {m.name || m.profiles?.name || m.email || "Unnamed"}
+                            {m.club_member_number ? ` · ${m.club_member_number}` : ""}
+                          </span>
+                        </button>
+                      ))}
+                    {(members || []).filter((m: any) => {
                       const term = statementSearch.toLowerCase();
                       const name = (m.name || m.profiles?.name || "").toLowerCase();
                       const email = (m.email || "").toLowerCase();
                       const num = (m.club_member_number || "").toLowerCase();
                       return !term || name.includes(term) || email.includes(term) || num.includes(term);
-                    })
-                    .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
-                    .map((m: any) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.name || m.profiles?.name || m.email || "Unnamed"}
-                        {m.club_member_number ? ` · ${m.club_member_number}` : ""}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+                    }).length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">No members found</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {statementMemberId && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 px-2 shrink-0 text-muted-foreground"
+                  onClick={() => { setStatementMemberId(""); setStatementSearch(""); }}
+                >
+                  Clear
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"

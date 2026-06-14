@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 interface AccountMeta {
   label: string;
-  category: "Income" | "Expense";
+  category: "Income" | "Expense" | "Asset" | "Liability";
   normal: "Dr" | "Cr";
 }
 

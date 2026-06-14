@@ -783,17 +783,18 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <p className="text-sm text-muted-foreground">No transactions for this member.</p>
                   ) : (
                     <div className="overflow-hidden border rounded-lg">
-                      <div className="grid grid-cols-[90px_1fr_120px_70px_70px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <div className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         <span>Date</span>
                         <span>Description</span>
                         <span>Account</span>
                         <span className="text-right">Debit</span>
                         <span className="text-right">Credit</span>
                         <span className="text-right">Balance</span>
+                        <span />
                       </div>
                       <div className="divide-y max-h-[500px] overflow-y-auto">
                         {rowsDesc.map((entry: any) => (
-                          <div key={entry.id} className="grid grid-cols-[90px_1fr_120px_70px_70px_80px] gap-1 px-3 py-2 text-xs items-center">
+                          <div key={entry.id} className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
                             <span className="text-[10px] text-muted-foreground tabular-nums">
                               {format(new Date(entry.created_at), "dd MMM yy")}
                             </span>
@@ -808,16 +809,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                               {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
                             </span>
                             <span className={cn("text-right tabular-nums font-medium",
-                              entry.account === "debtors"
-                                ? (entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground")
-                                : "text-muted-foreground/50"
+                              entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"
                             )}>
-                              {entry.account === "debtors" ? `R${entry.running.toFixed(2)}` : "—"}
+                              R{entry.running.toFixed(2)}
                             </span>
+                            <RowActionMenu entry={entry} />
                           </div>
                         ))}
                       </div>
                     </div>
+
                   )}
                   <p className="text-[10px] text-muted-foreground">
                     Balance column tracks the running Accounts Receivable balance (positive = member owes the club).

@@ -292,6 +292,89 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   };
 
+  /* ─── Bill a member (creates Dr Debtors / Cr Income + fee row) ─── */
+  const handleBillMember = async () => {
+    const amount = parseFloat(billAmount);
+    if (!billMemberId) return toast.error("Select a member");
+    if (!amount || amount <= 0) return toast.error("Enter a valid amount");
+    if (!billLabel.trim()) return toast.error("Enter a fee description");
+    setBillSubmitting(true);
+    try {
+      const { error } = await rpcExt("admin_bill_member_fee", {
+        _club_member_id: billMemberId,
+        _amount: amount,
+        _fee_label: billLabel.trim(),
+        _income_account: billIncome,
+        _fee_type: "club",
+        _date: new Date(billDate).toISOString(),
+      });
+      if (error) throw error;
+      toast.success("Member billed");
+      setBillOpen(false);
+      setBillAmount(""); setBillLabel("");
+      queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to bill member");
+    } finally {
+      setBillSubmitting(false);
+    }
+  };
+
+  /* ─── Per-row Delete / Reverse a journal group (both legs together) ─── */
+  const journalRefSummary = (ref: string): string => {
+    const legs = (journalEntries || []).filter((e: any) => e.journal_ref === ref);
+    if (legs.length === 0) return "";
+    return legs.map((l: any) =>
+      `${Number(l.debit) > 0 ? "Dr" : "Cr"} ${getLabel(l.account)} R${(Number(l.debit) || Number(l.credit)).toFixed(2)}`
+    ).join("  ·  ");
+  };
+
+  const confirmRowAction = async () => {
+    if (!rowAction) return;
+    setRowActionBusy(true);
+    try {
+      const fn = rowAction.mode === "delete" ? "admin_delete_journal_group" : "admin_reverse_journal_group";
+      const { error } = await rpcExt(fn, { _journal_ref: rowAction.ref, _note: null });
+      if (error) throw error;
+      toast.success(rowAction.mode === "delete" ? "Entry deleted" : "Reversal posted");
+      setRowAction(null);
+      queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    } catch (err: any) {
+      toast.error(err.message || "Action failed");
+    } finally {
+      setRowActionBusy(false);
+    }
+  };
+
+  /* Action menu reused on journal & statement rows */
+  const RowActionMenu = ({ entry }: { entry: any }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
+          <MoreHorizontal className="w-3.5 h-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem
+          onClick={() => setRowAction({ ref: entry.journal_ref, mode: "reverse", summary: journalRefSummary(entry.journal_ref) })}
+        >
+          <Undo2 className="w-3.5 h-3.5 mr-2" /> Reverse entry
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onClick={() => setRowAction({ ref: entry.journal_ref, mode: "delete", summary: journalRefSummary(entry.journal_ref) })}
+        >
+          <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete entry
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+
+
   /* ─── Accounts grouped by category for Chart of Accounts display ─── */
   const accountsByCategory = (["Asset", "Liability", "Income", "Expense"] as const).map(cat => ({
     category: cat,

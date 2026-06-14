@@ -1,63 +1,35 @@
-## NSC Doubles Fun-Raiser — merge + reconciliation (updated with Yoco)
+## Goal
+Restructure the Club Admin → Finance section so the Journal tab shows everything, the per-account filter moves to its own tab, and admins can pull a per-member statement.
 
-Single sequence, data-only, no schema changes.
+## Changes — `src/components/club-admin/FinanceTab.tsx` only
 
-### Step 1 — Merge JP Lategan duplicate
-Source `959901ba…` (NSC338) → Target `83908fa6…` (NSC183).
-- Enumerate every FK to `club_members` via `information_schema`, repoint NSC338 → NSC183 in one batch (fees, registrations, journal, league regs, affiliations, bookings, matches, notifications, permissions, ladder history, feed, challenges, etc.).
-- Copy `user_id` from NSC338 → NSC183.
-- DELETE NSC338. NSC183 keeps `ladder_position=113`; position 202 vanishes (no reshuffle).
+### 1. Journal tab — show ALL entries
+- Remove the "Filter account" `<Select>` from the Journal toolbar.
+- Render the unfiltered `journalEntries` list (drop `filteredEntries`).
+- Keep all other toolbar buttons (Reconcile / Resync / Opening Balances / Reset / Enter Transaction).
 
-### Step 2 — Bill outstanding R150 entry fees (date 2026-06-06)
-For each roster player who does NOT already have `fee_payment_id`, and excluding JP Lategan (did not play):
-- INSERT `club_member_fee_payments` (R150, outstanding, "NSC Doubles FUN-Raiser entry").
-- INSERT `club_journal_entries`: DR Members debtors 150 / CR Tournament income 150.
-- UPDATE registration `fee_payment_id` to link.
+### 2. New tab — **"By Account"**
+- TabsTrigger placed right after `Journal`.
+- Same table layout as Journal, but with the account dropdown at the top (re-using existing `accountFilter` state and `CHART_OF_ACCOUNTS`).
+- Dropdown groups options by category (Income / Expense / Asset / Liability) so "Tournament Income", "Bar Sales Income", etc. are easy to find.
+- Empty state when no account selected: "Select an account to view its transactions."
 
-Already-linked (skip billing): Sherique Crafford, Raymond Gates, Vian Crafford, Rachel Gates, Josh Crafford.
+### 3. New tab — **"Member Statement"**
+- TabsTrigger placed after `By Account`.
+- Top toolbar: searchable member `<Select>` (re-use `members` from `useClubMembers`); date range left as a TODO note for later (user said "we will sort out the date selection later on").
+- Body for the selected member:
+  - **Summary header**: 3 small cards
+    - Total Billed (sum of `debit` where `account = 'debtors'`)
+    - Total Paid (sum of `credit` where `account = 'debtors'`)
+    - Outstanding Balance = Billed − Paid (red if positive, green if ≤0)
+  - **Transactions table** — every `club_journal_entries` row where `club_member_id = selected`, ordered by `created_at` desc, columns: Date · Description · Account · Debit · Credit · Running Balance (debtors only).
+- Empty state when no member chosen.
 
-### Step 3 — Apply Yoco payments (5 rows)
+### 4. No DB / migration / business-logic changes
+- Reuses existing `club-journal-entries` query data; no new fetches needed.
+- No edits to fee posting, reconciliation or any other flow.
 
-| Yoco payer | Amount | Allocation |
-|---|---|---|
-| Rachel Gates | R150 | mark her R150 entry fee paid |
-| Raymond Gates | R150 | mark his R150 entry fee paid |
-| Sherique Crafford | R150 | mark her R150 entry fee paid |
-| Vian Crafford | R190 | R150 entry paid + **R40 surplus → Tournament income (donation)** |
-| Josh Crafford | R190 | R150 entry paid + **R40 surplus → Tournament income (donation)** |
-
-For each: mark fee row paid (paid_at = Yoco date); journal DR Bank / CR Members debtors 150. Surpluses (2 × R40 = R80) journaled DR Bank 40 / CR Tournament income 40 each.
-
-### Step 4 — Apply EFT payments
-
-| Ref | Amount | Allocation |
-|---|---|---|
-| ALEX & JESS KNOTT | R300 | Alex + Jessica Knott |
-| ABSA C&H OPPERMAN | R300 | Charmony + Hannes Opperman |
-| ARMANDT VISSER | R150 | Armandt Visser |
-| DBLSFUNDRAISERPUCKY | R150 | Glen Paterson (NSC189) |
-| JK DOUBLES FUN | R300 | Jason + Jacques Knoetze |
-| SUHAIL PACKERY | R150 | Suhayl Packary |
-| WYNAND KLAVER | R150 | Wynand Klaver |
-| CHANYA GATES | R150 | Chanya Gates |
-| SUE | R150 | Susan Crafford |
-| JP LATEGAN | R150 | NSC183 — wash (credit + refund same day) |
-| ROEDOLF VAN WYK | R150 | Roedolf van Wyk |
-| BAMANYE NTONJANE | R150 | Bamanye Ntonjane |
-| TIAN LOUW | R150 | Tian Louw |
-| JOHANN RADEMEYER | R150 | Johann Rademeyer |
-| QUINTIN TALJARD | R150 | Quintin Taljard |
-| LEZANI SLEEPERS | R150 | Lezani Slippers |
-| ABSA HOLING DOUBLES | R450 | Matthew + Douglas Peter + Leigh Holing |
-| LUCAS E DOUBLES TOUR | R300 | Lucas Esterhuizen R150 entry + R150 → Tournament income (son withdrew, kept as donation) |
-| SIMON DOUBLES FUN | R150 | Simon Riekert |
-
-Each payment: mark fee paid (paid_at = EFT date); journal DR Bank / CR Members debtors. Lucas/Lategan extras as noted.
-
-### Step 5 — Held / excluded
-- JOVAN VAN VUUREN R90 — tuck-shop, not posted.
-- "RENIER DUBBELS 06/06-0004" R150 — awaiting your decision (Renier van Rensburg vs other).
-
-### Step 6 — Return fresh "still owing" roster after batch.
-
-I'll surface the merge SQL and reconciliation SQL via the insert tool for your approval before they execute.
+## Out of scope
+- Date filters on the member statement (deferred per user).
+- PDF export / printing.
+- Any backend changes.

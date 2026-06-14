@@ -12,7 +12,7 @@ import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, A
 import { format } from "date-fns";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RemittancesPanel } from "./RemittancesPanel";
@@ -93,6 +93,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [openingBalancesOpen, setOpeningBalancesOpen] = useState(false);
+  const [statementMemberId, setStatementMemberId] = useState<string>("");
+
 
   // Fetch journal entries
   const { data: journalEntries, isLoading } = useQuery({
@@ -429,6 +431,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       <Tabs defaultValue="journal" className="w-full">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="journal" className="text-xs">Journal</TabsTrigger>
+          <TabsTrigger value="by-account" className="text-xs">By Account</TabsTrigger>
+          <TabsTrigger value="member-statement" className="text-xs">Member Statement</TabsTrigger>
           <TabsTrigger value="pending" className="text-xs">
             Pending
             {(pendingTransactions || []).length > 0 && (
@@ -451,26 +455,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           <IncomeStatementTab clubId={clubId} clubName={club?.name} accounts={CHART_OF_ACCOUNTS as any} />
         </TabsContent>
 
-        {/* Journal Tab */}
+        {/* Journal Tab — all entries, unfiltered */}
         <TabsContent value="journal">
           <Card className="p-4 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-primary" />
                 <h3 className="font-semibold text-sm">General Journal</h3>
+                <Badge variant="outline" className="text-[10px]">{(journalEntries || []).length} entries</Badge>
               </div>
               <div className="flex items-center gap-2">
-                <Select value={accountFilter} onValueChange={setAccountFilter}>
-                  <SelectTrigger className="w-[180px] h-8 text-xs">
-                    <SelectValue placeholder="Filter account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Accounts</SelectItem>
-                    {ALL_ACCOUNTS.map(a => (
-                      <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <Button size="sm" variant="outline" onClick={() => setReconcileOpen(true)} className="gap-1.5 h-8">
                   <Wallet className="w-3.5 h-3.5" /> Reconcile Fees
                 </Button>
@@ -498,7 +492,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
             {isLoading ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
-            ) : filteredEntries.length === 0 ? (
+            ) : (journalEntries || []).length === 0 ? (
               <p className="text-sm text-muted-foreground">No journal entries yet.</p>
             ) : (
               <div className="overflow-hidden border rounded-lg">
@@ -508,8 +502,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <span className="text-right">Debit</span>
                   <span className="text-right">Credit</span>
                 </div>
-                <div className="divide-y max-h-[400px] overflow-y-auto">
-                  {filteredEntries.map((entry: any) => (
+                <div className="divide-y max-h-[500px] overflow-y-auto">
+                  {(journalEntries || []).map((entry: any) => (
                     <div key={entry.id} className="grid grid-cols-[1fr_120px_80px_80px] gap-1 px-3 py-2 text-xs items-center">
                       <div className="min-w-0">
                         <p className="truncate font-medium">{entry.description}</p>
@@ -534,6 +528,204 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             )}
           </Card>
         </TabsContent>
+
+        {/* By Account Tab — filter dropdown */}
+        <TabsContent value="by-account">
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <ListTree className="w-4 h-4 text-primary" />
+                <h3 className="font-semibold text-sm">Transactions by Account</h3>
+              </div>
+              <Select value={accountFilter} onValueChange={setAccountFilter}>
+                <SelectTrigger className="w-[240px] h-8 text-xs">
+                  <SelectValue placeholder="Select an account…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Accounts</SelectItem>
+                  {(["Income", "Expense", "Asset", "Liability"] as const).map(cat => {
+                    const accts = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === cat);
+                    if (accts.length === 0) return null;
+                    return (
+                      <SelectGroup key={cat}>
+                        <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{cat}</SelectLabel>
+                        {accts.map(a => (
+                          <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    );
+                  })}
+
+                </SelectContent>
+              </Select>
+            </div>
+
+            {accountFilter === "all" ? (
+              <p className="text-sm text-muted-foreground">Select an account above to view its transactions.</p>
+            ) : filteredEntries.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No transactions for <strong>{getLabel(accountFilter)}</strong>.</p>
+            ) : (() => {
+              const totalDebit = filteredEntries.reduce((s: number, e: any) => s + Number(e.debit || 0), 0);
+              const totalCredit = filteredEntries.reduce((s: number, e: any) => s + Number(e.credit || 0), 0);
+              return (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Account</p><p className="text-sm font-semibold">{getLabel(accountFilter)}</p></Card>
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Debit</p><p className="text-sm font-semibold text-destructive tabular-nums">R{totalDebit.toFixed(2)}</p></Card>
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Credit</p><p className="text-sm font-semibold text-green-600 tabular-nums">R{totalCredit.toFixed(2)}</p></Card>
+                  </div>
+                  <div className="overflow-hidden border rounded-lg">
+                    <div className="grid grid-cols-[1fr_80px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <span>Description</span>
+                      <span className="text-right">Debit</span>
+                      <span className="text-right">Credit</span>
+                    </div>
+                    <div className="divide-y max-h-[500px] overflow-y-auto">
+                      {filteredEntries.map((entry: any) => (
+                        <div key={entry.id} className="grid grid-cols-[1fr_80px_80px] gap-1 px-3 py-2 text-xs items-center">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{entry.description}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {format(new Date(entry.created_at), "dd MMM yyyy HH:mm")}
+                              {entry.club_member_id && ` · ${getMemberName(entry.club_member_id)}`}
+                            </p>
+                          </div>
+                          <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-destructive font-medium")}>
+                            {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
+                          </span>
+                          <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
+                            {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </Card>
+        </TabsContent>
+
+        {/* Member Statement Tab */}
+        <TabsContent value="member-statement">
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-primary" />
+                <h3 className="font-semibold text-sm">Member Statement</h3>
+              </div>
+              <Select value={statementMemberId} onValueChange={setStatementMemberId}>
+                <SelectTrigger className="w-[280px] h-8 text-xs">
+                  <SelectValue placeholder="Select a member…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(members || [])
+                    .slice()
+                    .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
+                    .map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name || m.profiles?.name || m.email || "Unnamed"}
+                        {m.club_member_number ? ` · ${m.club_member_number}` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {!statementMemberId ? (
+              <p className="text-sm text-muted-foreground">Select a member to view their statement.</p>
+            ) : (() => {
+              const memberEntries = (journalEntries || [])
+                .filter((e: any) => e.club_member_id === statementMemberId)
+                .slice()
+                .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+              const billed = memberEntries
+                .filter((e: any) => e.account === "debtors")
+                .reduce((s: number, e: any) => s + Number(e.debit || 0), 0);
+              const paid = memberEntries
+                .filter((e: any) => e.account === "debtors")
+                .reduce((s: number, e: any) => s + Number(e.credit || 0), 0);
+              const outstanding = billed - paid;
+              // Build running debtors balance per row
+              let running = 0;
+              const rowsDesc = memberEntries
+                .map((e: any) => {
+                  if (e.account === "debtors") {
+                    running += Number(e.debit || 0) - Number(e.credit || 0);
+                  }
+                  return { ...e, running };
+                })
+                .reverse();
+
+              return (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Card className="p-2">
+                      <p className="text-[10px] text-muted-foreground">Total Billed</p>
+                      <p className="text-sm font-bold text-destructive tabular-nums">R{billed.toFixed(2)}</p>
+                    </Card>
+                    <Card className="p-2">
+                      <p className="text-[10px] text-muted-foreground">Total Paid</p>
+                      <p className="text-sm font-bold text-green-600 tabular-nums">R{paid.toFixed(2)}</p>
+                    </Card>
+                    <Card className="p-2">
+                      <p className="text-[10px] text-muted-foreground">Outstanding Balance</p>
+                      <p className={cn("text-sm font-bold tabular-nums", outstanding > 0.01 ? "text-destructive" : outstanding < -0.01 ? "text-green-600" : "text-muted-foreground")}>
+                        R{outstanding.toFixed(2)} {outstanding < -0.01 ? "Cr" : ""}
+                      </p>
+                    </Card>
+                  </div>
+
+                  {memberEntries.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No transactions for this member.</p>
+                  ) : (
+                    <div className="overflow-hidden border rounded-lg">
+                      <div className="grid grid-cols-[90px_1fr_120px_70px_70px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span>Date</span>
+                        <span>Description</span>
+                        <span>Account</span>
+                        <span className="text-right">Debit</span>
+                        <span className="text-right">Credit</span>
+                        <span className="text-right">Balance</span>
+                      </div>
+                      <div className="divide-y max-h-[500px] overflow-y-auto">
+                        {rowsDesc.map((entry: any) => (
+                          <div key={entry.id} className="grid grid-cols-[90px_1fr_120px_70px_70px_80px] gap-1 px-3 py-2 text-xs items-center">
+                            <span className="text-[10px] text-muted-foreground tabular-nums">
+                              {format(new Date(entry.created_at), "dd MMM yy")}
+                            </span>
+                            <p className="truncate font-medium">{entry.description}</p>
+                            <Badge variant="outline" className="text-[10px] w-fit">
+                              {getLabel(entry.account)}
+                            </Badge>
+                            <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-destructive font-medium")}>
+                              {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
+                            </span>
+                            <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
+                              {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
+                            </span>
+                            <span className={cn("text-right tabular-nums font-medium",
+                              entry.account === "debtors"
+                                ? (entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground")
+                                : "text-muted-foreground/50"
+                            )}>
+                              {entry.account === "debtors" ? `R${entry.running.toFixed(2)}` : "—"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Balance column tracks the running Accounts Receivable balance (positive = member owes the club).
+                    Date filtering will be added later.
+                  </p>
+                </>
+              );
+            })()}
+          </Card>
+        </TabsContent>
+
 
         {/* Pending Payments Tab */}
         <TabsContent value="pending">

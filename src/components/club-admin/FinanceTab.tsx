@@ -96,6 +96,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [openingBalancesOpen, setOpeningBalancesOpen] = useState(false);
   const [statementMemberId, setStatementMemberId] = useState<string>("");
   const [statementOpen, setStatementOpen] = useState(false);
+  const [statementSearch, setStatementSearch] = useState("");
 
   // Bill Member dialog
   const [billOpen, setBillOpen] = useState(false);

@@ -7,14 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fromExt } from "@/lib/supabase-ext";
-import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle } from "lucide-react";
+import { fromExt, rpcExt } from "@/lib/supabase-ext";
+import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { RemittancesPanel } from "./RemittancesPanel";
 import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
@@ -95,6 +96,20 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [openingBalancesOpen, setOpeningBalancesOpen] = useState(false);
   const [statementMemberId, setStatementMemberId] = useState<string>("");
   const [statementOpen, setStatementOpen] = useState(false);
+
+  // Bill Member dialog
+  const [billOpen, setBillOpen] = useState(false);
+  const [billMemberId, setBillMemberId] = useState<string>("");
+  const [billAmount, setBillAmount] = useState("");
+  const [billLabel, setBillLabel] = useState("");
+  const [billIncome, setBillIncome] = useState<string>("membership_income");
+  const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [billSubmitting, setBillSubmitting] = useState(false);
+
+  // Row-action confirm dialog (delete/reverse)
+  const [rowAction, setRowAction] = useState<null | { ref: string; mode: "delete" | "reverse"; summary: string }>(null);
+  const [rowActionBusy, setRowActionBusy] = useState(false);
+
 
 
   // Fetch journal entries
@@ -277,6 +292,89 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   };
 
+  /* ─── Bill a member (creates Dr Debtors / Cr Income + fee row) ─── */
+  const handleBillMember = async () => {
+    const amount = parseFloat(billAmount);
+    if (!billMemberId) return toast.error("Select a member");
+    if (!amount || amount <= 0) return toast.error("Enter a valid amount");
+    if (!billLabel.trim()) return toast.error("Enter a fee description");
+    setBillSubmitting(true);
+    try {
+      const { error } = await rpcExt("admin_bill_member_fee", {
+        _club_member_id: billMemberId,
+        _amount: amount,
+        _fee_label: billLabel.trim(),
+        _income_account: billIncome,
+        _fee_type: "club",
+        _date: new Date(billDate).toISOString(),
+      });
+      if (error) throw error;
+      toast.success("Member billed");
+      setBillOpen(false);
+      setBillAmount(""); setBillLabel("");
+      queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to bill member");
+    } finally {
+      setBillSubmitting(false);
+    }
+  };
+
+  /* ─── Per-row Delete / Reverse a journal group (both legs together) ─── */
+  const journalRefSummary = (ref: string): string => {
+    const legs = (journalEntries || []).filter((e: any) => e.journal_ref === ref);
+    if (legs.length === 0) return "";
+    return legs.map((l: any) =>
+      `${Number(l.debit) > 0 ? "Dr" : "Cr"} ${getLabel(l.account)} R${(Number(l.debit) || Number(l.credit)).toFixed(2)}`
+    ).join("  ·  ");
+  };
+
+  const confirmRowAction = async () => {
+    if (!rowAction) return;
+    setRowActionBusy(true);
+    try {
+      const fn = rowAction.mode === "delete" ? "admin_delete_journal_group" : "admin_reverse_journal_group";
+      const { error } = await rpcExt(fn, { _journal_ref: rowAction.ref, _note: null });
+      if (error) throw error;
+      toast.success(rowAction.mode === "delete" ? "Entry deleted" : "Reversal posted");
+      setRowAction(null);
+      queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    } catch (err: any) {
+      toast.error(err.message || "Action failed");
+    } finally {
+      setRowActionBusy(false);
+    }
+  };
+
+  /* Action menu reused on journal & statement rows */
+  const RowActionMenu = ({ entry }: { entry: any }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
+          <MoreHorizontal className="w-3.5 h-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem
+          onClick={() => setRowAction({ ref: entry.journal_ref, mode: "reverse", summary: journalRefSummary(entry.journal_ref) })}
+        >
+          <Undo2 className="w-3.5 h-3.5 mr-2" /> Reverse entry
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onClick={() => setRowAction({ ref: entry.journal_ref, mode: "delete", summary: journalRefSummary(entry.journal_ref) })}
+        >
+          <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete entry
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+
+
   /* ─── Accounts grouped by category for Chart of Accounts display ─── */
   const accountsByCategory = (["Asset", "Liability", "Income", "Expense"] as const).map(cat => ({
     category: cat,
@@ -452,6 +550,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <Button size="sm" variant="outline" onClick={() => setStatementOpen(true)} className="gap-1.5 h-8 shrink-0">
               <BookOpen className="w-3.5 h-3.5" /> Member Statement
             </Button>
+            <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillOpen(true); }} className="gap-1.5 h-8 shrink-0">
+              <Receipt className="w-3.5 h-3.5" /> Bill Member
+            </Button>
             <Button size="sm" onClick={() => setTxOpen(true)} className="gap-1.5 h-8 shrink-0">
               <Plus className="w-3.5 h-3.5" /> Enter Transaction
             </Button>
@@ -507,15 +608,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <p className="text-sm text-muted-foreground">No journal entries yet.</p>
             ) : (
               <div className="overflow-hidden border rounded-lg">
-                <div className="grid grid-cols-[1fr_120px_80px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <div className="grid grid-cols-[1fr_120px_80px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   <span>Description</span>
                   <span>Account</span>
                   <span className="text-right">Debit</span>
                   <span className="text-right">Credit</span>
+                  <span />
                 </div>
                 <div className="divide-y max-h-[500px] overflow-y-auto">
                   {(journalEntries || []).map((entry: any) => (
-                    <div key={entry.id} className="grid grid-cols-[1fr_120px_80px_80px] gap-1 px-3 py-2 text-xs items-center">
+                    <div key={entry.id} className="grid grid-cols-[1fr_120px_80px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
                       <div className="min-w-0">
                         <p className="truncate font-medium">{entry.description}</p>
                         <p className="text-[10px] text-muted-foreground">
@@ -532,9 +634,11 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                       <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
                         {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
                       </span>
+                      <RowActionMenu entry={entry} />
                     </div>
                   ))}
                 </div>
+
               </div>
             )}
           </Card>
@@ -685,17 +789,18 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <p className="text-sm text-muted-foreground">No transactions for this member.</p>
                   ) : (
                     <div className="overflow-hidden border rounded-lg">
-                      <div className="grid grid-cols-[90px_1fr_120px_70px_70px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <div className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         <span>Date</span>
                         <span>Description</span>
                         <span>Account</span>
                         <span className="text-right">Debit</span>
                         <span className="text-right">Credit</span>
                         <span className="text-right">Balance</span>
+                        <span />
                       </div>
                       <div className="divide-y max-h-[500px] overflow-y-auto">
                         {rowsDesc.map((entry: any) => (
-                          <div key={entry.id} className="grid grid-cols-[90px_1fr_120px_70px_70px_80px] gap-1 px-3 py-2 text-xs items-center">
+                          <div key={entry.id} className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
                             <span className="text-[10px] text-muted-foreground tabular-nums">
                               {format(new Date(entry.created_at), "dd MMM yy")}
                             </span>
@@ -710,16 +815,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                               {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
                             </span>
                             <span className={cn("text-right tabular-nums font-medium",
-                              entry.account === "debtors"
-                                ? (entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground")
-                                : "text-muted-foreground/50"
+                              entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"
                             )}>
-                              {entry.account === "debtors" ? `R${entry.running.toFixed(2)}` : "—"}
+                              R{entry.running.toFixed(2)}
                             </span>
+                            <RowActionMenu entry={entry} />
                           </div>
                         ))}
                       </div>
                     </div>
+
                   )}
                   <p className="text-[10px] text-muted-foreground">
                     Balance column tracks the running Accounts Receivable balance (positive = member owes the club).
@@ -1007,22 +1112,36 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <DialogDescription>Select a member to view their account statement.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Select value={statementMemberId} onValueChange={setStatementMemberId}>
-              <SelectTrigger className="w-full h-9 text-xs">
-                <SelectValue placeholder="Select a member…" />
-              </SelectTrigger>
-              <SelectContent>
-                {(members || [])
-                  .slice()
-                  .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
-                  .map((m: any) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name || m.profiles?.name || m.email || "Unnamed"}
-                      {m.club_member_number ? ` · ${m.club_member_number}` : ""}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select value={statementMemberId} onValueChange={setStatementMemberId}>
+                <SelectTrigger className="flex-1 h-9 text-xs">
+                  <SelectValue placeholder="Select a member…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(members || [])
+                    .slice()
+                    .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
+                    .map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name || m.profiles?.name || m.email || "Unnamed"}
+                        {m.club_member_number ? ` · ${m.club_member_number}` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 gap-1.5 shrink-0"
+                onClick={() => {
+                  setBillMemberId(statementMemberId || "");
+                  setBillOpen(true);
+                }}
+              >
+                <Receipt className="w-3.5 h-3.5" /> Bill Member
+              </Button>
+            </div>
+
 
             {!statementMemberId ? (
               <p className="text-sm text-muted-foreground">Select a member to view their statement.</p>
@@ -1065,17 +1184,18 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <p className="text-sm text-muted-foreground">No transactions for this member.</p>
                   ) : (
                     <div className="overflow-hidden border rounded-lg">
-                      <div className="grid grid-cols-[90px_1fr_120px_70px_70px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <div className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         <span>Date</span>
                         <span>Description</span>
                         <span>Account</span>
                         <span className="text-right">Debit</span>
                         <span className="text-right">Credit</span>
                         <span className="text-right">Balance</span>
+                        <span />
                       </div>
                       <div className="divide-y max-h-[400px] overflow-y-auto">
                         {rowsDesc.map((entry: any) => (
-                          <div key={entry.id} className="grid grid-cols-[90px_1fr_120px_70px_70px_80px] gap-1 px-3 py-2 text-xs items-center">
+                          <div key={entry.id} className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
                             <span className="text-[10px] text-muted-foreground tabular-nums">
                               {format(new Date(entry.created_at), "dd MMM yy")}
                             </span>
@@ -1090,20 +1210,20 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                               {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
                             </span>
                             <span className={cn("text-right tabular-nums font-medium",
-                              entry.account === "debtors"
-                                ? (entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground")
-                                : "text-muted-foreground/50"
+                              entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"
                             )}>
-                              {entry.account === "debtors" ? `R${entry.running.toFixed(2)}` : "—"}
+                              R{entry.running.toFixed(2)}
                             </span>
+                            <RowActionMenu entry={entry} />
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
                   <p className="text-[10px] text-muted-foreground">
-                    Balance column tracks the running Accounts Receivable balance (positive = member owes the club).
+                    Use the ⋯ menu on any row to <strong>Reverse</strong> (audit-safe) or <strong>Delete</strong> the transaction. Both the debit and credit legs are updated together so the books stay balanced.
                   </p>
+
                 </>
               );
             })()}
@@ -1156,6 +1276,113 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bill Member Dialog */}
+      <Dialog open={billOpen} onOpenChange={setBillOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-4 h-4" /> Bill a Member
+            </DialogTitle>
+            <DialogDescription>
+              Raises a fee on the member's statement. Posts Dr Debtors / Cr the chosen income account, and creates a matching unpaid fee row.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Member</Label>
+              <Select value={billMemberId} onValueChange={setBillMemberId}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a member…" /></SelectTrigger>
+                <SelectContent>
+                  {(members || [])
+                    .slice()
+                    .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
+                    .map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name || m.profiles?.name || m.email || "Unnamed"}
+                        {m.club_member_number ? ` · ${m.club_member_number}` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Date</Label>
+                <Input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="h-9 text-xs" />
+              </div>
+              <div>
+                <Label className="text-xs">Amount (R)</Label>
+                <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={e => setBillAmount(e.target.value)} className="h-9 text-xs" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Fee description</Label>
+              <Input placeholder="e.g. Court hire — 12 June" value={billLabel} onChange={e => setBillLabel(e.target.value)} className="h-9 text-xs" />
+            </div>
+            <div>
+              <Label className="text-xs">Income account</Label>
+              <Select value={billIncome} onValueChange={setBillIncome}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="membership_income">Membership Income</SelectItem>
+                  <SelectItem value="league_fees_income">League Fees Income</SelectItem>
+                  <SelectItem value="national_body_income">National Body Fees Income</SelectItem>
+                  <SelectItem value="tournament_income">Tournament Income</SelectItem>
+                  <SelectItem value="light_fees_income">Light Fees Income</SelectItem>
+                  <SelectItem value="fee_income">Other Fee Income</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {billAmount && parseFloat(billAmount) > 0 && (
+              <div className="p-2 rounded bg-muted/60 text-[10px] space-y-0.5">
+                <p className="font-semibold text-foreground text-xs">GL Preview:</p>
+                <p>• Debit Accounts Receivable R{parseFloat(billAmount).toFixed(2)}</p>
+                <p>• Credit {getLabel(billIncome)} R{parseFloat(billAmount).toFixed(2)}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setBillOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleBillMember} disabled={billSubmitting}>
+              {billSubmitting ? "Posting…" : "Bill Member"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Row-action Confirm Dialog (Delete / Reverse) */}
+      <Dialog open={!!rowAction} onOpenChange={(o) => { if (!o) setRowAction(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {rowAction?.mode === "delete"
+                ? <><Trash2 className="w-4 h-4 text-destructive" /> Delete transaction</>
+                : <><Undo2 className="w-4 h-4 text-amber-600" /> Reverse transaction</>}
+            </DialogTitle>
+            <DialogDescription>
+              {rowAction?.mode === "delete"
+                ? "Permanently removes both sides of this double-entry. If the entry created a fee row, the unpaid fee is removed too. Use this only for entries posted by mistake."
+                : "Posts an equal-and-opposite entry dated today. The original line stays visible for audit, but the net effect on balances is zero."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-2 rounded bg-muted/60 text-[11px]">
+            <p className="font-semibold mb-1">Affected legs</p>
+            <p className="text-muted-foreground">{rowAction?.summary || "—"}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setRowAction(null)} disabled={rowActionBusy}>Cancel</Button>
+            <Button
+              size="sm"
+              variant={rowAction?.mode === "delete" ? "destructive" : "default"}
+              onClick={confirmRowAction}
+              disabled={rowActionBusy}
+            >
+              {rowActionBusy ? "Working…" : (rowAction?.mode === "delete" ? "Delete" : "Post reversal")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

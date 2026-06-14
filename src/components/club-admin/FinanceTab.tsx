@@ -439,8 +439,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           case "league_affiliation":    return { side: "receivable" as const, income: "league_fees_income" };
           case "national":
           case "national_body":         return { side: "receivable" as const, income: "national_body_income" };
-          case "club_payable_assoc":    return { side: "payable" as const, expense: "league_fees_expense" };
-          case "club_payable_national": return { side: "payable" as const, expense: "national_body_expense" };
+          case "club_payable_assoc":    return { side: "payable" as const, expense: "association_payable" };
+          case "club_payable_national": return { side: "payable" as const, expense: "association_payable" };
           default:                      return { side: "receivable" as const, income: "fee_income" };
         }
       };

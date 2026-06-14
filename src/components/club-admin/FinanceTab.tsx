@@ -1011,7 +1011,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="relative flex-1">
+              <div className="relative flex-1" ref={memberSearchRef}>
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground z-10" />
                 <Input
                   placeholder={statementMemberId ? "Change member…" : "Type a name to search…"}

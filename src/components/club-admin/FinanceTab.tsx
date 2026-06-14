@@ -448,9 +448,14 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <TabsTrigger value="income" className="text-xs">Income Statement</TabsTrigger>
             <TabsTrigger value="coa" className="text-xs">Chart of Accounts</TabsTrigger>
           </TabsList>
-          <Button size="sm" onClick={() => setTxOpen(true)} className="gap-1.5 h-8 shrink-0">
-            <Plus className="w-3.5 h-3.5" /> Enter Transaction
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" variant="outline" onClick={() => setStatementOpen(true)} className="gap-1.5 h-8 shrink-0">
+              <BookOpen className="w-3.5 h-3.5" /> Member Statement
+            </Button>
+            <Button size="sm" onClick={() => setTxOpen(true)} className="gap-1.5 h-8 shrink-0">
+              <Plus className="w-3.5 h-3.5" /> Enter Transaction
+            </Button>
+          </div>
         </div>
 
         <TabsContent value="remittances">

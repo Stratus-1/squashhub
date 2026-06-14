@@ -585,7 +585,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-primary" />
-                <h3 className="font-semibold text-sm">General Journal</h3>
+                <h3 className="font-semibold text-sm">All GL Entries</h3>
                 <Badge variant="outline" className="text-[10px]">{(journalEntries || []).length} entries</Badge>
               </div>
               <div className="flex items-center gap-2">

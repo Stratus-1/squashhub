@@ -231,7 +231,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         const desc = `Payment received: ${tx.description || "EFT"} — ${memberName}`;
         await fromExt("club_journal_entries").insert([
           { club_id: clubId, journal_ref: journalRef, account: "bank_current", debit: Math.abs(Number(tx.amount)), credit: 0, description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
-          { club_id: clubId, journal_ref: journalRef, account: "membership_income", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
+          { club_id: clubId, journal_ref: journalRef, account: "member_credits", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
         ]);
       }
 

@@ -1,76 +1,63 @@
-## Tournament wizard — fine-tuning changes
+## NSC Doubles Fun-Raiser — merge + reconciliation (updated with Yoco)
 
-Refactor the tournament planning wizard in `src/components/club-admin/ClubChampsTab.tsx` so it matches a more natural admin flow: pick category → lock dates/times and book courts → then invite players. Also make registration & payment optional rather than mandatory.
+Single sequence, data-only, no schema changes.
 
-### 1. Registration is now optional
+### Step 1 — Merge JP Lategan duplicate
+Source `959901ba…` (NSC338) → Target `83908fa6…` (NSC183).
+- Enumerate every FK to `club_members` via `information_schema`, repoint NSC338 → NSC183 in one batch (fees, registrations, journal, league regs, affiliations, bookings, matches, notifications, permissions, ladder history, feed, challenges, etc.).
+- Copy `user_id` from NSC338 → NSC183.
+- DELETE NSC338. NSC183 keeps `ladder_position=113`; position 202 vanishes (no reshuffle).
 
-On the "Registration & Payment" step add a checkbox at the top:
+### Step 2 — Bill outstanding R150 entry fees (date 2026-06-06)
+For each roster player who does NOT already have `fee_payment_id`, and excluding JP Lategan (did not play):
+- INSERT `club_member_fee_payments` (R150, outstanding, "NSC Doubles FUN-Raiser entry").
+- INSERT `club_journal_entries`: DR Members debtors 150 / CR Tournament income 150.
+- UPDATE registration `fee_payment_id` to link.
 
-- **"Players need to register / be invited for this tournament"** (default ON for existing tournaments, ON for new).
+Already-linked (skip billing): Sherique Crafford, Raymond Gates, Vian Crafford, Rachel Gates, Josh Crafford.
 
-When **OFF**:
-- Hide the "Who can register?" select, invite-source panel, registration-opens / registration-closes datetime fields.
-- `missingForStep("registration")` no longer requires `registrationMode`, `registrationOpensAt`, `registrationClosesAt`.
-- `registration_opens_at` / `registration_closes_at` saved as `null`.
-- Wizard treats this as "admin directly seeds the roster on the Players step" — same effect as today's invite-only flow but without dates.
+### Step 3 — Apply Yoco payments (5 rows)
 
-Persist via a new boolean column `club_champs.registration_required` (default `true` for backward-compat).
+| Yoco payer | Amount | Allocation |
+|---|---|---|
+| Rachel Gates | R150 | mark her R150 entry fee paid |
+| Raymond Gates | R150 | mark his R150 entry fee paid |
+| Sherique Crafford | R150 | mark her R150 entry fee paid |
+| Vian Crafford | R190 | R150 entry paid + **R40 surplus → Tournament income (donation)** |
+| Josh Crafford | R190 | R150 entry paid + **R40 surplus → Tournament income (donation)** |
 
-### 2. Payment-required toggle (only when there is a fee)
+For each: mark fee row paid (paid_at = Yoco date); journal DR Bank / CR Members debtors 150. Surpluses (2 × R40 = R80) journaled DR Bank 40 / CR Tournament income 40 each.
 
-Next to the entry-fee input, when fee > 0, show a checkbox:
+### Step 4 — Apply EFT payments
 
-- **"Players must pay the entry fee before their entry is confirmed"** (default ON).
+| Ref | Amount | Allocation |
+|---|---|---|
+| ALEX & JESS KNOTT | R300 | Alex + Jessica Knott |
+| ABSA C&H OPPERMAN | R300 | Charmony + Hannes Opperman |
+| ARMANDT VISSER | R150 | Armandt Visser |
+| DBLSFUNDRAISERPUCKY | R150 | Glen Paterson (NSC189) |
+| JK DOUBLES FUN | R300 | Jason + Jacques Knoetze |
+| SUHAIL PACKERY | R150 | Suhayl Packary |
+| WYNAND KLAVER | R150 | Wynand Klaver |
+| CHANYA GATES | R150 | Chanya Gates |
+| SUE | R150 | Susan Crafford |
+| JP LATEGAN | R150 | NSC183 — wash (credit + refund same day) |
+| ROEDOLF VAN WYK | R150 | Roedolf van Wyk |
+| BAMANYE NTONJANE | R150 | Bamanye Ntonjane |
+| TIAN LOUW | R150 | Tian Louw |
+| JOHANN RADEMEYER | R150 | Johann Rademeyer |
+| QUINTIN TALJARD | R150 | Quintin Taljard |
+| LEZANI SLEEPERS | R150 | Lezani Slippers |
+| ABSA HOLING DOUBLES | R450 | Matthew + Douglas Peter + Leigh Holing |
+| LUCAS E DOUBLES TOUR | R300 | Lucas Esterhuizen R150 entry + R150 → Tournament income (son withdrew, kept as donation) |
+| SIMON DOUBLES FUN | R150 | Simon Riekert |
 
-When OFF, entries are confirmed immediately and the "unpaid" gate that currently blocks confirmation is bypassed. Persist via new boolean `club_champs.payment_required` (default `true`).
+Each payment: mark fee paid (paid_at = EFT date); journal DR Bank / CR Members debtors. Lucas/Lategan extras as noted.
 
-The "Registration opens/closes" datetime fields only render when registration_required = true (point 1).
+### Step 5 — Held / excluded
+- JOVAN VAN VUUREN R90 — tuck-shop, not posted.
+- "RENIER DUBBELS 06/06-0004" R150 — awaiting your decision (Renier van Rensburg vs other).
 
-### 3. Move court booking earlier — new "Courts" step
+### Step 6 — Return fresh "still owing" roster after batch.
 
-Insert a new wizard step **after** Category and **before** Registration:
-
-```text
-category → courts → registration → players → groups → schedule → review
-```
-
-The new Courts step lets the admin:
-
-- Pick the tournament date(s) — start date / end date (moved up from Registration step; Registration step keeps a read-only summary).
-- For each date, pick start time + end time and tick which courts are used.
-- Press **"Book courts now"** which calls the existing `createCourtBookings` / consolidated-block logic (already in this file) to write tournament-named blocks into `bookings`.
-
-After successful booking the wizard advances. If the admin edits dates/times later (Schedule step), the existing reconciliation logic re-runs and reuses the same `champ:${id}:block:${date}:${court}` external_ids so blocks are upserted, not duplicated.
-
-The existing Schedule step keeps its purpose (slot/match duration, breaks per league, time per court) but its court-picker now defaults to whatever was booked on the Courts step.
-
-### 4. State + persistence
-
-New `club_champs` columns:
-
-- `registration_required boolean not null default true`
-- `payment_required boolean not null default true`
-
-(Existing `entry_fee_cents`, `registration_opens_at`, `registration_closes_at` columns are unchanged — they simply become nullable in practice when the toggles are off.)
-
-Load these into wizard state in `openChampForEdit`, default to `true` for legacy rows, and save them in every `saveDraft` / persist branch.
-
-### 5. Validation updates (`missingForStep`)
-
-| Step | Required when |
-|---|---|
-| courts | `startDate`, `endDate`, at least one (date, court, start, end) row |
-| registration | `registrationMode` only if `registration_required` |
-| registration | dates only if `registration_required` |
-| players | unchanged |
-
-### Files touched
-
-- `supabase/migrations/<new>.sql` — add the two boolean columns.
-- `src/components/club-admin/ClubChampsTab.tsx` — wizard restructure, toggles, new Courts step, validation.
-
-### Out of scope (not changing)
-
-- The Bells / Standard format strategies, marker, standings.
-- The booking-display fixes already shipped (tournament-name blocks in the bookings grid).
-- League fee flow, member fees, etc.
+I'll surface the merge SQL and reconciliation SQL via the insert tool for your approval before they execute.

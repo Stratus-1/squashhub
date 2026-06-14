@@ -1,0 +1,1 @@
+DELETE FROM public.bookings WHERE club_id='061e6dd9-0ec2-4427-a939-3f18ad0884c8' AND source='club_event' AND guest_name IN ('Test','18 June Bells 1st League') AND date IN ('2026-06-17','2026-06-18');

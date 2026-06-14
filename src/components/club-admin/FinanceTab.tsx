@@ -547,16 +547,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     const accts = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === cat);
                     if (accts.length === 0) return null;
                     return (
-                      <div key={cat}>
-                        <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/40">
-                          {cat}
-                        </div>
+                      <SelectGroup key={cat}>
+                        <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{cat}</SelectLabel>
                         {accts.map(a => (
                           <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
                         ))}
-                      </div>
+                      </SelectGroup>
                     );
                   })}
+
                 </SelectContent>
               </Select>
             </div>

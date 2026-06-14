@@ -605,15 +605,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <p className="text-sm text-muted-foreground">No journal entries yet.</p>
             ) : (
               <div className="overflow-hidden border rounded-lg">
-                <div className="grid grid-cols-[1fr_120px_80px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <div className="grid grid-cols-[1fr_120px_80px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   <span>Description</span>
                   <span>Account</span>
                   <span className="text-right">Debit</span>
                   <span className="text-right">Credit</span>
+                  <span />
                 </div>
                 <div className="divide-y max-h-[500px] overflow-y-auto">
                   {(journalEntries || []).map((entry: any) => (
-                    <div key={entry.id} className="grid grid-cols-[1fr_120px_80px_80px] gap-1 px-3 py-2 text-xs items-center">
+                    <div key={entry.id} className="grid grid-cols-[1fr_120px_80px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
                       <div className="min-w-0">
                         <p className="truncate font-medium">{entry.description}</p>
                         <p className="text-[10px] text-muted-foreground">
@@ -630,9 +631,11 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                       <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
                         {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
                       </span>
+                      <RowActionMenu entry={entry} />
                     </div>
                   ))}
                 </div>
+
               </div>
             )}
           </Card>

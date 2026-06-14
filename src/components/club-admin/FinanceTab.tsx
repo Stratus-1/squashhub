@@ -98,6 +98,17 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [statementOpen, setStatementOpen] = useState(false);
   const [statementSearch, setStatementSearch] = useState("");
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
+  const memberSearchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (memberSearchRef.current && !memberSearchRef.current.contains(event.target as Node)) {
+        setMemberDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Bill Member dialog
   const [billOpen, setBillOpen] = useState(false);

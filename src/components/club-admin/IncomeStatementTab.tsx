@@ -87,6 +87,9 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     const incomeRows: { account: string; label: string; amount: number }[] = [];
     const expenseRows: { account: string; label: string; amount: number }[] = [];
     for (const [account, meta] of Object.entries(accounts)) {
+      // Income statement only shows Income & Expense accounts (P&L).
+      // Skip balance sheet accounts (Assets like Bank/Debtors, Liabilities like Creditors).
+      if (meta.category !== "Income" && meta.category !== "Expense") continue;
       const t = tally[account] || { debit: 0, credit: 0 };
       // Income: credit - debit. Expense: debit - credit.
       const amt = meta.category === "Income" ? t.credit - t.debit : t.debit - t.credit;

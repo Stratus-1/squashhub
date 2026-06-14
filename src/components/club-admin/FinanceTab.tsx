@@ -94,6 +94,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [openingBalancesOpen, setOpeningBalancesOpen] = useState(false);
   const [statementMemberId, setStatementMemberId] = useState<string>("");
+  const [statementOpen, setStatementOpen] = useState(false);
 
 
   // Fetch journal entries
@@ -447,9 +448,14 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <TabsTrigger value="income" className="text-xs">Income Statement</TabsTrigger>
             <TabsTrigger value="coa" className="text-xs">Chart of Accounts</TabsTrigger>
           </TabsList>
-          <Button size="sm" onClick={() => setTxOpen(true)} className="gap-1.5 h-8 shrink-0">
-            <Plus className="w-3.5 h-3.5" /> Enter Transaction
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" variant="outline" onClick={() => setStatementOpen(true)} className="gap-1.5 h-8 shrink-0">
+              <BookOpen className="w-3.5 h-3.5" /> Member Statement
+            </Button>
+            <Button size="sm" onClick={() => setTxOpen(true)} className="gap-1.5 h-8 shrink-0">
+              <Plus className="w-3.5 h-3.5" /> Enter Transaction
+            </Button>
+          </div>
         </div>
 
         <TabsContent value="remittances">
@@ -987,6 +993,120 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <Button className="w-full" onClick={handleRecordTransaction} disabled={txSubmitting}>
               {txSubmitting ? "Recording..." : "Record Transaction"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Member Statement Dialog */}
+      <Dialog open={statementOpen} onOpenChange={setStatementOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4" /> Member Statement
+            </DialogTitle>
+            <DialogDescription>Select a member to view their account statement.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Select value={statementMemberId} onValueChange={setStatementMemberId}>
+              <SelectTrigger className="w-full h-9 text-xs">
+                <SelectValue placeholder="Select a member…" />
+              </SelectTrigger>
+              <SelectContent>
+                {(members || [])
+                  .slice()
+                  .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
+                  .map((m: any) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name || m.profiles?.name || m.email || "Unnamed"}
+                      {m.club_member_number ? ` · ${m.club_member_number}` : ""}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+
+            {!statementMemberId ? (
+              <p className="text-sm text-muted-foreground">Select a member to view their statement.</p>
+            ) : (() => {
+              const memberEntries = (journalEntries || [])
+                .filter((e: any) => e.club_member_id === statementMemberId && e.account === "debtors")
+                .slice()
+                .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+              const billed = memberEntries.reduce((s: number, e: any) => s + Number(e.debit || 0), 0);
+              const paid = memberEntries.reduce((s: number, e: any) => s + Number(e.credit || 0), 0);
+              const outstanding = billed - paid;
+              let running = 0;
+              const rowsDesc = memberEntries
+                .map((e: any) => {
+                  running += Number(e.debit || 0) - Number(e.credit || 0);
+                  return { ...e, running };
+                })
+                .reverse();
+
+              return (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Card className="p-2">
+                      <p className="text-[10px] text-muted-foreground">Total Billed</p>
+                      <p className="text-sm font-bold text-destructive tabular-nums">R{billed.toFixed(2)}</p>
+                    </Card>
+                    <Card className="p-2">
+                      <p className="text-[10px] text-muted-foreground">Total Paid</p>
+                      <p className="text-sm font-bold text-green-600 tabular-nums">R{paid.toFixed(2)}</p>
+                    </Card>
+                    <Card className="p-2">
+                      <p className="text-[10px] text-muted-foreground">Outstanding Balance</p>
+                      <p className={cn("text-sm font-bold tabular-nums", outstanding > 0.01 ? "text-destructive" : outstanding < -0.01 ? "text-green-600" : "text-muted-foreground")}>
+                        R{outstanding.toFixed(2)} {outstanding < -0.01 ? "Cr" : ""}
+                      </p>
+                    </Card>
+                  </div>
+
+                  {memberEntries.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No transactions for this member.</p>
+                  ) : (
+                    <div className="overflow-hidden border rounded-lg">
+                      <div className="grid grid-cols-[90px_1fr_120px_70px_70px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span>Date</span>
+                        <span>Description</span>
+                        <span>Account</span>
+                        <span className="text-right">Debit</span>
+                        <span className="text-right">Credit</span>
+                        <span className="text-right">Balance</span>
+                      </div>
+                      <div className="divide-y max-h-[400px] overflow-y-auto">
+                        {rowsDesc.map((entry: any) => (
+                          <div key={entry.id} className="grid grid-cols-[90px_1fr_120px_70px_70px_80px] gap-1 px-3 py-2 text-xs items-center">
+                            <span className="text-[10px] text-muted-foreground tabular-nums">
+                              {format(new Date(entry.created_at), "dd MMM yy")}
+                            </span>
+                            <p className="truncate font-medium">{entry.description}</p>
+                            <Badge variant="outline" className="text-[10px] w-fit">
+                              {getLabel(entry.account)}
+                            </Badge>
+                            <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-destructive font-medium")}>
+                              {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
+                            </span>
+                            <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
+                              {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
+                            </span>
+                            <span className={cn("text-right tabular-nums font-medium",
+                              entry.account === "debtors"
+                                ? (entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground")
+                                : "text-muted-foreground/50"
+                            )}>
+                              {entry.account === "debtors" ? `R${entry.running.toFixed(2)}` : "—"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Balance column tracks the running Accounts Receivable balance (positive = member owes the club).
+                  </p>
+                </>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>

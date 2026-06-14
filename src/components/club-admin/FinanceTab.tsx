@@ -429,23 +429,28 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       </div>
 
       <Tabs defaultValue="journal" className="w-full">
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="journal" className="text-xs">Journal</TabsTrigger>
-          <TabsTrigger value="by-account" className="text-xs">By Account</TabsTrigger>
-          <TabsTrigger value="member-statement" className="text-xs">Member Statement</TabsTrigger>
-          <TabsTrigger value="pending" className="text-xs">
-            Pending
-            {(pendingTransactions || []).length > 0 && (
-              <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">{(pendingTransactions || []).length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="remittances" className="text-xs gap-1">
-            <Send className="w-3 h-3" /> Remittances
-          </TabsTrigger>
-          <TabsTrigger value="trial" className="text-xs">Trial Balance</TabsTrigger>
-          <TabsTrigger value="income" className="text-xs">Income Statement</TabsTrigger>
-          <TabsTrigger value="coa" className="text-xs">Chart of Accounts</TabsTrigger>
-        </TabsList>
+        <div className="flex items-start justify-between gap-2 flex-wrap">
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="journal" className="text-xs">Journal</TabsTrigger>
+            <TabsTrigger value="by-account" className="text-xs">By Account</TabsTrigger>
+            <TabsTrigger value="member-statement" className="text-xs">Member Statement</TabsTrigger>
+            <TabsTrigger value="pending" className="text-xs">
+              Pending
+              {(pendingTransactions || []).length > 0 && (
+                <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">{(pendingTransactions || []).length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="remittances" className="text-xs gap-1">
+              <Send className="w-3 h-3" /> Remittances
+            </TabsTrigger>
+            <TabsTrigger value="trial" className="text-xs">Trial Balance</TabsTrigger>
+            <TabsTrigger value="income" className="text-xs">Income Statement</TabsTrigger>
+            <TabsTrigger value="coa" className="text-xs">Chart of Accounts</TabsTrigger>
+          </TabsList>
+          <Button size="sm" onClick={() => setTxOpen(true)} className="gap-1.5 h-8 shrink-0">
+            <Plus className="w-3.5 h-3.5" /> Enter Transaction
+          </Button>
+        </div>
 
         <TabsContent value="remittances">
           <RemittancesPanel clubId={clubId} />

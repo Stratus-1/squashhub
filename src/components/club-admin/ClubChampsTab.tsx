@@ -1600,7 +1600,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // Auto-book courts — one block per (date, court) covering the full
       // tournament playing window, exactly like league fixture bookings.
       // Bookings are owned by the tournament, never individual players.
-      const tournamentLabel = (champName || "Tournament").trim();
+      const { data: champRow } = await fromExt("club_champs").select("name").eq("id", champId).maybeSingle();
+      const tournamentLabel = ((champRow?.name as string) || champName || "Tournament").trim();
       type Slot = { date: string; courtId: number; start: string; end: string };
       const slotMap = new Map<string, Slot>();
       for (const m of schedulePreview.allMatches as any[]) {
@@ -1696,7 +1697,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (!champId) throw new Error("Save the tournament first before booking courts.");
 
       const isBellsMode = scoringMode === "time_capped_points";
-      const tournamentLabel = (champName || "Tournament").trim();
+      const { data: champRow } = await fromExt("club_champs").select("name").eq("id", champId).maybeSingle();
+      const tournamentLabel = ((champRow?.name as string) || champName || "Tournament").trim();
       type Slot = { date: string; courtId: number; start: string; end: string };
 
       let rows: any[];
@@ -2895,7 +2897,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                         return;
                       }
                       const courtIds = Array.from(selectedCourtIds);
-                      const tournamentLabel = (champName || "Tournament").trim();
+                      const { data: champRow } = await fromExt("club_champs").select("name").eq("id", id).maybeSingle();
+                      const tournamentLabel = ((champRow?.name as string) || champName || "Tournament").trim();
 
                       // Build (date, start, end, courtIds) windows.
                       type Window = { date: string; start: string; end: string; courts: number[] };

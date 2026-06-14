@@ -94,6 +94,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [openingBalancesOpen, setOpeningBalancesOpen] = useState(false);
   const [statementMemberId, setStatementMemberId] = useState<string>("");
+  const [statementOpen, setStatementOpen] = useState(false);
 
 
   // Fetch journal entries

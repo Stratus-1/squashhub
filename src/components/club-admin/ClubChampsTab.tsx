@@ -2897,7 +2897,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                         return;
                       }
                       const courtIds = Array.from(selectedCourtIds);
-                      const tournamentLabel = (champName || "Tournament").trim();
+                      const { data: champRow } = await fromExt("club_champs").select("name").eq("id", id).maybeSingle();
+                      const tournamentLabel = ((champRow?.name as string) || champName || "Tournament").trim();
 
                       // Build (date, start, end, courtIds) windows.
                       type Window = { date: string; start: string; end: string; courts: number[] };

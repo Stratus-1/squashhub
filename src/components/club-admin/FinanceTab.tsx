@@ -12,7 +12,7 @@ import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, A
 import { format } from "date-fns";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RemittancesPanel } from "./RemittancesPanel";

@@ -540,11 +540,11 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         </Card>
       </div>
 
-      <Tabs defaultValue="journal" className="w-full">
+      <Tabs defaultValue="by-account" className="w-full">
         <div className="flex items-start justify-between gap-2 flex-wrap">
           <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="journal" className="text-xs">Journal</TabsTrigger>
             <TabsTrigger value="by-account" className="text-xs">By Account</TabsTrigger>
+            <TabsTrigger value="journal" className="text-xs">All GL Entries</TabsTrigger>
             <TabsTrigger value="pending" className="text-xs">
               Pending
               {(pendingTransactions || []).length > 0 && (

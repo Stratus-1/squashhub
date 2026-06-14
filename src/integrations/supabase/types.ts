@@ -1815,6 +1815,7 @@ export type Database = {
           fee_payment_id: string | null
           id: string
           journal_ref: string
+          reverses_journal_ref: string | null
           transaction_id: string | null
         }
         Insert: {
@@ -1828,6 +1829,7 @@ export type Database = {
           fee_payment_id?: string | null
           id?: string
           journal_ref?: string
+          reverses_journal_ref?: string | null
           transaction_id?: string | null
         }
         Update: {
@@ -1841,6 +1843,7 @@ export type Database = {
           fee_payment_id?: string | null
           id?: string
           journal_ref?: string
+          reverses_journal_ref?: string | null
           transaction_id?: string | null
         }
         Relationships: [
@@ -4041,6 +4044,50 @@ export type Database = {
           },
         ]
       }
+      ledger_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          after_json: Json | null
+          before_json: Json | null
+          club_id: string
+          created_at: string
+          id: string
+          journal_ref: string
+          note: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          after_json?: Json | null
+          before_json?: Json | null
+          club_id: string
+          created_at?: string
+          id?: string
+          journal_ref: string
+          note?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          after_json?: Json | null
+          before_json?: Json | null
+          club_id?: string
+          created_at?: string
+          id?: string
+          journal_ref?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_audit_log_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       light_sessions: {
         Row: {
           booking_id: string
@@ -5787,6 +5834,21 @@ export type Database = {
         Args: { p_accept: boolean; p_registration_id: string }
         Returns: Json
       }
+      admin_bill_member_fee: {
+        Args: {
+          _amount: number
+          _club_member_id: string
+          _date?: string
+          _fee_label: string
+          _fee_type?: string
+          _income_account: string
+        }
+        Returns: Json
+      }
+      admin_delete_journal_group: {
+        Args: { _journal_ref: string; _note?: string }
+        Returns: Json
+      }
       admin_list_unclaimed_club_members: {
         Args: { _club_id: string }
         Returns: {
@@ -5802,6 +5864,10 @@ export type Database = {
       admin_reorder_ladder: {
         Args: { gender_filter: string; player_ids: string[] }
         Returns: undefined
+      }
+      admin_reverse_journal_group: {
+        Args: { _journal_ref: string; _note?: string }
+        Returns: Json
       }
       apply_ladder_adjustments: {
         Args: {

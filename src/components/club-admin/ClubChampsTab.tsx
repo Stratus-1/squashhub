@@ -1600,7 +1600,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // Auto-book courts — one block per (date, court) covering the full
       // tournament playing window, exactly like league fixture bookings.
       // Bookings are owned by the tournament, never individual players.
-      const tournamentLabel = (champName || "Tournament").trim();
+      const { data: champRow } = await fromExt("club_champs").select("name").eq("id", champId).maybeSingle();
+      const tournamentLabel = ((champRow?.name as string) || champName || "Tournament").trim();
       type Slot = { date: string; courtId: number; start: string; end: string };
       const slotMap = new Map<string, Slot>();
       for (const m of schedulePreview.allMatches as any[]) {

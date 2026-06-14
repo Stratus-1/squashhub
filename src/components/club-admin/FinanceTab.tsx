@@ -1199,7 +1199,128 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         </DialogContent>
       </Dialog>
 
+      {/* Member Balances Dialog */}
+      <Dialog open={balancesOpen} onOpenChange={setBalancesOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="w-4 h-4" /> Member Balances
+            </DialogTitle>
+            <DialogDescription>
+              Net of <strong>Accounts Receivable</strong> (billed minus paid) less <strong>Member Credits</strong> (EFT top-ups not yet applied). Positive = owes the club; negative = in credit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex rounded-md border overflow-hidden">
+                {(["outstanding", "credit", "all"] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setBalancesFilter(f)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium transition-colors",
+                      balancesFilter === f ? "bg-primary text-primary-foreground" : "bg-card hover:bg-accent"
+                    )}
+                  >
+                    {f === "outstanding" ? "Outstanding" : f === "credit" ? "In Credit" : "All"}
+                  </button>
+                ))}
+              </div>
+              <Input
+                placeholder="Search name…"
+                value={balancesSearch}
+                onChange={(e) => setBalancesSearch(e.target.value)}
+                className="h-8 text-xs flex-1 min-w-[160px]"
+              />
+            </div>
+            {(() => {
+              const memberMap = new Map<string, { debtors: number; credits: number }>();
+              (journalEntries || []).forEach((e: any) => {
+                if (!e.club_member_id) return;
+                const row = memberMap.get(e.club_member_id) || { debtors: 0, credits: 0 };
+                if (e.account === "debtors") {
+                  row.debtors += Number(e.debit || 0) - Number(e.credit || 0);
+                } else if (e.account === "member_credits") {
+                  row.credits += Number(e.credit || 0) - Number(e.debit || 0);
+                }
+                memberMap.set(e.club_member_id, row);
+              });
+              const term = balancesSearch.trim().toLowerCase();
+              let rows = Array.from(memberMap.entries()).map(([id, v]) => ({
+                id,
+                name: getMemberName(id),
+                debtors: v.debtors,
+                credits: v.credits,
+                net: v.debtors - v.credits,
+              }));
+              if (balancesFilter === "outstanding") rows = rows.filter(r => r.net > 0.01);
+              else if (balancesFilter === "credit") rows = rows.filter(r => r.net < -0.01);
+              if (term) rows = rows.filter(r => r.name.toLowerCase().includes(term));
+              rows.sort((a, b) => balancesFilter === "credit" ? a.net - b.net : b.net - a.net);
+              const total = rows.reduce((s, r) => s + r.net, 0);
+
+              return (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Card className="p-2">
+                      <p className="text-[10px] text-muted-foreground">Members shown</p>
+                      <p className="text-sm font-bold tabular-nums">{rows.length}</p>
+                    </Card>
+                    <Card className="p-2">
+                      <p className="text-[10px] text-muted-foreground">Total {balancesFilter === "credit" ? "Credit" : "Outstanding"}</p>
+                      <p className={cn("text-sm font-bold tabular-nums", total > 0.01 ? "text-destructive" : total < -0.01 ? "text-green-600" : "text-muted-foreground")}>
+                        R{Math.abs(total).toFixed(2)} {total < -0.01 ? "Cr" : ""}
+                      </p>
+                    </Card>
+                    <Card className="p-2">
+                      <p className="text-[10px] text-muted-foreground">View</p>
+                      <p className="text-sm font-bold capitalize">{balancesFilter}</p>
+                    </Card>
+                  </div>
+                  {rows.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No members match this filter.</p>
+                  ) : (
+                    <div className="overflow-hidden border rounded-lg">
+                      <div className="grid grid-cols-[1fr_90px_90px_100px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span>Member</span>
+                        <span className="text-right">Receivable</span>
+                        <span className="text-right">Credits</span>
+                        <span className="text-right">Net Balance</span>
+                      </div>
+                      <div className="divide-y max-h-[420px] overflow-y-auto">
+                        {rows.map(r => (
+                          <button
+                            key={r.id}
+                            onClick={() => { setStatementMemberId(r.id); setStatementSearch(""); setBalancesOpen(false); setStatementOpen(true); }}
+                            className="w-full grid grid-cols-[1fr_90px_90px_100px] gap-1 px-3 py-2 text-xs items-center hover:bg-accent text-left"
+                          >
+                            <span className="truncate font-medium">{r.name}</span>
+                            <span className="text-right tabular-nums text-destructive">
+                              {r.debtors > 0.01 ? `R${r.debtors.toFixed(2)}` : ""}
+                            </span>
+                            <span className="text-right tabular-nums text-green-600">
+                              {r.credits > 0.01 ? `R${r.credits.toFixed(2)}` : ""}
+                            </span>
+                            <span className={cn("text-right tabular-nums font-bold",
+                              r.net > 0.01 ? "text-destructive" : r.net < -0.01 ? "text-green-600" : "text-muted-foreground"
+                            )}>
+                              R{Math.abs(r.net).toFixed(2)} {r.net < -0.01 ? "Cr" : ""}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">Click any member to open their full statement.</p>
+                </>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Reset Finances Confirm Dialog */}
+
       <Dialog open={resetOpen} onOpenChange={(o) => { setResetOpen(o); if (!o) setResetConfirmText(""); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>

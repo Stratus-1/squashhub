@@ -1450,20 +1450,56 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           <div className="space-y-3">
             <div>
               <Label className="text-xs">Member</Label>
-              <Select value={billMemberId} onValueChange={setBillMemberId}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a member…" /></SelectTrigger>
-                <SelectContent>
-                  {(members || [])
-                    .slice()
-                    .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
-                    .map((m: any) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.name || m.profiles?.name || m.email || "Unnamed"}
-                        {m.club_member_number ? ` · ${m.club_member_number}` : ""}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <div className="relative" ref={billMemberSearchRef}>
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground z-10" />
+                <Input
+                  placeholder={billMemberId ? getMemberName(billMemberId) : "Type a name to search…"}
+                  value={billMemberSearch}
+                  onChange={e => { setBillMemberSearch(e.target.value); setBillMemberDropdownOpen(true); }}
+                  onFocus={() => setBillMemberDropdownOpen(true)}
+                  className="pl-8 h-9 text-xs"
+                />
+                {billMemberDropdownOpen && (
+                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-background border rounded-md shadow-lg max-h-52 overflow-y-auto">
+                    {(members || [])
+                      .slice()
+                      .filter((m: any) => {
+                        const term = billMemberSearch.toLowerCase();
+                        const name = (m.name || m.profiles?.name || "").toLowerCase();
+                        const email = (m.email || "").toLowerCase();
+                        const num = (m.club_member_number || "").toLowerCase();
+                        return !term || name.includes(term) || email.includes(term) || num.includes(term);
+                      })
+                      .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
+                      .map((m: any) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center gap-2"
+                          onClick={() => {
+                            setBillMemberId(m.id);
+                            setBillMemberSearch(m.name || m.profiles?.name || m.email || "");
+                            setBillMemberDropdownOpen(false);
+                          }}
+                        >
+                          <span className="flex-1 truncate">
+                            {m.name || m.profiles?.name || m.email || "Unnamed"}
+                            {m.club_member_number ? ` · ${m.club_member_number}` : ""}
+                          </span>
+                        </button>
+                      ))}
+                    {(members || []).filter((m: any) => {
+                      const term = billMemberSearch.toLowerCase();
+                      const name = (m.name || m.profiles?.name || "").toLowerCase();
+                      const email = (m.email || "").toLowerCase();
+                      const num = (m.club_member_number || "").toLowerCase();
+                      return !term || name.includes(term) || email.includes(term) || num.includes(term);
+                    }).length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">No members found</div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>

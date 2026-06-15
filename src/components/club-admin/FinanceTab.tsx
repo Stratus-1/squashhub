@@ -1024,15 +1024,67 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
             <div>
               <Label className="text-xs">Member (optional)</Label>
-              <Select value={txMemberId} onValueChange={setTxMemberId}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {(members || []).map((m: any) => (
-                    <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || m.email || "Unnamed"}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative" ref={txMemberSearchRef}>
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground z-10" />
+                <Input
+                  placeholder={txMemberId ? getMemberName(txMemberId) : "Type a name to search…"}
+                  value={txMemberSearch}
+                  onChange={e => { setTxMemberSearch(e.target.value); setTxMemberDropdownOpen(true); }}
+                  onFocus={() => setTxMemberDropdownOpen(true)}
+                  className="pl-8 h-9 text-xs"
+                />
+                {txMemberDropdownOpen && (
+                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-background border rounded-md shadow-lg max-h-52 overflow-y-auto">
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center gap-2 text-muted-foreground"
+                      onClick={() => {
+                        setTxMemberId("__none__");
+                        setTxMemberSearch("");
+                        setTxMemberDropdownOpen(false);
+                      }}
+                    >
+                      <span className="flex-1">None</span>
+                    </button>
+                    {(members || [])
+                      .slice()
+                      .filter((m: any) => {
+                        const term = txMemberSearch.toLowerCase();
+                        const name = (m.name || m.profiles?.name || "").toLowerCase();
+                        const email = (m.email || "").toLowerCase();
+                        const num = (m.club_member_number || "").toLowerCase();
+                        return !term || name.includes(term) || email.includes(term) || num.includes(term);
+                      })
+                      .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
+                      .map((m: any) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center gap-2"
+                          onClick={() => {
+                            setTxMemberId(m.id);
+                            setTxMemberSearch(m.name || m.profiles?.name || m.email || "");
+                            setTxMemberDropdownOpen(false);
+                          }}
+                        >
+                          <span className="flex-1 truncate">
+                            {m.name || m.profiles?.name || m.email || "Unnamed"}
+                            {m.club_member_number ? ` · ${m.club_member_number}` : ""}
+                          </span>
+                        </button>
+                      ))}
+                    {(members || []).filter((m: any) => {
+                      const term = txMemberSearch.toLowerCase();
+                      const name = (m.name || m.profiles?.name || "").toLowerCase();
+                      const email = (m.email || "").toLowerCase();
+                      const num = (m.club_member_number || "").toLowerCase();
+                      return !term || name.includes(term) || email.includes(term) || num.includes(term);
+                    }).length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">No members found</div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             <Button className="w-full" onClick={handleRecordTransaction} disabled={txSubmitting}>

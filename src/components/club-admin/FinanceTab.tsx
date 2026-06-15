@@ -103,13 +103,29 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [balancesFilter, setBalancesFilter] = useState<"outstanding" | "credit" | "all">("outstanding");
   const [balancesSearch, setBalancesSearch] = useState("");
 
+  // Member searchable dropdowns (shared pattern for statement, tx, bill)
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
   const memberSearchRef = useRef<HTMLDivElement>(null);
 
+  const [txMemberSearch, setTxMemberSearch] = useState("");
+  const [txMemberDropdownOpen, setTxMemberDropdownOpen] = useState(false);
+  const txMemberSearchRef = useRef<HTMLDivElement>(null);
+
+  const [billMemberSearch, setBillMemberSearch] = useState("");
+  const [billMemberDropdownOpen, setBillMemberDropdownOpen] = useState(false);
+  const billMemberSearchRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (memberSearchRef.current && !memberSearchRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (memberSearchRef.current && !memberSearchRef.current.contains(target)) {
         setMemberDropdownOpen(false);
+      }
+      if (txMemberSearchRef.current && !txMemberSearchRef.current.contains(target)) {
+        setTxMemberDropdownOpen(false);
+      }
+      if (billMemberSearchRef.current && !billMemberSearchRef.current.contains(target)) {
+        setBillMemberDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);

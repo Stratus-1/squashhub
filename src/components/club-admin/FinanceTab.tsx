@@ -606,7 +606,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillOpen(true); }} className="gap-1.5 h-8 shrink-0">
               <Receipt className="w-3.5 h-3.5" /> Bill Member
             </Button>
-            <Button size="sm" onClick={() => setTxOpen(true)} className="gap-1.5 h-8 shrink-0">
+            <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8 shrink-0">
               <Plus className="w-3.5 h-3.5" /> Enter Transaction
             </Button>
           </div>
@@ -649,7 +649,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <Button size="sm" variant="outline" onClick={() => setResetOpen(true)} className="gap-1.5 h-8 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
                   <AlertTriangle className="w-3.5 h-3.5" /> Reset Finances
                 </Button>
-                <Button size="sm" onClick={() => setTxOpen(true)} className="gap-1.5 h-8">
+                <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
                 </Button>
                 <ReconcileFeesDialog clubId={clubId} open={reconcileOpen} onOpenChange={setReconcileOpen} />

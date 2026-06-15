@@ -17,6 +17,7 @@ export const PERMISSION_SLUGS = [
   { value: "ladder", label: "Ladder" },
   { value: "leagues", label: "Leagues" },
   { value: "champs", label: "Tournaments" },
+  { value: "events", label: "Events (create club events)" },
   { value: "bar", label: "Honesty Bar" },
   { value: "access", label: "Access Control" },
   { value: "communications", label: "Communications" },

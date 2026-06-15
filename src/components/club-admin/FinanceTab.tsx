@@ -1171,6 +1171,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 className="h-9 gap-1.5 shrink-0"
                 onClick={() => {
                   setBillMemberId(statementMemberId || "");
+                  setBillMemberSearch(statementMemberId ? getMemberName(statementMemberId) : "");
                   setBillOpen(true);
                 }}
               >

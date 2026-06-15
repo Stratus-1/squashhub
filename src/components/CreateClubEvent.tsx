@@ -63,6 +63,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const isFullAdmin = useIsClubAdmin();
   const canBypassBookingLimits = useHasPermission("bookings_unlimited");
   const canBypassNonPeak = useHasPermission("bookings_unlimited_non_peak");
+  const canManageEvents = useHasPermission("events");
+  const canCreateEvents = isAdmin || isFullAdmin || canManageEvents;
   const adminBypass = isAdmin || isFullAdmin || canBypassBookingLimits || canBypassNonPeak;
   const { data: myClubData } = useQuery({
     queryKey: ["my-club-fallback"],
@@ -967,9 +969,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             <CalendarPlus className="w-4 h-4 text-primary" />
             <p className="text-xs font-semibold font-heading">Club Events</p>
           </div>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => { resetForm(); setCreateOpen(true); }}>
-            <CalendarPlus className="w-3 h-3" /> Create
-          </Button>
+          {canCreateEvents && (
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => { resetForm(); setCreateOpen(true); }}>
+              <CalendarPlus className="w-3 h-3" /> Create
+            </Button>
+          )}
         </div>
       )}
 

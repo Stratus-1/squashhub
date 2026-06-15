@@ -222,23 +222,36 @@ export default function Tournaments() {
       .join("");
     return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
 <style>
-  body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;padding:24px;color:#111}
-  h1{margin:0 0 4px;font-size:20px}
-  .sub{color:#666;font-size:12px;margin-bottom:16px}
-  table{width:100%;border-collapse:collapse;font-size:12px}
-  th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}
-  th{background:#1E3A5F;color:#fff}
+  @page{size:A4 portrait;margin:10mm}
+  body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;padding:16px;color:#111}
+  h1{margin:0 0 6px;font-size:24px}
+  .sub{color:#666;font-size:13px;margin-bottom:14px}
+  table{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
+  th,td{border:1px solid #ddd;padding:7px 9px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  th{background:#1E3A5F;color:#fff;font-size:13px}
   tr:nth-child(even) td{background:#f7f7f9}
+  col.date{width:14%}col.time{width:9%}col.court{width:10%}col.team{width:23%}col.tour{width:21%}
   .toolbar{margin-bottom:12px}
-  button{padding:6px 12px;font-size:12px;cursor:pointer}
-  @media print{.toolbar{display:none}}
+  button{padding:6px 12px;font-size:13px;cursor:pointer}
+  @media print{
+    .toolbar{display:none}
+    body{padding:0}
+    /* Auto-shrink font when there are many rows so it still fits one page */
+    table.dense{font-size:12px}
+    table.dense th,table.dense td{padding:4px 6px}
+    table.veryDense{font-size:10.5px}
+    table.veryDense th,table.veryDense td{padding:3px 5px}
+  }
 </style></head><body>
 <div class="toolbar"><button onclick="window.print()">Print</button></div>
 <h1>${title}</h1>
 <div class="sub">${matches.length} match${matches.length === 1 ? "" : "es"} · Generated ${format(new Date(), "dd MMM yyyy HH:mm")}</div>
-<table><thead><tr><th>Date</th><th>Time</th><th>Court</th><th>Player / Team A</th><th>Player / Team B</th><th>Tournament</th></tr></thead>
+<table class="${matches.length > 55 ? "veryDense" : matches.length > 35 ? "dense" : ""}">
+<colgroup><col class="date"><col class="time"><col class="court"><col class="team"><col class="team"><col class="tour"></colgroup>
+<thead><tr><th>Date</th><th>Time</th><th>Court</th><th>Player / Team A</th><th>Player / Team B</th><th>Tournament</th></tr></thead>
 <tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:#888">No matches</td></tr>`}</tbody></table>
 </body></html>`;
+
   };
 
   const openSchedule = (title: string, matches: any[]) => {

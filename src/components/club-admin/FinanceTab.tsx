@@ -603,7 +603,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillOpen(true); }} className="gap-1.5 h-8 shrink-0">
+            <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8 shrink-0">
               <Receipt className="w-3.5 h-3.5" /> Bill Member
             </Button>
             <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8 shrink-0">

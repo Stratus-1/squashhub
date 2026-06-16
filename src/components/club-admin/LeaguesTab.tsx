@@ -2576,6 +2576,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
           <TooltipContent className="max-w-xs space-y-2">
             <p>Typical for inter-club regional leagues like NSA.</p>
             <p>Easy and quick way for a club to generate the league teams for the next season.</p>
+            <p>Players in this club league will play against other clubs in the same league.</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

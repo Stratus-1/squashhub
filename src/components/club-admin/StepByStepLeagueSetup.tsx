@@ -528,6 +528,9 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
 
             <div className="space-y-2">
               <Label className="text-xs">f. Distribution method</Label>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Only affects the initial auto-draft of players into team slots from the ranked pool. It does <strong>not</strong> decide fixtures or which team plays which week — that's handled later by the fixture scheduler.
+              </p>
               <RadioGroup value={distribution} onValueChange={(v) => setDistribution(v as Distribution)} className="space-y-2">
                 {DISTRIBUTIONS.map(d => (
                   <label key={d.value} className={`flex items-start gap-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent ${distribution === d.value ? "border-primary bg-accent" : ""}`}>

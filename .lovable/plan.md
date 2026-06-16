@@ -1,67 +1,69 @@
-## Goal
+# Annual Renewals — Invoice Generation & Auto-Send
 
-Make it safe and simple for any club admin to correct member-related transactions (fee billings, payments, top-ups) and ordinary bank/cash transactions, while always keeping the double-entry ledger in balance.
+Adds an **Annual Renewals** tab to Club Admin → Finance for generating next-cycle membership invoices on demand, plus two cron jobs that keep things flowing automatically.
 
-## Guiding principles
+## 1. Schema additions (migration)
 
-1. **Never edit a posted journal entry leg in isolation.** Every action operates on a full `journal_ref` group (both/all legs together) so debits = credits always.
-2. **Prefer reversals over destructive deletes** for anything older than "today" — keeps an audit trail. Same-day mistakes can be hard-deleted.
-3. **One simple admin UI**, three verbs: **Edit**, **Reverse**, **Delete**. No raw account pickers in the common path — admin chooses a transaction *type* and the system posts the correct legs.
+Extend `club_member_fee_payments` (the existing ledger row stays the single source of truth — no new table):
 
-## Transaction types the admin sees (plain English)
+- `invoice_number` text — sequential per club, e.g. `NSC-2027-00042`
+- `invoice_issued_at` timestamptz — when the invoice was generated
+- `invoice_due_date` date — actual renewal date (computed from `member_fee_categories.due_month`/`due_day`)
+- `invoice_send_date` date — `invoice_due_date − clubs.fee_reminder_days_before` (e.g. 1 March − 14 days = **14 Feb**)
+- `invoice_email_sent_at` timestamptz — set when the email goes out
+- `invoice_email_status` text — `pending` | `sent` | `failed`
 
-| Type | What it does behind the scenes |
-|---|---|
-| Bill a member for a fee | Dr Debtors / Cr Income (membership / league / national) — also inserts a `club_member_fee_payments` row marked unpaid |
-| Record a member payment | Dr Bank or Cash / Cr Debtors — marks matching fee(s) paid; surplus posts to Member Credit |
-| Member top-up (credit) | Dr Bank or Cash / Cr Member Credit |
-| Refund to member | Dr Member Credit (or Debtors) / Cr Bank or Cash |
-| Write-off / discount | Dr Discount Expense / Cr Debtors |
-| Bank / cash transaction (non-member) | Existing "Enter Transaction" flow, unchanged |
+Add `next_invoice_seq` integer on `clubs` for the per-club running counter.
 
-The existing "Enter Transaction" button stays. We add a **"Bill / Charge Member"** quick action inside the Member Statement dialog and on Members tab.
+## 2. Invoice content rules
 
-## Per-row actions in Member Statement
+For each generated invoice row:
+- **`fee_label`** = `"Renewal Fees {YYYY} — {fee_category.name}"` (e.g. `"Renewal Fees 2027 — Pensioners"`).
+- **`amount`** = `member_fee_categories.annual_fee` (always full annual fee — pro-rate only applies to mid-year self-registrations, not annual renewals).
+- **`season_year`** = the year of `invoice_due_date`.
 
-Each debtors-affecting row gets a small action menu:
+Pass-through national body fees (NSA Levy, SSA) and league association fees are **not bundled here** — those continue to flow via their existing auto-seeding triggers. This tab only handles the club's own annual membership renewal fee.
 
-- **Edit** — opens the same dialog used to create that type, pre-filled. On save: delete the old `journal_ref` group + linked `club_member_fee_payments` row (if any), then post a fresh group. Wrapped in an RPC so it's atomic.
-- **Reverse** — posts an opposite-sign group dated today, description prefixed `Reversal of …`, linked via a new `reverses_journal_ref` column. Original stays visible.
-- **Delete** — only allowed when:
-  - entry is dated today, AND
-  - no downstream dependency (e.g. a payment that already settled the fee).
-  Otherwise the button is disabled with a tooltip "Use Reverse instead". Deletion removes the full `journal_ref` group + the matching fee row.
+## 3. Generation function
 
-Same actions appear on the Journal tab for non-member entries (Edit / Reverse / Delete bank or cash transactions).
+DB function `generate_member_renewal_invoices(p_club_id uuid)`:
 
-## Safety rails
+For every active `club_member` of the club with a `fee_category_id`:
+1. Compute next `invoice_due_date` = next future occurrence of (category.due_month, category.due_day).
+2. Compute `invoice_send_date` = `due_date − clubs.fee_reminder_days_before`.
+3. Look up existing row for `(club_member_id, fee_type='renewal', season_year)`:
+   - If exists & **paid** → skip.
+   - If exists & **already emailed** → skip.
+   - If exists & pending unsent → refresh amount, label, dates (regenerate).
+   - If missing → insert with `invoice_number = next sequence`, `invoice_issued_at = now()`, `invoice_email_status='pending'`.
 
-- All mutations go through a single Postgres RPC (`admin_modify_journal(journal_ref, action, payload)`) that:
-  - Verifies `is_club_admin`.
-  - Loads the group, checks debit = credit on the new payload.
-  - For edits/deletes, also updates/removes the linked `club_member_fee_payments` row when `fee_payment_id` is present.
-  - Writes an `ledger_audit_log` row (who, when, action, old json, new json).
-- UI shows a confirmation modal summarising the *net* effect ("This will reduce member X's outstanding balance by R250 and increase Bank by R250"). Admin clicks Confirm.
+Returns `jsonb`: `{ created, updated, skipped_paid, skipped_sent }` — surfaced in a toast.
 
-## Schema additions (small)
+## 4. UI — new "Annual Renewals" tab
 
-- `club_journal_entries.reverses_journal_ref uuid null` — points to the original group when this entry is a reversal.
-- New table `ledger_audit_log` (club_id, journal_ref, action, actor_user_id, before_json, after_json, created_at) with RLS for club admins read-only, service_role write via RPC.
+`src/components/club-admin/FinanceTab.tsx`: add `TabsTrigger value="renewals"` after Remittances. New component `RenewalInvoicesTab.tsx`:
 
-## UI changes
+- Header row: title left, **Generate / Regenerate Invoices** button top-right.
+- Summary chips: Total upcoming · Pending send · Sent · Paid.
+- Table (next 12 months window):
+  Member · Fee Label · Amount · Invoice # · Due Date · Send Date · Status (Pending / Sent / Paid) · Email Sent
+- Filter chips: All / Pending Send / Sent / Paid.
+- Per-row actions: **Send Now** (manual override that bypasses send_date check) and **View Statement** (opens existing dialog).
 
-- `FinanceTab.tsx`
-  - Member Statement dialog: add per-row 3-dot menu → Edit / Reverse / Delete.
-  - Journal tab: same per-row menu for entries the admin can touch (non-system entries).
-  - New shared `<EditTransactionDialog>` driven by transaction type so admins don't see GL account names unless they expand "Advanced".
-- New `Bill Member` quick action in Member Statement header (charges a fee with date + amount + category).
+## 5. Email cron — daily send
 
-## Out of scope for this pass
+Edge function `send-renewal-invoices` (scheduled via `pg_cron` daily 07:00 SAST):
+- Pull rows where `paid=false AND invoice_email_status='pending' AND invoice_send_date <= current_date`.
+- Render via `send-transactional-email` using a new template `membership-renewal-invoice.tsx` (member name, club name/logo, invoice #, line item, amount, due date, club bank details from `club_secrets`, payment gateway link if configured).
+- Update `invoice_email_sent_at = now()` and `invoice_email_status='sent'` on success, `failed` on error.
 
-- Bulk re-syncs (existing "Recalculate GL" button stays).
-- Multi-currency, period locks (can add later as a "Close month" feature).
+## 6. Generation cron — monthly safety net
 
-## Technical notes
+`pg_cron` job on the **last day of every month at 02:00** calls `generate_member_renewal_invoices` for every active club, so no upcoming renewal is missed even if the admin never clicks the button.
 
-- Files touched: `src/components/club-admin/FinanceTab.tsx`, new `src/components/club-admin/EditTransactionDialog.tsx`, new `src/components/club-admin/BillMemberDialog.tsx`, one migration adding the column + audit table + `admin_modify_journal` RPC.
-- All deletes/edits are wrapped in the RPC for atomicity; client never issues raw deletes on `club_journal_entries` for groups it didn't just create.
+## 7. Technical notes
+
+- All policies follow existing `is_club_admin_or_permitted(auth.uid(), club_id, 'fees')` pattern.
+- Invoice number sequence increment is atomic via `UPDATE clubs SET next_invoice_seq = next_invoice_seq + 1 RETURNING …`.
+- Regeneration is non-destructive: paid invoices and already-emailed pending invoices are never modified.
+- Uses existing `clubs.fee_reminder_days_before` (already configurable on Fees tab) — no new setting.

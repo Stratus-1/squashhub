@@ -12,9 +12,11 @@ export interface TemplateEntry {
 import { template as newClubRegistered } from './new-club-registered.tsx'
 import { template as supportNewMessage } from './support-new-message.tsx'
 import { template as supportAdminReply } from './support-admin-reply.tsx'
+import { template as membershipRenewalInvoice } from './membership-renewal-invoice.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-club-registered': newClubRegistered,
   'support-new-message': supportNewMessage,
   'support-admin-reply': supportAdminReply,
+  'membership-renewal-invoice': membershipRenewalInvoice,
 }

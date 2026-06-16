@@ -1096,7 +1096,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
       {/* Member Statement Dialog */}
       <Dialog open={statementOpen} onOpenChange={setStatementOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" /> Member Statement
@@ -1115,7 +1115,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   className="pl-8 h-9 text-xs"
                 />
                 {memberDropdownOpen && (
-                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-background border rounded-md shadow-lg max-h-52 overflow-y-auto">
+                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-background border rounded-md shadow-lg max-h-96 overflow-y-auto">
                     {(members || [])
                       .slice()
                       .filter((m: any) => {

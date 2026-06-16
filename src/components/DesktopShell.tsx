@@ -61,11 +61,12 @@ export function DesktopShell({
                   aria-hidden="true"
                 />
               )}
-              {/* Layer 3: light navy-tinted wash (was 70% dark navy — too dark) */}
+              {/* Layer 3: near-opaque light wash so the photo reads as a faint texture, not a dark overlay */}
               <div
-                className="absolute inset-0 z-[2] pointer-events-none bg-background/92 dark:bg-[rgba(17,28,55,0.7)]"
+                className="absolute inset-0 z-[2] pointer-events-none bg-slate-100/95 dark:bg-[rgba(17,28,55,0.7)]"
                 aria-hidden="true"
               />
+
             </>
           )}
           <header className="relative z-10 h-10 flex items-center gap-1 border-b border-border/40 bg-background/40 backdrop-blur sticky top-0">

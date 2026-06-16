@@ -1,5 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
+/* Sakana kept available as a legacy fallback only — no longer the default heading face. */
 @font-face {
   font-family: 'Sakana';
   src: url('/fonts/Sakana.ttf') format('truetype');
@@ -7,6 +8,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 
 @tailwind base;
 @tailwind components;
@@ -59,8 +61,9 @@
     --sidebar-border: 220 35% 20%;
     --sidebar-ring: 38 95% 55%;
 
-    --font-heading: 'Sakana', 'Open Sans', system-ui, sans-serif;
-    --font-body: 'Open Sans', system-ui, sans-serif;
+    --font-heading: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    --font-body: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+
   }
 
   .dark {

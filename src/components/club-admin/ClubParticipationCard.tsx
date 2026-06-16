@@ -94,7 +94,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
           <li><strong className="text-foreground">R5</strong> per active member per month if paid <strong className="text-foreground">annually in advance</strong> (save R12 / member / year)</li>
         </ul>
         <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
-          Fees are first invoiced from <strong>September 2025</strong> for the current financial year, and annually thereafter.
+          Fees are first invoiced from <strong>September 2026</strong> for the current financial year, and annually thereafter.
         </p>
         {typeof memberCount === "number" && (
           <p className="text-xs text-muted-foreground">Your club currently has {memberCount} active member{memberCount === 1 ? "" : "s"}.</p>
@@ -198,7 +198,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
                     </div>
                   </label>
                 </RadioGroup>
-                <p className="text-xs text-amber-700 dark:text-amber-400">Fees commence September 2025 for the current financial year, and annually thereafter.</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Fees commence September 2026 for the current financial year, and annually thereafter.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

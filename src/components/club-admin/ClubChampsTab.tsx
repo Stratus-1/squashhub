@@ -2025,6 +2025,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setInviteIncludeReserves(true);
     setInviteExcludedMemberIds(new Set());
     setHandicapMode("none");
+    setHandicapDivider(1);
     setInviteTiming("manual");
     setInviteScheduledAt("");
     setDescription("");

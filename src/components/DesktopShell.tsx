@@ -50,10 +50,10 @@ export function DesktopShell({
                 style={{ backgroundImage: `url(${squashCourtBg})` }}
                 aria-hidden="true"
               />
-              {/* Layer 2: club logo watermark */}
+              {/* Layer 2: club logo watermark (very subtle on light bg) */}
               {clubLogoUrl && (
                 <div
-                  className="absolute inset-0 z-[1] bg-center bg-no-repeat opacity-30 pointer-events-none"
+                  className="absolute inset-0 z-[1] bg-center bg-no-repeat opacity-[0.08] pointer-events-none"
                   style={{
                     backgroundImage: `url(${clubLogoUrl})`,
                     backgroundSize: "min(60vw, 520px)",
@@ -61,10 +61,9 @@ export function DesktopShell({
                   aria-hidden="true"
                 />
               )}
-              {/* Layer 3: color overlay #111C37 @ 70% */}
+              {/* Layer 3: light navy-tinted wash (was 70% dark navy — too dark) */}
               <div
-                className="absolute inset-0 z-[2] pointer-events-none"
-                style={{ backgroundColor: "rgba(17, 28, 55, 0.7)" }}
+                className="absolute inset-0 z-[2] pointer-events-none bg-background/92 dark:bg-[rgba(17,28,55,0.7)]"
                 aria-hidden="true"
               />
             </>

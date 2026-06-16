@@ -4440,6 +4440,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         registrationMode={registrationMode}
       />
 
+      <ShadowRankPromptDialog
+        open={shadowPrompt.open}
+        onOpenChange={(o) => {
+          if (!o) {
+            shadowPrompt.reject?.(new Error("Shadow-rank prompt cancelled"));
+            setShadowPrompt({ open: false, missing: [], sizes: {}, resolve: null, reject: null });
+          }
+        }}
+        missing={shadowPrompt.missing}
+        sizes={shadowPrompt.sizes}
+        memberNames={new Map(allSelectablePlayers.map((m: any) => [m.id, m.name || "Reserve"]))}
+        onSaved={() => {
+          shadowPrompt.resolve?.();
+          setShadowPrompt({ open: false, missing: [], sizes: {}, resolve: null, reject: null });
+        }}
+      />
+
     </div>
   );
 }

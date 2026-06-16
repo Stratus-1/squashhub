@@ -1601,6 +1601,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           const n = await applyHandicapsToChamp(champId, clubId, {
             mode: handicapMode,
             divider: handicapDivider,
+            multiplier: handicapMultiplier,
           });
           if (n > 0) toast.success(`Applied handicap to ${n} match${n === 1 ? "" : "es"}`);
         } catch (e) {

@@ -21,17 +21,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     const authHeader = req.headers.get("Authorization") || "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-    console.log("[auth] header present:", !!authHeader, "token len:", token.length);
-    if (!token) return json(401, { error: "Missing bearer token", debug: "no_auth_header" });
-
-    const userClient = createClient(supabaseUrl, anonKey);
-    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
-    if (userErr || !userData?.user) {
-      return json(401, { error: "Unauthorized", detail: userErr?.message });
+    if (!authHeader.startsWith("Bearer ")) {
+      return json(401, { error: "Missing bearer token" });
     }
 
     const body = await req.json().catch(() => ({}));

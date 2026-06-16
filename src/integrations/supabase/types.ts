@@ -5957,10 +5957,12 @@ export type Database = {
         Returns: string
       }
       generate_all_clubs_renewal_invoices: { Args: never; Returns: Json }
-      generate_member_renewal_invoices: {
-        Args: { p_club_id: string }
-        Returns: Json
-      }
+      generate_member_renewal_invoices:
+        | { Args: { p_club_id: string }; Returns: Json }
+        | {
+            Args: { p_category_ids?: string[]; p_club_id: string }
+            Returns: Json
+          }
       get_champ_host: {
         Args: { _champ_id: string }
         Returns: {

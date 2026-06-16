@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Send, Search, Eye } from "lucide-react";
 import { InvoicePreviewDialog } from "./InvoicePreviewDialog";
+import { GenerateInvoicesDialog } from "./GenerateInvoicesDialog";
 
 interface Props { clubId: string }
 
@@ -20,6 +21,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
   const [search, setSearch] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [genOpen, setGenOpen] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["renewal-invoices", clubId],
@@ -43,14 +45,18 @@ export function RenewalInvoicesTab({ clubId }: Props) {
   });
 
   const generate = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.rpc("generate_member_renewal_invoices", { p_club_id: clubId });
+    mutationFn: async (categoryIds: string[]) => {
+      const { data, error } = await supabase.rpc("generate_member_renewal_invoices", {
+        p_club_id: clubId,
+        p_category_ids: categoryIds.length > 0 ? categoryIds : null,
+      });
       if (error) throw error;
       return data as { created: number; updated: number; skipped_paid: number; skipped_sent: number };
     },
     onSuccess: (d) => {
       toast.success(`Invoices: ${d.created} created, ${d.updated} updated, ${d.skipped_paid} paid, ${d.skipped_sent} already sent`);
       qc.invalidateQueries({ queryKey: ["renewal-invoices", clubId] });
+      setGenOpen(false);
     },
     onError: (e: any) => toast.error(e.message || "Failed to generate invoices"),
   });
@@ -107,7 +113,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
             Generate next-cycle membership invoices. Emails are sent automatically the reminder-days before each due date.
           </p>
         </div>
-        <Button size="sm" onClick={() => generate.mutate()} disabled={generate.isPending} className="gap-1.5 h-8">
+        <Button size="sm" onClick={() => setGenOpen(true)} disabled={generate.isPending} className="gap-1.5 h-8">
           {generate.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           Generate / Regenerate Invoices
         </Button>
@@ -196,6 +202,13 @@ export function RenewalInvoicesTab({ clubId }: Props) {
       </Card>
 
       <InvoicePreviewDialog invoiceId={previewId} onClose={() => setPreviewId(null)} />
+      <GenerateInvoicesDialog
+        open={genOpen}
+        clubId={clubId}
+        onClose={() => setGenOpen(false)}
+        onConfirm={(ids) => generate.mutate(ids)}
+        isPending={generate.isPending}
+      />
     </div>
   );
 }

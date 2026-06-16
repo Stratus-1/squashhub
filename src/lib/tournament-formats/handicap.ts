@@ -336,10 +336,11 @@ export type HandicapMode = "none" | "league_rank" | "club_ladder";
 export async function applyHandicapsToChamp(
   champId: string,
   clubId: string,
-  opts: { mode?: HandicapMode; divider?: number } = {},
+  opts: { mode?: HandicapMode; divider?: number; multiplier?: number } = {},
 ): Promise<number> {
   const mode: HandicapMode = opts.mode ?? "league_rank";
   const divider = Math.max(1, Number(opts.divider) || 1);
+  const multiplier = Math.max(1, Number(opts.multiplier) || 1);
 
   // Resolve a per-member "rank score" map. For league_rank we use the
   // global index (offset + player_rank); for club_ladder we use the
@@ -373,7 +374,7 @@ export async function applyHandicapsToChamp(
     let handicap_b = 0;
     if (sa != null && sb != null && sa !== sb) {
       const rawDiff = Math.abs(sa - sb);
-      const diff = Math.floor(rawDiff / divider);
+      const diff = Math.floor((rawDiff * multiplier) / divider);
       if (diff > 0) {
         if (sa < sb) handicap_a = -diff;
         else handicap_b = -diff;

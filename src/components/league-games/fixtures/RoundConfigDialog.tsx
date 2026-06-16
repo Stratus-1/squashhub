@@ -73,7 +73,7 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
   const today = new Date().toISOString().slice(0, 10);
   const [draft, setDraft] = useState<RoundDraft>({
     round_number: initial?.round_number ?? 1,
-    name: initial?.name ?? "Round 1",
+    name: initial?.name ?? "1st League Round 1",
     round_date: initial?.round_date ?? today,
     end_date: initial?.end_date ?? initial?.round_date ?? today,
     venue_name: initial?.venue_name ?? "",

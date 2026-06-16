@@ -2031,6 +2031,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setInviteExcludedMemberIds(new Set());
     setHandicapMode("none");
     setHandicapDivider(1);
+    setHandicapMultiplier(1);
     setInviteTiming("manual");
     setInviteScheduledAt("");
     setDescription("");

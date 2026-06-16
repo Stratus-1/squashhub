@@ -1898,6 +1898,12 @@ export type Database = {
           fee_label: string
           fee_type: string
           id: string
+          invoice_due_date: string | null
+          invoice_email_sent_at: string | null
+          invoice_email_status: string | null
+          invoice_issued_at: string | null
+          invoice_number: string | null
+          invoice_send_date: string | null
           is_pass_through: boolean
           linked_fee_payment_id: string | null
           paid: boolean
@@ -1912,6 +1918,12 @@ export type Database = {
           fee_label: string
           fee_type: string
           id?: string
+          invoice_due_date?: string | null
+          invoice_email_sent_at?: string | null
+          invoice_email_status?: string | null
+          invoice_issued_at?: string | null
+          invoice_number?: string | null
+          invoice_send_date?: string | null
           is_pass_through?: boolean
           linked_fee_payment_id?: string | null
           paid?: boolean
@@ -1926,6 +1938,12 @@ export type Database = {
           fee_label?: string
           fee_type?: string
           id?: string
+          invoice_due_date?: string | null
+          invoice_email_sent_at?: string | null
+          invoice_email_status?: string | null
+          invoice_issued_at?: string | null
+          invoice_number?: string | null
+          invoice_send_date?: string | null
           is_pass_through?: boolean
           linked_fee_payment_id?: string | null
           paid?: boolean
@@ -2518,6 +2536,7 @@ export type Database = {
           member_number_start: number | null
           mixed_ladder_enabled: boolean
           name: string
+          next_invoice_seq: number
           nsa_club_id: string | null
           participation_active: boolean
           payment_gateway: string | null
@@ -2582,6 +2601,7 @@ export type Database = {
           member_number_start?: number | null
           mixed_ladder_enabled?: boolean
           name: string
+          next_invoice_seq?: number
           nsa_club_id?: string | null
           participation_active?: boolean
           payment_gateway?: string | null
@@ -2646,6 +2666,7 @@ export type Database = {
           member_number_start?: number | null
           mixed_ladder_enabled?: boolean
           name?: string
+          next_invoice_seq?: number
           nsa_club_id?: string | null
           participation_active?: boolean
           payment_gateway?: string | null
@@ -5934,6 +5955,11 @@ export type Database = {
       ensure_platform_association_for_league: {
         Args: { _association_id: string }
         Returns: string
+      }
+      generate_all_clubs_renewal_invoices: { Args: never; Returns: Json }
+      generate_member_renewal_invoices: {
+        Args: { p_club_id: string }
+        Returns: Json
       }
       get_champ_host: {
         Args: { _champ_id: string }

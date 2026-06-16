@@ -1879,6 +1879,8 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               affiliationNumberByMember[p.club_member_id] ||
               p.league_association_number ||
               null,
+            shadow_division: targetIsReserves ? (p.shadow_division ?? null) : null,
+            shadow_player_rank: targetIsReserves ? (p.shadow_player_rank ?? null) : null,
           }));
           const { data: written, error } = await fromExt("member_league_registrations").upsert(
             payload,

@@ -130,10 +130,37 @@ export function RenewalInvoicesTab({ clubId }: Props) {
             Generate next-cycle membership invoices. Emails are sent automatically the reminder-days before each due date.
           </p>
         </div>
-        <Button size="sm" onClick={() => setGenOpen(true)} disabled={generate.isPending} className="gap-1.5 h-8">
-          {generate.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          Generate / Regenerate Invoices
-        </Button>
+        <div className="flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1.5 h-8 text-destructive hover:text-destructive"
+                disabled={deleteAll.isPending || (rows as any[]).filter(r => !r.paid).length === 0}>
+                {deleteAll.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Delete all
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete all unpaid invoices?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete <strong>{(rows as any[]).filter(r => !r.paid).length}</strong> unpaid renewal invoice(s) for this club.
+                  Paid invoices are kept for audit. You can re-generate invoices afterward.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => deleteAll.mutate()}>
+                  Delete all unpaid
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button size="sm" onClick={() => setGenOpen(true)} disabled={generate.isPending} className="gap-1.5 h-8">
+            {generate.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            Generate / Regenerate Invoices
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

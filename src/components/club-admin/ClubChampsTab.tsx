@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
-import { applyHandicapsToChamp } from "@/lib/tournament-formats/handicap";
+import { applyHandicapsToChamp, findReservesMissingShadowRank, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
+import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { useClubMembers, type ClubMember } from "@/hooks/use-club";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -424,6 +425,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Divider/multiplier scale the raw gap. final = floor(gap * multiplier / divider).
   const [handicapDivider, setHandicapDivider] = useState<number>(1);
   const [handicapMultiplier, setHandicapMultiplier] = useState<number>(1);
+
+  // Shadow-rank prompt (Option C): when league-rank handicap is on and a
+  // reserve participant has no ladder placement yet, we ask the admin to
+  // assign a Division + Slot at schedule-build time and persist it.
+  const [shadowPrompt, setShadowPrompt] = useState<{
+    open: boolean;
+    missing: MissingShadowRank[];
+    sizes: DivisionSizes;
+    resolve: (() => void) | null;
+    reject: ((e: Error) => void) | null;
+  }>({ open: false, missing: [], sizes: {}, resolve: null, reject: null });
 
   // For partnerMode === "players": auto-load confirmed pairs from registrations
   const { data: confirmedPairRegs = [] } = useQuery({
@@ -1598,6 +1610,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // League-ranking handicap: compute starting-score offsets for every match.
       if (matchType === "singles" && handicapMode !== "none") {
         try {
+          // Option C: for league-rank mode, prompt admin for any reserve
+          // participants who don't yet have a shadow rank assigned.
+          if (handicapMode === "league_rank") {
+            const memberIds = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
+            const { missing, sizes } = await findReservesMissingShadowRank(clubId, memberIds);
+            if (missing.length > 0) {
+              await new Promise<void>((resolve, reject) => {
+                setShadowPrompt({ open: true, missing, sizes, resolve, reject });
+              });
+            }
+          }
           const n = await applyHandicapsToChamp(champId, clubId, {
             mode: handicapMode,
             divider: handicapDivider,
@@ -1608,6 +1631,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           console.warn("Handicap computation failed:", e);
         }
       }
+
 
 
       // Auto-book courts — one block per (date, court) covering the full
@@ -4414,6 +4438,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         bestOf={bestOf}
         registrationRequired={registrationRequired}
         registrationMode={registrationMode}
+      />
+
+      <ShadowRankPromptDialog
+        open={shadowPrompt.open}
+        onOpenChange={(o) => {
+          if (!o) {
+            shadowPrompt.reject?.(new Error("Shadow-rank prompt cancelled"));
+            setShadowPrompt({ open: false, missing: [], sizes: {}, resolve: null, reject: null });
+          }
+        }}
+        missing={shadowPrompt.missing}
+        sizes={shadowPrompt.sizes}
+        memberNames={new Map(allSelectablePlayers.map((m: any) => [m.id, m.name || "Reserve"]))}
+        onSaved={() => {
+          shadowPrompt.resolve?.();
+          setShadowPrompt({ open: false, missing: [], sizes: {}, resolve: null, reject: null });
+        }}
       />
 
     </div>

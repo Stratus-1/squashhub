@@ -4641,6 +4641,8 @@ export type Database = {
           league_id: string | null
           player_rank: number | null
           reserve_order: number | null
+          shadow_division: number | null
+          shadow_player_rank: number | null
           ssa_number: string | null
           updated_at: string
         }
@@ -4654,6 +4656,8 @@ export type Database = {
           league_id?: string | null
           player_rank?: number | null
           reserve_order?: number | null
+          shadow_division?: number | null
+          shadow_player_rank?: number | null
           ssa_number?: string | null
           updated_at?: string
         }
@@ -4667,6 +4671,8 @@ export type Database = {
           league_id?: string | null
           player_rank?: number | null
           reserve_order?: number | null
+          shadow_division?: number | null
+          shadow_player_rank?: number | null
           ssa_number?: string | null
           updated_at?: string
         }

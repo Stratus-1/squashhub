@@ -458,9 +458,9 @@ function TileGroup({
   if (tiles.length === 0) return null;
   return (
     <section>
-      <div className="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-[hsl(var(--accent))]/40">
-        <Icon className="w-3.5 h-3.5 text-[hsl(var(--accent))]" />
-        <span className="uppercase tracking-[0.22em] text-[11px] font-bold font-heading text-foreground">
+      <div className="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-slate-200">
+        <Icon className="w-3.5 h-3.5 text-slate-500" />
+        <span className="uppercase tracking-[0.14em] text-[11px] font-semibold text-slate-500 font-sans">
           {label}
         </span>
       </div>
@@ -472,14 +472,14 @@ function TileGroup({
               key={t.title + t.url}
               onClick={() => navigate(t.url)}
               className={cn(
-                "group relative rounded-xl border border-border bg-card",
-                "px-4 py-4 text-left transition-all duration-150",
-                "hover:border-foreground/20 hover:shadow-sm",
+                "group relative rounded-xl border border-slate-200 bg-white",
+                "px-4 py-4 text-left transition-all duration-150 shadow-sm",
+                "hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5",
               )}
             >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12px] uppercase tracking-[0.16em] font-heading font-bold text-foreground truncate">
+                  <p className="text-[14px] font-sans font-semibold text-slate-900 truncate">
                     {t.title}
                   </p>
                 </div>
@@ -494,5 +494,6 @@ function TileGroup({
     </section>
   );
 }
+
 
 

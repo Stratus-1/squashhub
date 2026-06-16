@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { RemittancesPanel } from "./RemittancesPanel";
+import { RenewalInvoicesTab } from "./RenewalInvoicesTab";
 import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
 import { OpeningBalancesDialog } from "./OpeningBalancesDialog";

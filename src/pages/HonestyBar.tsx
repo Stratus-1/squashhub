@@ -28,10 +28,19 @@ interface BarItem {
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
+  soft_drinks: "🥤",
+  water: "💧",
+  energy: "⚡",
+  beer_cider: "🍺",
+  wine: "🍷",
+  spirits: "🥃",
+  hot_drinks: "☕",
+  snacks: "🍿",
+  meals: "🥪",
+  other: "📦",
+  // legacy values (existing items)
   drinks: "🥤",
   alcohol: "🍺",
-  snacks: "🍿",
-  other: "📦",
 };
 
 interface BarTabEntry {
@@ -46,9 +55,15 @@ interface BarTabEntry {
 }
 
 const CATEGORIES = [
-  { value: "drinks", label: "Drinks", icon: Beer },
-  { value: "alcohol", label: "Alcohol", icon: Wine },
+  { value: "soft_drinks", label: "Soft Drinks", icon: Beer },
+  { value: "water", label: "Water", icon: Beer },
+  { value: "energy", label: "Energy & Sports", icon: Beer },
+  { value: "beer_cider", label: "Beer & Cider", icon: Beer },
+  { value: "wine", label: "Wine", icon: Wine },
+  { value: "spirits", label: "Spirits", icon: Wine },
+  { value: "hot_drinks", label: "Hot Drinks", icon: Coffee },
   { value: "snacks", label: "Snacks", icon: Coffee },
+  { value: "meals", label: "Light Meals", icon: Coffee },
   { value: "other", label: "Other", icon: Package },
 ];
 

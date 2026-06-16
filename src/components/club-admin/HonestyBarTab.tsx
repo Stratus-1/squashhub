@@ -663,3 +663,100 @@ function AdminAddCharge({ clubId, items, members }: { clubId: string; items: Bar
     </Card>
   );
 }
+
+/* ─── Image Field with upload + AI generate ─── */
+function ImageField({
+  value, onChange, clubId, itemName, category,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  clubId: string;
+  itemName: string;
+  category: string;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const handleUpload = async (file: File) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5MB"); return; }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${clubId}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("bar-items").upload(path, file, {
+        contentType: file.type, upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from("bar-items").getPublicUrl(path);
+      onChange(data.publicUrl);
+      toast.success("Image uploaded");
+    } catch (err: any) {
+      toast.error(err.message || "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!itemName.trim()) { toast.error("Enter an item name first"); return; }
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-bar-item-image", {
+        body: { name: itemName.trim(), category, clubId },
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error("No image returned");
+      onChange(data.url);
+      toast.success("Image generated");
+    } catch (err: any) {
+      toast.error(err.message || "Generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="w-14 h-14 rounded border bg-muted flex items-center justify-center overflow-hidden shrink-0">
+          {value ? (
+            <img src={value} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <ImageIcon className="w-5 h-5 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+            {uploading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1" />}
+            Upload
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={handleGenerate} disabled={generating || !itemName.trim()}>
+            {generating ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+            Generate with AI
+          </Button>
+          {value && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => onChange("")}>
+              <X className="w-3.5 h-3.5 mr-1" /> Remove
+            </Button>
+          )}
+        </div>
+      </div>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="…or paste an image URL"
+        className="text-xs h-8"
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+      />
+    </div>
+  );
+}

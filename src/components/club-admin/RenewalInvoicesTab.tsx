@@ -202,6 +202,13 @@ export function RenewalInvoicesTab({ clubId }: Props) {
       </Card>
 
       <InvoicePreviewDialog invoiceId={previewId} onClose={() => setPreviewId(null)} />
+      <GenerateInvoicesDialog
+        open={genOpen}
+        clubId={clubId}
+        onClose={() => setGenOpen(false)}
+        onConfirm={(ids) => generate.mutate(ids)}
+        isPending={generate.isPending}
+      />
     </div>
   );
 }

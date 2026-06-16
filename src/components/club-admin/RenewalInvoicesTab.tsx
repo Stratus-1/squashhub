@@ -62,6 +62,22 @@ export function RenewalInvoicesTab({ clubId }: Props) {
     onError: (e: any) => toast.error(e.message || "Failed to generate invoices"),
   });
 
+  const deleteAll = useMutation({
+    mutationFn: async () => {
+      const ids = (rows as any[]).filter(r => !r.paid).map(r => r.id);
+      if (ids.length === 0) return { deleted: 0 };
+      const { error } = await supabase.from("club_member_fee_payments").delete().in("id", ids);
+      if (error) throw error;
+      return { deleted: ids.length };
+    },
+    onSuccess: (d) => {
+      toast.success(`Deleted ${d.deleted} unpaid invoice${d.deleted === 1 ? "" : "s"}`);
+      qc.invalidateQueries({ queryKey: ["renewal-invoices", clubId] });
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to delete invoices"),
+  });
+
+
   const sendNow = async (id: string) => {
     setSendingId(id);
     try {

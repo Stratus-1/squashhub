@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.generate_member_renewal_invoices(uuid);

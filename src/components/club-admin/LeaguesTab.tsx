@@ -847,6 +847,93 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
 }
 
 
+// ─── Inline shadow-rank editor for reserve rows ───
+function ShadowRankEditor({ registration, onSaved }: { registration: any; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [div, setDiv] = useState<number>(Number(registration.shadow_division) || 1);
+  const [slot, setSlot] = useState<number>(Number(registration.shadow_player_rank) || 1);
+  const [saving, setSaving] = useState(false);
+
+  const hasShadow = Number(registration.shadow_division) > 0 && Number(registration.shadow_player_rank) > 0;
+
+  const save = async () => {
+    const d = Math.max(1, Math.floor(div || 0));
+    const s = Math.max(1, Math.floor(slot || 0));
+    if (d === Number(registration.shadow_division) && s === Number(registration.shadow_player_rank)) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await fromExt("member_league_registrations")
+        .update({ shadow_division: d, shadow_player_rank: s })
+        .eq("id", registration.id);
+      if (error) throw error;
+      toast.success("Shadow rank saved");
+      setEditing(false);
+      onSaved();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1 ml-auto">
+        <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Div</Label>
+        <Input
+          type="number"
+          min={1}
+          max={20}
+          value={div || ""}
+          onChange={(e) => setDiv(parseInt(e.target.value) || 1)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          className="h-5 text-[10px] w-10 px-1"
+        />
+        <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Slot</Label>
+        <Input
+          type="number"
+          min={1}
+          max={50}
+          value={slot || ""}
+          onChange={(e) => setSlot(parseInt(e.target.value) || 1)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          className="h-5 text-[10px] w-10 px-1"
+        />
+        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={save} disabled={saving}>
+          <Check className="w-3 h-3" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setEditing(false)}>
+          <X className="w-3 h-3" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+      title="Edit shadow rank for handicap calculations"
+    >
+      {hasShadow ? (
+        <>
+          <span className="font-medium text-foreground">Shadow: {registration.shadow_division}{(() => {
+            const n = Number(registration.shadow_division);
+            return n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
+          })()} L #{registration.shadow_player_rank}</span>
+          <Pencil className="w-2.5 h-2.5" />
+        </>
+      ) : (
+        <span className="text-amber-600 hover:text-amber-700">Set shadow rank</span>
+      )}
+    </button>
+  );
+}
+
 // ─── League Card with inline players ───
 function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
   league: League;
@@ -1034,6 +1121,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
               const s = n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
               return `${n}${s}`;
             })() : null;
+            const isReserveRow = r.is_reserve || /reserves?/i.test(league.name);
             return (
               <div key={r.id} className="flex items-center gap-2 text-xs py-0.5">
                 <span className="w-5 text-center font-bold text-primary">{r.player_rank}</span>
@@ -1044,6 +1132,12 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
                 )}
                 {r.is_captain && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
                 {r.is_captain && <span className="text-[10px] text-amber-600 font-semibold">(C)</span>}
+                {isReserveRow && (
+                  <ShadowRankEditor
+                    registration={r}
+                    onSaved={() => qcRow.invalidateQueries({ queryKey: ["league-registrations", league.id] })}
+                  />
+                )}
               </div>
             );
           })}

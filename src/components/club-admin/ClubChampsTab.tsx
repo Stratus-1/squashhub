@@ -3211,11 +3211,38 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     />
                     By league ranking
                   </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="handicap-mode"
+                      checked={handicapMode === "club_ladder"}
+                      onChange={() => setHandicapMode("club_ladder")}
+                    />
+                    By club ladder
+                  </label>
                 </div>
+                {handicapMode !== "none" && (
+                  <div className="flex items-center gap-2 text-sm pt-1">
+                    <Label className="text-xs whitespace-nowrap">Multiplier / divider</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      step="0.5"
+                      value={handicapDivider}
+                      onChange={(e) => setHandicapDivider(Math.max(1, Number(e.target.value) || 1))}
+                      className="h-8 w-24"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Divides the raw gap (1 = full gap, 2 = half, etc.)
+                    </span>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  Stronger player starts on a negative score equal to the position gap (e.g. 3rd league #1 vs 3rd league #4 → −3 / 0; vs 4th league #2 → −10 / 0). Recomputed automatically when a sub is pulled in.
+                  {handicapMode === "club_ladder"
+                    ? "Stronger player (lower ladder position) starts on a negative score equal to the ladder-position gap, divided by the value above."
+                    : "Stronger player starts on a negative score equal to the position gap (e.g. 3rd league #1 vs 3rd league #4 → −3 / 0; vs 4th league #2 → −10 / 0). Recomputed automatically when a sub is pulled in."}
                 </p>
-                {editingChampId && handicapMode === "league_rank" && (
+                {editingChampId && handicapMode !== "none" && (
                   <Button
                     type="button"
                     variant="outline"
@@ -3223,7 +3250,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     onClick={async () => {
                       if (!clubId) return;
                       try {
-                        const n = await applyHandicapsToChamp(editingChampId, clubId);
+                        const n = await applyHandicapsToChamp(editingChampId, clubId, {
+                          mode: handicapMode,
+                          divider: handicapDivider,
+                        });
                         toast.success(
                           n > 0
                             ? `Recomputed handicaps on ${n} match${n === 1 ? "" : "es"}`

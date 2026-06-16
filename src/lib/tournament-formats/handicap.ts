@@ -305,14 +305,57 @@ export async function loadClubLadderContext(clubId: string): Promise<{
 }
 
 /**
- * Bulk-apply league-rank handicap to every non-completed singles match
- * in a tournament. Skips matches whose `handicap_locked` is true (admin
- * has manually pinned the offset). Returns the number of matches updated.
+ * Load each club_member's `ladder_position` for club-ladder handicap mode.
  */
-export async function applyHandicapsToChamp(champId: string, clubId: string): Promise<number> {
-  const ctx = await loadClubLadderContext(clubId);
-  if (!ctx) return 0;
-  const { offsets, rankByMember } = ctx;
+export async function loadClubLadderPositions(
+  clubId: string,
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const { data } = await fromExt("club_members")
+    .select("id, ladder_position")
+    .eq("club_id", clubId);
+  (data || []).forEach((m: any) => {
+    if (typeof m.ladder_position === "number") out.set(m.id, m.ladder_position);
+  });
+  return out;
+}
+
+export type HandicapMode = "none" | "league_rank" | "club_ladder";
+
+/**
+ * Bulk-apply handicap to every non-completed singles match in a tournament.
+ *
+ * - `league_rank`: uses league division + player_rank (default behaviour).
+ * - `club_ladder`: uses club_members.ladder_position; gap is the absolute
+ *   position difference.
+ *
+ * The `divider` (>= 1) scales the raw gap: `final = floor(gap / divider)`.
+ * Skips matches whose `handicap_locked` is true. Returns the number of
+ * matches updated.
+ */
+export async function applyHandicapsToChamp(
+  champId: string,
+  clubId: string,
+  opts: { mode?: HandicapMode; divider?: number } = {},
+): Promise<number> {
+  const mode: HandicapMode = opts.mode ?? "league_rank";
+  const divider = Math.max(1, Number(opts.divider) || 1);
+
+  // Resolve a per-member "rank score" map. For league_rank we use the
+  // global index (offset + player_rank); for club_ladder we use the
+  // ladder_position directly. Both let us compute gap = |a - b|.
+  let scoreByMember = new Map<string, number>();
+  if (mode === "club_ladder") {
+    scoreByMember = await loadClubLadderPositions(clubId);
+  } else {
+    const ctx = await loadClubLadderContext(clubId);
+    if (!ctx) return 0;
+    const { offsets, rankByMember } = ctx;
+    rankByMember.forEach((v, k) => {
+      const off = offsets[v.division];
+      if (off != null) scoreByMember.set(k, off + v.player_rank);
+    });
+  }
 
   const { data: matches } = await fromExt("club_champs_matches")
     .select("id, player_a_member_id, player_b_member_id, status, handicap_a, handicap_b, handicap_locked, is_bye")
@@ -324,16 +367,24 @@ export async function applyHandicapsToChamp(champId: string, clubId: string): Pr
     if (m.handicap_locked) continue;
     if (m.is_bye) continue;
     if (m.status === "completed") continue;
-    const pa = rankByMember.get(m.player_a_member_id) || null;
-    const pb = rankByMember.get(m.player_b_member_id) || null;
-    const rA: PlayerRank = pa ? { member_id: m.player_a_member_id, ...pa } : null;
-    const rB: PlayerRank = pb ? { member_id: m.player_b_member_id, ...pb } : null;
-    const hc = computeHandicap(rA, rB, offsets);
-    if (hc.handicap_a === (m.handicap_a ?? 0) && hc.handicap_b === (m.handicap_b ?? 0)) continue;
+    const sa = scoreByMember.get(m.player_a_member_id);
+    const sb = scoreByMember.get(m.player_b_member_id);
+    let handicap_a = 0;
+    let handicap_b = 0;
+    if (sa != null && sb != null && sa !== sb) {
+      const rawDiff = Math.abs(sa - sb);
+      const diff = Math.floor(rawDiff / divider);
+      if (diff > 0) {
+        if (sa < sb) handicap_a = -diff;
+        else handicap_b = -diff;
+      }
+    }
+    if (handicap_a === (m.handicap_a ?? 0) && handicap_b === (m.handicap_b ?? 0)) continue;
     await fromExt("club_champs_matches")
-      .update({ handicap_a: hc.handicap_a, handicap_b: hc.handicap_b })
+      .update({ handicap_a, handicap_b })
       .eq("id", m.id);
     updated += 1;
   }
   return updated;
 }
+

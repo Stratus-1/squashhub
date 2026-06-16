@@ -419,8 +419,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [inviteIncludeReserves, setInviteIncludeReserves] = useState<boolean>(true);
   const [inviteExcludedMemberIds, setInviteExcludedMemberIds] = useState<Set<string>>(new Set());
 
-  // League-ranking handicap (singles only)
-  const [handicapMode, setHandicapMode] = useState<"none" | "league_rank">("none");
+  // Handicap (singles only): none, by league ranking, or by club ladder
+  const [handicapMode, setHandicapMode] = useState<"none" | "league_rank" | "club_ladder">("none");
+  // Divider scales the raw gap (e.g. divider=2 turns a 20-point gap into 10).
+  const [handicapDivider, setHandicapDivider] = useState<number>(1);
 
   // For partnerMode === "players": auto-load confirmed pairs from registrations
   const { data: confirmedPairRegs = [] } = useQuery({
@@ -722,6 +724,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       invite_include_reserves: inviteIncludeReserves,
       invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
       handicap_mode: matchType === "singles" ? handicapMode : "none",
+      handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,
       include_visitors: includeVisitors,
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
@@ -1407,6 +1410,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             invite_include_reserves: inviteIncludeReserves,
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
+            handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
@@ -1454,6 +1458,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             invite_include_reserves: inviteIncludeReserves,
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
+            handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
@@ -1587,10 +1592,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
 
       // League-ranking handicap: compute starting-score offsets for every match.
-      if (matchType === "singles" && handicapMode === "league_rank") {
+      if (matchType === "singles" && handicapMode !== "none") {
         try {
-          const n = await applyHandicapsToChamp(champId, clubId);
-          if (n > 0) toast.success(`Applied league handicap to ${n} match${n === 1 ? "" : "es"}`);
+          const n = await applyHandicapsToChamp(champId, clubId, {
+            mode: handicapMode,
+            divider: handicapDivider,
+          });
+          if (n > 0) toast.success(`Applied handicap to ${n} match${n === 1 ? "" : "es"}`);
         } catch (e) {
           console.warn("Handicap computation failed:", e);
         }
@@ -2017,6 +2025,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setInviteIncludeReserves(true);
     setInviteExcludedMemberIds(new Set());
     setHandicapMode("none");
+    setHandicapDivider(1);
     setInviteTiming("manual");
     setInviteScheduledAt("");
     setDescription("");
@@ -2067,6 +2076,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
     setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
     setHandicapMode(((champ as any).handicap_mode as any) || "none");
+    setHandicapDivider(Math.max(1, Number((champ as any).handicap_divider) || 1));
     setIncludeVisitors(!!champ.include_visitors);
     setSelectedVisitorClubs(new Set((champ.visitor_clubs as string[] | null) || []));
     const loadedDay = ((champ as any).day_schedules as DaySchedule[] | null) || [];
@@ -3201,11 +3211,38 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     />
                     By league ranking
                   </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="handicap-mode"
+                      checked={handicapMode === "club_ladder"}
+                      onChange={() => setHandicapMode("club_ladder")}
+                    />
+                    By club ladder
+                  </label>
                 </div>
+                {handicapMode !== "none" && (
+                  <div className="flex items-center gap-2 text-sm pt-1">
+                    <Label className="text-xs whitespace-nowrap">Multiplier / divider</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      step="0.5"
+                      value={handicapDivider}
+                      onChange={(e) => setHandicapDivider(Math.max(1, Number(e.target.value) || 1))}
+                      className="h-8 w-24"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Divides the raw gap (1 = full gap, 2 = half, etc.)
+                    </span>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  Stronger player starts on a negative score equal to the position gap (e.g. 3rd league #1 vs 3rd league #4 → −3 / 0; vs 4th league #2 → −10 / 0). Recomputed automatically when a sub is pulled in.
+                  {handicapMode === "club_ladder"
+                    ? "Stronger player (lower ladder position) starts on a negative score equal to the ladder-position gap, divided by the value above."
+                    : "Stronger player starts on a negative score equal to the position gap (e.g. 3rd league #1 vs 3rd league #4 → −3 / 0; vs 4th league #2 → −10 / 0). Recomputed automatically when a sub is pulled in."}
                 </p>
-                {editingChampId && handicapMode === "league_rank" && (
+                {editingChampId && handicapMode !== "none" && (
                   <Button
                     type="button"
                     variant="outline"
@@ -3213,7 +3250,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     onClick={async () => {
                       if (!clubId) return;
                       try {
-                        const n = await applyHandicapsToChamp(editingChampId, clubId);
+                        const n = await applyHandicapsToChamp(editingChampId, clubId, {
+                          mode: handicapMode,
+                          divider: handicapDivider,
+                        });
                         toast.success(
                           n > 0
                             ? `Recomputed handicaps on ${n} match${n === 1 ? "" : "es"}`

@@ -848,6 +848,7 @@ export type Database = {
           gender: string
           group_break_minutes: Json
           group_durations: Json
+          handicap_divider: number
           handicap_mode: string
           id: string
           include_visitors: boolean
@@ -896,6 +897,7 @@ export type Database = {
           gender: string
           group_break_minutes?: Json
           group_durations?: Json
+          handicap_divider?: number
           handicap_mode?: string
           id?: string
           include_visitors?: boolean
@@ -944,6 +946,7 @@ export type Database = {
           gender?: string
           group_break_minutes?: Json
           group_durations?: Json
+          handicap_divider?: number
           handicap_mode?: string
           id?: string
           include_visitors?: boolean

@@ -1,0 +1,1 @@
+ALTER TABLE public.club_champs ADD COLUMN IF NOT EXISTS handicap_divider numeric NOT NULL DEFAULT 1;

@@ -2063,6 +2063,19 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
                           <span className="text-xs flex-1 truncate">{getMemberName(p)}</span>
                           {p.is_captain && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Captain</Badge>}
                           <span className="text-[10px] text-muted-foreground">{getMemberSkill(p)}</span>
+                          {isRes && (
+                            <InlineShadowRankEditor
+                              value={{ div: p.shadow_division ?? null, slot: p.shadow_player_rank ?? null }}
+                              onChange={(div, slot) => {
+                                setLeagueData(prev => {
+                                  const arr = (prev[league.id] || []).map((x, i) =>
+                                    i === idx ? { ...x, shadow_division: div, shadow_player_rank: slot } : x
+                                  );
+                                  return { ...prev, [league.id]: arr };
+                                });
+                              }}
+                            />
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

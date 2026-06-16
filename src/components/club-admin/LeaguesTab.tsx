@@ -115,6 +115,8 @@ interface LeaguePlayer {
   is_captain: boolean;
   league_association_number?: string | null;
   member?: ClubMember;
+  shadow_division?: number | null;
+  shadow_player_rank?: number | null;
 }
 
 interface LeagueWithPlayers extends League {
@@ -933,6 +935,70 @@ function ShadowRankEditor({ registration, onSaved }: { registration: any; onSave
     </button>
   );
 }
+// ─── Inline shadow-rank editor for AllocateDialog rows (local state only) ───
+function InlineShadowRankEditor({
+  value,
+  onChange,
+}: {
+  value: { div: number | null; slot: number | null };
+  onChange: (div: number, slot: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [div, setDiv] = useState<number>(value.div || 1);
+  const [slot, setSlot] = useState<number>(value.slot || 1);
+  const hasShadow = (value.div || 0) > 0 && (value.slot || 0) > 0;
+  const save = () => {
+    const d = Math.max(1, Math.floor(div || 0));
+    const s = Math.max(1, Math.floor(slot || 0));
+    onChange(d, s);
+    setEditing(false);
+  };
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          min={1}
+          max={20}
+          value={div || ""}
+          onChange={(e) => setDiv(parseInt(e.target.value) || 1)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          className="h-5 text-[10px] w-9 px-1"
+          title="Division"
+        />
+        <Input
+          type="number"
+          min={1}
+          max={50}
+          value={slot || ""}
+          onChange={(e) => setSlot(parseInt(e.target.value) || 1)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          className="h-5 text-[10px] w-9 px-1"
+          title="Slot"
+        />
+        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={save}>
+          <Check className="w-3 h-3" />
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+      title="Set shadow rank for handicap (saved on Save All Allocations)"
+    >
+      {hasShadow ? (
+        <span className="font-medium text-foreground">D{value.div}·#{value.slot}</span>
+      ) : (
+        <span className="text-amber-600 hover:text-amber-700">Set rank</span>
+      )}
+      <Pencil className="w-2.5 h-2.5" />
+    </button>
+  );
+}
+
 
 // ─── League Card with inline players ───
 function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
@@ -1387,6 +1453,8 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             is_captain: r.is_captain ?? false,
             league_association_number: r.league_association_number ?? null,
             member: members.find(m => m.id === r.club_member_id),
+            shadow_division: r.shadow_division ?? null,
+            shadow_player_rank: r.shadow_player_rank ?? null,
           }));
           const cleanRows = allRows.filter((row) => {
             if (gender === "mixed") return true;
@@ -1875,6 +1943,8 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               affiliationNumberByMember[p.club_member_id] ||
               p.league_association_number ||
               null,
+            shadow_division: targetIsReserves ? (p.shadow_division ?? null) : null,
+            shadow_player_rank: targetIsReserves ? (p.shadow_player_rank ?? null) : null,
           }));
           const { data: written, error } = await fromExt("member_league_registrations").upsert(
             payload,
@@ -2057,6 +2127,19 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
                           <span className="text-xs flex-1 truncate">{getMemberName(p)}</span>
                           {p.is_captain && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Captain</Badge>}
                           <span className="text-[10px] text-muted-foreground">{getMemberSkill(p)}</span>
+                          {isRes && (
+                            <InlineShadowRankEditor
+                              value={{ div: p.shadow_division ?? null, slot: p.shadow_player_rank ?? null }}
+                              onChange={(div, slot) => {
+                                setLeagueData(prev => {
+                                  const arr = (prev[league.id] || []).map((x, i) =>
+                                    i === idx ? { ...x, shadow_division: div, shadow_player_rank: slot } : x
+                                  );
+                                  return { ...prev, [league.id]: arr };
+                                });
+                              }}
+                            />
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

@@ -234,7 +234,10 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                 <TableHead>Due</TableHead>
                 <TableHead className="text-center">Pro-rate</TableHead>
                 <TableHead className="text-center">Active</TableHead>
-                <TableHead className="text-center">On Landing</TableHead>
+                <TableHead className="text-center" title="When ON, this fee row is displayed publicly on your Club Landing page (the public /c/<club> page) so prospective members can see pricing before joining. When OFF, the fee is still billed to members internally but hidden from the public page.">
+                  On Landing
+                  <div className="text-[10px] font-normal text-muted-foreground normal-case">Show on public page</div>
+                </TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>

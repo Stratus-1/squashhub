@@ -28,10 +28,19 @@ interface BarItem {
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
+  soft_drinks: "🥤",
+  water: "💧",
+  energy: "⚡",
+  beer_cider: "🍺",
+  wine: "🍷",
+  spirits: "🥃",
+  hot_drinks: "☕",
+  snacks: "🍿",
+  meals: "🥪",
+  other: "📦",
+  // legacy values (existing items)
   drinks: "🥤",
   alcohol: "🍺",
-  snacks: "🍿",
-  other: "📦",
 };
 
 interface BarTabEntry {

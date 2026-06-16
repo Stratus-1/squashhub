@@ -1115,7 +1115,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   className="pl-8 h-9 text-xs"
                 />
                 {memberDropdownOpen && (
-                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-background border rounded-md shadow-lg max-h-52 overflow-y-auto">
+                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-background border rounded-md shadow-lg max-h-96 overflow-y-auto">
                     {(members || [])
                       .slice()
                       .filter((m: any) => {

@@ -20,10 +20,9 @@ interface BarItem {
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
-  drinks: "🥤",
-  alcohol: "🍺",
-  snacks: "🍿",
-  other: "📦",
+  soft_drinks: "🥤", water: "💧", energy: "⚡", beer_cider: "🍺", wine: "🍷",
+  spirits: "🥃", hot_drinks: "☕", snacks: "🍿", meals: "🥪", other: "📦",
+  drinks: "🥤", alcohol: "🍺",
 };
 
 type PaymentMethod = "cash" | "card" | "eft";

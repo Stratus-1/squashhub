@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Send, Search, Eye } from "lucide-react";
+import { Loader2, RefreshCw, Send, Search, Eye, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { InvoicePreviewDialog } from "./InvoicePreviewDialog";
 import { GenerateInvoicesDialog } from "./GenerateInvoicesDialog";
 
@@ -61,6 +62,22 @@ export function RenewalInvoicesTab({ clubId }: Props) {
     onError: (e: any) => toast.error(e.message || "Failed to generate invoices"),
   });
 
+  const deleteAll = useMutation({
+    mutationFn: async () => {
+      const ids = (rows as any[]).filter(r => !r.paid).map(r => r.id);
+      if (ids.length === 0) return { deleted: 0 };
+      const { error } = await supabase.from("club_member_fee_payments").delete().in("id", ids);
+      if (error) throw error;
+      return { deleted: ids.length };
+    },
+    onSuccess: (d) => {
+      toast.success(`Deleted ${d.deleted} unpaid invoice${d.deleted === 1 ? "" : "s"}`);
+      qc.invalidateQueries({ queryKey: ["renewal-invoices", clubId] });
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to delete invoices"),
+  });
+
+
   const sendNow = async (id: string) => {
     setSendingId(id);
     try {
@@ -113,10 +130,37 @@ export function RenewalInvoicesTab({ clubId }: Props) {
             Generate next-cycle membership invoices. Emails are sent automatically the reminder-days before each due date.
           </p>
         </div>
-        <Button size="sm" onClick={() => setGenOpen(true)} disabled={generate.isPending} className="gap-1.5 h-8">
-          {generate.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          Generate / Regenerate Invoices
-        </Button>
+        <div className="flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1.5 h-8 text-destructive hover:text-destructive"
+                disabled={deleteAll.isPending || (rows as any[]).filter(r => !r.paid).length === 0}>
+                {deleteAll.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Delete all
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete all unpaid invoices?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete <strong>{(rows as any[]).filter(r => !r.paid).length}</strong> unpaid renewal invoice(s) for this club.
+                  Paid invoices are kept for audit. You can re-generate invoices afterward.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => deleteAll.mutate()}>
+                  Delete all unpaid
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button size="sm" onClick={() => setGenOpen(true)} disabled={generate.isPending} className="gap-1.5 h-8">
+            {generate.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            Generate / Regenerate Invoices
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

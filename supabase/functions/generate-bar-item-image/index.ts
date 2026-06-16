@@ -39,9 +39,10 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
+        model: "openai/gpt-image-2",
         prompt,
         size: "1024x1024",
+        quality: "low",
         n: 1,
       }),
     });
@@ -58,10 +59,12 @@ Deno.serve(async (req) => {
     try { aiJson = JSON.parse(aiText); } catch {
       return json(502, { error: "AI returned non-JSON", detail: aiText.slice(0, 300) });
     }
-    const b64 = aiJson?.data?.[0]?.b64_json;
+    const image = Array.isArray(aiJson?.data) ? aiJson.data[0] : null;
+    const rawB64 = image?.b64_json || image?.base64 || image?.image || aiJson?.images?.[0];
+    const b64 = typeof rawB64 === "string" ? rawB64.replace(/^data:image\/\w+;base64,/, "") : "";
     if (!b64) {
       console.error("No b64 in response", aiText.slice(0, 500));
-      return json(502, { error: "AI returned no image" });
+      return json(502, { error: "AI returned no image", detail: "The image model completed but did not include image data." });
     }
 
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));

@@ -246,7 +246,7 @@ export async function loadClubLadderContext(clubId: string): Promise<{
 
   const leagueIds = (leagues as any[]).map((l) => l.id);
   const { data: regs } = await fromExt("member_league_registrations")
-    .select("club_member_id, league_id, player_rank, is_reserve, reserve_order")
+    .select("club_member_id, league_id, player_rank, is_reserve, reserve_order, shadow_division, shadow_player_rank")
     .in("league_id", leagueIds);
 
   // Size per division = max player_rank seen among MAIN team registrations
@@ -270,29 +270,34 @@ export async function loadClubLadderContext(clubId: string): Promise<{
   const offsets = buildDivisionOffsets(sizes);
 
   // Pick the strongest registration per member:
-  //   1. non-reserve beats reserve
-  //   2. lower division beats higher
-  //   3. lower player_rank beats higher
+  //   - Main-team reg uses (meta.division, player_rank)
+  //   - Reserve reg uses (shadow_division, shadow_player_rank) IF the admin
+  //     has assigned one. Reserves without a shadow rank are skipped here
+  //     (the schedule-build flow prompts admins to fill them in beforehand).
+  //   - Lower (division, player_rank) wins.
   type Pick = { division: number; player_rank: number; rank_score: number };
   const best = new Map<string, Pick>();
   for (const r of (regs || []) as any[]) {
     const meta = classify.get(r.league_id);
     if (!meta) continue;
-    // Skip reserve-team registrations entirely for handicap — they're
-    // not part of the main ladder. (Reserve players still get picked up
-    // via any main-team registration they hold.)
-    if (meta.is_reserve_team) continue;
-    if (r.is_reserve) continue;
-    const pr = Number(r.player_rank) || 0;
-    if (pr <= 0) continue;
-    const score = meta.division * 1000 + pr; // smaller = stronger
+    let division: number;
+    let playerRank: number;
+    if (meta.is_reserve_team || r.is_reserve) {
+      const sd = Number(r.shadow_division) || 0;
+      const sp = Number(r.shadow_player_rank) || 0;
+      if (sd <= 0 || sp <= 0) continue;
+      division = sd;
+      playerRank = sp;
+    } else {
+      const pr = Number(r.player_rank) || 0;
+      if (pr <= 0) continue;
+      division = meta.division;
+      playerRank = pr;
+    }
+    const score = division * 1000 + playerRank; // smaller = stronger
     const prev = best.get(r.club_member_id);
     if (!prev || score < prev.rank_score) {
-      best.set(r.club_member_id, {
-        division: meta.division,
-        player_rank: pr,
-        rank_score: score,
-      });
+      best.set(r.club_member_id, { division, player_rank: playerRank, rank_score: score });
     }
   }
 
@@ -302,6 +307,102 @@ export async function loadClubLadderContext(clubId: string): Promise<{
   );
 
   return { offsets, rankByMember };
+}
+
+/**
+ * Per-member reserve registration that still needs a shadow rank before
+ * league-rank handicap can place them. Members with any main-team reg or
+ * any reserve reg already carrying a shadow rank are skipped.
+ *
+ * Returns one row per missing member (the reserve registration to update)
+ * plus the division-size map so the UI can offer sensible slot pickers.
+ */
+export type MissingShadowRank = {
+  member_id: string;
+  registration_id: string;
+  league_id: string;
+  league_name: string;
+  current_reserve_division: number;
+};
+
+export async function findReservesMissingShadowRank(
+  clubId: string,
+  memberIds: string[],
+): Promise<{ missing: MissingShadowRank[]; sizes: DivisionSizes }> {
+  if (memberIds.length === 0) return { missing: [], sizes: {} };
+  const { data: leagues } = await fromExt("leagues")
+    .select("id, name, code, association_id")
+    .eq("club_id", clubId);
+  if (!leagues || leagues.length === 0) return { missing: [], sizes: {} };
+
+  const associationIds = Array.from(
+    new Set(((leagues as any[]).map(l => l.association_id).filter(Boolean))),
+  ) as string[];
+  const fixtureTierByCode = await loadFixtureTiersByCode(associationIds);
+  const classify = classifyLeaguesByDivision(
+    leagues as Array<{ id: string; name: string; code: string | null }>,
+    fixtureTierByCode,
+  );
+
+  const leagueIds = new Set((leagues as any[]).map((l) => l.id));
+  const nameById = new Map<string, string>(
+    (leagues as any[]).map((l) => [l.id, l.name as string]),
+  );
+
+  const { data: regs } = await fromExt("member_league_registrations")
+    .select("id, club_member_id, league_id, player_rank, is_reserve, shadow_division, shadow_player_rank")
+    .in("club_member_id", memberIds);
+  const rows = (regs || []).filter((r: any) => leagueIds.has(r.league_id));
+
+  const perMember = new Map<string, any[]>();
+  for (const r of rows as any[]) {
+    if (!perMember.has(r.club_member_id)) perMember.set(r.club_member_id, []);
+    perMember.get(r.club_member_id)!.push(r);
+  }
+
+  const sizes: DivisionSizes = {};
+  for (const r of rows as any[]) {
+    const meta = classify.get(r.league_id);
+    if (!meta || meta.is_reserve_team || r.is_reserve) continue;
+    const pr = Number(r.player_rank) || 0;
+    if (pr <= 0) continue;
+    sizes[meta.division] = Math.max(sizes[meta.division] || 0, pr);
+  }
+  for (const meta of classify.values()) {
+    if (sizes[meta.division] == null) sizes[meta.division] = 5;
+  }
+
+  const missing: MissingShadowRank[] = [];
+  for (const [memberId, mRegs] of perMember.entries()) {
+    const hasMain = mRegs.some((r: any) => {
+      const meta = classify.get(r.league_id);
+      return meta && !meta.is_reserve_team && !r.is_reserve && (Number(r.player_rank) || 0) > 0;
+    });
+    if (hasMain) continue;
+
+    const hasShadow = mRegs.some(
+      (r: any) =>
+        (r.is_reserve || classify.get(r.league_id)?.is_reserve_team) &&
+        Number(r.shadow_division) > 0 &&
+        Number(r.shadow_player_rank) > 0,
+    );
+    if (hasShadow) continue;
+
+    const target =
+      mRegs.find((r: any) => r.is_reserve || classify.get(r.league_id)?.is_reserve_team) ||
+      mRegs[0];
+    if (!target) continue;
+    const meta = classify.get(target.league_id);
+    missing.push({
+      member_id: memberId,
+      registration_id: target.id,
+      league_id: target.league_id,
+      league_name: nameById.get(target.league_id) || "Reserves",
+      current_reserve_division: meta?.division ?? 1,
+    });
+  }
+
+  return { missing, sizes };
 }
 
 /**

@@ -1096,7 +1096,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
       {/* Member Statement Dialog */}
       <Dialog open={statementOpen} onOpenChange={setStatementOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" /> Member Statement

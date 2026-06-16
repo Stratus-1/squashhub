@@ -374,7 +374,7 @@ export async function applyHandicapsToChamp(
     let handicap_b = 0;
     if (sa != null && sb != null && sa !== sb) {
       const rawDiff = Math.abs(sa - sb);
-      const diff = Math.floor(rawDiff / divider);
+      const diff = Math.floor((rawDiff * multiplier) / divider);
       if (diff > 0) {
         if (sa < sb) handicap_a = -diff;
         else handicap_b = -diff;

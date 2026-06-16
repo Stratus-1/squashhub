@@ -95,7 +95,7 @@ export function PageHeader({
 
           <div className="min-w-0 flex-1 flex items-center gap-2">
             {clubLogo && (
-              <img src={clubLogo} alt="Club logo" className="w-8 h-8 object-contain rounded flex-shrink-0" />
+              <img src={clubLogo} alt="Club logo" className="w-12 h-12 md:w-10 md:h-10 object-contain rounded flex-shrink-0" />
             )}
             <div className="min-w-0 flex-1">
               <Breadcrumbs className="hidden md:flex mb-1" />

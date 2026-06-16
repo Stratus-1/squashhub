@@ -113,7 +113,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
             Generate next-cycle membership invoices. Emails are sent automatically the reminder-days before each due date.
           </p>
         </div>
-        <Button size="sm" onClick={() => generate.mutate()} disabled={generate.isPending} className="gap-1.5 h-8">
+        <Button size="sm" onClick={() => setGenOpen(true)} disabled={generate.isPending} className="gap-1.5 h-8">
           {generate.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           Generate / Regenerate Invoices
         </Button>

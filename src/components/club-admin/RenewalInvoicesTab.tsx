@@ -28,7 +28,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
           id, fee_label, amount, paid, season_year,
           invoice_number, invoice_due_date, invoice_send_date,
           invoice_issued_at, invoice_email_sent_at, invoice_email_status,
-          club_members!inner ( id, full_name, club_id )
+          club_members!inner ( id, name, club_id )
         `)
         .eq("fee_type", "renewal")
         .eq("club_members.club_id", clubId)
@@ -77,7 +77,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
       if (filter === "sent" && !r.invoice_email_sent_at) return false;
       if (filter === "pending" && (r.paid || r.invoice_email_sent_at)) return false;
       if (q) {
-        const name = r.club_members?.full_name?.toLowerCase() || "";
+        const name = r.club_members?.name?.toLowerCase() || "";
         const inv = r.invoice_number?.toLowerCase() || "";
         const lab = r.fee_label?.toLowerCase() || "";
         if (!name.includes(q) && !inv.includes(q) && !lab.includes(q)) return false;
@@ -162,7 +162,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
                   const variant: any = r.paid ? "default" : status === "Sent" ? "secondary" : status === "Failed" ? "destructive" : "outline";
                   return (
                     <TableRow key={r.id}>
-                      <TableCell className="text-xs">{r.club_members?.full_name || "—"}</TableCell>
+                      <TableCell className="text-xs">{r.club_members?.name || "—"}</TableCell>
                       <TableCell className="text-xs">{r.fee_label}</TableCell>
                       <TableCell className="text-xs text-right font-mono">{fmtAmt(r.amount)}</TableCell>
                       <TableCell className="text-xs font-mono">{r.invoice_number}</TableCell>

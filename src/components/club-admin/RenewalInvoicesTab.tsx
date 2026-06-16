@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Send, Search, Eye } from "lucide-react";
 import { InvoicePreviewDialog } from "./InvoicePreviewDialog";
+import { GenerateInvoicesDialog } from "./GenerateInvoicesDialog";
 
 interface Props { clubId: string }
 
@@ -20,6 +21,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
   const [search, setSearch] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [genOpen, setGenOpen] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["renewal-invoices", clubId],

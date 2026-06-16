@@ -399,23 +399,24 @@ interface QuickAccessProps {
 }
 
 /**
- * IMPORTANT: every Tailwind class used in tiles is written as a literal
- * string here so the JIT compiler keeps them in the bundle.
+ * Flat, Medichem-inspired tile palette: a solid icon chip color on a white card.
+ * IMPORTANT: every Tailwind class is written as a literal so the JIT keeps it.
  */
-const TILE_STYLES: Record<string, { ring: string; icon: string; glow: string; hoverBorder: string }> = {
-  blue:    { ring: "from-blue-500/25 to-blue-500/5",       icon: "text-blue-600",     glow: "shadow-blue-500/20",     hoverBorder: "hover:border-blue-400/60" },
-  sky:     { ring: "from-sky-500/25 to-sky-500/5",         icon: "text-sky-600",      glow: "shadow-sky-500/20",      hoverBorder: "hover:border-sky-400/60" },
-  cyan:    { ring: "from-cyan-500/25 to-cyan-500/5",       icon: "text-cyan-600",     glow: "shadow-cyan-500/20",     hoverBorder: "hover:border-cyan-400/60" },
-  emerald: { ring: "from-emerald-500/25 to-emerald-500/5", icon: "text-emerald-600",  glow: "shadow-emerald-500/20",  hoverBorder: "hover:border-emerald-400/60" },
-  amber:   { ring: "from-amber-500/25 to-amber-500/5",     icon: "text-amber-600",    glow: "shadow-amber-500/20",    hoverBorder: "hover:border-amber-400/60" },
-  orange:  { ring: "from-orange-500/25 to-orange-500/5",   icon: "text-orange-600",   glow: "shadow-orange-500/20",   hoverBorder: "hover:border-orange-400/60" },
-  fuchsia: { ring: "from-fuchsia-500/25 to-fuchsia-500/5", icon: "text-fuchsia-600",  glow: "shadow-fuchsia-500/20",  hoverBorder: "hover:border-fuchsia-400/60" },
-  violet:  { ring: "from-violet-500/25 to-violet-500/5",   icon: "text-violet-600",   glow: "shadow-violet-500/20",   hoverBorder: "hover:border-violet-400/60" },
-  rose:    { ring: "from-rose-500/25 to-rose-500/5",       icon: "text-rose-600",     glow: "shadow-rose-500/20",     hoverBorder: "hover:border-rose-400/60" },
-  red:     { ring: "from-red-500/25 to-red-500/5",         icon: "text-red-600",      glow: "shadow-red-500/20",      hoverBorder: "hover:border-red-400/60" },
-  teal:    { ring: "from-teal-500/25 to-teal-500/5",       icon: "text-teal-600",     glow: "shadow-teal-500/20",     hoverBorder: "hover:border-teal-400/60" },
-  lime:    { ring: "from-lime-500/25 to-lime-500/5",       icon: "text-lime-600",     glow: "shadow-lime-500/20",     hoverBorder: "hover:border-lime-400/60" },
+const TILE_STYLES: Record<string, { chipBg: string; chipText: string }> = {
+  blue:    { chipBg: "bg-blue-600",    chipText: "text-white" },
+  sky:     { chipBg: "bg-sky-600",     chipText: "text-white" },
+  cyan:    { chipBg: "bg-cyan-600",    chipText: "text-white" },
+  emerald: { chipBg: "bg-emerald-600", chipText: "text-white" },
+  amber:   { chipBg: "bg-amber-500",   chipText: "text-white" },
+  orange:  { chipBg: "bg-orange-500",  chipText: "text-white" },
+  fuchsia: { chipBg: "bg-fuchsia-600", chipText: "text-white" },
+  violet:  { chipBg: "bg-violet-600",  chipText: "text-white" },
+  rose:    { chipBg: "bg-rose-600",    chipText: "text-white" },
+  red:     { chipBg: "bg-red-600",     chipText: "text-white" },
+  teal:    { chipBg: "bg-teal-600",    chipText: "text-white" },
+  lime:    { chipBg: "bg-lime-600",    chipText: "text-white" },
 };
+
 
 function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigate }: QuickAccessProps) {
   const home: Tile[] = [

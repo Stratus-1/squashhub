@@ -421,8 +421,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   // Handicap (singles only): none, by league ranking, or by club ladder
   const [handicapMode, setHandicapMode] = useState<"none" | "league_rank" | "club_ladder">("none");
-  // Divider scales the raw gap (e.g. divider=2 turns a 20-point gap into 10).
+  // Divider/multiplier scale the raw gap. final = floor(gap * multiplier / divider).
   const [handicapDivider, setHandicapDivider] = useState<number>(1);
+  const [handicapMultiplier, setHandicapMultiplier] = useState<number>(1);
 
   // For partnerMode === "players": auto-load confirmed pairs from registrations
   const { data: confirmedPairRegs = [] } = useQuery({

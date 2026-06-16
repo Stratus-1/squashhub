@@ -64,7 +64,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
 
   const deleteAll = useMutation({
     mutationFn: async () => {
-      const ids = (rows as any[]).filter(r => !r.paid).map(r => r.id);
+      const ids = (rows as any[]).filter(r => !r.paid && !r.invoice_email_sent_at).map(r => r.id);
       if (ids.length === 0) return { deleted: 0 };
       const { error } = await supabase.from("club_member_fee_payments").delete().in("id", ids);
       if (error) throw error;
@@ -134,16 +134,16 @@ export function RenewalInvoicesTab({ clubId }: Props) {
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1.5 h-8 text-destructive hover:text-destructive"
-                disabled={deleteAll.isPending || (rows as any[]).filter(r => !r.paid).length === 0}>
+                disabled={deleteAll.isPending || (rows as any[]).filter(r => !r.paid && !r.invoice_email_sent_at).length === 0}>
                 {deleteAll.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 Delete all
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete all unpaid invoices?</AlertDialogTitle>
+                <AlertDialogTitle>Delete all pending invoices?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete <strong>{(rows as any[]).filter(r => !r.paid).length}</strong> unpaid renewal invoice(s) for this club.
+                  This will permanently delete <strong>{(rows as any[]).filter(r => !r.paid && !r.invoice_email_sent_at).length}</strong> pending (un-sent) renewal invoice(s) for this club.
                   Paid invoices are kept for audit. You can re-generate invoices afterward.
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -151,7 +151,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => deleteAll.mutate()}>
-                  Delete all unpaid
+                  Delete all pending
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

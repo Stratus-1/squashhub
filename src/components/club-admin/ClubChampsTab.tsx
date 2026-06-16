@@ -3267,6 +3267,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                         const n = await applyHandicapsToChamp(editingChampId, clubId, {
                           mode: handicapMode,
                           divider: handicapDivider,
+                          multiplier: handicapMultiplier,
                         });
                         toast.success(
                           n > 0

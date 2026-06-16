@@ -87,19 +87,20 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
       <div>
         <div className="px-8 pt-5 pb-4 flex items-end justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1.5">
               {props.clubLogoUrl && (
                 <img src={props.clubLogoUrl} alt="Club logo" className="h-5 w-5 object-contain rounded-sm shrink-0" />
               )}
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-heading truncate">
-                {clubLabel(props.clubName)}
+              <p className="text-[12px] font-sans font-medium text-slate-500 truncate">
+                {props.clubName || "My Club"}
               </p>
             </div>
-            <h1 className="text-2xl font-heading font-bold text-foreground uppercase tracking-[0.08em] truncate">
+            <h1 className="text-3xl font-sans font-bold text-slate-900 tracking-tight truncate">
               Welcome back, {props.firstName}
             </h1>
           </div>
         </div>
+
 
       {/* QUICK ACCESS TILES — categorised like the sidebar */}
       <div className="px-8 pb-2">

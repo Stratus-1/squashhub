@@ -115,6 +115,8 @@ interface LeaguePlayer {
   is_captain: boolean;
   league_association_number?: string | null;
   member?: ClubMember;
+  shadow_division?: number | null;
+  shadow_player_rank?: number | null;
 }
 
 interface LeagueWithPlayers extends League {

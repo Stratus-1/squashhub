@@ -1389,6 +1389,8 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             is_captain: r.is_captain ?? false,
             league_association_number: r.league_association_number ?? null,
             member: members.find(m => m.id === r.club_member_id),
+            shadow_division: r.shadow_division ?? null,
+            shadow_player_rank: r.shadow_player_rank ?? null,
           }));
           const cleanRows = allRows.filter((row) => {
             if (gender === "mixed") return true;

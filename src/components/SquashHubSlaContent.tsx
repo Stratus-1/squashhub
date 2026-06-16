@@ -25,7 +25,7 @@ export function SquashHubSlaContent() {
       <ul>
         <li>
           <strong>Billing commencement:</strong> Subscription fees are first invoiced from
-          <strong> 1 September 2025</strong>, covering the remainder of the 2025/2026 financial year,
+          <strong> 1 September 2026</strong>, covering the remainder of the 2026/2027 financial year,
           and annually (or monthly, depending on the chosen billing option) thereafter.
         </li>
         <li>

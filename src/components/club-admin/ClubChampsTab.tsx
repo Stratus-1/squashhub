@@ -3223,24 +3223,37 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   </label>
                 </div>
                 {handicapMode !== "none" && (
-                  <div className="flex items-center gap-2 text-sm pt-1">
-                    <Label className="text-xs whitespace-nowrap">Multiplier / divider</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      step="0.5"
-                      value={handicapDivider}
-                      onChange={(e) => setHandicapDivider(Math.max(1, Number(e.target.value) || 1))}
-                      className="h-8 w-24"
-                    />
+                  <div className="flex flex-wrap items-center gap-4 text-sm pt-1">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs whitespace-nowrap">Multiplier</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        step="0.5"
+                        value={handicapMultiplier}
+                        onChange={(e) => setHandicapMultiplier(Math.max(1, Number(e.target.value) || 1))}
+                        className="h-8 w-20"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs whitespace-nowrap">Divider</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        step="0.5"
+                        value={handicapDivider}
+                        onChange={(e) => setHandicapDivider(Math.max(1, Number(e.target.value) || 1))}
+                        className="h-8 w-20"
+                      />
+                    </div>
                     <span className="text-xs text-muted-foreground">
-                      Divides the raw gap (1 = full gap, 2 = half, etc.)
+                      final gap = raw gap × multiplier ÷ divider (both default 1)
                     </span>
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
                   {handicapMode === "club_ladder"
-                    ? "Stronger player (lower ladder position) starts on a negative score equal to the ladder-position gap, divided by the value above."
+                    ? "Stronger player (lower ladder position) starts on a negative score equal to the ladder-position gap, scaled by the multiplier/divider above."
                     : "Stronger player starts on a negative score equal to the position gap (e.g. 3rd league #1 vs 3rd league #4 → −3 / 0; vs 4th league #2 → −10 / 0). Recomputed automatically when a sub is pulled in."}
                 </p>
                 {editingChampId && handicapMode !== "none" && (

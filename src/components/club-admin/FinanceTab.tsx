@@ -576,6 +576,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <TabsTrigger value="remittances" className="text-xs gap-1">
               <Send className="w-3 h-3" /> Remittances
             </TabsTrigger>
+            <TabsTrigger value="renewals" className="text-xs">Annual Renewals</TabsTrigger>
             <TabsTrigger value="trial" className="text-xs">Trial Balance</TabsTrigger>
             <TabsTrigger value="income" className="text-xs">Income Statement</TabsTrigger>
             <TabsTrigger value="coa" className="text-xs">Chart of Accounts</TabsTrigger>
@@ -615,6 +616,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
         <TabsContent value="remittances">
           <RemittancesPanel clubId={clubId} />
+        </TabsContent>
+
+        <TabsContent value="renewals">
+          <RenewalInvoicesTab clubId={clubId} />
         </TabsContent>
 
         <TabsContent value="income">

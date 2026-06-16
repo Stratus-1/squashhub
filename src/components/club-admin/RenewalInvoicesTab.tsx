@@ -28,14 +28,15 @@ export function RenewalInvoicesTab({ clubId }: Props) {
           id, fee_label, amount, paid, season_year,
           invoice_number, invoice_due_date, invoice_send_date,
           invoice_issued_at, invoice_email_sent_at, invoice_email_status,
-          club_members:club_member_id ( id, full_name, club_id )
+          club_members!inner ( id, full_name, club_id )
         `)
         .eq("fee_type", "renewal")
+        .eq("club_members.club_id", clubId)
         .not("invoice_number", "is", null)
         .order("invoice_due_date", { ascending: true })
-        .limit(1000);
+        .limit(2000);
       if (error) throw error;
-      return (data || []).filter((r: any) => r.club_members?.club_id === clubId);
+      return data || [];
     },
   });
 

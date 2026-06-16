@@ -190,7 +190,13 @@ export function FixturesTab({ clubId, associationId }: Props) {
           <Button
             size="sm"
             onClick={() => {
-              setEditingRound({ round_number: nextRoundNumber, name: `Round ${nextRoundNumber}` });
+              {
+                const ord = (n: number) => {
+                  const s = ["th", "st", "nd", "rd"], v = n % 100;
+                  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+                };
+                setEditingRound({ round_number: nextRoundNumber, name: `${ord(nextRoundNumber)} League Round ${nextRoundNumber}` });
+              }
               setDialogOpen(true);
             }}
           >

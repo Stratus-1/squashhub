@@ -80,27 +80,27 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
   );
 
   return (
-    <div className="min-h-[calc(100vh-2.5rem)] relative">
-      {/* Opaque clean canvas — masks the global court photo for a Medichem-style flat look.
-          Scoped to the dashboard route only; other pages keep the layered background. */}
-      <div className="absolute inset-0 -z-10 bg-background" aria-hidden="true" />
+    <div className="min-h-[calc(100vh-2.5rem)] relative font-sans">
+      {/* Soft tinted canvas — masks the global court photo and gives white tiles real contrast. */}
+      <div className="absolute inset-0 -z-10 bg-slate-100" aria-hidden="true" />
 
       <div>
         <div className="px-8 pt-5 pb-4 flex items-end justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1.5">
               {props.clubLogoUrl && (
                 <img src={props.clubLogoUrl} alt="Club logo" className="h-5 w-5 object-contain rounded-sm shrink-0" />
               )}
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-heading truncate">
-                {clubLabel(props.clubName)}
+              <p className="text-[12px] font-sans font-medium text-slate-500 truncate">
+                {props.clubName || "My Club"}
               </p>
             </div>
-            <h1 className="text-2xl font-heading font-bold text-foreground uppercase tracking-[0.08em] truncate">
+            <h1 className="text-3xl font-sans font-bold text-slate-900 tracking-tight truncate">
               Welcome back, {props.firstName}
             </h1>
           </div>
         </div>
+
 
       {/* QUICK ACCESS TILES — categorised like the sidebar */}
       <div className="px-8 pb-2">
@@ -459,9 +459,9 @@ function TileGroup({
   if (tiles.length === 0) return null;
   return (
     <section>
-      <div className="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-[hsl(var(--accent))]/40">
-        <Icon className="w-3.5 h-3.5 text-[hsl(var(--accent))]" />
-        <span className="uppercase tracking-[0.22em] text-[11px] font-bold font-heading text-foreground">
+      <div className="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-slate-200">
+        <Icon className="w-3.5 h-3.5 text-slate-500" />
+        <span className="uppercase tracking-[0.14em] text-[11px] font-semibold text-slate-500 font-sans">
           {label}
         </span>
       </div>
@@ -473,14 +473,14 @@ function TileGroup({
               key={t.title + t.url}
               onClick={() => navigate(t.url)}
               className={cn(
-                "group relative rounded-xl border border-border bg-card",
-                "px-4 py-4 text-left transition-all duration-150",
-                "hover:border-foreground/20 hover:shadow-sm",
+                "group relative rounded-xl border border-slate-200 bg-white",
+                "px-4 py-4 text-left transition-all duration-150 shadow-sm",
+                "hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5",
               )}
             >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12px] uppercase tracking-[0.16em] font-heading font-bold text-foreground truncate">
+                  <p className="text-[14px] font-sans font-semibold text-slate-900 truncate">
                     {t.title}
                   </p>
                 </div>
@@ -495,5 +495,6 @@ function TileGroup({
     </section>
   );
 }
+
 
 

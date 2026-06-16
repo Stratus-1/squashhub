@@ -1592,10 +1592,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
 
       // League-ranking handicap: compute starting-score offsets for every match.
-      if (matchType === "singles" && handicapMode === "league_rank") {
+      if (matchType === "singles" && handicapMode !== "none") {
         try {
-          const n = await applyHandicapsToChamp(champId, clubId);
-          if (n > 0) toast.success(`Applied league handicap to ${n} match${n === 1 ? "" : "es"}`);
+          const n = await applyHandicapsToChamp(champId, clubId, {
+            mode: handicapMode,
+            divider: handicapDivider,
+          });
+          if (n > 0) toast.success(`Applied handicap to ${n} match${n === 1 ? "" : "es"}`);
         } catch (e) {
           console.warn("Handicap computation failed:", e);
         }

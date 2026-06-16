@@ -25,7 +25,8 @@ Deno.serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-    if (!token) return json(401, { error: "Missing bearer token" });
+    console.log("[auth] header present:", !!authHeader, "token len:", token.length);
+    if (!token) return json(401, { error: "Missing bearer token", debug: "no_auth_header" });
 
     const userClient = createClient(supabaseUrl, anonKey);
     const { data: userData, error: userErr } = await userClient.auth.getUser(token);

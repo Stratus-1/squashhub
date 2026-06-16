@@ -117,7 +117,7 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>{draft.id ? "Edit round" : "Add round"}</DialogTitle>
         </DialogHeader>

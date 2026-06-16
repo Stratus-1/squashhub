@@ -473,24 +473,20 @@ function TileGroup({
               key={t.title + t.url}
               onClick={() => navigate(t.url)}
               className={cn(
-                "group relative overflow-hidden rounded-xl border border-border bg-card/95 backdrop-blur-md",
-                "px-5 py-5 text-left transition-all duration-200",
-                "hover:-translate-y-0.5 hover:shadow-lg",
-                s.hoverBorder, s.glow,
+                "group relative rounded-xl border border-border bg-card",
+                "px-4 py-4 text-left transition-all duration-150",
+                "hover:border-foreground/20 hover:shadow-sm",
               )}
             >
-              {/* color glow corner */}
-              <div className={cn("pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br blur-2xl opacity-70", s.ring)} />
-              <div className="relative flex items-center gap-3">
-                <div className={cn("h-10 w-10 rounded-lg grid place-items-center bg-muted/60 border border-border", s.icon)}>
-                  <t.icon className="w-[18px] h-[18px]" />
-                </div>
+              <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-[12px] uppercase tracking-[0.16em] font-heading font-bold text-foreground truncate">
                     {t.title}
                   </p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors" />
+                <div className={cn("h-9 w-9 rounded-full grid place-items-center shrink-0", s.chipBg, s.chipText)}>
+                  <t.icon className="w-[18px] h-[18px]" />
+                </div>
               </div>
             </button>
           );
@@ -499,4 +495,5 @@ function TileGroup({
     </section>
   );
 }
+
 

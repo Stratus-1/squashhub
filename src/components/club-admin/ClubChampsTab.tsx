@@ -1610,6 +1610,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // League-ranking handicap: compute starting-score offsets for every match.
       if (matchType === "singles" && handicapMode !== "none") {
         try {
+          // Option C: for league-rank mode, prompt admin for any reserve
+          // participants who don't yet have a shadow rank assigned.
+          if (handicapMode === "league_rank") {
+            const memberIds = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
+            const { missing, sizes } = await findReservesMissingShadowRank(clubId, memberIds);
+            if (missing.length > 0) {
+              await new Promise<void>((resolve, reject) => {
+                setShadowPrompt({ open: true, missing, sizes, resolve, reject });
+              });
+            }
+          }
           const n = await applyHandicapsToChamp(champId, clubId, {
             mode: handicapMode,
             divider: handicapDivider,
@@ -1620,6 +1631,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           console.warn("Handicap computation failed:", e);
         }
       }
+
 
 
       // Auto-book courts — one block per (date, court) covering the full

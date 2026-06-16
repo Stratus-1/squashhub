@@ -45,14 +45,18 @@ export function RenewalInvoicesTab({ clubId }: Props) {
   });
 
   const generate = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.rpc("generate_member_renewal_invoices", { p_club_id: clubId });
+    mutationFn: async (categoryIds: string[]) => {
+      const { data, error } = await supabase.rpc("generate_member_renewal_invoices", {
+        p_club_id: clubId,
+        p_category_ids: categoryIds.length > 0 ? categoryIds : null,
+      });
       if (error) throw error;
       return data as { created: number; updated: number; skipped_paid: number; skipped_sent: number };
     },
     onSuccess: (d) => {
       toast.success(`Invoices: ${d.created} created, ${d.updated} updated, ${d.skipped_paid} paid, ${d.skipped_sent} already sent`);
       qc.invalidateQueries({ queryKey: ["renewal-invoices", clubId] });
+      setGenOpen(false);
     },
     onError: (e: any) => toast.error(e.message || "Failed to generate invoices"),
   });

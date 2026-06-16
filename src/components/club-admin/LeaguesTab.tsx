@@ -935,6 +935,70 @@ function ShadowRankEditor({ registration, onSaved }: { registration: any; onSave
     </button>
   );
 }
+// ─── Inline shadow-rank editor for AllocateDialog rows (local state only) ───
+function InlineShadowRankEditor({
+  value,
+  onChange,
+}: {
+  value: { div: number | null; slot: number | null };
+  onChange: (div: number, slot: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [div, setDiv] = useState<number>(value.div || 1);
+  const [slot, setSlot] = useState<number>(value.slot || 1);
+  const hasShadow = (value.div || 0) > 0 && (value.slot || 0) > 0;
+  const save = () => {
+    const d = Math.max(1, Math.floor(div || 0));
+    const s = Math.max(1, Math.floor(slot || 0));
+    onChange(d, s);
+    setEditing(false);
+  };
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          min={1}
+          max={20}
+          value={div || ""}
+          onChange={(e) => setDiv(parseInt(e.target.value) || 1)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          className="h-5 text-[10px] w-9 px-1"
+          title="Division"
+        />
+        <Input
+          type="number"
+          min={1}
+          max={50}
+          value={slot || ""}
+          onChange={(e) => setSlot(parseInt(e.target.value) || 1)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          className="h-5 text-[10px] w-9 px-1"
+          title="Slot"
+        />
+        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={save}>
+          <Check className="w-3 h-3" />
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+      title="Set shadow rank for handicap (saved on Save All Allocations)"
+    >
+      {hasShadow ? (
+        <span className="font-medium text-foreground">D{value.div}·#{value.slot}</span>
+      ) : (
+        <span className="text-amber-600 hover:text-amber-700">Set rank</span>
+      )}
+      <Pencil className="w-2.5 h-2.5" />
+    </button>
+  );
+}
+
 
 // ─── League Card with inline players ───
 function LeagueCard({ league, associations, onDelete, members, onAllocate }: {

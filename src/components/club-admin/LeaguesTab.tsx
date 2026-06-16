@@ -947,6 +947,12 @@ function InlineShadowRankEditor({
   const [div, setDiv] = useState<number>(value.div || 1);
   const [slot, setSlot] = useState<number>(value.slot || 1);
   const hasShadow = (value.div || 0) > 0 && (value.slot || 0) > 0;
+  useEffect(() => {
+    if (!editing) {
+      setDiv(value.div || 1);
+      setSlot(value.slot || 1);
+    }
+  }, [editing, value.div, value.slot]);
   const save = () => {
     const d = Math.max(1, Math.floor(div || 0));
     const s = Math.max(1, Math.floor(slot || 0));
@@ -1822,7 +1828,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
 
   // Compare a league's current players to the snapshot loaded from the DB.
   // Only return true if something actually changed (members, order, captain,
-  // or association number). This stops Save from wiping leagues admin never
+  // association number, or reserve shadow rank). This stops Save from wiping leagues admin never
   // touched in this session.
   const isLeagueChanged = (leagueId: string): boolean => {
     const before = initialLeagueData.current[leagueId] || [];
@@ -1835,6 +1841,8 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
       if (a.club_member_id !== b.club_member_id) return true;
       if (!!a.is_captain !== !!b.is_captain) return true;
       if ((a.league_association_number || null) !== (b.league_association_number || null)) return true;
+      if ((a.shadow_division ?? null) !== (b.shadow_division ?? null)) return true;
+      if ((a.shadow_player_rank ?? null) !== (b.shadow_player_rank ?? null)) return true;
     }
     return false;
   };

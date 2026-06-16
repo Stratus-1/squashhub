@@ -19,6 +19,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["renewal-invoices", clubId],

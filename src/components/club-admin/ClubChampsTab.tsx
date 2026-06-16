@@ -1462,6 +1462,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
             handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,
+            handicap_multiplier: matchType === "singles" ? Math.max(1, Number(handicapMultiplier) || 1) : 1,
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,

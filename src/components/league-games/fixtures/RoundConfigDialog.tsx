@@ -81,7 +81,7 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
     court_ids: initial?.court_ids ?? [],
     start_time: initial?.start_time ?? "18:00",
     end_time: initial?.end_time ?? "20:00",
-    slot_minutes: initial?.slot_minutes ?? 120,
+    slot_minutes: initial?.slot_minutes ?? 45,
     play_dows: initial?.play_dows ?? [],
     notes: initial?.notes ?? "",
     auto_create_bookings: initial?.auto_create_bookings ?? true,

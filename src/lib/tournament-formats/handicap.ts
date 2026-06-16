@@ -84,36 +84,135 @@ function codeNum(c: string | null | undefined): number {
 const isReserveTeam = (name: string | null | undefined) =>
   !!name && /reserve/i.test(name);
 
+/** Parse ordinal like "3rd" → 3 from a string. */
+function parseOrdinal(s: string | null | undefined): number | null {
+  if (!s) return null;
+  const m = s.match(/(\d+)\s*(?:st|nd|rd|th)/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
 /**
- * Walk team rows ordered by `code`, treating each "…Reserves" row as a
- * divider. Returns a Map of league_id → { division, is_reserve_team }.
- * Division is 1-based; reserve dividers are tagged with the division
- * they cap (so "1st L Reserves" → division 1, is_reserve_team=true).
+ * Build a tier-vote map (team_code → division ordinal 1..N) from the
+ * platform league fixtures the admin "Manage Teams" view also reads.
+ * Round names like "1st League round 1" reveal each team's true tier
+ * irrespective of code ordering — this is the authoritative source.
+ */
+async function loadFixtureTiersByCode(
+  associationIds: string[],
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (associationIds.length === 0) return out;
+  // Resolve platform_association_id per association (fallback to self).
+  const { data: assocRows } = await fromExt("league_associations")
+    .select("id, platform_association_id")
+    .in("id", associationIds);
+  const platformByAssoc = new Map<string, string>();
+  (assocRows || []).forEach((a: any) => {
+    platformByAssoc.set(a.id, a.platform_association_id || a.id);
+  });
+  for (const aid of associationIds) {
+    if (!platformByAssoc.has(aid)) platformByAssoc.set(aid, aid);
+  }
+
+  for (const aid of associationIds) {
+    const platformId = platformByAssoc.get(aid)!;
+    const { data: rounds } = await fromExt("league_rounds")
+      .select("id, name")
+      .eq("association_id", aid);
+    const roundTier = new Map<string, number>();
+    (rounds || []).forEach((r: any) => {
+      const ord = parseOrdinal(String(r.name || "").replace(/\s+(round|week|wk|rd)\s*\d+\s*$/i, ""));
+      if (ord) roundTier.set(r.id, ord);
+    });
+    const roundIds = Array.from(roundTier.keys());
+    if (roundIds.length === 0) continue;
+    const { data: fx } = await fromExt("platform_league_fixtures")
+      .select("round_id, home_team_code, away_team_code")
+      .eq("association_id", platformId)
+      .in("round_id", roundIds);
+    const tally = new Map<string, Map<number, number>>();
+    const bump = (code: string | null, ord: number) => {
+      if (!code || code.startsWith("__")) return;
+      const key = code.toUpperCase();
+      if (!tally.has(key)) tally.set(key, new Map());
+      const m = tally.get(key)!;
+      m.set(ord, (m.get(ord) || 0) + 1);
+    };
+    (fx || []).forEach((f: any) => {
+      const ord = roundTier.get(f.round_id);
+      if (!ord) return;
+      bump(f.home_team_code, ord);
+      bump(f.away_team_code, ord);
+    });
+    tally.forEach((m, code) => {
+      let bestOrd = 0, best = -1;
+      m.forEach((n, ord) => { if (n > best) { best = n; bestOrd = ord; } });
+      if (bestOrd > 0) out.set(code, bestOrd);
+    });
+  }
+  return out;
+}
+
+/**
+ * Classify each league row into a division using the same priority the
+ * admin Leagues UI uses:
+ *   1. Tier derived from actual fixtures (per team code) — truth.
+ *   2. Ordinal parsed from the league's own name.
+ *   3. Ordinal parsed from the reserves-name (for reserves rows).
+ *   4. Code-based reserves-anchor fallback.
  */
 function classifyLeaguesByDivision(
   leagues: Array<{ id: string; name: string; code: string | null }>,
+  fixtureTierByCode: Map<string, number>,
 ): Map<string, { division: number; is_reserve_team: boolean }> {
+  const out = new Map<string, { division: number; is_reserve_team: boolean }>();
   const sorted = [...leagues]
     .filter((l) => Number.isFinite(codeNum(l.code)))
     .sort((a, b) => codeNum(a.code) - codeNum(b.code));
 
-  const out = new Map<string, { division: number; is_reserve_team: boolean }>();
-  let division = 1;
-  for (const l of sorted) {
+  // Build reserves anchor list (for fallback): sorted by code position.
+  const reservesAnchors: Array<{ idx: number; ord: number | null }> = [];
+  sorted.forEach((l, i) => {
     if (isReserveTeam(l.name)) {
-      out.set(l.id, { division, is_reserve_team: true });
-      division += 1; // next non-reserve team starts the next division
-    } else {
-      out.set(l.id, { division, is_reserve_team: false });
+      reservesAnchors.push({ idx: i, ord: parseOrdinal(l.name) });
     }
-  }
-  // Leagues without parseable codes — fall back to whatever division
-  // came last (treat as the bottom tier so they don't get a free buff).
-  const fallbackDivision = Math.max(1, division);
+  });
+
+  let codeFallbackDivision = 1;
+  sorted.forEach((l, i) => {
+    const isReserve = isReserveTeam(l.name);
+    const code = String(l.code || "").toUpperCase();
+    // 1. Fixture-based tier (only for non-reserve rows; reserves rarely
+    //    appear in fixtures).
+    let division: number | null = null;
+    if (!isReserve) {
+      const fx = fixtureTierByCode.get(code);
+      if (fx) division = fx;
+    }
+    // 2. Ordinal in the league's own name (e.g. "Men's 2nd Eagles" or
+    //    "3rd L Reserves" → 3).
+    if (division == null) {
+      const own = parseOrdinal(l.name);
+      if (own) division = own;
+    }
+    // 3. Code-based fallback: next reserves anchor at/after this row.
+    if (division == null) {
+      const nextRes = reservesAnchors.find(a => a.idx >= i && a.ord != null);
+      if (nextRes && nextRes.ord != null) division = nextRes.ord;
+    }
+    // 4. Hard fallback: monotonically increasing per reserves divider.
+    if (division == null) division = codeFallbackDivision;
+    if (isReserve) codeFallbackDivision = Math.max(codeFallbackDivision, division + 1);
+    out.set(l.id, { division, is_reserve_team: isReserve });
+  });
+
+  // Leagues without parseable codes — fall back to bottom tier.
+  const maxDiv = Array.from(out.values()).reduce((m, v) => Math.max(m, v.division), 1);
   for (const l of leagues) {
     if (!out.has(l.id)) {
+      const own = parseOrdinal(l.name);
       out.set(l.id, {
-        division: fallbackDivision,
+        division: own ?? maxDiv,
         is_reserve_team: isReserveTeam(l.name),
       });
     }

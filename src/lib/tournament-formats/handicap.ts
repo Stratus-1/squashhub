@@ -230,12 +230,18 @@ export async function loadClubLadderContext(clubId: string): Promise<{
   rankByMember: Map<string, { division: number; player_rank: number }>;
 } | null> {
   const { data: leagues } = await fromExt("leagues")
-    .select("id, name, code")
+    .select("id, name, code, association_id")
     .eq("club_id", clubId);
   if (!leagues || leagues.length === 0) return null;
 
+  const associationIds = Array.from(
+    new Set(((leagues as any[]).map(l => l.association_id).filter(Boolean))),
+  ) as string[];
+  const fixtureTierByCode = await loadFixtureTiersByCode(associationIds);
+
   const classify = classifyLeaguesByDivision(
     leagues as Array<{ id: string; name: string; code: string | null }>,
+    fixtureTierByCode,
   );
 
   const leagueIds = (leagues as any[]).map((l) => l.id);

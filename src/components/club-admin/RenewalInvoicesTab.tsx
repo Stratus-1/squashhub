@@ -194,6 +194,8 @@ export function RenewalInvoicesTab({ clubId }: Props) {
           </div>
         )}
       </Card>
+
+      <InvoicePreviewDialog invoiceId={previewId} onClose={() => setPreviewId(null)} />
     </div>
   );
 }

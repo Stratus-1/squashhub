@@ -139,7 +139,19 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
 
           {/* 1. Slot length */}
           <div className="space-y-1">
-            <Label className="text-xs font-semibold">1. Slot length</Label>
+            <Label className="text-xs font-semibold flex items-center gap-1">
+              1. Slot length
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3 h-3 opacity-70 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs">
+                    30- and 60-minute slots are the most flexible choices and are recommended — they divide cleanly into match lengths and make scheduling tournaments, leagues and back-to-back fixtures far easier. 40-minute slots suit clubs whose existing booking culture is built around that rhythm, but they don't align with hourly tournament rounds.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </Label>
             <Select
               value={String(rulesForm.booking_slot_minutes)}
               onValueChange={(v) => setRulesForm(p => ({ ...p, booking_slot_minutes: parseInt(v, 10) }))}

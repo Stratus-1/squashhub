@@ -137,33 +137,41 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             <p className="text-xs text-muted-foreground">Control slot length, peak hours, and how many courts each member can book per day.</p>
           </div>
 
-          {/* 1. Slot length */}
           <div className="space-y-1">
-            <Label className="text-xs font-semibold flex items-center gap-1">
-              1. Slot length
+            <Label className="text-xs font-semibold">1. Slot length</Label>
+            <div className="flex items-center gap-2">
+              <Select
+                value={String(rulesForm.booking_slot_minutes)}
+                onValueChange={(v) => setRulesForm(p => ({ ...p, booking_slot_minutes: parseInt(v, 10) }))}
+              >
+                <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30-minute slots</SelectItem>
+                  <SelectItem value="40">40-minute slots (starts 07:00)</SelectItem>
+                  <SelectItem value="60">60-minute slots (full hours)</SelectItem>
+                </SelectContent>
+              </Select>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="w-3 h-3 opacity-70 cursor-help" />
+                    <button
+                      type="button"
+                      className="shrink-0 inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-primary/30 bg-primary/5 text-primary text-[11px] font-medium hover:bg-primary/10 transition-colors cursor-help"
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                      Tips
+                    </button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs">
-                    30- and 60-minute slots are the most flexible choices and are recommended — they divide cleanly into match lengths and make scheduling tournaments, leagues and back-to-back fixtures far easier. 40-minute slots suit clubs whose existing booking culture is built around that rhythm, but they don't align with hourly tournament rounds.
+                  <TooltipContent side="right" align="start" className="max-w-sm text-xs leading-relaxed p-3">
+                    <p className="font-semibold mb-1">Choosing a slot length</p>
+                    <p>30- and 60-minute slots are the most flexible and recommended — they divide cleanly into match lengths and make scheduling tournaments, leagues and back-to-back fixtures far easier.</p>
+                    <p className="mt-2">40-minute slots suit clubs whose existing booking culture is built around that rhythm, but they don't align with hourly tournament rounds.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            </Label>
-            <Select
-              value={String(rulesForm.booking_slot_minutes)}
-              onValueChange={(v) => setRulesForm(p => ({ ...p, booking_slot_minutes: parseInt(v, 10) }))}
-            >
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="30">30-minute slots</SelectItem>
-                <SelectItem value="40">40-minute slots (starts 07:00)</SelectItem>
-                <SelectItem value="60">60-minute slots (full hours)</SelectItem>
-              </SelectContent>
-            </Select>
+            </div>
           </div>
+
 
           {/* 2. Daily caps */}
           <div className="space-y-2 rounded-lg border p-3 bg-muted/30">

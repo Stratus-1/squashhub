@@ -73,9 +73,9 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
   );
 
   const StatTile = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div className="rounded-xl bg-white/[0.04] border border-white/10 backdrop-blur-md p-4 flex flex-col justify-between min-h-[110px]">
-      <span className="text-xs text-white/70 uppercase tracking-wider">{label}</span>
-      <span className="text-3xl font-heading font-bold text-white tabular-nums">{value}</span>
+    <div className="rounded-xl bg-muted/40 border border-border backdrop-blur-md p-4 flex flex-col justify-between min-h-[110px]">
+      <span className="text-xs text-muted-foreground uppercase tracking-wider">{label}</span>
+      <span className="text-3xl font-heading font-bold text-foreground tabular-nums">{value}</span>
     </div>
   );
 
@@ -88,11 +88,11 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
               {props.clubLogoUrl && (
                 <img src={props.clubLogoUrl} alt="Club logo" className="h-5 w-5 object-contain rounded-sm shrink-0" />
               )}
-              <p className="text-xs uppercase tracking-[0.18em] text-white/65 font-heading truncate">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-heading truncate">
                 {clubLabel(props.clubName)}
               </p>
             </div>
-            <h1 className="text-2xl font-heading font-bold text-white uppercase tracking-[0.08em] truncate">
+            <h1 className="text-2xl font-heading font-bold text-foreground uppercase tracking-[0.08em] truncate">
               Welcome back, {props.firstName}
             </h1>
           </div>
@@ -111,16 +111,16 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
       <div className="px-8 pb-8 grid grid-cols-12 gap-5">
         {/* STATS card */}
         <div className="col-span-12 xl:col-span-7">
-          <Card className="bg-[hsl(220_45%_8%/0.85)] border-white/10 backdrop-blur-md p-5 rounded-2xl">
+          <Card className="bg-card/95 border-border backdrop-blur-md p-5 rounded-2xl">
             {/* Toggle pill */}
-            <div className="grid grid-cols-2 rounded-xl overflow-hidden border border-white/10 mb-5">
+            <div className="grid grid-cols-2 rounded-xl overflow-hidden border border-border mb-5">
               <button
                 onClick={() => setScope("me")}
                 className={cn(
                   "py-2.5 text-sm font-heading uppercase tracking-[0.18em] transition-colors",
                   scope === "me"
                     ? "bg-white text-[hsl(220_45%_10%)]"
-                    : "bg-transparent text-white/80"
+                    : "bg-transparent text-foreground/80"
                 )}
               >
                 My Stats
@@ -131,7 +131,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                   "py-2.5 text-sm font-heading uppercase tracking-[0.18em] transition-colors",
                   scope === "club"
                     ? "bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]"
-                    : "bg-transparent text-white/80"
+                    : "bg-transparent text-foreground/80"
                 )}
               >
                 Club
@@ -140,8 +140,8 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
             <div className="grid grid-cols-3 gap-4">
               {/* Rate radial */}
-              <div className="rounded-xl bg-white/[0.04] border border-white/10 p-4 flex flex-col justify-between row-span-2 min-h-[230px]">
-                <span className="text-xs text-white/70 uppercase tracking-wider">
+              <div className="rounded-xl bg-muted/40 border border-border p-4 flex flex-col justify-between row-span-2 min-h-[230px]">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   {scope === "club" ? "Confirmed rate" : "Win rate"}
                 </span>
                 <div className="flex-1 flex items-center justify-center">
@@ -149,8 +149,8 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                     className="w-28 h-28 rounded-full grid place-items-center"
                     style={ringStyle}
                   >
-                    <div className="w-[88px] h-[88px] rounded-full bg-[hsl(220_45%_8%)] grid place-items-center">
-                      <span className="text-2xl font-heading font-bold text-white">
+                    <div className="w-[88px] h-[88px] rounded-full bg-card grid place-items-center">
+                      <span className="text-2xl font-heading font-bold text-foreground">
                         {displayedRate}%
                       </span>
                     </div>
@@ -179,19 +179,19 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4">
-              <div className="rounded-xl bg-white/[0.04] border border-white/10 px-4 py-3 flex items-center justify-between">
-                <span className="text-xs text-white/70 uppercase tracking-wider">
+              <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   {scope === "club" ? "Club Bookings (30d)" : "Total Bookings"}
                 </span>
-                <span className="text-2xl font-heading font-bold text-white tabular-nums">
+                <span className="text-2xl font-heading font-bold text-foreground tabular-nums">
                   {scope === "club" ? clubStats?.total_bookings ?? 0 : props.totalBookings}
                 </span>
               </div>
-              <div className="rounded-xl bg-white/[0.04] border border-white/10 px-4 py-3 flex items-center justify-between">
-                <span className="text-xs text-white/70 uppercase tracking-wider">
+              <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   {scope === "club" ? "Top Players" : "Courts Used"}
                 </span>
-                <span className="text-2xl font-heading font-bold text-white tabular-nums">
+                <span className="text-2xl font-heading font-bold text-foreground tabular-nums">
                   {scope === "club" ? (clubStats?.top_players?.length ?? 0) : props.courtsUsed}
                 </span>
               </div>
@@ -201,9 +201,9 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
         {/* BOOKINGS card */}
         <div className="col-span-12 xl:col-span-5">
-          <Card className="bg-[hsl(220_45%_8%/0.85)] border-white/10 backdrop-blur-md p-5 rounded-2xl h-full">
+          <Card className="bg-card/95 border-border backdrop-blur-md p-5 rounded-2xl h-full">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-heading font-bold text-white uppercase tracking-[0.14em]">
+              <h2 className="text-lg font-heading font-bold text-foreground uppercase tracking-[0.14em]">
                 Your Bookings
               </h2>
               <Button
@@ -222,25 +222,25 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                   <button
                     key={b.id}
                     onClick={() => navigate("/bookings")}
-                    className="w-full grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] transition-colors text-left"
+                    className="w-full grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 px-3 py-2.5 rounded-xl bg-muted/40 border border-border hover:bg-muted transition-colors text-left"
                   >
-                    <Badge className="bg-white/10 text-white border-0 text-[11px] font-heading uppercase">
+                    <Badge className="bg-primary/10 text-foreground border-0 text-[11px] font-heading uppercase">
                       {(b.club_short_code || b.club_name || "Club").slice(0, 6).toUpperCase()}
                     </Badge>
-                    <span className="text-sm text-white/90 truncate">
+                    <span className="text-sm text-foreground truncate">
                       {b.court_name || `Court ${b.court_id}`}
                     </span>
-                    <span className="text-xs tabular-nums text-white/70">
+                    <span className="text-xs tabular-nums text-muted-foreground">
                       {b.start_time?.slice(0, 5)} - {b.end_time?.slice(0, 5)}
                     </span>
-                    <span className="text-xs tabular-nums text-white/70 hidden sm:inline">
+                    <span className="text-xs tabular-nums text-muted-foreground hidden sm:inline">
                       {b.date ? format(parseISO(b.date), "dd/MM/yyyy") : ""}
                     </span>
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="py-12 text-center text-sm text-white/60">
+              <div className="py-12 text-center text-sm text-muted-foreground">
                 <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 No upcoming bookings
               </div>
@@ -253,10 +253,10 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
           <Accordion type="multiple" className="space-y-3">
             <AccordionItem
               value="results"
-              className="bg-[hsl(220_45%_8%/0.85)] border border-white/10 rounded-2xl backdrop-blur-md px-5 overflow-hidden"
+              className="bg-card/95 border border-border rounded-2xl backdrop-blur-md px-5 overflow-hidden"
             >
               <AccordionTrigger className="hover:no-underline py-4">
-                <span className="flex items-center gap-2 text-white font-heading uppercase tracking-[0.18em] text-base">
+                <span className="flex items-center gap-2 text-foreground font-heading uppercase tracking-[0.18em] text-base">
                   <History className="w-4 h-4" /> Your Match Results
                 </span>
               </AccordionTrigger>
@@ -272,15 +272,15 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                       return (
                         <div
                           key={m.id}
-                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10"
+                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-muted/40 border border-border"
                         >
                           <div className="min-w-0">
-                            <p className="text-sm text-white/90 truncate">vs {opponent}</p>
-                            <p className="text-[11px] text-white/60">{m.match_date}</p>
+                            <p className="text-sm text-foreground truncate">vs {opponent}</p>
+                            <p className="text-[11px] text-muted-foreground">{m.match_date}</p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {m.score && (
-                              <Badge variant="outline" className="text-[10px] tabular-nums border-white/20 text-white/80">
+                              <Badge variant="outline" className="text-[10px] tabular-nums border-border text-foreground/80">
                                 {m.score}
                               </Badge>
                             )}
@@ -300,7 +300,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                     })}
                   </div>
                 ) : (
-                  <p className="text-sm text-white/60 py-4 text-center">No match results yet</p>
+                  <p className="text-sm text-muted-foreground py-4 text-center">No match results yet</p>
                 )}
               </AccordionContent>
             </AccordionItem>
@@ -308,10 +308,10 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
             {props.hasLeagues && (
               <AccordionItem
                 value="leagues"
-                className="bg-[hsl(220_45%_8%/0.85)] border border-white/10 rounded-2xl backdrop-blur-md px-5 overflow-hidden"
+                className="bg-card/95 border border-border rounded-2xl backdrop-blur-md px-5 overflow-hidden"
               >
                 <AccordionTrigger className="hover:no-underline py-4">
-                  <span className="flex items-center gap-2 text-white font-heading uppercase tracking-[0.18em] text-base">
+                  <span className="flex items-center gap-2 text-foreground font-heading uppercase tracking-[0.18em] text-base">
                     <Trophy className="w-4 h-4" /> League & Tournament Games
                   </span>
                 </AccordionTrigger>
@@ -322,29 +322,29 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                         <button
                           key={f.id}
                           onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
-                          className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] transition-colors text-left"
+                          className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-muted/40 border border-border hover:bg-muted transition-colors text-left"
                         >
                           <div className="min-w-0">
-                            <p className="text-sm text-white/90 truncate">
-                              {f.home_team_code} <span className="text-white/50">vs</span> {f.away_team_code}
+                            <p className="text-sm text-foreground truncate">
+                              {f.home_team_code} <span className="text-muted-foreground/70">vs</span> {f.away_team_code}
                             </p>
-                            <p className="text-[11px] text-white/60 truncate">
+                            <p className="text-[11px] text-muted-foreground truncate">
                               {format(parseISO(f.fixture_date), "EEE dd MMM")}
                               {f.venue_name ? ` · ${f.venue_name}` : ""}
                             </p>
                           </div>
-                          <Badge className={cn("text-[10px] shrink-0", f.inLineup ? "bg-[hsl(var(--accent))]/20 text-[hsl(var(--accent))] border-[hsl(var(--accent))]/40" : "bg-white/10 text-white/80 border-white/20")}>
+                          <Badge className={cn("text-[10px] shrink-0", f.inLineup ? "bg-[hsl(var(--accent))]/20 text-[hsl(var(--accent))] border-[hsl(var(--accent))]/40" : "bg-primary/10 text-foreground/80 border-border")}>
                             {f.isTournament ? "Tournament" : f.inLineup ? "You're playing" : "Your league"}
                           </Badge>
-                          <ChevronRight className="w-4 h-4 text-white/40 shrink-0" />
+                          <ChevronRight className="w-4 h-4 text-muted-foreground/60 shrink-0" />
                         </button>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-white/60 py-4 text-center">No upcoming league fixtures</p>
+                    <p className="text-sm text-muted-foreground py-4 text-center">No upcoming league fixtures</p>
                   )}
                   <div className="pb-2">
-                    <Button variant="ghost" size="sm" onClick={() => navigate("/league-games")} className="text-white/80 hover:text-white hover:bg-white/10 w-full">
+                    <Button variant="ghost" size="sm" onClick={() => navigate("/league-games")} className="text-foreground/80 hover:text-foreground hover:bg-primary/10 w-full">
                       View all league games <ChevronRight className="w-3 h-3 ml-1" />
                     </Button>
                   </div>
@@ -354,17 +354,17 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
             <AccordionItem
               value="events"
-              className="bg-[hsl(220_45%_8%/0.85)] border border-white/10 rounded-2xl backdrop-blur-md px-5 overflow-hidden"
+              className="bg-card/95 border border-border rounded-2xl backdrop-blur-md px-5 overflow-hidden"
             >
               <AccordionTrigger className="hover:no-underline py-4">
-                <span className="flex items-center gap-2 text-white font-heading uppercase tracking-[0.18em] text-base">
+                <span className="flex items-center gap-2 text-foreground font-heading uppercase tracking-[0.18em] text-base">
                   <CalendarDays className="w-4 h-4" /> Club Events
                 </span>
               </AccordionTrigger>
               <AccordionContent>
                 <div className="pb-2">
                   {props.eventsSlot ?? (
-                    <Button variant="ghost" size="sm" onClick={() => navigate("/events")} className="text-white/80 hover:text-white hover:bg-white/10 w-full">
+                    <Button variant="ghost" size="sm" onClick={() => navigate("/events")} className="text-foreground/80 hover:text-foreground hover:bg-primary/10 w-full">
                       View all events <ChevronRight className="w-3 h-3 ml-1" />
                     </Button>
                   )}
@@ -399,18 +399,18 @@ interface QuickAccessProps {
  * string here so the JIT compiler keeps them in the bundle.
  */
 const TILE_STYLES: Record<string, { ring: string; icon: string; glow: string; hoverBorder: string }> = {
-  blue:    { ring: "from-blue-500/25 to-blue-500/5",       icon: "text-blue-300",     glow: "shadow-blue-500/20",     hoverBorder: "hover:border-blue-400/60" },
-  sky:     { ring: "from-sky-500/25 to-sky-500/5",         icon: "text-sky-300",      glow: "shadow-sky-500/20",      hoverBorder: "hover:border-sky-400/60" },
-  cyan:    { ring: "from-cyan-500/25 to-cyan-500/5",       icon: "text-cyan-300",     glow: "shadow-cyan-500/20",     hoverBorder: "hover:border-cyan-400/60" },
-  emerald: { ring: "from-emerald-500/25 to-emerald-500/5", icon: "text-emerald-300",  glow: "shadow-emerald-500/20",  hoverBorder: "hover:border-emerald-400/60" },
-  amber:   { ring: "from-amber-500/25 to-amber-500/5",     icon: "text-amber-300",    glow: "shadow-amber-500/20",    hoverBorder: "hover:border-amber-400/60" },
-  orange:  { ring: "from-orange-500/25 to-orange-500/5",   icon: "text-orange-300",   glow: "shadow-orange-500/20",   hoverBorder: "hover:border-orange-400/60" },
-  fuchsia: { ring: "from-fuchsia-500/25 to-fuchsia-500/5", icon: "text-fuchsia-300",  glow: "shadow-fuchsia-500/20",  hoverBorder: "hover:border-fuchsia-400/60" },
-  violet:  { ring: "from-violet-500/25 to-violet-500/5",   icon: "text-violet-300",   glow: "shadow-violet-500/20",   hoverBorder: "hover:border-violet-400/60" },
-  rose:    { ring: "from-rose-500/25 to-rose-500/5",       icon: "text-rose-300",     glow: "shadow-rose-500/20",     hoverBorder: "hover:border-rose-400/60" },
-  red:     { ring: "from-red-500/25 to-red-500/5",         icon: "text-red-300",      glow: "shadow-red-500/20",      hoverBorder: "hover:border-red-400/60" },
-  teal:    { ring: "from-teal-500/25 to-teal-500/5",       icon: "text-teal-300",     glow: "shadow-teal-500/20",     hoverBorder: "hover:border-teal-400/60" },
-  lime:    { ring: "from-lime-500/25 to-lime-500/5",       icon: "text-lime-300",     glow: "shadow-lime-500/20",     hoverBorder: "hover:border-lime-400/60" },
+  blue:    { ring: "from-blue-500/25 to-blue-500/5",       icon: "text-blue-600",     glow: "shadow-blue-500/20",     hoverBorder: "hover:border-blue-400/60" },
+  sky:     { ring: "from-sky-500/25 to-sky-500/5",         icon: "text-sky-600",      glow: "shadow-sky-500/20",      hoverBorder: "hover:border-sky-400/60" },
+  cyan:    { ring: "from-cyan-500/25 to-cyan-500/5",       icon: "text-cyan-600",     glow: "shadow-cyan-500/20",     hoverBorder: "hover:border-cyan-400/60" },
+  emerald: { ring: "from-emerald-500/25 to-emerald-500/5", icon: "text-emerald-600",  glow: "shadow-emerald-500/20",  hoverBorder: "hover:border-emerald-400/60" },
+  amber:   { ring: "from-amber-500/25 to-amber-500/5",     icon: "text-amber-600",    glow: "shadow-amber-500/20",    hoverBorder: "hover:border-amber-400/60" },
+  orange:  { ring: "from-orange-500/25 to-orange-500/5",   icon: "text-orange-600",   glow: "shadow-orange-500/20",   hoverBorder: "hover:border-orange-400/60" },
+  fuchsia: { ring: "from-fuchsia-500/25 to-fuchsia-500/5", icon: "text-fuchsia-600",  glow: "shadow-fuchsia-500/20",  hoverBorder: "hover:border-fuchsia-400/60" },
+  violet:  { ring: "from-violet-500/25 to-violet-500/5",   icon: "text-violet-600",   glow: "shadow-violet-500/20",   hoverBorder: "hover:border-violet-400/60" },
+  rose:    { ring: "from-rose-500/25 to-rose-500/5",       icon: "text-rose-600",     glow: "shadow-rose-500/20",     hoverBorder: "hover:border-rose-400/60" },
+  red:     { ring: "from-red-500/25 to-red-500/5",         icon: "text-red-600",      glow: "shadow-red-500/20",      hoverBorder: "hover:border-red-400/60" },
+  teal:    { ring: "from-teal-500/25 to-teal-500/5",       icon: "text-teal-600",     glow: "shadow-teal-500/20",     hoverBorder: "hover:border-teal-400/60" },
+  lime:    { ring: "from-lime-500/25 to-lime-500/5",       icon: "text-lime-600",     glow: "shadow-lime-500/20",     hoverBorder: "hover:border-lime-400/60" },
 };
 
 function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigate }: QuickAccessProps) {
@@ -456,7 +456,7 @@ function TileGroup({
     <section>
       <div className="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-[hsl(var(--accent))]/40">
         <Icon className="w-3.5 h-3.5 text-[hsl(var(--accent))]" />
-        <span className="uppercase tracking-[0.22em] text-[11px] font-bold font-heading text-white/85">
+        <span className="uppercase tracking-[0.22em] text-[11px] font-bold font-heading text-foreground">
           {label}
         </span>
       </div>
@@ -468,7 +468,7 @@ function TileGroup({
               key={t.title + t.url}
               onClick={() => navigate(t.url)}
               className={cn(
-                "group relative overflow-hidden rounded-xl border border-white/10 bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md",
+                "group relative overflow-hidden rounded-xl border border-border bg-card/95 backdrop-blur-md",
                 "px-5 py-5 text-left transition-all duration-200",
                 "hover:-translate-y-0.5 hover:shadow-lg",
                 s.hoverBorder, s.glow,
@@ -477,15 +477,15 @@ function TileGroup({
               {/* color glow corner */}
               <div className={cn("pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br blur-2xl opacity-70", s.ring)} />
               <div className="relative flex items-center gap-3">
-                <div className={cn("h-10 w-10 rounded-lg grid place-items-center bg-white/[0.06] border border-white/10", s.icon)}>
+                <div className={cn("h-10 w-10 rounded-lg grid place-items-center bg-muted/60 border border-border", s.icon)}>
                   <t.icon className="w-[18px] h-[18px]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12px] uppercase tracking-[0.16em] font-heading font-bold text-white truncate">
+                  <p className="text-[12px] uppercase tracking-[0.16em] font-heading font-bold text-foreground truncate">
                     {t.title}
                   </p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/80 transition-colors" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors" />
               </div>
             </button>
           );

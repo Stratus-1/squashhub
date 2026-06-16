@@ -80,10 +80,9 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
   );
 
   return (
-    <div className="min-h-[calc(100vh-2.5rem)] relative">
-      {/* Opaque clean canvas — masks the global court photo for a Medichem-style flat look.
-          Scoped to the dashboard route only; other pages keep the layered background. */}
-      <div className="absolute inset-0 -z-10 bg-background" aria-hidden="true" />
+    <div className="min-h-[calc(100vh-2.5rem)] relative font-sans">
+      {/* Soft tinted canvas — masks the global court photo and gives white tiles real contrast. */}
+      <div className="absolute inset-0 -z-10 bg-slate-100" aria-hidden="true" />
 
       <div>
         <div className="px-8 pt-5 pb-4 flex items-end justify-between gap-4">

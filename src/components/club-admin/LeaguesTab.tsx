@@ -290,9 +290,9 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         </div>
         <div className="space-y-2">
           {associations.map((a: any) => (
-            <Card key={a.id} className="p-3 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0 flex-wrap flex-1">
-                <p className="font-medium break-words min-w-0 basis-full sm:basis-auto sm:flex-1">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
+            <Card key={a.id} className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                <p className="font-medium break-words min-w-0">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
                 {a.platform_association_id && (
                   <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">Platform</Badge>
                 )}
@@ -306,7 +306,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                   <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0 border-emerald-300 text-emerald-700">NSA Live</Badge>
                 )}
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
                 {a.scope === "internal" && (
                   <Button asChild size="sm" variant="outline">
                     <Link to={`/league-games?tab=rounds&assoc=${a.id}`}>

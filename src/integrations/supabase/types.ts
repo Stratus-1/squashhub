@@ -850,6 +850,7 @@ export type Database = {
           group_durations: Json
           handicap_divider: number
           handicap_mode: string
+          handicap_multiplier: number
           id: string
           include_visitors: boolean
           invite_excluded_member_ids: string[]
@@ -899,6 +900,7 @@ export type Database = {
           group_durations?: Json
           handicap_divider?: number
           handicap_mode?: string
+          handicap_multiplier?: number
           id?: string
           include_visitors?: boolean
           invite_excluded_member_ids?: string[]
@@ -948,6 +950,7 @@ export type Database = {
           group_durations?: Json
           handicap_divider?: number
           handicap_mode?: string
+          handicap_multiplier?: number
           id?: string
           include_visitors?: boolean
           invite_excluded_member_ids?: string[]

@@ -119,8 +119,8 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                 className={cn(
                   "py-2.5 text-sm font-heading uppercase tracking-[0.18em] transition-colors",
                   scope === "me"
-                    ? "bg-white text-[hsl(220_45%_10%)]"
-                    : "bg-transparent text-foreground/80"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-transparent text-foreground/70 hover:bg-muted/50"
                 )}
               >
                 My Stats

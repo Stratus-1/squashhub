@@ -187,7 +187,19 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
               <Input type="time" value={draft.end_time} onChange={(e) => setDraft({ ...draft, end_time: e.target.value })} />
             </div>
             <div>
-              <Label>Slot (min)</Label>
+              <Label className="flex items-center gap-1">
+                Match slot (min)
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-3 h-3 opacity-70 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-xs">
+                      Duration of one match block on a court. The window above is split into back-to-back slots of this length, and auto-created court bookings use it as their length. A typical squash match (best-of-5) fits in 30–45 min — use 45 for safety, 60 if you want extra buffer.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </Label>
               <Input
                 type="number"
                 min={15}

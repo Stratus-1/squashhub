@@ -947,6 +947,12 @@ function InlineShadowRankEditor({
   const [div, setDiv] = useState<number>(value.div || 1);
   const [slot, setSlot] = useState<number>(value.slot || 1);
   const hasShadow = (value.div || 0) > 0 && (value.slot || 0) > 0;
+  useEffect(() => {
+    if (!editing) {
+      setDiv(value.div || 1);
+      setSlot(value.slot || 1);
+    }
+  }, [editing, value.div, value.slot]);
   const save = () => {
     const d = Math.max(1, Math.floor(div || 0));
     const s = Math.max(1, Math.floor(slot || 0));

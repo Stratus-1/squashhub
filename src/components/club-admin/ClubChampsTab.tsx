@@ -426,6 +426,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [handicapDivider, setHandicapDivider] = useState<number>(1);
   const [handicapMultiplier, setHandicapMultiplier] = useState<number>(1);
 
+  // Shadow-rank prompt (Option C): when league-rank handicap is on and a
+  // reserve participant has no ladder placement yet, we ask the admin to
+  // assign a Division + Slot at schedule-build time and persist it.
+  const [shadowPrompt, setShadowPrompt] = useState<{
+    open: boolean;
+    missing: MissingShadowRank[];
+    sizes: DivisionSizes;
+    resolve: (() => void) | null;
+    reject: ((e: Error) => void) | null;
+  }>({ open: false, missing: [], sizes: {}, resolve: null, reject: null });
+
   // For partnerMode === "players": auto-load confirmed pairs from registrations
   const { data: confirmedPairRegs = [] } = useQuery({
     queryKey: ["champ-confirmed-pairs", editingChampId],

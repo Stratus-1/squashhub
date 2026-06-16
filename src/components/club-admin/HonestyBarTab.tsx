@@ -283,12 +283,14 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <Label className="text-xs">Image URL (optional)</Label>
-          <Input
+        <div className="sm:col-span-2">
+          <Label className="text-xs">Item image</Label>
+          <ImageField
             value={form.image_url}
-            onChange={e => setForm(p => ({ ...p, image_url: e.target.value }))}
-            placeholder="https://..."
+            onChange={(url) => setForm(p => ({ ...p, image_url: url }))}
+            clubId={clubId}
+            itemName={form.name}
+            category={form.category}
           />
         </div>
       </div>

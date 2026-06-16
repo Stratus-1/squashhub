@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Send, Search } from "lucide-react";
+import { Loader2, RefreshCw, Send, Search, Eye } from "lucide-react";
+import { InvoicePreviewDialog } from "./InvoicePreviewDialog";
 
 interface Props { clubId: string }
 
@@ -18,6 +19,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["renewal-invoices", clubId],
@@ -170,13 +172,19 @@ export function RenewalInvoicesTab({ clubId }: Props) {
                       <TableCell className="text-xs">{fmtDate(r.invoice_due_date)}</TableCell>
                       <TableCell><Badge variant={variant} className="text-[10px]">{status}</Badge></TableCell>
                       <TableCell className="text-right">
-                        {!r.paid && !r.invoice_email_sent_at && (
-                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1"
-                            disabled={sendingId === r.id} onClick={() => sendNow(r.id)}>
-                            {sendingId === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                            Send now
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" className="h-7 text-[11px] gap-1"
+                            onClick={() => setPreviewId(r.id)}>
+                            <Eye className="w-3 h-3" /> Preview
                           </Button>
-                        )}
+                          {!r.paid && !r.invoice_email_sent_at && (
+                            <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1"
+                              disabled={sendingId === r.id} onClick={() => sendNow(r.id)}>
+                              {sendingId === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                              Send now
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -186,6 +194,8 @@ export function RenewalInvoicesTab({ clubId }: Props) {
           </div>
         )}
       </Card>
+
+      <InvoicePreviewDialog invoiceId={previewId} onClose={() => setPreviewId(null)} />
     </div>
   );
 }

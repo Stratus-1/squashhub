@@ -2083,6 +2083,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
     setHandicapMode(((champ as any).handicap_mode as any) || "none");
     setHandicapDivider(Math.max(1, Number((champ as any).handicap_divider) || 1));
+    setHandicapMultiplier(Math.max(1, Number((champ as any).handicap_multiplier) || 1));
     setIncludeVisitors(!!champ.include_visitors);
     setSelectedVisitorClubs(new Set((champ.visitor_clubs as string[] | null) || []));
     const loadedDay = ((champ as any).day_schedules as DaySchedule[] | null) || [];

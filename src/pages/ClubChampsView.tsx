@@ -930,7 +930,6 @@ export default function ClubChampsView() {
     const totals = computeLeagueTotals();
     const rows = groupNumbers.map((gn: number) => ({ gn, ...totals.get(gn)! }));
     const anyPlayed = rows.some((r) => r.gp > 0);
-    if (!anyPlayed) return null;
     const maxPf = Math.max(...rows.map((r) => r.pf));
     const winners = rows.filter((r) => r.pf === maxPf).map((r) => r.gn);
 

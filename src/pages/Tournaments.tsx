@@ -211,7 +211,7 @@ export default function Tournaments() {
     const champIds = [...new Set(matches.map((m) => m.champ_id))];
     if (champIds.length !== 1) return { a: "Player / Team A", b: "Player / Team B" };
     const champ = allChamps.find((c: any) => c.id === champIds[0]);
-    if (!champ || champ.round_format !== "cross_league") {
+    if (!champ) {
       return { a: "Player / Team A", b: "Player / Team B" };
     }
 

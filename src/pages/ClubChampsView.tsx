@@ -961,21 +961,25 @@ export default function ClubChampsView() {
                 </tr>
               </thead>
               <tbody>
-                {[...rows].sort((a, b) => b.pf - a.pf || (b.pf - b.pa) - (a.pf - a.pa)).map((r) => {
-                  const diff = r.pf - r.pa;
-                  const isWinner = winners.length === 1 && winners[0] === r.gn;
-                  return (
-                    <tr key={r.gn} className={cn("border-b border-border/30", isWinner && "font-semibold bg-primary/5")}>
-                      <td className="py-2">{getGroupLabel(champ, r.gn)}{isWinner && <Badge variant="default" className="text-[9px] ml-2">Winner</Badge>}</td>
-                      <td className="py-2 text-center tabular-nums">{r.gp}</td>
-                      <td className="py-2 text-center tabular-nums">{r.won}</td>
-                      <td className="py-2 text-center tabular-nums">{r.lost}</td>
-                      <td className="py-2 text-center font-semibold tabular-nums">{r.pf}</td>
-                      <td className="py-2 text-center tabular-nums">{r.pa}</td>
-                      <td className="py-2 text-center tabular-nums">{diff > 0 ? `+${diff}` : diff}</td>
-                    </tr>
-                  );
-                })}
+                {(() => {
+                  const sorted = [...rows].sort((a, b) => b.pf - a.pf || (b.pf - b.pa) - (a.pf - a.pa));
+                  return sorted.map((r, i) => {
+                    const diff = r.pf - r.pa;
+                    const isWinner = winners.length === 1 && winners[0] === r.gn;
+                    const rowStyle = getRankRowStyle(i, sorted.length);
+                    return (
+                      <tr key={r.gn} style={rowStyle} className={cn("border-b border-border/30", isWinner && "font-semibold")}>
+                        <td className="py-2">{getGroupLabel(champ, r.gn)}{isWinner && <Badge variant="default" className="text-[9px] ml-2">Leading</Badge>}</td>
+                        <td className="py-2 text-center tabular-nums">{r.gp}</td>
+                        <td className="py-2 text-center tabular-nums">{r.won}</td>
+                        <td className="py-2 text-center tabular-nums">{r.lost}</td>
+                        <td className="py-2 text-center font-semibold tabular-nums">{r.pf}</td>
+                        <td className="py-2 text-center tabular-nums">{r.pa}</td>
+                        <td className="py-2 text-center tabular-nums">{diff > 0 ? `+${diff}` : diff}</td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>

@@ -1,30 +1,21 @@
-## Migrate existing bar items to the new categories
+## Goal
+Apply the same rank-based green-to-red color coding from individual league standings to the **League vs League — Summary** table in cross-league tournaments.
 
-Two legacy categories are still in use in `bar_items`: 13 × `alcohol` and 11 × `drinks`. I'll remap each row to one of the new values (`soft_drinks`, `water`, `energy`, `beer_cider`, `wine`, `spirits`, `hot_drinks`, `snacks`, `meals`, `other`) via a single `UPDATE`.
+## Current State
+- `ClubChampsView.tsx` already has `getRankRowStyle(rank, total)` which returns a dark-green → light-green → pink → red gradient based on position.
+- Per-league player standings already use this color coding.
+- The cross-league summary table (`renderCrossLeagueSummary`) currently uses a neutral style with only a subtle `bg-primary/5` highlight for the leading league.
 
-### Proposed mapping
+## Change
+In `src/pages/ClubChampsView.tsx`, update `renderCrossLeagueSummary`:
+1. Sort the summary rows by PF descending (already done).
+2. For each row, compute its rank index and apply `getRankRowStyle(i, rows.length)` as an inline `style` on the `<tr>`, just like the per-league standings do.
+3. Remove or keep the existing `isWinner` styling as a subtle overlay (e.g. font-semibold + ring) so the color coding is the dominant visual signal.
 
-**`drinks` → split into 3 buckets**
-| New category | Items |
-|---|---|
-| `soft_drinks` | Coke, Coke (dup), Coke Zero, Fanta Orange, Sprite |
-| `water` | Sparkling Water, Still Water |
-| `energy` | Powerade Mountain Blast, Powerade Naartjie, Powerade Orange, Powerade Springbok |
+## Result
+The cross-league summary table will show:
+- Leading league = dark green row
+- Middle league(s) = light green / pink rows  
+- Last league = red row
 
-**`alcohol` → split into 2 buckets**
-| New category | Items |
-|---|---|
-| `beer_cider` | Castle Lite (×3), Casle Lite, Hansa, Windhoek Draught, Black Label, Flying Fish, Savanna, Bernini, Belgravia Peach |
-| `spirits` | Belgravia Gin & Dark Cherry, Belgravia Gin & Dryn Lemon, Belgravia Gin and Pink Tonic |
-
-Rationale: Belgravia Gin RTDs are spirit-based; Bernini (spritzer) and Belgravia Peach (cider) sit naturally with beers/ciders alongside Flying Fish & Savanna.
-
-### Implementation
-
-One `supabase--insert` call running a single `UPDATE bar_items SET category = CASE id WHEN ... END WHERE id IN (...)`. After it runs, every row uses the new vocabulary, the legacy fallback icons in code can stay (harmless) and the admin/visitor/honesty-bar UIs will group items under the new headings.
-
-### Out of scope
-
-- No schema change (column stays `text`).
-- No code changes — already done in the previous turn.
-- If you'd prefer a different mapping for any item (e.g. Bernini → `wine`, Belgravia RTDs → `beer_cider`), tell me and I'll adjust before running the update.
+This matches the screenshot you confirmed with "same".

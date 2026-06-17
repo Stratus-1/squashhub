@@ -820,7 +820,16 @@ export default function ClubChampsView() {
   function renderAllGroups() {
     return groupNumbers.map((gn: number) => {
       const standings = getGroupStandings(gn);
-      const groupMatches = matches.filter((m: any) => m.group_number === gn);
+      const groupMemberIds = new Set<string>(
+        entries.filter((e: any) => e.group_number === gn)
+          .flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
+      );
+      const groupMatches = matches.filter((m: any) =>
+        isCrossLeague
+          ? (groupMemberIds.has(m.player_a_member_id) || groupMemberIds.has(m.player_b_member_id) ||
+             (isDoubles && (groupMemberIds.has(m.partner_a_member_id) || groupMemberIds.has(m.partner_b_member_id))))
+          : m.group_number === gn
+      );
       const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
 
       return (

@@ -558,12 +558,32 @@ export function MembersTab({ clubId }: { clubId: string }) {
   };
 
   const filtered = members.filter(m => {
+    const status = (m as any).status || "active";
+    if (statusFilter !== "all" && status !== statusFilter) return false;
     const name = m.profiles?.name || m.name || "";
     const email = m.profiles?.email || m.email || "";
     const phone = m.phone || m.profiles?.phone || "";
     const q = search.toLowerCase();
     return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q) || phone.toLowerCase().includes(q);
   });
+
+  const statusCounts = members.reduce(
+    (acc, m: any) => {
+      const s = (m.status || "active") as "active" | "suspended" | "resigned";
+      acc[s] = (acc[s] || 0) + 1;
+      return acc;
+    },
+    { active: 0, suspended: 0, resigned: 0 } as Record<"active" | "suspended" | "resigned", number>
+  );
+
+  const handleChangeStatus = async (member: ClubMember, status: "active" | "suspended" | "resigned") => {
+    if ((member as any).status === status) return;
+    const { error } = await fromExt("club_members").update({ status }).eq("id", member.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${member.name || "Member"} marked ${status}`);
+    qc.invalidateQueries({ queryKey: ["club-members", clubId] });
+    qc.invalidateQueries({ queryKey: ["club-stats", clubId] });
+  };
 
   // Resolve delegate titles from club data
   const club = clubData?.club;

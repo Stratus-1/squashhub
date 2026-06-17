@@ -4247,9 +4247,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                         ? defaultBreakMinutes
                         : Number(brkRaw);
                       const bell = Math.max(1, slot - brk);
+                      const isAllLeagues = roundFormat === "cross_league";
+                      const applyGroups = isAllLeagues
+                        ? Array.from({ length: numGroups }, (_, i) => i + 1)
+                        : [gn];
                       return (
-                        <div key={gn} className="flex items-center gap-2 p-1.5 rounded border bg-muted/30">
-                          <span className="text-xs font-medium w-16 shrink-0">League {gn}</span>
+                        <div key={gn} className="flex items-center gap-2 p-1.5 rounded border bg-muted/30 sm:col-span-2">
+                          <span className="text-xs font-medium w-20 shrink-0">{isAllLeagues ? "All leagues" : `League ${gn}`}</span>
                           <div className="flex items-center gap-1">
                             <Input
                               type="number"
@@ -4261,8 +4265,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 const v = e.target.value;
                                 setGroupDurations((prev) => {
                                   const next = { ...prev };
-                                  if (v === "") delete next[String(gn)];
-                                  else next[String(gn)] = Math.max(1, Number(v));
+                                  applyGroups.forEach((g) => {
+                                    if (v === "") delete next[String(g)];
+                                    else next[String(g)] = Math.max(1, Number(v));
+                                  });
                                   return next;
                                 });
                               }}
@@ -4283,8 +4289,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 const v = e.target.value;
                                 setGroupBreakMinutes((prev) => {
                                   const next = { ...prev };
-                                  if (v === "") delete next[String(gn)];
-                                  else next[String(gn)] = Math.max(0, Number(v));
+                                  applyGroups.forEach((g) => {
+                                    if (v === "") delete next[String(g)];
+                                    else next[String(g)] = Math.max(0, Number(v));
+                                  });
                                   return next;
                                 });
                               }}
@@ -4297,6 +4305,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           </span>
                         </div>
                       );
+
                     })}
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1">

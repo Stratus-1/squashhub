@@ -223,19 +223,21 @@ export default function MyAccount() {
   useEffect(() => {
     const pending = getPendingYocoSession();
     const cancelled = searchParams.get("yoco_cancelled");
+    const yocoStatus = searchParams.get("yoco_status");
     const sid = searchParams.get("yoco_session") || cancelled || (pending?.returnPath === "/my-account" ? pending.sessionId : null);
     if (!sid || yocoVerifiedRef.current === sid) return;
     yocoVerifiedRef.current = sid;
     (async () => {
       try {
         let status = "";
-        for (let attempt = 0; attempt < 8; attempt += 1) {
+        for (let attempt = 0; attempt < 12; attempt += 1) {
           const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", {
             body: { session_id: sid },
           });
           if (error) throw error;
           status = data?.status || "";
-          if (["completed", "failed", "expired", "cancelled"].includes(status)) break;
+          if (status === "completed") break;
+          if (["failed", "expired", "cancelled"].includes(status) && yocoStatus !== "failure") break;
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
         if (status === "completed") {
@@ -257,6 +259,8 @@ export default function MyAccount() {
           toast.info("Card payment cancelled.");
         } else if (cancelled) {
           toast.info("Card payment returned without a final result yet. I'll keep checking when you open this page again.");
+        } else if (yocoStatus === "failure") {
+          toast.info("Yoco returned before final confirmation. I'll keep checking this payment in the background.");
         } else {
           toast.info("Payment still processing. I'll keep checking when you open this page again.");
         }
@@ -266,6 +270,7 @@ export default function MyAccount() {
         const next = new URLSearchParams(searchParams);
         next.delete("yoco_session");
         next.delete("yoco_cancelled");
+        next.delete("yoco_status");
         setSearchParams(next, { replace: true });
       }
     })();

@@ -1274,35 +1274,50 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         // tries the next court, then the next time step.
         if (rotateMin > 0) {
           const usedSlots = new Set<string>(); // `${date}|${startMin}|${courtId}`
+          const usedPlayers = new Set<string>(); // `${date}|${startMin}|${playerId}`
           for (const gn of leagues) {
             const cap = capFor(gn);
             const lMatches = byLeague.get(gn)!;
-            let mi = 0;
-            let leagueElapsed = 0; // minutes of play assigned within this league
+            // Process matches in an order that minimises same-player clashes:
+            // pick the next match whose players are least recently used.
+            const remaining = [...lMatches];
+            let leagueElapsed = 0;
             outer: for (const s of sessions) {
               const sessionCourts = courtIds.filter((c) => s.courtIds.includes(c));
               if (sessionCourts.length === 0) continue;
               let t = s.startMin;
-              while (mi < lMatches.length && t + cap <= s.endMin) {
+              while (remaining.length > 0 && t + cap <= s.endMin) {
                 const baseIdx = Math.floor(leagueElapsed / rotateMin);
+                // Pick first match whose players are all free at time t
+                const pickIdx = remaining.findIndex((m) => {
+                  const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
+                  return players.every((pid) => !usedPlayers.has(`${s.date}|${t}|${pid}`));
+                });
+                if (pickIdx === -1) {
+                  // No conflict-free match in this time step; advance time
+                  t += cap;
+                  continue;
+                }
                 let assigned = false;
                 for (let off = 0; off < sessionCourts.length; off++) {
                   const cid = sessionCourts[(baseIdx + off) % sessionCourts.length];
                   const key = `${s.date}|${t}|${cid}`;
                   if (usedSlots.has(key)) continue;
-                  const m = lMatches[mi++];
+                  const [m] = remaining.splice(pickIdx, 1);
                   const h = Math.floor(t / 60);
                   const mm = t % 60;
                   m.date = s.date;
                   m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
                   m.courtId = cid;
                   usedSlots.add(key);
+                  const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
+                  players.forEach((pid) => usedPlayers.add(`${s.date}|${t}|${pid}`));
                   assigned = true;
                   break;
                 }
                 if (assigned) leagueElapsed += cap;
                 t += cap;
-                if (mi >= lMatches.length) break outer;
+                if (remaining.length === 0) break outer;
               }
             }
           }

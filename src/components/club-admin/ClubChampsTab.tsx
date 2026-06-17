@@ -3890,7 +3890,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 ) : (
                   (groups as ClubMember[][]).map((g, gi) => (
                     <DroppableLeague key={gi} id={`league-${gi}`} className="border rounded-lg p-3 min-h-[60px] transition-colors">
-                      <h4 className="font-medium text-sm mb-2">League {gi + 1} <span className="text-muted-foreground font-normal">({g.length} players)</span></h4>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium">League</span>
+                        <Input
+                          value={groupLabels[String(gi + 1)] ?? ""}
+                          placeholder={String(gi + 1)}
+                          onChange={(e) => setGroupLabels((p) => ({ ...p, [String(gi + 1)]: e.target.value }))}
+                          className="h-7 w-20 text-sm"
+                        />
+                        <span className="text-muted-foreground text-xs">({g.length} players)</span>
+                      </div>
                       <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                         <div className="space-y-1">
                           {g.length === 0 && (

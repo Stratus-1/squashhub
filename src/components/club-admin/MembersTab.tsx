@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff, Wallet } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
 function getAgeFromSaId(idNumber: string): number | null {
@@ -194,7 +195,7 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
+function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
@@ -207,6 +208,7 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
   onToggleAdmin: () => void;
   onAssignNumber?: (member: ClubMember) => void;
   numberLabel?: string;
+  onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
 }) {
   const displayName = m.name || m.profiles?.name || "—";
   const displayEmail = m.email || m.profiles?.email || "";
@@ -215,11 +217,33 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
   const isAdmin = m.role === "admin" || m.role === "captain";
   const isDelegate = !!delegateTitle;
   const isProtected = isDelegate;
+  const status = (m.status || "active") as "active" | "suspended" | "resigned";
+  const inactive = status !== "active";
+  const statusStyles: Record<typeof status, string> = {
+    active: "bg-emerald-500/10 text-emerald-700 border-emerald-500/40 dark:text-emerald-400",
+    suspended: "bg-amber-500/15 text-amber-700 border-amber-500/50 dark:text-amber-400",
+    resigned: "bg-slate-500/15 text-slate-600 border-slate-500/40 dark:text-slate-400",
+  };
   return (
-    <Card className="p-2 space-y-1.5">
-      {/* Row 1: Name, role, actions — single compact line */}
+    <Card className={`p-2 space-y-1.5 ${inactive ? "opacity-60 border-dashed" : ""}`}>
+      {/* Row 1: Name, status, role, actions — single compact line */}
       <div className="flex items-center gap-1.5">
-        <span className="font-medium text-[12px] truncate flex-1 min-w-0">{displayName}</span>
+        <span className={`font-medium text-[12px] truncate flex-1 min-w-0 ${status === "resigned" ? "line-through" : ""}`}>{displayName}</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className={`text-[9px] px-1.5 py-0 h-[18px] rounded border font-medium uppercase tracking-wide shrink-0 ${statusStyles[status]}`}
+              title="Click to change membership status"
+            >
+              {status}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="text-xs">
+            <DropdownMenuItem onClick={() => onChangeStatus(m, "active")}>Active</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onChangeStatus(m, "suspended")}>Suspended</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onChangeStatus(m, "resigned")}>Resigned</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[9px] px-1 py-0 shrink-0">{m.role}</Badge>
         {delegateTitle && (
           <Badge variant="default" className="text-[9px] px-1 py-0 bg-amber-600 hover:bg-amber-700 shrink-0">{delegateTitle}</Badge>
@@ -329,6 +353,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const { data: clubData } = useMyClub();
   const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "resigned">("all");
   const [addOpen, setAddOpen] = useState(false);
   const [reconcileOpen, setReconcileOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
@@ -533,12 +558,32 @@ export function MembersTab({ clubId }: { clubId: string }) {
   };
 
   const filtered = members.filter(m => {
+    const status = (m as any).status || "active";
+    if (statusFilter !== "all" && status !== statusFilter) return false;
     const name = m.profiles?.name || m.name || "";
     const email = m.profiles?.email || m.email || "";
     const phone = m.phone || m.profiles?.phone || "";
     const q = search.toLowerCase();
     return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q) || phone.toLowerCase().includes(q);
   });
+
+  const statusCounts = members.reduce(
+    (acc, m: any) => {
+      const s = (m.status || "active") as "active" | "suspended" | "resigned";
+      acc[s] = (acc[s] || 0) + 1;
+      return acc;
+    },
+    { active: 0, suspended: 0, resigned: 0 } as Record<"active" | "suspended" | "resigned", number>
+  );
+
+  const handleChangeStatus = async (member: ClubMember, status: "active" | "suspended" | "resigned") => {
+    if ((member as any).status === status) return;
+    const { error } = await fromExt("club_members").update({ status }).eq("id", member.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${member.name || "Member"} marked ${status}`);
+    qc.invalidateQueries({ queryKey: ["club-members", clubId] });
+    qc.invalidateQueries({ queryKey: ["club-stats", clubId] });
+  };
 
   // Resolve delegate titles from club data
   const club = clubData?.club;
@@ -832,6 +877,25 @@ export function MembersTab({ clubId }: { clubId: string }) {
         <span className="text-emerald-600 dark:text-emerald-400 font-medium">💡 Set up fees in the Fees tab · Untick fees still outstanding for a member</span>
       </div>
 
+      <div className="flex flex-wrap items-center gap-1">
+        {([
+          { key: "all", label: `All (${members.length})`, cls: "" },
+          { key: "active", label: `Active (${statusCounts.active})`, cls: "border-emerald-500/50 text-emerald-700 dark:text-emerald-400" },
+          { key: "suspended", label: `Suspended (${statusCounts.suspended})`, cls: "border-amber-500/50 text-amber-700 dark:text-amber-400" },
+          { key: "resigned", label: `Resigned (${statusCounts.resigned})`, cls: "border-slate-500/50 text-slate-600 dark:text-slate-400" },
+        ] as const).map(opt => (
+          <button
+            key={opt.key}
+            onClick={() => setStatusFilter(opt.key)}
+            className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wide ${opt.cls} ${
+              statusFilter === opt.key ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {(["Men", "Ladies"] as const).map(gender => {
           const group = filtered.filter(m => m.gender === gender);
@@ -859,6 +923,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     onToggleAdmin={() => handleToggleAdmin(m)}
                     onAssignNumber={handleAssignNumber}
                     numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
+                    onChangeStatus={handleChangeStatus}
                   />
                 ))}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}

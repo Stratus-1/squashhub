@@ -78,6 +78,7 @@ export interface ClubMember {
   profiles?: { name: string; email: string; phone?: string; avatar_url?: string };
   fee_category?: MemberFeeCategory;
   skill_level?: string;
+  status?: "active" | "suspended" | "resigned";
 }
 
 export const SKILL_LEVELS = [

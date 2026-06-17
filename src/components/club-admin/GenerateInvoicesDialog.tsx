@@ -57,9 +57,10 @@ export function GenerateInvoicesDialog({ open, clubId, onClose, onConfirm, isPen
           .order("name"),
         supabase
           .from("national_body_fees")
-          .select("id, body_name, abbreviation, fee_annual, fee_due_month, due_day")
+          .select("id, body_name, abbreviation, fee_annual, fee_due_month, due_day, fee_type")
           .eq("club_id", clubId)
           .eq("active", true)
+          .neq("fee_type", "registration")
           .gt("fee_annual", 0)
           .order("body_name"),
         supabase

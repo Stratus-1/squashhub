@@ -3877,7 +3877,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   {Array.from({ length: numGroups }, (_, i) => (
-                                    <SelectItem key={i} value={String(i)}>League {i + 1}</SelectItem>
+                                    <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -3920,7 +3920,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   {Array.from({ length: numGroups }, (_, i) => (
-                                    <SelectItem key={i} value={String(i)}>League {i + 1}</SelectItem>
+                                    <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>

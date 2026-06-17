@@ -280,9 +280,29 @@ export default function ClubChampsView() {
   const myGroupNumbers = [...new Set(entries.filter((e: any) => e.club_member_id === myMemberId || e.partner_member_id === myMemberId).map((e: any) => e.group_number as number))];
 
 
+  const getCrossLeagueCsvHeaders = () => {
+    if (!champ || !isCrossLeague) return null;
+    const sample = matches.find((m: any) => m.player_a_member_id && m.player_b_member_id);
+    if (!sample) return null;
+    const entryGroup = (memberId: string | null) => {
+      if (!memberId) return null;
+      const e = entries.find((entry: any) =>
+        entry.club_member_id === memberId || entry.partner_member_id === memberId
+      );
+      return e?.group_number ?? null;
+    };
+    const gA = entryGroup(sample.player_a_member_id) ?? entryGroup(sample.partner_a_member_id);
+    const gB = entryGroup(sample.player_b_member_id) ?? entryGroup(sample.partner_b_member_id);
+    if (gA == null || gB == null) return null;
+    return { a: getGroupLabel(champ, gA), b: getGroupLabel(champ, gB) };
+  };
+
   const exportCSV = () => {
     if (!champ) return;
-    const rows = [["Date", "Time", "Court", "League", isDoubles ? "Team A" : "Player A", isDoubles ? "Team B" : "Player B", "Status", "Winner", "Score"]];
+    const crossHeaders = getCrossLeagueCsvHeaders();
+    const headerA = crossHeaders ? crossHeaders.a : (isDoubles ? "Team A" : "Player A");
+    const headerB = crossHeaders ? crossHeaders.b : (isDoubles ? "Team B" : "Player B");
+    const rows = [["Date", "Time", "Court", "League", headerA, headerB, "Status", "Winner", "Score"]];
     matches.forEach((m: any) => {
       rows.push([
         m.scheduled_date || "",

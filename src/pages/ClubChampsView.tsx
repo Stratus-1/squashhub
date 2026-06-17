@@ -1117,5 +1117,11 @@ export default function ClubChampsView() {
         </Card>
       );
     });
+    return (
+      <>
+        {summary}
+        {groups}
+      </>
+    );
   }
 }

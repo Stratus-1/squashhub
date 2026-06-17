@@ -269,11 +269,34 @@ export default function BellsMarker() {
   // flag so another marker can take over. Keep points + paused remaining so
   // the next marker resumes exactly where this one stopped.
   const handleLeave = (to: string) => {
+    // Cancel any pending debounced live-score sync so it can't re-set the
+    // match to "in_progress" after we exit.
+    if (liveSyncRef.current) {
+      window.clearTimeout(liveSyncRef.current);
+      liveSyncRef.current = null;
+    }
+    if (tickRef.current) {
+      window.clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
     if (!finished && match) {
-      if (liveSyncRef.current) window.clearTimeout(liveSyncRef.current);
-      if (!running && pointsA === 0 && pointsB === 0) {
-        persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "scheduled" });
-      }
+      // Stop the local timer and persist current state as "paused / scheduled"
+      // so the match is no longer shown as LIVE on the tournaments list and
+      // another marker can pick it up. Keep current points + remaining seconds
+      // so play resumes exactly where we left off.
+      setRunning(false);
+      const pausedRemaining = Math.max(0, remaining);
+      rpcExt("sync_bells_match_state", {
+        _match_id: match.id,
+        _side_a_points: pointsA,
+        _side_b_points: pointsB,
+        _bell_ends_at: null,
+        _bell_paused_seconds: pausedRemaining > 0 ? pausedRemaining : null,
+        _status: "scheduled",
+        _patch_timer: true,
+      }).then(({ error }) => {
+        if (error) console.warn("Bells exit sync failed:", error.message);
+      });
     }
     navigate(to);
   };

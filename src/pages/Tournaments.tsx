@@ -304,7 +304,8 @@ export default function Tournaments() {
   };
 
   const downloadScheduleCsv = (title: string, matches: any[]) => {
-    const header = ["Date", "Time", "Court", "Player/Team A", "Player/Team B", "Tournament"];
+    const { a: headerA, b: headerB } = getScheduleHeaders(matches);
+    const header = ["Date", "Time", "Court", headerA, headerB, "Tournament"];
     const esc = (v: string) => `"${(v || "").replace(/"/g, '""')}"`;
     const lines = [header.join(",")];
     matches.forEach((m) => {

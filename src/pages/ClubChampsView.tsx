@@ -898,9 +898,7 @@ export default function ClubChampsView() {
     </div>
   );
 
-  function renderCrossLeagueSummary() {
-    if (!isCrossLeague || groupNumbers.length < 2) return null;
-    // Map every member to its league
+  function computeLeagueTotals() {
     const memberToGroup = new Map<string, number>();
     entries.forEach((e: any) => {
       if (e.club_member_id) memberToGroup.set(e.club_member_id, e.group_number);
@@ -913,7 +911,7 @@ export default function ClubChampsView() {
     for (const m of completed) {
       const aGroup = memberToGroup.get(m.player_a_member_id) ?? (isDoubles ? memberToGroup.get(m.partner_a_member_id) : undefined);
       const bGroup = memberToGroup.get(m.player_b_member_id) ?? (isDoubles ? memberToGroup.get(m.partner_b_member_id) : undefined);
-      if (aGroup == null || bGroup == null || aGroup === bGroup) continue; // cross-league only
+      if (aGroup == null || bGroup == null || aGroup === bGroup) continue;
       const a = Number(m.side_a_points) || 0;
       const b = Number(m.side_b_points) || 0;
       const tA = totals.get(aGroup)!;
@@ -924,7 +922,12 @@ export default function ClubChampsView() {
       if (a > b) { tA.won += 1; tB.lost += 1; }
       else if (b > a) { tB.won += 1; tA.lost += 1; }
     }
+    return totals;
+  }
 
+  function renderCrossLeagueSummary() {
+    if (!isCrossLeague || groupNumbers.length < 2) return null;
+    const totals = computeLeagueTotals();
     const rows = groupNumbers.map((gn: number) => ({ gn, ...totals.get(gn)! }));
     const anyPlayed = rows.some((r) => r.gp > 0);
     if (!anyPlayed) return null;
@@ -958,7 +961,7 @@ export default function ClubChampsView() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => {
+                {[...rows].sort((a, b) => b.pf - a.pf || (b.pf - b.pa) - (a.pf - a.pa)).map((r) => {
                   const diff = r.pf - r.pa;
                   const isWinner = winners.length === 1 && winners[0] === r.gn;
                   return (
@@ -986,7 +989,19 @@ export default function ClubChampsView() {
 
   function renderAllGroups() {
     const summary = renderCrossLeagueSummary();
-    const groups = groupNumbers.map((gn: number) => {
+    const leagueTotals = isCrossLeague ? computeLeagueTotals() : null;
+    const maxLeaguePf = leagueTotals
+      ? Math.max(0, ...Array.from(leagueTotals.values()).map((t) => t.pf))
+      : 0;
+    // When cross-league, order groups by leading PF so the league ahead is on top.
+    const orderedGroups = isCrossLeague && leagueTotals
+      ? [...groupNumbers].sort((a: number, b: number) => {
+          const ta = leagueTotals.get(a)!;
+          const tb = leagueTotals.get(b)!;
+          return (tb.pf - ta.pf) || ((tb.pf - tb.pa) - (ta.pf - ta.pa)) || (a - b);
+        })
+      : groupNumbers;
+    const groups = orderedGroups.map((gn: number) => {
       const standings = getGroupStandings(gn);
       const groupMemberIds = new Set<string>(
         entries.filter((e: any) => e.group_number === gn)
@@ -999,10 +1014,26 @@ export default function ClubChampsView() {
           : m.group_number === gn
       );
       const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
+      const leagueTotal = leagueTotals?.get(gn);
+      const isLeading = !!leagueTotal && leagueTotal.pf > 0 && leagueTotal.pf === maxLeaguePf;
 
       return (
-        <Card key={gn}>
-          <CardHeader><CardTitle className="text-lg">{getGroupLabel(champ, gn)}</CardTitle></CardHeader>
+        <Card key={gn} className={cn(isLeading && "border-primary/40")}>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
+              <span>{getGroupLabel(champ, gn)}</span>
+              {leagueTotal && leagueTotal.gp > 0 && (
+                <>
+                  <Badge variant={isLeading ? "default" : "secondary"} className="text-xs tabular-nums">
+                    {leagueTotal.pf} pts{isLeading ? " · Leading" : ""}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    {leagueTotal.won}W–{leagueTotal.lost}L · {leagueTotal.pf}-{leagueTotal.pa}
+                  </span>
+                </>
+              )}
+            </CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

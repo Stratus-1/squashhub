@@ -74,6 +74,21 @@ const CREDIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[
 
 const GATEWAY_FEE_RATE = 0.035; // 3.5%
 
+// Fee types shown in the "Bill a Member" dialog. Each one maps to the
+// correct GL income account so the admin never has to pick the GL manually.
+const FEE_TYPE_PRESETS: { value: GLAccount; label: string; defaultLabel: string }[] = [
+  { value: "membership_income",   label: "Membership / subscription fee", defaultLabel: "Membership fee" },
+  { value: "league_fees_income",  label: "League fee",                    defaultLabel: "League fee" },
+  { value: "national_body_income",label: "National body fee",             defaultLabel: "National body fee" },
+  { value: "tournament_income",   label: "Tournament entry",              defaultLabel: "Tournament entry" },
+  { value: "light_fees_income",   label: "Court light fee",               defaultLabel: "Court lights" },
+  { value: "bar_income",          label: "Bar / honesty bar",             defaultLabel: "Bar tab" },
+  { value: "fee_income",          label: "Court hire",                    defaultLabel: "Court hire" },
+  { value: "fee_income",          label: "Coaching",                      defaultLabel: "Coaching" },
+  { value: "fee_income",          label: "Visitor / guest fee",           defaultLabel: "Visitor fee" },
+  { value: "fee_income",          label: "Other",                         defaultLabel: "" },
+];
+
 const getLabel = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount]?.label || account;
 const getMeta = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount];
 
@@ -139,6 +154,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [billAmount, setBillAmount] = useState("");
   const [billLabel, setBillLabel] = useState("");
   const [billIncome, setBillIncome] = useState<string>("membership_income");
+  const [billFeeTypeKey, setBillFeeTypeKey] = useState<string>("0");
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [billSubmitting, setBillSubmitting] = useState(false);
 
@@ -1519,22 +1535,31 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               </div>
             </div>
             <div>
-              <Label className="text-xs">Fee description</Label>
-              <Input placeholder="e.g. Court hire — 12 June" value={billLabel} onChange={e => setBillLabel(e.target.value)} className="h-9 text-xs" />
-            </div>
-            <div>
-              <Label className="text-xs">Income account</Label>
-              <Select value={billIncome} onValueChange={setBillIncome}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <Label className="text-xs">Fee type</Label>
+              <Select
+                value={billFeeTypeKey}
+                onValueChange={(key) => {
+                  setBillFeeTypeKey(key);
+                  const preset = FEE_TYPE_PRESETS[Number(key)];
+                  if (!preset) return;
+                  setBillIncome(preset.value);
+                  if (preset.defaultLabel && !billLabel.trim()) setBillLabel(preset.defaultLabel);
+                }}
+              >
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a fee type…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="membership_income">Membership Income</SelectItem>
-                  <SelectItem value="league_fees_income">League Fees Income</SelectItem>
-                  <SelectItem value="national_body_income">National Body Fees Income</SelectItem>
-                  <SelectItem value="tournament_income">Tournament Income</SelectItem>
-                  <SelectItem value="light_fees_income">Light Fees Income</SelectItem>
-                  <SelectItem value="fee_income">Other Fee Income</SelectItem>
+                  {FEE_TYPE_PRESETS.map((p, idx) => (
+                    <SelectItem key={idx} value={String(idx)}>{p.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Posts to GL account: <strong>{getLabel(billIncome)}</strong>
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs">Fee description</Label>
+              <Input placeholder="e.g. Court hire — 12 June" value={billLabel} onChange={e => setBillLabel(e.target.value)} className="h-9 text-xs" />
             </div>
             {billAmount && parseFloat(billAmount) > 0 && (
               <div className="p-2 rounded bg-muted/60 text-[10px] space-y-0.5">

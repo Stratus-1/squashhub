@@ -588,72 +588,11 @@ export default function MyAccount() {
         </Card>
       </motion.div>
 
-      {/* Outstanding Fees */}
-      <motion.div
-        className="px-4 mt-4"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-      >
-        <h2 className="text-sm font-semibold font-heading mb-2">Outstanding Fees</h2>
-        {!clubMemberId ? (
-          <Card className="p-3 text-center text-sm text-muted-foreground">
-            No member profile linked to your account yet.
-          </Card>
-        ) : feesLoading ? (
-          <Card className="p-4 flex justify-center">
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          </Card>
-        ) : unpaidFees.length > 0 ? (
-          <div className="space-y-1.5">
-            {unpaidFees.map((fee: any) => (
-              <Card key={fee.id} className="p-3 flex items-center gap-3">
-                <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{fee.fee_label}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {fee.season_year && `${fee.season_year} · `}Owing
-                  </p>
-                </div>
-                <span className="text-sm font-semibold tabular-nums shrink-0">R{Number(fee.amount).toFixed(2)}</span>
-              </Card>
-            ))}
-            <p className="text-[11px] text-muted-foreground text-center mt-1">
-              Pay from the wallet above — payments allocate to oldest fees first.
-            </p>
-          </div>
-        ) : (
-          <Card className="p-3 text-center text-sm text-muted-foreground">
-            <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto mb-1" />
-            All fees paid — you're up to date! ✅
-          </Card>
-        )}
-      </motion.div>
+      {/* Outstanding Fees & Paid sections removed — the wallet above shows the single
+          combined net balance (all fees + bar tab − payments) and the Account Statement
+          below itemises every line. Showing a separate "fees only" tile was confusing
+          when a bar-tab balance was still owing. */}
 
-      {/* Paid Fees */}
-      {paidFees.length > 0 && (
-        <motion.div
-          className="px-4 mt-4"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <h2 className="text-sm font-semibold font-heading mb-2">Paid</h2>
-          <div className="space-y-1.5">
-            {paidFees.map((fee: any) => (
-              <Card key={fee.id} className="p-2.5 flex items-center justify-between opacity-70">
-                <div className="flex items-center gap-2 min-w-0">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                  <p className="text-xs truncate">{fee.fee_label}</p>
-                </div>
-                <Badge variant="secondary" className="text-[10px] shrink-0">
-                  R{Number(fee.amount).toFixed(2)}
-                </Badge>
-              </Card>
-            ))}
-          </div>
-        </motion.div>
-      )}
 
       {/* Account Statement */}
       <motion.div

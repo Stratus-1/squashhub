@@ -96,30 +96,38 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     }
   };
 
+  const enabled = !!club.honesty_bar_enabled;
+
   return (
     <div className="space-y-6 mt-4">
       <Card className="p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <h3 className="font-semibold">Honesty Bar</h3>
             <p className="text-sm text-muted-foreground">
-              Enable self-service bar tab for members. Items consumed are added to their account.
+              When enabled, members see the self-service bar tab and items are charged to their account.
+              Disable it to set up products and stock without exposing the bar to members.
+            </p>
+            <p className="text-xs mt-2">
+              Status:{" "}
+              <span className={enabled ? "text-emerald-600 font-medium" : "text-muted-foreground font-medium"}>
+                {enabled ? "Live to members" : "Hidden from members (admin setup mode)"}
+              </span>
             </p>
           </div>
           <Switch
-            checked={!!club.honesty_bar_enabled}
+            checked={enabled}
             onCheckedChange={toggleBarEnabled}
           />
         </div>
       </Card>
 
-      {club.honesty_bar_enabled && (
+      {/* Always available so admins can load products & stock before going live */}
+      <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
+      <PurchaseInvoice clubId={clubId} items={items} />
+
+      {enabled && (
         <>
-          <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
-
-          {/* Record Purchase Invoice */}
-          <PurchaseInvoice clubId={clubId} items={items} />
-
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold">Recent Bar Charges</h3>
             <p className="text-sm text-muted-foreground">Bar items are charged directly to each member account.</p>
@@ -149,6 +157,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     </div>
   );
 }
+
 
 /* ─── Item Manager with edit support ─── */
 function ItemManager({ clubId, items, loading }: { clubId: string; items: BarItem[]; loading: boolean }) {

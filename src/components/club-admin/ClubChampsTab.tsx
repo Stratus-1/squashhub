@@ -1386,6 +1386,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           });
 
           const usedPlayers = new Set<string>(); // `${date}|${t}|${playerId}`
+          const lastPlayedEnd = new Map<string, number>();
+          const playCount = new Map<string, number>();
+          const absMin = (date: string, min: number) => {
+            const d = new Date(date + "T00:00:00Z").getTime() / 60000;
+            return d + min;
+          };
           for (const gn of leagues) {
             const cap = capFor(gn);
             const lCourts = leagueCourts.get(gn)!;
@@ -1397,11 +1403,30 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               const roundsPossible = Math.max(0, Math.floor((s.endMin - s.startMin) / cap));
               for (let r = 0; r < roundsPossible && remaining.length > 0; r++) {
                 const t = s.startMin + r * cap;
+                const nowAbs = absMin(s.date, t);
                 for (let ci = 0; ci < sessionLCourts.length && remaining.length > 0; ci++) {
-                  const pickIdx = remaining.findIndex((m) => {
+                  // Pick best-rested conflict-free match
+                  let pickIdx = -1;
+                  let bestScore: [number, number] | null = null;
+                  for (let i = 0; i < remaining.length; i++) {
+                    const m = remaining[i];
                     const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
-                    return players.every((pid) => !usedPlayers.has(`${s.date}|${t}|${pid}`));
-                  });
+                    if (!players.every((pid) => !usedPlayers.has(`${s.date}|${t}|${pid}`))) continue;
+                    let minRest = Infinity;
+                    let maxPlays = 0;
+                    for (const pid of players) {
+                      const last = lastPlayedEnd.get(pid);
+                      const rest = last == null ? Number.MAX_SAFE_INTEGER : nowAbs - last;
+                      if (rest < minRest) minRest = rest;
+                      const pc = playCount.get(pid) || 0;
+                      if (pc > maxPlays) maxPlays = pc;
+                    }
+                    const score: [number, number] = [minRest, -maxPlays];
+                    if (!bestScore || score[0] > bestScore[0] || (score[0] === bestScore[0] && score[1] > bestScore[1])) {
+                      bestScore = score;
+                      pickIdx = i;
+                    }
+                  }
                   if (pickIdx === -1) break;
                   const [m] = remaining.splice(pickIdx, 1);
                   const h = Math.floor(t / 60);
@@ -1410,7 +1435,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
                   m.courtId = sessionLCourts[ci];
                   const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
-                  players.forEach((pid) => usedPlayers.add(`${s.date}|${t}|${pid}`));
+                  players.forEach((pid) => {
+                    usedPlayers.add(`${s.date}|${t}|${pid}`);
+                    lastPlayedEnd.set(pid, nowAbs + cap);
+                    playCount.set(pid, (playCount.get(pid) || 0) + 1);
+                  });
                 }
               }
             }

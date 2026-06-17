@@ -1275,11 +1275,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (rotateMin > 0) {
           const usedSlots = new Set<string>(); // `${date}|${startMin}|${courtId}`
           const usedPlayers = new Set<string>(); // `${date}|${startMin}|${playerId}`
+          // Global last-played end time per player (absolute minutes since epoch-day),
+          // used to space matches so the same player gets a break between games.
+          const lastPlayedEnd = new Map<string, number>();
+          const playCount = new Map<string, number>();
+          const absMin = (date: string, min: number) => {
+            // turn `${date}|${min}` into a monotonically increasing number across days
+            const d = new Date(date + "T00:00:00Z").getTime() / 60000;
+            return d + min;
+          };
           for (const gn of leagues) {
             const cap = capFor(gn);
             const lMatches = byLeague.get(gn)!;
-            // Process matches in an order that minimises same-player clashes:
-            // pick the next match whose players are least recently used.
             const remaining = [...lMatches];
             let leagueElapsed = 0;
             outer: for (const s of sessions) {
@@ -1288,13 +1295,32 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               let t = s.startMin;
               while (remaining.length > 0 && t + cap <= s.endMin) {
                 const baseIdx = Math.floor(leagueElapsed / rotateMin);
-                // Pick first match whose players are all free at time t
-                const pickIdx = remaining.findIndex((m) => {
+                const nowAbs = absMin(s.date, t);
+                // Score every conflict-free candidate by the LEAST-rested player:
+                // pick the match whose busiest player has rested the longest
+                // (and as tiebreak, fewest games played so far).
+                let pickIdx = -1;
+                let bestScore: [number, number] | null = null;
+                for (let i = 0; i < remaining.length; i++) {
+                  const m = remaining[i];
                   const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
-                  return players.every((pid) => !usedPlayers.has(`${s.date}|${t}|${pid}`));
-                });
+                  if (!players.every((pid) => !usedPlayers.has(`${s.date}|${t}|${pid}`))) continue;
+                  let minRest = Infinity;
+                  let maxPlays = 0;
+                  for (const pid of players) {
+                    const last = lastPlayedEnd.get(pid);
+                    const rest = last == null ? Number.MAX_SAFE_INTEGER : nowAbs - last;
+                    if (rest < minRest) minRest = rest;
+                    const pc = playCount.get(pid) || 0;
+                    if (pc > maxPlays) maxPlays = pc;
+                  }
+                  const score: [number, number] = [minRest, -maxPlays];
+                  if (!bestScore || score[0] > bestScore[0] || (score[0] === bestScore[0] && score[1] > bestScore[1])) {
+                    bestScore = score;
+                    pickIdx = i;
+                  }
+                }
                 if (pickIdx === -1) {
-                  // No conflict-free match in this time step; advance time
                   t += cap;
                   continue;
                 }
@@ -1311,7 +1337,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   m.courtId = cid;
                   usedSlots.add(key);
                   const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
-                  players.forEach((pid) => usedPlayers.add(`${s.date}|${t}|${pid}`));
+                  players.forEach((pid) => {
+                    usedPlayers.add(`${s.date}|${t}|${pid}`);
+                    lastPlayedEnd.set(pid, nowAbs + cap);
+                    playCount.set(pid, (playCount.get(pid) || 0) + 1);
+                  });
                   assigned = true;
                   break;
                 }

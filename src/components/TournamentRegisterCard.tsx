@@ -102,6 +102,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   useEffect(() => {
     const pending = getPendingYocoSession();
     const cancelled = searchParams.get("yoco_cancelled");
+    const yocoStatus = searchParams.get("yoco_status");
     const sid = searchParams.get("yoco_session") || cancelled || (pending?.returnPath === window.location.pathname ? pending.sessionId : null);
     const ctx = searchParams.get("ctx");
     if ((ctx && ctx !== "tournament") || !sid || verifiedRef.current === sid) return;
@@ -109,11 +110,12 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     (async () => {
       try {
         let status = "";
-        for (let attempt = 0; attempt < 8; attempt += 1) {
+        for (let attempt = 0; attempt < 12; attempt += 1) {
           const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", { body: { session_id: sid } });
           if (error) throw error;
           status = data?.status || "";
-          if (["completed", "failed", "expired", "cancelled"].includes(status)) break;
+          if (status === "completed") break;
+          if (["failed", "expired", "cancelled"].includes(status) && yocoStatus !== "failure") break;
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
         if (status === "completed") {
@@ -132,6 +134,8 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         } else if (status === "cancelled") {
           clearPendingYocoSession(sid);
           toast.info("Payment cancelled.");
+        } else if (yocoStatus === "failure") {
+          toast.info("Yoco returned before final confirmation. I'll keep checking this payment in the background.");
         } else {
           toast.info("Payment still processing. I'll keep checking when you open this page again.");
         }
@@ -141,6 +145,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         const next = new URLSearchParams(searchParams);
         next.delete("yoco_session");
         next.delete("yoco_cancelled");
+        next.delete("yoco_status");
         next.delete("ctx");
         setSearchParams(next, { replace: true });
       }

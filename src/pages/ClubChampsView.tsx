@@ -113,6 +113,19 @@ export default function ClubChampsView() {
     enabled: !!champId,
   });
 
+  // Admin-only: include cancelled (declined) rows so admins can see who said no
+  const { data: allRegistrations = [] } = useQuery({
+    queryKey: ["club-champ-registrations-all", champId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("id, status, partner_confirmed, club_member_id, member:club_member_id(id, name, profiles:user_id(name))")
+        .eq("champ_id", champId!);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!champId,
+  });
+
 
   const getPlayerName = (player: any) => player?.name || player?.profiles?.name || "Unknown";
 

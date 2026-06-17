@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 
 const APP_SCHEME = "gbsquash";
+const PUBLIC_APP_ORIGIN = "https://squashhub.co.za";
 const PENDING_YOCO_SESSION_KEY = "gbsquash.pendingYocoSession";
 
 type PendingYocoSession = {
@@ -11,7 +12,10 @@ type PendingYocoSession = {
 
 export function buildYocoReturnUrl(pathAndSearch: string) {
   if (!Capacitor.isNativePlatform()) {
-    return `${window.location.origin}${pathAndSearch}`;
+    const safePath = pathAndSearch.startsWith("/") && !pathAndSearch.startsWith("//")
+      ? pathAndSearch
+      : `/${pathAndSearch.replace(/^\/+/, "")}`;
+    return `${PUBLIC_APP_ORIGIN}${safePath}`;
   }
 
   const nativePath = pathAndSearch.replace(/^\/+/, "");
@@ -25,7 +29,20 @@ export async function openYocoCheckout(url: string) {
     return;
   }
 
-  window.location.href = url;
+  const isEmbedded = (() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  })();
+
+  if (isEmbedded) {
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    if (opened) return;
+  }
+
+  window.location.assign(url);
 }
 
 export function rememberPendingYocoSession(sessionId: string, returnPath: string) {

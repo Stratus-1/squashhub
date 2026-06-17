@@ -86,16 +86,14 @@ export default function Tournaments() {
   });
 
   const today = todayStr;
-  // A match is "live" if either:
+  // A match is "live" only when actively being scored right now:
   //  - status is in_progress, OR
-  //  - the bell clock is still ticking (bell_ends_at in the future), OR
-  //  - it has been paused mid-game (bell_paused_seconds > 0).
-  // The last two cover cases where an older client demoted the status back
-  // to "scheduled" when the marker navigated away.
+  //  - the bell clock is still ticking (bell_ends_at in the future).
+  // A paused match (bell_paused_seconds > 0, status="scheduled") is NOT
+  // live — the marker has exited and another marker can pick it up.
   const isLive = (m: any) => {
     if (m.status === "in_progress") return true;
     if (m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now()) return true;
-    if (typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0) return true;
     return false;
   };
   const activeChampIds = new Set(champs.map((c: any) => c.id));

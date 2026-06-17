@@ -2155,6 +2155,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setBestOf(0);
     setGroupDurations({});
     setGroupBreakMinutes({});
+    setGroupLabels({});
     setDefaultBreakMinutes(0);
     setCourtRotationMinutes(null);
     setRoundFormat("");

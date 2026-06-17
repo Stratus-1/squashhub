@@ -1570,26 +1570,41 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               </div>
             </div>
             <div>
-              <Label className="text-xs">Fee type</Label>
+              <Label className="text-xs">Fee</Label>
               <Select
                 value={billFeeTypeKey}
                 onValueChange={(key) => {
                   setBillFeeTypeKey(key);
-                  const preset = FEE_TYPE_PRESETS[Number(key)];
-                  if (!preset) return;
-                  setBillIncome(preset.value);
-                  if (preset.defaultLabel && !billLabel.trim()) setBillLabel(preset.defaultLabel);
+                  const opt = (billFeeOptions as BillFeeOption[]).find(o => o.key === key);
+                  if (!opt) return;
+                  setBillIncome(opt.income);
+                  setBillLabel(opt.label);
+                  if (opt.amount > 0) setBillAmount(opt.amount.toFixed(2));
                 }}
               >
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a fee type…" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a fee…" /></SelectTrigger>
                 <SelectContent>
-                  {FEE_TYPE_PRESETS.map((p, idx) => (
-                    <SelectItem key={idx} value={String(idx)}>{p.label}</SelectItem>
-                  ))}
+                  {(["Membership", "League", "National body"] as const).map(group => {
+                    const items = (billFeeOptions as BillFeeOption[]).filter(o => o.group === group);
+                    if (items.length === 0) return null;
+                    return (
+                      <SelectGroup key={group}>
+                        <SelectLabel className="text-[10px]">{group}</SelectLabel>
+                        {items.map(o => (
+                          <SelectItem key={o.key} value={o.key} className="text-xs">
+                            {o.label} <span className="text-muted-foreground">— R{o.amount.toFixed(2)}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    );
+                  })}
+                  {(billFeeOptions as BillFeeOption[]).length === 0 && (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">No fees defined. Add them in the Fees tab.</div>
+                  )}
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-muted-foreground mt-1">
-                Posts to GL account: <strong>{getLabel(billIncome)}</strong>
+                Posts to GL account: <strong>{getLabel(billIncome)}</strong> • Amount is editable above.
               </p>
             </div>
             <div>

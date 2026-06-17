@@ -237,7 +237,7 @@ export default function Tournaments() {
       entryGroup(sample.player_b_member_id) ??
       entryGroup(sample.partner_b_member_id);
 
-    if (groupA == null || groupB == null) {
+    if (groupA == null || groupB == null || groupA === groupB) {
       return { a: "Player / Team A", b: "Player / Team B" };
     }
 

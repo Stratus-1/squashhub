@@ -153,7 +153,7 @@ function buildInviteDetailLines(opts: {
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;
-  roundFormat: "" | "single_round_robin" | "double_round_robin";
+  roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league";
   byeHandling: "" | "no_match" | "walkover_win" | "neutral";
   partnerMode: "" | "admin" | "players";
   startDate: string;
@@ -372,7 +372,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
-  const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin">("");
+  const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin" | "cross_league">("");
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   // Per-day schedule overrides — for short tournaments (Fri eve, Sat morning, Sat afternoon).
@@ -1166,6 +1166,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
     // Build round-robin matches
     const allMatches: MatchDef[] = [];
+    const isCrossLeague = roundFormat === "cross_league";
     const fmt = roundFormat === "double_round_robin" ? "double" : "single";
     const ingestRounds = (gi: number, ids: string[]) => {
       const { rounds, byesPerRound } = generateRoundRobinRounds(ids, fmt);
@@ -1183,7 +1184,46 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         }
       });
     };
-    if (isDoubles) {
+
+    // Cross-league mode: every entity in league i plays every entity in league j
+    // (no intra-league matches). Each cross match is filed under the lower league's
+    // group_number for scheduling; standings include all matches the player took part in.
+    const ingestCrossLeague = (allGroups: string[][]) => {
+      let roundCounter = 1;
+      for (let i = 0; i < allGroups.length; i++) {
+        for (let j = i + 1; j < allGroups.length; j++) {
+          const a = allGroups[i];
+          const b = allGroups[j];
+          for (const pa of a) {
+            for (const pb of b) {
+              allMatches.push({
+                groupNum: i + 1,
+                roundNum: roundCounter++,
+                entityA: pa,
+                entityB: pb,
+                leg: "home",
+              });
+              if (fmt === "double") {
+                allMatches.push({
+                  groupNum: i + 1,
+                  roundNum: roundCounter++,
+                  entityA: pb,
+                  entityB: pa,
+                  leg: "away",
+                });
+              }
+            }
+          }
+        }
+      }
+    };
+
+    if (isCrossLeague) {
+      const groupIds: string[][] = isDoubles
+        ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
+        : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
+      ingestCrossLeague(groupIds);
+    } else if (isDoubles) {
       (groups as DoublePair[][]).forEach((groupPairs, gi) => {
         ingestRounds(gi, groupPairs.map((p) => p.id));
       });
@@ -2536,12 +2576,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                     <SelectItem value="single_round_robin">Single round-robin (each plays once)</SelectItem>
                     <SelectItem value="double_round_robin">Double round-robin (home &amp; away, 2 rounds)</SelectItem>
+                    <SelectItem value="cross_league" disabled={numGroups < 2}>
+                      League vs League (every player in each league plays every player in the other)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 {roundFormat ? (
                   <p className="text-[11px] text-muted-foreground mt-1">
                     {roundFormat === "double_round_robin"
                       ? "All teams play one another twice — first round home, second round away."
+                      : roundFormat === "cross_league"
+                      ? "No intra-league games. Every player in league 1 plays every player in league 2 (and so on across leagues). Pick at least 2 leagues."
                       : "All teams play one another once."}
                   </p>
                 ) : (
@@ -4304,7 +4349,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <p><strong>Days:</strong> {Array.from(playDays).sort().map((d) => DAY_NAMES[d]).join(", ")}</p>
               <p><strong>Time:</strong> {startTime} – {endTime}{scoringMode === "time_capped_points" ? "" : ` (${matchDuration} min per match)`}</p>
               <p><strong>Courts:</strong> {Array.from(selectedCourtIds).map((id) => getCourtName(id)).join(", ")}</p>
-              <p><strong>Format:</strong> {roundFormat === "double_round_robin" ? "Double round-robin (home & away)" : "Single round-robin"}{roundFormat === "double_round_robin" ? ` · Bye: ${byeHandling.replace(/_/g, " ")}` : ""}</p>
+              <p><strong>Format:</strong> {roundFormat === "double_round_robin" ? "Double round-robin (home & away)" : roundFormat === "cross_league" ? "League vs League (cross-league only)" : "Single round-robin"}{roundFormat === "double_round_robin" ? ` · Bye: ${byeHandling.replace(/_/g, " ")}` : ""}</p>
               <p><strong>Playoffs:</strong> {enablePlayoffs ? "Yes — position-based knockout after group stage" : "No"}</p>
             </div>
 
@@ -4575,7 +4620,7 @@ function InvitePreviewDialog({
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;
-  roundFormat: "" | "single_round_robin" | "double_round_robin";
+  roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league";
   byeHandling: "" | "no_match" | "walkover_win" | "neutral";
   partnerMode: "" | "admin" | "players";
   startDate: string;

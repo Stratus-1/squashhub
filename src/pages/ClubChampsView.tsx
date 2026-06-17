@@ -135,15 +135,30 @@ export default function ClubChampsView() {
     });
 
 
+  const isCrossLeague = (champ as any)?.round_format === "cross_league";
+
   const getGroupStandings = (groupNum: number) => {
     const groupEntries = entries.filter((e: any) => e.group_number === groupNum);
+    const groupMemberIds = new Set<string>(
+      groupEntries.flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
+    );
+    // For cross-league play, a match "belongs" to this league if any of the league's
+    // members took part. Otherwise we filter by group_number as before.
+    const matchBelongsToGroup = (m: any) => {
+      if (!isCrossLeague) return m.group_number === groupNum;
+      return (
+        groupMemberIds.has(m.player_a_member_id) ||
+        groupMemberIds.has(m.player_b_member_id) ||
+        (isDoubles && (groupMemberIds.has(m.partner_a_member_id) || groupMemberIds.has(m.partner_b_member_id)))
+      );
+    };
     // Exclude byes from standings entirely; we'll add walkover credit separately.
     const groupMatchesAll = matches.filter(
-      (m: any) => m.group_number === groupNum && !m.is_bye,
+      (m: any) => matchBelongsToGroup(m) && !m.is_bye,
     );
     const groupMatches = sortMatchesChrono(groupMatchesAll.filter((m: any) => m.status === "completed"));
     const groupByes = matches.filter(
-      (m: any) => m.group_number === groupNum && m.is_bye,
+      (m: any) => matchBelongsToGroup(m) && m.is_bye,
     );
     // For per-game columns, count scheduled slots per pair (completed or not)
     const scheduledForMember = (memberId: string) =>
@@ -805,7 +820,16 @@ export default function ClubChampsView() {
   function renderAllGroups() {
     return groupNumbers.map((gn: number) => {
       const standings = getGroupStandings(gn);
-      const groupMatches = matches.filter((m: any) => m.group_number === gn);
+      const groupMemberIds = new Set<string>(
+        entries.filter((e: any) => e.group_number === gn)
+          .flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
+      );
+      const groupMatches = matches.filter((m: any) =>
+        isCrossLeague
+          ? (groupMemberIds.has(m.player_a_member_id) || groupMemberIds.has(m.player_b_member_id) ||
+             (isDoubles && (groupMemberIds.has(m.partner_a_member_id) || groupMemberIds.has(m.partner_b_member_id))))
+          : m.group_number === gn
+      );
       const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
 
       return (

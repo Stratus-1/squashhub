@@ -74,6 +74,21 @@ const CREDIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[
 
 const GATEWAY_FEE_RATE = 0.035; // 3.5%
 
+// Fee types shown in the "Bill a Member" dialog. Each one maps to the
+// correct GL income account so the admin never has to pick the GL manually.
+const FEE_TYPE_PRESETS: { value: GLAccount; label: string; defaultLabel: string }[] = [
+  { value: "membership_income",   label: "Membership / subscription fee", defaultLabel: "Membership fee" },
+  { value: "league_fees_income",  label: "League fee",                    defaultLabel: "League fee" },
+  { value: "national_body_income",label: "National body fee",             defaultLabel: "National body fee" },
+  { value: "tournament_income",   label: "Tournament entry",              defaultLabel: "Tournament entry" },
+  { value: "light_fees_income",   label: "Court light fee",               defaultLabel: "Court lights" },
+  { value: "bar_income",          label: "Bar / honesty bar",             defaultLabel: "Bar tab" },
+  { value: "fee_income",          label: "Court hire",                    defaultLabel: "Court hire" },
+  { value: "fee_income",          label: "Coaching",                      defaultLabel: "Coaching" },
+  { value: "fee_income",          label: "Visitor / guest fee",           defaultLabel: "Visitor fee" },
+  { value: "fee_income",          label: "Other",                         defaultLabel: "" },
+];
+
 const getLabel = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount]?.label || account;
 const getMeta = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount];
 

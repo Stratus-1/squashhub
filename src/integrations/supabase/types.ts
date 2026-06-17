@@ -2101,6 +2101,7 @@ export type Database = {
           plays_league: boolean
           role: Database["public"]["Enums"]["club_member_role"]
           skill_level: string | null
+          status: Database["public"]["Enums"]["member_status"]
           updated_at: string
           user_id: string | null
         }
@@ -2129,6 +2130,7 @@ export type Database = {
           plays_league?: boolean
           role?: Database["public"]["Enums"]["club_member_role"]
           skill_level?: string | null
+          status?: Database["public"]["Enums"]["member_status"]
           updated_at?: string
           user_id?: string | null
         }
@@ -2157,6 +2159,7 @@ export type Database = {
           plays_league?: boolean
           role?: Database["public"]["Enums"]["club_member_role"]
           skill_level?: string | null
+          status?: Database["public"]["Enums"]["member_status"]
           updated_at?: string
           user_id?: string | null
         }
@@ -6364,6 +6367,7 @@ export type Database = {
         | "apple_health"
         | "samsung_health"
         | "garmin"
+      member_status: "active" | "suspended" | "resigned"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6524,6 +6528,7 @@ export const Constants = {
         "samsung_health",
         "garmin",
       ],
+      member_status: ["active", "suspended", "resigned"],
     },
   },
 } as const

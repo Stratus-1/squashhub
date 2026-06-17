@@ -13,6 +13,7 @@ import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check, I
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BellsFormat, getTournamentFormat } from "@/lib/tournament-formats";
+import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { setScoringActive } from "@/lib/scoring-lock";
 
 /**

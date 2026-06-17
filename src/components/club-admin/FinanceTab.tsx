@@ -154,6 +154,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [billAmount, setBillAmount] = useState("");
   const [billLabel, setBillLabel] = useState("");
   const [billIncome, setBillIncome] = useState<string>("membership_income");
+  const [billFeeTypeKey, setBillFeeTypeKey] = useState<string>("0");
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [billSubmitting, setBillSubmitting] = useState(false);
 

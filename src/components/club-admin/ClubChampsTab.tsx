@@ -2211,6 +2211,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
+    setGroupLabels(((champ as any).group_labels as Record<string, string>) || {});
     setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
     setRoundFormat((champ.round_format as any) || "");

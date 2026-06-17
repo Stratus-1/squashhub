@@ -877,6 +877,25 @@ export function MembersTab({ clubId }: { clubId: string }) {
         <span className="text-emerald-600 dark:text-emerald-400 font-medium">💡 Set up fees in the Fees tab · Untick fees still outstanding for a member</span>
       </div>
 
+      <div className="flex flex-wrap items-center gap-1">
+        {([
+          { key: "all", label: `All (${members.length})`, cls: "" },
+          { key: "active", label: `Active (${statusCounts.active})`, cls: "border-emerald-500/50 text-emerald-700 dark:text-emerald-400" },
+          { key: "suspended", label: `Suspended (${statusCounts.suspended})`, cls: "border-amber-500/50 text-amber-700 dark:text-amber-400" },
+          { key: "resigned", label: `Resigned (${statusCounts.resigned})`, cls: "border-slate-500/50 text-slate-600 dark:text-slate-400" },
+        ] as const).map(opt => (
+          <button
+            key={opt.key}
+            onClick={() => setStatusFilter(opt.key)}
+            className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wide ${opt.cls} ${
+              statusFilter === opt.key ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {(["Men", "Ladies"] as const).map(gender => {
           const group = filtered.filter(m => m.gender === gender);

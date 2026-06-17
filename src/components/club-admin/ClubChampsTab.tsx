@@ -2576,12 +2576,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                     <SelectItem value="single_round_robin">Single round-robin (each plays once)</SelectItem>
                     <SelectItem value="double_round_robin">Double round-robin (home &amp; away, 2 rounds)</SelectItem>
+                    <SelectItem value="cross_league" disabled={numGroups < 2}>
+                      League vs League (every player in each league plays every player in the other)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 {roundFormat ? (
                   <p className="text-[11px] text-muted-foreground mt-1">
                     {roundFormat === "double_round_robin"
                       ? "All teams play one another twice — first round home, second round away."
+                      : roundFormat === "cross_league"
+                      ? "No intra-league games. Every player in league 1 plays every player in league 2 (and so on across leagues). Pick at least 2 leagues."
                       : "All teams play one another once."}
                   </p>
                 ) : (

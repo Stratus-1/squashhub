@@ -110,6 +110,44 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
+  const { activeMember } = useMemberContext();
+  const [testing, setTesting] = useState(false);
+
+  const handleTestPayment = async () => {
+    if (gateway !== "yoco") {
+      toast.error("Test payment is only wired up for Yoco. Save Yoco as the gateway first.");
+      return;
+    }
+    if (!activeMember?.id) {
+      toast.error("No club membership found on your account to test with.");
+      return;
+    }
+    setTesting(true);
+    try {
+      const return_url = buildYocoReturnUrl("/club-admin?tab=banking");
+      const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
+        body: {
+          club_id: clubId,
+          club_member_id: activeMember.id,
+          amount: 10,
+          purpose: "topup",
+          description: "Yoco test payment (R10)",
+          return_url,
+        },
+      });
+      if (error) throw new Error(error.message || "Could not start test checkout");
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const redirect = (data as any)?.redirect_url;
+      if (!redirect) throw new Error("Yoco did not return a redirect URL");
+      rememberPendingYocoSession((data as any).session_id, "/club-admin?tab=banking");
+      toast.success("Opening Yoco test checkout…");
+      await openYocoCheckout(redirect);
+    } catch (err: any) {
+      toast.error(err.message || "Test payment failed");
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const [bankForm, setBankForm] = useState({
     bank_name: (secrets as any)?.bank_name || "",

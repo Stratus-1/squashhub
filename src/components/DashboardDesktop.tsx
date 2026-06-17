@@ -12,6 +12,7 @@ import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { useClubAnalytics } from "@/hooks/use-analytics";
+import { ClubStatsCard } from "@/components/ClubStatsCard";
 
 interface DashboardDesktopProps {
   clubName: string;

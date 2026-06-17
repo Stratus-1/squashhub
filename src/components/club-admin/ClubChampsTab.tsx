@@ -4215,7 +4215,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
                 <div>
                   <div className="flex items-center gap-3 mb-1">
-                    <Label className="text-sm font-medium">Slot &amp; bell timing per league</Label>
+                    <Label className="text-sm font-medium">
+                      {roundFormat === "cross_league" ? "Slot & bell timing" : "Slot & bell timing per league"}
+                    </Label>
                     <div className="flex items-center gap-1.5 ml-auto">
                       <span className="text-[11px] text-muted-foreground">Default break (min)</span>
                       <Input
@@ -4234,7 +4236,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
-                    {Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => {
+                    {(roundFormat === "cross_league"
+                      ? [1]
+                      : Array.from({ length: numGroups }, (_, i) => i + 1)
+                    ).map((gn) => {
+
                       const slot = Number(groupDurations[String(gn)]) || matchDuration;
                       const brkRaw = groupBreakMinutes[String(gn)];
                       const brk = brkRaw === undefined || brkRaw === null || Number.isNaN(Number(brkRaw))

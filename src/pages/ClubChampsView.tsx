@@ -590,6 +590,53 @@ export default function ClubChampsView() {
           </p>
         </div>
 
+
+        {canManage && allRegistrations.length > 0 && (() => {
+          const ACCEPTED = new Set(["paid", "waived", "pending_eft", "registered", "active"]);
+          const DECLINED = new Set(["cancelled"]);
+          const buckets = { accepted: [] as any[], declined: [] as any[], pending: [] as any[] };
+          allRegistrations.forEach((r: any) => {
+            const s = String(r.status || "").toLowerCase();
+            if (ACCEPTED.has(s)) buckets.accepted.push(r);
+            else if (DECLINED.has(s)) buckets.declined.push(r);
+            else buckets.pending.push(r);
+          });
+          const nameOf = (r: any) => r.member?.name || r.member?.profiles?.name || "Unknown";
+          const Section = ({ icon: Icon, label, items, tone }: any) => (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Icon className={cn("w-3.5 h-3.5", tone)} /> {label} ({items.length})
+              </div>
+              {items.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">None</p>
+              ) : (
+                <ul className="space-y-1">
+                  {items.map((r: any) => (
+                    <li key={r.id} className="text-sm px-2 py-1 rounded bg-background/60 border truncate">{nameOf(r)}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+          return (
+            <Card className="print:hidden">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" /> Attendance Confirmations
+                  <Badge variant="outline" className="ml-auto text-[10px]">Admin only</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Section icon={CheckCircle2} tone="text-green-600" label="Confirmed" items={buckets.accepted} />
+                  <Section icon={Clock} tone="text-amber-600" label="Pending reply" items={buckets.pending} />
+                  <Section icon={XCircle} tone="text-red-600" label="Declined" items={buckets.declined} />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         {groupNumbers.length === 0 && (
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>

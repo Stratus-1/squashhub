@@ -74,13 +74,15 @@ Deno.serve(async (req) => {
 
     const { data: secrets } = await admin
       .from("club_secrets")
-      .select("payment_gateway_credentials")
+      .select("payment_gateway_credentials, payment_gateway_secret_key")
       .eq("club_id", club_id)
       .maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
-    const secretKey = creds.secret_key;
+    const secretKey = creds.secret_key || (secrets as any)?.payment_gateway_secret_key;
     if (!secretKey) {
-      return json({ error: "Yoco secret key not configured" }, 400);
+      return json({
+        error: "Yoco secret key not configured. Save the club's Yoco secret key in the banking settings.",
+      }, 400);
     }
     if (!secretKey.startsWith("sk_live_")) {
       console.error("Yoco secret key mode mismatch", {
@@ -159,15 +161,27 @@ Deno.serve(async (req) => {
     await admin
       .from("yoco_payment_sessions")
       .update({
-        yoco_checkout_id: yocoData.id,
+        yoco_checkout_id: yocoData.id || yocoData.checkoutId || yocoData.checkout_id || null,
         yoco_redirect_url: yocoData.redirectUrl,
       })
       .eq("id", session.id);
 
+    const checkoutId = yocoData.id || yocoData.checkoutId || yocoData.checkout_id;
+    if (!checkoutId) {
+      await admin
+        .from("yoco_payment_sessions")
+        .update({ status: "failed" })
+        .eq("id", session.id);
+      return json(
+        { error: "Yoco did not return a checkout ID. Please retry after confirming the club's Yoco setup." },
+        502,
+      );
+    }
+
     return json({
       session_id: session.id,
       redirect_url: yocoData.redirectUrl,
-      checkout_id: yocoData.id,
+      checkout_id: checkoutId,
     });
   } catch (e: any) {
     console.error("yoco-create-checkout error:", e);

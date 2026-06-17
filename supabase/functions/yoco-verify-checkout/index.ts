@@ -52,6 +52,12 @@ Deno.serve(async (req) => {
     }
     if (!session) return json({ error: "Session not found" }, 404);
     if (session.user_id !== userId) return json({ error: "Forbidden" }, 403);
+    if (!session.yoco_checkout_id) {
+      return json(
+        { error: "Missing Yoco checkout ID for this session. Please start a new card payment." },
+        400,
+      );
+    }
 
     if (session.status === "completed") {
       return json({ status: "completed", already: true });
@@ -60,10 +66,10 @@ Deno.serve(async (req) => {
     // Fetch Yoco checkout status
     const { data: secrets } = await admin
       .from("club_secrets")
-      .select("payment_gateway_credentials")
+      .select("payment_gateway_credentials, payment_gateway_secret_key")
       .eq("club_id", session.club_id)
       .maybeSingle();
-    const secretKey = (secrets?.payment_gateway_credentials as any)?.secret_key;
+    const secretKey = (secrets?.payment_gateway_credentials as any)?.secret_key || (secrets as any)?.payment_gateway_secret_key;
     if (!secretKey) return json({ error: "Yoco key not configured" }, 400);
 
     // Yoco statuses: created, processing, completed, cancelled, failed, expired.

@@ -938,7 +938,9 @@ export default function ClubChampsView() {
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
             League vs League — Summary
-            {winners.length === 1 ? (
+            {!anyPlayed ? (
+              <Badge variant="secondary" className="ml-auto">Awaiting results</Badge>
+            ) : winners.length === 1 ? (
               <Badge className="ml-auto">{getGroupLabel(champ, winners[0])} leading</Badge>
             ) : (
               <Badge variant="secondary" className="ml-auto">Tied</Badge>

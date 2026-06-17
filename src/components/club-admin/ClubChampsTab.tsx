@@ -3128,12 +3128,43 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           external_id: `champ:${id}:block:${w.date}:${w.start}:${cid}`,
                         }))
                       );
-                      // Wipe any prior tournament blocks then upsert the new ones.
+                      // Wipe any prior tournament blocks for THIS champ.
                       await fromExt("bookings")
                         .delete()
                         .eq("club_id", clubId)
                         .eq("source", "club_event")
                         .like("external_id", `champ:${id}:%`);
+                      // Also wipe any *other* tournament/club_event blocks that
+                      // would collide on (court, date, start_time) — these are
+                      // leftovers from earlier champ drafts on the same slot
+                      // and would otherwise trip the no-double-booking index.
+                      const datesToClear = Array.from(new Set(rows.map((r) => r.date)));
+                      const courtsToClear = Array.from(new Set(rows.map((r) => r.court_id)));
+                      const { data: existingBlocks } = await fromExt("bookings")
+                        .select("id,court_id,date,start_time,end_time,external_id")
+                        .eq("club_id", clubId)
+                        .eq("source", "club_event")
+                        .eq("status", "active")
+                        .in("date", datesToClear)
+                        .in("court_id", courtsToClear);
+                      const toMin = (t: string) => {
+                        const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+                        return h * 60 + (m || 0);
+                      };
+                      const collidingIds = (existingBlocks || [])
+                        .filter((b: any) =>
+                          rows.some(
+                            (r) =>
+                              r.court_id === b.court_id &&
+                              r.date === b.date &&
+                              toMin(r.start_time) < toMin(b.end_time) &&
+                              toMin(r.end_time) > toMin(b.start_time),
+                          ),
+                        )
+                        .map((b: any) => b.id);
+                      if (collidingIds.length > 0) {
+                        await fromExt("bookings").delete().in("id", collidingIds);
+                      }
                       const { error: bErr } = await fromExt("bookings")
                         .upsert(rows, { onConflict: "club_id,source,external_id" });
                       if (bErr) throw bErr;

@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CreditCard, Eye, EyeOff, Info } from "lucide-react";
+import { CreditCard, Eye, EyeOff, Info, Zap } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { buildYocoReturnUrl, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 // ─── Gateway Registry ───────────────────────────────────────
 type FieldDef = {

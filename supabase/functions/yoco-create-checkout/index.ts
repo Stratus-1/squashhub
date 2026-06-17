@@ -117,10 +117,10 @@ Deno.serve(async (req) => {
       return json({ error: sessErr?.message || "Could not create session" }, 500);
     }
 
-    // Point Yoco directly at the public SquashHub site instead of any backend
-    // or preview domain. Yoco's merchant review crawls these URLs and rejects
-    // supabase.co as "site unavailable", which blocks live activation.
-    const safeReturnUrl = buildPublicReturnUrl(return_url);
+    // Use the return URL the client sent us as-is (it will be the tenant's
+    // own origin, e.g. https://nelspruit.squashhub.co.za/...). Yoco's merchant
+    // review then sees a coherent storefront → return page on the same host.
+    const safeReturnUrl = sanitizeReturnUrl(return_url);
     const successUrl = appendParam(appendParam(safeReturnUrl, "yoco_session", session.id), "yoco_status", "success");
     const cancelUrl = appendParam(appendParam(safeReturnUrl, "yoco_session", session.id), "yoco_status", "cancel");
     const failureUrl = appendParam(appendParam(safeReturnUrl, "yoco_session", session.id), "yoco_status", "failure");
@@ -201,12 +201,16 @@ function appendParam(url: string, key: string, value: string) {
   return `${url}${sep}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }
 
-function buildPublicReturnUrl(raw: string) {
+function sanitizeReturnUrl(raw: string) {
+  // Accept the URL the client sent. Only rewrite supabase.co backend URLs
+  // (which leak in the merchant dashboard) back to the public site.
   try {
     const parsed = new URL(raw);
     if (parsed.protocol === "gbsquash:") return raw;
-    const path = parsed.pathname.startsWith("/") ? parsed.pathname : `/${parsed.pathname}`;
-    return `${PUBLIC_APP_ORIGIN}${path}${parsed.search}${parsed.hash}`;
+    if (parsed.hostname.endsWith(".supabase.co")) {
+      return `${PUBLIC_APP_ORIGIN}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    return parsed.toString();
   } catch {
     const path = String(raw || "/my-account").startsWith("/") ? String(raw) : `/${String(raw || "my-account")}`;
     return `${PUBLIC_APP_ORIGIN}${path}`;

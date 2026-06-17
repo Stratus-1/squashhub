@@ -132,11 +132,16 @@ export function GenerateInvoicesDialog({ open, clubId, onClose, onConfirm, isPen
       : new Set(items.map(i => `${i.kind}:${i.id}`)));
   };
 
-  const totalLines = useMemo(
-    () => items.filter(i => selected.has(`${i.kind}:${i.id}`))
-                .reduce((s, i) => s + i.member_count, 0),
-    [items, selected]
-  );
+  const { selectedItems, totalLines, typeTotals, grandTotal } = useMemo(() => {
+    const sel = items.filter(i => selected.has(`${i.kind}:${i.id}`));
+    const lines = sel.reduce((s, i) => s + i.member_count, 0);
+    const tt: Record<Item["kind"], number> = {
+      category: 0, league: 0, national: 0,
+    };
+    sel.forEach(i => { tt[i.kind] += i.amount * i.member_count; });
+    const gt = tt.category + tt.league + tt.national;
+    return { selectedItems: sel, totalLines: lines, typeTotals: tt, grandTotal: gt };
+  }, [items, selected]);
 
   const fmtDue = (m: number, d: number) => `${d} ${months[(m || 1) - 1]}`;
   const fmtAmt = (n: number) => `R ${Number(n || 0).toFixed(0)}`;

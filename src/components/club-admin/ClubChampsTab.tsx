@@ -370,6 +370,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
+  const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
   const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin" | "cross_league">("");
@@ -718,6 +719,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       best_of: bestOf > 0 ? bestOf : null,
       group_durations: groupDurations,
       group_break_minutes: groupBreakMinutes,
+      group_labels: groupLabels,
       default_break_minutes: defaultBreakMinutes,
       court_rotation_minutes: courtRotationMinutes,
       round_format: roundFormat,
@@ -1526,6 +1528,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             best_of: bestOf > 0 ? bestOf : null,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
+            group_labels: groupLabels,
             default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
             round_format: roundFormat,
@@ -1575,6 +1578,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             best_of: bestOf > 0 ? bestOf : null,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
+            group_labels: groupLabels,
             default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
             round_format: roundFormat,
@@ -2151,6 +2155,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setBestOf(0);
     setGroupDurations({});
     setGroupBreakMinutes({});
+    setGroupLabels({});
     setDefaultBreakMinutes(0);
     setCourtRotationMinutes(null);
     setRoundFormat("");
@@ -2206,6 +2211,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
+    setGroupLabels(((champ as any).group_labels as Record<string, string>) || {});
     setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
     setRoundFormat((champ.round_format as any) || "");
@@ -3841,7 +3847,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 {isDoubles ? (
                   (groups as DoublePair[][]).map((g, gi) => (
                     <DroppableLeague key={gi} id={`league-${gi}`} className="border rounded-lg p-3 min-h-[60px] transition-colors">
-                      <h4 className="font-medium text-sm mb-2">League {gi + 1} <span className="text-muted-foreground font-normal">({g.length} pairs)</span></h4>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium">League</span>
+                        <Input
+                          value={groupLabels[String(gi + 1)] ?? ""}
+                          placeholder={String(gi + 1)}
+                          onChange={(e) => setGroupLabels((p) => ({ ...p, [String(gi + 1)]: e.target.value }))}
+                          className="h-7 w-20 text-sm"
+                        />
+                        <span className="text-muted-foreground text-xs">({g.length} pairs)</span>
+                      </div>
                       <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                         <div className="space-y-1">
                           {g.length === 0 && (
@@ -3862,7 +3877,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   {Array.from({ length: numGroups }, (_, i) => (
-                                    <SelectItem key={i} value={String(i)}>League {i + 1}</SelectItem>
+                                    <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -3875,7 +3890,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 ) : (
                   (groups as ClubMember[][]).map((g, gi) => (
                     <DroppableLeague key={gi} id={`league-${gi}`} className="border rounded-lg p-3 min-h-[60px] transition-colors">
-                      <h4 className="font-medium text-sm mb-2">League {gi + 1} <span className="text-muted-foreground font-normal">({g.length} players)</span></h4>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium">League</span>
+                        <Input
+                          value={groupLabels[String(gi + 1)] ?? ""}
+                          placeholder={String(gi + 1)}
+                          onChange={(e) => setGroupLabels((p) => ({ ...p, [String(gi + 1)]: e.target.value }))}
+                          className="h-7 w-20 text-sm"
+                        />
+                        <span className="text-muted-foreground text-xs">({g.length} players)</span>
+                      </div>
                       <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                         <div className="space-y-1">
                           {g.length === 0 && (
@@ -3896,7 +3920,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   {Array.from({ length: numGroups }, (_, i) => (
-                                    <SelectItem key={i} value={String(i)}>League {i + 1}</SelectItem>
+                                    <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>

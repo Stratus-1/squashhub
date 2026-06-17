@@ -15,6 +15,7 @@ import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getTournamentFormat } from "@/lib/tournament-formats";
+import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -690,7 +691,7 @@ export default function ClubChampsView() {
                 const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
                 return (
                   <Card key={gn}>
-                    <CardHeader><CardTitle className="text-lg">League {gn}</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-lg">{getGroupLabel(champ, gn)}</CardTitle></CardHeader>
                     <CardContent>
                       <div className="overflow-x-auto">
                       <table className="w-full text-sm">
@@ -856,7 +857,7 @@ export default function ClubChampsView() {
           <CardTitle className="text-lg flex items-center gap-2">
             League vs League — Summary
             {winners.length === 1 ? (
-              <Badge className="ml-auto">League {winners[0]} leading</Badge>
+              <Badge className="ml-auto">{getGroupLabel(champ, winners[0])} leading</Badge>
             ) : (
               <Badge variant="secondary" className="ml-auto">Tied</Badge>
             )}
@@ -882,7 +883,7 @@ export default function ClubChampsView() {
                   const isWinner = winners.length === 1 && winners[0] === r.gn;
                   return (
                     <tr key={r.gn} className={cn("border-b border-border/30", isWinner && "font-semibold bg-primary/5")}>
-                      <td className="py-2">League {r.gn}{isWinner && <Badge variant="default" className="text-[9px] ml-2">Winner</Badge>}</td>
+                      <td className="py-2">{getGroupLabel(champ, r.gn)}{isWinner && <Badge variant="default" className="text-[9px] ml-2">Winner</Badge>}</td>
                       <td className="py-2 text-center tabular-nums">{r.gp}</td>
                       <td className="py-2 text-center tabular-nums">{r.won}</td>
                       <td className="py-2 text-center tabular-nums">{r.lost}</td>
@@ -921,7 +922,7 @@ export default function ClubChampsView() {
 
       return (
         <Card key={gn}>
-          <CardHeader><CardTitle className="text-lg">League {gn}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">{getGroupLabel(champ, gn)}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

@@ -13,6 +13,7 @@ import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check, I
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BellsFormat, getTournamentFormat } from "@/lib/tournament-formats";
+import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { setScoringActive } from "@/lib/scoring-lock";
 
 /**
@@ -457,7 +458,7 @@ export default function BellsMarker() {
       <SEO title="Bells Marker" description="Time-capped doubles tournament scorer" noIndex />
       <PageHeader
         title="Bells Scorer"
-        subtitle={`${champ?.name} · League ${match.group_number} · ${capMinutes} min cap`}
+        subtitle={`${champ?.name} · ${getGroupLabel(champ, match.group_number)} · ${capMinutes} min cap`}
       />
 
       <div className="px-4 mt-3 mb-20 max-w-2xl mx-auto space-y-4">

@@ -12,10 +12,12 @@ import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { useClubAnalytics } from "@/hooks/use-analytics";
+import { ClubStatsCard } from "@/components/ClubStatsCard";
 
 interface DashboardDesktopProps {
   clubName: string;
   clubLogoUrl?: string | null;
+  clubId?: string;
   firstName: string;
   // stats
   played: number;
@@ -111,6 +113,11 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
           navigate={navigate}
         />
       </div>
+
+      <div className="px-8 pb-3">
+        <ClubStatsCard clubId={props.clubId} />
+      </div>
+
 
       <div className="px-8 pb-8 grid grid-cols-12 gap-5">
         {/* STATS card */}

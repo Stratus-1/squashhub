@@ -17,6 +17,7 @@ import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCar
 import { CaptainInviteTeamCard } from "@/components/CaptainInviteTeamCard";
 import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
+import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";
@@ -523,6 +524,7 @@ export default function Dashboard() {
         <DashboardDesktop
           clubName={effectiveClub?.name || "SquashHub"}
           clubLogoUrl={(effectiveClub as any)?.logo_url || null}
+          clubId={clubId}
           firstName={firstName}
           played={played}
           wins={wins}
@@ -625,6 +627,13 @@ export default function Dashboard() {
           }}
         />
       </div>
+
+      {/* Club at-a-glance stats */}
+      <div className="px-4 mt-3">
+        <ClubStatsCard clubId={clubId} />
+      </div>
+
+
 
 
       {/* Primary Actions — Book, Ladder, Profile */}

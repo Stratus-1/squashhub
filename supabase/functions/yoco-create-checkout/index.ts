@@ -201,12 +201,16 @@ function appendParam(url: string, key: string, value: string) {
   return `${url}${sep}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }
 
-function buildPublicReturnUrl(raw: string) {
+function sanitizeReturnUrl(raw: string) {
+  // Accept the URL the client sent. Only rewrite supabase.co backend URLs
+  // (which leak in the merchant dashboard) back to the public site.
   try {
     const parsed = new URL(raw);
     if (parsed.protocol === "gbsquash:") return raw;
-    const path = parsed.pathname.startsWith("/") ? parsed.pathname : `/${parsed.pathname}`;
-    return `${PUBLIC_APP_ORIGIN}${path}${parsed.search}${parsed.hash}`;
+    if (parsed.hostname.endsWith(".supabase.co")) {
+      return `${PUBLIC_APP_ORIGIN}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    return parsed.toString();
   } catch {
     const path = String(raw || "/my-account").startsWith("/") ? String(raw) : `/${String(raw || "my-account")}`;
     return `${PUBLIC_APP_ORIGIN}${path}`;

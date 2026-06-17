@@ -159,6 +159,44 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [rowAction, setRowAction] = useState<null | { ref: string; mode: "delete" | "reverse"; summary: string }>(null);
   const [rowActionBusy, setRowActionBusy] = useState(false);
 
+  /* ─── Fee options for the Bill Member dialog (from Fees tables) ─── */
+  const { data: billFeeOptions = [] } = useQuery({
+    queryKey: ["bill-fee-options", clubId],
+    queryFn: async (): Promise<BillFeeOption[]> => {
+      const [cats, leagues, nationals] = await Promise.all([
+        supabase.from("member_fee_categories")
+          .select("id,name,annual_fee,active")
+          .eq("club_id", clubId).eq("active", true).order("sort_order"),
+        supabase.from("league_associations")
+          .select("id,name,abbreviation,fee_annual,active")
+          .eq("club_id", clubId).eq("active", true).order("name"),
+        supabase.from("national_body_fees")
+          .select("id,body_name,abbreviation,fee_annual,active")
+          .eq("club_id", clubId).eq("active", true).order("body_name"),
+      ]);
+      const opts: BillFeeOption[] = [];
+      (cats.data || []).forEach((c: any) => opts.push({
+        key: `cat:${c.id}`, group: "Membership",
+        label: c.name, amount: Number(c.annual_fee) || 0,
+        income: "membership_income" as GLAccount,
+      }));
+      (leagues.data || []).forEach((l: any) => opts.push({
+        key: `lea:${l.id}`, group: "League",
+        label: l.abbreviation ? `${l.name} (${l.abbreviation})` : l.name,
+        amount: Number(l.fee_annual) || 0,
+        income: "league_fees_income" as GLAccount,
+      }));
+      (nationals.data || []).forEach((n: any) => opts.push({
+        key: `nat:${n.id}`, group: "National body",
+        label: n.abbreviation ? `${n.body_name} (${n.abbreviation})` : n.body_name,
+        amount: Number(n.fee_annual) || 0,
+        income: "national_body_income" as GLAccount,
+      }));
+      return opts;
+    },
+    enabled: !!clubId,
+  });
+
 
 
   // Fetch journal entries

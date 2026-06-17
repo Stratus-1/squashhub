@@ -117,10 +117,10 @@ Deno.serve(async (req) => {
       return json({ error: sessErr?.message || "Could not create session" }, 500);
     }
 
-    // Point Yoco directly at the public SquashHub site instead of any backend
-    // or preview domain. Yoco's merchant review crawls these URLs and rejects
-    // supabase.co as "site unavailable", which blocks live activation.
-    const safeReturnUrl = buildPublicReturnUrl(return_url);
+    // Use the return URL the client sent us as-is (it will be the tenant's
+    // own origin, e.g. https://nelspruit.squashhub.co.za/...). Yoco's merchant
+    // review then sees a coherent storefront → return page on the same host.
+    const safeReturnUrl = sanitizeReturnUrl(return_url);
     const successUrl = appendParam(appendParam(safeReturnUrl, "yoco_session", session.id), "yoco_status", "success");
     const cancelUrl = appendParam(appendParam(safeReturnUrl, "yoco_session", session.id), "yoco_status", "cancel");
     const failureUrl = appendParam(appendParam(safeReturnUrl, "yoco_session", session.id), "yoco_status", "failure");

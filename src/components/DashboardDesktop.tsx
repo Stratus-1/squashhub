@@ -17,6 +17,7 @@ import { ClubStatsCard } from "@/components/ClubStatsCard";
 interface DashboardDesktopProps {
   clubName: string;
   clubLogoUrl?: string | null;
+  clubId?: string;
   firstName: string;
   // stats
   played: number;

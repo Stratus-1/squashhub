@@ -1166,6 +1166,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
     // Build round-robin matches
     const allMatches: MatchDef[] = [];
+    const isCrossLeague = roundFormat === "cross_league";
     const fmt = roundFormat === "double_round_robin" ? "double" : "single";
     const ingestRounds = (gi: number, ids: string[]) => {
       const { rounds, byesPerRound } = generateRoundRobinRounds(ids, fmt);
@@ -1183,7 +1184,46 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         }
       });
     };
-    if (isDoubles) {
+
+    // Cross-league mode: every entity in league i plays every entity in league j
+    // (no intra-league matches). Each cross match is filed under the lower league's
+    // group_number for scheduling; standings include all matches the player took part in.
+    const ingestCrossLeague = (allGroups: string[][]) => {
+      let roundCounter = 1;
+      for (let i = 0; i < allGroups.length; i++) {
+        for (let j = i + 1; j < allGroups.length; j++) {
+          const a = allGroups[i];
+          const b = allGroups[j];
+          for (const pa of a) {
+            for (const pb of b) {
+              allMatches.push({
+                groupNum: i + 1,
+                roundNum: roundCounter++,
+                entityA: pa,
+                entityB: pb,
+                leg: "home",
+              });
+              if (fmt === "double") {
+                allMatches.push({
+                  groupNum: i + 1,
+                  roundNum: roundCounter++,
+                  entityA: pb,
+                  entityB: pa,
+                  leg: "away",
+                });
+              }
+            }
+          }
+        }
+      }
+    };
+
+    if (isCrossLeague) {
+      const groupIds: string[][] = isDoubles
+        ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
+        : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
+      ingestCrossLeague(groupIds);
+    } else if (isDoubles) {
       (groups as DoublePair[][]).forEach((groupPairs, gi) => {
         ingestRounds(gi, groupPairs.map((p) => p.id));
       });

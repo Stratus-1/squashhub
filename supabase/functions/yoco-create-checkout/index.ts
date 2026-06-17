@@ -84,13 +84,12 @@ Deno.serve(async (req) => {
         error: "Yoco secret key not configured. Save the club's Yoco secret key in the banking settings.",
       }, 400);
     }
-    if (!secretKey.startsWith("sk_live_")) {
-      console.error("Yoco secret key mode mismatch", {
+    if (!secretKey.startsWith("sk_live_") && !secretKey.startsWith("sk_test_")) {
+      console.error("Yoco secret key format invalid", {
         club_id,
-        expected: "sk_live_",
         actual_prefix: secretKey.slice(0, 8),
       });
-      return json({ error: "Yoco live secret key required. Please save the sk_live_ key for this club." }, 400);
+      return json({ error: "Yoco secret key must start with sk_live_ or sk_test_." }, 400);
     }
 
     const defaultDesc =

@@ -194,7 +194,7 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
+function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
@@ -207,6 +207,7 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
   onToggleAdmin: () => void;
   onAssignNumber?: (member: ClubMember) => void;
   numberLabel?: string;
+  onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
 }) {
   const displayName = m.name || m.profiles?.name || "—";
   const displayEmail = m.email || m.profiles?.email || "";
@@ -215,11 +216,33 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
   const isAdmin = m.role === "admin" || m.role === "captain";
   const isDelegate = !!delegateTitle;
   const isProtected = isDelegate;
+  const status = (m.status || "active") as "active" | "suspended" | "resigned";
+  const inactive = status !== "active";
+  const statusStyles: Record<typeof status, string> = {
+    active: "bg-emerald-500/10 text-emerald-700 border-emerald-500/40 dark:text-emerald-400",
+    suspended: "bg-amber-500/15 text-amber-700 border-amber-500/50 dark:text-amber-400",
+    resigned: "bg-slate-500/15 text-slate-600 border-slate-500/40 dark:text-slate-400",
+  };
   return (
-    <Card className="p-2 space-y-1.5">
-      {/* Row 1: Name, role, actions — single compact line */}
+    <Card className={`p-2 space-y-1.5 ${inactive ? "opacity-60 border-dashed" : ""}`}>
+      {/* Row 1: Name, status, role, actions — single compact line */}
       <div className="flex items-center gap-1.5">
-        <span className="font-medium text-[12px] truncate flex-1 min-w-0">{displayName}</span>
+        <span className={`font-medium text-[12px] truncate flex-1 min-w-0 ${status === "resigned" ? "line-through" : ""}`}>{displayName}</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className={`text-[9px] px-1.5 py-0 h-[18px] rounded border font-medium uppercase tracking-wide shrink-0 ${statusStyles[status]}`}
+              title="Click to change membership status"
+            >
+              {status}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="text-xs">
+            <DropdownMenuItem onClick={() => onChangeStatus(m, "active")}>Active</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onChangeStatus(m, "suspended")}>Suspended</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onChangeStatus(m, "resigned")}>Resigned</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[9px] px-1 py-0 shrink-0">{m.role}</Badge>
         {delegateTitle && (
           <Badge variant="default" className="text-[9px] px-1 py-0 bg-amber-600 hover:bg-amber-700 shrink-0">{delegateTitle}</Badge>

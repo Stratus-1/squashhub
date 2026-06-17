@@ -817,8 +817,95 @@ export default function ClubChampsView() {
     </div>
   );
 
+  function renderCrossLeagueSummary() {
+    if (!isCrossLeague || groupNumbers.length < 2) return null;
+    // Map every member to its league
+    const memberToGroup = new Map<string, number>();
+    entries.forEach((e: any) => {
+      if (e.club_member_id) memberToGroup.set(e.club_member_id, e.group_number);
+      if (e.partner_member_id) memberToGroup.set(e.partner_member_id, e.group_number);
+    });
+    const totals = new Map<number, { gp: number; won: number; lost: number; pf: number; pa: number }>();
+    groupNumbers.forEach((gn: number) => totals.set(gn, { gp: 0, won: 0, lost: 0, pf: 0, pa: 0 }));
+
+    const completed = matches.filter((m: any) => !m.is_bye && m.status === "completed");
+    for (const m of completed) {
+      const aGroup = memberToGroup.get(m.player_a_member_id) ?? (isDoubles ? memberToGroup.get(m.partner_a_member_id) : undefined);
+      const bGroup = memberToGroup.get(m.player_b_member_id) ?? (isDoubles ? memberToGroup.get(m.partner_b_member_id) : undefined);
+      if (aGroup == null || bGroup == null || aGroup === bGroup) continue; // cross-league only
+      const a = Number(m.side_a_points) || 0;
+      const b = Number(m.side_b_points) || 0;
+      const tA = totals.get(aGroup)!;
+      const tB = totals.get(bGroup)!;
+      tA.gp += 1; tB.gp += 1;
+      tA.pf += a; tA.pa += b;
+      tB.pf += b; tB.pa += a;
+      if (a > b) { tA.won += 1; tB.lost += 1; }
+      else if (b > a) { tB.won += 1; tA.lost += 1; }
+    }
+
+    const rows = groupNumbers.map((gn: number) => ({ gn, ...totals.get(gn)! }));
+    const anyPlayed = rows.some((r) => r.gp > 0);
+    if (!anyPlayed) return null;
+    const maxPf = Math.max(...rows.map((r) => r.pf));
+    const winners = rows.filter((r) => r.pf === maxPf).map((r) => r.gn);
+
+    return (
+      <Card className="border-primary/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            League vs League — Summary
+            {winners.length === 1 ? (
+              <Badge className="ml-auto">League {winners[0]} leading</Badge>
+            ) : (
+              <Badge variant="secondary" className="ml-auto">Tied</Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="pb-2 font-medium">League</th>
+                  <th className="pb-2 font-medium text-center" title="Cross-league games played">GP</th>
+                  <th className="pb-2 font-medium text-center">W</th>
+                  <th className="pb-2 font-medium text-center">L</th>
+                  <th className="pb-2 font-medium text-center" title="Total points scored">PF</th>
+                  <th className="pb-2 font-medium text-center" title="Total points conceded">PA</th>
+                  <th className="pb-2 font-medium text-center" title="Points difference">+/-</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const diff = r.pf - r.pa;
+                  const isWinner = winners.length === 1 && winners[0] === r.gn;
+                  return (
+                    <tr key={r.gn} className={cn("border-b border-border/30", isWinner && "font-semibold bg-primary/5")}>
+                      <td className="py-2">League {r.gn}{isWinner && <Badge variant="default" className="text-[9px] ml-2">Winner</Badge>}</td>
+                      <td className="py-2 text-center tabular-nums">{r.gp}</td>
+                      <td className="py-2 text-center tabular-nums">{r.won}</td>
+                      <td className="py-2 text-center tabular-nums">{r.lost}</td>
+                      <td className="py-2 text-center font-semibold tabular-nums">{r.pf}</td>
+                      <td className="py-2 text-center tabular-nums">{r.pa}</td>
+                      <td className="py-2 text-center tabular-nums">{diff > 0 ? `+${diff}` : diff}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            Winner ranked by total points scored (PF) across cross-league matches.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   function renderAllGroups() {
-    return groupNumbers.map((gn: number) => {
+    const summary = renderCrossLeagueSummary();
+    const groups = groupNumbers.map((gn: number) => {
       const standings = getGroupStandings(gn);
       const groupMemberIds = new Set<string>(
         entries.filter((e: any) => e.group_number === gn)

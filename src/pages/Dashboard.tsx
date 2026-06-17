@@ -627,6 +627,13 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Club at-a-glance stats */}
+      <div className="px-4 mt-3">
+        <ClubStatsCard clubId={clubId} />
+      </div>
+
+
+
 
       {/* Primary Actions — Book, Ladder, Profile */}
       <div className="px-4 mt-4">

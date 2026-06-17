@@ -353,6 +353,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const { data: clubData } = useMyClub();
   const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "resigned">("all");
   const [addOpen, setAddOpen] = useState(false);
   const [reconcileOpen, setReconcileOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);

@@ -114,6 +114,11 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
         />
       </div>
 
+      <div className="px-8 pb-3">
+        <ClubStatsCard clubId={props.clubId} />
+      </div>
+
+
       <div className="px-8 pb-8 grid grid-cols-12 gap-5">
         {/* STATS card */}
         <div className="col-span-12 xl:col-span-7">

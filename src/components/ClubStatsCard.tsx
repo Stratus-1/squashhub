@@ -37,17 +37,19 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId),
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("plays_league", true),
         supabase.from("club_visitors").select("*", { count: "exact", head: true }).eq("club_id", clubId),
-        supabase.from("matches").select("player_a_member_id, player_b_member_id").eq("club_id", clubId).gte("match_date", sinceIso),
-        supabase.from("bookings").select("member_id").eq("club_id", clubId).gte("date", sinceDate),
+        supabase.from("matches").select("player_a_member_id, player_b_member_id, winner_member_id, submitted_by_member_id").eq("club_id", clubId).gte("match_date", sinceIso),
+        supabase.from("bookings").select("club_member_id, opponent_member_id").eq("club_id", clubId).gte("date", sinceDate),
       ]);
 
       const activeIds = new Set<string>();
       (matchesRes.data || []).forEach((m: any) => {
-        if (m.player_a_member_id) activeIds.add(m.player_a_member_id);
-        if (m.player_b_member_id) activeIds.add(m.player_b_member_id);
+        ["player_a_member_id", "player_b_member_id", "winner_member_id", "submitted_by_member_id"].forEach((k) => {
+          if (m[k]) activeIds.add(m[k]);
+        });
       });
       (bookingsRes.data || []).forEach((b: any) => {
-        if (b.member_id) activeIds.add(b.member_id);
+        if (b.club_member_id) activeIds.add(b.club_member_id);
+        if (b.opponent_member_id) activeIds.add(b.opponent_member_id);
       });
 
       const total = totalRes.count ?? 0;

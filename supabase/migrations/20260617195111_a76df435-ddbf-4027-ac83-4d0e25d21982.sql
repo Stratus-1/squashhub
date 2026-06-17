@@ -1,0 +1,1 @@
+DELETE FROM public.club_champs_registrations WHERE champ_id='49f501d1-c799-48d6-9a5e-8c32e16cb735' AND club_member_id IN ('8b66e22b-660f-4f62-851e-10d7f965bd83','38fcec90-955f-460d-a55f-8f5275990a92');

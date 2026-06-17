@@ -1519,22 +1519,29 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               </div>
             </div>
             <div>
-              <Label className="text-xs">Fee description</Label>
-              <Input placeholder="e.g. Court hire — 12 June" value={billLabel} onChange={e => setBillLabel(e.target.value)} className="h-9 text-xs" />
-            </div>
-            <div>
-              <Label className="text-xs">Income account</Label>
-              <Select value={billIncome} onValueChange={setBillIncome}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <Label className="text-xs">Fee type</Label>
+              <Select
+                value={billIncome}
+                onValueChange={(v) => {
+                  setBillIncome(v);
+                  const preset = FEE_TYPE_PRESETS.find(p => p.value === v);
+                  if (preset && !billLabel.trim()) setBillLabel(preset.defaultLabel);
+                }}
+              >
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a fee type…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="membership_income">Membership Income</SelectItem>
-                  <SelectItem value="league_fees_income">League Fees Income</SelectItem>
-                  <SelectItem value="national_body_income">National Body Fees Income</SelectItem>
-                  <SelectItem value="tournament_income">Tournament Income</SelectItem>
-                  <SelectItem value="light_fees_income">Light Fees Income</SelectItem>
-                  <SelectItem value="fee_income">Other Fee Income</SelectItem>
+                  {FEE_TYPE_PRESETS.map(p => (
+                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Posts to GL account: <strong>{getLabel(billIncome)}</strong>
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs">Fee description</Label>
+              <Input placeholder="e.g. Court hire — 12 June" value={billLabel} onChange={e => setBillLabel(e.target.value)} className="h-9 text-xs" />
             </div>
             {billAmount && parseFloat(billAmount) > 0 && (
               <div className="p-2 rounded bg-muted/60 text-[10px] space-y-0.5">

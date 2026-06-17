@@ -115,10 +115,13 @@ Deno.serve(async (req) => {
       return json({ error: sessErr?.message || "Could not create session" }, 500);
     }
 
-    const paymentReturnUrl = `${SUPABASE_URL}/functions/v1/yoco-payment-return?target=${encodeURIComponent(return_url)}&yoco_session=${encodeURIComponent(session.id)}`;
-    const successUrl = paymentReturnUrl;
-    const cancelUrl = paymentReturnUrl;
-    const failureUrl = paymentReturnUrl;
+    // Point Yoco directly at the club's public website (return_url) instead
+    // of routing through the Supabase edge function. Yoco's merchant review
+    // crawls these URLs and rejects supabase.co as "site unavailable",
+    // which blocks live activation for the club.
+    const successUrl = appendParam(appendParam(return_url, "yoco_session", session.id), "yoco_status", "success");
+    const cancelUrl = appendParam(appendParam(return_url, "yoco_session", session.id), "yoco_status", "cancel");
+    const failureUrl = appendParam(appendParam(return_url, "yoco_session", session.id), "yoco_status", "failure");
 
     // Call Yoco
     const yocoResp = await fetch(YOCO_API, {

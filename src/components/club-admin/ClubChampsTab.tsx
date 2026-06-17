@@ -370,6 +370,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
+  const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
   const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin" | "cross_league">("");

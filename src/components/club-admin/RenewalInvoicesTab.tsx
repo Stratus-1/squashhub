@@ -66,6 +66,12 @@ export function RenewalInvoicesTab({ clubId }: Props) {
     mutationFn: async () => {
       const ids = (rows as any[]).filter(r => !r.paid && !r.invoice_email_sent_at).map(r => r.id);
       if (ids.length === 0) return { deleted: 0 };
+      // Cascade: remove ledger journal entries posted for these fees first
+      const { error: jErr } = await supabase
+        .from("club_journal_entries")
+        .delete()
+        .in("fee_payment_id", ids);
+      if (jErr) throw jErr;
       const { error } = await supabase.from("club_member_fee_payments").delete().in("id", ids);
       if (error) throw error;
       return { deleted: ids.length };

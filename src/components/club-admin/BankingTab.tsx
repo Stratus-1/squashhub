@@ -345,9 +345,28 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         )}
       </Card>
 
-      <Button onClick={handleSave} disabled={isSaving} size="sm" className="text-xs">
-        {isSaving ? "Saving..." : "Save Banking Settings"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={handleSave} disabled={isSaving} size="sm" className="text-xs">
+          {isSaving ? "Saving..." : "Save Banking Settings"}
+        </Button>
+        {gateway === "yoco" && (
+          <Button
+            onClick={handleTestPayment}
+            disabled={testing || isSaving}
+            size="sm"
+            variant="outline"
+            className="text-xs gap-1"
+          >
+            <Zap className="h-3.5 w-3.5" />
+            {testing ? "Opening Yoco…" : "Send Test R10 Payment"}
+          </Button>
+        )}
+        {gateway === "yoco" && (
+          <span className="text-[10px] text-muted-foreground">
+            Uses the saved Yoco keys (test or live). Save first if you just changed them.
+          </span>
+        )}
+      </div>
     </div>
   );
 }

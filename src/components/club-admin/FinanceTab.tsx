@@ -164,13 +164,13 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     queryKey: ["bill-fee-options", clubId],
     queryFn: async (): Promise<BillFeeOption[]> => {
       const [cats, leagues, nationals] = await Promise.all([
-        supabase.from("member_fee_categories")
+        fromExt("member_fee_categories")
           .select("id,name,annual_fee,active")
           .eq("club_id", clubId).eq("active", true).order("sort_order"),
-        supabase.from("league_associations")
+        fromExt("league_associations")
           .select("id,name,abbreviation,fee_annual,active")
           .eq("club_id", clubId).eq("active", true).order("name"),
-        supabase.from("national_body_fees")
+        fromExt("national_body_fees")
           .select("id,body_name,abbreviation,fee_annual,active")
           .eq("club_id", clubId).eq("active", true).order("body_name"),
       ]);

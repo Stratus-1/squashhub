@@ -5964,7 +5964,12 @@ export type Database = {
       }
       generate_all_clubs_renewal_invoices: { Args: never; Returns: Json }
       generate_member_renewal_invoices: {
-        Args: { p_category_ids?: string[]; p_club_id: string }
+        Args: {
+          p_category_ids?: string[]
+          p_club_id: string
+          p_league_assoc_ids?: string[]
+          p_national_body_ids?: string[]
+        }
         Returns: Json
       }
       get_champ_host: {

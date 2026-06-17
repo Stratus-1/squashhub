@@ -46,11 +46,13 @@ export function RenewalInvoicesTab({ clubId }: Props) {
   });
 
   const generate = useMutation({
-    mutationFn: async (categoryIds: string[]) => {
+    mutationFn: async (sel: { categoryIds: string[]; leagueAssocIds: string[]; nationalBodyIds: string[] }) => {
       const { data, error } = await supabase.rpc("generate_member_renewal_invoices", {
         p_club_id: clubId,
-        p_category_ids: categoryIds.length > 0 ? categoryIds : null,
-      });
+        p_category_ids: sel.categoryIds.length > 0 ? sel.categoryIds : null,
+        p_league_assoc_ids: sel.leagueAssocIds.length > 0 ? sel.leagueAssocIds : null,
+        p_national_body_ids: sel.nationalBodyIds.length > 0 ? sel.nationalBodyIds : null,
+      } as any);
       if (error) throw error;
       return data as { created: number; updated: number; skipped_paid: number; skipped_sent: number };
     },
@@ -256,7 +258,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
         open={genOpen}
         clubId={clubId}
         onClose={() => setGenOpen(false)}
-        onConfirm={(ids) => generate.mutate(ids)}
+        onConfirm={(sel) => generate.mutate(sel)}
         isPending={generate.isPending}
       />
     </div>

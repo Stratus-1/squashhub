@@ -193,7 +193,15 @@ export function NotificationActionModal() {
     onError: (e: any) => toast.error(e?.message || "Could not save your response"),
   });
 
-  const notifications = unreadNotifications || [];
+  // Persistent invites (tournament invites) never get auto-marked-read on dismiss,
+  // so they'd otherwise re-pop the modal forever. Only auto-show them while still fresh (<3 days).
+  // Older ones remain accessible via the bell.
+  const PERSISTENT_FRESH_MS = 3 * 24 * 60 * 60 * 1000;
+  const notifications = (unreadNotifications || []).filter((n) => {
+    if (!isTournamentInviteNotification(n)) return true;
+    const age = Date.now() - new Date(n.created_at).getTime();
+    return age <= PERSISTENT_FRESH_MS;
+  });
   const nonPersistentNotifications = notifications.filter((n) => !isTournamentInviteNotification(n));
   const current = notifications[currentIndex] || null;
   const total = notifications.length;

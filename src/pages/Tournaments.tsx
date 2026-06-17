@@ -1,3 +1,4 @@
+import React from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { SEO } from "@/components/SEO";
@@ -436,6 +437,22 @@ export default function Tournaments() {
                         <DropdownMenuItem onClick={() => downloadScheduleCsv("Full Tournament Schedule", upcomingMatches)}>
                           <Calendar className="w-3.5 h-3.5 mr-2" /> Download CSV
                         </DropdownMenuItem>
+                        {champs.length > 1 && <DropdownMenuSeparator />}
+                        {champs.length > 1 && <DropdownMenuLabel>Per tournament</DropdownMenuLabel>}
+                        {champs.length > 1 && champs.map((c: any) => {
+                          const list = upcomingMatches.filter((m: any) => m.champ_id === c.id);
+                          if (list.length === 0) return null;
+                          return (
+                            <React.Fragment key={c.id}>
+                              <DropdownMenuItem onClick={() => openSchedule(`${c.name} – Schedule`, list)}>
+                                <Printer className="w-3.5 h-3.5 mr-2" /> Print {c.name} ({list.length})
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => downloadScheduleCsv(`${c.name} – Schedule`, list)}>
+                                <Calendar className="w-3.5 h-3.5 mr-2" /> CSV {c.name}
+                              </DropdownMenuItem>
+                            </React.Fragment>
+                          );
+                        })}
                         {courtNames.length > 0 && <DropdownMenuSeparator />}
                         {courtNames.length > 0 && <DropdownMenuLabel>Per court</DropdownMenuLabel>}
                         {courtNames.map((c) => {

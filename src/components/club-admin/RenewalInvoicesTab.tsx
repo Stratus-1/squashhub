@@ -258,7 +258,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
         open={genOpen}
         clubId={clubId}
         onClose={() => setGenOpen(false)}
-        onConfirm={(ids) => generate.mutate(ids)}
+        onConfirm={(sel) => generate.mutate(sel)}
         isPending={generate.isPending}
       />
     </div>

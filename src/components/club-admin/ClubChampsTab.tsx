@@ -1355,25 +1355,32 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             }
           });
 
+          const usedPlayers = new Set<string>(); // `${date}|${t}|${playerId}`
           for (const gn of leagues) {
             const cap = capFor(gn);
             const lCourts = leagueCourts.get(gn)!;
-            const lMatches = byLeague.get(gn)!;
-            let mIdx2 = 0;
+            const remaining = [...byLeague.get(gn)!];
             for (const s of sessions) {
-              if (mIdx2 >= lMatches.length) break;
+              if (remaining.length === 0) break;
               const sessionLCourts = lCourts.filter((c) => s.courtIds.includes(c));
               if (sessionLCourts.length === 0) continue;
               const roundsPossible = Math.max(0, Math.floor((s.endMin - s.startMin) / cap));
-              for (let r = 0; r < roundsPossible && mIdx2 < lMatches.length; r++) {
-                for (let ci = 0; ci < sessionLCourts.length && mIdx2 < lMatches.length; ci++) {
-                  const m = lMatches[mIdx2++];
-                  const t = s.startMin + r * cap;
+              for (let r = 0; r < roundsPossible && remaining.length > 0; r++) {
+                const t = s.startMin + r * cap;
+                for (let ci = 0; ci < sessionLCourts.length && remaining.length > 0; ci++) {
+                  const pickIdx = remaining.findIndex((m) => {
+                    const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
+                    return players.every((pid) => !usedPlayers.has(`${s.date}|${t}|${pid}`));
+                  });
+                  if (pickIdx === -1) break;
+                  const [m] = remaining.splice(pickIdx, 1);
                   const h = Math.floor(t / 60);
                   const mm = t % 60;
                   m.date = s.date;
                   m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
                   m.courtId = sessionLCourts[ci];
+                  const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
+                  players.forEach((pid) => usedPlayers.add(`${s.date}|${t}|${pid}`));
                 }
               }
             }

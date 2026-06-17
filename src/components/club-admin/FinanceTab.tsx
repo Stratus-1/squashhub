@@ -74,20 +74,17 @@ const CREDIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[
 
 const GATEWAY_FEE_RATE = 0.035; // 3.5%
 
-// Fee types shown in the "Bill a Member" dialog. Each one maps to the
-// correct GL income account so the admin never has to pick the GL manually.
-const FEE_TYPE_PRESETS: { value: GLAccount; label: string; defaultLabel: string }[] = [
-  { value: "membership_income",   label: "Membership / subscription fee", defaultLabel: "Membership fee" },
-  { value: "league_fees_income",  label: "League fee",                    defaultLabel: "League fee" },
-  { value: "national_body_income",label: "National body fee",             defaultLabel: "National body fee" },
-  { value: "tournament_income",   label: "Tournament entry",              defaultLabel: "Tournament entry" },
-  { value: "light_fees_income",   label: "Court light fee",               defaultLabel: "Court lights" },
-  { value: "bar_income",          label: "Bar / honesty bar",             defaultLabel: "Bar tab" },
-  { value: "fee_income",          label: "Court hire",                    defaultLabel: "Court hire" },
-  { value: "fee_income",          label: "Coaching",                      defaultLabel: "Coaching" },
-  { value: "fee_income",          label: "Visitor / guest fee",           defaultLabel: "Visitor fee" },
-  { value: "fee_income",          label: "Other",                         defaultLabel: "" },
-];
+// Fee options in the "Bill a Member" dialog are loaded from the actual
+// Fees tables (member_fee_categories, league_associations, national_body_fees)
+// so admins pick a real fee — the amount is pre-filled but editable.
+// Honesty bar charges are handled in the Bar module, not here.
+type BillFeeOption = {
+  key: string;
+  group: "Membership" | "League" | "National body";
+  label: string;
+  amount: number;
+  income: GLAccount;
+};
 
 const getLabel = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount]?.label || account;
 const getMeta = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount];
@@ -154,13 +151,51 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [billAmount, setBillAmount] = useState("");
   const [billLabel, setBillLabel] = useState("");
   const [billIncome, setBillIncome] = useState<string>("membership_income");
-  const [billFeeTypeKey, setBillFeeTypeKey] = useState<string>("0");
+  const [billFeeTypeKey, setBillFeeTypeKey] = useState<string>("");
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [billSubmitting, setBillSubmitting] = useState(false);
 
   // Row-action confirm dialog (delete/reverse)
   const [rowAction, setRowAction] = useState<null | { ref: string; mode: "delete" | "reverse"; summary: string }>(null);
   const [rowActionBusy, setRowActionBusy] = useState(false);
+
+  /* ─── Fee options for the Bill Member dialog (from Fees tables) ─── */
+  const { data: billFeeOptions = [] } = useQuery({
+    queryKey: ["bill-fee-options", clubId],
+    queryFn: async (): Promise<BillFeeOption[]> => {
+      const [cats, leagues, nationals] = await Promise.all([
+        fromExt("member_fee_categories")
+          .select("id,name,annual_fee,active")
+          .eq("club_id", clubId).eq("active", true).order("sort_order"),
+        fromExt("league_associations")
+          .select("id,name,abbreviation,fee_annual,active")
+          .eq("club_id", clubId).eq("active", true).order("name"),
+        fromExt("national_body_fees")
+          .select("id,body_name,abbreviation,fee_annual,active")
+          .eq("club_id", clubId).eq("active", true).order("body_name"),
+      ]);
+      const opts: BillFeeOption[] = [];
+      (cats.data || []).forEach((c: any) => opts.push({
+        key: `cat:${c.id}`, group: "Membership",
+        label: c.name, amount: Number(c.annual_fee) || 0,
+        income: "membership_income" as GLAccount,
+      }));
+      (leagues.data || []).forEach((l: any) => opts.push({
+        key: `lea:${l.id}`, group: "League",
+        label: l.abbreviation ? `${l.name} (${l.abbreviation})` : l.name,
+        amount: Number(l.fee_annual) || 0,
+        income: "league_fees_income" as GLAccount,
+      }));
+      (nationals.data || []).forEach((n: any) => opts.push({
+        key: `nat:${n.id}`, group: "National body",
+        label: n.abbreviation ? `${n.body_name} (${n.abbreviation})` : n.body_name,
+        amount: Number(n.fee_annual) || 0,
+        income: "national_body_income" as GLAccount,
+      }));
+      return opts;
+    },
+    enabled: !!clubId,
+  });
 
 
 
@@ -1535,26 +1570,41 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               </div>
             </div>
             <div>
-              <Label className="text-xs">Fee type</Label>
+              <Label className="text-xs">Fee</Label>
               <Select
                 value={billFeeTypeKey}
                 onValueChange={(key) => {
                   setBillFeeTypeKey(key);
-                  const preset = FEE_TYPE_PRESETS[Number(key)];
-                  if (!preset) return;
-                  setBillIncome(preset.value);
-                  if (preset.defaultLabel && !billLabel.trim()) setBillLabel(preset.defaultLabel);
+                  const opt = (billFeeOptions as BillFeeOption[]).find(o => o.key === key);
+                  if (!opt) return;
+                  setBillIncome(opt.income);
+                  setBillLabel(opt.label);
+                  if (opt.amount > 0) setBillAmount(opt.amount.toFixed(2));
                 }}
               >
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a fee type…" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a fee…" /></SelectTrigger>
                 <SelectContent>
-                  {FEE_TYPE_PRESETS.map((p, idx) => (
-                    <SelectItem key={idx} value={String(idx)}>{p.label}</SelectItem>
-                  ))}
+                  {(["Membership", "League", "National body"] as const).map(group => {
+                    const items = (billFeeOptions as BillFeeOption[]).filter(o => o.group === group);
+                    if (items.length === 0) return null;
+                    return (
+                      <SelectGroup key={group}>
+                        <SelectLabel className="text-[10px]">{group}</SelectLabel>
+                        {items.map(o => (
+                          <SelectItem key={o.key} value={o.key} className="text-xs">
+                            {o.label} <span className="text-muted-foreground">— R{o.amount.toFixed(2)}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    );
+                  })}
+                  {(billFeeOptions as BillFeeOption[]).length === 0 && (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">No fees defined. Add them in the Fees tab.</div>
+                  )}
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-muted-foreground mt-1">
-                Posts to GL account: <strong>{getLabel(billIncome)}</strong>
+                Posts to GL account: <strong>{getLabel(billIncome)}</strong> • Amount is editable above.
               </p>
             </div>
             <div>

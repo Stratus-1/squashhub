@@ -524,6 +524,7 @@ export default function Dashboard() {
         <DashboardDesktop
           clubName={effectiveClub?.name || "SquashHub"}
           clubLogoUrl={(effectiveClub as any)?.logo_url || null}
+          clubId={clubId}
           firstName={firstName}
           played={played}
           wins={wins}

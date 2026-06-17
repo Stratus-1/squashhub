@@ -1536,17 +1536,19 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <div>
               <Label className="text-xs">Fee type</Label>
               <Select
-                value={billIncome}
-                onValueChange={(v) => {
-                  setBillIncome(v);
-                  const preset = FEE_TYPE_PRESETS.find(p => p.value === v);
-                  if (preset && !billLabel.trim()) setBillLabel(preset.defaultLabel);
+                value={billFeeTypeKey}
+                onValueChange={(key) => {
+                  setBillFeeTypeKey(key);
+                  const preset = FEE_TYPE_PRESETS[Number(key)];
+                  if (!preset) return;
+                  setBillIncome(preset.value);
+                  if (preset.defaultLabel && !billLabel.trim()) setBillLabel(preset.defaultLabel);
                 }}
               >
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a fee type…" /></SelectTrigger>
                 <SelectContent>
-                  {FEE_TYPE_PRESETS.map(p => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                  {FEE_TYPE_PRESETS.map((p, idx) => (
+                    <SelectItem key={idx} value={String(idx)}>{p.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

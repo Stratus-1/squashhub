@@ -29,17 +29,17 @@ export async function openYocoCheckout(url: string) {
     return;
   }
 
-  const isEmbedded = (() => {
-    try {
-      return window.self !== window.top;
-    } catch {
-      return true;
+  // Always do a top-level navigation. Opening Yoco in a popup/new tab
+  // causes "googlePayButtonShowingFunction is not a function" because Yoco's
+  // checkout bundle requires a top-level browsing context. If we're trapped
+  // inside an iframe (Lovable preview), break out of it first.
+  try {
+    if (window.top && window.top !== window.self) {
+      window.top.location.href = url;
+      return;
     }
-  })();
-
-  if (isEmbedded) {
-    const opened = window.open(url, "_blank", "noopener,noreferrer");
-    if (opened) return;
+  } catch {
+    // Cross-origin frame access blocked — fall through to current-window nav.
   }
 
   window.location.assign(url);

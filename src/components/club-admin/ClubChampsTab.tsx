@@ -719,6 +719,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       best_of: bestOf > 0 ? bestOf : null,
       group_durations: groupDurations,
       group_break_minutes: groupBreakMinutes,
+      group_labels: groupLabels,
       default_break_minutes: defaultBreakMinutes,
       court_rotation_minutes: courtRotationMinutes,
       round_format: roundFormat,

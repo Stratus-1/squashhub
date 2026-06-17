@@ -236,6 +236,34 @@ export function GenerateInvoicesDialog({ open, clubId, onClose, onConfirm, isPen
           )}
         </div>
 
+        {selected.size > 0 && (
+          <div className="rounded-md border bg-muted/20 divide-y text-xs">
+            {typeTotals.category > 0 && (
+              <div className="flex justify-between px-3 py-1.5">
+                <span className="text-muted-foreground">Membership categories total</span>
+                <span className="font-mono font-medium">{fmtAmt(typeTotals.category)}</span>
+              </div>
+            )}
+            {typeTotals.league > 0 && (
+              <div className="flex justify-between px-3 py-1.5">
+                <span className="text-muted-foreground">League associations total</span>
+                <span className="font-mono font-medium">{fmtAmt(typeTotals.league)}</span>
+              </div>
+            )}
+            {typeTotals.national > 0 && (
+              <div className="flex justify-between px-3 py-1.5">
+                <span className="text-muted-foreground">National body fees total</span>
+                <span className="font-mono font-medium">{fmtAmt(typeTotals.national)}</span>
+              </div>
+            )}
+            <div className="flex justify-between px-3 py-2 bg-muted/40 font-semibold">
+              <span>Grand total</span>
+              <span className="font-mono">{fmtAmt(grandTotal)}</span>
+            </div>
+          </div>
+        )}
+
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
           <Button onClick={handleConfirm} disabled={isPending || selected.size === 0}>

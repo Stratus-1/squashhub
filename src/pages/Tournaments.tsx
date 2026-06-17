@@ -205,7 +205,49 @@ export default function Tournaments() {
     );
   };
 
+  const getScheduleHeaders = (matches: any[]) => {
+    // Only customise when every match belongs to the same cross-league tournament
+    const champIds = [...new Set(matches.map((m) => m.champ_id))];
+    if (champIds.length !== 1) return { a: "Player / Team A", b: "Player / Team B" };
+    const champ = allChamps.find((c: any) => c.id === champIds[0]);
+    if (!champ || champ.round_format !== "cross_league") {
+      return { a: "Player / Team A", b: "Player / Team B" };
+    }
+
+    const sample = matches.find(
+      (m) => m.player_a_member_id && m.player_b_member_id,
+    );
+    if (!sample) return { a: "Player / Team A", b: "Player / Team B" };
+
+    const entryGroup = (memberId: string | null) => {
+      if (!memberId) return null;
+      const e = allEntries.find(
+        (entry: any) =>
+          entry.champ_id === champ.id &&
+          (entry.club_member_id === memberId || entry.partner_member_id === memberId),
+      );
+      return e?.group_number ?? null;
+    };
+
+    const groupA =
+      entryGroup(sample.player_a_member_id) ??
+      entryGroup(sample.partner_a_member_id);
+    const groupB =
+      entryGroup(sample.player_b_member_id) ??
+      entryGroup(sample.partner_b_member_id);
+
+    if (groupA == null || groupB == null) {
+      return { a: "Player / Team A", b: "Player / Team B" };
+    }
+
+    return {
+      a: getGroupLabel(champ, groupA),
+      b: getGroupLabel(champ, groupB),
+    };
+  };
+
   const buildScheduleHtml = (title: string, matches: any[]) => {
+    const { a: headerA, b: headerB } = getScheduleHeaders(matches);
     const rows = matches
       .map((m) => {
         const champ = allChamps.find((c: any) => c.id === m.champ_id);
@@ -235,7 +277,6 @@ export default function Tournaments() {
   @media print{
     .toolbar{display:none}
     body{padding:0}
-    /* Auto-shrink font when there are many rows so it still fits one page */
     table.dense{font-size:12px}
     table.dense th,table.dense td{padding:4px 6px}
     table.veryDense{font-size:10.5px}
@@ -247,7 +288,7 @@ export default function Tournaments() {
 <div class="sub">${matches.length} match${matches.length === 1 ? "" : "es"} · Generated ${format(new Date(), "dd MMM yyyy HH:mm")}</div>
 <table class="${matches.length > 55 ? "veryDense" : matches.length > 35 ? "dense" : ""}">
 <colgroup><col class="date"><col class="time"><col class="court"><col class="team"><col class="team"><col class="tour"></colgroup>
-<thead><tr><th>Date</th><th>Time</th><th>Court</th><th>Player / Team A</th><th>Player / Team B</th><th>Tournament</th></tr></thead>
+<thead><tr><th>Date</th><th>Time</th><th>Court</th><th>${headerA}</th><th>${headerB}</th><th>Tournament</th></tr></thead>
 <tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:#888">No matches</td></tr>`}</tbody></table>
 </body></html>`;
 

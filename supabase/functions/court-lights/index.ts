@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
       // Get club info for fee
       const { data: courtInfo } = await supabase
         .from("courts")
-        .select("id, club_id, relay_device_id, relay_server, clubs(light_fee_per_hour)")
+        .select("id, club_id, relay_device_id, relay_server, relay_channel, clubs(light_fee_per_hour)")
         .eq("id", booking.court_id)
         .maybeSingle();
 
@@ -174,6 +174,7 @@ Deno.serve(async (req) => {
           server: (courtInfo as any).relay_server,
           authKey,
           deviceId: courtInfo.relay_device_id,
+          channel: (courtInfo as any).relay_channel,
           turn: "on",
         });
       } catch (e: any) {
@@ -225,7 +226,7 @@ Deno.serve(async (req) => {
     // Fetch the active session (use service role to ensure we can read it)
     const { data: session, error: sessErr } = await supabase
       .from("light_sessions")
-      .select("*, courts(name, relay_device_id, relay_server, club_id)")
+      .select("*, courts(name, relay_device_id, relay_server, relay_channel, club_id)")
       .eq("id", sessionId)
       .eq("user_id", userId)
       .eq("status", "active")
@@ -246,7 +247,7 @@ Deno.serve(async (req) => {
     // Turn off lights on current court
     if (court?.relay_device_id && authKey) {
       try {
-        await setShellyRelay({ server: court.relay_server, authKey, deviceId: court.relay_device_id, turn: "off" });
+        await setShellyRelay({ server: court.relay_server, authKey, deviceId: court.relay_device_id, channel: court.relay_channel, turn: "off" });
       } catch (e) {
         console.error("Failed to turn off relay:", e);
       }
@@ -380,7 +381,7 @@ Deno.serve(async (req) => {
       // Get target court info
       const { data: targetCourt } = await supabase
         .from("courts")
-        .select("id, relay_device_id, relay_server, club_id")
+        .select("id, relay_device_id, relay_server, relay_channel, club_id")
         .eq("id", targetCourtId)
         .maybeSingle();
 
@@ -405,7 +406,7 @@ Deno.serve(async (req) => {
 
       // Turn on lights on target court
       if (targetCourt.relay_device_id && targetAuthKey) {
-        await setShellyRelay({ server: targetCourt.relay_server, authKey: targetAuthKey, deviceId: targetCourt.relay_device_id, turn: "on" });
+        await setShellyRelay({ server: targetCourt.relay_server, authKey: targetAuthKey, deviceId: targetCourt.relay_device_id, channel: (targetCourt as any).relay_channel, turn: "on" });
       }
 
       // Update booking to new court
@@ -470,7 +471,7 @@ Deno.serve(async (req) => {
     // ended. Courts without a relay simply skip the hardware call.
     const { data: courts, error: courtsErr } = await supabase
       .from("courts")
-      .select("id, name, relay_device_id, relay_server, club_id, clubs(light_fee_per_hour)");
+      .select("id, name, relay_device_id, relay_server, relay_channel, club_id, clubs(light_fee_per_hour)");
 
     if (courtsErr) throw courtsErr;
     if (!courts || courts.length === 0) {

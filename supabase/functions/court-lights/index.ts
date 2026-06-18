@@ -572,7 +572,7 @@ Deno.serve(async (req) => {
           let shellyResult = "no-relay";
           let relayOk = true;
           if (hasRelay) {
-            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, turn: "on" });
+            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "on" });
           }
 
           if (activeBooking) {
@@ -598,7 +598,7 @@ Deno.serve(async (req) => {
           let shellyResult = "no-relay";
           let relayOk = true;
           if (hasRelay) {
-            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, turn: "off" });
+            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "off" });
           }
 
 

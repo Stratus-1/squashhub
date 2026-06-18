@@ -95,7 +95,84 @@ async function setShellyRelay(params: {
 }
 
 /**
- * Court Lights Edge Function
+ * Set the device's auto-off timer (the "Auto off" feature shown in the
+ * Shelly app). When the switch turns on it will automatically turn off
+ * after `delaySeconds`. Uses Gen2 Switch.SetConfig via the cloud RPC
+ * tunnel; falls back silently so the cron remains the ultimate fallback.
+ */
+async function setShellyAutoOff(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  channel?: number | string | null;
+  delaySeconds: number;
+}) {
+  const shellyServer = normalizeShellyServer(params.server);
+  const channel = Number(params.channel ?? 0);
+  const delay = Math.max(60, Math.round(params.delaySeconds));
+
+  try {
+    const resp = await fetch(
+      `${shellyServer}/v2/devices/api/rpc?auth_key=${encodeURIComponent(params.authKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: params.deviceId,
+          method: "Switch.SetConfig",
+          params: {
+            id: channel,
+            config: {
+              auto_off: true,
+              auto_off_delay: delay,
+            },
+          },
+        }),
+      }
+    );
+    const text = await resp.text();
+    if (!resp.ok) {
+      console.warn("Shelly Switch.SetConfig HTTP error:", resp.status, text);
+      return false;
+    }
+    let parsed: any = null;
+    try { parsed = JSON.parse(text); } catch { /* ignore */ }
+    if (parsed?.isok === false) {
+      console.warn("Shelly Switch.SetConfig rejected:", text);
+      return false;
+    }
+    console.log("Shelly auto-off set:", delay, "s — channel", channel);
+    return true;
+  } catch (e) {
+    console.warn("Shelly Switch.SetConfig threw:", (e as Error).message);
+    return false;
+  }
+}
+
+async function clearShellyAutoOff(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  channel?: number | string | null;
+}) {
+  return setShellyAutoOff({ ...params, delaySeconds: 0 });
+}
+
+function minutesFromMidnight(timeStr: string): number {
+  const h = parseInt(timeStr.slice(0, 2), 10);
+  const m = parseInt(timeStr.slice(3, 5), 10);
+  return h * 60 + m;
+}
+
+/** Remaining seconds from now until end_time in the configured timezone. */
+function bookingRemainingSeconds(dateStr: string, endTimeStr: string): number {
+  const { time: currentTimeStr } = localDateAndTime(new Date());
+  const nowMin = minutesFromMidnight(currentTimeStr);
+  const endMin = minutesFromMidnight(endTimeStr);
+  const remainingMin = endMin - nowMin;
+  return Math.max(1, remainingMin) * 60;
+}
+
  *
  * Called on a schedule (every minute via pg_cron) OR by a user action (terminate / transfer).
  *

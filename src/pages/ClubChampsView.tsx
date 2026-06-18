@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
@@ -126,6 +126,35 @@ export default function ClubChampsView() {
     enabled: !!champId,
   });
 
+  // Real league ranks (player_rank from member_league_registrations) for the source leagues.
+  // Used to order players within each league group by their actual league position
+  // (e.g. Terence = #1 in 7th League) instead of the entry insertion order.
+  const sourceLeagueIds: string[] = useMemo(
+    () => ((champ as any)?.source_league_ids as string[] | undefined) || [],
+    [champ],
+  );
+  const { data: leagueRanks = [] } = useQuery({
+    queryKey: ["club-champ-league-ranks", champId, sourceLeagueIds.join(",")],
+    queryFn: async () => {
+      if (sourceLeagueIds.length === 0) return [] as any[];
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("club_member_id, league_id, player_rank")
+        .in("league_id", sourceLeagueIds);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!champId && sourceLeagueIds.length > 0,
+  });
+  const playerRankByMember = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of leagueRanks as any[]) {
+      if (r.player_rank == null) continue;
+      const prev = m.get(r.club_member_id);
+      if (prev == null || r.player_rank < prev) m.set(r.club_member_id, r.player_rank);
+    }
+    return m;
+  }, [leagueRanks]);
+
 
 
   const getPlayerName = (player: any) => player?.name || player?.profiles?.name || "Unknown";
@@ -232,6 +261,7 @@ export default function ClubChampsView() {
         name: isDoubles
           ? getTeamName(e.club_members, e.partner)
           : getPlayerName(e.club_members),
+        leaguePlayerRank: playerRankByMember.get(e.club_member_id) ?? null,
       };
     });
 
@@ -272,8 +302,17 @@ export default function ClubChampsView() {
       } as any);
     });
 
-    // Strategy-driven ranking.
-    return rows.sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
+    // Strategy-driven ranking. When stats are equal (e.g. before any games are
+    // played), fall back to the player's actual league rank so the standings
+    // mirror the league log (e.g. Terence = #1 in 7th League), then entry order.
+    return rows.sort((a: any, b: any) => {
+      const primary = tournamentFormat.rankStandings(a, b);
+      if (primary !== 0) return primary;
+      const ra = a.leaguePlayerRank ?? Number.MAX_SAFE_INTEGER;
+      const rb = b.leaguePlayerRank ?? Number.MAX_SAFE_INTEGER;
+      if (ra !== rb) return ra - rb;
+      return (a.order_index ?? 0) - (b.order_index ?? 0);
+    });
   };
 
 
@@ -779,6 +818,11 @@ export default function ClubChampsView() {
                   const ga = ea?.group_number ?? Number.MAX_SAFE_INTEGER;
                   const gb = eb?.group_number ?? Number.MAX_SAFE_INTEGER;
                   if (ga !== gb) return ga - gb;
+                  // Sort by the player's actual league rank within their league
+                  // (e.g. Terence = #1 in 7th League). Falls back to entry order.
+                  const ra = playerRankByMember.get(a.club_member_id) ?? Number.MAX_SAFE_INTEGER;
+                  const rb = playerRankByMember.get(b.club_member_id) ?? Number.MAX_SAFE_INTEGER;
+                  if (ra !== rb) return ra - rb;
                   const oa = ea?.order_index ?? Number.MAX_SAFE_INTEGER;
                   const ob = eb?.order_index ?? Number.MAX_SAFE_INTEGER;
                   if (oa !== ob) return oa - ob;
@@ -798,7 +842,8 @@ export default function ClubChampsView() {
                   const isMe = r.club_member_id === myMemberId || r.partner_member_id === myMemberId;
                   const myInvite = isMe && kind === "invited";
                   const e = entryFor(r.club_member_id);
-                  const posLabel = e ? `L${e.group_number}·#${(e.order_index ?? 0) + 1}` : null;
+                  const rank = playerRankByMember.get(r.club_member_id);
+                  const posLabel = e ? `L${e.group_number}·#${rank ?? ((e.order_index ?? 0) + 1)}` : null;
                   return (
                     <li
                       key={r.id}

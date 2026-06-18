@@ -150,15 +150,42 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
       </Card>
 
       <Tabs defaultValue="items" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-10">
+        <TabsList className="grid w-full grid-cols-4 h-10">
           <TabsTrigger value="items" className="text-xs sm:text-sm">Items</TabsTrigger>
+          <TabsTrigger value="stock-purchases" className="text-xs sm:text-sm">Stock Purchases</TabsTrigger>
           <TabsTrigger value="member-sales" className="text-xs sm:text-sm">Member Sales</TabsTrigger>
-          <TabsTrigger value="card-sales" className="text-xs sm:text-sm">Card Machine Sales</TabsTrigger>
+          <TabsTrigger value="card-sales" className="text-xs sm:text-sm">Card Sales</TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="mt-4 space-y-4">
           <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
+        </TabsContent>
+
+        <TabsContent value="stock-purchases" className="mt-4 space-y-4">
           <PurchaseInvoice clubId={clubId} items={items} />
+          <Card className="p-6 space-y-4">
+            <h3 className="font-semibold">Recent Stock Purchases</h3>
+            <p className="text-sm text-muted-foreground">Recorded supplier invoices and stock restocking.</p>
+
+            {stockPurchases.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No stock purchases recorded yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {stockPurchases.slice(0, 20).map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{p.supplier || "Supplier"} {p.invoice_number ? `#${p.invoice_number}` : ""}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {p.quantity}× {p.bar_items?.name || "Item"} @ R{Number(p.unit_cost).toFixed(2)} · {format(new Date(p.created_at), "dd MMM yyyy")}
+                        {p.payment_method ? ` · ${p.payment_method}` : ""}
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">R{Number(p.total_cost).toFixed(2)}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </TabsContent>
 
         <TabsContent value="member-sales" className="mt-4 space-y-4">

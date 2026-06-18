@@ -1,0 +1,2 @@
+CREATE POLICY "Club members can insert visitor sales" ON public.bar_visitor_sales FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.club_members cm WHERE cm.club_id = bar_visitor_sales.club_id AND cm.user_id = auth.uid()));
+CREATE POLICY "Club members can view visitor sales" ON public.bar_visitor_sales FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.club_members cm WHERE cm.club_id = bar_visitor_sales.club_id AND cm.user_id = auth.uid()));

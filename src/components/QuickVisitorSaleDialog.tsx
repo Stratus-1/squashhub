@@ -28,10 +28,6 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 type PaymentMethod = "card";
 
-const METHODS: { value: PaymentMethod; label: string; icon: typeof Banknote }[] = [
-  { value: "card", label: "Card", icon: CreditCard },
-];
-
 
 interface Props {
   open: boolean;

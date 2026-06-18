@@ -526,6 +526,24 @@ export default function BellsMarker() {
           </CardContent>
         </Card>
 
+        {/* Serve side toggle — visual aid for marker to track which side is serving */}
+        <button
+          type="button"
+          onClick={() => setServeSide((s) => (s === "L" ? "R" : "L"))}
+          className={cn(
+            "w-full rounded-2xl border-2 py-4 px-4 flex items-center justify-center gap-3 text-lg font-bold active:scale-[0.98] transition",
+            "bg-card hover:bg-muted/50 border-primary/30",
+          )}
+          aria-label="Toggle serving side"
+        >
+          <span className={cn("text-3xl tabular-nums", serveSide === "L" ? "text-primary" : "text-muted-foreground/40")}>L</span>
+          <ArrowLeftRight className="w-5 h-5 text-muted-foreground" />
+          <span className={cn("text-3xl tabular-nums", serveSide === "R" ? "text-primary" : "text-muted-foreground/40")}>R</span>
+          <span className="ml-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Serving {serveSide === "L" ? "Left" : "Right"} — tap to switch
+          </span>
+        </button>
+
         {/* Counters */}
         <div className="grid grid-cols-2 gap-3">
           <Counter

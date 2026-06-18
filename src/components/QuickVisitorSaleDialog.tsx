@@ -108,8 +108,9 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4" /> Visitor / Walk-in Sale
+            <ShoppingCart className="w-4 h-4" /> Visitor / Direct Card Machine Sale
           </DialogTitle>
+
           <DialogDescription className="text-xs">
             Tap an item to add. Tap again to add more. Paid on the spot — posts to bank &amp; bar income.
           </DialogDescription>
@@ -174,7 +175,7 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
         {/* Payment method */}
         <div className="space-y-1.5">
           <Label className="text-xs">Payment method</Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             {METHODS.map(m => {
               const Icon = m.icon;
               const selected = method === m.value;

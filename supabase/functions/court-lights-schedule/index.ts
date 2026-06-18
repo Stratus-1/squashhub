@@ -72,53 +72,104 @@ type ShellyScheduleArgs = {
 };
 
 // Create a one-shot schedule on a Shelly device via Shelly Cloud.
-// Returns the schedule id (sid) as a string, or null if the API rejected it.
+// Returns the schedule id (sid) as a string, or null if every API attempt
+// failed. We try Gen2 RPC tunnels first (our devices respond to /v2/...),
+// then fall back to the Gen1 legacy schedule endpoint.
 async function shellyScheduleCreate(args: ShellyScheduleArgs): Promise<string | null> {
   const server = normalizeShellyServer(args.server);
-  const channel = String(Number(args.channel ?? 0));
+  const channel = Number(args.channel ?? 0);
+  const ts = args.timestampSec;
 
-  // Legacy / Gen1 cloud endpoint — supported by every Shelly device on the
-  // cloud, including newer ones routed through the Gen1 compatibility layer.
-  const form = new URLSearchParams({
-    auth_key: args.authKey,
-    id: args.deviceId,
-    channel,
-    turn: args.turn,
-    timestamp: String(args.timestampSec),
-    enabled: "true",
-    repeat: "0", // one-shot
-    name: args.name || `booking-${args.turn}`,
-  });
+  // Build a one-shot cron timespec for Gen2: "sec min hour day month dow".
+  // We pin the exact minute/hour/day/month — the schedule will fire once,
+  // then we delete it from the device when the booking changes.
+  const fireAt = new Date(ts * 1000);
+  // Use UTC components — Shelly Gen2 cron uses the device's local time, but
+  // the device clock is normally synced to local tz. The cron we build uses
+  // the wall-clock components in the configured zone so the device fires
+  // when its own clock matches.
+  const local = new Intl.DateTimeFormat("en-GB", {
+    timeZone: COURT_LIGHTS_TIMEZONE,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(fireAt);
+  const get = (t: string) => parseInt(local.find(p => p.type === t)!.value, 10);
+  const cron = `0 ${get("minute")} ${get("hour")} ${get("day")} ${get("month")} *`;
 
-  const resp = await fetch(`${server}/device/schedule/create`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: form,
-  });
-  const text = await resp.text();
-  if (!resp.ok) {
-    console.error("Shelly schedule/create HTTP error:", resp.status, text);
-    return null;
-  }
-  try {
-    const parsed = JSON.parse(text);
-    if (parsed?.isok === false) {
-      console.error("Shelly schedule/create rejected:", text);
-      return null;
+  const gen2Params = {
+    enable: true,
+    timespec: cron,
+    calls: [
+      {
+        method: "Switch.Set",
+        params: { id: channel, on: args.turn === "on" },
+      },
+    ],
+  };
+
+  // Attempt 1: Gen2 cloud RPC tunnel (JSON).
+  const attempts: Array<{ url: string; init: RequestInit; pick: (j: any) => any }> = [
+    {
+      url: `${server}/v2/devices/api/rpc?auth_key=${encodeURIComponent(args.authKey)}`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: args.deviceId,
+          method: "Schedule.Create",
+          params: gen2Params,
+        }),
+      },
+      pick: (j) => j?.data?.id ?? j?.result?.id ?? j?.id,
+    },
+    // Attempt 2: legacy Gen1 schedule create (kept as a fallback).
+    {
+      url: `${server}/device/schedule/create`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          auth_key: args.authKey,
+          id: args.deviceId,
+          channel: String(channel),
+          turn: args.turn,
+          timestamp: String(ts),
+          enabled: "true",
+          repeat: "0",
+          name: args.name || `booking-${args.turn}`,
+        }),
+      },
+      pick: (j) => j?.data?.id ?? j?.data?.sid ?? j?.id ?? j?.sid,
+    },
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const resp = await fetch(attempt.url, attempt.init);
+      const text = await resp.text();
+      if (!resp.ok) {
+        console.warn("Shelly schedule attempt HTTP error:", attempt.url, resp.status, text);
+        continue;
+      }
+      let parsed: any = null;
+      try { parsed = JSON.parse(text); } catch { /* non-json */ }
+      if (parsed?.isok === false) {
+        console.warn("Shelly schedule attempt rejected:", attempt.url, text);
+        continue;
+      }
+      const sid = attempt.pick(parsed);
+      if (sid != null) {
+        console.log("Shelly schedule created:", attempt.url, "sid=", sid);
+        return String(sid);
+      }
+      console.warn("Shelly schedule attempt: no sid in response:", attempt.url, text);
+    } catch (e) {
+      console.warn("Shelly schedule attempt threw:", attempt.url, (e as Error).message);
     }
-    // Response shape varies; try common id locations.
-    const sid =
-      parsed?.data?.id ??
-      parsed?.data?.sid ??
-      parsed?.id ??
-      parsed?.sid ??
-      parsed?.data?.schedule?.id;
-    return sid != null ? String(sid) : null;
-  } catch {
-    console.error("Shelly schedule/create non-JSON response:", text);
-    return null;
   }
+  return null;
 }
+
 
 async function shellyScheduleDelete(opts: {
   server?: string | null;

@@ -179,13 +179,14 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
 
         {/* Optional visitor name */}
         <div className="space-y-1.5">
-          <Label htmlFor="visitor-name" className="text-xs">Visitor name <span className="text-muted-foreground">(optional)</span></Label>
+          <Label htmlFor="visitor-name" className="text-xs">Member / Visitor name</Label>
           <Input
             id="visitor-name"
             value={visitorName}
             onChange={(e) => setVisitorName(e.target.value)}
             placeholder="e.g. John (guest)"
             className="h-9 text-xs"
+            required
           />
         </div>
 

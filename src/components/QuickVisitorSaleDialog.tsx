@@ -74,6 +74,10 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
 
   const submit = async () => {
     if (count === 0) return;
+    if (!visitorName.trim()) {
+      toast.error("Please enter a member or visitor name");
+      return;
+    }
     setSubmitting(true);
     try {
       const rows = cartLines.map(l => ({
@@ -177,15 +181,16 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
           </Label>
         </div>
 
-        {/* Optional visitor name */}
+        {/* Member / Visitor name */}
         <div className="space-y-1.5">
-          <Label htmlFor="visitor-name" className="text-xs">Visitor name <span className="text-muted-foreground">(optional)</span></Label>
+          <Label htmlFor="visitor-name" className="text-xs">Member / Visitor name</Label>
           <Input
             id="visitor-name"
             value={visitorName}
             onChange={(e) => setVisitorName(e.target.value)}
             placeholder="e.g. John (guest)"
             className="h-9 text-xs"
+            required
           />
         </div>
 
@@ -194,7 +199,7 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
           <Badge variant="secondary" className="text-sm py-1 px-2">
             Total: R{total.toFixed(2)} {count > 0 && `· ${count} item${count > 1 ? "s" : ""}`}
           </Badge>
-          <Button onClick={submit} disabled={count === 0 || submitting} className="h-10">
+          <Button onClick={submit} disabled={count === 0 || !visitorName.trim() || submitting} className="h-10">
             {submitting ? "Recording…" : `Record ${method.toUpperCase()} sale`}
           </Button>
         </div>

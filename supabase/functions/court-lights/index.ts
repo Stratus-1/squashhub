@@ -47,6 +47,15 @@ async function setShellyRelay(params: {
   if (!response.ok) {
     throw new Error(`Shelly ${params.turn} failed (${response.status}): ${detail || response.statusText}`);
   }
+  try {
+    const parsed = JSON.parse(detail);
+    if (parsed?.isok === false) {
+      const errorDetail = typeof parsed.errors === "string" ? parsed.errors : JSON.stringify(parsed.errors ?? parsed);
+      throw new Error(`Shelly ${params.turn} rejected the command: ${errorDetail}`);
+    }
+  } catch (e: any) {
+    if (e?.message?.startsWith("Shelly ")) throw e;
+  }
   return detail;
 }
 

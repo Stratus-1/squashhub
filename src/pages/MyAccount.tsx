@@ -921,16 +921,19 @@ export default function MyAccount() {
             <Separator />
 
             {/* Payment method */}
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                variant={payMethod === "credit" ? "default" : "outline"}
-                className="gap-1.5 h-12 text-xs flex-col"
-                onClick={() => setPayMethod("credit")}
-                disabled={availableCash < actualPayAmount}
-              >
-                <Wallet className="w-4 h-4" />
-                Credit
-              </Button>
+            <div className={cn("grid gap-2", isPayingForOther ? "grid-cols-2" : "grid-cols-3")}>
+              {!isPayingForOther && (
+                <Button
+                  variant={payMethod === "credit" ? "default" : "outline"}
+                  className="gap-1.5 h-12 text-xs flex-col"
+                  onClick={() => setPayMethod("credit")}
+                  disabled={availableCash < actualPayAmount}
+                >
+                  <Wallet className="w-4 h-4" />
+                  Credit
+                </Button>
+              )}
+
               <Button
                 variant={payMethod === "eft" ? "default" : "outline"}
                 className="gap-1.5 h-12 text-xs flex-col"

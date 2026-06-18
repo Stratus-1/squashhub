@@ -560,24 +560,71 @@ export default function MyAccount() {
     <div className="bottom-nav-safe">
       <SEO title="My Account" description="Manage your credit balance and fee payments." path="/my-account" noIndex />
       <PageHeader
-        title={isViewingAs ? `${accountName}'s Account` : "My Account"}
+        title={isPayingForOther ? `Paying for ${accountName}` : (isViewingAs ? `${accountName}'s Account` : "My Account")}
         subtitle={`Active account: ${accountName}${memberNo !== "N/A" ? ` · #${memberNo}` : (club as any)?.tenant_type === "association" ? " · league number pending" : ""}`}
       />
 
-      {/* Join an affiliated league association */}
-      {clubId && (club as any)?.tenant_type !== "association" && (
+      {/* Pay-for switcher — accounts the user has been granted delegate access to */}
+      {(managedDelegations || []).length > 0 && (
+        <div className="px-4 mt-3">
+          <Card className={cn("p-3", isPayingForOther && "border-primary/50 bg-primary/5")}>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+                {isPayingForOther ? "Viewing as" : "Pay for someone else"}
+              </p>
+              {isPayingForOther && (
+                <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setViewAsMemberId(null)}>
+                  Back to my account
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setViewAsMemberId(null)}
+                className={cn(
+                  "px-2.5 py-1 rounded-full text-[11px] border transition-colors",
+                  !isPayingForOther ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                )}
+              >
+                Me ({selfName})
+              </button>
+              {(managedMembers || []).map((m: any) => (
+                <button
+                  key={m.id}
+                  onClick={() => setViewAsMemberId(m.id)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-full text-[11px] border transition-colors",
+                    viewAsMemberId === m.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                  )}
+                >
+                  {m.name} {m.club_member_number ? `· #${m.club_member_number}` : ""}
+                </button>
+              ))}
+            </div>
+            {isPayingForOther && (
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Card / EFT payments will be tagged "Paid by {selfName}". Their wallet credit can't be used by a delegate.
+              </p>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* Join an affiliated league association — self only */}
+      {!isPayingForOther && clubId && (club as any)?.tenant_type !== "association" && (
         <div className="px-4 mt-3 space-y-3">
           <JoinLeagueAssociationCard clubId={clubId} variant="card" />
           <JoinedAssociationsCard clubId={clubId} />
         </div>
       )}
 
-      {/* GoBook integration — CSIR members only */}
-      {clubMemberId && /csir/i.test((club as any)?.name || "") && (
+      {/* GoBook integration — CSIR members only, self only */}
+      {!isPayingForOther && selfMemberId && /csir/i.test((club as any)?.name || "") && (
         <div className="px-4 mt-3">
-          <GoBookCredentialsCard clubMemberId={clubMemberId} />
+          <GoBookCredentialsCard clubMemberId={selfMemberId} />
         </div>
       )}
+
 
       {/* Credit Balance Card */}
       <motion.div

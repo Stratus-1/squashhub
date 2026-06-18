@@ -147,23 +147,23 @@ Deno.serve(async (req) => {
       // Get shelly auth key from club_secrets
       const { data: secretsData } = clubId ? await supabase.from("club_secrets").select("shelly_auth_key").eq("club_id", clubId).maybeSingle() : { data: null };
       const authKey = secretsData?.shelly_auth_key;
-      if (courtInfo?.relay_device_id && authKey) {
-        const shellyServer = (courtInfo as any).relay_server || "https://shelly-44-eu.shelly.cloud";
-        try {
-          await fetch(`${shellyServer}/device/relay/control`, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              auth_key: authKey,
-              id: courtInfo.relay_device_id,
-              channel: "0",
-              turn: "on",
-            }),
-          });
-        } catch (e) {
-          console.error("Shelly relay error (non-fatal):", e);
-        }
+      if (!courtInfo?.relay_device_id) {
+        return new Response(JSON.stringify({ error: "No Shelly device ID configured for this court" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
+      if (!authKey) {
+        return new Response(JSON.stringify({ error: "No Shelly cloud key configured for this club" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const shellyResult = await setShellyRelay({
+        server: (courtInfo as any).relay_server,
+        authKey,
+        deviceId: courtInfo.relay_device_id,
+        turn: "on",
+      });
 
       // Mark lights_requested
       await supabase.from("bookings").update({ lights_requested: true }).eq("id", bookingId);
@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ result: "lights_on", session_id: newSession.id }),
+        JSON.stringify({ result: "lights_on", session_id: newSession.id, relay_detail: shellyResult }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

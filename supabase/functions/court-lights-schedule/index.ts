@@ -116,8 +116,43 @@ async function shellyScheduleCreate(args: ShellyScheduleArgs): Promise<string | 
   const monIdx = (jsDow + 6) % 7;                // 0=Mon..6=Sun
   const weekdays = "0000000".split("").map((_, i) => i === monIdx ? "1" : "0").join("");
 
+  // Canonical Shelly Cloud "schedule_actions" form — matches what the
+  // Shelly Cloud web/app wizard sends ("Create schedule" → weekday + hh:mm
+  // + action). One row per call, so we make two: ON at start, OFF at end.
+  const baseForm = {
+    auth_key: args.authKey,
+    id: args.deviceId,
+    name: args.name || `booking-${args.turn}`,
+    timer_type: "1",            // 1 = recurring weekday (the only mode the cloud accepts)
+    timer_time_hhmm: `${hh}:${mm}`,
+    timer_weekdays: weekdays,   // Mon..Sun bitmask, only one bit set
+    channel: String(channel),
+    turn: args.turn,
+    enabled: "true",
+  };
+
   const attempts: Array<{ url: string; init: RequestInit; pick: (j: any) => any }> = [
-    // 1) Gen2 cloud RPC tunnel — Schedule.Create
+    // 1) Shelly Cloud Control API — schedule_actions/create (what the cloud UI uses)
+    {
+      url: `${server}/device/schedule_actions/create`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(baseForm),
+      },
+      pick: (j) => j?.data?.id ?? j?.data?.sid ?? j?.id ?? j?.sid,
+    },
+    // 2) Same but scoped under /device/relay (some firmwares require it)
+    {
+      url: `${server}/device/relay/schedule_actions/create`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(baseForm),
+      },
+      pick: (j) => j?.data?.id ?? j?.data?.sid ?? j?.id ?? j?.sid,
+    },
+    // 3) Gen2 cloud RPC tunnel — Schedule.Create (newer Plus/Pro devices)
     {
       url: `${server}/v2/devices/api/rpc?auth_key=${encodeURIComponent(args.authKey)}`,
       init: {
@@ -131,39 +166,7 @@ async function shellyScheduleCreate(args: ShellyScheduleArgs): Promise<string | 
       },
       pick: (j) => j?.data?.id ?? j?.result?.id ?? j?.id,
     },
-    // 2) Alternative Gen2 RPC path (some firmware exposes /device/rpc only)
-    {
-      url: `${server}/device/rpc?auth_key=${encodeURIComponent(args.authKey)}`,
-      init: {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: args.deviceId,
-          method: "Schedule.Create",
-          params: gen2Params,
-        }),
-      },
-      pick: (j) => j?.data?.id ?? j?.result?.id ?? j?.id,
-    },
-    // 3) Shelly Cloud "schedule_actions" REST (Plus/Pro relay) — form-encoded
-    {
-      url: `${server}/device/relay/schedule_actions/create`,
-      init: {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          auth_key: args.authKey,
-          id: args.deviceId,
-          channel: String(channel),
-          name: args.name || `booking-${args.turn}`,
-          hh, mm, weekdays,
-          turn: args.turn,
-          enabled: "true",
-        }),
-      },
-      pick: (j) => j?.data?.id ?? j?.data?.sid ?? j?.id ?? j?.sid,
-    },
-    // 4) Legacy Gen1 schedule create
+    // 4) Legacy Gen1 one-shot schedule (epoch timestamp)
     {
       url: `${server}/device/schedule/create`,
       init: {
@@ -223,6 +226,19 @@ async function shellyScheduleDelete(opts: {
   const server = normalizeShellyServer(opts.server);
 
   const attempts: Array<{ url: string; init: RequestInit }> = [
+    // Shelly Cloud — schedule_actions/delete (matches schedule_actions/create)
+    {
+      url: `${server}/device/schedule_actions/delete`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          auth_key: opts.authKey,
+          id: opts.deviceId,
+          schedule_action_id: opts.scheduleId,
+        }),
+      },
+    },
     // Gen2 RPC tunnel
     {
       url: `${server}/v2/devices/api/rpc?auth_key=${encodeURIComponent(opts.authKey)}`,

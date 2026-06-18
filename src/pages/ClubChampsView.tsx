@@ -261,6 +261,7 @@ export default function ClubChampsView() {
         name: isDoubles
           ? getTeamName(e.club_members, e.partner)
           : getPlayerName(e.club_members),
+        leaguePlayerRank: playerRankByMember.get(e.club_member_id) ?? null,
       };
     });
 

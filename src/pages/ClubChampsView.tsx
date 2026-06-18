@@ -593,17 +593,78 @@ export default function ClubChampsView() {
 
 
         {canManage && allRegistrations.length > 0 && (() => {
-          const ACCEPTED = new Set(["paid", "waived", "pending_eft", "registered", "active"]);
+          const hasFee = Number((champ as any)?.entry_fee_cents || 0) > 0;
           const DECLINED = new Set(["cancelled"]);
-          const buckets = { accepted: [] as any[], declined: [] as any[], pending: [] as any[] };
+          const PAID_STATUSES = new Set(["paid", "waived"]);
+          const nameOf = (r: any) => r.member?.name || r.member?.profiles?.name || "Unknown";
+
+          const buckets = {
+            notInvited: [] as any[],
+            invitedPending: [] as any[],
+            confirmed: [] as any[],
+            declined: [] as any[],
+          };
           allRegistrations.forEach((r: any) => {
             const s = String(r.status || "").toLowerCase();
-            if (ACCEPTED.has(s)) buckets.accepted.push(r);
-            else if (DECLINED.has(s)) buckets.declined.push(r);
-            else buckets.pending.push(r);
+            if (DECLINED.has(s)) { buckets.declined.push(r); return; }
+            if (r.confirmed_at) { buckets.confirmed.push(r); return; }
+            if (!r.invited_at && !r.invited_by_admin) { buckets.notInvited.push(r); return; }
+            buckets.invitedPending.push(r);
           });
-          const nameOf = (r: any) => r.member?.name || r.member?.profiles?.name || "Unknown";
-          const Section = ({ icon: Icon, label, items, tone }: any) => (
+
+          const paidCount = allRegistrations.filter((r: any) =>
+            PAID_STATUSES.has(String(r.status || "").toLowerCase()) || (r.fee_paid_cents || 0) > 0
+          ).length;
+          const totalActive = allRegistrations.filter((r: any) => !DECLINED.has(String(r.status || "").toLowerCase())).length;
+
+          const markInvited = async (ids: string[]) => {
+            const { error } = await fromExt("club_champs_registrations")
+              .update({ invited_at: new Date().toISOString() })
+              .in("id", ids)
+              .is("invited_at", null);
+            if (error) { toast.error(error.message); return; }
+            toast.success(`Marked ${ids.length} as invited`);
+            queryClient.invalidateQueries({ queryKey: ["club-champ-registrations-all", champId] });
+          };
+          const toggleConfirmed = async (r: any) => {
+            const patch: any = r.confirmed_at
+              ? { confirmed_at: null, confirmed_by: null, confirmation_source: null }
+              : { confirmed_at: new Date().toISOString(), confirmation_source: "admin" };
+            const { error } = await fromExt("club_champs_registrations").update(patch).eq("id", r.id);
+            if (error) { toast.error(error.message); return; }
+            queryClient.invalidateQueries({ queryKey: ["club-champ-registrations-all", champId] });
+          };
+
+          const Row = ({ r, showInvite }: { r: any; showInvite?: boolean }) => {
+            const isPaid = PAID_STATUSES.has(String(r.status || "").toLowerCase()) || (r.fee_paid_cents || 0) > 0;
+            return (
+              <li className="flex items-center gap-1.5 text-sm px-2 py-1 rounded bg-background/60 border">
+                <span className="flex-1 min-w-0 truncate">{nameOf(r)}</span>
+                {hasFee && (
+                  <Badge variant={isPaid ? "default" : "outline"} className="text-[10px] px-1 py-0">
+                    {isPaid ? "Paid" : "Unpaid"}
+                  </Badge>
+                )}
+                {showInvite && !r.invited_at && (
+                  <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]" onClick={() => markInvited([r.id])}>
+                    Mark invited
+                  </Button>
+                )}
+                {!DECLINED.has(String(r.status || "").toLowerCase()) && (
+                  <Button
+                    size="sm"
+                    variant={r.confirmed_at ? "secondary" : "ghost"}
+                    className="h-6 px-1.5 text-[10px]"
+                    onClick={() => toggleConfirmed(r)}
+                  >
+                    {r.confirmed_at ? "Unconfirm" : "Confirm"}
+                  </Button>
+                )}
+              </li>
+            );
+          };
+
+          const Section = ({ icon: Icon, label, items, tone, showInvite }: any) => (
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <Icon className={cn("w-3.5 h-3.5", tone)} /> {label} ({items.length})
@@ -612,31 +673,52 @@ export default function ClubChampsView() {
                 <p className="text-xs text-muted-foreground italic">None</p>
               ) : (
                 <ul className="space-y-1">
-                  {items.map((r: any) => (
-                    <li key={r.id} className="text-sm px-2 py-1 rounded bg-background/60 border truncate">{nameOf(r)}</li>
-                  ))}
+                  {items.map((r: any) => <Row key={r.id} r={r} showInvite={showInvite} />)}
                 </ul>
               )}
             </div>
           );
+
           return (
             <Card className="print:hidden">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="text-base flex flex-wrap items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" /> Attendance Confirmations
+                  {hasFee && (
+                    <Badge variant="outline" className="text-[10px]">
+                      Paid {paidCount}/{totalActive}
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="ml-auto text-[10px]">Admin only</Badge>
+                  {buckets.notInvited.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => markInvited(buckets.notInvited.map((r: any) => r.id))}
+                    >
+                      Mark all {buckets.notInvited.length} as invited
+                    </Button>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <Section icon={CheckCircle2} tone="text-green-600" label="Confirmed" items={buckets.accepted} />
-                  <Section icon={Clock} tone="text-amber-600" label="Pending reply" items={buckets.pending} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Section icon={Clock} tone="text-muted-foreground" label="Not invited" items={buckets.notInvited} showInvite />
+                  <Section icon={Clock} tone="text-amber-600" label="Invited – awaiting" items={buckets.invitedPending} />
+                  <Section icon={CheckCircle2} tone="text-green-600" label="Confirmed" items={buckets.confirmed} />
                   <Section icon={XCircle} tone="text-red-600" label="Declined" items={buckets.declined} />
                 </div>
+                <p className="text-[11px] text-muted-foreground mt-3">
+                  {hasFee
+                    ? "Paid and Confirmed are tracked separately. A player is ready when both are ticked."
+                    : "This tournament has no entry fee — only confirmation is tracked."}
+                </p>
               </CardContent>
             </Card>
           );
         })()}
+
 
         {groupNumbers.length === 0 && (
           <Card className="border-primary/20 bg-primary/5">

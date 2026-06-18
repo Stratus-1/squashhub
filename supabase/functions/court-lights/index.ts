@@ -694,6 +694,18 @@ Deno.serve(async (req) => {
           let relayOk = true;
           if (hasRelay) {
             shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "on" });
+            // Use the device's auto-off timer so the Shelly turns itself off at
+            // the end of the booking even if our cron misses the turn-off window.
+            if (activeBooking) {
+              const remainingSec = bookingRemainingSeconds(activeBooking.date, activeBooking.end_time);
+              await setShellyAutoOff({
+                server: court.relay_server,
+                authKey: authKey!,
+                deviceId: deviceId!,
+                channel: (court as any).relay_channel,
+                delaySeconds: remainingSec,
+              });
+            }
           }
 
           if (activeBooking) {

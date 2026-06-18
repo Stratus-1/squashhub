@@ -302,8 +302,17 @@ export default function ClubChampsView() {
       } as any);
     });
 
-    // Strategy-driven ranking.
-    return rows.sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
+    // Strategy-driven ranking. When stats are equal (e.g. before any games are
+    // played), fall back to the player's actual league rank so the standings
+    // mirror the league log (e.g. Terence = #1 in 7th League), then entry order.
+    return rows.sort((a: any, b: any) => {
+      const primary = tournamentFormat.rankStandings(a, b);
+      if (primary !== 0) return primary;
+      const ra = a.leaguePlayerRank ?? Number.MAX_SAFE_INTEGER;
+      const rb = b.leaguePlayerRank ?? Number.MAX_SAFE_INTEGER;
+      if (ra !== rb) return ra - rb;
+      return (a.order_index ?? 0) - (b.order_index ?? 0);
+    });
   };
 
 

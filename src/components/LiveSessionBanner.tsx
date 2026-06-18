@@ -171,7 +171,8 @@ export function LiveSessionBanner() {
 
       toast.success("Lights are on! ⚡");
       refetchSessions();
-      queryClient.invalidateQueries({ queryKey: ["my-bookings", "my-active-light-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["live-light-sessions", user.id] });
     } catch (e: any) {
       toast.error(e.message || "Failed to turn on lights");
     } finally {

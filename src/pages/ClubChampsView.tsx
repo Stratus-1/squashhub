@@ -771,12 +771,18 @@ export default function ClubChampsView() {
                 const visible = registrations.filter(
                   (r: any) => !partneredIds.has(r.club_member_id),
                 );
-                const registered = visible.filter(
-                  (r: any) => r.status === "paid" || r.status === "waived",
-                );
-                const invited = visible.filter(
-                  (r: any) => r.status === "pending_payment" || r.status === "pending_eft",
-                );
+                const byLadder = (a: any, b: any) => {
+                  const ap = a.member?.ladder_position ?? Number.MAX_SAFE_INTEGER;
+                  const bp = b.member?.ladder_position ?? Number.MAX_SAFE_INTEGER;
+                  if (ap !== bp) return ap - bp;
+                  return getPlayerName(a.member).localeCompare(getPlayerName(b.member));
+                };
+                const registered = visible
+                  .filter((r: any) => r.status === "paid" || r.status === "waived")
+                  .sort(byLadder);
+                const invited = visible
+                  .filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft")
+                  .sort(byLadder);
 
 
                 const renderRow = (r: any, kind: "registered" | "invited") => {

@@ -6,6 +6,84 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-internal-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const DEFAULT_SHELLY_SERVER = "https://shelly-44-eu.shelly.cloud";
+const COURT_LIGHTS_TIMEZONE = Deno.env.get("COURT_LIGHTS_TIMEZONE") || "Africa/Johannesburg";
+
+function localDateAndTime(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: COURT_LIGHTS_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const value = (type: string) => parts.find((part) => part.type === type)?.value || "";
+  return {
+    date: `${value("year")}-${value("month")}-${value("day")}`,
+    time: `${value("hour")}:${value("minute")}`,
+  };
+}
+
+async function setShellyRelay(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  channel?: number | string | null;
+  turn: "on" | "off";
+}) {
+  const shellyServer = (params.server || DEFAULT_SHELLY_SERVER).replace(/\/$/, "");
+  const channel = Number(params.channel ?? 0);
+  const v2Response = await fetch(`${shellyServer}/v2/devices/api/set/switch?auth_key=${encodeURIComponent(params.authKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: params.deviceId,
+      channel,
+      on: params.turn === "on",
+    }),
+  });
+  const v2Detail = await v2Response.text();
+  if (v2Response.ok) {
+    try {
+      const parsed = JSON.parse(v2Detail);
+      if (parsed?.isok === false) {
+        const errorDetail = typeof parsed.errors === "string" ? parsed.errors : JSON.stringify(parsed.errors ?? parsed);
+        throw new Error(`Shelly ${params.turn} rejected the command: ${errorDetail}`);
+      }
+    } catch (e: any) {
+      if (e?.message?.startsWith("Shelly ")) throw e;
+    }
+    return v2Detail;
+  }
+
+  const legacyResponse = await fetch(`${shellyServer}/device/relay/control`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      auth_key: params.authKey,
+      id: params.deviceId,
+      channel: String(channel),
+      turn: params.turn,
+    }),
+  });
+  const legacyDetail = await legacyResponse.text();
+  if (!legacyResponse.ok) {
+    throw new Error(`Shelly ${params.turn} failed. v2: (${v2Response.status}) ${v2Detail || v2Response.statusText}; legacy: (${legacyResponse.status}) ${legacyDetail || legacyResponse.statusText}`);
+  }
+  try {
+    const parsed = JSON.parse(legacyDetail);
+    if (parsed?.isok === false) {
+      const errorDetail = typeof parsed.errors === "string" ? parsed.errors : JSON.stringify(parsed.errors ?? parsed);
+      throw new Error(`Shelly ${params.turn} rejected the command. v2: (${v2Response.status}) ${v2Detail || v2Response.statusText}; legacy: ${errorDetail}`);
+    }
+  } catch (e: any) {
+    if (e?.message?.startsWith("Shelly ")) throw e;
+  }
+  return legacyDetail;
+}
+
 /**
  * Court Lights Edge Function
  *
@@ -92,7 +170,7 @@ Deno.serve(async (req) => {
       // Get club info for fee
       const { data: courtInfo } = await supabase
         .from("courts")
-        .select("id, club_id, relay_device_id, relay_server, clubs(light_fee_per_hour)")
+        .select("id, club_id, relay_device_id, relay_server, relay_channel, clubs(light_fee_per_hour)")
         .eq("id", booking.court_id)
         .maybeSingle();
 
@@ -103,22 +181,31 @@ Deno.serve(async (req) => {
       // Get shelly auth key from club_secrets
       const { data: secretsData } = clubId ? await supabase.from("club_secrets").select("shelly_auth_key").eq("club_id", clubId).maybeSingle() : { data: null };
       const authKey = secretsData?.shelly_auth_key;
-      if (courtInfo?.relay_device_id && authKey) {
-        const shellyServer = (courtInfo as any).relay_server || "https://shelly-44-eu.shelly.cloud";
-        try {
-          await fetch(`${shellyServer}/device/relay/control`, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              auth_key: authKey,
-              id: courtInfo.relay_device_id,
-              channel: "0",
-              turn: "on",
-            }),
-          });
-        } catch (e) {
-          console.error("Shelly relay error (non-fatal):", e);
-        }
+      if (!courtInfo?.relay_device_id) {
+        return new Response(JSON.stringify({ error: "No Shelly device ID configured for this court" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!authKey) {
+        return new Response(JSON.stringify({ error: "No Shelly cloud key configured for this club" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let shellyResult = "";
+      try {
+        shellyResult = await setShellyRelay({
+          server: (courtInfo as any).relay_server,
+          authKey,
+          deviceId: courtInfo.relay_device_id,
+          channel: (courtInfo as any).relay_channel,
+          turn: "on",
+        });
+      } catch (e: any) {
+        console.error("Shelly turn_on failed:", e);
+        return new Response(JSON.stringify({ error: e.message || "Shelly did not confirm the lights switched on" }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Mark lights_requested
@@ -145,7 +232,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ result: "lights_on", session_id: newSession.id }),
+        JSON.stringify({ result: "lights_on", session_id: newSession.id, relay_detail: shellyResult }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -163,7 +250,7 @@ Deno.serve(async (req) => {
     // Fetch the active session (use service role to ensure we can read it)
     const { data: session, error: sessErr } = await supabase
       .from("light_sessions")
-      .select("*, courts(name, relay_device_id, relay_server, club_id)")
+      .select("*, courts(name, relay_device_id, relay_server, relay_channel, club_id)")
       .eq("id", sessionId)
       .eq("user_id", userId)
       .eq("status", "active")
@@ -183,18 +270,8 @@ Deno.serve(async (req) => {
 
     // Turn off lights on current court
     if (court?.relay_device_id && authKey) {
-      const shellyServer = court.relay_server || "https://shelly-44-eu.shelly.cloud";
       try {
-        await fetch(`${shellyServer}/device/relay/control`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            id: court.relay_device_id,
-            auth_key: authKey,
-            channel: "0",
-            turn: "off",
-          }),
-        });
+        await setShellyRelay({ server: court.relay_server, authKey, deviceId: court.relay_device_id, channel: court.relay_channel, turn: "off" });
       } catch (e) {
         console.error("Failed to turn off relay:", e);
       }
@@ -328,7 +405,7 @@ Deno.serve(async (req) => {
       // Get target court info
       const { data: targetCourt } = await supabase
         .from("courts")
-        .select("id, relay_device_id, relay_server, club_id")
+        .select("id, relay_device_id, relay_server, relay_channel, club_id")
         .eq("id", targetCourtId)
         .maybeSingle();
 
@@ -353,21 +430,7 @@ Deno.serve(async (req) => {
 
       // Turn on lights on target court
       if (targetCourt.relay_device_id && targetAuthKey) {
-        const shellyServer = targetCourt.relay_server || "https://shelly-44-eu.shelly.cloud";
-        try {
-          await fetch(`${shellyServer}/device/relay/control`, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              id: targetCourt.relay_device_id,
-              auth_key: targetAuthKey,
-              channel: "0",
-              turn: "on",
-            }),
-          });
-        } catch (e) {
-          console.error("Failed to turn on target relay:", e);
-        }
+        await setShellyRelay({ server: targetCourt.relay_server, authKey: targetAuthKey, deviceId: targetCourt.relay_device_id, channel: (targetCourt as any).relay_channel, turn: "on" });
       }
 
       // Update booking to new court
@@ -425,15 +488,14 @@ Deno.serve(async (req) => {
 
   try {
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const currentTimeStr = now.toTimeString().slice(0, 5);
+    const { date: todayStr, time: currentTimeStr } = localDateAndTime(now);
 
     // Load every court — including ones without a physical Shelly relay, so we
     // can still close light sessions (and charge fees) when their booking has
     // ended. Courts without a relay simply skip the hardware call.
     const { data: courts, error: courtsErr } = await supabase
       .from("courts")
-      .select("id, name, relay_device_id, relay_server, club_id, clubs(light_fee_per_hour)");
+      .select("id, name, relay_device_id, relay_server, relay_channel, club_id, clubs(light_fee_per_hour)");
 
     if (courtsErr) throw courtsErr;
     if (!courts || courts.length === 0) {
@@ -523,7 +585,6 @@ Deno.serve(async (req) => {
       const autoOnWanted = (!!activeBooking && activeBooking.lights_requested === true) || hasActiveChamps;
       const shouldBeOn = !!activeBooking || hasActiveChamps; // for off-decision
       const existingSession = activeSessionMap.get(court.id);
-      const shellyServer = court.relay_server || "https://shelly-44-eu.shelly.cloud";
       const deviceId = court.relay_device_id;
 
       try {
@@ -535,18 +596,7 @@ Deno.serve(async (req) => {
           let shellyResult = "no-relay";
           let relayOk = true;
           if (hasRelay) {
-            const response = await fetch(`${shellyServer}/device/relay/control`, {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: new URLSearchParams({
-                id: deviceId!,
-                auth_key: authKey!,
-                channel: "0",
-                turn: "on",
-              }),
-            });
-            shellyResult = await response.text();
-            relayOk = response.ok;
+            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "on" });
           }
 
           if (activeBooking) {
@@ -572,18 +622,7 @@ Deno.serve(async (req) => {
           let shellyResult = "no-relay";
           let relayOk = true;
           if (hasRelay) {
-            const response = await fetch(`${shellyServer}/device/relay/control`, {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: new URLSearchParams({
-                id: deviceId!,
-                auth_key: authKey!,
-                channel: "0",
-                turn: "off",
-              }),
-            });
-            shellyResult = await response.text();
-            relayOk = response.ok;
+            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "off" });
           }
 
 

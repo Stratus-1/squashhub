@@ -363,13 +363,15 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   const qc = useQueryClient();
   const [newCourt, setNewCourt] = useState("");
   const [editingRelay, setEditingRelay] = useState<Record<number, string>>({});
+  const [editingChannel, setEditingChannel] = useState<Record<number, string>>({});
+  const [editingServer, setEditingServer] = useState<Record<number, string>>({});
 
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-courts", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("courts").select("*").eq("club_id", clubId).order("name");
       if (error) throw error;
-      return data as { id: number; name: string; club_id: string; relay_device_id: string | null; relay_server: string | null }[];
+      return data as { id: number; name: string; club_id: string; relay_device_id: string | null; relay_server: string | null; relay_channel?: number | null }[];
     },
   });
 
@@ -398,6 +400,28 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
     }
   };
 
+  const handleSaveChannel = async (courtId: number, valueOverride?: string) => {
+    const channel = Math.max(0, Math.min(3, parseInt((valueOverride ?? editingChannel[courtId] ?? "0").trim(), 10) || 0));
+    const { error } = await fromExt("courts").update({ relay_channel: channel }).eq("id", courtId);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Relay output saved: ${channel}`);
+      setEditingChannel(prev => { const next = { ...prev }; delete next[courtId]; return next; });
+      qc.invalidateQueries({ queryKey: ["club-courts"] });
+    }
+  };
+
+  const handleSaveServer = async (courtId: number, valueOverride?: string) => {
+    const server = (valueOverride ?? editingServer[courtId] ?? "").trim().replace(/\/$/, "");
+    const { error } = await fromExt("courts").update({ relay_server: server || null }).eq("id", courtId);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(server ? `Shelly server saved: ${server}` : "Shelly server reset");
+      setEditingServer(prev => { const next = { ...prev }; delete next[courtId]; return next; });
+      qc.invalidateQueries({ queryKey: ["club-courts"] });
+    }
+  };
+
   return (
     <Card className="p-4 space-y-3">
       <h3 className="font-semibold text-sm">Courts ({courts.length})</h3>
@@ -410,6 +434,8 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
         {courts.map(c => {
           const courtId = c.id;
           const relayValue = editingRelay[courtId] ?? c.relay_device_id ?? "";
+          const channelValue = editingChannel[courtId] ?? String(c.relay_channel ?? 0);
+          const serverValue = editingServer[courtId] ?? c.relay_server ?? "https://shelly-44-eu.shelly.cloud";
           return (
             <div key={c.id} className="rounded-lg border p-2 space-y-1">
               <div className="flex items-center justify-between">
@@ -419,7 +445,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                 </Button>
               </div>
               {lightsEnabled && (
-                <div className="flex gap-1 items-center">
+                <div className="grid grid-cols-[1fr_76px_auto] gap-1 items-center">
                   <Input
                     value={relayValue}
                     onChange={e => setEditingRelay(prev => ({ ...prev, [courtId]: e.target.value }))}
@@ -432,12 +458,48 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                     placeholder={relayDeviceType === "shelly" ? "Shelly Device ID (e.g. e8db84xxxxxx)" : "Relay Device ID"}
                     className="flex-1 text-xs h-7 font-mono"
                   />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={3}
+                    value={channelValue}
+                    onChange={e => setEditingChannel(prev => ({ ...prev, [courtId]: e.target.value }))}
+                    onBlur={e => {
+                      const v = e.target.value.trim();
+                      if (editingChannel[courtId] !== undefined && parseInt(v, 10) !== (c.relay_channel ?? 0)) {
+                        handleSaveChannel(courtId, v);
+                      }
+                    }}
+                    aria-label="Relay output channel"
+                    title="Shelly output channel: use 0 for SW1/O1 and 1 for SW2/O2"
+                    className="h-7 text-xs font-mono"
+                  />
                   {editingRelay[courtId] !== undefined && (
                     <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => handleSaveRelay(courtId)}>
                       Save
                     </Button>
                   )}
+                  {editingRelay[courtId] === undefined && editingChannel[courtId] !== undefined && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => handleSaveChannel(courtId)}>
+                      Save
+                    </Button>
+                  )}
                 </div>
+              )}
+              {lightsEnabled && (
+                <Input
+                  value={serverValue}
+                  onChange={e => setEditingServer(prev => ({ ...prev, [courtId]: e.target.value }))}
+                  onBlur={e => {
+                    const v = e.target.value.trim().replace(/\/$/, "");
+                    if (editingServer[courtId] !== undefined && v !== (c.relay_server ?? "https://shelly-44-eu.shelly.cloud")) {
+                      handleSaveServer(courtId, v);
+                    }
+                  }}
+                  placeholder="Shelly Server URI"
+                  aria-label="Shelly Server URI"
+                  className="h-7 text-[11px] font-mono"
+                />
               )}
               {lightsEnabled && c.relay_device_id && editingRelay[courtId] === undefined && (
                 <p className="text-[10px] text-muted-foreground">✅ Relay configured</p>

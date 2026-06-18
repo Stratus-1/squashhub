@@ -116,7 +116,7 @@ export default function HonestyBar() {
     queryKey: ["bar-visitor-sales", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("bar_visitor_sales")
-        .select("*, bar_items:bar_item_id(name, category)")
+        .select("*, bar_items:bar_item_id(name, category), recorder:logged_by(name)")
         .eq("club_id", clubId)
         .order("created_at", { ascending: false })
         .limit(100);
@@ -337,12 +337,13 @@ export default function HonestyBar() {
                   {visitorSales.map((sale: any) => (
                     <Card key={sale.id} className="p-2.5 flex items-center justify-between">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
+                      <p className="text-sm font-medium truncate">
                           {sale.quantity}× {(sale.bar_items as any)?.name || "Item"}
                           {sale.visitor_name ? ` · ${sale.visitor_name}` : ""}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
                           {format(new Date(sale.created_at), "dd MMM yyyy, HH:mm")}
+                          {sale.recorder?.name ? ` · ${sale.recorder.name}` : ""}
                           {sale.note ? ` · ${sale.note}` : ""}
                         </p>
                       </div>

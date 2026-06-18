@@ -25,13 +25,12 @@ const CATEGORY_ICONS: Record<string, string> = {
   drinks: "🥤", alcohol: "🍺",
 };
 
-type PaymentMethod = "cash" | "card" | "eft";
+type PaymentMethod = "card";
 
 const METHODS: { value: PaymentMethod; label: string; icon: typeof Banknote }[] = [
-  { value: "cash", label: "Cash", icon: Banknote },
   { value: "card", label: "Card", icon: CreditCard },
-  { value: "eft", label: "EFT", icon: Building2 },
 ];
+
 
 interface Props {
   open: boolean;

@@ -72,9 +72,10 @@ export default function HonestyBar() {
   const { club } = useClubContext();
   const { activeMember, isAdmin } = useMemberContext();
   const isSuperAdmin = useIsSuperAdmin();
-  const canSeeVisitors = isAdmin || isSuperAdmin;
+  const canSeeVisitors = true;
   const clubId = club?.id;
   const memberId = activeMember?.id;
+
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -205,10 +206,11 @@ export default function HonestyBar() {
               onClick={() => setVisitorSaleOpen(true)}
             >
               <Receipt className="w-3.5 h-3.5" />
-              Visitor sale (cash / card / EFT)
+              Visitor sale / Direct card machine sale
             </Button>
           </div>
         )}
+
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid" style={{ gridTemplateColumns: canSeeVisitors ? "1fr 1fr 1fr" : "1fr 1fr" }}>

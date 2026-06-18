@@ -95,9 +95,86 @@ async function setShellyRelay(params: {
 }
 
 /**
+ * Set the device's auto-off timer (the "Auto off" feature shown in the
+ * Shelly app). When the switch turns on it will automatically turn off
+ * after `delaySeconds`. Uses Gen2 Switch.SetConfig via the cloud RPC
+ * tunnel; falls back silently so the cron remains the ultimate fallback.
+ */
+async function setShellyAutoOff(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  channel?: number | string | null;
+  delaySeconds: number;
+}) {
+  const shellyServer = normalizeShellyServer(params.server);
+  const channel = Number(params.channel ?? 0);
+  const delay = Math.max(60, Math.round(params.delaySeconds));
+
+  try {
+    const resp = await fetch(
+      `${shellyServer}/v2/devices/api/rpc?auth_key=${encodeURIComponent(params.authKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: params.deviceId,
+          method: "Switch.SetConfig",
+          params: {
+            id: channel,
+            config: {
+              auto_off: true,
+              auto_off_delay: delay,
+            },
+          },
+        }),
+      }
+    );
+    const text = await resp.text();
+    if (!resp.ok) {
+      console.warn("Shelly Switch.SetConfig HTTP error:", resp.status, text);
+      return false;
+    }
+    let parsed: any = null;
+    try { parsed = JSON.parse(text); } catch { /* ignore */ }
+    if (parsed?.isok === false) {
+      console.warn("Shelly Switch.SetConfig rejected:", text);
+      return false;
+    }
+    console.log("Shelly auto-off set:", delay, "s — channel", channel);
+    return true;
+  } catch (e) {
+    console.warn("Shelly Switch.SetConfig threw:", (e as Error).message);
+    return false;
+  }
+}
+
+async function clearShellyAutoOff(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  channel?: number | string | null;
+}) {
+  return setShellyAutoOff({ ...params, delaySeconds: 0 });
+}
+
+function minutesFromMidnight(timeStr: string): number {
+  const h = parseInt(timeStr.slice(0, 2), 10);
+  const m = parseInt(timeStr.slice(3, 5), 10);
+  return h * 60 + m;
+}
+
+/** Remaining seconds from now until end_time in the configured timezone. */
+function bookingRemainingSeconds(dateStr: string, endTimeStr: string): number {
+  const { time: currentTimeStr } = localDateAndTime(new Date());
+  const nowMin = minutesFromMidnight(currentTimeStr);
+  const endMin = minutesFromMidnight(endTimeStr);
+  const remainingMin = endMin - nowMin;
+  return Math.max(1, remainingMin) * 60;
+}
+
+/**
  * Court Lights Edge Function
- *
- * Called on a schedule (every minute via pg_cron) OR by a user action (terminate / transfer).
  *
  * Scheduled mode:
  *   1. Turn ON lights for courts whose booking (with lights_requested) is starting now
@@ -211,6 +288,16 @@ Deno.serve(async (req) => {
           channel: (courtInfo as any).relay_channel,
           turn: "on",
         });
+        // Set the device's auto-off timer so the Shelly turns itself off
+        // at the end of the booking even if our cron misses the window.
+        const remainingSec = bookingRemainingSeconds(booking.date, booking.end_time);
+        await setShellyAutoOff({
+          server: (courtInfo as any).relay_server,
+          authKey,
+          deviceId: courtInfo.relay_device_id,
+          channel: (courtInfo as any).relay_channel,
+          delaySeconds: remainingSec,
+        });
       } catch (e: any) {
         console.error("Shelly turn_on failed:", e);
         return new Response(JSON.stringify({ error: e.message || "Shelly did not confirm the lights switched on" }), {
@@ -282,6 +369,8 @@ Deno.serve(async (req) => {
     if (court?.relay_device_id && authKey) {
       try {
         await setShellyRelay({ server: court.relay_server, authKey, deviceId: court.relay_device_id, channel: court.relay_channel, turn: "off" });
+        // Reset auto-off so a future manual toggle doesn't inherit an old delay.
+        await clearShellyAutoOff({ server: court.relay_server, authKey, deviceId: court.relay_device_id, channel: court.relay_channel });
       } catch (e) {
         console.error("Failed to turn off relay:", e);
       }
@@ -607,6 +696,18 @@ Deno.serve(async (req) => {
           let relayOk = true;
           if (hasRelay) {
             shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "on" });
+            // Use the device's auto-off timer so the Shelly turns itself off at
+            // the end of the booking even if our cron misses the turn-off window.
+            if (activeBooking) {
+              const remainingSec = bookingRemainingSeconds(activeBooking.date, activeBooking.end_time);
+              await setShellyAutoOff({
+                server: court.relay_server,
+                authKey: authKey!,
+                deviceId: deviceId!,
+                channel: (court as any).relay_channel,
+                delaySeconds: remainingSec,
+              });
+            }
           }
 
           if (activeBooking) {
@@ -633,6 +734,13 @@ Deno.serve(async (req) => {
           let relayOk = true;
           if (hasRelay) {
             shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "off" });
+            // Reset auto-off so a future manual toggle doesn't inherit an old delay.
+            await clearShellyAutoOff({
+              server: court.relay_server,
+              authKey: authKey!,
+              deviceId: deviceId!,
+              channel: (court as any).relay_channel,
+            });
           }
 
 

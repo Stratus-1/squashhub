@@ -6,6 +6,50 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-internal-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const DEFAULT_SHELLY_SERVER = "https://shelly-44-eu.shelly.cloud";
+const COURT_LIGHTS_TIMEZONE = Deno.env.get("COURT_LIGHTS_TIMEZONE") || "Africa/Johannesburg";
+
+function localDateAndTime(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: COURT_LIGHTS_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const value = (type: string) => parts.find((part) => part.type === type)?.value || "";
+  return {
+    date: `${value("year")}-${value("month")}-${value("day")}`,
+    time: `${value("hour")}:${value("minute")}`,
+  };
+}
+
+async function setShellyRelay(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  turn: "on" | "off";
+}) {
+  const shellyServer = (params.server || DEFAULT_SHELLY_SERVER).replace(/\/$/, "");
+  const response = await fetch(`${shellyServer}/device/relay/control`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      auth_key: params.authKey,
+      id: params.deviceId,
+      channel: "0",
+      turn: params.turn,
+    }),
+  });
+  const detail = await response.text();
+  if (!response.ok) {
+    throw new Error(`Shelly ${params.turn} failed (${response.status}): ${detail || response.statusText}`);
+  }
+  return detail;
+}
+
 /**
  * Court Lights Edge Function
  *

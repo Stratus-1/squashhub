@@ -74,6 +74,10 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
 
   const submit = async () => {
     if (count === 0) return;
+    if (!visitorName.trim()) {
+      toast.error("Please enter a member or visitor name");
+      return;
+    }
     setSubmitting(true);
     try {
       const rows = cartLines.map(l => ({

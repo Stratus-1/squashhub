@@ -390,6 +390,20 @@ export default function MyAccount() {
   const topUpMutation = useMutation({
     mutationFn: async ({ amount, method }: { amount: number; method: string }) => {
       if (!clubId || !clubMemberId) throw new Error("No club membership found for this account.");
+      const paidByTag = isPayingForOther ? ` (Paid by ${selfName})` : "";
+      if (isPayingForOther && (method === "eft" || method === "card")) {
+        // A delegate paying for someone else: still allowed via Card/EFT, but never
+        // top up the other person's wallet — the payment must settle outstanding
+        // fees only. Block bare top-ups when no fees are owing.
+        const owing = creditBalance < 0 ? Math.abs(creditBalance) : 0;
+        if (owing <= 0) {
+          throw new Error("No outstanding fees on this account. A delegate cannot top up another member's wallet.");
+        }
+        if (amount > owing) {
+          throw new Error(`As a delegate you can only pay up to the outstanding balance (R${owing.toFixed(2)}).`);
+        }
+      }
+
       if (method === "card") {
         // Route through Yoco gateway
         await startYocoCheckout({

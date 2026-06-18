@@ -732,6 +732,13 @@ Deno.serve(async (req) => {
           let relayOk = true;
           if (hasRelay) {
             shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "off" });
+            // Reset auto-off so a future manual toggle doesn't inherit an old delay.
+            await clearShellyAutoOff({
+              server: court.relay_server,
+              authKey: authKey!,
+              deviceId: deviceId!,
+              channel: (court as any).relay_channel,
+            });
           }
 
 

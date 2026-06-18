@@ -572,6 +572,10 @@ export default function BellsMarker() {
             side="a"
             isServer={server === "a"}
             serveSide={serveSide}
+            onBadgeClick={() => {
+              if (server === "a") setServeSide((s) => (s === "L" ? "R" : "L"));
+              else setServer("a");
+            }}
           />
           <Counter
             label={pairBName}
@@ -581,6 +585,10 @@ export default function BellsMarker() {
             side="b"
             isServer={server === "b"}
             serveSide={serveSide}
+            onBadgeClick={() => {
+              if (server === "b") setServeSide((s) => (s === "L" ? "R" : "L"));
+              else setServer("b");
+            }}
           />
         </div>
 

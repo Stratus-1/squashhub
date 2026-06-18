@@ -33,16 +33,18 @@ export function DesktopShell({
   const skipBg = pathname.startsWith("/bookings");
   const isHome = pathname === "/" || pathname === "/dashboard";
 
-  if (!enabled || isMobile) {
+  if (!enabled) {
     return <>{children}</>;
   }
 
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
-        <AppSidebar />
+        {/* Sidebar is hidden on mobile so rotation between portrait/landscape
+            doesn't remount the page tree and lose in-page state (active tabs etc.) */}
+        {!isMobile && <AppSidebar />}
         <div className="flex-1 flex flex-col min-w-0 relative isolate">
-          {!skipBg && (
+          {!skipBg && !isMobile && (
             <>
               {/* Layer 1: photo background — confined to main content panel */}
               <div
@@ -69,25 +71,27 @@ export function DesktopShell({
 
             </>
           )}
-          <header className="relative z-10 h-10 flex items-center gap-1 border-b border-border/40 bg-background/40 backdrop-blur sticky top-0">
-            <SidebarTrigger className="ml-2" aria-label="Toggle menu" />
-            {!isHome && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 gap-1.5 text-xs"
-                onClick={() => navigate("/")}
-                aria-label="Home"
-              >
-                <Home className="w-4 h-4" />
-                <span className="hidden sm:inline">Home</span>
-              </Button>
-            )}
-            <div className="ml-auto mr-2 flex items-center gap-1">
-              <SuperAdminMenu />
-            </div>
-          </header>
+          {!isMobile && (
+            <header className="relative z-10 h-10 flex items-center gap-1 border-b border-border/40 bg-background/40 backdrop-blur sticky top-0">
+              <SidebarTrigger className="ml-2" aria-label="Toggle menu" />
+              {!isHome && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 gap-1.5 text-xs"
+                  onClick={() => navigate("/")}
+                  aria-label="Home"
+                >
+                  <Home className="w-4 h-4" />
+                  <span className="hidden sm:inline">Home</span>
+                </Button>
+              )}
+              <div className="ml-auto mr-2 flex items-center gap-1">
+                <SuperAdminMenu />
+              </div>
+            </header>
+          )}
           <main className="relative z-10 flex-1 min-w-0">{children}</main>
         </div>
       </div>

@@ -167,6 +167,12 @@ function minutesFromMidnight(timeStr: string): number {
 /** Remaining seconds from now until end_time in the configured timezone. */
 function bookingRemainingSeconds(dateStr: string, endTimeStr: string): number {
   const { time: currentTimeStr } = localDateAndTime(new Date());
+  const nowMin = minutesFromMidnight(currentTimeStr);
+  const endMin = minutesFromMidnight(endTimeStr);
+  const remainingMin = endMin - nowMin;
+  return Math.max(1, remainingMin) * 60;
+}
+
 /**
  * Court Lights Edge Function
  *

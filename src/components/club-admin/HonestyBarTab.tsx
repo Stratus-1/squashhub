@@ -164,6 +164,30 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
             )}
           </Card>
 
+          <Card className="p-6 space-y-4">
+            <h3 className="font-semibold">Recent Visitor / Direct Card Machine Sales</h3>
+            <p className="text-sm text-muted-foreground">Sales paid directly via the card machine at the club (not charged to a member account).</p>
+
+            {recentVisitorSales.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No visitor / direct card sales yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {recentVisitorSales.slice(0, 20).map((s: any) => (
+                  <div key={s.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{s.visitor_name || "Visitor"}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {s.quantity}× {s.bar_items?.name || "Item"} · {format(new Date(s.created_at), "dd MMM HH:mm")}
+                        {s.recorder?.name ? ` · ${s.recorder.name}` : ""}
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">R{Number(s.total).toFixed(2)}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
           <AdminAddCharge clubId={clubId} items={items} members={members} />
         </>
       )}

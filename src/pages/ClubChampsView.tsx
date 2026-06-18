@@ -797,6 +797,8 @@ export default function ClubChampsView() {
                   const partnerName = r.partner ? getPlayerName(r.partner) : null;
                   const isMe = r.club_member_id === myMemberId || r.partner_member_id === myMemberId;
                   const myInvite = isMe && kind === "invited";
+                  const e = entryFor(r.club_member_id);
+                  const posLabel = e ? `L${e.group_number}·#${(e.order_index ?? 0) + 1}` : null;
                   return (
                     <li
                       key={r.id}
@@ -809,6 +811,9 @@ export default function ClubChampsView() {
                         myInvite && "cursor-pointer hover:bg-primary/10",
                       )}
                     >
+                      {posLabel && (
+                        <Badge variant="outline" className="text-[9px] font-mono shrink-0">{posLabel}</Badge>
+                      )}
                       <span className="font-medium flex-1 truncate">
                         {name}
                         {partnerName && <span className="text-muted-foreground"> & {partnerName}</span>}

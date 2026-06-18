@@ -87,6 +87,19 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     },
   });
 
+  const { data: recentVisitorSales = [] } = useQuery({
+    queryKey: ["bar-visitor-sales-recent", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("bar_visitor_sales")
+        .select("*, bar_items:bar_item_id(name, category), recorder:logged_by(name)")
+        .eq("club_id", clubId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
   const toggleBarEnabled = async () => {
     try {
       await updateClub.mutateAsync({ id: club.id, honesty_bar_enabled: !club.honesty_bar_enabled });
@@ -145,6 +158,30 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                       </p>
                     </div>
                     <Badge variant="secondary" className="text-xs">R{e.total.toFixed(2)}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-6 space-y-4">
+            <h3 className="font-semibold">Recent Visitor / Direct Card Machine Sales</h3>
+            <p className="text-sm text-muted-foreground">Sales paid directly via the card machine at the club (not charged to a member account).</p>
+
+            {recentVisitorSales.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No visitor / direct card sales yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {recentVisitorSales.slice(0, 20).map((s: any) => (
+                  <div key={s.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{s.visitor_name || "Visitor"}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {s.quantity}× {s.bar_items?.name || "Item"} · {format(new Date(s.created_at), "dd MMM HH:mm")}
+                        {s.recorder?.name ? ` · ${s.recorder.name}` : ""}
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">R{Number(s.total).toFixed(2)}</Badge>
                   </div>
                 ))}
               </div>

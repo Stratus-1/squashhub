@@ -116,7 +116,7 @@ export default function HonestyBar() {
     queryKey: ["bar-visitor-sales", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("bar_visitor_sales")
-        .select("*, bar_items:bar_item_id(name, category)")
+        .select("*, bar_items:bar_item_id(name, category), recorder:logged_by(name)")
         .eq("club_id", clubId)
         .order("created_at", { ascending: false })
         .limit(100);

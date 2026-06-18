@@ -421,6 +421,7 @@ export default function BellsMarker() {
     side,
     isServer,
     serveSide,
+    onBadgeClick,
   }: {
     label: string;
     value: number;
@@ -429,6 +430,7 @@ export default function BellsMarker() {
     side: "a" | "b";
     isServer: boolean;
     serveSide: "L" | "R";
+    onBadgeClick: () => void;
   }) => (
     <div
       className={cn(
@@ -437,13 +439,22 @@ export default function BellsMarker() {
       )}
     >
       <div className="flex items-center gap-1.5 max-w-full">
-        {isServer && serveSide === "L" && (
-          <span className="text-base font-bold px-2 py-0.5 rounded bg-accent text-accent-foreground">L</span>
-        )}
         <p className="text-sm font-medium text-center line-clamp-2 min-h-[2.5rem]">{label}</p>
-        {isServer && serveSide === "R" && (
-          <span className="text-base font-bold px-2 py-0.5 rounded bg-accent text-accent-foreground">R</span>
-        )}
+        <button
+          type="button"
+          onClick={onBadgeClick}
+          disabled={finished}
+          className={cn(
+            "text-base font-bold px-2 py-0.5 rounded transition active:scale-95 min-w-[2rem]",
+            isServer
+              ? "bg-accent text-accent-foreground"
+              : "bg-muted text-muted-foreground border border-dashed",
+          )}
+          aria-label={isServer ? "Toggle serve side" : "Set as server"}
+          title={isServer ? "Tap to switch L/R" : "Tap to make this pair the server"}
+        >
+          {isServer ? serveSide : "S"}
+        </button>
       </div>
       <button
         onClick={onPlus}
@@ -561,6 +572,10 @@ export default function BellsMarker() {
             side="a"
             isServer={server === "a"}
             serveSide={serveSide}
+            onBadgeClick={() => {
+              if (server === "a") setServeSide((s) => (s === "L" ? "R" : "L"));
+              else setServer("a");
+            }}
           />
           <Counter
             label={pairBName}
@@ -570,6 +585,10 @@ export default function BellsMarker() {
             side="b"
             isServer={server === "b"}
             serveSide={serveSide}
+            onBadgeClick={() => {
+              if (server === "b") setServeSide((s) => (s === "L" ? "R" : "L"));
+              else setServer("b");
+            }}
           />
         </div>
 

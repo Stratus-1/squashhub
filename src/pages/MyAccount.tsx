@@ -106,6 +106,9 @@ export default function MyAccount() {
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
+  useEffect(() => {
+    if (isPayingForOther && payMethod === "credit") setPayMethod("card");
+  }, [isPayingForOther, payMethod]);
   const [payMode, setPayMode] = useState<"full" | "partial">("full");
   const [partialAmount, setPartialAmount] = useState("");
 

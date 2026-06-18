@@ -34,26 +34,71 @@ export default function MyAccount() {
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
   const { data: clubSecrets } = useClubSecrets(club?.id);
-  const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({
-    queryKey: ["account-club-member", club?.id, activeMember?.id],
+
+  // SELF identity (the logged-in user's active member). Used for self-only widgets
+  // (GoBook creds, Shared-Access management, "Paid by …" attribution).
+  const selfMemberId = activeMember?.id || null;
+  const selfName = activeMember?.name || "Me";
+
+  // Delegations the user has accepted — accounts they can view & pay for.
+  const { data: managedDelegations } = useQuery({
+    queryKey: ["managed-delegations", selfMemberId],
     queryFn: async () => {
+      const { data, error } = await fromExt("member_account_delegations")
+        .select("id, grantor_member_id, club_id, status")
+        .eq("delegate_member_id", selfMemberId!)
+        .eq("status", "active");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selfMemberId,
+  });
+
+  const [viewAsMemberId, setViewAsMemberId] = useState<string | null>(null);
+  const isPayingForOther = !!viewAsMemberId && viewAsMemberId !== selfMemberId;
+
+  // Names for the dropdown
+  const managedIds = (managedDelegations || []).map((d: any) => d.grantor_member_id);
+  const { data: managedMembers } = useQuery({
+    queryKey: ["managed-members", managedIds.sort().join(",")],
+    queryFn: async () => {
+      if (managedIds.length === 0) return [] as any[];
+      const { data, error } = await fromExt("club_members")
+        .select("id, name, club_member_number, club_id")
+        .in("id", managedIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: managedIds.length > 0,
+  });
+
+  const viewedMember = isPayingForOther
+    ? (managedMembers || []).find((m: any) => m.id === viewAsMemberId)
+    : null;
+
+  const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({
+    queryKey: ["account-club-member", club?.id, viewAsMemberId || activeMember?.id],
+    queryFn: async () => {
+      const targetId = viewAsMemberId || activeMember!.id;
+      const targetClubId = (viewedMember as any)?.club_id || club.id;
       const { data, error } = await fromExt("club_members")
         .select("*, fee_category:fee_category_id(id, name, annual_fee)")
-        .eq("id", activeMember!.id)
-        .eq("club_id", club.id)
+        .eq("id", targetId)
+        .eq("club_id", targetClubId)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!club?.id && !!activeMember?.id,
+    enabled: !!club?.id && !!(viewAsMemberId || activeMember?.id),
   });
 
-  const clubMemberId = activeMember?.id || (activeClubMember as any)?.id || null;
-  const clubId = club?.id || (activeClubMember as any)?.club_id || null;
+  const clubMemberId = viewAsMemberId || activeMember?.id || (activeClubMember as any)?.id || null;
+  const clubId = (viewedMember as any)?.club_id || club?.id || (activeClubMember as any)?.club_id || null;
   const feeCategoryId = (activeClubMember as any)?.fee_category_id;
   const playsLeague = !!(activeClubMember as any)?.plays_league;
   const memberNo = (activeClubMember as any)?.club_member_number || activeMember?.club_member_number || "N/A";
   const accountName = (activeClubMember as any)?.name || activeMember?.name || "Unknown member";
+
 
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("100");

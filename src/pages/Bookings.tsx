@@ -1232,11 +1232,11 @@ export default function Bookings() {
                     ? "Please wait while SquashHub checks your saved GoBook login."
                     : hasGobookCreds
                     ? "Book courts here and we'll push them to GoBook under your account. Bookings made on GoBook also appear in the grid below."
-                    : "Go to My Account → GoBook and enter your GoBook login. Until then, bookings made here won't be pushed to GoBook."}
+                    : "Go to Profile → GoBook and enter your GoBook login. Until then, bookings made here won't be pushed to GoBook."}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {!gobookCredInfoLoading && !hasGobookCreds && (
-                    <Button size="sm" onClick={() => navigate("/my-account")}>
+                    <Button size="sm" onClick={() => navigate("/profile")}>
                       Add GoBook details
                     </Button>
                   )}
@@ -1303,11 +1303,11 @@ export default function Bookings() {
                 <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
                   The last sync attempt with your GoBook credentials failed. Bookings in
                   the grid may be out of date until you re-enter your password under
-                  My Account → GoBook. No GoBook bookings will be cancelled while the
+                  Profile → GoBook. No GoBook bookings will be cancelled while the
                   login is invalid.
                 </p>
                 <div className="mt-2">
-                  <Button size="sm" variant="destructive" onClick={() => navigate("/my-account")}>
+                  <Button size="sm" variant="destructive" onClick={() => navigate("/profile")}>
                     Fix GoBook login
                   </Button>
                 </div>
@@ -1856,7 +1856,7 @@ export default function Bookings() {
                         const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();
                         const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
                         const disabledReason = !hasGobookCreds
-                          ? "Save your GoBook login under My Account first."
+                          ? "Save your GoBook login under Profile first."
                           : !ownsBooking
                             ? "Only the GoBook account owner of this booking can cancel it. Cancel it directly on gobook.co.za if it's not yours."
                             : withinHour

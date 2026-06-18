@@ -1232,11 +1232,11 @@ export default function Bookings() {
                     ? "Please wait while SquashHub checks your saved GoBook login."
                     : hasGobookCreds
                     ? "Book courts here and we'll push them to GoBook under your account. Bookings made on GoBook also appear in the grid below."
-                    : "Go to My Account → GoBook and enter your GoBook login. Until then, bookings made here won't be pushed to GoBook."}
+                    : "Go to Profile → GoBook and enter your GoBook login. Until then, bookings made here won't be pushed to GoBook."}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {!gobookCredInfoLoading && !hasGobookCreds && (
-                    <Button size="sm" onClick={() => navigate("/my-account")}>
+                    <Button size="sm" onClick={() => navigate("/profile")}>
                       Add GoBook details
                     </Button>
                   )}

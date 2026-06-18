@@ -423,8 +423,14 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                   <Input
                     value={relayValue}
                     onChange={e => setEditingRelay(prev => ({ ...prev, [courtId]: e.target.value }))}
-                    placeholder={relayDeviceType === "shelly" ? "Shelly Device ID" : "Relay Device ID"}
-                    className="flex-1 text-xs h-7"
+                    onBlur={e => {
+                      const v = e.target.value.trim();
+                      if (editingRelay[courtId] !== undefined && v !== (c.relay_device_id ?? "")) {
+                        handleSaveRelay(courtId, v);
+                      }
+                    }}
+                    placeholder={relayDeviceType === "shelly" ? "Shelly Device ID (e.g. e8db84xxxxxx)" : "Relay Device ID"}
+                    className="flex-1 text-xs h-7 font-mono"
                   />
                   {editingRelay[courtId] !== undefined && (
                     <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => handleSaveRelay(courtId)}>

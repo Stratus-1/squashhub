@@ -226,6 +226,19 @@ async function shellyScheduleDelete(opts: {
   const server = normalizeShellyServer(opts.server);
 
   const attempts: Array<{ url: string; init: RequestInit }> = [
+    // Shelly Cloud — schedule_actions/delete (matches schedule_actions/create)
+    {
+      url: `${server}/device/schedule_actions/delete`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          auth_key: opts.authKey,
+          id: opts.deviceId,
+          schedule_action_id: opts.scheduleId,
+        }),
+      },
+    },
     // Gen2 RPC tunnel
     {
       url: `${server}/v2/devices/api/rpc?auth_key=${encodeURIComponent(opts.authKey)}`,

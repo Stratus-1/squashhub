@@ -107,41 +107,8 @@ async function shellyScheduleCreate(args: ShellyScheduleArgs): Promise<string | 
     ],
   };
 
-  // Attempt 1: Gen2 cloud RPC tunnel (JSON).
-  const attempts: Array<{ url: string; init: RequestInit; pick: (j: any) => any }> = [
-    {
-      url: `${server}/v2/devices/api/rpc?auth_key=${encodeURIComponent(args.authKey)}`,
-      init: {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: args.deviceId,
-          method: "Schedule.Create",
-          params: gen2Params,
-        }),
-      },
-      pick: (j) => j?.data?.id ?? j?.result?.id ?? j?.id,
-    },
-    // Attempt 2: legacy Gen1 schedule create (kept as a fallback).
-    {
-      url: `${server}/device/schedule/create`,
-      init: {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          auth_key: args.authKey,
-          id: args.deviceId,
-          channel: String(channel),
-          turn: args.turn,
-          timestamp: String(ts),
-          enabled: "true",
-          repeat: "0",
-          name: args.name || `booking-${args.turn}`,
-        }),
-      },
-      pick: (j) => j?.data?.id ?? j?.data?.sid ?? j?.id ?? j?.sid,
-    },
-  ];
+
+
 
   for (const attempt of attempts) {
     try {

@@ -176,6 +176,10 @@
     animation: live-slow-pulse 5s ease-in-out infinite;
   }
 
+  .live-slow-pulse {
+    animation: live-slow-pulse 5s ease-in-out infinite;
+  }
+
   .glass-card {
     @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm;
   }

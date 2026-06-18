@@ -635,12 +635,6 @@ export default function MyAccount() {
         </div>
       )}
 
-      {/* GoBook integration — CSIR members only, self only */}
-      {!isPayingForOther && selfMemberId && /csir/i.test((club as any)?.name || "") && (
-        <div className="px-4 mt-3">
-          <GoBookCredentialsCard clubMemberId={selfMemberId} />
-        </div>
-      )}
 
 
       {/* Credit Balance Card */}

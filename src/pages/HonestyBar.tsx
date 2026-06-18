@@ -199,19 +199,23 @@ export default function HonestyBar() {
 
       <div className="px-4 space-y-4 mt-2">
         {canSeeVisitors && (
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() => setVisitorSaleOpen(true)}
-            >
-              <Receipt className="w-3.5 h-3.5" />
-              Visitor sale / Direct card machine sale
-            </Button>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="w-full h-12 gap-2 text-sm font-semibold shadow-md"
+                  onClick={() => setVisitorSaleOpen(true)}
+                >
+                  <CreditCard className="w-5 h-5" />
+                  Record a visitor sale / Direct card machine sale
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[260px] text-center">
+                Any member or visitor sales swiped with a card can be recorded here
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
-
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid" style={{ gridTemplateColumns: canSeeVisitors ? "1fr 1fr 1fr" : "1fr 1fr" }}>

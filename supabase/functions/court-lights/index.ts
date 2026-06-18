@@ -158,12 +158,20 @@ Deno.serve(async (req) => {
         });
       }
 
-      const shellyResult = await setShellyRelay({
-        server: (courtInfo as any).relay_server,
-        authKey,
-        deviceId: courtInfo.relay_device_id,
-        turn: "on",
-      });
+      let shellyResult = "";
+      try {
+        shellyResult = await setShellyRelay({
+          server: (courtInfo as any).relay_server,
+          authKey,
+          deviceId: courtInfo.relay_device_id,
+          turn: "on",
+        });
+      } catch (e: any) {
+        console.error("Shelly turn_on failed:", e);
+        return new Response(JSON.stringify({ error: e.message || "Shelly did not confirm the lights switched on" }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       // Mark lights_requested
       await supabase.from("bookings").update({ lights_requested: true }).eq("id", bookingId);

@@ -578,6 +578,8 @@ export type Database = {
           lights_requested: boolean
           opponent_id: string | null
           opponent_member_id: string | null
+          shelly_schedule_off_id: string | null
+          shelly_schedule_on_id: string | null
           source: string
           start_time: string
           status: string
@@ -600,6 +602,8 @@ export type Database = {
           lights_requested?: boolean
           opponent_id?: string | null
           opponent_member_id?: string | null
+          shelly_schedule_off_id?: string | null
+          shelly_schedule_on_id?: string | null
           source?: string
           start_time: string
           status?: string
@@ -622,6 +626,8 @@ export type Database = {
           lights_requested?: boolean
           opponent_id?: string | null
           opponent_member_id?: string | null
+          shelly_schedule_off_id?: string | null
+          shelly_schedule_on_id?: string | null
           source?: string
           start_time?: string
           status?: string

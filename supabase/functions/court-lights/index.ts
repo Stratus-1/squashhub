@@ -34,29 +34,54 @@ async function setShellyRelay(params: {
   turn: "on" | "off";
 }) {
   const shellyServer = (params.server || DEFAULT_SHELLY_SERVER).replace(/\/$/, "");
-  const response = await fetch(`${shellyServer}/v2/devices/api/set/switch?auth_key=${encodeURIComponent(params.authKey)}`, {
+  const channel = Number(params.channel ?? 0);
+  const v2Response = await fetch(`${shellyServer}/v2/devices/api/set/switch?auth_key=${encodeURIComponent(params.authKey)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       id: params.deviceId,
-      channel: Number(params.channel ?? 0),
+      channel,
       on: params.turn === "on",
     }),
   });
-  const detail = await response.text();
-  if (!response.ok) {
-    throw new Error(`Shelly ${params.turn} failed (${response.status}): ${detail || response.statusText}`);
+  const v2Detail = await v2Response.text();
+  if (v2Response.ok) {
+    try {
+      const parsed = JSON.parse(v2Detail);
+      if (parsed?.isok === false) {
+        const errorDetail = typeof parsed.errors === "string" ? parsed.errors : JSON.stringify(parsed.errors ?? parsed);
+        throw new Error(`Shelly ${params.turn} rejected the command: ${errorDetail}`);
+      }
+    } catch (e: any) {
+      if (e?.message?.startsWith("Shelly ")) throw e;
+    }
+    return v2Detail;
+  }
+
+  const legacyResponse = await fetch(`${shellyServer}/device/relay/control`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      auth_key: params.authKey,
+      id: params.deviceId,
+      channel: String(channel),
+      turn: params.turn,
+    }),
+  });
+  const legacyDetail = await legacyResponse.text();
+  if (!legacyResponse.ok) {
+    throw new Error(`Shelly ${params.turn} failed. v2: (${v2Response.status}) ${v2Detail || v2Response.statusText}; legacy: (${legacyResponse.status}) ${legacyDetail || legacyResponse.statusText}`);
   }
   try {
-    const parsed = JSON.parse(detail);
+    const parsed = JSON.parse(legacyDetail);
     if (parsed?.isok === false) {
       const errorDetail = typeof parsed.errors === "string" ? parsed.errors : JSON.stringify(parsed.errors ?? parsed);
-      throw new Error(`Shelly ${params.turn} rejected the command: ${errorDetail}`);
+      throw new Error(`Shelly ${params.turn} rejected the command. v2: (${v2Response.status}) ${v2Detail || v2Response.statusText}; legacy: ${errorDetail}`);
     }
   } catch (e: any) {
     if (e?.message?.startsWith("Shelly ")) throw e;
   }
-  return detail;
+  return legacyDetail;
 }
 
 /**

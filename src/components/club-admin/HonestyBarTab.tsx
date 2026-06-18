@@ -101,6 +101,19 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     },
   });
 
+  const { data: stockPurchases = [] } = useQuery({
+    queryKey: ["bar-stock-purchases", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("bar_stock_purchases")
+        .select("*, bar_items:bar_item_id(name, category)")
+        .eq("club_id", clubId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
   const toggleBarEnabled = async () => {
     try {
       await updateClub.mutateAsync({ id: club.id, honesty_bar_enabled: !club.honesty_bar_enabled });

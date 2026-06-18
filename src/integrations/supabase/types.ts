@@ -1251,10 +1251,14 @@ export type Database = {
         Row: {
           champ_id: string
           club_member_id: string
+          confirmation_source: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string
           fee_paid_cents: number
           fee_payment_id: string | null
           id: string
+          invited_at: string | null
           invited_by_admin: boolean
           paid_at: string | null
           partner_confirmed: boolean
@@ -1266,10 +1270,14 @@ export type Database = {
         Insert: {
           champ_id: string
           club_member_id: string
+          confirmation_source?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string
           fee_paid_cents?: number
           fee_payment_id?: string | null
           id?: string
+          invited_at?: string | null
           invited_by_admin?: boolean
           paid_at?: string | null
           partner_confirmed?: boolean
@@ -1281,10 +1289,14 @@ export type Database = {
         Update: {
           champ_id?: string
           club_member_id?: string
+          confirmation_source?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string
           fee_paid_cents?: number
           fee_payment_id?: string | null
           id?: string
+          invited_at?: string | null
           invited_by_admin?: boolean
           paid_at?: string | null
           partner_confirmed?: boolean

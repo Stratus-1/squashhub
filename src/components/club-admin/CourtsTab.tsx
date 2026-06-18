@@ -486,6 +486,21 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                   )}
                 </div>
               )}
+              {lightsEnabled && (
+                <Input
+                  value={serverValue}
+                  onChange={e => setEditingServer(prev => ({ ...prev, [courtId]: e.target.value }))}
+                  onBlur={e => {
+                    const v = e.target.value.trim().replace(/\/$/, "");
+                    if (editingServer[courtId] !== undefined && v !== (c.relay_server ?? "https://shelly-44-eu.shelly.cloud")) {
+                      handleSaveServer(courtId, v);
+                    }
+                  }}
+                  placeholder="Shelly Server URI"
+                  aria-label="Shelly Server URI"
+                  className="h-7 text-[11px] font-mono"
+                />
+              )}
               {lightsEnabled && c.relay_device_id && editingRelay[courtId] === undefined && (
                 <p className="text-[10px] text-muted-foreground">✅ Relay configured</p>
               )}

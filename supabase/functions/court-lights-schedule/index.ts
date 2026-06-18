@@ -107,6 +107,82 @@ async function shellyScheduleCreate(args: ShellyScheduleArgs): Promise<string | 
     ],
   };
 
+  // Wall-clock components in the configured tz (used by form-based endpoints).
+  const hh = String(get("hour")).padStart(2, "0");
+  const mm = String(get("minute")).padStart(2, "0");
+  // Shelly Cloud schedule_actions/create expects weekdays as 7-char bitmask
+  // "0000000" (Mon..Sun). For a one-shot we mark today's weekday only.
+  const jsDow = new Date(ts * 1000).getUTCDay(); // 0=Sun..6=Sat
+  const monIdx = (jsDow + 6) % 7;                // 0=Mon..6=Sun
+  const weekdays = "0000000".split("").map((_, i) => i === monIdx ? "1" : "0").join("");
+
+  const attempts: Array<{ url: string; init: RequestInit; pick: (j: any) => any }> = [
+    // 1) Gen2 cloud RPC tunnel — Schedule.Create
+    {
+      url: `${server}/v2/devices/api/rpc?auth_key=${encodeURIComponent(args.authKey)}`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: args.deviceId,
+          method: "Schedule.Create",
+          params: gen2Params,
+        }),
+      },
+      pick: (j) => j?.data?.id ?? j?.result?.id ?? j?.id,
+    },
+    // 2) Alternative Gen2 RPC path (some firmware exposes /device/rpc only)
+    {
+      url: `${server}/device/rpc?auth_key=${encodeURIComponent(args.authKey)}`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: args.deviceId,
+          method: "Schedule.Create",
+          params: gen2Params,
+        }),
+      },
+      pick: (j) => j?.data?.id ?? j?.result?.id ?? j?.id,
+    },
+    // 3) Shelly Cloud "schedule_actions" REST (Plus/Pro relay) — form-encoded
+    {
+      url: `${server}/device/relay/schedule_actions/create`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          auth_key: args.authKey,
+          id: args.deviceId,
+          channel: String(channel),
+          name: args.name || `booking-${args.turn}`,
+          hh, mm, weekdays,
+          turn: args.turn,
+          enabled: "true",
+        }),
+      },
+      pick: (j) => j?.data?.id ?? j?.data?.sid ?? j?.id ?? j?.sid,
+    },
+    // 4) Legacy Gen1 schedule create
+    {
+      url: `${server}/device/schedule/create`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          auth_key: args.authKey,
+          id: args.deviceId,
+          channel: String(channel),
+          turn: args.turn,
+          timestamp: String(ts),
+          enabled: "true",
+          repeat: "0",
+          name: args.name || `booking-${args.turn}`,
+        }),
+      },
+      pick: (j) => j?.data?.id ?? j?.data?.sid ?? j?.id ?? j?.sid,
+    },
+  ];
 
 
 

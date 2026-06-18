@@ -24,6 +24,15 @@ const RELAY_DEVICES = [
 
 type RelayDevice = typeof RELAY_DEVICES[number]["value"];
 
+function normalizeShellyServerInput(value: string) {
+  const raw = value.trim();
+  const urlMatch = raw.match(/https?:\/\/[^\s]+/i);
+  const extracted = (urlMatch?.[0] || raw)
+    .replace(/^server\s*:\s*/i, "")
+    .replace(/\/+$/, "");
+  return /^https?:\/\//i.test(extracted) ? extracted : "";
+}
+
 export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
   const { data: secrets } = useClubSecrets(clubId);
@@ -412,7 +421,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   };
 
   const handleSaveServer = async (courtId: number, valueOverride?: string) => {
-    const server = (valueOverride ?? editingServer[courtId] ?? "").trim().replace(/\/$/, "");
+    const server = normalizeShellyServerInput(valueOverride ?? editingServer[courtId] ?? "");
     const { error } = await fromExt("courts").update({ relay_server: server || null }).eq("id", courtId);
     if (error) toast.error(error.message);
     else {
@@ -491,7 +500,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                   value={serverValue}
                   onChange={e => setEditingServer(prev => ({ ...prev, [courtId]: e.target.value }))}
                   onBlur={e => {
-                    const v = e.target.value.trim().replace(/\/$/, "");
+                    const v = normalizeShellyServerInput(e.target.value);
                     if (editingServer[courtId] !== undefined && v !== (c.relay_server ?? "https://shelly-44-eu.shelly.cloud")) {
                       handleSaveServer(courtId, v);
                     }

@@ -64,6 +64,7 @@ export default function BellsMarker() {
   const [running, setRunning] = useState(false);
   const [finished, setFinished] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [server, setServer] = useState<"a" | "b">("a");
   const [serveSide, setServeSide] = useState<"L" | "R">("R");
   const tickRef = useRef<number | null>(null);
   const liveSyncRef = useRef<number | null>(null);
@@ -245,6 +246,14 @@ export default function BellsMarker() {
     if (!running && remaining > 0) startTimer();
     if (side === "a") setPointsA((v) => v + 1);
     else setPointsB((v) => v + 1);
+
+    // Serve switching logic (same as standard match marker)
+    if (side === server) {
+      setServeSide((s) => (s === "R" ? "L" : "R"));
+    } else {
+      setServer(side);
+      setServeSide("R");
+    }
   };
 
   const ringBellNow = () => {

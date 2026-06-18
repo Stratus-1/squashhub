@@ -227,18 +227,8 @@ Deno.serve(async (req) => {
 
     // Turn off lights on current court
     if (court?.relay_device_id && authKey) {
-      const shellyServer = court.relay_server || "https://shelly-44-eu.shelly.cloud";
       try {
-        await fetch(`${shellyServer}/device/relay/control`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            id: court.relay_device_id,
-            auth_key: authKey,
-            channel: "0",
-            turn: "off",
-          }),
-        });
+        await setShellyRelay({ server: court.relay_server, authKey, deviceId: court.relay_device_id, turn: "off" });
       } catch (e) {
         console.error("Failed to turn off relay:", e);
       }
@@ -397,21 +387,7 @@ Deno.serve(async (req) => {
 
       // Turn on lights on target court
       if (targetCourt.relay_device_id && targetAuthKey) {
-        const shellyServer = targetCourt.relay_server || "https://shelly-44-eu.shelly.cloud";
-        try {
-          await fetch(`${shellyServer}/device/relay/control`, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              id: targetCourt.relay_device_id,
-              auth_key: targetAuthKey,
-              channel: "0",
-              turn: "on",
-            }),
-          });
-        } catch (e) {
-          console.error("Failed to turn on target relay:", e);
-        }
+        await setShellyRelay({ server: targetCourt.relay_server, authKey: targetAuthKey, deviceId: targetCourt.relay_device_id, turn: "on" });
       }
 
       // Update booking to new court

@@ -588,10 +588,13 @@ export default function MyAccount() {
         </Card>
       </motion.div>
 
+      <SharedAccessCard clubMemberId={clubMemberId} clubId={clubId} memberName={accountName} />
+
       {/* Outstanding Fees & Paid sections removed — the wallet above shows the single
           combined net balance (all fees + bar tab − payments) and the Account Statement
           below itemises every line. Showing a separate "fees only" tile was confusing
           when a bar-tab balance was still owing. */}
+
 
 
       {/* Account Statement */}

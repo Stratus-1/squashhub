@@ -624,7 +624,7 @@ export default function ClubChampsView() {
               .is("invited_at", null);
             if (error) { toast.error(error.message); return; }
             toast.success(`Marked ${ids.length} as invited`);
-            queryClient.invalidateQueries({ queryKey: ["club-champ-registrations-all", champId] });
+            qc.invalidateQueries({ queryKey: ["club-champ-registrations-all", champId] });
           };
           const toggleConfirmed = async (r: any) => {
             const patch: any = r.confirmed_at
@@ -632,7 +632,7 @@ export default function ClubChampsView() {
               : { confirmed_at: new Date().toISOString(), confirmation_source: "admin" };
             const { error } = await fromExt("club_champs_registrations").update(patch).eq("id", r.id);
             if (error) { toast.error(error.message); return; }
-            queryClient.invalidateQueries({ queryKey: ["club-champ-registrations-all", champId] });
+            qc.invalidateQueries({ queryKey: ["club-champ-registrations-all", champId] });
           };
 
           const Row = ({ r, showInvite }: { r: any; showInvite?: boolean }) => {

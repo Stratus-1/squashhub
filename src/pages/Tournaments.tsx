@@ -187,7 +187,7 @@ export default function Tournaments() {
           {isLive(m) && (
             <Badge
               variant="destructive"
-              className="text-[10px] shrink-0 text-white gap-1 animate-pulse transition-none hover:translate-y-0"
+              className="text-[10px] shrink-0 text-white gap-1 animate-[pulse_3s_cubic-bezier(0.4,0,0.6,1)_infinite] transition-none hover:translate-y-0"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-white" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
             </Badge>

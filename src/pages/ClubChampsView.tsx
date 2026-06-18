@@ -1203,17 +1203,14 @@ export default function ClubChampsView() {
                         const hasPoints = (m.side_a_points ?? 0) > 0 || (m.side_b_points ?? 0) > 0;
                         const isLive = !completed && (bellActive || paused || (m.status === "in_progress" && hasPoints));
                         if (completed) return null;
-                        return (
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              "text-[10px]",
-                              isLive && "bg-red-500 text-white animate-pulse",
-                            )}
-                          >
-                            {isLive ? `LIVE ${m.side_a_points ?? 0}-${m.side_b_points ?? 0}` : m.status}
-                          </Badge>
-                        );
+                        if (isLive) {
+                          return (
+                            <span className="live-indicator text-[10px] px-2.5 py-1">
+                              LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
+                            </span>
+                          );
+                        }
+                        return <Badge variant="secondary" className="text-[10px]">{m.status}</Badge>;
                       })()}
 
                       {canManage && !completed && m.scheduled_date && m.scheduled_time && (

@@ -555,7 +555,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 animate-pulse whitespace-normal text-left h-auto py-1.5 text-xs leading-tight"
+                                className="border-destructive text-destructive hover:bg-destructive/10 live-slow-pulse whitespace-normal text-left h-auto py-1.5 text-xs leading-tight"
                                 title="A captain is marking this game live — tap to follow"
                                 onClick={() => navigate(`/league-games/${f.id}?mode=view`)}
                               >

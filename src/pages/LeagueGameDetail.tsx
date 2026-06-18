@@ -1947,9 +1947,9 @@ export default function LeagueGameDetail() {
               Pos {vIdx + 1} · {fixture.home_team_code} vs {fixture.away_team_code}
             </Badge>
             {isLockFresh && (
-              <Badge className="text-[10px] bg-red-600 text-white font-bold animate-pulse flex items-center gap-1">
+              <span className="live-indicator text-[10px] px-2.5 py-1">
                 <Radio className="w-3 h-3" /> LIVE
-              </Badge>
+              </span>
             )}
             <Badge variant="secondary" className="text-[10px]">Viewer · read-only</Badge>
           </div>
@@ -2264,9 +2264,9 @@ export default function LeagueGameDetail() {
           if (liveItems.length === 0) return null;
           return (
             <div className="border border-red-600/50 bg-red-50 dark:bg-red-950/20 rounded-lg p-2 flex items-center gap-2 flex-wrap">
-              <Badge className="bg-red-600 text-white font-bold animate-pulse flex items-center gap-1">
+              <span className="live-indicator text-xs px-2.5 py-1">
                 <Radio className="w-3 h-3" /> LIVE NOW
-              </Badge>
+              </span>
               {liveItems.map((it) => (
                 <button
                   key={it.idx}
@@ -2832,7 +2832,7 @@ export default function LeagueGameDetail() {
                                     <TooltipTrigger asChild>
                                       <button
                                         onClick={() => setViewingPosition(idx)}
-                                        className="bg-red-600 text-white rounded p-0.5 hover:bg-red-700 animate-pulse"
+                                        className="bg-destructive text-destructive-foreground rounded p-0.5 hover:bg-destructive/90 live-slow-pulse"
                                         title={`Live · ${lock.user_name} is marking — tap to view`}
                                       >
                                         <Eye className="w-3.5 h-3.5" />

@@ -9,6 +9,16 @@ const corsHeaders = {
 const DEFAULT_SHELLY_SERVER = "https://shelly-44-eu.shelly.cloud";
 const COURT_LIGHTS_TIMEZONE = Deno.env.get("COURT_LIGHTS_TIMEZONE") || "Africa/Johannesburg";
 
+function normalizeShellyServer(value?: string | null) {
+  const raw = (value || DEFAULT_SHELLY_SERVER).trim();
+  const urlMatch = raw.match(/https?:\/\/[^\s]+/i);
+  const extracted = (urlMatch?.[0] || raw)
+    .replace(/^server\s*:\s*/i, "")
+    .replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(extracted)) return DEFAULT_SHELLY_SERVER;
+  return extracted;
+}
+
 function localDateAndTime(date: Date) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: COURT_LIGHTS_TIMEZONE,
@@ -33,7 +43,7 @@ async function setShellyRelay(params: {
   channel?: number | string | null;
   turn: "on" | "off";
 }) {
-  const shellyServer = (params.server || DEFAULT_SHELLY_SERVER).replace(/\/$/, "");
+  const shellyServer = normalizeShellyServer(params.server);
   const channel = Number(params.channel ?? 0);
   const v2Response = await fetch(`${shellyServer}/v2/devices/api/set/switch?auth_key=${encodeURIComponent(params.authKey)}`, {
     method: "POST",

@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
 import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
-import { GoBookCredentialsCard } from "@/components/GoBookCredentialsCard";
+
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 import { SharedAccessCard } from "@/components/SharedAccessCard";

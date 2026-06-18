@@ -1330,11 +1330,26 @@ export default function ClubChampsView() {
         </Card>
       );
     });
+    // Cross-league: render a single combined Fixtures & Results card (matches are shared across leagues).
+    const combinedFixtures = isCrossLeague ? (
+      <Card key="cross-fixtures">
+        <CardHeader>
+          <CardTitle className="text-lg">Fixtures & Results</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1.5">
+            {matches.map((m: any) => renderMatchRow(m))}
+          </div>
+        </CardContent>
+      </Card>
+    ) : null;
     return (
       <>
         {summary}
         {groups}
+        {combinedFixtures}
       </>
     );
   }
+
 }

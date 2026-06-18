@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon, AlertTriangle, PackagePlus, FileText, X, Upload, Sparkles, Loader2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -135,62 +136,89 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         </div>
       </Card>
 
-      {/* Always available so admins can load products & stock before going live */}
-      <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
-      <PurchaseInvoice clubId={clubId} items={items} />
+      <Tabs defaultValue="items" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 h-10">
+          <TabsTrigger value="items" className="text-xs sm:text-sm">Items</TabsTrigger>
+          <TabsTrigger value="member-sales" className="text-xs sm:text-sm">Member Sales</TabsTrigger>
+          <TabsTrigger value="card-sales" className="text-xs sm:text-sm">Card Machine Sales</TabsTrigger>
+        </TabsList>
 
-      {enabled && (
-        <>
-          <Card className="p-6 space-y-4">
-            <h3 className="font-semibold">Recent Bar Charges</h3>
-            <p className="text-sm text-muted-foreground">Bar items are charged directly to each member account.</p>
+        <TabsContent value="items" className="mt-4 space-y-4">
+          <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
+          <PurchaseInvoice clubId={clubId} items={items} />
+        </TabsContent>
 
-            {recentEntries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No bar charges yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {recentEntries.slice(0, 20).map(e => (
-                  <div key={e.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{(e.club_members as any)?.name || "Unknown"}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {e.quantity}× {(e.bar_items as any)?.name || "Item"} · {format(new Date(e.created_at), "dd MMM HH:mm")}
-                      </p>
-                    </div>
-                    <Badge variant="secondary" className="text-xs">R{e.total.toFixed(2)}</Badge>
+        <TabsContent value="member-sales" className="mt-4 space-y-4">
+          {enabled ? (
+            <>
+              <Card className="p-6 space-y-4">
+                <h3 className="font-semibold">Recent Bar Charges</h3>
+                <p className="text-sm text-muted-foreground">Bar items are charged directly to each member account.</p>
+
+                {recentEntries.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No bar charges yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {recentEntries.slice(0, 20).map(e => (
+                      <div key={e.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{(e.club_members as any)?.name || "Unknown"}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {e.quantity}× {(e.bar_items as any)?.name || "Item"} · {format(new Date(e.created_at), "dd MMM HH:mm")}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">R{e.total.toFixed(2)}</Badge>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </Card>
+                )}
+              </Card>
 
-          <Card className="p-6 space-y-4">
-            <h3 className="font-semibold">Recent Visitor / Direct Card Machine Sales</h3>
-            <p className="text-sm text-muted-foreground">Sales paid directly via the card machine at the club (not charged to a member account).</p>
+              <AdminAddCharge clubId={clubId} items={items} members={members} />
+            </>
+          ) : (
+            <Card className="p-6">
+              <p className="text-sm text-muted-foreground">
+                Honesty bar is currently disabled. Enable it above to see member sales.
+              </p>
+            </Card>
+          )}
+        </TabsContent>
 
-            {recentVisitorSales.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No visitor / direct card sales yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {recentVisitorSales.slice(0, 20).map((s: any) => (
-                  <div key={s.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{s.visitor_name || "Visitor"}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {s.quantity}× {s.bar_items?.name || "Item"} · {format(new Date(s.created_at), "dd MMM HH:mm")}
-                        {s.recorder?.name ? ` · ${s.recorder.name}` : ""}
-                      </p>
+        <TabsContent value="card-sales" className="mt-4 space-y-4">
+          {enabled ? (
+            <Card className="p-6 space-y-4">
+              <h3 className="font-semibold">Recent Visitor / Direct Card Machine Sales</h3>
+              <p className="text-sm text-muted-foreground">Sales paid directly via the card machine at the club (not charged to a member account).</p>
+
+              {recentVisitorSales.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No visitor / direct card sales yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {recentVisitorSales.slice(0, 20).map((s: any) => (
+                    <div key={s.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{s.visitor_name || "Visitor"}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {s.quantity}× {s.bar_items?.name || "Item"} · {format(new Date(s.created_at), "dd MMM HH:mm")}
+                          {s.recorder?.name ? ` · ${s.recorder.name}` : ""}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">R{Number(s.total).toFixed(2)}</Badge>
                     </div>
-                    <Badge variant="secondary" className="text-xs">R{Number(s.total).toFixed(2)}</Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          <AdminAddCharge clubId={clubId} items={items} members={members} />
-        </>
-      )}
+                  ))}
+                </div>
+              )}
+            </Card>
+          ) : (
+            <Card className="p-6">
+              <p className="text-sm text-muted-foreground">
+                Honesty bar is currently disabled. Enable it above to see card machine sales.
+              </p>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

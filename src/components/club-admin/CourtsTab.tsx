@@ -364,6 +364,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   const [newCourt, setNewCourt] = useState("");
   const [editingRelay, setEditingRelay] = useState<Record<number, string>>({});
   const [editingChannel, setEditingChannel] = useState<Record<number, string>>({});
+  const [editingServer, setEditingServer] = useState<Record<number, string>>({});
 
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-courts", clubId],
@@ -410,6 +411,17 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
     }
   };
 
+  const handleSaveServer = async (courtId: number, valueOverride?: string) => {
+    const server = (valueOverride ?? editingServer[courtId] ?? "").trim().replace(/\/$/, "");
+    const { error } = await fromExt("courts").update({ relay_server: server || null }).eq("id", courtId);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(server ? `Shelly server saved: ${server}` : "Shelly server reset");
+      setEditingServer(prev => { const next = { ...prev }; delete next[courtId]; return next; });
+      qc.invalidateQueries({ queryKey: ["club-courts"] });
+    }
+  };
+
   return (
     <Card className="p-4 space-y-3">
       <h3 className="font-semibold text-sm">Courts ({courts.length})</h3>
@@ -423,6 +435,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
           const courtId = c.id;
           const relayValue = editingRelay[courtId] ?? c.relay_device_id ?? "";
           const channelValue = editingChannel[courtId] ?? String(c.relay_channel ?? 0);
+          const serverValue = editingServer[courtId] ?? c.relay_server ?? "https://shelly-44-eu.shelly.cloud";
           return (
             <div key={c.id} className="rounded-lg border p-2 space-y-1">
               <div className="flex items-center justify-between">

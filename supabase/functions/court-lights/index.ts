@@ -30,6 +30,7 @@ async function setShellyRelay(params: {
   server?: string | null;
   authKey: string;
   deviceId: string;
+  channel?: number | string | null;
   turn: "on" | "off";
 }) {
   const shellyServer = (params.server || DEFAULT_SHELLY_SERVER).replace(/\/$/, "");
@@ -39,7 +40,7 @@ async function setShellyRelay(params: {
     body: new URLSearchParams({
       auth_key: params.authKey,
       id: params.deviceId,
-      channel: "0",
+      channel: String(params.channel ?? 0),
       turn: params.turn,
     }),
   });

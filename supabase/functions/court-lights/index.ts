@@ -288,6 +288,16 @@ Deno.serve(async (req) => {
           channel: (courtInfo as any).relay_channel,
           turn: "on",
         });
+        // Set the device's auto-off timer so the Shelly turns itself off
+        // at the end of the booking even if our cron misses the window.
+        const remainingSec = bookingRemainingSeconds(booking.date, booking.end_time);
+        await setShellyAutoOff({
+          server: (courtInfo as any).relay_server,
+          authKey,
+          deviceId: courtInfo.relay_device_id,
+          channel: (courtInfo as any).relay_channel,
+          delaySeconds: remainingSec,
+        });
       } catch (e: any) {
         console.error("Shelly turn_on failed:", e);
         return new Response(JSON.stringify({ error: e.message || "Shelly did not confirm the lights switched on" }), {

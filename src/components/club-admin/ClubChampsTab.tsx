@@ -2661,10 +2661,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="single_round_robin">Single round-robin (each plays once)</SelectItem>
-                    <SelectItem value="double_round_robin">Double round-robin (home &amp; away, 2 rounds)</SelectItem>
+                    <SelectItem value="single_round_robin">Single round-robin (within same league — each player plays every other player in their league once)</SelectItem>
+                    <SelectItem value="double_round_robin">Double round-robin (within same league — each player plays every other player in their league twice, home &amp; away)</SelectItem>
                     <SelectItem value="cross_league" disabled={numGroups < 2}>
-                      League vs League (every player in each league plays every player in the other)
+                      League vs League (cross-league only — players only play opponents from the other league, not their own)
                     </SelectItem>
                   </SelectContent>
                 </Select>

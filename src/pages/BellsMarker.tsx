@@ -513,6 +513,7 @@ export default function BellsMarker() {
           <div className="space-y-0.5">
             <p><b>Start</b> — begin the {capMinutes}-minute countdown.</p>
             <p>Tap each pair's big number (or <b>+</b>) to add a point during play.</p>
+            <p>Tap the <b>S</b> badge on the non-server pair to switch server, or tap the server's <b>L / R</b> badge to toggle the serve side.</p>
             <p>The <b>bell</b> rings automatically when time is up. Use <b>Ring bell now</b> to end early (e.g. to test or stop a match), then <b>Save result</b> to post the score and move on to the next match.</p>
           </div>
         </div>

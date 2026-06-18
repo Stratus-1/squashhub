@@ -842,7 +842,8 @@ export default function ClubChampsView() {
                   const isMe = r.club_member_id === myMemberId || r.partner_member_id === myMemberId;
                   const myInvite = isMe && kind === "invited";
                   const e = entryFor(r.club_member_id);
-                  const posLabel = e ? `L${e.group_number}·#${(e.order_index ?? 0) + 1}` : null;
+                  const rank = playerRankByMember.get(r.club_member_id);
+                  const posLabel = e ? `L${e.group_number}·#${rank ?? ((e.order_index ?? 0) + 1)}` : null;
                   return (
                     <li
                       key={r.id}

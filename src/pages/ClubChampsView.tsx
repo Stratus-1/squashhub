@@ -818,6 +818,11 @@ export default function ClubChampsView() {
                   const ga = ea?.group_number ?? Number.MAX_SAFE_INTEGER;
                   const gb = eb?.group_number ?? Number.MAX_SAFE_INTEGER;
                   if (ga !== gb) return ga - gb;
+                  // Sort by the player's actual league rank within their league
+                  // (e.g. Terence = #1 in 7th League). Falls back to entry order.
+                  const ra = playerRankByMember.get(a.club_member_id) ?? Number.MAX_SAFE_INTEGER;
+                  const rb = playerRankByMember.get(b.club_member_id) ?? Number.MAX_SAFE_INTEGER;
+                  if (ra !== rb) return ra - rb;
                   const oa = ea?.order_index ?? Number.MAX_SAFE_INTEGER;
                   const ob = eb?.order_index ?? Number.MAX_SAFE_INTEGER;
                   if (oa !== ob) return oa - ob;

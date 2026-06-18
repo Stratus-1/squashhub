@@ -2832,7 +2832,7 @@ export default function LeagueGameDetail() {
                                     <TooltipTrigger asChild>
                                       <button
                                         onClick={() => setViewingPosition(idx)}
-                                        className="bg-red-600 text-white rounded p-0.5 hover:bg-red-700 animate-pulse"
+                                        className="bg-destructive text-destructive-foreground rounded p-0.5 hover:bg-destructive/90 live-slow-pulse"
                                         title={`Live · ${lock.user_name} is marking — tap to view`}
                                       >
                                         <Eye className="w-3.5 h-3.5" />

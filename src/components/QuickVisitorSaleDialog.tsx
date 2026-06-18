@@ -199,7 +199,7 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
           <Badge variant="secondary" className="text-sm py-1 px-2">
             Total: R{total.toFixed(2)} {count > 0 && `· ${count} item${count > 1 ? "s" : ""}`}
           </Badge>
-          <Button onClick={submit} disabled={count === 0 || submitting} className="h-10">
+          <Button onClick={submit} disabled={count === 0 || !visitorName.trim() || submitting} className="h-10">
             {submitting ? "Recording…" : `Record ${method.toUpperCase()} sale`}
           </Button>
         </div>

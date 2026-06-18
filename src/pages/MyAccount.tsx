@@ -686,7 +686,10 @@ export default function MyAccount() {
         </Card>
       </motion.div>
 
-      <SharedAccessCard clubMemberId={clubMemberId} clubId={clubId} memberName={accountName} />
+      {!isPayingForOther && (
+        <SharedAccessCard clubMemberId={selfMemberId} clubId={club?.id || null} memberName={selfName} />
+      )}
+
 
       {/* Outstanding Fees & Paid sections removed — the wallet above shows the single
           combined net balance (all fees + bar tab − payments) and the Account Statement

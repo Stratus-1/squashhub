@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyBookings } from "@/hooks/use-data";
@@ -27,10 +27,16 @@ export function LiveSessionBanner() {
   const { data: clubData } = useMyClub();
   const lightFeePerHour = (clubData?.club as any)?.light_fee_per_hour ?? 0;
   const lightsIntegrationEnabled = !!(clubData?.club as any)?.lights_integration_enabled;
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const [actionLoading, setActionLoading] = useState(false);
   const [transferOpen, setTransferOpen] = useState<string | null>(null);
   const [confirmEndOpen, setConfirmEndOpen] = useState<string | null>(null);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(new Date()), 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   // Active light sessions
   const { data: activeSessions = [], refetch: refetchSessions } = useQuery({
@@ -63,8 +69,7 @@ export function LiveSessionBanner() {
   const getCourtName = (id: number) => courtsData?.find((c) => c.id === id)?.name || `Court ${id}`;
 
   // Find current active booking (happening right now)
-  const todayStr = format(new Date(), "yyyy-MM-dd");
-  const now = new Date();
+  const todayStr = format(now, "yyyy-MM-dd");
   const currentBooking = (myBookings || []).find((b: any) => {
     if (b.status !== "active" || b.date !== todayStr) return false;
     const start = new Date(`${b.date}T${b.start_time}`);
@@ -76,14 +81,15 @@ export function LiveSessionBanner() {
     (s: any) => currentBooking && s.booking_id === currentBooking.id
   );
 
-  // Nothing to show — and never show on clubs without lights integration
-  if (!lightsIntegrationEnabled) return null;
-  if (!currentBooking && activeSessions.length === 0) return null;
-  if (dismissed) return null;
-
   // If there's an active session without a matching current booking (orphan), still show it
   const orphanSession = !activeSession && activeSessions.length > 0 ? (activeSessions as any[])[0] : null;
   const displaySession = activeSession || orphanSession;
+  const promptKey = displaySession ? `session:${displaySession.id}` : currentBooking ? `booking:${currentBooking.id}` : null;
+
+  // Nothing to show — and never show on clubs without lights integration
+  if (!lightsIntegrationEnabled) return null;
+  if (!promptKey) return null;
+  if (dismissedKey === promptKey) return null;
 
   const handleTerminate = async (sessionId: string) => {
     setActionLoading(true);
@@ -124,7 +130,7 @@ export function LiveSessionBanner() {
       queryClient.invalidateQueries({ queryKey: ["my-active-light-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
-      setDismissed(true);
+      setDismissedKey(`session:${sessionId}`);
     } catch (e: any) {
       toast.error(e.message || "Failed to end session");
     } finally {
@@ -272,7 +278,7 @@ export function LiveSessionBanner() {
                 ) : null}
                 <button
                   className="p-1 rounded-full hover:bg-foreground/10 transition-colors"
-                  onClick={() => setDismissed(true)}
+                  onClick={() => setDismissedKey(promptKey)}
                 >
                   <X className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>

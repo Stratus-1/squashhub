@@ -178,25 +178,55 @@ async function shellyScheduleDelete(opts: {
   scheduleId: string;
 }): Promise<void> {
   const server = normalizeShellyServer(opts.server);
-  const form = new URLSearchParams({
-    auth_key: opts.authKey,
-    id: opts.deviceId,
-    sid: opts.scheduleId,
-  });
-  try {
-    const resp = await fetch(`${server}/device/schedule/delete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: form,
-    });
-    if (!resp.ok) {
-      const t = await resp.text();
-      console.warn("Shelly schedule/delete failed:", resp.status, t);
+
+  const attempts: Array<{ url: string; init: RequestInit }> = [
+    // Gen2 RPC tunnel
+    {
+      url: `${server}/v2/devices/api/rpc?auth_key=${encodeURIComponent(opts.authKey)}`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: opts.deviceId,
+          method: "Schedule.Delete",
+          params: { id: Number.isNaN(Number(opts.scheduleId)) ? opts.scheduleId : Number(opts.scheduleId) },
+        }),
+      },
+    },
+    // Gen1 legacy
+    {
+      url: `${server}/device/schedule/delete`,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          auth_key: opts.authKey,
+          id: opts.deviceId,
+          sid: opts.scheduleId,
+        }),
+      },
+    },
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const resp = await fetch(attempt.url, attempt.init);
+      if (resp.ok) {
+        const t = await resp.text();
+        let parsed: any = null;
+        try { parsed = JSON.parse(t); } catch { /* ignore */ }
+        if (parsed?.isok !== false) return; // success
+        console.warn("Shelly schedule/delete rejected:", attempt.url, t);
+      } else {
+        const t = await resp.text();
+        console.warn("Shelly schedule/delete HTTP error:", attempt.url, resp.status, t);
+      }
+    } catch (e) {
+      console.warn("Shelly schedule/delete threw:", attempt.url, (e as Error).message);
     }
-  } catch (e) {
-    console.warn("Shelly schedule/delete error:", (e as Error).message);
   }
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

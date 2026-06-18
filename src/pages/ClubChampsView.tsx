@@ -126,6 +126,35 @@ export default function ClubChampsView() {
     enabled: !!champId,
   });
 
+  // Real league ranks (player_rank from member_league_registrations) for the source leagues.
+  // Used to order players within each league group by their actual league position
+  // (e.g. Terence = #1 in 7th League) instead of the entry insertion order.
+  const sourceLeagueIds: string[] = useMemo(
+    () => ((champ as any)?.source_league_ids as string[] | undefined) || [],
+    [champ],
+  );
+  const { data: leagueRanks = [] } = useQuery({
+    queryKey: ["club-champ-league-ranks", champId, sourceLeagueIds.join(",")],
+    queryFn: async () => {
+      if (sourceLeagueIds.length === 0) return [] as any[];
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("club_member_id, league_id, player_rank")
+        .in("league_id", sourceLeagueIds);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!champId && sourceLeagueIds.length > 0,
+  });
+  const playerRankByMember = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of leagueRanks as any[]) {
+      if (r.player_rank == null) continue;
+      const prev = m.get(r.club_member_id);
+      if (prev == null || r.player_rank < prev) m.set(r.club_member_id, r.player_rank);
+    }
+    return m;
+  }, [leagueRanks]);
+
 
 
   const getPlayerName = (player: any) => player?.name || player?.profiles?.name || "Unknown";

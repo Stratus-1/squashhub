@@ -771,18 +771,25 @@ export default function ClubChampsView() {
                 const visible = registrations.filter(
                   (r: any) => !partneredIds.has(r.club_member_id),
                 );
-                const byLadder = (a: any, b: any) => {
-                  const ap = a.member?.ladder_position ?? Number.MAX_SAFE_INTEGER;
-                  const bp = b.member?.ladder_position ?? Number.MAX_SAFE_INTEGER;
-                  if (ap !== bp) return ap - bp;
+                const entryFor = (memberId: string) =>
+                  entries.find((e: any) => e.club_member_id === memberId || e.partner_member_id === memberId);
+                const byLeaguePos = (a: any, b: any) => {
+                  const ea = entryFor(a.club_member_id);
+                  const eb = entryFor(b.club_member_id);
+                  const ga = ea?.group_number ?? Number.MAX_SAFE_INTEGER;
+                  const gb = eb?.group_number ?? Number.MAX_SAFE_INTEGER;
+                  if (ga !== gb) return ga - gb;
+                  const oa = ea?.order_index ?? Number.MAX_SAFE_INTEGER;
+                  const ob = eb?.order_index ?? Number.MAX_SAFE_INTEGER;
+                  if (oa !== ob) return oa - ob;
                   return getPlayerName(a.member).localeCompare(getPlayerName(b.member));
                 };
                 const registered = visible
                   .filter((r: any) => r.status === "paid" || r.status === "waived")
-                  .sort(byLadder);
+                  .sort(byLeaguePos);
                 const invited = visible
                   .filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft")
-                  .sort(byLadder);
+                  .sort(byLeaguePos);
 
 
                 const renderRow = (r: any, kind: "registered" | "invited") => {
@@ -790,6 +797,8 @@ export default function ClubChampsView() {
                   const partnerName = r.partner ? getPlayerName(r.partner) : null;
                   const isMe = r.club_member_id === myMemberId || r.partner_member_id === myMemberId;
                   const myInvite = isMe && kind === "invited";
+                  const e = entryFor(r.club_member_id);
+                  const posLabel = e ? `L${e.group_number}·#${(e.order_index ?? 0) + 1}` : null;
                   return (
                     <li
                       key={r.id}
@@ -802,6 +811,9 @@ export default function ClubChampsView() {
                         myInvite && "cursor-pointer hover:bg-primary/10",
                       )}
                     >
+                      {posLabel && (
+                        <Badge variant="outline" className="text-[9px] font-mono shrink-0">{posLabel}</Badge>
+                      )}
                       <span className="font-medium flex-1 truncate">
                         {name}
                         {partnerName && <span className="text-muted-foreground"> & {partnerName}</span>}

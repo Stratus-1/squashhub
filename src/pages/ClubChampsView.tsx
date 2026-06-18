@@ -1089,7 +1089,111 @@ export default function ClubChampsView() {
     );
   }
 
+  function renderMatchRow(m: any) {
+    const mine = isMyMatch(m);
+    const completed = m.status === "completed";
+    const isBye = !!m.is_bye;
+    const winnerIsA = !isBye && completed && m.winner_member_id === m.player_a_member_id;
+    const winnerIsB = !isBye && completed && m.winner_member_id === m.player_b_member_id;
+
+    let gameBadges: { a: number; b: number }[] = [];
+    if (!isBye && m.game_scores) {
+      try {
+        const gs = JSON.parse(m.game_scores);
+        gameBadges = gs.sets || [];
+      } catch { /* ignore */ }
+    }
+
+    if (isBye) {
+      return (
+        <div key={m.id} className={cn(
+          "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm p-2 rounded border border-amber-500/20 bg-amber-500/10",
+          mine && "ring-1 ring-primary/30",
+        )}>
+          <span className="text-muted-foreground w-24 shrink-0 text-xs">Round {m.round_number}</span>
+          <span className="text-muted-foreground w-12 shrink-0 text-xs">—</span>
+          <span className="font-medium">{getMatchTeamA(m)}</span>
+          <span className="text-amber-600 dark:text-amber-400 text-xs font-medium">— BYE (rest round)</span>
+          <Badge variant="outline" className="ml-auto text-[10px] border-amber-500/40 text-amber-600 dark:text-amber-400">
+            {byeHandling === "walkover_win" ? "Walkover" : byeHandling === "neutral" ? "Neutral" : "Bye"}
+          </Badge>
+        </div>
+      );
+    }
+
+    const bellActive = !!m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now();
+    const paused = typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0;
+    const hasPoints = (m.side_a_points ?? 0) > 0 || (m.side_b_points ?? 0) > 0;
+    const isLiveMatch = !completed && (bellActive || paused || (m.status === "in_progress" && hasPoints));
+    const liveAAhead = isLiveMatch && (m.side_a_points ?? 0) > (m.side_b_points ?? 0);
+    const liveBAhead = isLiveMatch && (m.side_b_points ?? 0) > (m.side_a_points ?? 0);
+
+    return (
+      <div key={m.id} className={cn(
+        "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm p-2 rounded",
+        mine ? "bg-primary/10 border border-primary/20" : completed ? "bg-muted/30" : "bg-muted/50"
+      )}>
+        <span className="text-muted-foreground w-24 shrink-0 text-xs">
+          {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
+        </span>
+        <span className="text-muted-foreground w-12 shrink-0 text-xs">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
+        <span className={cn(
+          "font-medium px-2 py-0.5 rounded",
+          ((completed && winnerIsA) || liveAAhead) && "bg-green-500/20 text-green-700 dark:text-green-300",
+          ((completed && winnerIsB) || liveBAhead) && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+        )}>
+          {getMatchTeamA(m)}
+        </span>
+        <span className="text-muted-foreground text-xs">vs</span>
+        <span className={cn(
+          "font-medium px-2 py-0.5 rounded",
+          ((completed && winnerIsB) || liveBAhead) && "bg-green-500/20 text-green-700 dark:text-green-300",
+          ((completed && winnerIsA) || liveAAhead) && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+        )}>
+          {getMatchTeamB(m)}
+        </span>
+
+        {gameBadges.length > 0 && (
+          <div className="flex gap-1 ml-auto">
+            {gameBadges.map((g, i) => (
+              <Badge key={i} variant="outline" className="text-[10px] tabular-nums px-1.5">
+                {g.a}-{g.b}
+              </Badge>
+            ))}
+          </div>
+        )}
+        {!gameBadges.length && m.score && (
+          <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>
+        )}
+
+        {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
+        {(() => {
+          if (completed) return null;
+          if (isLiveMatch) {
+            return (
+              <span className="live-indicator text-[10px] px-2.5 py-1">
+                LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
+              </span>
+            );
+          }
+          return <Badge variant="secondary" className="text-[10px]">{m.status}</Badge>;
+        })()}
+
+        {canManage && !completed && m.scheduled_date && m.scheduled_time && (
+          <SwapFixtureButton
+            match={m}
+            allMatches={matches}
+            getMatchLabel={(x) => `${getMatchTeamA(x)} vs ${getMatchTeamB(x)}`}
+            getCourtName={(x) => x.court?.name || ""}
+            invalidateKeys={[["club-champ-matches", champId]]}
+          />
+        )}
+      </div>
+    );
+  }
+
   function renderAllGroups() {
+
     const summary = renderCrossLeagueSummary();
     const leagueTotals = isCrossLeague ? computeLeagueTotals() : null;
     const maxLeaguePf = leagueTotals

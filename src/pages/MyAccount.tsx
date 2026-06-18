@@ -436,11 +436,15 @@ export default function MyAccount() {
       // We just record the member_credit_transactions row and flip the fee to paid.
 
       const feeDescription = selectedFees.map((f: any) => f.fee_label).join(", ");
-      const txDescription = isPartial
+      const paidByTag = isPayingForOther ? ` (Paid by ${selfName})` : "";
+      const txDescription = (isPartial
         ? `Partial payment: ${feeDescription}`
-        : `Fee payment: ${feeDescription}`;
+        : `Fee payment: ${feeDescription}`) + paidByTag;
 
       if (method === "credit") {
+        if (isPayingForOther) {
+          throw new Error("When paying for another member, please use Card or EFT — their credit balance cannot be used by a delegate.");
+        }
         if (availableCash < payAmount) {
           throw new Error("Insufficient credit balance. Please top up first.");
         }
@@ -490,13 +494,14 @@ export default function MyAccount() {
           amount: payAmount,
           type: "debit",
           method: "eft",
-          description: `EFT payment: ${feeDescription}`,
+          description: `EFT payment: ${feeDescription}${paidByTag}`,
           reference: `${memberNo} - Fees`,
           status: "pending",
         });
         if (txErr) throw txErr;
       }
     },
+
     onSuccess: (_, vars) => {
       if (vars.method === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });

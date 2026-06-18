@@ -432,7 +432,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                 </Button>
               </div>
               {lightsEnabled && (
-                <div className="flex gap-1 items-center">
+                <div className="grid grid-cols-[1fr_76px_auto] gap-1 items-center">
                   <Input
                     value={relayValue}
                     onChange={e => setEditingRelay(prev => ({ ...prev, [courtId]: e.target.value }))}
@@ -445,8 +445,29 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                     placeholder={relayDeviceType === "shelly" ? "Shelly Device ID (e.g. e8db84xxxxxx)" : "Relay Device ID"}
                     className="flex-1 text-xs h-7 font-mono"
                   />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={3}
+                    value={channelValue}
+                    onChange={e => setEditingChannel(prev => ({ ...prev, [courtId]: e.target.value }))}
+                    onBlur={e => {
+                      const v = e.target.value.trim();
+                      if (editingChannel[courtId] !== undefined && parseInt(v, 10) !== (c.relay_channel ?? 0)) {
+                        handleSaveChannel(courtId, v);
+                      }
+                    }}
+                    aria-label="Relay output channel"
+                    title="Shelly output channel: use 0 for SW1/O1 and 1 for SW2/O2"
+                    className="h-7 text-xs font-mono"
+                  />
                   {editingRelay[courtId] !== undefined && (
                     <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => handleSaveRelay(courtId)}>
+                      Save
+                    </Button>
+                  )}
+                  {editingRelay[courtId] === undefined && editingChannel[courtId] !== undefined && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => handleSaveChannel(courtId)}>
                       Save
                     </Button>
                   )}

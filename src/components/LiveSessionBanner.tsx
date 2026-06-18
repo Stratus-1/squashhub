@@ -20,13 +20,41 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
+type ClubLightsConfig = {
+  id?: string;
+  light_fee_per_hour?: number | null;
+  lights_integration_enabled?: boolean | null;
+};
+
+type BookingForLights = {
+  id: string;
+  court_id: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  guest_name?: string | null;
+};
+
+type LightSession = {
+  id: string;
+  booking_id: string | null;
+  court_id: number;
+  started_at: string;
+  fee_per_hour: number | null;
+  status: string;
+};
+
+const errorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
+
 export function LiveSessionBanner() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: myBookings } = useMyBookings();
   const { data: clubData } = useMyClub();
-  const lightFeePerHour = (clubData?.club as any)?.light_fee_per_hour ?? 0;
-  const lightsIntegrationEnabled = !!(clubData?.club as any)?.lights_integration_enabled;
+  const club = clubData?.club as ClubLightsConfig | undefined;
+  const lightFeePerHour = club?.light_fee_per_hour ?? 0;
+  const lightsIntegrationEnabled = !!club?.lights_integration_enabled;
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [actionLoading, setActionLoading] = useState(false);
@@ -39,7 +67,7 @@ export function LiveSessionBanner() {
   }, []);
 
   // Active light sessions
-  const { data: activeSessions = [], refetch: refetchSessions } = useQuery({
+  const { data: activeSessions = [], refetch: refetchSessions } = useQuery<LightSession[]>({
     queryKey: ["live-light-sessions", user?.id],
     queryFn: async () => {
       const { data, error } = await fromExt("light_sessions")
@@ -47,14 +75,14 @@ export function LiveSessionBanner() {
         .eq("user_id", user!.id)
         .eq("status", "active");
       if (error) throw error;
-      return data || [];
+      return (data || []) as LightSession[];
     },
     enabled: !!user,
     refetchInterval: 30000,
   });
 
   // Courts list
-  const clubId = clubData?.club?.id;
+  const clubId = club?.id;
   const { data: courtsData } = useQuery({
     queryKey: ["courts-list", clubId],
     queryFn: async () => {
@@ -70,19 +98,19 @@ export function LiveSessionBanner() {
 
   // Find current active booking (happening right now)
   const todayStr = format(now, "yyyy-MM-dd");
-  const currentBooking = (myBookings || []).find((b: any) => {
+  const currentBooking = ((myBookings || []) as BookingForLights[]).find((b) => {
     if (b.status !== "active" || b.date !== todayStr) return false;
     const start = new Date(`${b.date}T${b.start_time}`);
     const end = new Date(`${b.date}T${b.end_time}`);
     return now >= start && now <= end;
   });
 
-  const activeSession = (activeSessions as any[]).find(
-    (s: any) => currentBooking && s.booking_id === currentBooking.id
+  const activeSession = activeSessions.find(
+    (s) => currentBooking && s.booking_id === currentBooking.id
   );
 
   // If there's an active session without a matching current booking (orphan), still show it
-  const orphanSession = !activeSession && activeSessions.length > 0 ? (activeSessions as any[])[0] : null;
+  const orphanSession = !activeSession && activeSessions.length > 0 ? activeSessions[0] : null;
   const displaySession = activeSession || orphanSession;
   const promptKey = displaySession ? `session:${displaySession.id}` : currentBooking ? `booking:${currentBooking.id}` : null;
 
@@ -131,8 +159,8 @@ export function LiveSessionBanner() {
       queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
       setDismissedKey(`session:${sessionId}`);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to end session");
+    } catch (e) {
+      toast.error(errorMessage(e, "Failed to end session"));
     } finally {
       setActionLoading(false);
     }
@@ -150,8 +178,8 @@ export function LiveSessionBanner() {
       refetchSessions();
       queryClient.invalidateQueries({ queryKey: ["my-active-light-sessions"] });
       setTransferOpen(null);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to transfer");
+    } catch (e) {
+      toast.error(errorMessage(e, "Failed to transfer"));
     } finally {
       setActionLoading(false);
     }
@@ -173,8 +201,8 @@ export function LiveSessionBanner() {
       refetchSessions();
       queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
       queryClient.invalidateQueries({ queryKey: ["live-light-sessions", user.id] });
-    } catch (e: any) {
-      toast.error(e.message || "Failed to turn on lights");
+    } catch (e) {
+      toast.error(errorMessage(e, "Failed to turn on lights"));
     } finally {
       setActionLoading(false);
     }

@@ -64,6 +64,7 @@ export default function BellsMarker() {
   const [running, setRunning] = useState(false);
   const [finished, setFinished] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [serveSide, setServeSide] = useState<"L" | "R">("R");
   const tickRef = useRef<number | null>(null);
   const liveSyncRef = useRef<number | null>(null);
   const hydratedRef = useRef(false);

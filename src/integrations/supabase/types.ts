@@ -4413,6 +4413,90 @@ export type Database = {
           },
         ]
       }
+      member_account_delegations: {
+        Row: {
+          club_id: string
+          created_at: string
+          delegate_member_id: string
+          grantor_member_id: string
+          id: string
+          requested_at: string
+          requested_by_user_id: string | null
+          responded_at: string | null
+          revoked_at: string | null
+          revoked_by_user_id: string | null
+          scope: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          delegate_member_id: string
+          grantor_member_id: string
+          id?: string
+          requested_at?: string
+          requested_by_user_id?: string | null
+          responded_at?: string | null
+          revoked_at?: string | null
+          revoked_by_user_id?: string | null
+          scope?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          delegate_member_id?: string
+          grantor_member_id?: string
+          id?: string
+          requested_at?: string
+          requested_by_user_id?: string | null
+          responded_at?: string | null
+          revoked_at?: string | null
+          revoked_by_user_id?: string | null
+          scope?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_account_delegations_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_account_delegations_delegate_member_id_fkey"
+            columns: ["delegate_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_account_delegations_delegate_member_id_fkey"
+            columns: ["delegate_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_account_delegations_grantor_member_id_fkey"
+            columns: ["grantor_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_account_delegations_grantor_member_id_fkey"
+            columns: ["grantor_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_association_affiliations: {
         Row: {
           active: boolean
@@ -6226,6 +6310,34 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      request_account_delegation: {
+        Args: {
+          _delegate_cell: string
+          _delegate_member_number: string
+          _grantor_member_id: string
+        }
+        Returns: {
+          club_id: string
+          created_at: string
+          delegate_member_id: string
+          grantor_member_id: string
+          id: string
+          requested_at: string
+          requested_by_user_id: string | null
+          responded_at: string | null
+          revoked_at: string | null
+          revoked_by_user_id: string | null
+          scope: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "member_account_delegations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
       respond_league_week_availability: {

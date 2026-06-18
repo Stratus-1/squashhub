@@ -417,12 +417,16 @@ export default function BellsMarker() {
     onPlus,
     onMinus,
     side,
+    isServer,
+    serveSide,
   }: {
     label: string;
     value: number;
     onPlus: () => void;
     onMinus: () => void;
     side: "a" | "b";
+    isServer: boolean;
+    serveSide: "L" | "R";
   }) => (
     <div
       className={cn(
@@ -430,7 +434,15 @@ export default function BellsMarker() {
         side === "a" ? "bg-primary/5 border-primary/30" : "bg-amber-500/5 border-amber-500/30",
       )}
     >
-      <p className="text-sm font-medium text-center line-clamp-2 min-h-[2.5rem]">{label}</p>
+      <div className="flex items-center gap-1.5 max-w-full">
+        {isServer && serveSide === "L" && (
+          <span className="text-base font-bold px-2 py-0.5 rounded bg-accent text-accent-foreground">L</span>
+        )}
+        <p className="text-sm font-medium text-center line-clamp-2 min-h-[2.5rem]">{label}</p>
+        {isServer && serveSide === "R" && (
+          <span className="text-base font-bold px-2 py-0.5 rounded bg-accent text-accent-foreground">R</span>
+        )}
+      </div>
       <button
         onClick={onPlus}
         disabled={finished}
@@ -537,24 +549,6 @@ export default function BellsMarker() {
           </CardContent>
         </Card>
 
-        {/* Serve side toggle — visual aid for marker to track which side is serving */}
-        <button
-          type="button"
-          onClick={() => setServeSide((s) => (s === "L" ? "R" : "L"))}
-          className={cn(
-            "w-full rounded-2xl border-2 py-4 px-4 flex items-center justify-center gap-3 text-lg font-bold active:scale-[0.98] transition",
-            "bg-card hover:bg-muted/50 border-primary/30",
-          )}
-          aria-label="Toggle serving side"
-        >
-          <span className={cn("text-3xl tabular-nums", serveSide === "L" ? "text-primary" : "text-muted-foreground/40")}>L</span>
-          <ArrowLeftRight className="w-5 h-5 text-muted-foreground" />
-          <span className={cn("text-3xl tabular-nums", serveSide === "R" ? "text-primary" : "text-muted-foreground/40")}>R</span>
-          <span className="ml-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Serving {serveSide === "L" ? "Left" : "Right"} — tap to switch
-          </span>
-        </button>
-
         {/* Counters */}
         <div className="grid grid-cols-2 gap-3">
           <Counter
@@ -563,6 +557,8 @@ export default function BellsMarker() {
             onPlus={() => handleIncrement("a")}
             onMinus={() => setPointsA((v) => Math.max(0, v - 1))}
             side="a"
+            isServer={server === "a"}
+            serveSide={serveSide}
           />
           <Counter
             label={pairBName}
@@ -570,6 +566,8 @@ export default function BellsMarker() {
             onPlus={() => handleIncrement("b")}
             onMinus={() => setPointsB((v) => Math.max(0, v - 1))}
             side="b"
+            isServer={server === "b"}
+            serveSide={serveSide}
           />
         </div>
 

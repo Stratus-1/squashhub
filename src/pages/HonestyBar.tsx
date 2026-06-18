@@ -337,12 +337,13 @@ export default function HonestyBar() {
                   {visitorSales.map((sale: any) => (
                     <Card key={sale.id} className="p-2.5 flex items-center justify-between">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
+                      <p className="text-sm font-medium truncate">
                           {sale.quantity}× {(sale.bar_items as any)?.name || "Item"}
                           {sale.visitor_name ? ` · ${sale.visitor_name}` : ""}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
                           {format(new Date(sale.created_at), "dd MMM yyyy, HH:mm")}
+                          {sale.recorder?.name ? ` · ${sale.recorder.name}` : ""}
                           {sale.note ? ` · ${sale.note}` : ""}
                         </p>
                       </div>

@@ -87,6 +87,19 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     },
   });
 
+  const { data: recentVisitorSales = [] } = useQuery({
+    queryKey: ["bar-visitor-sales-recent", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("bar_visitor_sales")
+        .select("*, bar_items:bar_item_id(name, category), recorder:logged_by(name)")
+        .eq("club_id", clubId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
   const toggleBarEnabled = async () => {
     try {
       await updateClub.mutateAsync({ id: club.id, honesty_bar_enabled: !club.honesty_bar_enabled });

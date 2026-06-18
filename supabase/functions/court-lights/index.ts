@@ -34,14 +34,13 @@ async function setShellyRelay(params: {
   turn: "on" | "off";
 }) {
   const shellyServer = (params.server || DEFAULT_SHELLY_SERVER).replace(/\/$/, "");
-  const response = await fetch(`${shellyServer}/device/relay/control`, {
+  const response = await fetch(`${shellyServer}/v2/devices/api/set/switch?auth_key=${encodeURIComponent(params.authKey)}`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      auth_key: params.authKey,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       id: params.deviceId,
-      channel: String(params.channel ?? 0),
-      turn: params.turn,
+      channel: Number(params.channel ?? 0),
+      on: params.turn === "on",
     }),
   });
   const detail = await response.text();

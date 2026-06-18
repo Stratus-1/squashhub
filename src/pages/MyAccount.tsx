@@ -26,6 +26,7 @@ import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
 import { GoBookCredentialsCard } from "@/components/GoBookCredentialsCard";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
+import { SharedAccessCard } from "@/components/SharedAccessCard";
 
 export default function MyAccount() {
   const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();

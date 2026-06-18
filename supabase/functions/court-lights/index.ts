@@ -445,8 +445,7 @@ Deno.serve(async (req) => {
 
   try {
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const currentTimeStr = now.toTimeString().slice(0, 5);
+    const { date: todayStr, time: currentTimeStr } = localDateAndTime(now);
 
     // Load every court — including ones without a physical Shelly relay, so we
     // can still close light sessions (and charge fees) when their booking has
@@ -543,7 +542,6 @@ Deno.serve(async (req) => {
       const autoOnWanted = (!!activeBooking && activeBooking.lights_requested === true) || hasActiveChamps;
       const shouldBeOn = !!activeBooking || hasActiveChamps; // for off-decision
       const existingSession = activeSessionMap.get(court.id);
-      const shellyServer = court.relay_server || "https://shelly-44-eu.shelly.cloud";
       const deviceId = court.relay_device_id;
 
       try {
@@ -555,18 +553,7 @@ Deno.serve(async (req) => {
           let shellyResult = "no-relay";
           let relayOk = true;
           if (hasRelay) {
-            const response = await fetch(`${shellyServer}/device/relay/control`, {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: new URLSearchParams({
-                id: deviceId!,
-                auth_key: authKey!,
-                channel: "0",
-                turn: "on",
-              }),
-            });
-            shellyResult = await response.text();
-            relayOk = response.ok;
+            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, turn: "on" });
           }
 
           if (activeBooking) {
@@ -592,18 +579,7 @@ Deno.serve(async (req) => {
           let shellyResult = "no-relay";
           let relayOk = true;
           if (hasRelay) {
-            const response = await fetch(`${shellyServer}/device/relay/control`, {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: new URLSearchParams({
-                id: deviceId!,
-                auth_key: authKey!,
-                channel: "0",
-                turn: "off",
-              }),
-            });
-            shellyResult = await response.text();
-            relayOk = response.ok;
+            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, turn: "off" });
           }
 
 

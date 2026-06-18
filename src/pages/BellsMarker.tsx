@@ -300,7 +300,9 @@ export default function BellsMarker() {
         if (error) console.warn("Bells exit sync failed:", error.message);
       });
     }
-    navigate(to);
+    // Replace history entry so the back arrow on tournaments doesn't bounce
+    // the user right back to the scoring screen (causing a navigation loop).
+    navigate(to, { replace: true });
   };
 
 

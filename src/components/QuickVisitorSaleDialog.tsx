@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Banknote, CreditCard, Building2, Minus, ShoppingCart, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Minus, ShoppingCart, X } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -26,10 +27,6 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 type PaymentMethod = "card";
-
-const METHODS: { value: PaymentMethod; label: string; icon: typeof Banknote }[] = [
-  { value: "card", label: "Card", icon: CreditCard },
-];
 
 
 interface Props {
@@ -172,26 +169,12 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
           </div>
         )}
 
-        {/* Payment method */}
-        <div className="space-y-1.5">
-          <Label className="text-xs">Payment method</Label>
-          <div className="grid grid-cols-1 gap-2">
-            {METHODS.map(m => {
-              const Icon = m.icon;
-              const selected = method === m.value;
-              return (
-                <Button
-                  key={m.value}
-                  type="button"
-                  variant={selected ? "default" : "outline"}
-                  className="h-10 gap-1.5"
-                  onClick={() => setMethod(m.value)}
-                >
-                  <Icon className="w-4 h-4" /> {m.label}
-                </Button>
-              );
-            })}
-          </div>
+        {/* Payment confirmation */}
+        <div className="flex items-center gap-2 border rounded-md p-2.5 bg-muted/30">
+          <Checkbox id="swiped" checked={true} disabled />
+          <Label htmlFor="swiped" className="text-xs cursor-default">
+            Swiped on card machine
+          </Label>
         </div>
 
         {/* Optional visitor name */}

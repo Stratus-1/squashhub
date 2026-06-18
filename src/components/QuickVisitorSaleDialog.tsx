@@ -177,7 +177,7 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
           </Label>
         </div>
 
-        {/* Optional visitor name */}
+        {/* Member / Visitor name */}
         <div className="space-y-1.5">
           <Label htmlFor="visitor-name" className="text-xs">Member / Visitor name</Label>
           <Input

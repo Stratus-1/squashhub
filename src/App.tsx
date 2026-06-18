@@ -18,6 +18,7 @@ import { NotificationListener } from "@/components/NotificationListener";
 import { NotificationActionModal } from "@/components/NotificationActionModal";
 import { NativePushListener } from "@/components/NativePushListener";
 import { NotificationDeepLinkHandler } from "@/components/NotificationDeepLinkHandler";
+import { DelegationRequestDialog } from "@/components/DelegationRequestDialog";
 import { RealtimeSync } from "@/components/RealtimeSync";
 import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";

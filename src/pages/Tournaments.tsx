@@ -185,7 +185,10 @@ export default function Tournaments() {
           )}
           {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
           {isLive(m) && (
-            <Badge className="text-[10px] shrink-0 bg-red-600 hover:bg-red-600 text-white gap-1 animate-pulse">
+            <Badge
+              variant="destructive"
+              className="text-[10px] shrink-0 text-white gap-1 animate-pulse transition-none hover:translate-y-0"
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-white" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
             </Badge>
           )}

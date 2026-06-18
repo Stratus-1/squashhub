@@ -855,7 +855,7 @@ function ViewMode({
         </Card>
       )}
 
-      {clubMember && ((club as any)?.uses_gobook || /csir/i.test((club as any)?.name || "")) && (
+      {clubMember && ((club as any)?.club?.uses_gobook || /csir/i.test((club as any)?.club?.name || "")) && (
         <GoBookCredentialsCard clubMemberId={clubMember.id} />
       )}
 

@@ -151,6 +151,31 @@
 }
 
 @layer utilities {
+  @keyframes live-slow-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.58;
+      transform: scale(0.98);
+    }
+  }
+
+  .live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    border: 1px solid hsl(var(--destructive) / 0.35);
+    background: hsl(var(--destructive));
+    background-image: none;
+    color: hsl(var(--destructive-foreground));
+    font-weight: 800;
+    line-height: 1;
+    animation: live-slow-pulse 5s ease-in-out infinite;
+  }
+
   .glass-card {
     @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm;
   }

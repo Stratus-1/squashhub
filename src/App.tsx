@@ -404,6 +404,7 @@ function AppRoutes() {
       {user && <NotificationActionModal />}
       {user && <NativePushListener />}
       {user && <NotificationDeepLinkHandler />}
+      {user && <DelegationRequestDialog />}
       {user && <RealtimeSync />}
       {user && <OutboxSync />}
       <FeedbackFab />

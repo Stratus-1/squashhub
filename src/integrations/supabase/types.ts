@@ -2748,6 +2748,7 @@ export type Database = {
           fluss_device_id: string | null
           id: number
           name: string
+          relay_channel: number
           relay_device_id: string | null
           relay_server: string | null
         }
@@ -2756,6 +2757,7 @@ export type Database = {
           fluss_device_id?: string | null
           id?: number
           name: string
+          relay_channel?: number
           relay_device_id?: string | null
           relay_server?: string | null
         }
@@ -2764,6 +2766,7 @@ export type Database = {
           fluss_device_id?: string | null
           id?: number
           name?: string
+          relay_channel?: number
           relay_device_id?: string | null
           relay_server?: string | null
         }

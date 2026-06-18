@@ -34,26 +34,71 @@ export default function MyAccount() {
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
   const { data: clubSecrets } = useClubSecrets(club?.id);
-  const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({
-    queryKey: ["account-club-member", club?.id, activeMember?.id],
+
+  // SELF identity (the logged-in user's active member). Used for self-only widgets
+  // (GoBook creds, Shared-Access management, "Paid by …" attribution).
+  const selfMemberId = activeMember?.id || null;
+  const selfName = activeMember?.name || "Me";
+
+  // Delegations the user has accepted — accounts they can view & pay for.
+  const { data: managedDelegations } = useQuery({
+    queryKey: ["managed-delegations", selfMemberId],
     queryFn: async () => {
+      const { data, error } = await fromExt("member_account_delegations")
+        .select("id, grantor_member_id, club_id, status")
+        .eq("delegate_member_id", selfMemberId!)
+        .eq("status", "active");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selfMemberId,
+  });
+
+  const [viewAsMemberId, setViewAsMemberId] = useState<string | null>(null);
+  const isPayingForOther = !!viewAsMemberId && viewAsMemberId !== selfMemberId;
+
+  // Names for the dropdown
+  const managedIds = (managedDelegations || []).map((d: any) => d.grantor_member_id);
+  const { data: managedMembers } = useQuery({
+    queryKey: ["managed-members", managedIds.sort().join(",")],
+    queryFn: async () => {
+      if (managedIds.length === 0) return [] as any[];
+      const { data, error } = await fromExt("club_members")
+        .select("id, name, club_member_number, club_id")
+        .in("id", managedIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: managedIds.length > 0,
+  });
+
+  const viewedMember = isPayingForOther
+    ? (managedMembers || []).find((m: any) => m.id === viewAsMemberId)
+    : null;
+
+  const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({
+    queryKey: ["account-club-member", club?.id, viewAsMemberId || activeMember?.id],
+    queryFn: async () => {
+      const targetId = viewAsMemberId || activeMember!.id;
+      const targetClubId = (viewedMember as any)?.club_id || club.id;
       const { data, error } = await fromExt("club_members")
         .select("*, fee_category:fee_category_id(id, name, annual_fee)")
-        .eq("id", activeMember!.id)
-        .eq("club_id", club.id)
+        .eq("id", targetId)
+        .eq("club_id", targetClubId)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!club?.id && !!activeMember?.id,
+    enabled: !!club?.id && !!(viewAsMemberId || activeMember?.id),
   });
 
-  const clubMemberId = activeMember?.id || (activeClubMember as any)?.id || null;
-  const clubId = club?.id || (activeClubMember as any)?.club_id || null;
+  const clubMemberId = viewAsMemberId || activeMember?.id || (activeClubMember as any)?.id || null;
+  const clubId = (viewedMember as any)?.club_id || club?.id || (activeClubMember as any)?.club_id || null;
   const feeCategoryId = (activeClubMember as any)?.fee_category_id;
   const playsLeague = !!(activeClubMember as any)?.plays_league;
   const memberNo = (activeClubMember as any)?.club_member_number || activeMember?.club_member_number || "N/A";
   const accountName = (activeClubMember as any)?.name || activeMember?.name || "Unknown member";
+
 
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("100");
@@ -61,6 +106,9 @@ export default function MyAccount() {
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
+  useEffect(() => {
+    if (isPayingForOther && payMethod === "credit") setPayMethod("card");
+  }, [isPayingForOther, payMethod]);
   const [payMode, setPayMode] = useState<"full" | "partial">("full");
   const [partialAmount, setPartialAmount] = useState("");
 
@@ -345,12 +393,25 @@ export default function MyAccount() {
   const topUpMutation = useMutation({
     mutationFn: async ({ amount, method }: { amount: number; method: string }) => {
       if (!clubId || !clubMemberId) throw new Error("No club membership found for this account.");
+      const paidByTag = isPayingForOther ? ` (Paid by ${selfName})` : "";
+      if (isPayingForOther && (method === "eft" || method === "card")) {
+        // A delegate paying for someone else: still allowed via Card/EFT, but never
+        // top up the other person's wallet — the payment must settle outstanding
+        // fees only. Block bare top-ups when no fees are owing.
+        const owing = creditBalance < 0 ? Math.abs(creditBalance) : 0;
+        if (owing <= 0) {
+          throw new Error("No outstanding fees on this account. A delegate cannot top up another member's wallet.");
+        }
+        if (amount > owing) {
+          throw new Error(`As a delegate you can only pay up to the outstanding balance (R${owing.toFixed(2)}).`);
+        }
+      }
+
       if (method === "card") {
-        // Route through Yoco gateway
         await startYocoCheckout({
           amount,
           purpose: "topup",
-          description: `Wallet top-up of R${amount.toFixed(2)}`,
+          description: `Wallet top-up of R${amount.toFixed(2)}${paidByTag}`,
         });
         return;
       }
@@ -360,11 +421,12 @@ export default function MyAccount() {
         amount,
         type: "debit",
         method,
-        description: `Top-up via ${method.toUpperCase()}`,
+        description: `Top-up via ${method.toUpperCase()}${paidByTag}`,
         status: "pending",
       });
       if (error) throw error;
     },
+
     onSuccess: () => {
       if (topUpMethod === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
@@ -391,11 +453,15 @@ export default function MyAccount() {
       // We just record the member_credit_transactions row and flip the fee to paid.
 
       const feeDescription = selectedFees.map((f: any) => f.fee_label).join(", ");
-      const txDescription = isPartial
+      const paidByTag = isPayingForOther ? ` (Paid by ${selfName})` : "";
+      const txDescription = (isPartial
         ? `Partial payment: ${feeDescription}`
-        : `Fee payment: ${feeDescription}`;
+        : `Fee payment: ${feeDescription}`) + paidByTag;
 
       if (method === "credit") {
+        if (isPayingForOther) {
+          throw new Error("When paying for another member, please use Card or EFT — their credit balance cannot be used by a delegate.");
+        }
         if (availableCash < payAmount) {
           throw new Error("Insufficient credit balance. Please top up first.");
         }
@@ -445,13 +511,14 @@ export default function MyAccount() {
           amount: payAmount,
           type: "debit",
           method: "eft",
-          description: `EFT payment: ${feeDescription}`,
+          description: `EFT payment: ${feeDescription}${paidByTag}`,
           reference: `${memberNo} - Fees`,
           status: "pending",
         });
         if (txErr) throw txErr;
       }
     },
+
     onSuccess: (_, vars) => {
       if (vars.method === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
@@ -510,24 +577,71 @@ export default function MyAccount() {
     <div className="bottom-nav-safe">
       <SEO title="My Account" description="Manage your credit balance and fee payments." path="/my-account" noIndex />
       <PageHeader
-        title={isViewingAs ? `${accountName}'s Account` : "My Account"}
+        title={isPayingForOther ? `Paying for ${accountName}` : (isViewingAs ? `${accountName}'s Account` : "My Account")}
         subtitle={`Active account: ${accountName}${memberNo !== "N/A" ? ` · #${memberNo}` : (club as any)?.tenant_type === "association" ? " · league number pending" : ""}`}
       />
 
-      {/* Join an affiliated league association */}
-      {clubId && (club as any)?.tenant_type !== "association" && (
+      {/* Pay-for switcher — accounts the user has been granted delegate access to */}
+      {(managedDelegations || []).length > 0 && (
+        <div className="px-4 mt-3">
+          <Card className={cn("p-3", isPayingForOther && "border-primary/50 bg-primary/5")}>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+                {isPayingForOther ? "Viewing as" : "Pay for someone else"}
+              </p>
+              {isPayingForOther && (
+                <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setViewAsMemberId(null)}>
+                  Back to my account
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setViewAsMemberId(null)}
+                className={cn(
+                  "px-2.5 py-1 rounded-full text-[11px] border transition-colors",
+                  !isPayingForOther ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                )}
+              >
+                Me ({selfName})
+              </button>
+              {(managedMembers || []).map((m: any) => (
+                <button
+                  key={m.id}
+                  onClick={() => setViewAsMemberId(m.id)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-full text-[11px] border transition-colors",
+                    viewAsMemberId === m.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                  )}
+                >
+                  {m.name} {m.club_member_number ? `· #${m.club_member_number}` : ""}
+                </button>
+              ))}
+            </div>
+            {isPayingForOther && (
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Card / EFT payments will be tagged "Paid by {selfName}". Their wallet credit can't be used by a delegate.
+              </p>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* Join an affiliated league association — self only */}
+      {!isPayingForOther && clubId && (club as any)?.tenant_type !== "association" && (
         <div className="px-4 mt-3 space-y-3">
           <JoinLeagueAssociationCard clubId={clubId} variant="card" />
           <JoinedAssociationsCard clubId={clubId} />
         </div>
       )}
 
-      {/* GoBook integration — CSIR members only */}
-      {clubMemberId && /csir/i.test((club as any)?.name || "") && (
+      {/* GoBook integration — CSIR members only, self only */}
+      {!isPayingForOther && selfMemberId && /csir/i.test((club as any)?.name || "") && (
         <div className="px-4 mt-3">
-          <GoBookCredentialsCard clubMemberId={clubMemberId} />
+          <GoBookCredentialsCard clubMemberId={selfMemberId} />
         </div>
       )}
+
 
       {/* Credit Balance Card */}
       <motion.div
@@ -589,7 +703,10 @@ export default function MyAccount() {
         </Card>
       </motion.div>
 
-      <SharedAccessCard clubMemberId={clubMemberId} clubId={clubId} memberName={accountName} />
+      {!isPayingForOther && (
+        <SharedAccessCard clubMemberId={selfMemberId} clubId={club?.id || null} memberName={selfName} />
+      )}
+
 
       {/* Outstanding Fees & Paid sections removed — the wallet above shows the single
           combined net balance (all fees + bar tab − payments) and the Account Statement
@@ -807,16 +924,19 @@ export default function MyAccount() {
             <Separator />
 
             {/* Payment method */}
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                variant={payMethod === "credit" ? "default" : "outline"}
-                className="gap-1.5 h-12 text-xs flex-col"
-                onClick={() => setPayMethod("credit")}
-                disabled={availableCash < actualPayAmount}
-              >
-                <Wallet className="w-4 h-4" />
-                Credit
-              </Button>
+            <div className={cn("grid gap-2", isPayingForOther ? "grid-cols-2" : "grid-cols-3")}>
+              {!isPayingForOther && (
+                <Button
+                  variant={payMethod === "credit" ? "default" : "outline"}
+                  className="gap-1.5 h-12 text-xs flex-col"
+                  onClick={() => setPayMethod("credit")}
+                  disabled={availableCash < actualPayAmount}
+                >
+                  <Wallet className="w-4 h-4" />
+                  Credit
+                </Button>
+              )}
+
               <Button
                 variant={payMethod === "eft" ? "default" : "outline"}
                 className="gap-1.5 h-12 text-xs flex-col"

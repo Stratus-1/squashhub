@@ -363,13 +363,14 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   const qc = useQueryClient();
   const [newCourt, setNewCourt] = useState("");
   const [editingRelay, setEditingRelay] = useState<Record<number, string>>({});
+  const [editingChannel, setEditingChannel] = useState<Record<number, string>>({});
 
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-courts", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("courts").select("*").eq("club_id", clubId).order("name");
       if (error) throw error;
-      return data as { id: number; name: string; club_id: string; relay_device_id: string | null; relay_server: string | null }[];
+      return data as { id: number; name: string; club_id: string; relay_device_id: string | null; relay_server: string | null; relay_channel?: number | null }[];
     },
   });
 
@@ -398,6 +399,17 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
     }
   };
 
+  const handleSaveChannel = async (courtId: number, valueOverride?: string) => {
+    const channel = Math.max(0, Math.min(3, parseInt((valueOverride ?? editingChannel[courtId] ?? "0").trim(), 10) || 0));
+    const { error } = await fromExt("courts").update({ relay_channel: channel }).eq("id", courtId);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Relay output saved: ${channel}`);
+      setEditingChannel(prev => { const next = { ...prev }; delete next[courtId]; return next; });
+      qc.invalidateQueries({ queryKey: ["club-courts"] });
+    }
+  };
+
   return (
     <Card className="p-4 space-y-3">
       <h3 className="font-semibold text-sm">Courts ({courts.length})</h3>
@@ -410,6 +422,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
         {courts.map(c => {
           const courtId = c.id;
           const relayValue = editingRelay[courtId] ?? c.relay_device_id ?? "";
+          const channelValue = editingChannel[courtId] ?? String(c.relay_channel ?? 0);
           return (
             <div key={c.id} className="rounded-lg border p-2 space-y-1">
               <div className="flex items-center justify-between">

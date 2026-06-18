@@ -405,11 +405,10 @@ export default function MyAccount() {
       }
 
       if (method === "card") {
-        // Route through Yoco gateway
         await startYocoCheckout({
           amount,
           purpose: "topup",
-          description: `Wallet top-up of R${amount.toFixed(2)}`,
+          description: `Wallet top-up of R${amount.toFixed(2)}${paidByTag}`,
         });
         return;
       }
@@ -419,11 +418,12 @@ export default function MyAccount() {
         amount,
         type: "debit",
         method,
-        description: `Top-up via ${method.toUpperCase()}`,
+        description: `Top-up via ${method.toUpperCase()}${paidByTag}`,
         status: "pending",
       });
       if (error) throw error;
     },
+
     onSuccess: () => {
       if (topUpMethod === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });

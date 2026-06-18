@@ -5,6 +5,9 @@ project_id = "bzbuppwzljadulwntjys"
     verify_jwt = false
   [functions.court-lights]
     verify_jwt = false
+  [functions.court-lights-schedule]
+    verify_jwt = false
+
   [functions.create-club]
     verify_jwt = false
   [functions.email-notifications]

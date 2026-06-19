@@ -182,7 +182,8 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
   }
 
   const hasDelegates = chairmanDelegate || secretaryDelegate || captainDelegate;
-  const hasFees = feeCategories.length > 0;
+  const allFees = [...feeCategories, ...registrationFees];
+  const hasFees = allFees.length > 0;
 
   return (
     <div className="min-h-screen bg-background">

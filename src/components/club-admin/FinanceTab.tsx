@@ -614,57 +614,51 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         </Card>
       </div>
 
-      <Tabs defaultValue="by-account" className="w-full">
-        <div className="flex items-start justify-between gap-2 flex-wrap">
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="by-account" className="text-xs">By Account</TabsTrigger>
-            <TabsTrigger value="journal" className="text-xs">All GL Entries</TabsTrigger>
-            <TabsTrigger value="pending" className="text-xs">
-              Pending
-              {(pendingTransactions || []).length > 0 && (
-                <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">{(pendingTransactions || []).length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="remittances" className="text-xs gap-1">
-              <Send className="w-3 h-3" /> Remittances
-            </TabsTrigger>
-            <TabsTrigger value="renewals" className="text-xs">Annual Renewals</TabsTrigger>
-            <TabsTrigger value="trial" className="text-xs">Trial Balance</TabsTrigger>
-            <TabsTrigger value="income" className="text-xs">Income Statement</TabsTrigger>
-            <TabsTrigger value="coa" className="text-xs">Chart of Accounts</TabsTrigger>
-          </TabsList>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button size="sm" variant="outline" onClick={() => setStatementOpen(true)} className="gap-1.5 h-8 shrink-0">
-              <BookOpen className="w-3.5 h-3.5" /> Member Statement
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline" className="gap-1.5 h-8 shrink-0">
-                  <Wallet className="w-3.5 h-3.5" /> Member Balances
+      <FinanceHub
+        pendingCount={(pendingTransactions || []).length}
+        onStatement={() => setStatementOpen(true)}
+        onBalances={(filter) => { setBalancesFilter(filter); setBalancesSearch(""); setBalancesOpen(true); }}
+        onBill={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }}
+        onEnterTx={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }}
+      >
+        {(view, setView) => (
+          <Tabs value={view} onValueChange={setView} className="w-full mt-4">
+            <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+              <Button size="sm" variant="ghost" onClick={() => setView("")} className="gap-1.5 h-8 -ml-2">
+                <ArrowLeft className="w-4 h-4" /> Back to Finance
+              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button size="sm" variant="outline" onClick={() => setStatementOpen(true)} className="gap-1.5 h-8">
+                  <BookOpen className="w-3.5 h-3.5" /> Member Statement
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => { setBalancesFilter("outstanding"); setBalancesSearch(""); setBalancesOpen(true); }}>
-                  Outstanding (owes club)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setBalancesFilter("credit"); setBalancesSearch(""); setBalancesOpen(true); }}>
-                  In Credit (overpaid)
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { setBalancesFilter("all"); setBalancesSearch(""); setBalancesOpen(true); }}>
-                  All members
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8 shrink-0">
-              <Receipt className="w-3.5 h-3.5" /> Bill Member
-            </Button>
-            <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8 shrink-0">
-              <Plus className="w-3.5 h-3.5" /> Enter Transaction
-            </Button>
-          </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" className="gap-1.5 h-8">
+                      <Wallet className="w-3.5 h-3.5" /> Member Balances
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => { setBalancesFilter("outstanding"); setBalancesSearch(""); setBalancesOpen(true); }}>
+                      Outstanding (owes club)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setBalancesFilter("credit"); setBalancesSearch(""); setBalancesOpen(true); }}>
+                      In Credit (overpaid)
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => { setBalancesFilter("all"); setBalancesSearch(""); setBalancesOpen(true); }}>
+                      All members
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8">
+                  <Receipt className="w-3.5 h-3.5" /> Bill Member
+                </Button>
+                <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
+                  <Plus className="w-3.5 h-3.5" /> Enter Transaction
+                </Button>
+              </div>
+            </div>
 
-        </div>
 
         <TabsContent value="remittances">
           <RemittancesPanel clubId={clubId} />

@@ -10,7 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -1670,7 +1670,7 @@ interface FinanceHubProps {
   onBalances: (filter: "outstanding" | "credit" | "all") => void;
   onBill: () => void;
   onEnterTx: () => void;
-  children: (view: FinanceView, setView: (v: string) => void) => React.ReactNode;
+  children: (view: FinanceView, setView: (v: string) => void) => ReactNode;
 }
 
 function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, children }: FinanceHubProps) {
@@ -1687,7 +1687,7 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
       key: FinanceView;
       label: string;
       desc: string;
-      icon: React.ComponentType<{ className?: string }>;
+      icon: ComponentType<{ className?: string }>;
       badge?: number;
       onClick?: () => void;
     }>;

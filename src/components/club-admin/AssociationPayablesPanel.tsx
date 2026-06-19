@@ -16,12 +16,15 @@ import { friendlyError } from "@/lib/friendly-error";
 
 interface Props { clubId: string }
 
-interface NationalBody {
+type Basis = "per_member" | "per_team" | "per_club";
+
+interface PayableFee {
   id: string;
-  body_name: string;
-  abbreviation: string | null;
-  fee_annual: number;
-  fee_type: "national" | "league_affiliation";
+  payee_name: string;
+  payee_type: "league_association" | "national_body";
+  payee_ref_id: string | null;
+  basis: Basis;
+  amount: number;
 }
 interface EligibleMember {
   club_member_id: string;
@@ -31,10 +34,13 @@ interface EligibleMember {
 }
 interface BatchRow {
   id: string;
-  national_body_fee_id: string;
+  payable_fee_id: string | null;
+  national_body_fee_id: string | null;
   season_label: string;
   total_amount: number;
   member_count: number;
+  basis: string | null;
+  unit_amount: number | null;
   status: "pending" | "paid" | "void";
   paid_at: string | null;
   paid_amount: number | null;
@@ -42,30 +48,31 @@ interface BatchRow {
   created_at: string;
 }
 
-const unitLabel = (ft: string) => (ft === "league_affiliation" ? "team" : "member");
+const basisLabel = (b: Basis) => b === "per_member" ? "Per member" : b === "per_team" ? "Per team" : "Per club";
+const basisUnit = (b: Basis) => b === "per_member" ? "member" : b === "per_team" ? "team" : "club";
 
 export function AssociationPayablesPanel({ clubId }: Props) {
   const qc = useQueryClient();
-  const [generateBody, setGenerateBody] = useState<NationalBody | null>(null);
+  const [generateFee, setGenerateFee] = useState<PayableFee | null>(null);
   const [settleBatch, setSettleBatch] = useState<BatchRow | null>(null);
 
-  /* ─── National bodies — club-payable affiliations only (excludes member registration fees) ─── */
-  const { data: bodies = [] } = useQuery({
-    queryKey: ["assoc-payable-bodies", clubId],
-    queryFn: async (): Promise<NationalBody[]> => {
-      const { data, error } = await fromExt("national_body_fees")
-        .select("id, body_name, abbreviation, fee_annual, active, fee_type")
+  /* ─── Fees the club owes (from Fees Payable Schedule) ─── */
+  const { data: fees = [] } = useQuery({
+    queryKey: ["assoc-payable-fees", clubId],
+    queryFn: async (): Promise<PayableFee[]> => {
+      const { data, error } = await fromExt("club_fees_payable" as any)
+        .select("id, payee_name, payee_type, payee_ref_id, basis, amount, active")
         .eq("club_id", clubId)
         .eq("active", true)
-        .in("fee_type", ["national", "league_affiliation"])
-        .order("body_name");
+        .order("payee_name");
       if (error) throw error;
-      return (data || []).map((b: any) => ({
-        id: b.id,
-        body_name: b.body_name,
-        abbreviation: b.abbreviation,
-        fee_annual: Number(b.fee_annual) || 0,
-        fee_type: b.fee_type,
+      return (data || []).map((f: any) => ({
+        id: f.id,
+        payee_name: f.payee_name,
+        payee_type: f.payee_type,
+        payee_ref_id: f.payee_ref_id,
+        basis: f.basis,
+        amount: Number(f.amount) || 0,
       }));
     },
     enabled: !!clubId,
@@ -75,7 +82,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
   const { data: batches = [] } = useQuery({
     queryKey: ["assoc-payable-batches", clubId],
     queryFn: async (): Promise<BatchRow[]> => {
-      const { data, error } = await fromExt("club_association_payable_batches")
+      const { data, error } = await fromExt("club_association_payable_batches" as any)
         .select("*")
         .eq("club_id", clubId)
         .order("created_at", { ascending: false });
@@ -85,11 +92,11 @@ export function AssociationPayablesPanel({ clubId }: Props) {
     enabled: !!clubId,
   });
 
-  const outstandingByBody = useMemo(() => {
+  const outstandingByFee = useMemo(() => {
     const m: Record<string, number> = {};
     batches.forEach((b) => {
-      if (b.status === "pending") {
-        m[b.national_body_fee_id] = (m[b.national_body_fee_id] || 0) + Number(b.total_amount || 0);
+      if (b.status === "pending" && b.payable_fee_id) {
+        m[b.payable_fee_id] = (m[b.payable_fee_id] || 0) + Number(b.total_amount || 0);
       }
     });
     return m;
@@ -100,38 +107,38 @@ export function AssociationPayablesPanel({ clubId }: Props) {
       <div className="flex items-center gap-2">
         <Building2 className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold">Association Payables</h3>
-        <Badge variant="outline" className="text-[10px]">{bodies.length} bodies linked</Badge>
+        <Badge variant="outline" className="text-[10px]">{fees.length} fee{fees.length === 1 ? "" : "s"} configured</Badge>
       </div>
       <p className="text-xs text-muted-foreground -mt-4">
-        Generate annual lump-sum payables to national bodies. The club is invoiced; eligible members are tracked
-        per-batch so you have a permanent audit trail of who has been covered.
+        Generate lump-sum payables for the fees in your Fees Payable Schedule. The club is invoiced; each batch
+        keeps a permanent audit trail of who/what was covered.
       </p>
 
-      {bodies.length === 0 ? (
+      {fees.length === 0 ? (
         <Card className="p-6 text-center text-sm text-muted-foreground">
-          No national bodies are configured. Add one under Fees → National body fees first.
+          No payable fees configured. Add them under Fees → Fees Payable Schedule.
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {bodies.map((b) => (
-            <Card key={b.id} className="p-4 space-y-3">
+          {fees.map((f) => (
+            <Card key={f.id} className="p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold">{b.body_name}</p>
-                  {b.abbreviation && (
-                    <p className="text-[11px] text-muted-foreground">{b.abbreviation}</p>
-                  )}
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{f.payee_name}</p>
+                  <Badge variant="secondary" className="text-[10px] mt-1">{basisLabel(f.basis)}</Badge>
                 </div>
-                <Badge variant="outline" className="text-[10px]">R{b.fee_annual.toFixed(2)} / {unitLabel(b.fee_type)}</Badge>
+                <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+                  R{f.amount.toFixed(2)} / {basisUnit(f.basis)}
+                </Badge>
               </div>
               <div className="flex items-center gap-2 text-[11px]">
                 <Wallet className="w-3 h-3 text-muted-foreground" />
                 <span className="text-muted-foreground">Outstanding:</span>
-                <span className={outstandingByBody[b.id] ? "text-destructive font-semibold tabular-nums" : "tabular-nums"}>
-                  R{(outstandingByBody[b.id] || 0).toFixed(2)}
+                <span className={outstandingByFee[f.id] ? "text-destructive font-semibold tabular-nums" : "tabular-nums"}>
+                  R{(outstandingByFee[f.id] || 0).toFixed(2)}
                 </span>
               </div>
-              <Button size="sm" className="w-full gap-1.5 h-8" onClick={() => setGenerateBody(b)}>
+              <Button size="sm" className="w-full gap-1.5 h-8" onClick={() => setGenerateFee(f)}>
                 <Plus className="w-3.5 h-3.5" /> Generate Payable
               </Button>
             </Card>
@@ -152,9 +159,10 @@ export function AssociationPayablesPanel({ clubId }: Props) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-[10px]">Body</TableHead>
+                  <TableHead className="text-[10px]">Payee</TableHead>
+                  <TableHead className="text-[10px]">Basis</TableHead>
                   <TableHead className="text-[10px]">Season</TableHead>
-                  <TableHead className="text-[10px] text-right">Members</TableHead>
+                  <TableHead className="text-[10px] text-right">Units</TableHead>
                   <TableHead className="text-[10px] text-right">Total</TableHead>
                   <TableHead className="text-[10px]">Status</TableHead>
                   <TableHead className="text-[10px]">Created</TableHead>
@@ -163,10 +171,11 @@ export function AssociationPayablesPanel({ clubId }: Props) {
               </TableHeader>
               <TableBody>
                 {batches.map((b) => {
-                  const body = bodies.find((x) => x.id === b.national_body_fee_id);
+                  const fee = fees.find((x) => x.id === b.payable_fee_id);
                   return (
                     <TableRow key={b.id}>
-                      <TableCell className="text-xs font-medium">{body?.body_name || "—"}</TableCell>
+                      <TableCell className="text-xs font-medium">{fee?.payee_name || "—"}</TableCell>
+                      <TableCell className="text-xs">{b.basis ? basisLabel(b.basis as Basis) : "—"}</TableCell>
                       <TableCell className="text-xs">{b.season_label}</TableCell>
                       <TableCell className="text-xs text-right tabular-nums">{b.member_count}</TableCell>
                       <TableCell className="text-xs text-right tabular-nums">R{Number(b.total_amount).toFixed(2)}</TableCell>
@@ -192,16 +201,16 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         )}
       </div>
 
-      {generateBody && (
+      {generateFee && (
         <GenerateDialog
           clubId={clubId}
-          body={generateBody}
+          fee={generateFee}
           existingBatches={batches}
-          onClose={() => setGenerateBody(null)}
+          onClose={() => setGenerateFee(null)}
           onCreated={() => {
             qc.invalidateQueries({ queryKey: ["assoc-payable-batches", clubId] });
             qc.invalidateQueries({ queryKey: ["club-journal-entries", clubId] });
-            setGenerateBody(null);
+            setGenerateFee(null);
           }}
         />
       )}
@@ -210,7 +219,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         <SettleDialog
           clubId={clubId}
           batch={settleBatch}
-          body={bodies.find((x) => x.id === settleBatch.national_body_fee_id) || null}
+          fee={fees.find((x) => x.id === settleBatch.payable_fee_id) || null}
           onClose={() => setSettleBatch(null)}
           onSettled={() => {
             qc.invalidateQueries({ queryKey: ["assoc-payable-batches", clubId] });
@@ -223,12 +232,26 @@ export function AssociationPayablesPanel({ clubId }: Props) {
   );
 }
 
+/* ─── Resolve which league_associations this fee maps to ─── */
+async function resolveAssocIds(fee: PayableFee): Promise<string[]> {
+  if (fee.payee_type === "league_association" && fee.payee_ref_id) {
+    return [fee.payee_ref_id];
+  }
+  if (fee.payee_type === "national_body" && fee.payee_ref_id) {
+    const { data } = await fromExt("league_association_national_bodies")
+      .select("league_association_id")
+      .eq("national_body_fee_id", fee.payee_ref_id);
+    return (data || []).map((r: any) => r.league_association_id);
+  }
+  return [];
+}
+
 /* ─── Generate Payable Dialog ─── */
 function GenerateDialog({
-  clubId, body, existingBatches, onClose, onCreated,
+  clubId, fee, existingBatches, onClose, onCreated,
 }: {
   clubId: string;
-  body: NationalBody;
+  fee: PayableFee;
   existingBatches: BatchRow[];
   onClose: () => void;
   onCreated: () => void;
@@ -237,26 +260,23 @@ function GenerateDialog({
   const [seasonLabel, setSeasonLabel] = useState(defaultSeason);
   const [submitting, setSubmitting] = useState(false);
 
-  /* Fetch the league_associations linked to this national body, then eligible members */
+  const isPerMember = fee.basis === "per_member";
+  const isPerTeam = fee.basis === "per_team";
+  const isPerClub = fee.basis === "per_club";
+
+  /* Eligible members (per_member only) */
   const { data: eligible = [], isLoading } = useQuery({
-    queryKey: ["assoc-payable-eligible", clubId, body.id, seasonLabel],
+    queryKey: ["assoc-payable-eligible", clubId, fee.id, seasonLabel],
     queryFn: async (): Promise<EligibleMember[]> => {
-      // 1) linked associations
-      const { data: linkRows, error: linkErr } = await fromExt("league_association_national_bodies")
-        .select("league_association_id")
-        .eq("national_body_fee_id", body.id);
-      if (linkErr) throw linkErr;
-      const assocIds = (linkRows || []).map((r: any) => r.league_association_id);
+      const assocIds = await resolveAssocIds(fee);
       if (assocIds.length === 0) return [];
 
-      // 2) active affiliations
       const { data: affils, error: afErr } = await fromExt("member_association_affiliations")
         .select("club_member_id, association_id, league_association_number, active")
         .in("association_id", assocIds)
         .eq("active", true);
       if (afErr) throw afErr;
 
-      // Dedupe by club_member_id; pick first league number
       const map = new Map<string, { league_number: string | null }>();
       (affils || []).forEach((a: any) => {
         if (!map.has(a.club_member_id)) map.set(a.club_member_id, { league_number: a.league_association_number || null });
@@ -264,26 +284,22 @@ function GenerateDialog({
       const memberIds = Array.from(map.keys());
       if (memberIds.length === 0) return [];
 
-      // 3) club members (must belong to this club & active)
       const { data: members, error: mErr } = await fromExt("club_members")
         .select("id, name, club_member_number, status, club_id")
         .eq("club_id", clubId)
         .in("id", memberIds);
       if (mErr) throw mErr;
 
-      // 4) already-billed in a non-void batch for this season+fee
       const { data: existingLines } = await fromExt("club_association_payable_lines")
         .select("club_member_id, batch_id")
         .in("club_member_id", memberIds);
       const seasonBatchIds = new Set(
         existingBatches
-          .filter((b) => b.national_body_fee_id === body.id && b.season_label === seasonLabel && b.status !== "void")
+          .filter((b) => b.payable_fee_id === fee.id && b.season_label === seasonLabel && b.status !== "void")
           .map((b) => b.id),
       );
       const alreadyBilled = new Set(
-        (existingLines || [])
-          .filter((l: any) => seasonBatchIds.has(l.batch_id))
-          .map((l: any) => l.club_member_id),
+        (existingLines || []).filter((l: any) => seasonBatchIds.has(l.batch_id)).map((l: any) => l.club_member_id),
       );
 
       return (members || [])
@@ -296,19 +312,14 @@ function GenerateDialog({
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
     },
-    enabled: !!body.id,
+    enabled: !!fee.id && isPerMember,
   });
 
-  const isPerTeam = body.fee_type === "league_affiliation";
-
-  /* Auto-count teams (leagues) linked to this body for per-team affiliations */
+  /* Auto-count teams (per_team only) */
   const { data: autoTeamCount = 0 } = useQuery({
-    queryKey: ["assoc-payable-team-count", clubId, body.id],
+    queryKey: ["assoc-payable-team-count", clubId, fee.id],
     queryFn: async (): Promise<number> => {
-      const { data: linkRows } = await fromExt("league_association_national_bodies")
-        .select("league_association_id")
-        .eq("national_body_fee_id", body.id);
-      const assocIds = (linkRows || []).map((r: any) => r.league_association_id);
+      const assocIds = await resolveAssocIds(fee);
       if (assocIds.length === 0) return 0;
       const { data: leagues } = await fromExt("leagues")
         .select("id, club_id, association_id")
@@ -316,31 +327,28 @@ function GenerateDialog({
         .in("association_id", assocIds);
       return (leagues || []).length;
     },
-    enabled: !!body.id && isPerTeam,
+    enabled: !!fee.id && isPerTeam,
   });
 
   const [teamCount, setTeamCount] = useState<string>("");
   const [teamCountTouched, setTeamCountTouched] = useState(false);
   useEffect(() => {
-    if (isPerTeam && !teamCountTouched && autoTeamCount > 0) {
-      setTeamCount(String(autoTeamCount));
-    }
+    if (isPerTeam && !teamCountTouched && autoTeamCount > 0) setTeamCount(String(autoTeamCount));
   }, [autoTeamCount, isPerTeam, teamCountTouched]);
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  // Initialise selection when eligible list arrives (per-member flow only)
   useEffect(() => {
-    if (isPerTeam) return;
+    if (!isPerMember) return;
     const next: Record<string, boolean> = {};
     eligible.forEach((m) => { next[m.club_member_id] = true; });
     setSelected(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eligible.length, body.id, seasonLabel]);
+  }, [eligible.length, fee.id, seasonLabel]);
 
   const tickedIds = Object.entries(selected).filter(([, v]) => v).map(([k]) => k);
   const teams = Math.max(0, parseInt(teamCount, 10) || 0);
-  const units = isPerTeam ? teams : tickedIds.length;
-  const total = units * body.fee_annual;
+  const units = isPerMember ? tickedIds.length : isPerTeam ? teams : 1;
+  const total = units * fee.amount;
 
   const toggleAll = (val: boolean) => {
     const next: Record<string, boolean> = {};
@@ -350,21 +358,22 @@ function GenerateDialog({
 
   const create = async () => {
     if (units === 0) {
-      toast.error(isPerTeam ? "Enter the number of teams" : "Select at least one member");
+      toast.error(isPerMember ? "Select at least one member" : isPerTeam ? "Enter the number of teams" : "Invalid");
       return;
     }
     if (!seasonLabel.trim()) { toast.error("Enter a season label"); return; }
     setSubmitting(true);
     try {
       const journalRef = crypto.randomUUID();
-      // 1) batch (member_count holds units — members or teams)
-      const { data: batchData, error: batchErr } = await fromExt("club_association_payable_batches")
+      const { data: batchData, error: batchErr } = await fromExt("club_association_payable_batches" as any)
         .insert({
           club_id: clubId,
-          national_body_fee_id: body.id,
+          payable_fee_id: fee.id,
           season_label: seasonLabel.trim(),
           total_amount: total,
           member_count: units,
+          basis: fee.basis,
+          unit_amount: fee.amount,
           status: "pending",
           journal_ref_raise: journalRef,
         })
@@ -373,15 +382,15 @@ function GenerateDialog({
       if (batchErr) throw batchErr;
       const batchId = batchData.id;
 
-      // 2) lines — per-member flow only (audit trail of who's covered)
-      if (!isPerTeam && tickedIds.length > 0) {
+      // Audit lines for per-member flow
+      if (isPerMember && tickedIds.length > 0) {
         const lines = tickedIds.map((id) => {
           const m = eligible.find((x) => x.club_member_id === id)!;
           return {
             batch_id: batchId,
             club_member_id: id,
             league_number: m.league_number,
-            amount: body.fee_annual,
+            amount: fee.amount,
             paid: false,
           };
         });
@@ -389,9 +398,8 @@ function GenerateDialog({
         if (linesErr) throw linesErr;
       }
 
-      // 3) GL journal: Dr Affiliation Expense / Cr Association Payable
-      const unitWord = isPerTeam ? "teams" : "members";
-      const desc = `Affiliation: ${body.body_name} – ${seasonLabel} (${units} ${unitWord})`;
+      const unitWord = basisUnit(fee.basis) + (units === 1 ? "" : "s");
+      const desc = `Affiliation: ${fee.payee_name} – ${seasonLabel} (${units} ${unitWord})`;
       const { error: jErr } = await fromExt("club_journal_entries").insert([
         { club_id: clubId, journal_ref: journalRef, account: "national_body_expense", debit: total, credit: 0, description: desc },
         { club_id: clubId, journal_ref: journalRef, account: "association_payable", debit: 0, credit: total, description: desc },
@@ -412,11 +420,11 @@ function GenerateDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Generate payable — {body.body_name}</DialogTitle>
+          <DialogTitle>Generate payable — {fee.payee_name}</DialogTitle>
           <DialogDescription>
-            {isPerTeam
-              ? `R${body.fee_annual.toFixed(2)} per team. Enter the number of teams being entered for this season.`
-              : `Select members covered by this payable. R${body.fee_annual.toFixed(2)} per member.`}
+            {isPerMember && `R${fee.amount.toFixed(2)} per member. Select members covered by this payable.`}
+            {isPerTeam && `R${fee.amount.toFixed(2)} per team entered into the league.`}
+            {isPerClub && `Flat club-level fee of R${fee.amount.toFixed(2)}.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -427,14 +435,16 @@ function GenerateDialog({
           </div>
           <div className="flex items-end justify-end gap-3 text-sm">
             <div>
-              <span className="text-muted-foreground text-xs">{isPerTeam ? "Teams:" : "Selected:"}</span>{" "}
+              <span className="text-muted-foreground text-xs">
+                {isPerMember ? "Selected:" : isPerTeam ? "Teams:" : "Units:"}
+              </span>{" "}
               <span className="font-semibold tabular-nums">{units}</span>
             </div>
             <div><span className="text-muted-foreground text-xs">Total:</span> <span className="font-bold tabular-nums">R{total.toFixed(2)}</span></div>
           </div>
         </div>
 
-        {isPerTeam ? (
+        {isPerTeam && (
           <div className="border rounded-md p-4 space-y-2">
             <Label className="text-xs">Number of teams</Label>
             <Input
@@ -447,10 +457,18 @@ function GenerateDialog({
             <p className="text-[11px] text-muted-foreground">
               Auto-detected <span className="font-semibold">{autoTeamCount}</span> team{autoTeamCount === 1 ? "" : "s"} entered into linked leagues — edit if different.
               <br />
-              R{body.fee_annual.toFixed(2)} × {teams} = R{total.toFixed(2)}.
+              R{fee.amount.toFixed(2)} × {teams} = R{total.toFixed(2)}.
             </p>
           </div>
-        ) : (
+        )}
+
+        {isPerClub && (
+          <div className="border rounded-md p-4 text-xs text-muted-foreground">
+            This is a flat per-club fee. Total: <span className="font-semibold text-foreground">R{total.toFixed(2)}</span>.
+          </div>
+        )}
+
+        {isPerMember && (
           <div className="border rounded-md max-h-[400px] overflow-y-auto">
             {isLoading ? (
               <p className="p-4 text-xs text-muted-foreground">Loading eligible members…</p>
@@ -487,7 +505,7 @@ function GenerateDialog({
                       <TableCell className="text-xs">{m.member_number || "—"}</TableCell>
                       <TableCell className="text-xs">{m.name}</TableCell>
                       <TableCell className="text-xs">{m.league_number || "—"}</TableCell>
-                      <TableCell className="text-xs text-right tabular-nums">R{body.fee_annual.toFixed(2)}</TableCell>
+                      <TableCell className="text-xs text-right tabular-nums">R{fee.amount.toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -509,11 +527,11 @@ function GenerateDialog({
 
 /* ─── Settle Dialog ─── */
 function SettleDialog({
-  clubId, batch, body, onClose, onSettled,
+  clubId, batch, fee, onClose, onSettled,
 }: {
   clubId: string;
   batch: BatchRow;
-  body: NationalBody | null;
+  fee: PayableFee | null;
   onClose: () => void;
   onSettled: () => void;
 }) {
@@ -529,17 +547,15 @@ function SettleDialog({
     try {
       const journalRef = crypto.randomUUID();
       const moneyAccount = method === "cash" ? "cash" : "bank_current";
-      const desc = `Affiliation payment: ${body?.body_name || "Body"} – ${batch.season_label}${paymentRef ? ` (${paymentRef})` : ""}`;
+      const desc = `Affiliation payment: ${fee?.payee_name || "Payable"} – ${batch.season_label}${paymentRef ? ` (${paymentRef})` : ""}`;
 
-      // GL: Dr Association Payable / Cr Bank|Cash
       const { error: jErr } = await fromExt("club_journal_entries").insert([
         { club_id: clubId, journal_ref: journalRef, account: "association_payable", debit: amt, credit: 0, description: desc },
         { club_id: clubId, journal_ref: journalRef, account: moneyAccount, debit: 0, credit: amt, description: desc },
       ]);
       if (jErr) throw jErr;
 
-      // Update batch
-      const { error: bErr } = await fromExt("club_association_payable_batches")
+      const { error: bErr } = await fromExt("club_association_payable_batches" as any)
         .update({
           status: "paid",
           paid_at: new Date().toISOString(),
@@ -551,7 +567,6 @@ function SettleDialog({
         .eq("id", batch.id);
       if (bErr) throw bErr;
 
-      // Flip lines to paid
       const { error: lErr } = await fromExt("club_association_payable_lines")
         .update({ paid: true, paid_at: new Date().toISOString() })
         .eq("batch_id", batch.id);
@@ -571,9 +586,9 @@ function SettleDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Settle batch — {body?.body_name}</DialogTitle>
+          <DialogTitle>Settle batch — {fee?.payee_name}</DialogTitle>
           <DialogDescription>
-            {batch.member_count} members · {batch.season_label} · Total R{Number(batch.total_amount).toFixed(2)}
+            {batch.member_count} {batch.basis ? basisUnit(batch.basis as Basis) + (batch.member_count === 1 ? "" : "s") : "units"} · {batch.season_label} · Total R{Number(batch.total_amount).toFixed(2)}
           </DialogDescription>
         </DialogHeader>
 

@@ -2528,20 +2528,6 @@ function LinkedNationalBodiesSection({ associationId, clubId }: { associationId:
     qc.invalidateQueries({ queryKey: ["lanb-links", associationId] });
   };
 
-  const handleSeed = async () => {
-    setSeeding(true);
-    try {
-      const { data, error } = await (supabase as any).rpc("seed_linked_national_body_fees", {
-        p_league_association_id: associationId,
-      });
-      if (error) throw error;
-      toast.success(`Seeded ${data ?? 0} member fee(s) for the current season`);
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to seed fees");
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const activeCount = links.filter((l: any) => l.active).length;
 
@@ -2565,12 +2551,6 @@ function LinkedNationalBodiesSection({ associationId, clubId }: { associationId:
             </Tooltip>
           </TooltipProvider>
         </div>
-        {activeCount > 0 && (
-          <Button type="button" size="sm" variant="outline" onClick={handleSeed} disabled={seeding}>
-            {seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
-            Seed fees now
-          </Button>
-        )}
       </div>
 
       {bodies.length === 0 ? (

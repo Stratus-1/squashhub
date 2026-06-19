@@ -1876,7 +1876,7 @@ function BulkMembershipTypesDialog({
             onChange={(e) => setSearch(e.target.value)}
           />
           <div className="text-xs text-muted-foreground">
-            {filtered.length} shown · {changed.length} pending change{changed.length !== 1 ? "s" : ""}
+            {filtered.length} shown · {changed.length} pending change{changed.length !== 1 ? "s" : ""} · Assigns category only — no fees are raised
           </div>
           <div className="flex-1 overflow-y-auto border rounded-md divide-y">
             {filtered.length === 0 && (
@@ -1908,7 +1908,7 @@ function BulkMembershipTypesDialog({
                     <option value="">— None —</option>
                     {feeCategories.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name} (R{c.annual_fee})
+                        {c.name}
                       </option>
                     ))}
                   </select>

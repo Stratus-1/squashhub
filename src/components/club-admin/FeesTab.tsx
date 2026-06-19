@@ -70,8 +70,6 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     }));
 
     associations.forEach(a => {
-      // Skip associations where members pay the league directly — these don't belong in the club's fee schedule.
-      if ((a as any).members_pay_directly) return;
       const baseName = a.name || a.abbreviation || "League";
       list.push({
         id: a.id, name: baseName + (a.abbreviation && a.name ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
@@ -217,14 +215,6 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
           </div>
         </div>
 
-        {/* Info: league association fees paid directly to the association */}
-        <Card className="p-3 mb-3 border-primary/30 bg-primary/5">
-          <p className="text-xs text-foreground leading-relaxed">
-            <strong>League association fees:</strong> If members pay a league association (e.g. HSA, WPSA) <em>directly</em> via EFT or card, do <strong>NOT</strong> add the fee here. Instead, open the <strong>Leagues</strong> tab → edit the association → enable <em>"Members pay [association] directly"</em>. The fee will be excluded from this schedule and members settle with the association themselves.
-            <br />
-            Only add a league fee here when your club <strong>collects</strong> it from members on behalf of the association.
-          </p>
-        </Card>
 
         <Card className="overflow-hidden">
           <Table>

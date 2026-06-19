@@ -838,6 +838,7 @@ export type Database = {
       club_association_payable_batches: {
         Row: {
           bank_account: string | null
+          basis: string | null
           club_id: string
           created_at: string
           created_by: string | null
@@ -845,18 +846,21 @@ export type Database = {
           journal_ref_raise: string | null
           journal_ref_settle: string | null
           member_count: number
-          national_body_fee_id: string
+          national_body_fee_id: string | null
           notes: string | null
           paid_amount: number | null
           paid_at: string | null
+          payable_fee_id: string | null
           payment_reference: string | null
           season_label: string
           status: string
           total_amount: number
+          unit_amount: number | null
           updated_at: string
         }
         Insert: {
           bank_account?: string | null
+          basis?: string | null
           club_id: string
           created_at?: string
           created_by?: string | null
@@ -864,18 +868,21 @@ export type Database = {
           journal_ref_raise?: string | null
           journal_ref_settle?: string | null
           member_count?: number
-          national_body_fee_id: string
+          national_body_fee_id?: string | null
           notes?: string | null
           paid_amount?: number | null
           paid_at?: string | null
+          payable_fee_id?: string | null
           payment_reference?: string | null
           season_label: string
           status?: string
           total_amount?: number
+          unit_amount?: number | null
           updated_at?: string
         }
         Update: {
           bank_account?: string | null
+          basis?: string | null
           club_id?: string
           created_at?: string
           created_by?: string | null
@@ -883,14 +890,16 @@ export type Database = {
           journal_ref_raise?: string | null
           journal_ref_settle?: string | null
           member_count?: number
-          national_body_fee_id?: string
+          national_body_fee_id?: string | null
           notes?: string | null
           paid_amount?: number | null
           paid_at?: string | null
+          payable_fee_id?: string | null
           payment_reference?: string | null
           season_label?: string
           status?: string
           total_amount?: number
+          unit_amount?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -902,10 +911,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "club_association_payable_batches_national_body_fee_id_fkey"
-            columns: ["national_body_fee_id"]
+            foreignKeyName: "club_association_payable_batches_payable_fee_id_fkey"
+            columns: ["payable_fee_id"]
             isOneToOne: false
-            referencedRelation: "national_body_fees"
+            referencedRelation: "club_fees_payable"
             referencedColumns: ["id"]
           },
         ]

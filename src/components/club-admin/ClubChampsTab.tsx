@@ -2187,6 +2187,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setInviteTiming("manual");
     setInviteScheduledAt("");
     setDescription("");
+    setAffectsRankingPoints(false);
     setIncludeVisitors(false);
     setSelectedVisitorClubs(new Set());
     setCustomizeDailySchedule(false);

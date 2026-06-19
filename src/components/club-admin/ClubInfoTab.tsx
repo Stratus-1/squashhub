@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { toast } from "sonner";
@@ -29,6 +30,7 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     secretary_member_id: club.secretary_member_id || "",
     club_captain_member_id: club.club_captain_member_id || "",
     logo_url: club.logo_url || "",
+    show_delegates_on_landing: club.show_delegates_on_landing ?? true,
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -167,7 +169,19 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
 
       {/* Office Bearers */}
       <Card className="p-6 space-y-4">
-        <h3 className="font-semibold">Office Bearers</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold">Office Bearers</h3>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-delegates"
+              checked={form.show_delegates_on_landing}
+              onCheckedChange={(checked) => setForm(p => ({ ...p, show_delegates_on_landing: checked }))}
+            />
+            <Label htmlFor="show-delegates" className="text-xs font-normal cursor-pointer">
+              Show on landing page
+            </Label>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SearchableMemberSelect label="Chairman" value={form.chairman_member_id} field="chairman_member_id" />
           <SearchableMemberSelect label="Secretary" value={form.secretary_member_id} field="secretary_member_id" />

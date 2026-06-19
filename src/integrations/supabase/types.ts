@@ -2585,6 +2585,7 @@ export type Database = {
           secretary_member_id: string | null
           shelly_integration_enabled: boolean
           shelly_supply_mode: string | null
+          show_delegates_on_landing: boolean
           sla_accepted_at: string | null
           sla_accepted_by: string | null
           sla_accepted_name: string | null
@@ -2655,6 +2656,7 @@ export type Database = {
           secretary_member_id?: string | null
           shelly_integration_enabled?: boolean
           shelly_supply_mode?: string | null
+          show_delegates_on_landing?: boolean
           sla_accepted_at?: string | null
           sla_accepted_by?: string | null
           sla_accepted_name?: string | null
@@ -2725,6 +2727,7 @@ export type Database = {
           secretary_member_id?: string | null
           shelly_integration_enabled?: boolean
           shelly_supply_mode?: string | null
+          show_delegates_on_landing?: boolean
           sla_accepted_at?: string | null
           sla_accepted_by?: string | null
           sla_accepted_name?: string | null

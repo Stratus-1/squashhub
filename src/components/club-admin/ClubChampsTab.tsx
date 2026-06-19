@@ -2244,6 +2244,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setDaySchedules(Array.isArray(loadedDay) ? loadedDay : []);
     setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
+    setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")

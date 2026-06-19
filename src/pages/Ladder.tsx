@@ -23,6 +23,63 @@ import { isCourtAvailable } from "@/lib/court-availability";
 import { toast } from "sonner";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { BarChart3 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+
+function RankingTabs({
+  pyramidContent,
+  rpBoard,
+  onPlayerClick,
+}: {
+  pyramidContent: React.ReactNode;
+  rpBoard: Array<{ id: string; name: string; ranking_points: number; ladder_position: number | null; avatar_url: string | null }>;
+  onPlayerClick: (memberId: string) => void;
+}) {
+  return (
+    <div className="px-4 mt-3 mb-4">
+      <Tabs defaultValue="pyramid" className="w-full">
+        <TabsList className="mb-3">
+          <TabsTrigger value="pyramid">Pyramid Ladder</TabsTrigger>
+          <TabsTrigger value="points" className="gap-1.5">
+            <BarChart3 className="w-3.5 h-3.5" /> Ranking Points
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="pyramid">{pyramidContent}</TabsContent>
+        <TabsContent value="points">
+          <Card className="overflow-hidden">
+            <div className="px-3 py-2 border-b bg-muted/30">
+              <p className="text-[11px] text-muted-foreground">
+                Points are earned from official matches and applied after admin approval. Underdog wins earn bigger bonuses.
+              </p>
+            </div>
+            <div className="divide-y">
+              {rpBoard.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">No ranking-points data yet.</p>
+              ) : (
+                rpBoard.map((m, i) => (
+                  <button
+                    key={m.id}
+                    onClick={() => onPlayerClick(m.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-muted/40 transition-colors text-left"
+                  >
+                    <span className="w-6 text-center text-xs font-mono text-muted-foreground">{i + 1}</span>
+                    <span className="flex-1 text-sm font-medium truncate">{m.name}</span>
+                    {m.ladder_position != null && (
+                      <span className="text-[10px] text-muted-foreground">Ladder #{m.ladder_position}</span>
+                    )}
+                    <span className="font-mono text-sm tabular-nums w-16 text-right">
+                      {Number(m.ranking_points ?? 0).toFixed(2)}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
 
 // Inline opponent stats for the challenge dialog
 function OpponentStatsInline({ memberId, myMemberId }: { memberId: string; myMemberId: string }) {

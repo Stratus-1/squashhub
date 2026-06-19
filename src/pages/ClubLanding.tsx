@@ -297,7 +297,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                     <div className="rounded-xl bg-landing-navy/95 overflow-hidden shadow-lg">
                       <table className="w-full text-sm">
                         <tbody>
-                          {feeCategories.map((cat, i) => (
+                          {allFees.map((cat, i) => (
                             <tr key={cat.id} className={i > 0 ? "border-t border-white/10" : ""}>
                               <td className="px-4 py-3 text-white font-bold">
                                 {cat.name}

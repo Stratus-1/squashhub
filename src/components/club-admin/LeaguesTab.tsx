@@ -2643,6 +2643,16 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
             </div>
           </div>
 
+          <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+            <div className="min-w-0">
+              <Label className="text-xs font-medium">Affects official ranking points?</Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                When on, league match results will queue point movements for admin approval.
+              </p>
+            </div>
+            <Switch checked={affectsRanking} onCheckedChange={setAffectsRanking} />
+          </div>
+
           {prefix && entries.length > 0 && (
             <div className="bg-muted/50 rounded-md p-3 text-xs space-y-0.5 max-h-32 overflow-y-auto">
               <p className="font-semibold text-muted-foreground mb-1">Preview codes:</p>

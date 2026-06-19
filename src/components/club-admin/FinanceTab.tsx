@@ -1670,14 +1670,14 @@ interface FinanceHubProps {
   onBalances: (filter: "outstanding" | "credit" | "all") => void;
   onBill: () => void;
   onEnterTx: () => void;
-  children: (view: FinanceView, setView: (v: FinanceView) => void) => React.ReactNode;
+  children: (view: FinanceView, setView: (v: string) => void) => React.ReactNode;
 }
 
 function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, children }: FinanceHubProps) {
   const [view, setView] = useState<FinanceView>("");
 
   if (view) {
-    return <>{children(view, setView)}</>;
+    return <>{children(view, (v) => setView(v as FinanceView))}</>;
   }
 
   const groups: Array<{

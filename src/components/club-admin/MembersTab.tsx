@@ -687,57 +687,97 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const file = e.target.files?.[0];
     if (!file) return;
     const text = await file.text();
-    const lines = text.split("\n").filter(l => l.trim());
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 2) { toast.error("CSV must have a header row + data"); return; }
 
-    const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+    // Naive CSV split that handles simple quoted fields with commas
+    const splitCsv = (line: string): string[] => {
+      const out: string[] = [];
+      let cur = ""; let inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+        else if (ch === "," && !inQ) { out.push(cur); cur = ""; }
+        else cur += ch;
+      }
+      out.push(cur);
+      return out.map(s => s.trim());
+    };
+
+    const headers = splitCsv(lines[0]).map(h => h.toLowerCase());
     const emailIdx = headers.indexOf("email");
-    if (emailIdx < 0) { toast.error("CSV must have an 'email' column"); return; }
+    const memberNumIdx = headers.indexOf("member_number");
+    if (emailIdx < 0 && memberNumIdx < 0) {
+      toast.error("CSV must include 'email' or 'member_number' column");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
 
     const nameIdx = headers.indexOf("name");
     const phoneIdx = headers.indexOf("phone");
-    const memberNumIdx = headers.indexOf("member_number");
     const leagueIdx = headers.indexOf("plays_league");
     const idNumIdx = headers.indexOf("id_number");
     const addressIdx = headers.indexOf("address");
     const genderIdx = headers.indexOf("gender");
     const rankingIdx = headers.indexOf("ranking");
-    const feeTypeIdx = headers.indexOf("fee_type");
+    // Accept both "fee_category" (export header) and "fee_type" (legacy)
+    const feeCatIdx = (() => {
+      const a = headers.indexOf("fee_category");
+      return a >= 0 ? a : headers.indexOf("fee_type");
+    })();
+    const skillIdx = headers.indexOf("skill_level");
 
-    // Pre-fetch fee categories to match by name
     const { data: feeCats } = await fromExt("member_fee_categories").select("id, name").eq("club_id", clubId);
-    const feeCatMap = new Map((feeCats || []).map((c: any) => [c.name.toLowerCase(), c.id]));
+    const feeCatMap = new Map((feeCats || []).map((c: any) => [c.name.toLowerCase().replace(/[–—]/g, "-"), c.id]));
 
     let imported = 0;
+    const errors: string[] = [];
     const importedMemberIds: string[] = [];
     for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(",").map(c => c.trim());
-      const email = cols[emailIdx];
-      if (!email) continue;
+      const cols = splitCsv(lines[i]);
+      const email = emailIdx >= 0 ? (cols[emailIdx] || "") : "";
+      const memberNum = memberNumIdx >= 0 ? (cols[memberNumIdx] || "") : "";
+      if (!email && !memberNum) continue;
 
-      const { data: profile } = await fromExt("profiles").select("id").eq("email", email).maybeSingle();
+      let userId: string | null = null;
+      if (email) {
+        const { data: profile } = await fromExt("profiles").select("id").eq("email", email).maybeSingle();
+        userId = profile?.id || null;
+      }
+
       const memberName = nameIdx >= 0 ? cols[nameIdx] : undefined;
+      const feeRaw = feeCatIdx >= 0 ? (cols[feeCatIdx] || "").toLowerCase().replace(/[–—]/g, "-").replace(/\?/g, "-") : "";
 
-      const { data: memberData, error } = await fromExt("club_members").upsert({
+      const row: any = {
         club_id: clubId,
-        user_id: profile?.id || null,
+        user_id: userId,
         name: memberName || undefined,
-        email: email,
-        club_member_number: memberNumIdx >= 0 ? cols[memberNumIdx] : undefined,
+        email: email || undefined,
+        club_member_number: memberNum || undefined,
         plays_league: leagueIdx >= 0 ? cols[leagueIdx]?.toLowerCase() === "true" : false,
-        id_number: idNumIdx >= 0 ? cols[idNumIdx] : undefined,
-        phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
-        address: addressIdx >= 0 ? cols[addressIdx] : undefined,
-        gender: genderIdx >= 0 ? cols[genderIdx] : undefined,
+        id_number: idNumIdx >= 0 ? (cols[idNumIdx] || undefined) : undefined,
+        phone: phoneIdx >= 0 ? (cols[phoneIdx] || undefined) : undefined,
+        address: addressIdx >= 0 ? (cols[addressIdx] || undefined) : undefined,
+        gender: genderIdx >= 0 ? (cols[genderIdx] || undefined) : undefined,
         ladder_position: rankingIdx >= 0 && cols[rankingIdx] ? parseInt(cols[rankingIdx], 10) || null : undefined,
-        fee_category_id: feeTypeIdx >= 0 && cols[feeTypeIdx] ? feeCatMap.get(cols[feeTypeIdx].toLowerCase()) || undefined : undefined,
-      }, { onConflict: "club_id,email" }).select("id, fee_category_id, plays_league").single();
+        fee_category_id: feeRaw ? feeCatMap.get(feeRaw) || undefined : undefined,
+        skill_level: skillIdx >= 0 ? (cols[skillIdx]?.toLowerCase() || undefined) : undefined,
+      };
+
+      // Conflict on member_number when available (unique partial index exists);
+      // otherwise insert plain and let any DB error surface.
+      const builder = memberNum
+        ? fromExt("club_members").upsert(row, { onConflict: "club_id,club_member_number", ignoreDuplicates: false })
+        : fromExt("club_members").insert(row);
+      const { data: memberData, error } = await builder.select("id").single();
 
       if (!error && memberData) {
         imported++;
         importedMemberIds.push(memberData.id);
       } else if (error) {
-        console.error(`CSV row ${i}: ${error.message}`);
+        const ref = memberNum || email || `row ${i}`;
+        errors.push(`${ref}: ${error.message}`);
+        console.error(`CSV row ${i} (${ref}):`, error);
       }
     }
 
@@ -758,14 +798,13 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
       const feeRecords: any[] = [];
       for (const m of (allMembers || [])) {
-        if (membersWithFees.has(m.id)) continue; // already has fees
+        if (membersWithFees.has(m.id)) continue;
         if (m.fee_category_id) {
           const cat = (cats || []).find((c: any) => c.id === m.fee_category_id);
           if (cat) {
-            const amount = cat.annual_fee;
             feeRecords.push({
               club_member_id: m.id, fee_type: "club",
-              fee_label: `Club – ${cat.name}`, amount,
+              fee_label: `Club – ${cat.name}`, amount: cat.annual_fee,
               paid: true, paid_at: new Date().toISOString(),
               season_year: new Date().getFullYear(),
             });
@@ -799,11 +838,18 @@ export function MembersTab({ clubId }: { clubId: string }) {
       }
     }
 
-    toast.success(`Imported ${imported} member${imported !== 1 ? "s" : ""}`);
+    if (imported > 0) toast.success(`Imported ${imported} member${imported !== 1 ? "s" : ""}`);
+    if (errors.length > 0) {
+      toast.error(`${errors.length} row${errors.length !== 1 ? "s" : ""} failed. First: ${errors[0]}`);
+    } else if (imported === 0) {
+      toast.error("No rows imported. Check the file format.");
+    }
     qc.invalidateQueries({ queryKey: ["club-members"] });
     qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
     if (fileRef.current) fileRef.current.value = "";
   };
+
+
 
   // Compute fee summary
   const totalExpected = members.reduce((sum, m) => {

@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles } from "lucide-react";
+import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
@@ -38,6 +39,7 @@ const ADMIN_TABS: { value: string; label: string; icon: any; permission?: Permis
   { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
   { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder", color: "orange" },
+  { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow" },
   { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
   { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose" },
@@ -107,6 +109,7 @@ export default function ClubAdmin() {
       case "users": return <UsersTab clubId={club.id} />;
       case "visitors": return <VisitorsTab clubId={club.id} />;
       case "ladder": return <LadderTab clubId={club.id} />;
+      case "ranking-points": return <RankingPointsTab clubId={club.id} />;
       case "leagues": return <LeaguesTab clubId={club.id} />;
       case "champs": return <ClubChampsTab clubId={club.id} />;
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;

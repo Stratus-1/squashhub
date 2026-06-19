@@ -837,6 +837,7 @@ export type Database = {
       }
       club_champs: {
         Row: {
+          affects_ranking_points: boolean
           best_of: number | null
           bye_handling: string
           club_id: string
@@ -888,6 +889,7 @@ export type Database = {
           visitor_clubs: string[]
         }
         Insert: {
+          affects_ranking_points?: boolean
           best_of?: number | null
           bye_handling?: string
           club_id: string
@@ -939,6 +941,7 @@ export type Database = {
           visitor_clubs?: string[]
         }
         Update: {
+          affects_ranking_points?: boolean
           best_of?: number | null
           bye_handling?: string
           club_id?: string
@@ -2120,6 +2123,7 @@ export type Database = {
           pending_captain_claim: boolean
           phone: string | null
           plays_league: boolean
+          ranking_points: number
           role: Database["public"]["Enums"]["club_member_role"]
           skill_level: string | null
           status: Database["public"]["Enums"]["member_status"]
@@ -2149,6 +2153,7 @@ export type Database = {
           pending_captain_claim?: boolean
           phone?: string | null
           plays_league?: boolean
+          ranking_points?: number
           role?: Database["public"]["Enums"]["club_member_role"]
           skill_level?: string | null
           status?: Database["public"]["Enums"]["member_status"]
@@ -2178,6 +2183,7 @@ export type Database = {
           pending_captain_claim?: boolean
           phone?: string | null
           plays_league?: boolean
+          ranking_points?: number
           role?: Database["public"]["Enums"]["club_member_role"]
           skill_level?: string | null
           status?: Database["public"]["Enums"]["member_status"]
@@ -2570,6 +2576,11 @@ export type Database = {
           peak_weekend_end: string
           peak_weekend_start: string
           phone: string | null
+          points_base_win: number
+          points_favourite_win_min: number
+          points_loser_deduction: number
+          points_upset_bonus_per_rank: number
+          ranking_points_enabled: boolean
           roster_seeded_at: string | null
           secretary_member_id: string | null
           shelly_integration_enabled: boolean
@@ -2635,6 +2646,11 @@ export type Database = {
           peak_weekend_end?: string
           peak_weekend_start?: string
           phone?: string | null
+          points_base_win?: number
+          points_favourite_win_min?: number
+          points_loser_deduction?: number
+          points_upset_bonus_per_rank?: number
+          ranking_points_enabled?: boolean
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
           shelly_integration_enabled?: boolean
@@ -2700,6 +2716,11 @@ export type Database = {
           peak_weekend_end?: string
           peak_weekend_start?: string
           phone?: string | null
+          points_base_win?: number
+          points_favourite_win_min?: number
+          points_loser_deduction?: number
+          points_upset_bonus_per_rank?: number
+          ranking_points_enabled?: boolean
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
           shelly_integration_enabled?: boolean
@@ -4030,6 +4051,7 @@ export type Database = {
       }
       leagues: {
         Row: {
+          affects_ranking_points: boolean
           allow_cross_gender_guests: boolean
           association_id: string | null
           captain_member_id: string | null
@@ -4045,6 +4067,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          affects_ranking_points?: boolean
           allow_cross_gender_guests?: boolean
           association_id?: string | null
           captain_member_id?: string | null
@@ -4060,6 +4083,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          affects_ranking_points?: boolean
           allow_cross_gender_guests?: boolean
           association_id?: string | null
           captain_member_id?: string | null
@@ -5458,6 +5482,173 @@ export type Database = {
         }
         Relationships: []
       }
+      ranking_points_ledger: {
+        Row: {
+          balance_after: number
+          club_id: string
+          created_at: string
+          created_by: string | null
+          delta: number
+          id: string
+          member_id: string
+          pending_id: string | null
+          reason: string
+          source_id: string | null
+          source_type: string | null
+        }
+        Insert: {
+          balance_after: number
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          delta: number
+          id?: string
+          member_id: string
+          pending_id?: string | null
+          reason: string
+          source_id?: string | null
+          source_type?: string | null
+        }
+        Update: {
+          balance_after?: number
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          delta?: number
+          id?: string
+          member_id?: string
+          pending_id?: string | null
+          reason?: string
+          source_id?: string | null
+          source_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ranking_points_ledger_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_points_ledger_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_points_ledger_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_points_ledger_pending_id_fkey"
+            columns: ["pending_id"]
+            isOneToOne: false
+            referencedRelation: "ranking_points_pending"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ranking_points_pending: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          loser_delta: number
+          loser_member_id: string
+          loser_rank_at_match: number | null
+          match_source_id: string | null
+          match_source_type: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_by: string | null
+          updated_at: string
+          winner_delta: number
+          winner_member_id: string
+          winner_rank_at_match: number | null
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          loser_delta?: number
+          loser_member_id: string
+          loser_rank_at_match?: number | null
+          match_source_id?: string | null
+          match_source_type: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string | null
+          updated_at?: string
+          winner_delta: number
+          winner_member_id: string
+          winner_rank_at_match?: number | null
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          loser_delta?: number
+          loser_member_id?: string
+          loser_rank_at_match?: number | null
+          match_source_id?: string | null
+          match_source_type?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string | null
+          updated_at?: string
+          winner_delta?: number
+          winner_member_id?: string
+          winner_rank_at_match?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ranking_points_pending_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_points_pending_loser_member_id_fkey"
+            columns: ["loser_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_points_pending_loser_member_id_fkey"
+            columns: ["loser_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_points_pending_winner_member_id_fkey"
+            columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_points_pending_winner_member_id_fkey"
+            columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_bookings: {
         Row: {
           active: boolean
@@ -6023,6 +6214,10 @@ export type Database = {
         }
         Returns: string
       }
+      approve_ranking_points_pending: {
+        Args: { _note?: string; _pending_id: string }
+        Returns: undefined
+      }
       assign_role_to_member: {
         Args: { _club_id: string; _member_id: string; _role_name: string }
         Returns: undefined
@@ -6420,6 +6615,15 @@ export type Database = {
       seed_member_default_fees: {
         Args: { p_club_member_id: string }
         Returns: undefined
+      }
+      seed_ranking_points_from_ladder: {
+        Args: {
+          _club_id: string
+          _step?: number
+          _top_score?: number
+          _unranked_default?: number
+        }
+        Returns: number
       }
       sync_bells_match_state: {
         Args: {

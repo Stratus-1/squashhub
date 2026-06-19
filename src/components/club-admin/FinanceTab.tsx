@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { RemittancesPanel } from "./RemittancesPanel";
+
 import { AssociationPayablesPanel } from "./AssociationPayablesPanel";
 import { RenewalInvoicesTab } from "./RenewalInvoicesTab";
 import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
@@ -661,9 +661,6 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             </div>
 
 
-        <TabsContent value="remittances">
-          <RemittancesPanel clubId={clubId} />
-        </TabsContent>
 
         <TabsContent value="association-payables">
           <AssociationPayablesPanel clubId={clubId} />
@@ -1667,7 +1664,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 }
 
 /* ─── Finance Hub: tile-based navigation ─── */
-type FinanceView = "" | "by-account" | "journal" | "pending" | "remittances" | "association-payables" | "renewals" | "trial" | "income" | "coa";
+type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa";
 
 interface FinanceHubProps {
   pendingCount: number;
@@ -1704,7 +1701,7 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
         { key: "by-account", label: "By Account", desc: "Filter ledger entries per GL account", icon: Layers },
         { key: "journal", label: "All GL Entries", desc: "Every double-entry line, newest first", icon: BookOpen },
         { key: "pending", label: "Pending", desc: "Unposted transactions awaiting review", icon: Clock, badge: pendingCount },
-        { key: "remittances", label: "Remittances", desc: "Track payouts to associations & bodies", icon: Send },
+        
       ],
     },
     {

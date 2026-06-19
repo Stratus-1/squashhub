@@ -356,6 +356,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "resigned">("all");
   const [addOpen, setAddOpen] = useState(false);
   const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [bulkTypesOpen, setBulkTypesOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);

@@ -445,7 +445,9 @@ function GenerateDialog({
               className="h-9 w-32"
             />
             <p className="text-[11px] text-muted-foreground">
-              Affiliation is billed per team to {body.body_name}. R{body.fee_annual.toFixed(2)} × {teams} = R{total.toFixed(2)}.
+              Auto-detected <span className="font-semibold">{autoTeamCount}</span> team{autoTeamCount === 1 ? "" : "s"} entered into linked leagues — edit if different.
+              <br />
+              R{body.fee_annual.toFixed(2)} × {teams} = R{total.toFixed(2)}.
             </p>
           </div>
         ) : (

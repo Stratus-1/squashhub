@@ -31,7 +31,7 @@ function RankingTabs({
   rpBoard,
   onPlayerClick,
 }: {
-  pyramidContent: React.ReactNode;
+  pyramidContent: ReactNode;
   rpBoard: Array<{ id: string; name: string; ranking_points: number; ladder_position: number | null; avatar_url: string | null }>;
   onPlayerClick: (memberId: string) => void;
 }) {

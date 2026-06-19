@@ -1747,3 +1747,139 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     </Dialog>
   );
 }
+
+function BulkMembershipTypesDialog({
+  clubId,
+  open,
+  onOpenChange,
+  members,
+  feeCategories,
+}: {
+  clubId: string;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  members: ClubMember[];
+  feeCategories: MemberFeeCategory[];
+}) {
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      const init: Record<string, string> = {};
+      for (const m of members) init[m.id] = m.fee_category_id || "";
+      setDraft(init);
+      setSearch("");
+    }
+  }, [open, members]);
+
+  const filtered = members
+    .filter((m) => {
+      const q = search.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        (m.name || m.profiles?.name || "").toLowerCase().includes(q) ||
+        (m.email || m.profiles?.email || "").toLowerCase().includes(q) ||
+        (m.club_member_number || "").toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) =>
+      (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || "")
+    );
+
+  const changed = members.filter(
+    (m) => (draft[m.id] || "") !== (m.fee_category_id || "")
+  );
+
+  const handleSaveAll = async () => {
+    if (changed.length === 0) {
+      toast.info("No changes to save");
+      return;
+    }
+    setSaving(true);
+    let ok = 0;
+    for (const m of changed) {
+      const newId = draft[m.id] || null;
+      const { error } = await fromExt("club_members")
+        .update({ fee_category_id: newId })
+        .eq("id", m.id);
+      if (error) {
+        toast.error(`${m.name || m.profiles?.name}: ${error.message}`);
+      } else {
+        ok++;
+      }
+    }
+    setSaving(false);
+    toast.success(`Updated ${ok} member${ok !== 1 ? "s" : ""}`);
+    qc.invalidateQueries({ queryKey: ["club-members"] });
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Edit Membership Types</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 flex-1 overflow-hidden flex flex-col">
+          <Input
+            placeholder="Search members..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="text-xs text-muted-foreground">
+            {filtered.length} shown · {changed.length} pending change{changed.length !== 1 ? "s" : ""}
+          </div>
+          <div className="flex-1 overflow-y-auto border rounded-md divide-y">
+            {filtered.length === 0 && (
+              <div className="p-4 text-sm text-muted-foreground text-center">No members</div>
+            )}
+            {filtered.map((m) => {
+              const current = draft[m.id] || "";
+              const changedRow = current !== (m.fee_category_id || "");
+              return (
+                <div
+                  key={m.id}
+                  className={`flex items-center gap-2 p-2 text-sm ${changedRow ? "bg-amber-500/10" : ""}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">
+                      {m.name || m.profiles?.name || "—"}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {m.club_member_number || ""} {m.email || m.profiles?.email || ""}
+                    </div>
+                  </div>
+                  <select
+                    className="border rounded px-2 py-1 text-xs bg-background min-w-[160px]"
+                    value={current}
+                    onChange={(e) =>
+                      setDraft((p) => ({ ...p, [m.id]: e.target.value }))
+                    }
+                  >
+                    <option value="">— None —</option>
+                    {feeCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} (R{c.annual_fee})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSaveAll} disabled={saving || changed.length === 0}>
+              {saving ? "Saving..." : `Save ${changed.length} change${changed.length !== 1 ? "s" : ""}`}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

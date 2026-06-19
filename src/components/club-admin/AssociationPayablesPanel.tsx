@@ -441,7 +441,7 @@ function GenerateDialog({
               type="number"
               min={1}
               value={teamCount}
-              onChange={(e) => setTeamCount(e.target.value)}
+              onChange={(e) => { setTeamCountTouched(true); setTeamCount(e.target.value); }}
               className="h-9 w-32"
             />
             <p className="text-[11px] text-muted-foreground">

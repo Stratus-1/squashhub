@@ -3218,6 +3218,55 @@ export type Database = {
           },
         ]
       }
+      league_association_national_bodies: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          league_association_id: string
+          national_body_fee_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          league_association_id: string
+          national_body_fee_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          league_association_id?: string
+          national_body_fee_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_association_national_bodies_league_association_id_fkey"
+            columns: ["league_association_id"]
+            isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
+          {
+            foreignKeyName: "league_association_national_bodies_league_association_id_fkey"
+            columns: ["league_association_id"]
+            isOneToOne: false
+            referencedRelation: "league_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_association_national_bodies_national_body_fee_id_fkey"
+            columns: ["national_body_fee_id"]
+            isOneToOne: false
+            referencedRelation: "national_body_fees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_associations: {
         Row: {
           abbreviation: string | null
@@ -6617,6 +6666,10 @@ export type Database = {
           member_id: string
           nsa_number: string
         }[]
+      }
+      seed_linked_national_body_fees: {
+        Args: { p_league_association_id: string; p_season_year?: number }
+        Returns: number
       }
       seed_member_default_fees: {
         Args: { p_club_member_id: string }

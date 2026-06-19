@@ -389,7 +389,9 @@ function GenerateDialog({
         <DialogHeader>
           <DialogTitle>Generate payable — {body.body_name}</DialogTitle>
           <DialogDescription>
-            Select members covered by this payable. R{body.fee_annual.toFixed(2)} per member.
+            {isPerTeam
+              ? `R${body.fee_annual.toFixed(2)} per team. Enter the number of teams being entered for this season.`
+              : `Select members covered by this payable. R${body.fee_annual.toFixed(2)} per member.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -399,58 +401,77 @@ function GenerateDialog({
             <Input value={seasonLabel} onChange={(e) => setSeasonLabel(e.target.value)} className="h-8 text-sm" placeholder="2026" />
           </div>
           <div className="flex items-end justify-end gap-3 text-sm">
-            <div><span className="text-muted-foreground text-xs">Selected:</span> <span className="font-semibold tabular-nums">{tickedIds.length}</span></div>
+            <div>
+              <span className="text-muted-foreground text-xs">{isPerTeam ? "Teams:" : "Selected:"}</span>{" "}
+              <span className="font-semibold tabular-nums">{units}</span>
+            </div>
             <div><span className="text-muted-foreground text-xs">Total:</span> <span className="font-bold tabular-nums">R{total.toFixed(2)}</span></div>
           </div>
         </div>
 
-        <div className="border rounded-md max-h-[400px] overflow-y-auto">
-          {isLoading ? (
-            <p className="p-4 text-xs text-muted-foreground">Loading eligible members…</p>
-          ) : eligible.length === 0 ? (
-            <div className="p-6 text-xs text-muted-foreground text-center">
-              <Users className="w-6 h-6 mx-auto mb-2 opacity-50" />
-              No eligible members for this season. Either none have active league numbers, or all have been billed already.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox
-                      checked={tickedIds.length === eligible.length}
-                      onCheckedChange={(v) => toggleAll(!!v)}
-                    />
-                  </TableHead>
-                  <TableHead className="text-[10px]">Member #</TableHead>
-                  <TableHead className="text-[10px]">Name</TableHead>
-                  <TableHead className="text-[10px]">League #</TableHead>
-                  <TableHead className="text-[10px] text-right">Fee</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {eligible.map((m) => (
-                  <TableRow key={m.club_member_id}>
-                    <TableCell>
+        {isPerTeam ? (
+          <div className="border rounded-md p-4 space-y-2">
+            <Label className="text-xs">Number of teams</Label>
+            <Input
+              type="number"
+              min={1}
+              value={teamCount}
+              onChange={(e) => setTeamCount(e.target.value)}
+              className="h-9 w-32"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Affiliation is billed per team to {body.body_name}. R{body.fee_annual.toFixed(2)} × {teams} = R{total.toFixed(2)}.
+            </p>
+          </div>
+        ) : (
+          <div className="border rounded-md max-h-[400px] overflow-y-auto">
+            {isLoading ? (
+              <p className="p-4 text-xs text-muted-foreground">Loading eligible members…</p>
+            ) : eligible.length === 0 ? (
+              <div className="p-6 text-xs text-muted-foreground text-center">
+                <Users className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                No eligible members for this season. Either none have active league numbers, or all have been billed already.
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
                       <Checkbox
-                        checked={!!selected[m.club_member_id]}
-                        onCheckedChange={(v) => setSelected((s) => ({ ...s, [m.club_member_id]: !!v }))}
+                        checked={tickedIds.length === eligible.length}
+                        onCheckedChange={(v) => toggleAll(!!v)}
                       />
-                    </TableCell>
-                    <TableCell className="text-xs">{m.member_number || "—"}</TableCell>
-                    <TableCell className="text-xs">{m.name}</TableCell>
-                    <TableCell className="text-xs">{m.league_number || "—"}</TableCell>
-                    <TableCell className="text-xs text-right tabular-nums">R{body.fee_annual.toFixed(2)}</TableCell>
+                    </TableHead>
+                    <TableHead className="text-[10px]">Member #</TableHead>
+                    <TableHead className="text-[10px]">Name</TableHead>
+                    <TableHead className="text-[10px]">League #</TableHead>
+                    <TableHead className="text-[10px] text-right">Fee</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {eligible.map((m) => (
+                    <TableRow key={m.club_member_id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={!!selected[m.club_member_id]}
+                          onCheckedChange={(v) => setSelected((s) => ({ ...s, [m.club_member_id]: !!v }))}
+                        />
+                      </TableCell>
+                      <TableCell className="text-xs">{m.member_number || "—"}</TableCell>
+                      <TableCell className="text-xs">{m.name}</TableCell>
+                      <TableCell className="text-xs">{m.league_number || "—"}</TableCell>
+                      <TableCell className="text-xs text-right tabular-nums">R{body.fee_annual.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button onClick={create} disabled={submitting || tickedIds.length === 0}>
+          <Button onClick={create} disabled={submitting || units === 0}>
             {submitting ? "Creating…" : `Create payable batch — R${total.toFixed(2)}`}
           </Button>
         </DialogFooter>

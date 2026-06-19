@@ -300,7 +300,32 @@ function GenerateDialog({
   });
 
   const isPerTeam = body.fee_type === "league_affiliation";
-  const [teamCount, setTeamCount] = useState<string>("1");
+
+  /* Auto-count teams (leagues) linked to this body for per-team affiliations */
+  const { data: autoTeamCount = 0 } = useQuery({
+    queryKey: ["assoc-payable-team-count", clubId, body.id],
+    queryFn: async (): Promise<number> => {
+      const { data: linkRows } = await fromExt("league_association_national_bodies")
+        .select("league_association_id")
+        .eq("national_body_fee_id", body.id);
+      const assocIds = (linkRows || []).map((r: any) => r.league_association_id);
+      if (assocIds.length === 0) return 0;
+      const { data: leagues } = await fromExt("leagues")
+        .select("id, club_id, association_id")
+        .eq("club_id", clubId)
+        .in("association_id", assocIds);
+      return (leagues || []).length;
+    },
+    enabled: !!body.id && isPerTeam,
+  });
+
+  const [teamCount, setTeamCount] = useState<string>("");
+  const [teamCountTouched, setTeamCountTouched] = useState(false);
+  useEffect(() => {
+    if (isPerTeam && !teamCountTouched && autoTeamCount > 0) {
+      setTeamCount(String(autoTeamCount));
+    }
+  }, [autoTeamCount, isPerTeam, teamCountTouched]);
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   // Initialise selection when eligible list arrives (per-member flow only)

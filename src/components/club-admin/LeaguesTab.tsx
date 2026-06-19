@@ -2486,9 +2486,10 @@ function LinkedNationalBodiesSection({ associationId, clubId }: { associationId:
     enabled: !!clubId,
     queryFn: async () => {
       const { data, error } = await fromExt("national_body_fees")
-        .select("id, body_name, abbreviation, fee_annual, active")
+        .select("id, body_name, abbreviation, fee_annual, active, fee_type")
         .eq("club_id", clubId)
         .eq("active", true)
+        .in("fee_type", ["national"])
         .order("body_name");
       if (error) throw error;
       return (data || []) as any[];

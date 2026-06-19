@@ -72,6 +72,30 @@ export default function Ladder() {
   const queryClient = useQueryClient();
   const createChallenge = useCreateChallenge();
 
+  // Ranking-points system (parallel leaderboard, opt-in per club)
+  const { data: rpClub } = useQuery({
+    queryKey: ["ladder-rp-toggle", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data } = await supabase.from("clubs").select("ranking_points_enabled").eq("id", clubId!).maybeSingle();
+      return data;
+    },
+  });
+  const rpEnabled = !!(rpClub as any)?.ranking_points_enabled;
+  const { data: rpBoard = [] } = useQuery({
+    queryKey: ["ladder-rp-board", clubId],
+    enabled: !!clubId && rpEnabled,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("club_members")
+        .select("id, name, ranking_points, ladder_position, avatar_url")
+        .eq("club_id", clubId!)
+        .order("ranking_points", { ascending: false })
+        .limit(300);
+      return data || [];
+    },
+  });
+
   // The active member's club_member_id is the primary identity
   const myMemberId = activeMember?.id || myClubMember?.id || null;
 

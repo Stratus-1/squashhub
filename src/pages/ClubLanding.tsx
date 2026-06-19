@@ -100,6 +100,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
       const { data, error } = await fromExt("member_fee_categories")
         .select("id, name, description, annual_fee")
         .eq("club_id", club!.id)
+        .eq("show_on_landing", true)
         .order("sort_order");
       if (error) throw error;
       return (data || []) as FeeCategory[];

@@ -54,6 +54,7 @@ export interface Club {
   sla_accepted_role?: string | null;
   sla_version?: string | null;
   sla_billing_option?: "monthly" | "annual_upfront" | null;
+  show_delegates_on_landing?: boolean;
 }
 
 

@@ -35,6 +35,7 @@ interface ClubData {
   chairman_member_id?: string | null;
   secretary_member_id?: string | null;
   club_captain_member_id?: string | null;
+  show_delegates_on_landing?: boolean;
 }
 
 function AnimatedCount({ value }: { value: number }) {
@@ -61,7 +62,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     queryKey: ["club-by-subdomain", subdomain],
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id")
+        .select("id, name, subdomain, address, email, phone, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id, show_delegates_on_landing")
         .eq("subdomain", subdomain!)
         .maybeSingle();
       if (error) throw error;
@@ -233,7 +234,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                     </p>
                   )}
 
-                  {hasDelegates && (
+                  {hasDelegates && club.show_delegates_on_landing !== false && (
                     <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4 text-white">
                       {chairmanDelegate && (
                         <div>

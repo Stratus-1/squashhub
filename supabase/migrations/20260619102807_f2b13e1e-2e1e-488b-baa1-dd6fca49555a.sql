@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs ADD COLUMN show_delegates_on_landing boolean NOT NULL DEFAULT true;

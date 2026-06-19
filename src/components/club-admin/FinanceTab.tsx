@@ -967,7 +967,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             ))}
           </Card>
         </TabsContent>
-      </Tabs>
+          </Tabs>
+        )}
+      </FinanceHub>
+
 
       {/* Enter Transaction Dialog */}
       <Dialog open={txOpen} onOpenChange={setTxOpen}>

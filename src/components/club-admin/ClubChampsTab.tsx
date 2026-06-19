@@ -3658,6 +3658,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </div>
               )}
 
+              <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2 mt-2">
+                <div className="min-w-0">
+                  <Label className="text-xs font-medium">Affects official ranking points?</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    When on, completed tournament matches will queue point movements for admin approval.
+                  </p>
+                </div>
+                <Switch checked={affectsRankingPoints} onCheckedChange={setAffectsRankingPoints} />
+              </div>
+
             </div>
 
 

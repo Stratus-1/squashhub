@@ -835,6 +835,139 @@ export type Database = {
           },
         ]
       }
+      club_association_payable_batches: {
+        Row: {
+          bank_account: string | null
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          journal_ref_raise: string | null
+          journal_ref_settle: string | null
+          member_count: number
+          national_body_fee_id: string
+          notes: string | null
+          paid_amount: number | null
+          paid_at: string | null
+          payment_reference: string | null
+          season_label: string
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          bank_account?: string | null
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          journal_ref_raise?: string | null
+          journal_ref_settle?: string | null
+          member_count?: number
+          national_body_fee_id: string
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          payment_reference?: string | null
+          season_label: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          bank_account?: string | null
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          journal_ref_raise?: string | null
+          journal_ref_settle?: string | null
+          member_count?: number
+          national_body_fee_id?: string
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          payment_reference?: string | null
+          season_label?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_association_payable_batches_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_association_payable_batches_national_body_fee_id_fkey"
+            columns: ["national_body_fee_id"]
+            isOneToOne: false
+            referencedRelation: "national_body_fees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_association_payable_lines: {
+        Row: {
+          amount: number
+          batch_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          league_number: string | null
+          paid: boolean
+          paid_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          batch_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          league_number?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          batch_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          league_number?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_association_payable_lines_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "club_association_payable_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_association_payable_lines_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_association_payable_lines_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_champs: {
         Row: {
           affects_ranking_points: boolean

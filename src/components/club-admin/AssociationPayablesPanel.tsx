@@ -299,9 +299,13 @@ function GenerateDialog({
     enabled: !!body.id,
   });
 
+  const isPerTeam = body.fee_type === "league_affiliation";
+  const [teamCount, setTeamCount] = useState<string>("1");
+
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  // Initialise selection when eligible list arrives
+  // Initialise selection when eligible list arrives (per-member flow only)
   useEffect(() => {
+    if (isPerTeam) return;
     const next: Record<string, boolean> = {};
     eligible.forEach((m) => { next[m.club_member_id] = true; });
     setSelected(next);
@@ -309,7 +313,9 @@ function GenerateDialog({
   }, [eligible.length, body.id, seasonLabel]);
 
   const tickedIds = Object.entries(selected).filter(([, v]) => v).map(([k]) => k);
-  const total = tickedIds.length * body.fee_annual;
+  const teams = Math.max(0, parseInt(teamCount, 10) || 0);
+  const units = isPerTeam ? teams : tickedIds.length;
+  const total = units * body.fee_annual;
 
   const toggleAll = (val: boolean) => {
     const next: Record<string, boolean> = {};
@@ -318,19 +324,22 @@ function GenerateDialog({
   };
 
   const create = async () => {
-    if (tickedIds.length === 0) { toast.error("Select at least one member"); return; }
+    if (units === 0) {
+      toast.error(isPerTeam ? "Enter the number of teams" : "Select at least one member");
+      return;
+    }
     if (!seasonLabel.trim()) { toast.error("Enter a season label"); return; }
     setSubmitting(true);
     try {
       const journalRef = crypto.randomUUID();
-      // 1) batch
+      // 1) batch (member_count holds units — members or teams)
       const { data: batchData, error: batchErr } = await fromExt("club_association_payable_batches")
         .insert({
           club_id: clubId,
           national_body_fee_id: body.id,
           season_label: seasonLabel.trim(),
           total_amount: total,
-          member_count: tickedIds.length,
+          member_count: units,
           status: "pending",
           journal_ref_raise: journalRef,
         })
@@ -339,29 +348,32 @@ function GenerateDialog({
       if (batchErr) throw batchErr;
       const batchId = batchData.id;
 
-      // 2) lines
-      const lines = tickedIds.map((id) => {
-        const m = eligible.find((x) => x.club_member_id === id)!;
-        return {
-          batch_id: batchId,
-          club_member_id: id,
-          league_number: m.league_number,
-          amount: body.fee_annual,
-          paid: false,
-        };
-      });
-      const { error: linesErr } = await fromExt("club_association_payable_lines").insert(lines);
-      if (linesErr) throw linesErr;
+      // 2) lines — per-member flow only (audit trail of who's covered)
+      if (!isPerTeam && tickedIds.length > 0) {
+        const lines = tickedIds.map((id) => {
+          const m = eligible.find((x) => x.club_member_id === id)!;
+          return {
+            batch_id: batchId,
+            club_member_id: id,
+            league_number: m.league_number,
+            amount: body.fee_annual,
+            paid: false,
+          };
+        });
+        const { error: linesErr } = await fromExt("club_association_payable_lines").insert(lines);
+        if (linesErr) throw linesErr;
+      }
 
       // 3) GL journal: Dr Affiliation Expense / Cr Association Payable
-      const desc = `Affiliation: ${body.body_name} – ${seasonLabel} (${tickedIds.length} members)`;
+      const unitWord = isPerTeam ? "teams" : "members";
+      const desc = `Affiliation: ${body.body_name} – ${seasonLabel} (${units} ${unitWord})`;
       const { error: jErr } = await fromExt("club_journal_entries").insert([
         { club_id: clubId, journal_ref: journalRef, account: "national_body_expense", debit: total, credit: 0, description: desc },
         { club_id: clubId, journal_ref: journalRef, account: "association_payable", debit: 0, credit: total, description: desc },
       ]);
       if (jErr) throw jErr;
 
-      toast.success(`Payable raised: R${total.toFixed(2)} (${tickedIds.length} members)`);
+      toast.success(`Payable raised: R${total.toFixed(2)} (${units} ${unitWord})`);
       onCreated();
     } catch (err: any) {
       const f = friendlyError(err);

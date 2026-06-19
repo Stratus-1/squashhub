@@ -1660,3 +1660,113 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     </div>
   );
 }
+
+/* ─── Finance Hub: tile-based navigation ─── */
+type FinanceView = "" | "by-account" | "journal" | "pending" | "remittances" | "renewals" | "trial" | "income" | "coa";
+
+interface FinanceHubProps {
+  pendingCount: number;
+  onStatement: () => void;
+  onBalances: (filter: "outstanding" | "credit" | "all") => void;
+  onBill: () => void;
+  onEnterTx: () => void;
+  children: (view: FinanceView, setView: (v: FinanceView) => void) => React.ReactNode;
+}
+
+function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, children }: FinanceHubProps) {
+  const [view, setView] = useState<FinanceView>("");
+
+  if (view) {
+    return <>{children(view, setView)}</>;
+  }
+
+  const groups: Array<{
+    title: string;
+    description: string;
+    tiles: Array<{
+      key: FinanceView;
+      label: string;
+      desc: string;
+      icon: React.ComponentType<{ className?: string }>;
+      badge?: number;
+      onClick?: () => void;
+    }>;
+  }> = [
+    {
+      title: "Daily Operations",
+      description: "Day-to-day bookkeeping and reconciliation",
+      tiles: [
+        { key: "by-account", label: "By Account", desc: "Filter ledger entries per GL account", icon: Layers },
+        { key: "journal", label: "All GL Entries", desc: "Every double-entry line, newest first", icon: BookOpen },
+        { key: "pending", label: "Pending", desc: "Unposted transactions awaiting review", icon: Clock, badge: pendingCount },
+        { key: "remittances", label: "Remittances", desc: "Track payouts to associations & bodies", icon: Send },
+      ],
+    },
+    {
+      title: "Member Billing",
+      description: "Statements, balances and invoicing",
+      tiles: [
+        { key: "renewals", label: "Annual Renewals", desc: "Generate & send yearly invoices", icon: CalendarDays },
+        { key: "" as FinanceView, label: "Member Statement", desc: "Full transaction history for one member", icon: FileText, onClick: onStatement },
+        { key: "" as FinanceView, label: "Member Balances", desc: "Who owes and who's in credit", icon: Wallet, onClick: () => onBalances("outstanding") },
+        { key: "" as FinanceView, label: "Bill Member", desc: "Add an ad-hoc charge to a member", icon: Receipt, onClick: onBill },
+      ],
+    },
+    {
+      title: "Reports",
+      description: "Accounting reports & chart structure",
+      tiles: [
+        { key: "trial", label: "Trial Balance", desc: "Debits vs credits across all accounts", icon: BarChart3 },
+        { key: "income", label: "Income Statement", desc: "Revenue & expenses for the period", icon: BarChart3 },
+        { key: "coa", label: "Chart of Accounts", desc: "All GL accounts and balances", icon: ListTree },
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-6 mt-2">
+      {/* Primary action */}
+      <div className="flex justify-end">
+        <Button onClick={onEnterTx} className="gap-1.5">
+          <Plus className="w-4 h-4" /> Enter Transaction
+        </Button>
+      </div>
+
+      {groups.map((g) => (
+        <div key={g.title}>
+          <div className="mb-2">
+            <h3 className="text-sm font-semibold tracking-tight">{g.title}</h3>
+            <p className="text-xs text-muted-foreground">{g.description}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {g.tiles.map((t, i) => {
+              const Icon = t.icon;
+              const handleClick = t.onClick ? t.onClick : () => setView(t.key);
+              return (
+                <button
+                  key={`${g.title}-${i}`}
+                  onClick={handleClick}
+                  className="group text-left rounded-lg border bg-card hover:border-primary/50 hover:shadow-md transition-all p-4 relative"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="rounded-md bg-primary/10 text-primary p-2">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    {t.badge && t.badge > 0 ? (
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{t.badge}</Badge>
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold mt-3">{t.label}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{t.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+

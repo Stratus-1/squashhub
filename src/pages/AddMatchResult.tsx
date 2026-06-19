@@ -21,6 +21,8 @@ import { useLadder, useCreateMatch } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { enqueueRankingDelta, type MatchSourceType } from "@/lib/ranking-points";
+import { supabase } from "@/integrations/supabase/client";
 
 type MatchType = "friendly" | "league" | "ladder" | "club_champs" | "tournament";
 type ScoringFormat = "par11" | "par15" | "english9";

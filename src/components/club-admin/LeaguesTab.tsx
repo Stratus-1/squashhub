@@ -2466,10 +2466,134 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
             </div>
           )}
 
+          {/* Linked national bodies (e.g. SSA) */}
+          <LinkedNationalBodiesSection associationId={association.id} clubId={(association as any).club_id} />
+
           <Button onClick={handleSave} className="w-full" disabled={!name.trim()}>Save Changes</Button>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Linked National Bodies (per association) ───
+function LinkedNationalBodiesSection({ associationId, clubId }: { associationId: string; clubId: string }) {
+  const qc = useQueryClient();
+  const [seeding, setSeeding] = useState(false);
+
+  const { data: bodies = [] } = useQuery({
+    queryKey: ["club-national-bodies-link-picker", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data, error } = await fromExt("national_body_fees")
+        .select("id, body_name, abbreviation, fee_annual, active")
+        .eq("club_id", clubId)
+        .eq("active", true)
+        .order("body_name");
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const { data: links = [] } = useQuery({
+    queryKey: ["lanb-links", associationId],
+    enabled: !!associationId,
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_association_national_bodies")
+        .select("id, national_body_fee_id, active")
+        .eq("league_association_id", associationId);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const linkMap = useMemo(() => {
+    const m = new Map<string, { id: string; active: boolean }>();
+    for (const l of links) m.set(l.national_body_fee_id, { id: l.id, active: !!l.active });
+    return m;
+  }, [links]);
+
+  const handleToggle = async (bodyId: string, checked: boolean) => {
+    const existing = linkMap.get(bodyId);
+    if (existing) {
+      const { error } = await fromExt("league_association_national_bodies")
+        .update({ active: checked }).eq("id", existing.id);
+      if (error) { toast.error(error.message); return; }
+    } else {
+      const { error } = await fromExt("league_association_national_bodies")
+        .insert({ league_association_id: associationId, national_body_fee_id: bodyId, active: checked });
+      if (error) { toast.error(error.message); return; }
+    }
+    qc.invalidateQueries({ queryKey: ["lanb-links", associationId] });
+  };
+
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("seed_linked_national_body_fees", {
+        p_league_association_id: associationId,
+      });
+      if (error) throw error;
+      toast.success(`Seeded ${data ?? 0} member fee(s) for the current season`);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to seed fees");
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const activeCount = links.filter((l: any) => l.active).length;
+
+  return (
+    <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <Label className="text-sm font-medium">Linked national bodies</Label>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="text-muted-foreground hover:text-foreground">
+                  <Info className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="text-xs">
+                  Tick the national bodies (e.g. SSA) whose fees apply to every member playing in this league. Only members with a league number for the current season are charged — and only <strong>once per member per season</strong>, even if they play in multiple leagues that link the same body. The club becomes payable to the body for the same amount.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        {activeCount > 0 && (
+          <Button type="button" size="sm" variant="outline" onClick={handleSeed} disabled={seeding}>
+            {seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+            Seed fees now
+          </Button>
+        )}
+      </div>
+
+      {bodies.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No national bodies configured yet. Add them in <strong>Club Admin → Fees</strong> first (e.g. SSA).
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {bodies.map((b: any) => {
+            const link = linkMap.get(b.id);
+            const checked = !!link?.active;
+            return (
+              <div key={b.id} className="flex items-center justify-between gap-2 text-sm">
+                <div className="min-w-0">
+                  <span className="font-medium">{b.abbreviation || b.body_name}</span>
+                  <span className="text-muted-foreground"> — R{Number(b.fee_annual || 0).toFixed(2)}/yr</span>
+                </div>
+                <Switch checked={checked} onCheckedChange={(c) => handleToggle(b.id, c)} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

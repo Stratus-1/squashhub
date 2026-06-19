@@ -336,52 +336,58 @@ export default function BellsMarker() {
       });
       if (error) throw error;
 
-      // Best-effort: also drop a row into matches so it shows up in players' history
-      try {
-        const memberIds = [
-          match.player_a_member_id,
-          match.player_b_member_id,
-          match.partner_a_member_id,
-          match.partner_b_member_id,
-        ].filter(Boolean) as string[];
-        const { data: members } = await supabase
-          .from("club_members")
-          .select("id, user_id, club_id")
-          .in("id", memberIds);
-        const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
-        const aUser = (memberMap.get(match.player_a_member_id) as any)?.user_id || null;
-        const bUser = (memberMap.get(match.player_b_member_id) as any)?.user_id || null;
-        const clubIdResolved = (memberMap.values().next().value as any)?.club_id || null;
-        await supabase.from("matches").insert({
-          player_a: aUser,
-          player_b: bUser,
-          player_a_member_id: match.player_a_member_id,
-          player_b_member_id: match.player_b_member_id,
-          winner_id: winnerMemberId === match.player_a_member_id ? aUser : winnerMemberId === match.player_b_member_id ? bUser : null,
-          winner_member_id: winnerMemberId,
-          score: scoreStr,
-          duration_s: capMinutes * 60 - remaining,
-          submitted_by: auth.user?.id || null,
-          submitted_by_member_id: null,
-          confirmed: true,
-          notes: `Bells doubles tournament: ${champ?.name || ""} (League ${match.group_number}). ${pairAName} vs ${pairBName}. Final ${scoreStr}.`,
-          club_id: clubIdResolved,
-        } as any);
-      } catch (e) {
-        console.warn("Could not mirror to matches table:", e);
-      }
-
+      // Navigate back to the tournament immediately so the scorer isn't stuck
+      // staring at a disabled scoring screen while the mirror insert runs.
       qc.invalidateQueries({ queryKey: ["bells-match", matchId] });
       qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
       qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
       toast.success(`Result saved · ${pairAName} ${scoreStr} ${pairBName}`);
-      navigate(`/club-champs/${match.champ_id}`);
+      navigate(`/club-champs/${match.champ_id}`, { replace: true });
+
+      // Best-effort: also drop a row into matches so it shows up in players'
+      // history. Fire-and-forget — do not block navigation on this.
+      (async () => {
+        try {
+          const memberIds = [
+            match.player_a_member_id,
+            match.player_b_member_id,
+            match.partner_a_member_id,
+            match.partner_b_member_id,
+          ].filter(Boolean) as string[];
+          const { data: members } = await supabase
+            .from("club_members")
+            .select("id, user_id, club_id")
+            .in("id", memberIds);
+          const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
+          const aUser = (memberMap.get(match.player_a_member_id) as any)?.user_id || null;
+          const bUser = (memberMap.get(match.player_b_member_id) as any)?.user_id || null;
+          const clubIdResolved = (memberMap.values().next().value as any)?.club_id || null;
+          await supabase.from("matches").insert({
+            player_a: aUser,
+            player_b: bUser,
+            player_a_member_id: match.player_a_member_id,
+            player_b_member_id: match.player_b_member_id,
+            winner_id: winnerMemberId === match.player_a_member_id ? aUser : winnerMemberId === match.player_b_member_id ? bUser : null,
+            winner_member_id: winnerMemberId,
+            score: scoreStr,
+            duration_s: capMinutes * 60 - remaining,
+            submitted_by: auth.user?.id || null,
+            submitted_by_member_id: null,
+            confirmed: true,
+            notes: `Bells doubles tournament: ${champ?.name || ""} (League ${match.group_number}). ${pairAName} vs ${pairBName}. Final ${scoreStr}.`,
+            club_id: clubIdResolved,
+          } as any);
+        } catch (e) {
+          console.warn("Could not mirror to matches table:", e);
+        }
+      })();
     } catch (e: any) {
       toast.error(e.message || "Could not save result");
     } finally {
       setSaving(false);
     }
   };
+
 
   if (isLoading) {
     return (

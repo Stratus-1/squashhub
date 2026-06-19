@@ -8,9 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
-import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -614,57 +614,51 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         </Card>
       </div>
 
-      <Tabs defaultValue="by-account" className="w-full">
-        <div className="flex items-start justify-between gap-2 flex-wrap">
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="by-account" className="text-xs">By Account</TabsTrigger>
-            <TabsTrigger value="journal" className="text-xs">All GL Entries</TabsTrigger>
-            <TabsTrigger value="pending" className="text-xs">
-              Pending
-              {(pendingTransactions || []).length > 0 && (
-                <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">{(pendingTransactions || []).length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="remittances" className="text-xs gap-1">
-              <Send className="w-3 h-3" /> Remittances
-            </TabsTrigger>
-            <TabsTrigger value="renewals" className="text-xs">Annual Renewals</TabsTrigger>
-            <TabsTrigger value="trial" className="text-xs">Trial Balance</TabsTrigger>
-            <TabsTrigger value="income" className="text-xs">Income Statement</TabsTrigger>
-            <TabsTrigger value="coa" className="text-xs">Chart of Accounts</TabsTrigger>
-          </TabsList>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button size="sm" variant="outline" onClick={() => setStatementOpen(true)} className="gap-1.5 h-8 shrink-0">
-              <BookOpen className="w-3.5 h-3.5" /> Member Statement
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline" className="gap-1.5 h-8 shrink-0">
-                  <Wallet className="w-3.5 h-3.5" /> Member Balances
+      <FinanceHub
+        pendingCount={(pendingTransactions || []).length}
+        onStatement={() => setStatementOpen(true)}
+        onBalances={(filter) => { setBalancesFilter(filter); setBalancesSearch(""); setBalancesOpen(true); }}
+        onBill={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }}
+        onEnterTx={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }}
+      >
+        {(view, setView) => (
+          <Tabs value={view} onValueChange={setView} className="w-full mt-4">
+            <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+              <Button size="sm" variant="ghost" onClick={() => setView("")} className="gap-1.5 h-8 -ml-2">
+                <ArrowLeft className="w-4 h-4" /> Back to Finance
+              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button size="sm" variant="outline" onClick={() => setStatementOpen(true)} className="gap-1.5 h-8">
+                  <BookOpen className="w-3.5 h-3.5" /> Member Statement
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => { setBalancesFilter("outstanding"); setBalancesSearch(""); setBalancesOpen(true); }}>
-                  Outstanding (owes club)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setBalancesFilter("credit"); setBalancesSearch(""); setBalancesOpen(true); }}>
-                  In Credit (overpaid)
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { setBalancesFilter("all"); setBalancesSearch(""); setBalancesOpen(true); }}>
-                  All members
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8 shrink-0">
-              <Receipt className="w-3.5 h-3.5" /> Bill Member
-            </Button>
-            <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8 shrink-0">
-              <Plus className="w-3.5 h-3.5" /> Enter Transaction
-            </Button>
-          </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" className="gap-1.5 h-8">
+                      <Wallet className="w-3.5 h-3.5" /> Member Balances
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => { setBalancesFilter("outstanding"); setBalancesSearch(""); setBalancesOpen(true); }}>
+                      Outstanding (owes club)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setBalancesFilter("credit"); setBalancesSearch(""); setBalancesOpen(true); }}>
+                      In Credit (overpaid)
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => { setBalancesFilter("all"); setBalancesSearch(""); setBalancesOpen(true); }}>
+                      All members
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8">
+                  <Receipt className="w-3.5 h-3.5" /> Bill Member
+                </Button>
+                <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
+                  <Plus className="w-3.5 h-3.5" /> Enter Transaction
+                </Button>
+              </div>
+            </div>
 
-        </div>
 
         <TabsContent value="remittances">
           <RemittancesPanel clubId={clubId} />
@@ -973,7 +967,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             ))}
           </Card>
         </TabsContent>
-      </Tabs>
+          </Tabs>
+        )}
+      </FinanceHub>
+
 
       {/* Enter Transaction Dialog */}
       <Dialog open={txOpen} onOpenChange={setTxOpen}>
@@ -1663,3 +1660,113 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     </div>
   );
 }
+
+/* ─── Finance Hub: tile-based navigation ─── */
+type FinanceView = "" | "by-account" | "journal" | "pending" | "remittances" | "renewals" | "trial" | "income" | "coa";
+
+interface FinanceHubProps {
+  pendingCount: number;
+  onStatement: () => void;
+  onBalances: (filter: "outstanding" | "credit" | "all") => void;
+  onBill: () => void;
+  onEnterTx: () => void;
+  children: (view: FinanceView, setView: (v: string) => void) => ReactNode;
+}
+
+function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, children }: FinanceHubProps) {
+  const [view, setView] = useState<FinanceView>("");
+
+  if (view) {
+    return <>{children(view, (v) => setView(v as FinanceView))}</>;
+  }
+
+  const groups: Array<{
+    title: string;
+    description: string;
+    tiles: Array<{
+      key: FinanceView;
+      label: string;
+      desc: string;
+      icon: ComponentType<{ className?: string }>;
+      badge?: number;
+      onClick?: () => void;
+    }>;
+  }> = [
+    {
+      title: "Daily Operations",
+      description: "Day-to-day bookkeeping and reconciliation",
+      tiles: [
+        { key: "by-account", label: "By Account", desc: "Filter ledger entries per GL account", icon: Layers },
+        { key: "journal", label: "All GL Entries", desc: "Every double-entry line, newest first", icon: BookOpen },
+        { key: "pending", label: "Pending", desc: "Unposted transactions awaiting review", icon: Clock, badge: pendingCount },
+        { key: "remittances", label: "Remittances", desc: "Track payouts to associations & bodies", icon: Send },
+      ],
+    },
+    {
+      title: "Member Billing",
+      description: "Statements, balances and invoicing",
+      tiles: [
+        { key: "renewals", label: "Annual Renewals", desc: "Generate & send yearly invoices", icon: CalendarDays },
+        { key: "" as FinanceView, label: "Member Statement", desc: "Full transaction history for one member", icon: FileText, onClick: onStatement },
+        { key: "" as FinanceView, label: "Member Balances", desc: "Who owes and who's in credit", icon: Wallet, onClick: () => onBalances("outstanding") },
+        { key: "" as FinanceView, label: "Bill Member", desc: "Add an ad-hoc charge to a member", icon: Receipt, onClick: onBill },
+      ],
+    },
+    {
+      title: "Reports",
+      description: "Accounting reports & chart structure",
+      tiles: [
+        { key: "trial", label: "Trial Balance", desc: "Debits vs credits across all accounts", icon: BarChart3 },
+        { key: "income", label: "Income Statement", desc: "Revenue & expenses for the period", icon: BarChart3 },
+        { key: "coa", label: "Chart of Accounts", desc: "All GL accounts and balances", icon: ListTree },
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-6 mt-2">
+      {/* Primary action */}
+      <div className="flex justify-end">
+        <Button onClick={onEnterTx} className="gap-1.5">
+          <Plus className="w-4 h-4" /> Enter Transaction
+        </Button>
+      </div>
+
+      {groups.map((g) => (
+        <div key={g.title}>
+          <div className="mb-2">
+            <h3 className="text-sm font-semibold tracking-tight">{g.title}</h3>
+            <p className="text-xs text-muted-foreground">{g.description}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {g.tiles.map((t, i) => {
+              const Icon = t.icon;
+              const handleClick = t.onClick ? t.onClick : () => setView(t.key);
+              return (
+                <button
+                  key={`${g.title}-${i}`}
+                  onClick={handleClick}
+                  className="group text-left rounded-lg border bg-card hover:border-primary/50 hover:shadow-md transition-all p-4 relative"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="rounded-md bg-primary/10 text-primary p-2">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    {t.badge && t.badge > 0 ? (
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{t.badge}</Badge>
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold mt-3">{t.label}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{t.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+

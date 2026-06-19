@@ -636,6 +636,30 @@ export default function AddMatchResult() {
         toast.success("Match result recorded.");
       }
 
+      // Ranking-points enqueue (only if enabled, user opted in, and both players are linked club members)
+      if (rankingEnabled && affectsRanking && clubId && player1.clubMemberId && player2.clubMemberId) {
+        try {
+          const winnerMid = matchWinner === "a" ? player1.clubMemberId : player2.clubMemberId;
+          const loserMid = matchWinner === "a" ? player2.clubMemberId : player1.clubMemberId;
+          const sourceMap: Record<MatchType, MatchSourceType> = {
+            friendly: "manual",
+            ladder: urlChallengeId ? "challenge" : "manual",
+            league: "league",
+            club_champs: "tournament",
+            tournament: "tournament",
+          };
+          await enqueueRankingDelta({
+            clubId,
+            matchSourceType: urlChallengeId ? "challenge" : sourceMap[matchType],
+            matchSourceId: urlChallengeId || null,
+            winnerMemberId: winnerMid,
+            loserMemberId: loserMid,
+          });
+        } catch (err) {
+          console.warn("Ranking-points enqueue failed:", err);
+        }
+      }
+
       navigate("/dashboard");
     } catch (e: any) {
       toast.error(e?.message || "Failed to submit match result");

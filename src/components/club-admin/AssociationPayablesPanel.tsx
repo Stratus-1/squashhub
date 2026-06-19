@@ -21,6 +21,7 @@ interface NationalBody {
   body_name: string;
   abbreviation: string | null;
   fee_annual: number;
+  fee_type: "national" | "league_affiliation";
 }
 interface EligibleMember {
   club_member_id: string;
@@ -41,19 +42,22 @@ interface BatchRow {
   created_at: string;
 }
 
+const unitLabel = (ft: string) => (ft === "league_affiliation" ? "team" : "member");
+
 export function AssociationPayablesPanel({ clubId }: Props) {
   const qc = useQueryClient();
   const [generateBody, setGenerateBody] = useState<NationalBody | null>(null);
   const [settleBatch, setSettleBatch] = useState<BatchRow | null>(null);
 
-  /* ─── National bodies (eligible fees only) ─── */
+  /* ─── National bodies — club-payable affiliations only (excludes member registration fees) ─── */
   const { data: bodies = [] } = useQuery({
     queryKey: ["assoc-payable-bodies", clubId],
     queryFn: async (): Promise<NationalBody[]> => {
       const { data, error } = await fromExt("national_body_fees")
-        .select("id, body_name, abbreviation, fee_annual, active")
+        .select("id, body_name, abbreviation, fee_annual, active, fee_type")
         .eq("club_id", clubId)
         .eq("active", true)
+        .in("fee_type", ["national", "league_affiliation"])
         .order("body_name");
       if (error) throw error;
       return (data || []).map((b: any) => ({
@@ -61,6 +65,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         body_name: b.body_name,
         abbreviation: b.abbreviation,
         fee_annual: Number(b.fee_annual) || 0,
+        fee_type: b.fee_type,
       }));
     },
     enabled: !!clubId,

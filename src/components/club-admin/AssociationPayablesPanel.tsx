@@ -122,7 +122,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
                     <p className="text-[11px] text-muted-foreground">{b.abbreviation}</p>
                   )}
                 </div>
-                <Badge variant="outline" className="text-[10px]">R{b.fee_annual.toFixed(2)} / member</Badge>
+                <Badge variant="outline" className="text-[10px]">R{b.fee_annual.toFixed(2)} / {unitLabel(b.fee_type)}</Badge>
               </div>
               <div className="flex items-center gap-2 text-[11px]">
                 <Wallet className="w-3 h-3 text-muted-foreground" />

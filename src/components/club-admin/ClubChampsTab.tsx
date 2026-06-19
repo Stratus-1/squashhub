@@ -414,6 +414,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [inviteTiming, setInviteTiming] = useState<"manual" | "now" | "scheduled">("manual");
   const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
+  const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
   const [showInvitePreview, setShowInvitePreview] = useState(false);
 
   // Invite by league (just for the initial roster — admin can still sub from any league later)

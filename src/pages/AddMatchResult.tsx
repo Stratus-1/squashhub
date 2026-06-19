@@ -849,6 +849,19 @@ export default function AddMatchResult() {
               />
             </div>
 
+            {rankingEnabled && player1.clubMemberId && player2.clubMemberId && (
+              <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+                <div className="min-w-0">
+                  <Label className="text-xs font-medium">Affects ranking points?</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Submits a pending points movement for admin approval.
+                  </p>
+                </div>
+                <Switch checked={affectsRanking} onCheckedChange={setAffectsRanking} />
+              </div>
+            )}
+
+
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />

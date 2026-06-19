@@ -381,6 +381,7 @@ export default function ClubChampsView() {
 
   const canManage = useHasPermission("champs");
   const qc = useQueryClient();
+  const [confirmationsOpen, setConfirmationsOpen] = useState(true);
 
   const unassignedCount = matches.filter(
     (m: any) => !m.is_bye && m.status === "scheduled" && (!m.scheduled_date || !m.scheduled_time || !m.court_id),

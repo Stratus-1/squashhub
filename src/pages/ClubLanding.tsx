@@ -107,6 +107,26 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     enabled: !!club?.id,
   });
 
+  // Fetch registration fees (e.g. joining fee)
+  const { data: registrationFees = [] } = useQuery({
+    queryKey: ["club-registration-fees-public", club?.id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("national_body_fees")
+        .select("id, body_name, fee_annual, fee_type")
+        .eq("club_id", club!.id)
+        .eq("fee_type", "registration")
+        .eq("show_on_landing", true);
+      if (error) throw error;
+      return (data || []).map((f: any) => ({
+        id: f.id,
+        name: f.body_name,
+        description: null,
+        annual_fee: Number(f.fee_annual || 0),
+      })) as FeeCategory[];
+    },
+    enabled: !!club?.id,
+  });
+
   // Fetch member count (public, no PII)
   const { data: memberCount = 0 } = useQuery({
     queryKey: ["club-member-count-public", club?.id],

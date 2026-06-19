@@ -21,6 +21,8 @@ import { useLadder, useCreateMatch } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { enqueueRankingDelta, type MatchSourceType } from "@/lib/ranking-points";
+import { supabase } from "@/integrations/supabase/client";
 
 type MatchType = "friendly" | "league" | "ladder" | "club_champs" | "tournament";
 type ScoringFormat = "par11" | "par15" | "english9";
@@ -368,6 +370,22 @@ export default function AddMatchResult() {
   const { data: ladder } = useLadder(clubId);
   const createMatch = useCreateMatch();
 
+  // Ranking-points toggle (only shown when the club has enabled the system)
+  const { data: rpClub } = useQuery({
+    queryKey: ["rp-club-toggle", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clubs")
+        .select("ranking_points_enabled")
+        .eq("id", clubId!)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const rankingEnabled = !!(rpClub as any)?.ranking_points_enabled;
+  const [affectsRanking, setAffectsRanking] = useState(true);
+
   // URL params from challenge flow or booking flow
   const urlChallengeId = searchParams.get("challengeId");
   const urlOpponentId = searchParams.get("opponentId");
@@ -618,6 +636,30 @@ export default function AddMatchResult() {
         toast.success("Match result recorded.");
       }
 
+      // Ranking-points enqueue (only if enabled, user opted in, and both players are linked club members)
+      if (rankingEnabled && affectsRanking && clubId && player1.clubMemberId && player2.clubMemberId) {
+        try {
+          const winnerMid = matchWinner === "a" ? player1.clubMemberId : player2.clubMemberId;
+          const loserMid = matchWinner === "a" ? player2.clubMemberId : player1.clubMemberId;
+          const sourceMap: Record<MatchType, MatchSourceType> = {
+            friendly: "manual",
+            ladder: urlChallengeId ? "challenge" : "manual",
+            league: "league",
+            club_champs: "tournament",
+            tournament: "tournament",
+          };
+          await enqueueRankingDelta({
+            clubId,
+            matchSourceType: urlChallengeId ? "challenge" : sourceMap[matchType],
+            matchSourceId: urlChallengeId || null,
+            winnerMemberId: winnerMid,
+            loserMemberId: loserMid,
+          });
+        } catch (err) {
+          console.warn("Ranking-points enqueue failed:", err);
+        }
+      }
+
       navigate("/dashboard");
     } catch (e: any) {
       toast.error(e?.message || "Failed to submit match result");
@@ -806,6 +848,19 @@ export default function AddMatchResult() {
                 max={new Date().toISOString().split("T")[0]}
               />
             </div>
+
+            {rankingEnabled && player1.clubMemberId && player2.clubMemberId && (
+              <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+                <div className="min-w-0">
+                  <Label className="text-xs font-medium">Affects ranking points?</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Submits a pending points movement for admin approval.
+                  </p>
+                </div>
+                <Switch checked={affectsRanking} onCheckedChange={setAffectsRanking} />
+              </div>
+            )}
+
 
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>

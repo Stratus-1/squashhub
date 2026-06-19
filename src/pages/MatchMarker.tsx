@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { setScoringActive } from "@/lib/scoring-lock";
+import { enqueueRankingDelta } from "@/lib/ranking-points";
 
 export default function MatchMarker() {
   const [config, setConfig] = useState<MarkerConfig | null>(() => {
@@ -158,6 +159,29 @@ export default function MatchMarker() {
           queryClient.invalidateQueries({ queryKey: ["club-champs-all-entries"] });
         } catch (e) {
           console.warn("Could not update tournament match:", e);
+        }
+
+        // Ranking points: enqueue if parent tournament has affects_ranking_points enabled
+        try {
+          if (winnerMemberId && validAMemberId && validBMemberId && config.clubId) {
+            const { data: champRow } = await fromExt("club_champs_matches")
+              .select("champ_id, club_champs!inner(affects_ranking_points)")
+              .eq("id", config.sourceId)
+              .maybeSingle();
+            const affects = (champRow as any)?.club_champs?.affects_ranking_points;
+            if (affects) {
+              const loserMemberId = winnerMemberId === validAMemberId ? validBMemberId : validAMemberId;
+              await enqueueRankingDelta({
+                clubId: config.clubId,
+                matchSourceType: "tournament",
+                matchSourceId: config.sourceId,
+                winnerMemberId,
+                loserMemberId,
+              });
+            }
+          }
+        } catch (e) {
+          console.warn("Ranking-points enqueue (tournament) failed:", e);
         }
       }
 

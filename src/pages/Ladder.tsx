@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useLadder, useCreateChallenge, useSquashTotals, useHeadToHead } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -23,6 +23,63 @@ import { isCourtAvailable } from "@/lib/court-availability";
 import { toast } from "sonner";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { BarChart3 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+
+function RankingTabs({
+  pyramidContent,
+  rpBoard,
+  onPlayerClick,
+}: {
+  pyramidContent: ReactNode;
+  rpBoard: Array<{ id: string; name: string; ranking_points: number; ladder_position: number | null; avatar_url: string | null }>;
+  onPlayerClick: (memberId: string) => void;
+}) {
+  return (
+    <div className="px-4 mt-3 mb-4">
+      <Tabs defaultValue="pyramid" className="w-full">
+        <TabsList className="mb-3">
+          <TabsTrigger value="pyramid">Pyramid Ladder</TabsTrigger>
+          <TabsTrigger value="points" className="gap-1.5">
+            <BarChart3 className="w-3.5 h-3.5" /> Ranking Points
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="pyramid">{pyramidContent}</TabsContent>
+        <TabsContent value="points">
+          <Card className="overflow-hidden">
+            <div className="px-3 py-2 border-b bg-muted/30">
+              <p className="text-[11px] text-muted-foreground">
+                Points are earned from official matches and applied after admin approval. Underdog wins earn bigger bonuses.
+              </p>
+            </div>
+            <div className="divide-y">
+              {rpBoard.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">No ranking-points data yet.</p>
+              ) : (
+                rpBoard.map((m, i) => (
+                  <button
+                    key={m.id}
+                    onClick={() => onPlayerClick(m.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-muted/40 transition-colors text-left"
+                  >
+                    <span className="w-6 text-center text-xs font-mono text-muted-foreground">{i + 1}</span>
+                    <span className="flex-1 text-sm font-medium truncate">{m.name}</span>
+                    {m.ladder_position != null && (
+                      <span className="text-[10px] text-muted-foreground">Ladder #{m.ladder_position}</span>
+                    )}
+                    <span className="font-mono text-sm tabular-nums w-16 text-right">
+                      {Number(m.ranking_points ?? 0).toFixed(2)}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
 
 // Inline opponent stats for the challenge dialog
 function OpponentStatsInline({ memberId, myMemberId }: { memberId: string; myMemberId: string }) {
@@ -71,6 +128,30 @@ export default function Ladder() {
   const { data: players, isLoading } = useLadder(clubId);
   const queryClient = useQueryClient();
   const createChallenge = useCreateChallenge();
+
+  // Ranking-points system (parallel leaderboard, opt-in per club)
+  const { data: rpClub } = useQuery({
+    queryKey: ["ladder-rp-toggle", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data } = await supabase.from("clubs").select("ranking_points_enabled").eq("id", clubId!).maybeSingle();
+      return data;
+    },
+  });
+  const rpEnabled = !!(rpClub as any)?.ranking_points_enabled;
+  const { data: rpBoard = [] } = useQuery({
+    queryKey: ["ladder-rp-board", clubId],
+    enabled: !!clubId && rpEnabled,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("club_members")
+        .select("id, name, ranking_points, ladder_position, avatar_url")
+        .eq("club_id", clubId!)
+        .order("ranking_points", { ascending: false })
+        .limit(300);
+      return data || [];
+    },
+  });
 
   // The active member's club_member_id is the primary identity
   const myMemberId = activeMember?.id || myClubMember?.id || null;
@@ -501,6 +582,26 @@ export default function Ladder() {
         <div className="flex justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
+      ) : rpEnabled ? (
+        <RankingTabs
+          pyramidContent={
+            mixedLadderEnabled ? (
+              <div className="grid grid-cols-1 gap-4">
+                {groupByLeague ? renderGrouped("Club Ladder", allPlayers) : renderColumn("Club Ladder", allPlayers)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
+                {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
+              </div>
+            )
+          }
+          rpBoard={rpBoard as any}
+          onPlayerClick={(memberId) => {
+            if (memberId === myMemberId) navigate("/profile");
+            else navigate(`/players/${memberId}`);
+          }}
+        />
       ) : mixedLadderEnabled ? (
         <div className="px-4 mt-3 mb-4 grid grid-cols-1 gap-4">
           {groupByLeague ? renderGrouped("Club Ladder", allPlayers) : renderColumn("Club Ladder", allPlayers)}

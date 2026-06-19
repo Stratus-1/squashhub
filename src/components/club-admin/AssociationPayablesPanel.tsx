@@ -21,6 +21,7 @@ interface NationalBody {
   body_name: string;
   abbreviation: string | null;
   fee_annual: number;
+  fee_type: "national" | "league_affiliation";
 }
 interface EligibleMember {
   club_member_id: string;
@@ -41,19 +42,22 @@ interface BatchRow {
   created_at: string;
 }
 
+const unitLabel = (ft: string) => (ft === "league_affiliation" ? "team" : "member");
+
 export function AssociationPayablesPanel({ clubId }: Props) {
   const qc = useQueryClient();
   const [generateBody, setGenerateBody] = useState<NationalBody | null>(null);
   const [settleBatch, setSettleBatch] = useState<BatchRow | null>(null);
 
-  /* ─── National bodies (eligible fees only) ─── */
+  /* ─── National bodies — club-payable affiliations only (excludes member registration fees) ─── */
   const { data: bodies = [] } = useQuery({
     queryKey: ["assoc-payable-bodies", clubId],
     queryFn: async (): Promise<NationalBody[]> => {
       const { data, error } = await fromExt("national_body_fees")
-        .select("id, body_name, abbreviation, fee_annual, active")
+        .select("id, body_name, abbreviation, fee_annual, active, fee_type")
         .eq("club_id", clubId)
         .eq("active", true)
+        .in("fee_type", ["national", "league_affiliation"])
         .order("body_name");
       if (error) throw error;
       return (data || []).map((b: any) => ({
@@ -61,6 +65,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         body_name: b.body_name,
         abbreviation: b.abbreviation,
         fee_annual: Number(b.fee_annual) || 0,
+        fee_type: b.fee_type,
       }));
     },
     enabled: !!clubId,
@@ -117,7 +122,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
                     <p className="text-[11px] text-muted-foreground">{b.abbreviation}</p>
                   )}
                 </div>
-                <Badge variant="outline" className="text-[10px]">R{b.fee_annual.toFixed(2)} / member</Badge>
+                <Badge variant="outline" className="text-[10px]">R{b.fee_annual.toFixed(2)} / {unitLabel(b.fee_type)}</Badge>
               </div>
               <div className="flex items-center gap-2 text-[11px]">
                 <Wallet className="w-3 h-3 text-muted-foreground" />
@@ -294,9 +299,13 @@ function GenerateDialog({
     enabled: !!body.id,
   });
 
+  const isPerTeam = body.fee_type === "league_affiliation";
+  const [teamCount, setTeamCount] = useState<string>("1");
+
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  // Initialise selection when eligible list arrives
+  // Initialise selection when eligible list arrives (per-member flow only)
   useEffect(() => {
+    if (isPerTeam) return;
     const next: Record<string, boolean> = {};
     eligible.forEach((m) => { next[m.club_member_id] = true; });
     setSelected(next);
@@ -304,7 +313,9 @@ function GenerateDialog({
   }, [eligible.length, body.id, seasonLabel]);
 
   const tickedIds = Object.entries(selected).filter(([, v]) => v).map(([k]) => k);
-  const total = tickedIds.length * body.fee_annual;
+  const teams = Math.max(0, parseInt(teamCount, 10) || 0);
+  const units = isPerTeam ? teams : tickedIds.length;
+  const total = units * body.fee_annual;
 
   const toggleAll = (val: boolean) => {
     const next: Record<string, boolean> = {};
@@ -313,19 +324,22 @@ function GenerateDialog({
   };
 
   const create = async () => {
-    if (tickedIds.length === 0) { toast.error("Select at least one member"); return; }
+    if (units === 0) {
+      toast.error(isPerTeam ? "Enter the number of teams" : "Select at least one member");
+      return;
+    }
     if (!seasonLabel.trim()) { toast.error("Enter a season label"); return; }
     setSubmitting(true);
     try {
       const journalRef = crypto.randomUUID();
-      // 1) batch
+      // 1) batch (member_count holds units — members or teams)
       const { data: batchData, error: batchErr } = await fromExt("club_association_payable_batches")
         .insert({
           club_id: clubId,
           national_body_fee_id: body.id,
           season_label: seasonLabel.trim(),
           total_amount: total,
-          member_count: tickedIds.length,
+          member_count: units,
           status: "pending",
           journal_ref_raise: journalRef,
         })
@@ -334,29 +348,32 @@ function GenerateDialog({
       if (batchErr) throw batchErr;
       const batchId = batchData.id;
 
-      // 2) lines
-      const lines = tickedIds.map((id) => {
-        const m = eligible.find((x) => x.club_member_id === id)!;
-        return {
-          batch_id: batchId,
-          club_member_id: id,
-          league_number: m.league_number,
-          amount: body.fee_annual,
-          paid: false,
-        };
-      });
-      const { error: linesErr } = await fromExt("club_association_payable_lines").insert(lines);
-      if (linesErr) throw linesErr;
+      // 2) lines — per-member flow only (audit trail of who's covered)
+      if (!isPerTeam && tickedIds.length > 0) {
+        const lines = tickedIds.map((id) => {
+          const m = eligible.find((x) => x.club_member_id === id)!;
+          return {
+            batch_id: batchId,
+            club_member_id: id,
+            league_number: m.league_number,
+            amount: body.fee_annual,
+            paid: false,
+          };
+        });
+        const { error: linesErr } = await fromExt("club_association_payable_lines").insert(lines);
+        if (linesErr) throw linesErr;
+      }
 
       // 3) GL journal: Dr Affiliation Expense / Cr Association Payable
-      const desc = `Affiliation: ${body.body_name} – ${seasonLabel} (${tickedIds.length} members)`;
+      const unitWord = isPerTeam ? "teams" : "members";
+      const desc = `Affiliation: ${body.body_name} – ${seasonLabel} (${units} ${unitWord})`;
       const { error: jErr } = await fromExt("club_journal_entries").insert([
         { club_id: clubId, journal_ref: journalRef, account: "national_body_expense", debit: total, credit: 0, description: desc },
         { club_id: clubId, journal_ref: journalRef, account: "association_payable", debit: 0, credit: total, description: desc },
       ]);
       if (jErr) throw jErr;
 
-      toast.success(`Payable raised: R${total.toFixed(2)} (${tickedIds.length} members)`);
+      toast.success(`Payable raised: R${total.toFixed(2)} (${units} ${unitWord})`);
       onCreated();
     } catch (err: any) {
       const f = friendlyError(err);
@@ -372,7 +389,9 @@ function GenerateDialog({
         <DialogHeader>
           <DialogTitle>Generate payable — {body.body_name}</DialogTitle>
           <DialogDescription>
-            Select members covered by this payable. R{body.fee_annual.toFixed(2)} per member.
+            {isPerTeam
+              ? `R${body.fee_annual.toFixed(2)} per team. Enter the number of teams being entered for this season.`
+              : `Select members covered by this payable. R${body.fee_annual.toFixed(2)} per member.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -382,58 +401,77 @@ function GenerateDialog({
             <Input value={seasonLabel} onChange={(e) => setSeasonLabel(e.target.value)} className="h-8 text-sm" placeholder="2026" />
           </div>
           <div className="flex items-end justify-end gap-3 text-sm">
-            <div><span className="text-muted-foreground text-xs">Selected:</span> <span className="font-semibold tabular-nums">{tickedIds.length}</span></div>
+            <div>
+              <span className="text-muted-foreground text-xs">{isPerTeam ? "Teams:" : "Selected:"}</span>{" "}
+              <span className="font-semibold tabular-nums">{units}</span>
+            </div>
             <div><span className="text-muted-foreground text-xs">Total:</span> <span className="font-bold tabular-nums">R{total.toFixed(2)}</span></div>
           </div>
         </div>
 
-        <div className="border rounded-md max-h-[400px] overflow-y-auto">
-          {isLoading ? (
-            <p className="p-4 text-xs text-muted-foreground">Loading eligible members…</p>
-          ) : eligible.length === 0 ? (
-            <div className="p-6 text-xs text-muted-foreground text-center">
-              <Users className="w-6 h-6 mx-auto mb-2 opacity-50" />
-              No eligible members for this season. Either none have active league numbers, or all have been billed already.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox
-                      checked={tickedIds.length === eligible.length}
-                      onCheckedChange={(v) => toggleAll(!!v)}
-                    />
-                  </TableHead>
-                  <TableHead className="text-[10px]">Member #</TableHead>
-                  <TableHead className="text-[10px]">Name</TableHead>
-                  <TableHead className="text-[10px]">League #</TableHead>
-                  <TableHead className="text-[10px] text-right">Fee</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {eligible.map((m) => (
-                  <TableRow key={m.club_member_id}>
-                    <TableCell>
+        {isPerTeam ? (
+          <div className="border rounded-md p-4 space-y-2">
+            <Label className="text-xs">Number of teams</Label>
+            <Input
+              type="number"
+              min={1}
+              value={teamCount}
+              onChange={(e) => setTeamCount(e.target.value)}
+              className="h-9 w-32"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Affiliation is billed per team to {body.body_name}. R{body.fee_annual.toFixed(2)} × {teams} = R{total.toFixed(2)}.
+            </p>
+          </div>
+        ) : (
+          <div className="border rounded-md max-h-[400px] overflow-y-auto">
+            {isLoading ? (
+              <p className="p-4 text-xs text-muted-foreground">Loading eligible members…</p>
+            ) : eligible.length === 0 ? (
+              <div className="p-6 text-xs text-muted-foreground text-center">
+                <Users className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                No eligible members for this season. Either none have active league numbers, or all have been billed already.
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
                       <Checkbox
-                        checked={!!selected[m.club_member_id]}
-                        onCheckedChange={(v) => setSelected((s) => ({ ...s, [m.club_member_id]: !!v }))}
+                        checked={tickedIds.length === eligible.length}
+                        onCheckedChange={(v) => toggleAll(!!v)}
                       />
-                    </TableCell>
-                    <TableCell className="text-xs">{m.member_number || "—"}</TableCell>
-                    <TableCell className="text-xs">{m.name}</TableCell>
-                    <TableCell className="text-xs">{m.league_number || "—"}</TableCell>
-                    <TableCell className="text-xs text-right tabular-nums">R{body.fee_annual.toFixed(2)}</TableCell>
+                    </TableHead>
+                    <TableHead className="text-[10px]">Member #</TableHead>
+                    <TableHead className="text-[10px]">Name</TableHead>
+                    <TableHead className="text-[10px]">League #</TableHead>
+                    <TableHead className="text-[10px] text-right">Fee</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {eligible.map((m) => (
+                    <TableRow key={m.club_member_id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={!!selected[m.club_member_id]}
+                          onCheckedChange={(v) => setSelected((s) => ({ ...s, [m.club_member_id]: !!v }))}
+                        />
+                      </TableCell>
+                      <TableCell className="text-xs">{m.member_number || "—"}</TableCell>
+                      <TableCell className="text-xs">{m.name}</TableCell>
+                      <TableCell className="text-xs">{m.league_number || "—"}</TableCell>
+                      <TableCell className="text-xs text-right tabular-nums">R{body.fee_annual.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button onClick={create} disabled={submitting || tickedIds.length === 0}>
+          <Button onClick={create} disabled={submitting || units === 0}>
             {submitting ? "Creating…" : `Create payable batch — R${total.toFixed(2)}`}
           </Button>
         </DialogFooter>

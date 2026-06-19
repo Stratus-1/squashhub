@@ -2551,12 +2551,6 @@ function LinkedNationalBodiesSection({ associationId, clubId }: { associationId:
             </Tooltip>
           </TooltipProvider>
         </div>
-        {activeCount > 0 && (
-          <Button type="button" size="sm" variant="outline" onClick={handleSeed} disabled={seeding}>
-            {seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
-            Seed fees now
-          </Button>
-        )}
       </div>
 
       {bodies.length === 0 ? (

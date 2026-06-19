@@ -160,6 +160,29 @@ export default function MatchMarker() {
         } catch (e) {
           console.warn("Could not update tournament match:", e);
         }
+
+        // Ranking points: enqueue if parent tournament has affects_ranking_points enabled
+        try {
+          if (winnerMemberId && validAMemberId && validBMemberId && config.clubId) {
+            const { data: champRow } = await fromExt("club_champs_matches")
+              .select("champ_id, club_champs!inner(affects_ranking_points)")
+              .eq("id", config.sourceId)
+              .maybeSingle();
+            const affects = (champRow as any)?.club_champs?.affects_ranking_points;
+            if (affects) {
+              const loserMemberId = winnerMemberId === validAMemberId ? validBMemberId : validAMemberId;
+              await enqueueRankingDelta({
+                clubId: config.clubId,
+                matchSourceType: "tournament",
+                matchSourceId: config.sourceId,
+                winnerMemberId,
+                loserMemberId,
+              });
+            }
+          }
+        } catch (e) {
+          console.warn("Ranking-points enqueue (tournament) failed:", e);
+        }
       }
 
       // Note: For league fixtures, marking is launched from the League Game Detail page

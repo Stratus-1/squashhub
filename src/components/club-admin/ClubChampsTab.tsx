@@ -745,6 +745,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       include_visitors: includeVisitors,
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
+      affects_ranking_points: affectsRankingPoints,
       day_schedules: customizeDailySchedule ? daySchedules : [],
       court_ids: Array.from(selectedCourtIds),
     };

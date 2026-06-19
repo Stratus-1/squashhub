@@ -44,18 +44,20 @@ export default function SuperAdminClubs() {
         .range(0, 49999);
       if (error) throw error;
 
-      // Get member counts
-      const { data: members } = await supabase
-        .from("club_members")
-        .select("club_id")
-        .range(0, 99999);
+      // Get exact member count per club (head:true avoids PostgREST's 1000-row cap)
+      const clubs = (data || []) as any[];
+      const counts = await Promise.all(
+        clubs.map((c) =>
+          supabase
+            .from("club_members")
+            .select("id", { count: "exact", head: true })
+            .eq("club_id", c.id)
+            .then((r) => [c.id, r.count ?? 0] as [string, number]),
+        ),
+      );
+      const countMap = new Map<string, number>(counts);
 
-      const countMap = new Map<string, number>();
-      (members || []).forEach((m: any) => {
-        countMap.set(m.club_id, (countMap.get(m.club_id) || 0) + 1);
-      });
-
-      return (data || []).map((c: any) => ({
+      return clubs.map((c) => ({
         ...c,
         member_count: countMap.get(c.id) || 0,
       })) as Club[];

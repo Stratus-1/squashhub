@@ -2528,20 +2528,6 @@ function LinkedNationalBodiesSection({ associationId, clubId }: { associationId:
     qc.invalidateQueries({ queryKey: ["lanb-links", associationId] });
   };
 
-  const handleSeed = async () => {
-    setSeeding(true);
-    try {
-      const { data, error } = await (supabase as any).rpc("seed_linked_national_body_fees", {
-        p_league_association_id: associationId,
-      });
-      if (error) throw error;
-      toast.success(`Seeded ${data ?? 0} member fee(s) for the current season`);
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to seed fees");
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const activeCount = links.filter((l: any) => l.active).length;
 

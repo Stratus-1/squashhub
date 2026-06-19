@@ -370,6 +370,22 @@ export default function AddMatchResult() {
   const { data: ladder } = useLadder(clubId);
   const createMatch = useCreateMatch();
 
+  // Ranking-points toggle (only shown when the club has enabled the system)
+  const { data: rpClub } = useQuery({
+    queryKey: ["rp-club-toggle", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clubs")
+        .select("ranking_points_enabled")
+        .eq("id", clubId!)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const rankingEnabled = !!(rpClub as any)?.ranking_points_enabled;
+  const [affectsRanking, setAffectsRanking] = useState(true);
+
   // URL params from challenge flow or booking flow
   const urlChallengeId = searchParams.get("challengeId");
   const urlOpponentId = searchParams.get("opponentId");

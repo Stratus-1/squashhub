@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -296,7 +296,7 @@ function GenerateDialog({
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   // Initialise selection when eligible list arrives
-  useMemo(() => {
+  useEffect(() => {
     const next: Record<string, boolean> = {};
     eligible.forEach((m) => { next[m.club_member_id] = true; });
     setSelected(next);

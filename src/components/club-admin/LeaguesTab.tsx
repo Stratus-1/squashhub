@@ -2500,7 +2500,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const menEntries = sortedMen.map(label => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `Men's ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
+      return { name: `Men's ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking };
     });
 
     // Reset numbering for Ladies
@@ -2508,7 +2508,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const ladiesEntries = sortedLadies.map(label => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `Ladies ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
+      return { name: `Ladies ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking };
     });
 
     // Reset numbering for Mixed
@@ -2516,7 +2516,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const mixedEntries = sortedMixed.map(label => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `Mixed ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
+      return { name: `Mixed ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking };
     });
 
     return [...menEntries, ...ladiesEntries, ...mixedEntries];

@@ -4986,6 +4986,7 @@ export type Database = {
           fee_type: string
           id: string
           pro_rate: boolean
+          show_on_landing: boolean
           updated_at: string
         }
         Insert: {
@@ -5003,6 +5004,7 @@ export type Database = {
           fee_type?: string
           id?: string
           pro_rate?: boolean
+          show_on_landing?: boolean
           updated_at?: string
         }
         Update: {
@@ -5020,6 +5022,7 @@ export type Database = {
           fee_type?: string
           id?: string
           pro_rate?: boolean
+          show_on_landing?: boolean
           updated_at?: string
         }
         Relationships: [

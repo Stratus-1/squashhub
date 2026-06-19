@@ -163,6 +163,7 @@ export interface NationalBodyFee {
   fee_payable_to?: string;
   fee_payment_details?: string;
   fee_class: "club_income" | "pass_through";
+  show_on_landing?: boolean;
 }
 
 export interface MemberLeagueRegistration {

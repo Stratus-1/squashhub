@@ -93,6 +93,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
         type, typeLabel,
         amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
         active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1, dueDay: (f as any).due_day ?? 1,
+        showOnLanding: f.show_on_landing ?? false,
         source: "national_body_fees", raw: f,
       });
     });
@@ -139,11 +140,12 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   };
 
   const handleToggleLanding = async (fee: UnifiedFee) => {
-    if (fee.source !== "member_fee_categories") return;
+    if (fee.source !== "member_fee_categories" && fee.source !== "national_body_fees") return;
     const newVal = !fee.showOnLanding;
-    const { error } = await fromExt("member_fee_categories").update({ show_on_landing: newVal }).eq("id", fee.id);
+    const { error } = await fromExt(fee.source as any).update({ show_on_landing: newVal }).eq("id", fee.id);
     if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["fee-categories"] });
+    const key = fee.source === "member_fee_categories" ? "fee-categories" : "national-body-fees";
+    qc.invalidateQueries({ queryKey: [key] });
     toast.success(newVal ? "Visible on landing page" : "Hidden from landing page");
   };
 
@@ -262,7 +264,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                     <Switch checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />
                   </TableCell>
                   <TableCell className="text-center">
-                    {fee.source === "member_fee_categories" ? (
+                    {fee.source === "member_fee_categories" || (fee.source === "national_body_fees" && fee.type === "registration") ? (
                       <Switch checked={!!fee.showOnLanding} onCheckedChange={() => handleToggleLanding(fee)} className="mx-auto" />
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>

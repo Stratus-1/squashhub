@@ -1,0 +1,1 @@
+ALTER TABLE public.national_body_fees ADD COLUMN show_on_landing boolean NOT NULL DEFAULT false;

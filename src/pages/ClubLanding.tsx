@@ -107,6 +107,26 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     enabled: !!club?.id,
   });
 
+  // Fetch registration fees (e.g. joining fee)
+  const { data: registrationFees = [] } = useQuery({
+    queryKey: ["club-registration-fees-public", club?.id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("national_body_fees")
+        .select("id, body_name, fee_annual, fee_type")
+        .eq("club_id", club!.id)
+        .eq("fee_type", "registration")
+        .eq("show_on_landing", true);
+      if (error) throw error;
+      return (data || []).map((f: any) => ({
+        id: f.id,
+        name: f.body_name,
+        description: null,
+        annual_fee: Number(f.fee_annual || 0),
+      })) as FeeCategory[];
+    },
+    enabled: !!club?.id,
+  });
+
   // Fetch member count (public, no PII)
   const { data: memberCount = 0 } = useQuery({
     queryKey: ["club-member-count-public", club?.id],
@@ -162,7 +182,8 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
   }
 
   const hasDelegates = chairmanDelegate || secretaryDelegate || captainDelegate;
-  const hasFees = feeCategories.length > 0;
+  const allFees = [...feeCategories, ...registrationFees];
+  const hasFees = allFees.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -276,7 +297,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                     <div className="rounded-xl bg-landing-navy/95 overflow-hidden shadow-lg">
                       <table className="w-full text-sm">
                         <tbody>
-                          {feeCategories.map((cat, i) => (
+                          {allFees.map((cat, i) => (
                             <tr key={cat.id} className={i > 0 ? "border-t border-white/10" : ""}>
                               <td className="px-4 py-3 text-white font-bold">
                                 {cat.name}

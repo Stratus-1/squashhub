@@ -226,3 +226,17 @@
   }
 }
 
+/* Preserve background colors (rank tint, badges, shading) when printing.
+   Without this, browsers strip backgrounds unless the user manually enables
+   "Background graphics" in the print dialog. */
+@media print {
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+}
+
+

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { format, eachDayOfInterval, getDay } from "date-fns";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useHasPermission } from "@/hooks/use-club-permissions";
@@ -381,6 +381,7 @@ export default function ClubChampsView() {
 
   const canManage = useHasPermission("champs");
   const qc = useQueryClient();
+  const [confirmationsOpen, setConfirmationsOpen] = useState(true);
 
   const unassignedCount = matches.filter(
     (m: any) => !m.is_bye && m.status === "scheduled" && (!m.scheduled_date || !m.scheduled_time || !m.court_id),
@@ -739,21 +740,32 @@ export default function ClubChampsView() {
                       Mark all {buckets.notInvited.length} as invited
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2"
+                    onClick={() => setConfirmationsOpen((v) => !v)}
+                    aria-label={confirmationsOpen ? "Hide confirmations" : "Show confirmations"}
+                  >
+                    {confirmationsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </Button>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Section icon={Clock} tone="text-muted-foreground" label="Not invited" items={buckets.notInvited} showInvite />
-                  <Section icon={Clock} tone="text-amber-600" label="Invited – awaiting" items={buckets.invitedPending} />
-                  <Section icon={CheckCircle2} tone="text-green-600" label="Confirmed" items={buckets.confirmed} />
-                  <Section icon={XCircle} tone="text-red-600" label="Declined" items={buckets.declined} />
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-3">
-                  {hasFee
-                    ? "Paid and Confirmed are tracked separately. A player is ready when both are ticked."
-                    : "This tournament has no entry fee — only confirmation is tracked."}
-                </p>
-              </CardContent>
+              {confirmationsOpen && (
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Section icon={Clock} tone="text-muted-foreground" label="Not invited" items={buckets.notInvited} showInvite />
+                    <Section icon={Clock} tone="text-amber-600" label="Invited – awaiting" items={buckets.invitedPending} />
+                    <Section icon={CheckCircle2} tone="text-green-600" label="Confirmed" items={buckets.confirmed} />
+                    <Section icon={XCircle} tone="text-red-600" label="Declined" items={buckets.declined} />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-3">
+                    {hasFee
+                      ? "Paid and Confirmed are tracked separately. A player is ready when both are ticked."
+                      : "This tournament has no entry fee — only confirmation is tracked."}
+                  </p>
+                </CardContent>
+              )}
             </Card>
           );
         })()}

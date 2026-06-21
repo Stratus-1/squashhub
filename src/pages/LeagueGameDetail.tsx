@@ -32,6 +32,7 @@ import { useAssociationRules } from "@/hooks/use-association-rules";
 import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
 import { TeamLogo } from "@/components/league-games/TeamLogo";
 import { DndContext, useDroppable, useDraggable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { RotateToggle } from "@/components/RotateToggle";
 
 /** Droppable wrapper that BECOMES the grid row. Adds drop highlight ring. */
 function DroppableSlotRow({
@@ -2248,6 +2249,10 @@ export default function LeagueGameDetail() {
     <div className="bottom-nav-safe">
       <SEO title="League Scorecard" description="League fixture scorecard" path={`/league-games/${fixtureId}`} noIndex />
       <PageHeader title="League Scorecard" subtitle={`${homeCode} vs ${awayCode}`} />
+
+      <div className="px-3 pt-2 flex justify-end">
+        <RotateToggle />
+      </div>
 
       <div className="px-3 space-y-3 pb-8">
         {/* LIVE NOW banner — quick-jump to any position currently being marked */}

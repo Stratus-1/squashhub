@@ -324,13 +324,16 @@ Deno.serve(async (req) => {
         const password = await decryptPassword(row.nsa_password_ciphertext, row.nsa_password_iv);
         let cookie: string;
         try {
+          console.log(`[nsa-submit-result] logging into NSA as ${row.nsa_username}`);
           cookie = await nsaLogin(row.nsa_username, password);
+          console.log(`[nsa-submit-result] NSA login OK for ${row.nsa_username}`);
         } catch (e) {
+          console.error(`[nsa-submit-result] NSA login failed for ${row.nsa_username}:`, (e as Error).message);
           await adminClient
             .from("member_nsa_credentials")
             .update({ last_verification_status: "invalid", last_verified_at: new Date().toISOString() })
             .eq("club_member_id", clubMemberId);
-          return json({ error: (e as Error).message }, 400);
+          return json({ error: `NSA login failed for ${row.nsa_username}: ${(e as Error).message}` }, 400);
         }
         await adminClient
           .from("member_nsa_credentials")
@@ -343,6 +346,7 @@ Deno.serve(async (req) => {
           }
           if (action === "list_editable") {
             const ids = await nsaListEditable(cookie);
+            console.log(`[nsa-submit-result] editable fixtures for ${row.nsa_username}: ${ids.join(",") || "(none)"}`);
             return json({ ok: true, editable_fixture_ids: ids });
           }
           // submit_result
@@ -352,8 +356,13 @@ Deno.serve(async (req) => {
           if (!fixtureId) return json({ error: "fixture_id required" }, 400);
 
           const editable = await nsaListEditable(cookie);
+          console.log(`[nsa-submit-result] ${row.nsa_username} editable=${editable.join(",") || "(none)"} requested=${fixtureId}`);
           if (!editable.includes(fixtureId)) {
-            return json({ error: `Captain cannot edit fixture ${fixtureId}` }, 403);
+            return json({
+              error: editable.length === 0
+                ? `NSA does not list ${row.nsa_username} as a captain for any fixture. Only the team's NSA-registered captain can post scorecards.`
+                : `NSA does not list ${row.nsa_username} as the captain for fixture ${fixtureId}. Captains they can post: ${editable.join(", ")}.`,
+            }, 403);
           }
 
           const formBody = buildScorecardBody(matches, mode);

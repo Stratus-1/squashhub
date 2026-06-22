@@ -281,7 +281,7 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
             <Shield className="w-4 h-4" /> Submit Result to NSA
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Posts this scorecard directly to <code className="text-[10px]">admin.northerns.co.za</code> using your captain login.
+            Posts this scorecard directly to <code className="text-[10px]">admin.northerns.co.za</code> using your personal NSA login. Any league player with NSA credentials can post — you don't need to be the captain.
           </DialogDescription>
         </DialogHeader>
 
@@ -293,7 +293,7 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
             <Alert>
               <AlertTriangle className="w-4 h-4" />
               <AlertDescription className="text-xs">
-                Your NSA captain login is encrypted and stored only for you. Club admins cannot see it. You can remove it any time.
+                You haven't saved your NSA login yet. Enter your NSA username (e.g. NSF1234) and password below — they're encrypted and stored only for you. Without this, the post to NSA will fail.
               </AlertDescription>
             </Alert>
             <div className="space-y-1">

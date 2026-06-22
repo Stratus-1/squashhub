@@ -314,7 +314,7 @@ Deno.serve(async (req) => {
           .eq("club_member_id", clubMemberId)
           .maybeSingle();
         if (rErr) return json({ error: rErr.message }, 500);
-        if (!row) return json({ error: "No NSA credentials saved for this captain" }, 400);
+        if (!row) return json({ error: "No NSA login saved. Open the NSA post dialog and save your NSA username + password first." }, 400);
 
         const password = await decryptPassword(row.nsa_password_ciphertext, row.nsa_password_iv);
         let cookie: string;

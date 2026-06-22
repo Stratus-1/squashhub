@@ -193,8 +193,20 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
       const { data, error } = await supabase.functions.invoke("nsa-submit-result", {
         body: { action: "submit_result", club_member_id: clubMemberId, fixture_id: fixtureId, mode, matches },
       });
-      if (error) throw error;
+      if (error) {
+        // supabase-js wraps non-2xx as a generic FunctionsHttpError; try to read the real message from the response body
+        let serverMsg: string | null = null;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx?.response && typeof ctx.response.text === "function") {
+            const t = await ctx.response.text();
+            try { serverMsg = JSON.parse(t)?.error ?? t; } catch { serverMsg = t; }
+          }
+        } catch { /* ignore */ }
+        throw new Error(serverMsg || error.message || "Edge Function error");
+      }
       const r = data as any;
+      if (r?.error) throw new Error(r.error);
       const okFlag = !!r.ok;
       setResult({ ok: okFlag, errors: r.errors || [], notes: r.notes || [], mode, title: r.title });
 

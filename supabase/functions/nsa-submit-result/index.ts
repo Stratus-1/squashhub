@@ -209,6 +209,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
     const clubMemberId = body.club_member_id as string | undefined;
+    console.log(`[nsa-submit-result] user=${userId} action=${action} club_member_id=${clubMemberId ?? "-"} fixture_id=${body.fixture_id ?? "-"}`);
 
     // Validate the user owns the club_member_id for any action that needs it
     if (clubMemberId) {
@@ -218,7 +219,11 @@ Deno.serve(async (req) => {
         .eq("id", clubMemberId)
         .maybeSingle();
       if (cmErr) return json({ error: cmErr.message }, 500);
-      if (!cm || cm.user_id !== userId) return json({ error: "Not your member record" }, 403);
+      if (!cm) return json({ error: "Member record not found" }, 404);
+      if (cm.user_id !== userId) {
+        console.warn(`[nsa-submit-result] ownership mismatch: cm.user_id=${cm.user_id} caller=${userId}`);
+        return json({ error: "Not your member record (you may be signed in on a different linked account — switch profile and retry)" }, 403);
+      }
     }
 
     switch (action) {

@@ -283,11 +283,19 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
       // Skip byes — they don't need scoring or scheduling
       if (f.away_team_code === "__BYE__" || f.home_team_code === "__BYE__" || f.status === "bye") continue;
       const date = f.fixture_date;
-      // Hide fixtures that already have a submitted/confirmed result —
-      // this listing shows upcoming/unscored games only. Scored games can
-      // still be opened from Standings or via the per-game detail page.
+      // Keep submitted/confirmed fixtures visible for 7 days after the match
+      // date so captains/admins can still see what was just scored. After that
+      // they fall off this listing and live only in Standings / detail page.
       const r = resultMap.get(f.id);
-      if (r && (r.status === "submitted" || r.status === "confirmed")) continue;
+      if (r && (r.status === "submitted" || r.status === "confirmed")) {
+        const fd = f.fixture_date as string | undefined;
+        if (fd) {
+          const ageDays = (Date.now() - new Date(fd + "T00:00:00").getTime()) / 86400000;
+          if (ageDays > 7) continue;
+        } else {
+          continue;
+        }
+      }
       if (!groups.has(date)) groups.set(date, []);
       groups.get(date)!.push(f);
     }

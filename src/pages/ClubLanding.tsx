@@ -22,7 +22,9 @@ interface FeeCategory {
   name: string;
   description: string | null;
   annual_fee: number;
+  once_off?: boolean;
 }
+
 
 interface ClubData {
   id: string;

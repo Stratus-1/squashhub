@@ -123,8 +123,9 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
       return (data || []).map((f: any) => ({
         id: f.id,
         name: f.body_name,
-        description: null,
+        description: "Once-off",
         annual_fee: Number(f.fee_annual || 0),
+        once_off: true,
       })) as FeeCategory[];
     },
     enabled: !!club?.id,

@@ -22,7 +22,9 @@ interface FeeCategory {
   name: string;
   description: string | null;
   annual_fee: number;
+  once_off?: boolean;
 }
+
 
 interface ClubData {
   id: string;
@@ -121,8 +123,9 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
       return (data || []).map((f: any) => ({
         id: f.id,
         name: f.body_name,
-        description: null,
+        description: "Once-off",
         annual_fee: Number(f.fee_annual || 0),
+        once_off: true,
       })) as FeeCategory[];
     },
     enabled: !!club?.id,
@@ -307,7 +310,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                                 )}
                               </td>
                               <td className="px-4 py-3 text-right font-bold text-primary whitespace-nowrap">
-                                R{cat.annual_fee}<span className="text-white/60 font-normal">/yr</span>
+                                R{cat.annual_fee}<span className="text-white/60 font-normal">{cat.once_off ? "" : "/yr"}</span>
                               </td>
                             </tr>
                           ))}

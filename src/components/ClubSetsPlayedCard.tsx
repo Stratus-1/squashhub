@@ -95,17 +95,25 @@ export function ClubSetsPlayedCard({ clubId }: Props) {
         if (ids.length === 0) break;
         const { data: matches } = await supabase
           .from("club_champs_matches")
-          .select("game_scores, status")
+          .select("game_scores, status, score, side_a_points, side_b_points, is_bye")
           .in("champ_id", ids)
           .eq("status", "completed");
         (matches || []).forEach((m: any) => {
-          if (!m.game_scores) return;
-          try {
-            const parsed = typeof m.game_scores === "string" ? JSON.parse(m.game_scores) : m.game_scores;
-            if (Array.isArray(parsed)) tournamentSets += parsed.length;
-          } catch {
-            /* ignore malformed */
+          if (m.is_bye) return;
+          // Standard format: game_scores JSON array — one entry per set
+          if (m.game_scores) {
+            try {
+              const parsed = typeof m.game_scores === "string" ? JSON.parse(m.game_scores) : m.game_scores;
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                tournamentSets += parsed.length;
+                return;
+              }
+            } catch {
+              /* fall through */
+            }
           }
+          // Bells / time-capped: one completed match = one set played
+          tournamentSets += 1;
         });
       }
 

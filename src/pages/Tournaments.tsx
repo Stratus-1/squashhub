@@ -362,19 +362,6 @@ export default function Tournaments() {
             </TabsList>
 
             <TabsContent value="upcoming" className="mt-4 space-y-4">
-              {memberId && myUpcoming.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <User className="w-4 h-4" /> My Fixtures
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-1.5">{myUpcoming.map(renderMatchRow)}</div>
-                  </CardContent>
-                </Card>
-              )}
-
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
@@ -421,7 +408,7 @@ export default function Tournaments() {
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <Calendar className="w-4 h-4" /> All Upcoming Tournament Games
+                      <Calendar className="w-4 h-4" /> Tournament Games
                     </CardTitle>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -471,7 +458,24 @@ export default function Tournaments() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {upcomingMatches.length === 0 ? (
+                  {memberId && myUpcoming.length > 0 ? (
+                    <Tabs defaultValue="all" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 h-auto mb-3">
+                        <TabsTrigger value="all" className="text-xs py-1.5">All Games ({upcomingMatches.length})</TabsTrigger>
+                        <TabsTrigger value="mine" className="text-xs py-1.5 gap-1"><User className="w-3 h-3" /> My Fixtures ({myUpcoming.length})</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="all" className="mt-0">
+                        {upcomingMatches.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No scheduled games.</p>
+                        ) : (
+                          <div className="space-y-1.5">{upcomingMatches.map(renderMatchRow)}</div>
+                        )}
+                      </TabsContent>
+                      <TabsContent value="mine" className="mt-0">
+                        <div className="space-y-1.5">{myUpcoming.map(renderMatchRow)}</div>
+                      </TabsContent>
+                    </Tabs>
+                  ) : upcomingMatches.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No scheduled games.</p>
                   ) : (
                     <div className="space-y-1.5">{upcomingMatches.map(renderMatchRow)}</div>

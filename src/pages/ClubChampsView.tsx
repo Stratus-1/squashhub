@@ -916,10 +916,10 @@ export default function ClubChampsView() {
 
         {groupNumbers.length > 0 && myMemberId && myMatches.length > 0 ? (
 
-          <Tabs defaultValue="my-fixtures" className="space-y-4">
+          <Tabs defaultValue="all-groups" className="space-y-4">
             <TabsList className="w-full">
-              <TabsTrigger value="my-fixtures" className="flex-1 gap-1"><User className="w-3.5 h-3.5" /> My Fixtures</TabsTrigger>
               <TabsTrigger value="all-groups" className="flex-1">All Leagues</TabsTrigger>
+              <TabsTrigger value="my-fixtures" className="flex-1 gap-1"><User className="w-3.5 h-3.5" /> My Fixtures</TabsTrigger>
             </TabsList>
 
             <TabsContent value="my-fixtures" className="space-y-4">

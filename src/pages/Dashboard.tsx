@@ -629,8 +629,9 @@ export default function Dashboard() {
       </div>
 
       {/* Club at-a-glance stats */}
-      <div className="px-4 mt-3">
+      <div className="px-4 mt-3 space-y-3">
         <ClubStatsCard clubId={clubId} />
+        <ClubSetsPlayedCard clubId={clubId} />
       </div>
 
 

@@ -310,7 +310,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                                 )}
                               </td>
                               <td className="px-4 py-3 text-right font-bold text-primary whitespace-nowrap">
-                                R{cat.annual_fee}<span className="text-white/60 font-normal">/yr</span>
+                                R{cat.annual_fee}<span className="text-white/60 font-normal">{cat.once_off ? "" : "/yr"}</span>
                               </td>
                             </tr>
                           ))}

@@ -18,6 +18,7 @@ import { CaptainInviteTeamCard } from "@/components/CaptainInviteTeamCard";
 import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
+import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";

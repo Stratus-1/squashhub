@@ -2452,14 +2452,25 @@ export default function LeagueGameDetail() {
                       key={`${side}:${code}`}
                       type="button"
                       onClick={() => restoreExcluded(side, code)}
+                      onPointerUp={(e) => {
+                        // iOS Safari sometimes swallows the synthetic click
+                        // on small buttons inside dashed-border containers
+                        // (hover-first behavior). Fire restore on pointerup
+                        // as a belt-and-braces fallback for touch input.
+                        if (e.pointerType === "touch" && canEditLineup) {
+                          e.preventDefault();
+                          restoreExcluded(side, code);
+                        }
+                      }}
                       disabled={!canEditLineup}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-400 bg-background hover:bg-amber-100 dark:hover:bg-amber-900/40 text-[10px] disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "rgba(217,119,6,0.25)" }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[32px] rounded border border-amber-400 bg-background active:bg-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-[11px] disabled:opacity-50 disabled:cursor-not-allowed select-none"
                       title={canEditLineup ? "Add back to lineup" : "Only the team captain, club admin, or super admin can restore players"}
                     >
                       <span className="font-mono text-muted-foreground">{code}</span>
                       <span className="font-medium">{name}</span>
-                      <Undo2 className="w-3 h-3 text-primary" />
-                      <span className="text-primary">Add back</span>
+                      <Undo2 className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-primary font-semibold">Add back</span>
                     </button>
                   ))}
                 </div>

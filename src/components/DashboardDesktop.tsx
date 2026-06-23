@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { useClubAnalytics } from "@/hooks/use-analytics";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
+import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 
 interface DashboardDesktopProps {
   clubName: string;

@@ -342,7 +342,7 @@ export default function BellsMarker() {
       qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
       qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
       toast.success(`Result saved · ${pairAName} ${scoreStr} ${pairBName}`);
-      navigate(`/club-champs/${match.champ_id}`, { replace: true });
+      navigate(`/tournaments`, { replace: true });
 
       // Best-effort: also drop a row into matches so it shows up in players'
       // history. Fire-and-forget — do not block navigation on this.

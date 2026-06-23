@@ -278,12 +278,13 @@ export default function BellsMarker() {
     persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "scheduled" });
   };
 
-  // When marker leaves the page (Back to tournament/dashboard), clear the LIVE
-  // flag so another marker can take over. Keep points + paused remaining so
-  // the next marker resumes exactly where this one stopped.
+  // When marker leaves the page (Back to tournament/dashboard), keep the
+  // server-side bell clock ticking if it was running so the match stays LIVE
+  // and the timer is still counting down when re-opened. If the timer was
+  // paused, persist the paused remaining seconds so play resumes where left.
   const handleLeave = (to: string) => {
-    // Cancel any pending debounced live-score sync so it can't re-set the
-    // match to "in_progress" after we exit.
+    // Cancel any pending debounced live-score sync so it can't overwrite
+    // status after we exit.
     if (liveSyncRef.current) {
       window.clearTimeout(liveSyncRef.current);
       liveSyncRef.current = null;
@@ -293,23 +294,37 @@ export default function BellsMarker() {
       tickRef.current = null;
     }
     if (!finished && match) {
-      // Stop the local timer and persist current state as "paused / scheduled"
-      // so the match is no longer shown as LIVE on the tournaments list and
-      // another marker can pick it up. Keep current points + remaining seconds
-      // so play resumes exactly where we left off.
-      setRunning(false);
       const pausedRemaining = Math.max(0, remaining);
-      rpcExt("sync_bells_match_state", {
-        _match_id: match.id,
-        _side_a_points: pointsA,
-        _side_b_points: pointsB,
-        _bell_ends_at: null,
-        _bell_paused_seconds: pausedRemaining > 0 ? pausedRemaining : null,
-        _status: "scheduled",
-        _patch_timer: true,
-      }).then(({ error }) => {
-        if (error) console.warn("Bells exit sync failed:", error.message);
-      });
+      if (running && pausedRemaining > 0) {
+        // Timer was running — keep bell_ends_at intact server-side so the
+        // clock continues ticking in the background and the match stays LIVE.
+        const endIso = new Date(Date.now() + pausedRemaining * 1000).toISOString();
+        rpcExt("sync_bells_match_state", {
+          _match_id: match.id,
+          _side_a_points: pointsA,
+          _side_b_points: pointsB,
+          _bell_ends_at: endIso,
+          _bell_paused_seconds: null,
+          _status: "in_progress",
+          _patch_timer: true,
+        }).then(({ error }) => {
+          if (error) console.warn("Bells exit sync failed:", error.message);
+        });
+      } else {
+        // Timer was paused (or not yet started) — persist current paused
+        // remaining so the next marker resumes from the same point.
+        rpcExt("sync_bells_match_state", {
+          _match_id: match.id,
+          _side_a_points: pointsA,
+          _side_b_points: pointsB,
+          _bell_ends_at: null,
+          _bell_paused_seconds: pausedRemaining > 0 ? pausedRemaining : null,
+          _status: "in_progress",
+          _patch_timer: true,
+        }).then(({ error }) => {
+          if (error) console.warn("Bells exit sync failed:", error.message);
+        });
+      }
     }
     // Replace history entry so the back arrow on tournaments doesn't bounce
     // the user right back to the scoring screen (causing a navigation loop).

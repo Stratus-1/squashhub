@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { useClubAnalytics } from "@/hooks/use-analytics";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
+import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 
 interface DashboardDesktopProps {
   clubName: string;
@@ -116,6 +117,10 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
       <div className="px-8 pb-3">
         <ClubStatsCard clubId={props.clubId} />
+      </div>
+
+      <div className="px-8 pb-3">
+        <ClubSetsPlayedCard clubId={props.clubId} />
       </div>
 
 

@@ -143,30 +143,87 @@ export default function ClubAdmin() {
           subtitle="Club Administration"
         />
         <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
-          {/* Tile grid — responsive across all breakpoints */}
-          <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm">
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
-              {visibleTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.value;
-                return (
-                <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
-                      isActive
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                    <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
-                  </button>
-                );
-              })}
+          {/* Setup & Configuration tiles — with completion status */}
+          {visibleSetup.length > 0 && (
+            <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Setup &amp; Configuration</h3>
+                {(() => {
+                  const total = visibleSetup.filter(t => t.value !== "permissions").length;
+                  const done = visibleSetup.filter(t => t.value !== "permissions" && setupStatus[t.value as keyof SetupStatusMap] === "complete").length;
+                  return <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">{done}/{total} complete</span>;
+                })()}
+              </div>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
+                {visibleSetup.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.value;
+                  const status = setupStatus[tab.value as keyof SetupStatusMap];
+                  const showStatus = tab.value !== "permissions";
+                  const isComplete = status === "complete";
+                  return (
+                    <button
+                      key={tab.value}
+                      onClick={() => setActiveTab(tab.value)}
+                      title={showStatus ? (isComplete ? "Complete" : "Please complete") : undefined}
+                      className={cn(
+                        "relative flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
+                        isActive
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                      )}
+                    >
+                      {showStatus && (
+                        isComplete ? (
+                          <CheckCircle2 className="absolute top-1 right-1 w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-600 dark:text-emerald-400 fill-background" />
+                        ) : (
+                          <AlertCircle className="absolute top-1 right-1 w-3 h-3 md:w-3.5 md:h-3.5 text-amber-600 dark:text-amber-400 fill-background" />
+                        )
+                      )}
+                      <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                      <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
+                      {showStatus && (
+                        <span className={cn(
+                          "text-[8px] md:text-[9px] font-medium leading-none uppercase tracking-wide",
+                          isActive ? "opacity-90" : isComplete ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
+                        )}>
+                          {isComplete ? "Complete" : "Please complete"}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Operations tiles */}
+          {visibleOps.length > 0 && (
+            <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
+              <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Operations</h3>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
+                {visibleOps.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.value;
+                  return (
+                    <button
+                      key={tab.value}
+                      onClick={() => setActiveTab(tab.value)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
+                        isActive
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                      <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Active section header + content */}
           {activeTabMeta && (

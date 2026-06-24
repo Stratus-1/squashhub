@@ -93,20 +93,28 @@ export default function MatchMarker() {
       const winnerMemberId = result.winnerId === "a" ? validAMemberId : validBMemberId;
       const winnerUserId = result.winnerId === "a" ? memberA?.user_id : memberB?.user_id;
 
-      const gameScoresJson = JSON.stringify({
+      const isForfeit = !!result.forfeit;
+      const absentLabel = isForfeit ? (result.forfeit!.absentSide === "a" ? "A" : "B") : null;
+      const gameScoresJson = isForfeit ? null : JSON.stringify({
         sets: result.games.map((g) => ({ a: g.a, b: g.b })),
       });
 
-      const scoreStr = result.games.map((g) => `${g.a}-${g.b}`).join(", ");
+      const scoreStr = isForfeit
+        ? `No show (${absentLabel} w/o)`
+        : result.games.map((g) => `${g.a}-${g.b}`).join(", ");
 
       // Use member IDs as primary — user_ids are optional (may be null for unlinked members)
       // Auto-confirm friendly matches and matches where opponent has no user account
       const isFriendly = config.matchType === "friendly";
       const opponentHasAccount = result.winnerId === "a" ? !!memberB?.user_id : !!memberA?.user_id;
-      const autoConfirm = isFriendly || !opponentHasAccount;
+      const autoConfirm = isFriendly || !opponentHasAccount || isForfeit;
 
       // Build notes with player names (especially important for visitors not in club_members)
-      const noteParts = [`Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}${config.isDoubles ? ', Doubles' : ''}`];
+      const noteParts = [
+        isForfeit
+          ? `Marked via live scorer. Forfeit (No show / Injured).`
+          : `Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}${config.isDoubles ? ', Doubles' : ''}`,
+      ];
       if (!memberA) noteParts.push(`Player 1: ${config.playerA.name} (${config.playerA.club})`);
       if (!memberB) noteParts.push(`Player 2: ${config.playerB.name} (${config.playerB.club})`);
       if (config.source !== 'manual') noteParts.push(`Source: ${config.source} ${config.sourceId || ''}`);

@@ -329,6 +329,19 @@ export function LiveSessionBanner() {
                     Turn On Lights
                   </Button>
                 ) : null}
+                {flussEnabled && currentBooking && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 px-3 text-xs gap-1"
+                    disabled={doorLoading}
+                    onClick={handleOpenDoor}
+                  >
+                    <DoorOpen className="w-3.5 h-3.5" />
+                    Open Door
+                  </Button>
+                )}
+
                 <button
                   className="p-1 rounded-full hover:bg-foreground/10 transition-colors"
                   onClick={() => setDismissedKey(promptKey)}

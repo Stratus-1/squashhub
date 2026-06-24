@@ -88,16 +88,10 @@ export default function Tournaments() {
   });
 
   const today = todayStr;
-  // A match is "live" only when actively being scored right now:
-  //  - status is in_progress, OR
-  //  - the bell clock is still ticking (bell_ends_at in the future).
-  // A paused match (bell_paused_seconds > 0, status="scheduled") is NOT
-  // live — the marker has exited and another marker can pick it up.
-  const isLive = (m: any) => {
-    if (m.status === "in_progress") return true;
-    if (m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now()) return true;
-    return false;
-  };
+  // LIVE means an active marker is currently scoring. A scheduled Bells match
+  // may still have a future bell_ends_at after the marker exits; that keeps the
+  // countdown resumable without showing the flickering LIVE badge.
+  const isLive = (m: any) => m.status === "in_progress";
   const activeChampIds = new Set(champs.map((c: any) => c.id));
   const upcomingMatches = allMatches
     .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))

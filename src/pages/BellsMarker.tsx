@@ -71,6 +71,10 @@ export default function BellsMarker() {
   const hydratedRef = useRef(false);
   const liveSyncEnabledRef = useRef(false);
   const resetRequestedRef = useRef(false);
+  const timerStateRef = useRef<{ bell_ends_at: string | null; bell_paused_seconds: number | null }>({
+    bell_ends_at: null,
+    bell_paused_seconds: null,
+  });
 
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {
@@ -103,6 +107,10 @@ export default function BellsMarker() {
       setRemaining(capMinutes * 60);
       setRunning(false);
     }
+    timerStateRef.current = {
+      bell_ends_at: match.bell_ends_at ?? null,
+      bell_paused_seconds: typeof match.bell_paused_seconds === "number" ? match.bell_paused_seconds : null,
+    };
     liveSyncEnabledRef.current = match.status === "in_progress";
     hydratedRef.current = true;
   }, [match, capMinutes]);
@@ -218,6 +226,10 @@ export default function BellsMarker() {
     // clears the field on the server (Reset / Ring bell rely on this).
     const endsAt = "bell_ends_at" in patch ? patch.bell_ends_at : (match.bell_ends_at ?? null);
     const paused = "bell_paused_seconds" in patch ? patch.bell_paused_seconds : null;
+    timerStateRef.current = {
+      bell_ends_at: endsAt ?? null,
+      bell_paused_seconds: typeof paused === "number" ? paused : null,
+    };
     rpcExt("sync_bells_match_state", {
       _match_id: match.id,
       _side_a_points: patch.side_a_points ?? pointsA,
@@ -267,11 +279,26 @@ export default function BellsMarker() {
   };
 
   const ringBellNow = () => {
+    liveSyncEnabledRef.current = false;
+    if (liveSyncRef.current) {
+      window.clearTimeout(liveSyncRef.current);
+      liveSyncRef.current = null;
+    }
     if (tickRef.current) window.clearInterval(tickRef.current);
     setRunning(false);
     setFinished(true);
     ringBellSound(3);
-    persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "in_progress" });
+    persistTimer({ bell_ends_at: null, bell_paused_seconds: 0, status: "scheduled" });
+    qc.setQueryData(["bells-match", matchId], (old: any) => old ? ({
+      ...old,
+      status: "scheduled",
+      side_a_points: pointsA,
+      side_b_points: pointsB,
+      bell_ends_at: null,
+      bell_paused_seconds: 0,
+    }) : old);
+    qc.invalidateQueries({ queryKey: ["club-champ-matches", match?.champ_id] });
+    qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
   };
 
 
@@ -308,10 +335,9 @@ export default function BellsMarker() {
     qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
   };
 
-  // When marker leaves the page (Back to tournament/dashboard), always stop
-  // the LIVE state — clear the bell timer and reset to scheduled unless the
-  // match has already been saved as completed. Marker must explicitly Save
-  // Result to keep a result; otherwise exiting cancels the live session.
+  // Leaving the marker only releases the active LIVE scorer. It must not stop
+  // the Bells countdown or clear points, so another marker can take over.
+  // Reset / Ring bell are the only controls that clear or finish the timer.
   const handleLeave = async (to: string) => {
     if (liveSyncRef.current) {
       window.clearTimeout(liveSyncRef.current);
@@ -322,15 +348,14 @@ export default function BellsMarker() {
       tickRef.current = null;
     }
     if (match && match.status !== "completed") {
-      const hcA = Number(match?.handicap_a) || 0;
-      const hcB = Number(match?.handicap_b) || 0;
       liveSyncEnabledRef.current = false;
+      const timerState = timerStateRef.current;
       await rpcExt("sync_bells_match_state", {
         _match_id: match.id,
-        _side_a_points: hcA,
-        _side_b_points: hcB,
-        _bell_ends_at: null,
-        _bell_paused_seconds: null,
+        _side_a_points: pointsA,
+        _side_b_points: pointsB,
+        _bell_ends_at: timerState.bell_ends_at,
+        _bell_paused_seconds: timerState.bell_paused_seconds,
         _status: "scheduled",
         _patch_timer: true,
       });

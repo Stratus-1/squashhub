@@ -26,6 +26,11 @@ import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
 
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
+import {
+  isSupportedGateway, readReturnSession, clearReturnParams,
+  clearPendingClubSession, startClubCheckout, verifyClubCheckout,
+  type GatewayId,
+} from "@/lib/club-payments";
 import { SharedAccessCard } from "@/components/SharedAccessCard";
 
 export default function MyAccount() {

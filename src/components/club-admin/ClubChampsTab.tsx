@@ -2281,6 +2281,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setHandicapMode(((champ as any).handicap_mode as any) || "none");
     setHandicapDivider(Math.max(1, Number((champ as any).handicap_divider) || 1));
     setHandicapMultiplier(Math.max(1, Number((champ as any).handicap_multiplier) || 1));
+    setNoShowOpponentPoints(Number((champ as any).no_show_opponent_points ?? 10));
+    setNoShowPlayerPoints(Number((champ as any).no_show_player_points ?? 0));
     setIncludeVisitors(!!champ.include_visitors);
     setSelectedVisitorClubs(new Set((champ.visitor_clubs as string[] | null) || []));
     const loadedDay = ((champ as any).day_schedules as DaySchedule[] | null) || [];

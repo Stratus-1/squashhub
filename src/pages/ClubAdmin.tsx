@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 
-type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string };
+type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean };
 
 const SETUP_TABS: AdminTab[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
@@ -39,19 +39,19 @@ const SETUP_TABS: AdminTab[] = [
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking", color: "green" },
   { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
-  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red" },
+  { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true },
+  { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true },
+  { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
+  { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose", noStatus: true },
+  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
 ];
 
 const OPERATIONS_TABS: AdminTab[] = [
   { value: "members", label: "Members", icon: Users, permission: "members", color: "indigo" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
-  { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder", color: "orange" },
-  { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow" },
-  { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
-  { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose" },
 ];
 
 const ADMIN_TABS: AdminTab[] = [...SETUP_TABS, ...OPERATIONS_TABS];
@@ -149,8 +149,8 @@ export default function ClubAdmin() {
               <div className="flex items-center justify-between">
                 <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Setup &amp; Configuration</h3>
                 {(() => {
-                  const total = visibleSetup.filter(t => t.value !== "permissions").length;
-                  const done = visibleSetup.filter(t => t.value !== "permissions" && setupStatus[t.value as keyof SetupStatusMap] === "complete").length;
+                  const total = visibleSetup.filter(t => !t.noStatus).length;
+                  const done = visibleSetup.filter(t => !t.noStatus && setupStatus[t.value as keyof SetupStatusMap] === "complete").length;
                   return <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">{done}/{total} complete</span>;
                 })()}
               </div>
@@ -158,8 +158,8 @@ export default function ClubAdmin() {
                 {visibleSetup.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.value;
-                  const status = setupStatus[tab.value as keyof SetupStatusMap];
-                  const showStatus = tab.value !== "permissions";
+                  const showStatus = !tab.noStatus;
+                  const status = showStatus ? setupStatus[tab.value as keyof SetupStatusMap] : undefined;
                   const isComplete = status === "complete";
                   return (
                     <button
@@ -200,7 +200,7 @@ export default function ClubAdmin() {
           {/* Operations tiles */}
           {visibleOps.length > 0 && (
             <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
-              <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Operations</h3>
+              <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Operations &amp; Finance</h3>
               <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
                 {visibleOps.map((tab) => {
                   const Icon = tab.icon;

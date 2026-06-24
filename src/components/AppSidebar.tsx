@@ -16,6 +16,19 @@ import {
   Network,
   Users,
   Receipt,
+  LayoutDashboard,
+  Building2,
+  DollarSign,
+  Landmark,
+  Banknote,
+  ListOrdered,
+  Medal,
+  UserCheck,
+  Globe,
+  Beer,
+  DoorOpen,
+  Mail,
+  Sparkles,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";

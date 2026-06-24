@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff, Wallet } from "lucide-react";
+import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff, Wallet, Users } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -861,15 +861,52 @@ export function MembersTab({ clubId }: { clubId: string }) {
     return sum + fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
   }, 0);
 
+  const outstanding = Math.max(0, totalExpected - totalPaid);
+  const outstandingMembers = members.filter(m => {
+    const f = getFeesForMember(m);
+    return f.some(x => x.existing && !x.existing.paid);
+  }).length;
+  const newThisMonth = members.filter((m: any) => {
+    const d = m.created_at ? new Date(m.created_at) : null;
+    if (!d) return false;
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).length;
+
+  const kpis = [
+    { label: "Total Members", value: members.length, sub: newThisMonth > 0 ? `+${newThisMonth} this month` : "—", icon: Users, tone: "bg-indigo-50 text-indigo-600", subTone: "text-emerald-600" },
+    { label: "Active Members", value: statusCounts.active, sub: members.length ? `${Math.round((statusCounts.active / members.length) * 100)}% of total` : "—", icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-600", subTone: "text-muted-foreground" },
+    { label: "Suspended", value: statusCounts.suspended, sub: members.length ? `${Math.round((statusCounts.suspended / members.length) * 100)}% of total` : "—", icon: ShieldOff, tone: "bg-amber-50 text-amber-600", subTone: "text-muted-foreground" },
+    { label: "Resigned", value: statusCounts.resigned, sub: members.length ? `${Math.round((statusCounts.resigned / members.length) * 100)}% of total` : "—", icon: XCircle, tone: "bg-rose-50 text-rose-600", subTone: "text-muted-foreground" },
+    { label: "Outstanding Fees", value: `R${outstanding}`, sub: `${outstandingMembers} member${outstandingMembers !== 1 ? "s" : ""}`, icon: Wallet, tone: "bg-sky-50 text-sky-600", subTone: "text-muted-foreground" },
+  ];
+
   return (
-    <div className="space-y-4 mt-4">
-      <div className="space-y-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search members..." className="pl-9" />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
+    <div className="space-y-4">
+      {/* KPI cards row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        {kpis.map((k) => (
+          <div key={k.label} className="rounded-xl border border-border bg-card p-3 flex items-center gap-3">
+            <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${k.tone}`}>
+              <k.icon className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium text-muted-foreground truncate">{k.label}</p>
+              <p className="text-lg font-bold text-foreground leading-tight">{k.value}</p>
+              <p className={`text-[10px] ${k.subTone} truncate`}>{k.sub}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Toolbar card */}
+      <div className="rounded-xl border border-border bg-card p-3 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search members by name, email, phone..." className="pl-9 h-9" />
+          </div>
+          <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => {
             const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league", "ranking", "fee_type"];
             const sample = [
               headers.join(","),
@@ -884,7 +921,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
           }}>
             <Download className="w-3.5 h-3.5 mr-1" />Template
           </Button>
-          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
+          <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => {
             const escape = (v: string) => v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
             const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league", "ranking", "fee_category", "skill_level"];
             const rows = members.map((m: any) => [
@@ -904,88 +941,96 @@ export function MembersTab({ clubId }: { clubId: string }) {
           }}>
             <Download className="w-3.5 h-3.5 mr-1" />Export
           </Button>
-          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => fileRef.current?.click()}>
+          <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => fileRef.current?.click()}>
             <Upload className="w-3.5 h-3.5 mr-1" />Import
           </Button>
-          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setReconcileOpen(true)}>
+          <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => setReconcileOpen(true)}>
             <Wallet className="w-3.5 h-3.5 mr-1" />Reconcile Fees
           </Button>
-          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setBulkTypesOpen(true)}>
+          <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => setBulkTypesOpen(true)}>
             <Edit2 className="w-3.5 h-3.5 mr-1" />Edit Membership Types
           </Button>
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleCsvImport} />
+          <Button size="sm" className="text-xs h-9" onClick={() => setAddOpen(true)}>
+            <UserPlus className="w-3.5 h-3.5 mr-1" />Add Member
+          </Button>
           <AddMemberDialog clubId={clubId} open={addOpen} onOpenChange={setAddOpen} />
+        </div>
+
+        {/* Filter pills + fee summary */}
+        <div className="flex flex-wrap items-center gap-2">
+          {([
+            { key: "all", label: `All (${members.length})`, activeCls: "border-primary text-primary bg-primary/5", idleCls: "border-border text-foreground" },
+            { key: "active", label: `Active (${statusCounts.active})`, activeCls: "border-emerald-500 text-emerald-700 bg-emerald-50", idleCls: "border-emerald-200 text-emerald-700 bg-emerald-50/40" },
+            { key: "suspended", label: `Suspended (${statusCounts.suspended})`, activeCls: "border-amber-500 text-amber-700 bg-amber-50", idleCls: "border-amber-200 text-amber-700 bg-amber-50/40" },
+            { key: "resigned", label: `Resigned (${statusCounts.resigned})`, activeCls: "border-slate-500 text-slate-700 bg-slate-100", idleCls: "border-slate-200 text-slate-600 bg-slate-50/60" },
+          ] as const).map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => setStatusFilter(opt.key as any)}
+              className={`text-[11px] font-medium px-3 py-1 rounded-full border transition ${
+                statusFilter === opt.key ? opt.activeCls : `${opt.idleCls} hover:bg-muted`
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+          <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+            <span className="text-muted-foreground">Fees: <span className="font-medium text-foreground">R{totalPaid}</span> paid / <span className="font-medium text-foreground">R{totalExpected}</span> total</span>
+            <span className="font-semibold text-destructive">R{outstanding} outstanding</span>
+            <span className="text-emerald-600 font-medium">💡 Set up fees in the Fees tab</span>
+          </div>
         </div>
       </div>
 
       <ReconcileFeesDialog clubId={clubId} open={reconcileOpen} onOpenChange={setReconcileOpen} />
       <BulkMembershipTypesDialog clubId={clubId} open={bulkTypesOpen} onOpenChange={setBulkTypesOpen} members={members} feeCategories={feeCategories} />
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>
-        <span className="font-medium">Fees: R{totalPaid} paid / R{totalExpected} total</span>
-        <span className="text-destructive font-medium">R{totalExpected - totalPaid} outstanding</span>
-        <span className="text-emerald-600 dark:text-emerald-400 font-medium">💡 Set up fees in the Fees tab · Untick fees still outstanding for a member</span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1">
-        {([
-          { key: "all", label: `All (${members.length})`, cls: "" },
-          { key: "active", label: `Active (${statusCounts.active})`, cls: "border-emerald-500/50 text-emerald-700 dark:text-emerald-400" },
-          { key: "suspended", label: `Suspended (${statusCounts.suspended})`, cls: "border-amber-500/50 text-amber-700 dark:text-amber-400" },
-          { key: "resigned", label: `Resigned (${statusCounts.resigned})`, cls: "border-slate-500/50 text-slate-600 dark:text-slate-400" },
-        ] as const).map(opt => (
-          <button
-            key={opt.key}
-            onClick={() => setStatusFilter(opt.key)}
-            className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wide ${opt.cls} ${
-              statusFilter === opt.key ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {(["Men", "Ladies"] as const).map(gender => {
-          const group = filtered.filter(m => m.gender === gender);
-          const unassigned = gender === "Men" ? filtered.filter(m => !m.gender) : [];
-          const all = [...group, ...unassigned];
-          return (
-            <div key={gender}>
-              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                {gender}
-                <span className="text-xs font-normal text-muted-foreground">({group.length})</span>
-              </h3>
-              <div className="space-y-2">
-                {all.map(m => (
-                  <MemberCard
-                    key={m.id}
-                    member={m}
-                    fees={getFeesForMember(m)}
-                    payableFees={computeClubPayableFees(m, feePayments)}
-                    delegateTitle={getDelegateTitle(m.id)}
-                    affiliations={affiliationsByMember.get(m.id) || []}
-                    onEdit={() => setEditMember(m)}
-                    onDelete={() => handleDelete(m.id)}
-                    onTogglePaid={handleTogglePaid}
-                    onCreateFee={handleCreateFee}
-                    onToggleAdmin={() => handleToggleAdmin(m)}
-                    onAssignNumber={handleAssignNumber}
-                    numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
-                    onChangeStatus={handleChangeStatus}
-                  />
-                ))}
-                {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}
+      {/* Member list — wrapped in a single card to match table-style mockup */}
+      <div className="rounded-xl border border-border bg-card p-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {(["Men", "Ladies"] as const).map(gender => {
+            const group = filtered.filter(m => m.gender === gender);
+            const unassigned = gender === "Men" ? filtered.filter(m => !m.gender) : [];
+            const all = [...group, ...unassigned];
+            return (
+              <div key={gender}>
+                <h3 className="text-xs font-semibold mb-2 flex items-center gap-2 text-muted-foreground uppercase tracking-wide">
+                  {gender}
+                  <span className="text-[11px] font-normal">({group.length})</span>
+                </h3>
+                <div className="space-y-2">
+                  {all.map(m => (
+                    <MemberCard
+                      key={m.id}
+                      member={m}
+                      fees={getFeesForMember(m)}
+                      payableFees={computeClubPayableFees(m, feePayments)}
+                      delegateTitle={getDelegateTitle(m.id)}
+                      affiliations={affiliationsByMember.get(m.id) || []}
+                      onEdit={() => setEditMember(m)}
+                      onDelete={() => handleDelete(m.id)}
+                      onTogglePaid={handleTogglePaid}
+                      onCreateFee={handleCreateFee}
+                      onToggleAdmin={() => handleToggleAdmin(m)}
+                      onAssignNumber={handleAssignNumber}
+                      numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
+                      onChangeStatus={handleChangeStatus}
+                    />
+                  ))}
+                  {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}
+                </div>
+                {gender === "Men" && unassigned.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-1">+ {unassigned.length} unassigned gender</p>
+                )}
               </div>
-              {gender === "Men" && unassigned.length > 0 && (
-                <p className="text-[10px] text-muted-foreground mt-1">+ {unassigned.length} unassigned gender</p>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
+
+
+
 
 
       {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} clubId={clubId} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); qc.invalidateQueries({ queryKey: ["club-member-affiliations"] }); qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] }); refetchPayments(); }} />}

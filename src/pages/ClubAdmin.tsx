@@ -38,7 +38,6 @@ const SETUP_TABS: AdminTab[] = [
   { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald" },
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking", color: "green" },
   { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
-  { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
   { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true },
   { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true },
   { value: "leagues", label: "Leagues Setup/Creation", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
@@ -52,6 +51,7 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
+  { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
 ];
 
 const ADMIN_TABS: AdminTab[] = [...SETUP_TABS, ...OPERATIONS_TABS];

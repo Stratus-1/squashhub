@@ -59,6 +59,8 @@ export default function BellsMarker() {
       return data as any[];
     },
     enabled: !!match?.champ_id,
+  });
+
 
   const champ = match?.champ;
   const format = getTournamentFormat(champ?.scoring_mode);

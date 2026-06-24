@@ -120,10 +120,11 @@ export function LiveSessionBanner() {
   const displaySession = activeSession || orphanSession;
   const promptKey = displaySession ? `session:${displaySession.id}` : currentBooking ? `booking:${currentBooking.id}` : null;
 
-  // Nothing to show — and never show on clubs without lights integration
-  if (!lightsIntegrationEnabled) return null;
+  // Nothing to show — must have lights integration OR fluss door access to render
+  if (!lightsIntegrationEnabled && !flussEnabled) return null;
   if (!promptKey) return null;
   if (dismissedKey === promptKey) return null;
+
 
   const handleTerminate = async (sessionId: string) => {
     setActionLoading(true);

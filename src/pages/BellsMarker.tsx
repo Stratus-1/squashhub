@@ -776,6 +776,27 @@ export default function BellsMarker() {
         </Button>
       </div>
 
+      <NoShowInjuredDialog
+        open={noShowOpen}
+        onOpenChange={setNoShowOpen}
+        champId={match.champ_id}
+        match={match}
+        champ={champ}
+        allMatches={allMatches}
+        getName={(memberId) => {
+          if (!memberId) return "—";
+          const cands = [match.player_a, match.player_b, match.partner_a, match.partner_b];
+          const hit = cands.find((p: any) => p?.id === memberId);
+          if (hit?.name) return hit.name;
+          for (const m of allMatches as any[]) {
+            for (const p of [m.player_a, m.player_b, m.partner_a, m.partner_b]) {
+              if (p?.id === memberId) return p.name;
+            }
+          }
+          return "Player";
+        }}
+      />
+
     </div>
   );
 }

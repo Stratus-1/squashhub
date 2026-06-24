@@ -215,7 +215,24 @@ export function LiveSessionBanner() {
     }
   };
 
+  const handleOpenDoor = async () => {
+    if (!currentBooking || !club?.id) return;
+    setDoorLoading(true);
+    try {
+      const resp = await supabase.functions.invoke("fluss-trigger", {
+        body: { club_id: club.id, court_id: currentBooking.court_id, booking_id: currentBooking.id },
+      });
+      if (resp.error) throw resp.error;
+      toast.success("Door opening… 🚪");
+    } catch (e) {
+      toast.error(errorMessage(e, "Failed to open door"));
+    } finally {
+      setDoorLoading(false);
+    }
+  };
+
   // Calculate elapsed time for active session
+
   const elapsedMin = displaySession
     ? Math.round((Date.now() - new Date(displaySession.started_at).getTime()) / 60000)
     : 0;

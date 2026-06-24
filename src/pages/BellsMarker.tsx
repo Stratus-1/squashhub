@@ -89,8 +89,11 @@ export default function BellsMarker() {
     const endMs = match.bell_ends_at ? new Date(match.bell_ends_at).getTime() : null;
     const bellEndReached = endMs != null && endMs <= Date.now();
     const bellStopped = (!match.bell_ends_at && match.bell_paused_seconds === 0) || bellEndReached;
-    setPointsA(hasLive ? (liveA ?? 0) : hcA);
-    setPointsB(hasLive ? (liveB ?? 0) : hcB);
+    const nextPointsA = hasLive ? (liveA ?? 0) : hcA;
+    const nextPointsB = hasLive ? (liveB ?? 0) : hcB;
+    setPointsA(nextPointsA);
+    setPointsB(nextPointsB);
+    scoreStateRef.current = { pointsA: nextPointsA, pointsB: nextPointsB };
     setFinished(match.status === "completed" || bellStopped);
 
     // Resume timer from persisted state so a second marker continues from
@@ -117,8 +120,8 @@ export default function BellsMarker() {
     if (bellEndReached && match.status !== "completed") {
       rpcExt("sync_bells_match_state", {
         _match_id: match.id,
-        _side_a_points: hasLive ? (liveA ?? 0) : hcA,
-        _side_b_points: hasLive ? (liveB ?? 0) : hcB,
+        _side_a_points: nextPointsA,
+        _side_b_points: nextPointsB,
         _bell_ends_at: null,
         _bell_paused_seconds: 0,
         _status: "scheduled",
@@ -309,8 +312,19 @@ export default function BellsMarker() {
     liveSyncEnabledRef.current = true;
     // Auto-start timer if marker forgot to press Start
     if (!running && remaining > 0) startTimer();
-    if (side === "a") setPointsA((v) => v + 1);
-    else setPointsB((v) => v + 1);
+    if (side === "a") {
+      setPointsA((v) => {
+        const next = v + 1;
+        scoreStateRef.current = { ...scoreStateRef.current, pointsA: next };
+        return next;
+      });
+    } else {
+      setPointsB((v) => {
+        const next = v + 1;
+        scoreStateRef.current = { ...scoreStateRef.current, pointsB: next };
+        return next;
+      });
+    }
 
     // Serve switching logic (same as standard match marker)
     if (side === server) {
@@ -392,10 +406,11 @@ export default function BellsMarker() {
     if (match && match.status !== "completed") {
       liveSyncEnabledRef.current = false;
       const timerState = timerStateRef.current;
+      const latest = scoreStateRef.current;
       await rpcExt("sync_bells_match_state", {
         _match_id: match.id,
-        _side_a_points: pointsA,
-        _side_b_points: pointsB,
+        _side_a_points: latest.pointsA,
+        _side_b_points: latest.pointsB,
         _bell_ends_at: timerState.bell_ends_at,
         _bell_paused_seconds: timerState.bell_paused_seconds,
         _status: "scheduled",

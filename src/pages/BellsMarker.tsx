@@ -211,12 +211,16 @@ export default function BellsMarker() {
   // ----- Timer persistence helpers -----
   const persistTimer = (patch: { bell_ends_at?: string | null; bell_paused_seconds?: number | null; status?: string }) => {
     if (!match) return;
+    // NOTE: use `in patch` rather than `??` so an explicit `null` actually
+    // clears the field on the server (Reset / Ring bell rely on this).
+    const endsAt = "bell_ends_at" in patch ? patch.bell_ends_at : (match.bell_ends_at ?? null);
+    const paused = "bell_paused_seconds" in patch ? patch.bell_paused_seconds : null;
     rpcExt("sync_bells_match_state", {
       _match_id: match.id,
       _side_a_points: pointsA,
       _side_b_points: pointsB,
-      _bell_ends_at: patch.bell_ends_at ?? match.bell_ends_at ?? null,
-      _bell_paused_seconds: patch.bell_paused_seconds ?? null,
+      _bell_ends_at: endsAt,
+      _bell_paused_seconds: paused,
       _status: patch.status ?? "in_progress",
       _patch_timer: true,
     }).then(({ error }) => {

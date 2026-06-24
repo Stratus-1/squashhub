@@ -94,11 +94,16 @@ export default function ClubAdmin() {
   }
 
   // Filter tabs by permission — full admins (club captain/admin or platform super-admin) see everything
-  const visibleTabs = ADMIN_TABS.filter(tab => {
+  const permFilter = (tab: AdminTab) => {
     if (isAdmin) return true;
     if (!tab.permission) return false; // permissions tab only for full admins
     return myPermissions.has(tab.permission);
-  });
+  };
+  const visibleSetup = SETUP_TABS.filter(permFilter);
+  const visibleOps = OPERATIONS_TABS.filter(permFilter);
+  const visibleTabs = [...visibleSetup, ...visibleOps];
+
+  const setupStatus = useSetupStatus(club.id, club);
 
   // If active tab isn't visible, switch to first visible
   if (visibleTabs.length > 0 && !visibleTabs.find(t => t.value === activeTab)) {

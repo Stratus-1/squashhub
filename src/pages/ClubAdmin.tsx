@@ -200,7 +200,7 @@ export default function ClubAdmin() {
           {/* Operations tiles */}
           {visibleOps.length > 0 && (
             <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
-              <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Operations</h3>
+              <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Operations &amp; Finance</h3>
               <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
                 {visibleOps.map((tab) => {
                   const Icon = tab.icon;

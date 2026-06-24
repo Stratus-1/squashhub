@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyBookings } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
+import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X } from "lucide-react";
+import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X, DoorOpen } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";

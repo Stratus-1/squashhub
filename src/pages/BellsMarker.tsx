@@ -70,6 +70,7 @@ export default function BellsMarker() {
   const liveSyncRef = useRef<number | null>(null);
   const hydratedRef = useRef(false);
   const liveSyncEnabledRef = useRef(false);
+  const resetRequestedRef = useRef(false);
 
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {
@@ -278,6 +279,7 @@ export default function BellsMarker() {
     const hcA = Number(match?.handicap_a) || 0;
     const hcB = Number(match?.handicap_b) || 0;
     liveSyncEnabledRef.current = false;
+    resetRequestedRef.current = true;
     if (liveSyncRef.current) {
       window.clearTimeout(liveSyncRef.current);
       liveSyncRef.current = null;
@@ -322,7 +324,7 @@ export default function BellsMarker() {
       tickRef.current = null;
     }
     if (match) {
-      if (finished && match.status !== "completed") {
+      if ((finished || resetRequestedRef.current) && match.status !== "completed") {
         // Marker rang the bell (or time expired) but is exiting without
         // saving the result — treat as a stop/cancel so the match no longer
         // shows as LIVE in the tournament list. Reset to scheduled, clear

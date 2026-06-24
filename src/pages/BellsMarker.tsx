@@ -70,7 +70,6 @@ export default function BellsMarker() {
   const liveSyncRef = useRef<number | null>(null);
   const hydratedRef = useRef(false);
   const liveSyncEnabledRef = useRef(false);
-  const resetRequestedRef = useRef(false);
   const timerStateRef = useRef<{ bell_ends_at: string | null; bell_paused_seconds: number | null }>({
     bell_ends_at: null,
     bell_paused_seconds: null,
@@ -333,7 +332,6 @@ export default function BellsMarker() {
     const hcA = Number(match?.handicap_a) || 0;
     const hcB = Number(match?.handicap_b) || 0;
     liveSyncEnabledRef.current = false;
-    resetRequestedRef.current = true;
     if (liveSyncRef.current) {
       window.clearTimeout(liveSyncRef.current);
       liveSyncRef.current = null;

@@ -335,6 +335,23 @@ export default function BellsMarker() {
     }
   };
 
+  const handleDecrement = (side: "a" | "b") => {
+    if (finished) return;
+    if (side === "a") {
+      setPointsA((v) => {
+        const next = Math.max(0, v - 1);
+        scoreStateRef.current = { ...scoreStateRef.current, pointsA: next };
+        return next;
+      });
+    } else {
+      setPointsB((v) => {
+        const next = Math.max(0, v - 1);
+        scoreStateRef.current = { ...scoreStateRef.current, pointsB: next };
+        return next;
+      });
+    }
+  };
+
   const ringBellNow = () => {
     liveSyncEnabledRef.current = false;
     if (liveSyncRef.current) {
@@ -345,12 +362,19 @@ export default function BellsMarker() {
     setRunning(false);
     setFinished(true);
     ringBellSound(3);
-    persistTimer({ bell_ends_at: null, bell_paused_seconds: 0, status: "scheduled" });
+    const latest = scoreStateRef.current;
+    persistTimer({
+      bell_ends_at: null,
+      bell_paused_seconds: 0,
+      status: "scheduled",
+      side_a_points: latest.pointsA,
+      side_b_points: latest.pointsB,
+    });
     qc.setQueryData(["bells-match", matchId], (old: any) => old ? ({
       ...old,
       status: "scheduled",
-      side_a_points: pointsA,
-      side_b_points: pointsB,
+      side_a_points: latest.pointsA,
+      side_b_points: latest.pointsB,
       bell_ends_at: null,
       bell_paused_seconds: 0,
     }) : old);
@@ -373,6 +397,7 @@ export default function BellsMarker() {
     }
     setPointsA(hcA);
     setPointsB(hcB);
+    scoreStateRef.current = { pointsA: hcA, pointsB: hcB };
     setRemaining(capMinutes * 60);
     setRunning(false);
     setFinished(false);
@@ -681,7 +706,7 @@ export default function BellsMarker() {
             label={pairAName}
             value={pointsA}
             onPlus={() => handleIncrement("a")}
-            onMinus={() => setPointsA((v) => Math.max(0, v - 1))}
+            onMinus={() => handleDecrement("a")}
             side="a"
             isServer={server === "a"}
             serveSide={serveSide}
@@ -694,7 +719,7 @@ export default function BellsMarker() {
             label={pairBName}
             value={pointsB}
             onPlus={() => handleIncrement("b")}
-            onMinus={() => setPointsB((v) => Math.max(0, v - 1))}
+            onMinus={() => handleDecrement("b")}
             side="b"
             isServer={server === "b"}
             serveSide={serveSide}

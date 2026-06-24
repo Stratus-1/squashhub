@@ -428,6 +428,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [handicapDivider, setHandicapDivider] = useState<number>(1);
   const [handicapMultiplier, setHandicapMultiplier] = useState<number>(1);
 
+  // No Show / Injured rule — applied when a player can't play a tournament match.
+  // Opponent receives `noShowOpponentPoints`; the absent player records `noShowPlayerPoints`.
+  const [noShowOpponentPoints, setNoShowOpponentPoints] = useState<number>(10);
+  const [noShowPlayerPoints, setNoShowPlayerPoints] = useState<number>(0);
+
   // Shadow-rank prompt (Option C): when league-rank handicap is on and a
   // reserve participant has no ladder placement yet, we ask the admin to
   // assign a Division + Slot at schedule-build time and persist it.

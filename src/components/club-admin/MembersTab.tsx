@@ -355,6 +355,9 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);
   const { data: clubData } = useMyClub();
+  const { data: myRoles } = useMyRoles();
+  const isSuperAdmin = (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
+
   const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "resigned">("all");

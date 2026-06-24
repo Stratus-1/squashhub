@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
+import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
+import { UserX } from "lucide-react";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };

@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
+import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
+import { UserX } from "lucide-react";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -382,6 +384,7 @@ export default function ClubChampsView() {
   const canManage = useHasPermission("champs");
   const qc = useQueryClient();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
+  const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
 
   const unassignedCount = matches.filter(
     (m: any) => !m.is_bye && m.status === "scheduled" && (!m.scheduled_date || !m.scheduled_time || !m.court_id),
@@ -1067,8 +1070,36 @@ export default function ClubChampsView() {
           <div className="space-y-4">{renderAllGroups()}</div>
         ) : null}
       </div>
+
+      <NoShowInjuredDialog
+        open={!!noShowMatch}
+        onOpenChange={(o) => { if (!o) setNoShowMatch(null); }}
+        champId={champId!}
+        match={noShowMatch}
+        champ={champ}
+        allMatches={matches}
+        getName={(memberId) => {
+          if (!memberId) return "";
+          const fromMatch = matches.find(
+            (m: any) => m.player_a_member_id === memberId || m.player_b_member_id === memberId,
+          );
+          if (fromMatch) {
+            if (fromMatch.player_a_member_id === memberId) return getPlayerName(fromMatch.player_a);
+            if (fromMatch.player_b_member_id === memberId) return getPlayerName(fromMatch.player_b);
+          }
+          const entry = entries.find(
+            (e: any) => e.club_member_id === memberId || e.partner_member_id === memberId,
+          );
+          if (entry) {
+            if (entry.club_member_id === memberId) return entry.club_members?.name || entry.club_members?.profiles?.name || "Unknown";
+            if (entry.partner_member_id === memberId) return entry.partner?.name || "Unknown";
+          }
+          return "Unknown";
+        }}
+      />
     </div>
   );
+
 
   function computeLeagueTotals() {
     const memberToGroup = new Map<string, number>();
@@ -1263,6 +1294,20 @@ export default function ClubChampsView() {
             getCourtName={(x) => x.court?.name || ""}
             invalidateKeys={[["club-champ-matches", champId]]}
           />
+        )}
+
+        {canManage && !completed && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[10px] text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+            onClick={() => setNoShowMatch(m)}
+            title="Mark this match as No Show / Injured"
+          >
+            <UserX className="h-3 w-3 mr-1" />
+            No show
+          </Button>
         )}
       </div>
     );

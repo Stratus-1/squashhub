@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Undo2, RotateCcw, Flag, Clock, Pause, Play, Cast, Trash2 } from "lucide-react";
+import { Undo2, RotateCcw, Flag, Clock, Pause, Play, Cast, Trash2, UserX } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -157,6 +157,7 @@ interface Props {
     games: GameScore[];
     winnerId: "a" | "b";
     durationSeconds: number;
+    forfeit?: { absentSide: "a" | "b" };
   }) => void;
   onReset: () => void;
   /** Called when the user scratches the match. If provided, this is invoked
@@ -180,6 +181,8 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   const [castDialogOpen, setCastDialogOpen] = useState(false);
   const [scratchOpen, setScratchOpen] = useState(false);
   const [scratchConfirmText, setScratchConfirmText] = useState("");
+  const [forfeitOpen, setForfeitOpen] = useState(false);
+  const [forfeitSide, setForfeitSide] = useState<"a" | "b" | null>(null);
 
   const sessionKey = getMarkerSessionKey(config);
   const persisted = useRef<PersistedState | null>(loadPersisted(getMarkerSessionKeys(config), config, initialScores)).current;
@@ -681,6 +684,16 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
         <Button
           variant="outline"
           size="sm"
+          className="w-full gap-1.5 border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500 hover:text-white"
+          disabled={matchOver}
+          onClick={() => { setForfeitSide(null); setForfeitOpen(true); }}
+        >
+          <UserX className="w-3.5 h-3.5" />
+          No show / Injured
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
           className="w-full gap-1.5 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
           onClick={() => { setScratchConfirmText(""); setScratchOpen(true); }}
         >
@@ -688,6 +701,56 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           Scratch
         </Button>
       </div>
+
+      {/* No show / Injured dialog */}
+      <Dialog open={forfeitOpen} onOpenChange={setForfeitOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserX className="w-4 h-4" /> No show / Injured
+            </DialogTitle>
+            <DialogDescription>
+              Mark this match as a forfeit. The opponent will be awarded the configured points (defaults 10 / 0 for tournaments). No game scores will be recorded.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={forfeitSide === "a" ? "default" : "outline"}
+              onClick={() => setForfeitSide("a")}
+              className="truncate"
+            >
+              {playerAName} absent
+            </Button>
+            <Button
+              variant={forfeitSide === "b" ? "default" : "outline"}
+              onClick={() => setForfeitSide("b")}
+              className="truncate"
+            >
+              {playerBName} absent
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setForfeitOpen(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              disabled={!forfeitSide}
+              onClick={() => {
+                if (!forfeitSide) return;
+                const winner: "a" | "b" = forfeitSide === "a" ? "b" : "a";
+                setMatchOver(true);
+                setMatchWinner(winner);
+                if (timerRef.current) clearInterval(timerRef.current);
+                try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}
+                setForfeitOpen(false);
+                onMatchComplete({ games: [], winnerId: winner, durationSeconds: elapsed, forfeit: { absentSide: forfeitSide } });
+              }}
+            >
+              <UserX className="w-3.5 h-3.5 mr-1" />
+              Confirm forfeit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Scratch confirmation dialog */}
       <Dialog open={scratchOpen} onOpenChange={(o) => { setScratchOpen(o); if (!o) setScratchConfirmText(""); }}>

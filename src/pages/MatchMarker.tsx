@@ -60,6 +60,7 @@ export default function MatchMarker() {
     games: GameScore[];
     winnerId: "a" | "b";
     durationSeconds: number;
+    forfeit?: { absentSide: "a" | "b" };
   }) => {
     if (!config) return;
 
@@ -92,20 +93,28 @@ export default function MatchMarker() {
       const winnerMemberId = result.winnerId === "a" ? validAMemberId : validBMemberId;
       const winnerUserId = result.winnerId === "a" ? memberA?.user_id : memberB?.user_id;
 
-      const gameScoresJson = JSON.stringify({
+      const isForfeit = !!result.forfeit;
+      const absentLabel = isForfeit ? (result.forfeit!.absentSide === "a" ? "A" : "B") : null;
+      const gameScoresJson = isForfeit ? null : JSON.stringify({
         sets: result.games.map((g) => ({ a: g.a, b: g.b })),
       });
 
-      const scoreStr = result.games.map((g) => `${g.a}-${g.b}`).join(", ");
+      const scoreStr = isForfeit
+        ? `No show (${absentLabel} w/o)`
+        : result.games.map((g) => `${g.a}-${g.b}`).join(", ");
 
       // Use member IDs as primary — user_ids are optional (may be null for unlinked members)
       // Auto-confirm friendly matches and matches where opponent has no user account
       const isFriendly = config.matchType === "friendly";
       const opponentHasAccount = result.winnerId === "a" ? !!memberB?.user_id : !!memberA?.user_id;
-      const autoConfirm = isFriendly || !opponentHasAccount;
+      const autoConfirm = isFriendly || !opponentHasAccount || isForfeit;
 
       // Build notes with player names (especially important for visitors not in club_members)
-      const noteParts = [`Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}${config.isDoubles ? ', Doubles' : ''}`];
+      const noteParts = [
+        isForfeit
+          ? `Marked via live scorer. Forfeit (No show / Injured).`
+          : `Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}${config.isDoubles ? ', Doubles' : ''}`,
+      ];
       if (!memberA) noteParts.push(`Player 1: ${config.playerA.name} (${config.playerA.club})`);
       if (!memberB) noteParts.push(`Player 2: ${config.playerB.name} (${config.playerB.club})`);
       if (config.source !== 'manual') noteParts.push(`Source: ${config.source} ${config.sourceId || ''}`);
@@ -144,13 +153,32 @@ export default function MatchMarker() {
       // If this was a tournament match, update the club_champs_matches record too
       if (config.source === "tournament" && config.sourceId) {
         try {
+          const updatePayload: any = {
+            score: scoreStr,
+            game_scores: gameScoresJson,
+            winner_member_id: winnerMemberId,
+            status: "completed",
+          };
+
+          if (isForfeit) {
+            // Look up configured No Show points on the parent tournament
+            const { data: champRow } = await fromExt("club_champs_matches")
+              .select("champ_id, player_a_member_id, player_b_member_id, club_champs!inner(no_show_opponent_points, no_show_player_points)")
+              .eq("id", config.sourceId)
+              .maybeSingle();
+            const opp = Number((champRow as any)?.club_champs?.no_show_opponent_points ?? 10);
+            const pen = Number((champRow as any)?.club_champs?.no_show_player_points ?? 0);
+            const absentSide = result.forfeit!.absentSide;
+            // side_a points: if A absent → pen, else opp; side_b mirror
+            updatePayload.side_a_points = absentSide === "a" ? pen : opp;
+            updatePayload.side_b_points = absentSide === "b" ? pen : opp;
+            updatePayload.forfeit_member_id = absentSide === "a"
+              ? (champRow as any)?.player_a_member_id ?? validAMemberId
+              : (champRow as any)?.player_b_member_id ?? validBMemberId;
+          }
+
           await fromExt("club_champs_matches")
-            .update({
-              score: scoreStr,
-              game_scores: gameScoresJson,
-              winner_member_id: winnerMemberId,
-              status: "completed",
-            })
+            .update(updatePayload)
             .eq("id", config.sourceId);
           // Refresh tournament views
           queryClient.invalidateQueries({ queryKey: ["club-champ-matches"] });
@@ -161,27 +189,30 @@ export default function MatchMarker() {
           console.warn("Could not update tournament match:", e);
         }
 
-        // Ranking points: enqueue if parent tournament has affects_ranking_points enabled
-        try {
-          if (winnerMemberId && validAMemberId && validBMemberId && config.clubId) {
-            const { data: champRow } = await fromExt("club_champs_matches")
-              .select("champ_id, club_champs!inner(affects_ranking_points)")
-              .eq("id", config.sourceId)
-              .maybeSingle();
-            const affects = (champRow as any)?.club_champs?.affects_ranking_points;
-            if (affects) {
-              const loserMemberId = winnerMemberId === validAMemberId ? validBMemberId : validAMemberId;
-              await enqueueRankingDelta({
-                clubId: config.clubId,
-                matchSourceType: "tournament",
-                matchSourceId: config.sourceId,
-                winnerMemberId,
-                loserMemberId,
-              });
+        // Ranking points: enqueue if parent tournament has affects_ranking_points enabled.
+        // Skip on forfeit — no games were actually played.
+        if (!isForfeit) {
+          try {
+            if (winnerMemberId && validAMemberId && validBMemberId && config.clubId) {
+              const { data: champRow } = await fromExt("club_champs_matches")
+                .select("champ_id, club_champs!inner(affects_ranking_points)")
+                .eq("id", config.sourceId)
+                .maybeSingle();
+              const affects = (champRow as any)?.club_champs?.affects_ranking_points;
+              if (affects) {
+                const loserMemberId = winnerMemberId === validAMemberId ? validBMemberId : validAMemberId;
+                await enqueueRankingDelta({
+                  clubId: config.clubId,
+                  matchSourceType: "tournament",
+                  matchSourceId: config.sourceId,
+                  winnerMemberId,
+                  loserMemberId,
+                });
+              }
             }
+          } catch (e) {
+            console.warn("Ranking-points enqueue (tournament) failed:", e);
           }
-        } catch (e) {
-          console.warn("Ranking-points enqueue (tournament) failed:", e);
         }
       }
 

@@ -1267,6 +1267,20 @@ export default function ClubChampsView() {
             invalidateKeys={[["club-champ-matches", champId]]}
           />
         )}
+
+        {canManage && !completed && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[10px] text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+            onClick={() => setNoShowMatch(m)}
+            title="Mark this match as No Show / Injured"
+          >
+            <UserX className="h-3 w-3 mr-1" />
+            No show
+          </Button>
+        )}
       </div>
     );
   }

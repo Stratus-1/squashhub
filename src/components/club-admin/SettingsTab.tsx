@@ -98,8 +98,9 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
     const phone = c.phone || "";
     const address = c.address || "";
     const logo = c.logo_url || "";
-    const disclaimer = form.email_disclaimer || "";
-
+    // NOTE: disclaimer intentionally not embedded here — it is appended once
+    // by the send pipeline (email-notifications / send-club-campaign) so it
+    // doesn't appear twice in the final email.
     const html = `<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1f2937; line-height: 1.5; border-collapse: collapse;">
   <tr>
     ${logo ? `<td width="1" style="width: 1px; padding: 0 12px 0 0; vertical-align: middle; white-space: nowrap;"><img src="${logo}" alt="${name}" style="display: block; max-width: 160px; max-height: 90px; width: auto; height: auto; object-fit: contain;" /></td>` : ""}
@@ -111,7 +112,6 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
       ${address ? `<div style="margin-top: 4px; color: #4b5563;">📍 ${address}</div>` : ""}
     </td>
   </tr>
-  ${disclaimer ? `<tr><td colspan="2" style="padding-top: 14px;"><div style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 11px; color: #6b7280; font-style: italic;">${disclaimer}</div></td></tr>` : ""}
 </table>`;
 
     setForm(p => ({ ...p, email_signature_html: html }));

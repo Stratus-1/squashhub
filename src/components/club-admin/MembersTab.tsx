@@ -986,48 +986,217 @@ export function MembersTab({ clubId }: { clubId: string }) {
       <ReconcileFeesDialog clubId={clubId} open={reconcileOpen} onOpenChange={setReconcileOpen} />
       <BulkMembershipTypesDialog clubId={clubId} open={bulkTypesOpen} onOpenChange={setBulkTypesOpen} members={members} feeCategories={feeCategories} />
 
-      {/* Member list — wrapped in a single card to match table-style mockup */}
-      <div className="rounded-xl border border-border bg-card p-3">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {(["Men", "Ladies"] as const).map(gender => {
-            const group = filtered.filter(m => m.gender === gender);
-            const unassigned = gender === "Men" ? filtered.filter(m => !m.gender) : [];
-            const all = [...group, ...unassigned];
-            return (
-              <div key={gender}>
-                <h3 className="text-xs font-semibold mb-2 flex items-center gap-2 text-muted-foreground uppercase tracking-wide">
-                  {gender}
-                  <span className="text-[11px] font-normal">({group.length})</span>
-                </h3>
-                <div className="space-y-2">
-                  {all.map(m => (
-                    <MemberCard
-                      key={m.id}
-                      member={m}
-                      fees={getFeesForMember(m)}
-                      payableFees={computeClubPayableFees(m, feePayments)}
-                      delegateTitle={getDelegateTitle(m.id)}
-                      affiliations={affiliationsByMember.get(m.id) || []}
-                      onEdit={() => setEditMember(m)}
-                      onDelete={() => handleDelete(m.id)}
-                      onTogglePaid={handleTogglePaid}
-                      onCreateFee={handleCreateFee}
-                      onToggleAdmin={() => handleToggleAdmin(m)}
-                      onAssignNumber={handleAssignNumber}
-                      numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
-                      onChangeStatus={handleChangeStatus}
-                    />
-                  ))}
-                  {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}
-                </div>
-                {gender === "Men" && unassigned.length > 0 && (
-                  <p className="text-[10px] text-muted-foreground mt-1">+ {unassigned.length} unassigned gender</p>
-                )}
-              </div>
-            );
-          })}
+      {/* Member table — matches mockup table layout */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <Table>
+          <TableHeader className="bg-muted/40">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-10"><Checkbox /></TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Member</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Membership</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Status</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Fees</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Contact</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Joined</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-sm">
+                  No members match the current filters
+                </TableCell>
+              </TableRow>
+            )}
+            {filtered.map((m) => {
+              const memberFees = getFeesForMember(m);
+              const feesTotal = memberFees.reduce((s, f) => s + f.amount, 0);
+              const feesPaid = memberFees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
+              const feesOutstanding = feesTotal - feesPaid;
+              const status = ((m as any).status || "active") as "active" | "suspended" | "resigned";
+              const isLinked = !!m.user_id;
+              const isAdmin = m.role === "admin" || m.role === "captain";
+              const delegateTitle = getDelegateTitle(m.id);
+              const displayName = m.name || m.profiles?.name || "—";
+              const displayEmail = m.email || m.profiles?.email || "";
+              const displayPhone = m.phone || m.profiles?.phone || "";
+              const age = m.id_number ? getAgeFromSaId(m.id_number) : null;
+              const joinedDate = (m as any).created_at ? new Date((m as any).created_at) : null;
+              const avatarBg = ["bg-indigo-500","bg-emerald-500","bg-amber-500","bg-rose-500","bg-sky-500","bg-violet-500"][displayName.charCodeAt(0) % 6];
+              const initials = displayName.split(" ").map(s => s[0]).filter(Boolean).slice(0,2).join("").toUpperCase();
+              const feeCatName = (m.fee_category as any)?.name || m.fee_category_id || "—";
+              const skill = m.skill_level ? getSkillLabel(m.skill_level) : null;
+
+              const statusBadge: Record<typeof status, string> = {
+                active: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                suspended: "bg-amber-50 text-amber-700 border-amber-200",
+                resigned: "bg-slate-100 text-slate-600 border-slate-200",
+              };
+
+              return (
+                <TableRow key={m.id} className="hover:bg-muted/30">
+                  <TableCell><Checkbox /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className={`h-9 w-9 rounded-full flex items-center justify-center text-white text-[11px] font-semibold shrink-0 ${avatarBg}`}>
+                        {initials || "?"}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[13px] font-semibold text-foreground truncate ${status === "resigned" ? "line-through" : ""}`}>{displayName}</span>
+                          {delegateTitle && (
+                            <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] px-1.5 py-0 h-[18px]">{delegateTitle}</Badge>
+                          )}
+                        </div>
+                        {displayEmail && (
+                          <p className="text-[11px] text-muted-foreground truncate">{displayEmail}</p>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[12px] font-medium text-foreground">{feeCatName}</span>
+                      {isAdmin && (
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-[18px] border-indigo-300 text-indigo-700">
+                          {m.role === "captain" ? "Captain" : "Admin"}
+                        </Badge>
+                      )}
+                    </div>
+                    {skill && <p className="text-[11px] text-muted-foreground">{skill}</p>}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className={`text-[10px] font-medium px-2 py-0.5 rounded-full border uppercase tracking-wide ${statusBadge[status]}`}>
+                          {status}
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="text-xs">
+                        <DropdownMenuItem onClick={() => handleChangeStatus(m, "active")}>Active</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleChangeStatus(m, "suspended")}>Suspended</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleChangeStatus(m, "resigned")}>Resigned</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <p className="text-[11px] text-muted-foreground mt-1">{isLinked ? "Member" : "Unlinked"}</p>
+                  </TableCell>
+                  <TableCell>
+                    {memberFees.length === 0 ? (
+                      <span className="text-[11px] text-muted-foreground italic">No fees</span>
+                    ) : (
+                      <>
+                        <div className={`text-[12px] font-semibold ${feesOutstanding > 0 ? "text-destructive" : "text-foreground"}`}>
+                          R{feesPaid} / R{feesTotal}
+                        </div>
+                        {feesOutstanding > 0 ? (
+                          <p className="text-[11px] text-amber-600 flex items-center gap-1">
+                            Outstanding <XCircle className="w-3 h-3" />
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-emerald-600 flex items-center gap-1">
+                            Paid <CheckCircle2 className="w-3 h-3" />
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {displayPhone && (
+                        <a href={`tel:${displayPhone.replace(/\s/g, "")}`} className="text-[12px] text-foreground hover:text-primary hover:underline">
+                          {formatPhoneNumber(displayPhone)}
+                        </a>
+                      )}
+                      {displayEmail && (
+                        <a href={`mailto:${displayEmail}`} title={displayEmail} className="text-muted-foreground hover:text-primary">
+                          <Mail className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-[12px] text-foreground">
+                      {joinedDate ? joinedDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                    </div>
+                    {age !== null && <p className="text-[11px] text-muted-foreground">Age: {age}</p>}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditMember(m)} title="Edit">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="More">
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="text-xs">
+                          {!delegateTitle && (
+                            <DropdownMenuItem onClick={() => handleToggleAdmin(m)}>
+                              {isAdmin ? "Remove admin" : "Grant admin"}
+                            </DropdownMenuItem>
+                          )}
+                          {!m.club_member_number && (
+                            <DropdownMenuItem onClick={() => handleAssignNumber(m)}>
+                              Allocate {(club as any)?.tenant_type === "association" ? "league #" : "member #"}
+                            </DropdownMenuItem>
+                          )}
+                          {!delegateTitle && (
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(m.id)}>
+                              Remove member
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Footer summary + CTA */}
+      <div className="flex items-center justify-between text-[12px] text-muted-foreground px-1">
+        <span>Showing {filtered.length} of {members.length} members</span>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <UserPlus className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[13px] font-semibold text-foreground">Need to add many members?</p>
+            <p className="text-[11px] text-muted-foreground">
+              Download the template, add your members and import in one click.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => {
+            const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league", "ranking", "fee_type"];
+            const sample = [
+              headers.join(","),
+              "John Smith,john@example.com,0821234567,Male,MB001,9001015009088,123 Main St,true,1,Normal",
+            ].join("\n");
+            const blob = new Blob([sample], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = "member_import_template.csv"; a.click();
+            URL.revokeObjectURL(url);
+          }}>
+            <Download className="w-3.5 h-3.5 mr-1.5" />Download Template
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-9" onClick={() => fileRef.current?.click()}>
+            <Upload className="w-3.5 h-3.5 mr-1.5" />Import Members
+          </Button>
         </div>
       </div>
+
 
 
 

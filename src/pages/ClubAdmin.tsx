@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 
-type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string };
+type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean };
 
 const SETUP_TABS: AdminTab[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
@@ -39,19 +39,19 @@ const SETUP_TABS: AdminTab[] = [
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking", color: "green" },
   { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
-  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red" },
+  { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true },
+  { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true },
+  { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
+  { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose", noStatus: true },
+  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
 ];
 
 const OPERATIONS_TABS: AdminTab[] = [
   { value: "members", label: "Members", icon: Users, permission: "members", color: "indigo" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
-  { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder", color: "orange" },
-  { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow" },
-  { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
-  { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose" },
 ];
 
 const ADMIN_TABS: AdminTab[] = [...SETUP_TABS, ...OPERATIONS_TABS];

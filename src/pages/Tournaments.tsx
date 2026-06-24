@@ -92,8 +92,12 @@ export default function Tournaments() {
   // may still have a future bell_ends_at after the marker exits; that keeps the
   // countdown resumable without showing the flickering LIVE badge.
   const isLive = (m: any) => {
-    const bellStopped = !m.bell_ends_at && m.bell_paused_seconds === 0;
-    return m.status === "in_progress" && !bellStopped;
+    if (m.status !== "in_progress") return false;
+    const champ = allChamps.find((c: any) => c.id === m.champ_id);
+    if (champ?.scoring_mode !== "time_capped_points") return true;
+    const bellActive = !!m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now();
+    const paused = typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0;
+    return bellActive || paused;
   };
   const activeChampIds = new Set(champs.map((c: any) => c.id));
   const upcomingMatches = allMatches

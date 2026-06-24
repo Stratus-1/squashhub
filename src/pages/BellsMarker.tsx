@@ -86,7 +86,9 @@ export default function BellsMarker() {
     const liveA = match.side_a_points;
     const liveB = match.side_b_points;
     const hasLive = (liveA != null && liveA !== 0) || (liveB != null && liveB !== 0);
-    const bellStopped = !match.bell_ends_at && match.bell_paused_seconds === 0;
+    const endMs = match.bell_ends_at ? new Date(match.bell_ends_at).getTime() : null;
+    const bellEndReached = endMs != null && endMs <= Date.now();
+    const bellStopped = (!match.bell_ends_at && match.bell_paused_seconds === 0) || bellEndReached;
     setPointsA(hasLive ? (liveA ?? 0) : hcA);
     setPointsB(hasLive ? (liveB ?? 0) : hcB);
     setFinished(match.status === "completed" || bellStopped);
@@ -96,8 +98,7 @@ export default function BellsMarker() {
     if (match.status === "completed" || bellStopped) {
       setRemaining(0);
       setRunning(false);
-    } else if (match.bell_ends_at) {
-      const endMs = new Date(match.bell_ends_at).getTime();
+    } else if (endMs != null) {
       const r = Math.max(0, Math.round((endMs - Date.now()) / 1000));
       setRemaining(r);
       setRunning(r > 0);
@@ -109,12 +110,27 @@ export default function BellsMarker() {
       setRunning(false);
     }
     timerStateRef.current = {
-      bell_ends_at: match.bell_ends_at ?? null,
-      bell_paused_seconds: typeof match.bell_paused_seconds === "number" ? match.bell_paused_seconds : null,
+      bell_ends_at: bellEndReached ? null : (match.bell_ends_at ?? null),
+      bell_paused_seconds: bellEndReached ? 0 : (typeof match.bell_paused_seconds === "number" ? match.bell_paused_seconds : null),
     };
     liveSyncEnabledRef.current = match.status === "in_progress" && !bellStopped;
+    if (bellEndReached && match.status !== "completed") {
+      rpcExt("sync_bells_match_state", {
+        _match_id: match.id,
+        _side_a_points: hasLive ? (liveA ?? 0) : hcA,
+        _side_b_points: hasLive ? (liveB ?? 0) : hcB,
+        _bell_ends_at: null,
+        _bell_paused_seconds: 0,
+        _status: "scheduled",
+        _patch_timer: true,
+      }).then(({ error }) => {
+        if (error) console.warn("Expired bell sync failed:", error.message);
+        qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
+        qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+      });
+    }
     hydratedRef.current = true;
-  }, [match, capMinutes]);
+  }, [match, capMinutes, qc]);
 
   useEffect(() => {
     scoreStateRef.current = { pointsA, pointsB };

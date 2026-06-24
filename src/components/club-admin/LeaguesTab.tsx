@@ -332,7 +332,19 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       {/* Leagues in two columns with inline players */}
       <div>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <h3 className="font-semibold">Leagues</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="font-semibold">Select your Regional League or Create own Internal League</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>If your regional league is not listed yet, please contact SquashHub through a support ticket.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <div className="flex gap-2 flex-wrap">
             <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
             <TooltipProvider>

@@ -75,6 +75,7 @@ export default function BellsMarker() {
     bell_ends_at: null,
     bell_paused_seconds: null,
   });
+  const scoreStateRef = useRef({ pointsA: 0, pointsB: 0 });
 
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {
@@ -114,6 +115,10 @@ export default function BellsMarker() {
     liveSyncEnabledRef.current = match.status === "in_progress";
     hydratedRef.current = true;
   }, [match, capMinutes]);
+
+  useEffect(() => {
+    scoreStateRef.current = { pointsA, pointsB };
+  }, [pointsA, pointsB]);
 
 
   // Hold the PWA update poller while a Bells match is live (not finished).
@@ -155,8 +160,30 @@ export default function BellsMarker() {
         if (r <= 1) {
           // Ring the bell
           window.clearInterval(tickRef.current!);
+          if (liveSyncRef.current) {
+            window.clearTimeout(liveSyncRef.current);
+            liveSyncRef.current = null;
+          }
+          liveSyncEnabledRef.current = false;
           setRunning(false);
           setFinished(true);
+          timerStateRef.current = { bell_ends_at: null, bell_paused_seconds: 0 };
+          if (match) {
+            const latest = scoreStateRef.current;
+            rpcExt("sync_bells_match_state", {
+              _match_id: match.id,
+              _side_a_points: latest.pointsA,
+              _side_b_points: latest.pointsB,
+              _bell_ends_at: null,
+              _bell_paused_seconds: 0,
+              _status: "scheduled",
+              _patch_timer: true,
+            }).then(({ error }) => {
+              if (error) console.warn("Bell stop sync failed:", error.message);
+              qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
+              qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+            });
+          }
           ringBellSound(3);
           toast.success("Bell! Time's up — confirm the score.");
           return 0;
@@ -167,7 +194,7 @@ export default function BellsMarker() {
     return () => {
       if (tickRef.current) window.clearInterval(tickRef.current);
     };
-  }, [running]);
+  }, [running, match, qc]);
 
   const mmss = (s: number) => {
     const m = Math.floor(s / 60);
@@ -298,7 +325,7 @@ export default function BellsMarker() {
       bell_paused_seconds: 0,
     }) : old);
     qc.invalidateQueries({ queryKey: ["club-champ-matches", match?.champ_id] });
-    qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
   };
 
 
@@ -332,7 +359,7 @@ export default function BellsMarker() {
       bell_paused_seconds: null,
     }) : old);
     qc.invalidateQueries({ queryKey: ["club-champ-matches", match?.champ_id] });
-    qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
   };
 
   // Leaving the marker only releases the active LIVE scorer. It must not stop
@@ -361,7 +388,7 @@ export default function BellsMarker() {
       });
     }
     qc.invalidateQueries({ queryKey: ["club-champ-matches", match?.champ_id] });
-    qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
     navigate(to, { replace: true });
   };
 
@@ -389,7 +416,7 @@ export default function BellsMarker() {
       // staring at a disabled scoring screen while the mirror insert runs.
       qc.invalidateQueries({ queryKey: ["bells-match", matchId] });
       qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
-      qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
+      qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
       toast.success(`Result saved · ${pairAName} ${scoreStr} ${pairBName}`);
       navigate(`/tournaments`, { replace: true });
 

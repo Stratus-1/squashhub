@@ -339,7 +339,7 @@ export default function BellsMarker() {
           _status: "scheduled",
           _patch_timer: true,
         });
-      } else if (!finished) {
+      } else if (!finished && liveSyncEnabledRef.current) {
         const pausedRemaining = Math.max(0, remaining);
         if (running && pausedRemaining > 0) {
           // Timer was running — keep bell_ends_at intact server-side so the

@@ -780,6 +780,38 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const champIdToUse = champIdOverride || editingChampId;
     if (!champIdToUse) return;
     try {
+      // Self-pair invite mode (doubles where players self-pair): we only
+      // collect the invitee list at this step — there are no pairs yet, so
+      // persist the selection directly to club_champs_registrations.
+      if (selfPairInviteSelection) {
+        const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
+        const ids = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
+        const regRows = ids.map((memberId) => ({
+          champ_id: champIdToUse,
+          club_member_id: memberId,
+          status: fee > 0 && paymentRequired ? "pending_payment" : "invited",
+          invited_by_admin: true,
+          fee_paid_cents: 0,
+        }));
+        if (regRows.length > 0) {
+          const { error: upsertErr } = await fromExt("club_champs_registrations")
+            .upsert(regRows, { onConflict: "champ_id,club_member_id" } as any);
+          if (upsertErr) throw upsertErr;
+        }
+        // Remove any previously-invited members no longer in the selection
+        // (only drop rows that haven't been confirmed/paid yet, so we never
+        // wipe a member who's already registered through payment).
+        const delQ = fromExt("club_champs_registrations")
+          .delete()
+          .eq("champ_id", champIdToUse)
+          .in("status", ["invited", "pending_payment", "pending_eft"]);
+        if (ids.length > 0) {
+          await delQ.not("club_member_id", "in", `(${ids.join(",")})`);
+        } else {
+          await delQ;
+        }
+        return;
+      }
       let allocatedMemberIds: string[] = [];
       if (isDoubles) {
         if (doublesPairs.length === 0) return;

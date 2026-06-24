@@ -67,6 +67,7 @@ export default function BellsMarker() {
   const [saving, setSaving] = useState(false);
   const [server, setServer] = useState<"a" | "b">("a");
   const [serveSide, setServeSide] = useState<"L" | "R">("R");
+  const [noShowOpen, setNoShowOpen] = useState(false);
   const tickRef = useRef<number | null>(null);
   const liveSyncRef = useRef<number | null>(null);
   const hydratedRef = useRef(false);

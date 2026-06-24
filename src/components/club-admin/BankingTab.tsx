@@ -127,8 +127,8 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const [testing, setTesting] = useState(false);
 
   const handleTestPayment = async () => {
-    if (gateway !== "yoco") {
-      toast.error("Test payment is only wired up for Yoco. Save Yoco as the gateway first.");
+    if (gateway !== "yoco" && gateway !== "stitch") {
+      toast.error("Test payment is only wired up for Yoco and Stitch.");
       return;
     }
     if (!activeMember?.id) {
@@ -137,24 +137,39 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
     }
     setTesting(true);
     try {
-      const return_url = buildYocoReturnUrl("/club-admin?tab=banking");
-      const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
-        body: {
-          club_id: clubId,
-          club_member_id: activeMember.id,
-          amount: 10,
-          purpose: "topup",
-          description: "Yoco test payment (R10)",
-          return_url,
-        },
-      });
-      if (error) throw new Error(error.message || "Could not start test checkout");
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const redirect = (data as any)?.redirect_url;
-      if (!redirect) throw new Error("Yoco did not return a redirect URL");
-      rememberPendingYocoSession((data as any).session_id, "/club-admin?tab=banking");
-      toast.success("Opening Yoco test checkout…");
-      await openYocoCheckout(redirect);
+      if (gateway === "yoco") {
+        const return_url = buildYocoReturnUrl("/club-admin?tab=banking");
+        const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
+          body: {
+            club_id: clubId, club_member_id: activeMember.id,
+            amount: 10, purpose: "topup",
+            description: "Yoco test payment (R10)", return_url,
+          },
+        });
+        if (error) throw new Error(error.message || "Could not start test checkout");
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const redirect = (data as any)?.redirect_url;
+        if (!redirect) throw new Error("Yoco did not return a redirect URL");
+        rememberPendingYocoSession((data as any).session_id, "/club-admin?tab=banking");
+        toast.success("Opening Yoco test checkout…");
+        await openYocoCheckout(redirect);
+      } else {
+        const return_url = buildStitchReturnUrl("/club-admin?tab=banking");
+        const { data, error } = await supabase.functions.invoke("stitch-create-payment", {
+          body: {
+            club_id: clubId, club_member_id: activeMember.id,
+            amount: 10, purpose: "topup", method: "paybybank",
+            description: "Stitch test payment (R10)", return_url,
+          },
+        });
+        if (error) throw new Error(error.message || "Could not start test checkout");
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const redirect = (data as any)?.redirect_url;
+        if (!redirect) throw new Error("Stitch did not return a redirect URL");
+        rememberPendingStitchSession((data as any).session_id, "/club-admin?tab=banking");
+        toast.success("Opening Stitch test checkout…");
+        await openStitchCheckout(redirect);
+      }
     } catch (err: any) {
       toast.error(err.message || "Test payment failed");
     } finally {

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { CreditCard, Eye, EyeOff, Info, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { buildYocoReturnUrl, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
+import { buildStitchReturnUrl, openStitchCheckout, rememberPendingStitchSession } from "@/lib/stitch-checkout";
 import { useMemberContext } from "@/contexts/MemberContext";
 
 // ─── Gateway Registry ───────────────────────────────────────
@@ -103,6 +104,18 @@ const GATEWAYS: GatewayDef[] = [
       { key: "secret_key", label: "Secret Key", placeholder: "sk_live_...", sensitive: true },
     ],
   },
+  {
+    id: "stitch",
+    name: "Stitch",
+    description: "SA-first PayByBank (instant EFT) + cards. Lowest fees on EFT; supports DebiCheck recurring dues.",
+    website: "https://stitch.money",
+    fields: [
+      { key: "client_id", label: "Client ID", placeholder: "test-...", helperText: "Stitch Dashboard → Settings → Client credentials → copy the Client ID." },
+      { key: "client_secret", label: "Client Secret", placeholder: "Your Stitch client secret", sensitive: true, helperText: "Same screen → reveal & copy the Client Secret. Treat like a password." },
+      { key: "merchant_payer_reference", label: "Statement Reference (optional)", placeholder: "e.g. NSQ", helperText: "Up to 12 chars shown on the payer's bank statement. Defaults to the club name." },
+      { key: "beneficiary_account_number", label: "PayByBank Beneficiary Account (optional)", placeholder: "Your club bank account number", helperText: "Required for PayByBank payouts. Cards work without this." },
+    ],
+  },
 ];
 
 // ─── Component ──────────────────────────────────────────────
@@ -114,8 +127,8 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const [testing, setTesting] = useState(false);
 
   const handleTestPayment = async () => {
-    if (gateway !== "yoco") {
-      toast.error("Test payment is only wired up for Yoco. Save Yoco as the gateway first.");
+    if (gateway !== "yoco" && gateway !== "stitch") {
+      toast.error("Test payment is only wired up for Yoco and Stitch.");
       return;
     }
     if (!activeMember?.id) {
@@ -124,24 +137,39 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
     }
     setTesting(true);
     try {
-      const return_url = buildYocoReturnUrl("/club-admin?tab=banking");
-      const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
-        body: {
-          club_id: clubId,
-          club_member_id: activeMember.id,
-          amount: 10,
-          purpose: "topup",
-          description: "Yoco test payment (R10)",
-          return_url,
-        },
-      });
-      if (error) throw new Error(error.message || "Could not start test checkout");
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const redirect = (data as any)?.redirect_url;
-      if (!redirect) throw new Error("Yoco did not return a redirect URL");
-      rememberPendingYocoSession((data as any).session_id, "/club-admin?tab=banking");
-      toast.success("Opening Yoco test checkout…");
-      await openYocoCheckout(redirect);
+      if (gateway === "yoco") {
+        const return_url = buildYocoReturnUrl("/club-admin?tab=banking");
+        const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
+          body: {
+            club_id: clubId, club_member_id: activeMember.id,
+            amount: 10, purpose: "topup",
+            description: "Yoco test payment (R10)", return_url,
+          },
+        });
+        if (error) throw new Error(error.message || "Could not start test checkout");
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const redirect = (data as any)?.redirect_url;
+        if (!redirect) throw new Error("Yoco did not return a redirect URL");
+        rememberPendingYocoSession((data as any).session_id, "/club-admin?tab=banking");
+        toast.success("Opening Yoco test checkout…");
+        await openYocoCheckout(redirect);
+      } else {
+        const return_url = buildStitchReturnUrl("/club-admin?tab=banking");
+        const { data, error } = await supabase.functions.invoke("stitch-create-payment", {
+          body: {
+            club_id: clubId, club_member_id: activeMember.id,
+            amount: 10, purpose: "topup", method: "paybybank",
+            description: "Stitch test payment (R10)", return_url,
+          },
+        });
+        if (error) throw new Error(error.message || "Could not start test checkout");
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const redirect = (data as any)?.redirect_url;
+        if (!redirect) throw new Error("Stitch did not return a redirect URL");
+        rememberPendingStitchSession((data as any).session_id, "/club-admin?tab=banking");
+        toast.success("Opening Stitch test checkout…");
+        await openStitchCheckout(redirect);
+      }
     } catch (err: any) {
       toast.error(err.message || "Test payment failed");
     } finally {
@@ -303,6 +331,19 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
                 </ol>
               </div>
             )}
+            {selectedGateway.id === "stitch" && (
+              <div className="rounded border border-sky-500/30 bg-sky-500/5 p-2 space-y-1">
+                <p className="text-[11px] font-medium text-sky-700 dark:text-sky-400">How to get your Stitch credentials</p>
+                <ol className="text-[11px] text-muted-foreground list-decimal pl-4 space-y-0.5">
+                  <li>Sign up / sign in at <a href="https://dashboard.stitch.money" target="_blank" rel="noopener noreferrer" className="text-primary underline">dashboard.stitch.money</a>.</li>
+                  <li>Open <strong>Settings → Client credentials</strong> and create a client with the <strong>client_paymentrequest</strong> scope.</li>
+                  <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> into the fields below.</li>
+                  <li>For server-confirmed settlements, add the webhook URL <code className="text-[10px]">https://squashhub.co.za/functions/v1/stitch-webhook</code> in Stitch (Settings → Webhooks).</li>
+                  <li>Use the <em>test</em> client while trialling; switch to <em>live</em> before collecting real money.</li>
+                  <li>For PayByBank payouts, also add your club's bank account number below. Cards work without it.</li>
+                </ol>
+              </div>
+            )}
           </div>
         )}
 
@@ -349,7 +390,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         <Button onClick={handleSave} disabled={isSaving} size="sm" className="text-xs">
           {isSaving ? "Saving..." : "Save Banking Settings"}
         </Button>
-        {gateway === "yoco" && (
+        {(gateway === "yoco" || gateway === "stitch") && (
           <Button
             onClick={handleTestPayment}
             disabled={testing || isSaving}
@@ -358,12 +399,12 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
             className="text-xs gap-1"
           >
             <Zap className="h-3.5 w-3.5" />
-            {testing ? "Opening Yoco…" : "Send Test R10 Payment"}
+            {testing ? `Opening ${gateway === "yoco" ? "Yoco" : "Stitch"}…` : "Send Test R10 Payment"}
           </Button>
         )}
-        {gateway === "yoco" && (
+        {(gateway === "yoco" || gateway === "stitch") && (
           <span className="text-[10px] text-muted-foreground">
-            Uses the saved Yoco keys (test or live). Save first if you just changed them.
+            Uses the saved {gateway === "yoco" ? "Yoco" : "Stitch"} keys (test or live). Save first if you just changed them.
           </span>
         )}
       </div>

@@ -1,113 +1,57 @@
+## Goal
+Wire **Stitch** (stitch.money) as a payment option for clubs, supporting:
+- **One-off payments** — PayByBank (instant EFT) + Cards via Stitch's hosted LinkPay checkout
+- **Recurring monthly dues** — DebiCheck mandate + scheduled collection
 
-# Ranking Points System (parallel to Pyramid Ladder)
+Mirrors the existing Yoco architecture so the rest of the app (fees, ledger, tournaments) keeps working unchanged.
 
-## Goals
-- Keep the existing pyramid `ladder_position` exactly as-is.
-- Add a second, parallel **Ranking Points** leaderboard per club, ATP-style.
-- Every official result that "counts for rankings" creates a **pending delta** that admin must approve before it moves anyone's points.
-- Tournament & league creators explicitly tick **"Affects official ranking?"** at setup time.
-- No decay — points are permanent (per user decision).
+## What changes
 
----
+### 1. Gateway registry (UI)
+Add Stitch to `src/components/club-admin/BankingTab.tsx` GATEWAYS list with these fields:
+- `client_id` (Stitch client ID)
+- `client_secret` (sensitive)
+- `merchant_payer_reference` (short ZA-bank-safe ref shown on customer statements)
 
-## 1. Settings & opt-in
+Setup instructions panel (like the Yoco one) pointing to https://stitch.money → Dashboard → API Credentials.
 
-**Club setting** (in association rules / club settings):
-- `ranking_points_enabled` (bool, default false)
-- `points_base_win` (default `0.25`)
-- `points_upset_bonus_per_rank` (default `0.10`) — bonus per rank-gap when underdog wins
-- `points_favourite_win_min` (default `0.10`) — floor when a much higher-ranked player wins a lower one
-- `points_loser_deduction` (default `0`) — losers don't lose points unless club enables
+Test-payment button reusing the existing "R10 test" flow when `gateway === "stitch"`.
 
-Admin can change these from a new **Ranking Points** tab in Club Admin → Settings.
+### 2. Database (one migration)
+- `stitch_payment_sessions` — mirrors `yoco_payment_sessions` (club_id, club_member_id, user_id, amount, purpose, fee_ids, champ_registration_id, status, stitch_request_id, stitch_redirect_url, method `paybybank|card`, completed_at). RLS: user sees own rows; service_role full.
+- `stitch_mandates` — DebiCheck mandates per `club_member_id` (status, stitch_mandate_id, max_amount, frequency, next_collection_date, authorised_at, cancelled_at).
+- `stitch_collections` — each scheduled debit-order pull (links mandate → fee_ids, status, attempted_at, settled_at).
+- All public-schema tables get the standard `GRANT` + `ENABLE RLS` + policies block.
 
----
+### 3. Edge functions (new)
+- `stitch-create-payment` — auth user, validate, mint a Stitch OAuth token (cached short-lived in-memory), create a LinkPay request for `amount`+`method`, insert session row, return `redirect_url`.
+- `stitch-verify-payment` — called by frontend on return, polls Stitch GraphQL for status, finalises session (mirrors `yoco-verify-checkout`: writes `member_credit_transactions`, marks fees paid, handles tournament registrations, handles partial payments).
+- `stitch-webhook` — public endpoint Stitch hits server-side for async settlements (HMAC-verify the body signature, idempotent claim using same `update where status != completed` pattern).
+- `stitch-create-mandate` — initiates a DebiCheck mandate authorisation flow, stores `stitch_mandates` row.
+- `stitch-collect-mandate` — pulls a scheduled debit against an active mandate (called by the existing `reminders`/cron pattern or a new monthly cron).
 
-## 2. Seeding (one-time per club, when enabled)
+All use Stitch's OAuth2 `client_credentials` against `https://secure.stitch.money/connect/token` and GraphQL at `https://api.stitch.money/graphql`. Credentials read from `club_secrets.payment_gateway_credentials` keyed by `client_id` / `client_secret`.
 
-**Linear from current ladder:**
-- `#1 = 1000`, decrement by `10` per ladder position (configurable).
-- Members with no `ladder_position` start at `500`.
-- One-click "Seed from ladder" action in admin settings; writes initial balance + an audit row showing it was a seed.
+### 4. Client helper
+`src/lib/stitch-checkout.ts` mirroring `yoco-native-checkout.ts` (return-URL builder, redirect opener that breaks iframe, pending-session localStorage).
 
----
+### 5. Frontend hookup
+- BankingTab: register the gateway + test button.
+- `MyAccount` fee-pay flow and tournament register card: when `club.payment_gateway === "stitch"`, call `stitch-create-payment` instead of `yoco-create-checkout` (small switch wrapper).
+- Recurring dues: add a "Set up auto-debit" button on member fees screen → calls `stitch-create-mandate`. Active mandates shown with cancel button.
 
-## 3. Match flow
+## Technical notes (skip if non-technical)
+- Stitch LinkPay supports both PayByBank and Cards through one redirect, with a `paymentMethods` filter — we pass the user's chosen method per session.
+- HMAC signature header on webhooks is `X-Stitch-Signature` (HMAC-SHA256 of raw body using `client_secret`).
+- DebiCheck mandates require buyer phone + ID number; we collect these in the mandate setup dialog (already on `club_members.id_number`).
+- Cron for `stitch-collect-mandate` reuses the existing `pg_cron` pattern (monthly on day 1 at 06:00 SAST).
 
-### "Affects official ranking?" toggle added to:
-- Club tournament create/edit (`club_champs`)
-- Internal league create/edit (`leagues` / `league_rounds`)
-- Challenge "Make official" toggle (already partly modelled)
-- Manual match entry (`AddMatchResult`)
+## Scope split
+- **This PR**: registry entry, DB tables, `stitch-create-payment` + `stitch-verify-payment` + `stitch-webhook`, client lib, BankingTab test button, switch in MyAccount/Tournament card.
+- **Follow-up PR**: `stitch-create-mandate`, `stitch-collect-mandate`, mandate management UI, monthly cron.
 
-External NSA league fixtures are **not** included — those run on their own system.
+Splitting because the recurring flow needs separate KYC on Stitch's side (DebiCheck contract) — clubs can start with one-off payments today and enable recurring once approved.
 
-### When a result is recorded on a ranking-affecting match:
-1. Compute proposed delta using the formula (see Technical).
-2. Insert a row into `ranking_points_pending` with status `pending`.
-3. Notify club admin (in-app notification).
-4. Nothing on the leaderboard moves yet.
-
-### Admin approval queue (new page: Club Admin → Ranking Points → Pending):
-- List of pending deltas with: match context (tournament/league/challenge), players, current points, proposed change.
-- Bulk approve / reject / edit-then-approve.
-- On approve → insert into `ranking_points_ledger`, update `club_members.ranking_points`.
-- On reject → row marked rejected with admin note.
-
----
-
-## 4. Display
-
-- New **"Ranking Points"** tab next to Ladder on the club Ladder page.
-- Same row styling (rank tint), columns: Rank, Player, Points, Matches counted, Last movement.
-- Player profile gets a "Points history" section showing each approved delta + reason.
-
----
-
-## 5. Technical notes (for builder)
-
-### New tables (migration)
-- `ranking_points_pending` — `club_id`, `match_source_type` (`tournament`|`league`|`challenge`|`manual`), `match_source_id`, `winner_member_id`, `loser_member_id`, `winner_delta`, `loser_delta`, `status` (`pending`|`approved`|`rejected`), `reviewed_by`, `review_note`, timestamps.
-- `ranking_points_ledger` — append-only history of approved movements (member_id, delta, reason, source ref, balance_after).
-- New column `club_members.ranking_points` (numeric, default 0).
-- All scoped by `club_id`; RLS + GRANT per project rules.
-
-### Formula (default, configurable)
-```text
-gap = loser_current_rank_position - winner_current_rank_position
-if gap > 0  (underdog won):
-    winner_delta = base_win + upset_bonus_per_rank * gap
-    loser_delta  = -loser_deduction (default 0)
-else  (favourite won):
-    winner_delta = max(base_win + 0.05 * gap, favourite_win_min)
-    loser_delta  = 0
-```
-Rank position = position on the **Ranking Points leaderboard** at time of match (not pyramid ladder), so the system self-stabilises.
-
-### Hook-in points (existing code)
-- `src/pages/AddMatchResult.tsx` — add "Affects ranking?" checkbox; on submit call helper to enqueue pending delta.
-- Challenge confirm flow — same enqueue when challenge is marked official.
-- Tournament match completion (`club_champs_matches`) — enqueue if tournament `affects_ranking = true`.
-- League result (`league_match_results` for internal leagues only) — enqueue if league `affects_ranking = true`.
-
-### New UI
-- `src/pages/admin/RankingPointsAdmin.tsx` — settings + pending queue + seed button.
-- `src/components/ladder/RankingPointsTab.tsx` — leaderboard view.
-- Player profile section: approved history list.
-
-### Out of scope (for this phase)
-- Decay (explicitly not wanted).
-- Cross-club ranking.
-- Auto-applying to external NSA fixtures.
-
----
-
-## 6. Rollout order
-
-1. Migration: tables, columns, RLS, grants.
-2. Settings UI + seed-from-ladder action.
-3. "Affects ranking?" toggles on tournament/league/challenge/manual entry.
-4. Pending-delta enqueue helpers + writes from each match source.
-5. Admin approval queue.
-6. Ranking Points leaderboard tab + player history section.
-7. Test end-to-end with Highveld test club.
+## Out of scope
+- Switching existing Yoco payments — Stitch is added side-by-side, clubs pick one in BankingTab.
+- Refunds UI — Stitch refund API exists, can be wired later from the payments admin screen.

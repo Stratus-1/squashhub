@@ -1070,8 +1070,36 @@ export default function ClubChampsView() {
           <div className="space-y-4">{renderAllGroups()}</div>
         ) : null}
       </div>
+
+      <NoShowInjuredDialog
+        open={!!noShowMatch}
+        onOpenChange={(o) => { if (!o) setNoShowMatch(null); }}
+        champId={champId!}
+        match={noShowMatch}
+        champ={champ}
+        allMatches={matches}
+        getName={(memberId) => {
+          if (!memberId) return "";
+          const fromMatch = matches.find(
+            (m: any) => m.player_a_member_id === memberId || m.player_b_member_id === memberId,
+          );
+          if (fromMatch) {
+            if (fromMatch.player_a_member_id === memberId) return getPlayerName(fromMatch.player_a);
+            if (fromMatch.player_b_member_id === memberId) return getPlayerName(fromMatch.player_b);
+          }
+          const entry = entries.find(
+            (e: any) => e.club_member_id === memberId || e.partner_member_id === memberId,
+          );
+          if (entry) {
+            if (entry.club_member_id === memberId) return entry.club_members?.name || entry.club_members?.profiles?.name || "Unknown";
+            if (entry.partner_member_id === memberId) return entry.partner?.name || "Unknown";
+          }
+          return "Unknown";
+        }}
+      />
     </div>
   );
+
 
   function computeLeagueTotals() {
     const memberToGroup = new Map<string, number>();

@@ -308,13 +308,11 @@ export default function BellsMarker() {
     qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
   };
 
-  // When marker leaves the page (Back to tournament/dashboard), keep the
-  // server-side bell clock ticking if it was running so the match stays LIVE
-  // and the timer is still counting down when re-opened. If the timer was
-  // paused, persist the paused remaining seconds so play resumes where left.
+  // When marker leaves the page (Back to tournament/dashboard), always stop
+  // the LIVE state — clear the bell timer and reset to scheduled unless the
+  // match has already been saved as completed. Marker must explicitly Save
+  // Result to keep a result; otherwise exiting cancels the live session.
   const handleLeave = async (to: string) => {
-    // Cancel any pending debounced live-score sync so it can't overwrite
-    // status after we exit.
     if (liveSyncRef.current) {
       window.clearTimeout(liveSyncRef.current);
       liveSyncRef.current = null;
@@ -323,60 +321,22 @@ export default function BellsMarker() {
       window.clearInterval(tickRef.current);
       tickRef.current = null;
     }
-    if (match) {
-      if ((finished || resetRequestedRef.current) && match.status !== "completed") {
-        // Marker rang the bell (or time expired) but is exiting without
-        // saving the result — treat as a stop/cancel so the match no longer
-        // shows as LIVE in the tournament list. Reset to scheduled, clear
-        // the bell timer, and zero points back to the league-rank handicap.
-        const hcA = Number(match?.handicap_a) || 0;
-        const hcB = Number(match?.handicap_b) || 0;
-        liveSyncEnabledRef.current = false;
-        await rpcExt("sync_bells_match_state", {
-          _match_id: match.id,
-          _side_a_points: hcA,
-          _side_b_points: hcB,
-          _bell_ends_at: null,
-          _bell_paused_seconds: null,
-          _status: "scheduled",
-          _patch_timer: true,
-        });
-      } else if (!finished && liveSyncEnabledRef.current) {
-        const pausedRemaining = Math.max(0, remaining);
-        if (running && pausedRemaining > 0) {
-          // Timer was running — keep bell_ends_at intact server-side so the
-          // clock continues ticking in the background and the match stays LIVE.
-          const endIso = new Date(Date.now() + pausedRemaining * 1000).toISOString();
-          liveSyncEnabledRef.current = true;
-          await rpcExt("sync_bells_match_state", {
-            _match_id: match.id,
-            _side_a_points: pointsA,
-            _side_b_points: pointsB,
-            _bell_ends_at: endIso,
-            _bell_paused_seconds: null,
-            _status: "in_progress",
-            _patch_timer: true,
-          });
-        } else {
-          // Timer was paused (or not yet started) — persist current paused
-          // remaining so the next marker resumes from the same point.
-          liveSyncEnabledRef.current = true;
-          await rpcExt("sync_bells_match_state", {
-            _match_id: match.id,
-            _side_a_points: pointsA,
-            _side_b_points: pointsB,
-            _bell_ends_at: null,
-            _bell_paused_seconds: pausedRemaining > 0 ? pausedRemaining : null,
-            _status: "in_progress",
-            _patch_timer: true,
-          });
-        }
-      }
+    if (match && match.status !== "completed") {
+      const hcA = Number(match?.handicap_a) || 0;
+      const hcB = Number(match?.handicap_b) || 0;
+      liveSyncEnabledRef.current = false;
+      await rpcExt("sync_bells_match_state", {
+        _match_id: match.id,
+        _side_a_points: hcA,
+        _side_b_points: hcB,
+        _bell_ends_at: null,
+        _bell_paused_seconds: null,
+        _status: "scheduled",
+        _patch_timer: true,
+      });
     }
     qc.invalidateQueries({ queryKey: ["club-champ-matches", match?.champ_id] });
     qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
-    // Replace history entry so the back arrow on tournaments doesn't bounce
-    // the user right back to the scoring screen (causing a navigation loop).
     navigate(to, { replace: true });
   };
 

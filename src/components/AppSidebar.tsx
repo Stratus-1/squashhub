@@ -11,7 +11,7 @@ import {
   Settings as SettingsIcon,
   Activity,
   LayoutGrid,
-  ChevronDown,
+  ChevronRight,
   User,
   Network,
   Users,
@@ -30,8 +30,8 @@ import {
   Mail,
   Sparkles,
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -55,9 +55,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 type Item = { title: string; url: string; icon: React.ComponentType<{ className?: string }> };
 
 export function AppSidebar() {
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+  const { state, setOpen, isMobile, setOpenMobile } = useSidebar();
+  const collapsed = state === "collapsed" && !isMobile;
   const { pathname, search } = useLocation();
+  const navigate = useNavigate();
   const { hasLeagues, honestyBarEnabled, hasAnyAdminAccess, isAssociation } = useSidebarFlags();
   const { data: profile } = useProfile();
   const { activeMember } = useMemberContext();
@@ -76,7 +77,6 @@ export function AppSidebar() {
 
   const settingsUrl = isAssociation ? dashboardTabUrl("settings") : "/settings";
 
-  // Association tenants get a slimmed-down menu — no club-player items
   const homeItems: Item[] = isAssociation
     ? [
         { title: "Affiliated Clubs", url: dashboardTabUrl("affiliated"), icon: Network },
@@ -105,7 +105,6 @@ export function AppSidebar() {
         { title: "My Account", url: "/my-account", icon: Wallet },
       ];
 
-  // Admin sub-items (mockup: Dashboard, Members, Courts, Competitions, Finance, Communications, Integrations, Settings)
   const adminItems: Item[] = [
     { title: "Dashboard", url: "/club-admin", icon: LayoutDashboard },
     { title: "Club Info", url: "/club-admin?tab=club", icon: Building2 },
@@ -127,28 +126,30 @@ export function AppSidebar() {
     { title: "Settings", url: "/club-admin?tab=settings", icon: SettingsIcon },
   ];
 
-  // Independent collapsible state per group — auto-open the group containing the active route
-  const homeAuto = homeItems.some((i) => isActive(i.url)) || pathname === "/";
-  const activitiesAuto = activityItems.some((i) => isActive(i.url));
-  const adminAuto = pathname === "/club-admin" || adminItems.some((i) => isActive(i.url));
+  // Auto-open the group containing the active route only on first mount / route change
+  const homeAuto = useMemo(() => homeItems.some((i) => isActive(i.url)) || pathname === "/", [pathname, search]);
+  const activitiesAuto = useMemo(() => activityItems.some((i) => isActive(i.url)), [pathname, search]);
+  const adminAuto = useMemo(() => pathname === "/club-admin" || adminItems.some((i) => isActive(i.url)), [pathname, search]);
 
   const [homeOpen, setHomeOpen] = useState<boolean>(homeAuto);
   const [activitiesOpen, setActivitiesOpen] = useState<boolean>(activitiesAuto);
   const [adminOpen, setAdminOpen] = useState<boolean>(adminAuto);
 
-  // Re-open the group containing the active route when navigation changes
+  // When the route changes INTO a group, expand it — but never force-close groups the user opened
   useEffect(() => { if (homeAuto) setHomeOpen(true); }, [homeAuto]);
   useEffect(() => { if (activitiesAuto) setActivitiesOpen(true); }, [activitiesAuto]);
   useEffect(() => { if (adminAuto) setAdminOpen(true); }, [adminAuto]);
 
-  // Sakana display, uppercase, wider tracking — matches mockup
+  // When sidebar collapses to icon mode, suppress label rendering but keep state intact
+  const closeMobileSidebar = () => { if (isMobile) setOpenMobile(false); };
+
   const groupHeaderClass =
     "uppercase tracking-[0.22em] text-[11px] font-bold font-heading text-sidebar-foreground";
 
   const renderSubItem = (item: Item) => (
     <SidebarMenuSubItem key={item.title + item.url}>
       <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
-        <NavLink to={item.url} className="flex items-center gap-2">
+        <NavLink to={item.url} onClick={closeMobileSidebar} className="flex items-center gap-2">
           <item.icon className="w-3.5 h-3.5 shrink-0" />
           <span className="uppercase tracking-[0.14em] text-[10px] font-semibold font-heading">
             {item.title}
@@ -157,6 +158,68 @@ export function AppSidebar() {
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
   );
+
+  /**
+   * Industry-standard group header:
+   * - Whole row toggles the group open/closed (single click target)
+   * - When sidebar is icon-collapsed, clicking expands the sidebar AND opens the group
+   * - If a `landingUrl` exists, a separate icon nav-link navigates to it
+   */
+  const renderGroupHeader = (opts: {
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    open: boolean;
+    setOpen: (v: boolean) => void;
+    landingUrl?: string;
+  }) => {
+    const Icon = opts.icon;
+    const handleHeaderClick = () => {
+      if (collapsed) {
+        // Expand sidebar + open group
+        setOpen(true);
+        opts.setOpen(true);
+        return;
+      }
+      opts.setOpen(!opts.open);
+    };
+
+    return (
+      <div
+        className={cn(
+          "flex items-center w-full py-2",
+          groupHeaderClass,
+          opts.open && !collapsed && "border-b-2 border-[hsl(var(--accent))] pb-1.5"
+        )}
+      >
+        {opts.landingUrl ? (
+          <NavLink
+            to={opts.landingUrl}
+            onClick={closeMobileSidebar}
+            aria-label={opts.label}
+            className="p-1 -m-1 hover:opacity-80 shrink-0"
+          >
+            <Icon className="w-4 h-4" />
+          </NavLink>
+        ) : (
+          <Icon className="w-4 h-4 shrink-0" />
+        )}
+        <button
+          type="button"
+          onClick={handleHeaderClick}
+          aria-expanded={opts.open}
+          aria-label={`${opts.open ? "Collapse" : "Expand"} ${opts.label}`}
+          className="flex items-center justify-between flex-1 ml-2 hover:opacity-80"
+        >
+          {!collapsed && <span className="flex-1 text-left">{opts.label}</span>}
+          {!collapsed && (
+            <ChevronRight
+              className={cn("w-4 h-4 transition-transform", opts.open && "rotate-90")}
+            />
+          )}
+        </button>
+      </div>
+    );
+  };
 
   const memberName = activeMember?.name || profile?.name || "Player";
   const initials = memberName
@@ -168,51 +231,55 @@ export function AppSidebar() {
     .toUpperCase();
   const avatarUrl = (activeMember as any)?.avatar_url || (profile as any)?.avatar_url || null;
 
+  // In collapsed (icon) mode, render flat icon menu items (with tooltips) so navigation still works.
+  const renderCollapsedFlatMenu = (items: Item[]) => (
+    <SidebarMenu>
+      {items.map((item) => (
+        <SidebarMenuItem key={item.title + item.url}>
+          <SidebarMenuButton
+            asChild
+            isActive={isActive(item.url)}
+            tooltip={item.title}
+          >
+            <NavLink to={item.url} onClick={closeMobileSidebar}>
+              <item.icon className="w-4 h-4" />
+            </NavLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
+
   return (
     <Sidebar
       collapsible="icon"
       className="border-r border-sidebar-border bg-[hsl(220_45%_5%)]"
     >
       <SidebarContent className="gap-0 pt-6 px-1 bg-[hsl(220_45%_5%)]">
-        {/* HOME group — label navigates to dashboard, chevron toggles */}
+        {/* HOME */}
         <SidebarGroup className="px-2">
-          <div
-            className={cn(
-              "flex items-center justify-between w-full py-2",
-              groupHeaderClass,
-              homeOpen && "border-b-2 border-[hsl(var(--accent))] pb-1.5"
-            )}
-          >
-            <NavLink
-              to="/"
-              className="flex items-center gap-2 flex-1 hover:opacity-80"
-            >
-              <Home className="w-4 h-4" />
-              {!collapsed && <span>Home</span>}
-            </NavLink>
-            {!collapsed && (
-              <button
-                type="button"
-                onClick={() => setHomeOpen((v) => !v)}
-                aria-label={homeOpen ? "Collapse Home" : "Expand Home"}
-                className="p-1 -m-1 hover:opacity-80"
-              >
-                <ChevronDown
-                  className={cn("w-4 h-4 transition-transform", homeOpen && "rotate-180")}
-                />
-              </button>
-            )}
-          </div>
-          {!collapsed && homeOpen && (
+          {renderGroupHeader({
+            label: "Home",
+            icon: Home,
+            open: homeOpen,
+            setOpen: setHomeOpen,
+            landingUrl: "/",
+          })}
+          {homeOpen && !collapsed && (
             <SidebarGroupContent className="mt-1.5">
               <SidebarMenuSub className="border-l-0 ml-1.5 px-0">
                 {homeItems.map(renderSubItem)}
               </SidebarMenuSub>
             </SidebarGroupContent>
           )}
+          {collapsed && (
+            <SidebarGroupContent className="mt-1.5">
+              {renderCollapsedFlatMenu(homeItems)}
+            </SidebarGroupContent>
+          )}
         </SidebarGroup>
 
-        {/* COURTS — hidden for association tenants */}
+        {/* COURTS — single item, hidden for association tenants */}
         {!isAssociation && (
           <SidebarGroup className="px-2 mt-3">
             <SidebarGroupContent>
@@ -222,8 +289,9 @@ export function AppSidebar() {
                     asChild
                     isActive={isActive("/bookings")}
                     className="py-2"
+                    tooltip="Courts"
                   >
-                    <NavLink to="/bookings" className="flex items-center gap-2">
+                    <NavLink to="/bookings" onClick={closeMobileSidebar} className="flex items-center gap-2">
                       <LayoutGrid className="w-4 h-4" />
                       {!collapsed && (
                         <span className={groupHeaderClass}>Courts</span>
@@ -235,83 +303,66 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-        {/* ACTIVITIES group — collapsible */}
+
+        {/* ACTIVITIES */}
         <SidebarGroup className="px-2 mt-3">
-          <button
-            type="button"
-            onClick={() => setActivitiesOpen((v) => !v)}
-            className={cn(
-              "flex items-center justify-between w-full py-2 group",
-              groupHeaderClass,
-              activitiesOpen && "border-b-2 border-[hsl(var(--accent))] pb-1.5"
-            )}
-          >
-            <span className="flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              {!collapsed && <span>Activities</span>}
-            </span>
-            {!collapsed && (
-              <ChevronDown
-                className={cn("w-4 h-4 transition-transform", activitiesOpen && "rotate-180")}
-              />
-            )}
-          </button>
-          {!collapsed && activitiesOpen && (
+          {renderGroupHeader({
+            label: "Activities",
+            icon: Activity,
+            open: activitiesOpen,
+            setOpen: setActivitiesOpen,
+          })}
+          {activitiesOpen && !collapsed && (
             <SidebarGroupContent className="mt-1.5">
               <SidebarMenuSub className="border-l-0 ml-1.5 px-0">
                 {activityItems.map(renderSubItem)}
               </SidebarMenuSub>
             </SidebarGroupContent>
           )}
+          {collapsed && (
+            <SidebarGroupContent className="mt-1.5">
+              {renderCollapsedFlatMenu(activityItems)}
+            </SidebarGroupContent>
+          )}
         </SidebarGroup>
 
-        {/* CLUB ADMIN — collapsible group with all admin sub-sections */}
+        {/* CLUB ADMIN */}
         {hasAnyAdminAccess && !isAssociation && (
           <SidebarGroup className="px-2 mt-3">
-            <div
-              className={cn(
-                "flex items-center justify-between w-full py-2",
-                groupHeaderClass,
-                adminOpen && "border-b-2 border-[hsl(var(--accent))] pb-1.5"
-              )}
-            >
-              <NavLink
-                to="/club-admin"
-                className="flex items-center gap-2 flex-1 hover:opacity-80"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                {!collapsed && <span>Club Admin</span>}
-              </NavLink>
-              {!collapsed && (
-                <button
-                  type="button"
-                  onClick={() => setAdminOpen((v) => !v)}
-                  aria-label={adminOpen ? "Collapse Club Admin" : "Expand Club Admin"}
-                  className="p-1 -m-1 hover:opacity-80"
-                >
-                  <ChevronDown
-                    className={cn("w-4 h-4 transition-transform", adminOpen && "rotate-180")}
-                  />
-                </button>
-              )}
-            </div>
-            {!collapsed && adminOpen && (
+            {renderGroupHeader({
+              label: "Club Admin",
+              icon: ShieldCheck,
+              open: adminOpen,
+              setOpen: setAdminOpen,
+              landingUrl: "/club-admin",
+            })}
+            {adminOpen && !collapsed && (
               <SidebarGroupContent className="mt-1.5">
                 <SidebarMenuSub className="border-l-0 ml-1.5 px-0">
                   {adminItems.map(renderSubItem)}
                 </SidebarMenuSub>
               </SidebarGroupContent>
             )}
+            {collapsed && (
+              <SidebarGroupContent className="mt-1.5">
+                {renderCollapsedFlatMenu(adminItems)}
+              </SidebarGroupContent>
+            )}
           </SidebarGroup>
         )}
       </SidebarContent>
 
-      {/* SETTINGS pinned at bottom with member avatar */}
+      {/* SETTINGS */}
       <SidebarFooter className="border-t border-sidebar-border bg-[hsl(220_45%_5%)] px-2 py-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive(settingsUrl)} className="py-2 gap-3">
-              <NavLink to={settingsUrl} className="flex items-center gap-3">
+            <SidebarMenuButton
+              asChild
+              isActive={isActive(settingsUrl)}
+              className="py-2 gap-3"
+              tooltip="Settings"
+            >
+              <NavLink to={settingsUrl} onClick={closeMobileSidebar} className="flex items-center gap-3">
                 <Avatar className="h-7 w-7 ring-1 ring-sidebar-border">
                   {avatarUrl ? <AvatarImage src={avatarUrl} alt={memberName} /> : null}
                   <AvatarFallback className="bg-sidebar-accent text-[10px] font-semibold">

@@ -9,12 +9,13 @@ import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check, Info } from "lucide-react";
+import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check, Info, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BellsFormat, getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { setScoringActive } from "@/lib/scoring-lock";
+import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 
 /**
  * Bells doubles scorer.
@@ -48,6 +49,19 @@ export default function BellsMarker() {
     enabled: !!matchId,
   });
 
+  const { data: allMatches = [] } = useQuery({
+    queryKey: ["club-champ-matches", match?.champ_id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("id, status, is_bye, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name)")
+        .eq("champ_id", match!.champ_id);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!match?.champ_id,
+  });
+
+
   const champ = match?.champ;
   const format = getTournamentFormat(champ?.scoring_mode);
   const isBells = format?.key === BellsFormat.key;
@@ -66,6 +80,7 @@ export default function BellsMarker() {
   const [saving, setSaving] = useState(false);
   const [server, setServer] = useState<"a" | "b">("a");
   const [serveSide, setServeSide] = useState<"L" | "R">("R");
+  const [noShowOpen, setNoShowOpen] = useState(false);
   const tickRef = useRef<number | null>(null);
   const liveSyncRef = useRef<number | null>(null);
   const hydratedRef = useRef(false);
@@ -696,6 +711,15 @@ export default function BellsMarker() {
               <Button onClick={resetAll} variant="outline" className="gap-1">
                 <RotateCcw className="w-4 h-4" /> Reset
               </Button>
+              {!finished && (
+                <Button
+                  onClick={() => setNoShowOpen(true)}
+                  variant="outline"
+                  className="gap-1 border-amber-500 text-amber-700 hover:bg-amber-50 dark:text-amber-400"
+                >
+                  <UserX className="w-4 h-4" /> No show / Injured
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -751,6 +775,27 @@ export default function BellsMarker() {
           Back to Dashboard
         </Button>
       </div>
+
+      <NoShowInjuredDialog
+        open={noShowOpen}
+        onOpenChange={setNoShowOpen}
+        champId={match.champ_id}
+        match={match}
+        champ={champ}
+        allMatches={allMatches}
+        getName={(memberId) => {
+          if (!memberId) return "—";
+          const cands = [match.player_a, match.player_b, match.partner_a, match.partner_b];
+          const hit = cands.find((p: any) => p?.id === memberId);
+          if (hit?.name) return hit.name;
+          for (const m of allMatches as any[]) {
+            for (const p of [m.player_a, m.player_b, m.partner_a, m.partner_b]) {
+              if (p?.id === memberId) return p.name;
+            }
+          }
+          return "Player";
+        }}
+      />
 
     </div>
   );

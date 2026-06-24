@@ -265,27 +265,43 @@ export function AppSidebar() {
           )}
         </SidebarGroup>
 
-        {/* ADMIN — single link, only if user has admin access. Associations use the unified dashboard at "/". */}
+        {/* CLUB ADMIN — collapsible group with all admin sub-sections */}
         {hasAnyAdminAccess && !isAssociation && (
           <SidebarGroup className="px-2 mt-3">
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive("/club-admin")}
-                    className="py-2"
-                  >
-                    <NavLink to="/club-admin" className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4" />
-                      {!collapsed && (
-                        <span className={groupHeaderClass}>Club Admin</span>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
+            <div
+              className={cn(
+                "flex items-center justify-between w-full py-2",
+                groupHeaderClass,
+                adminOpen && "border-b-2 border-[hsl(var(--accent))] pb-1.5"
+              )}
+            >
+              <NavLink
+                to="/club-admin"
+                className="flex items-center gap-2 flex-1 hover:opacity-80"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                {!collapsed && <span>Club Admin</span>}
+              </NavLink>
+              {!collapsed && (
+                <button
+                  type="button"
+                  onClick={() => setAdminOpen((v) => !v)}
+                  aria-label={adminOpen ? "Collapse Club Admin" : "Expand Club Admin"}
+                  className="p-1 -m-1 hover:opacity-80"
+                >
+                  <ChevronDown
+                    className={cn("w-4 h-4 transition-transform", adminOpen && "rotate-180")}
+                  />
+                </button>
+              )}
+            </div>
+            {!collapsed && adminOpen && (
+              <SidebarGroupContent className="mt-1.5">
+                <SidebarMenuSub className="border-l-0 ml-1.5 px-0">
+                  {adminItems.map(renderSubItem)}
+                </SidebarMenuSub>
+              </SidebarGroupContent>
+            )}
           </SidebarGroup>
         )}
       </SidebarContent>

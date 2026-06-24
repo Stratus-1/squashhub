@@ -48,22 +48,23 @@ const ADMIN_TABS: { value: string; label: string; icon: any; permission?: Permis
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red" },
 ];
 
-const COLOR_STYLES: Record<string, string> = {
-  blue: "border-blue-500/50 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:hover:bg-blue-500/25",
-  slate: "border-slate-400/60 bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-500/15 dark:text-slate-200 dark:hover:bg-slate-500/25",
-  emerald: "border-emerald-500/50 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25",
-  cyan: "border-cyan-500/50 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:bg-cyan-500/15 dark:text-cyan-200 dark:hover:bg-cyan-500/25",
-  green: "border-green-500/50 bg-green-50 text-green-800 hover:bg-green-100 dark:bg-green-500/15 dark:text-green-200 dark:hover:bg-green-500/25",
-  teal: "border-teal-500/50 bg-teal-50 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:hover:bg-teal-500/25",
-  indigo: "border-indigo-500/50 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25",
-  violet: "border-violet-500/50 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:bg-violet-500/15 dark:text-violet-200 dark:hover:bg-violet-500/25",
-  sky: "border-sky-500/50 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-200 dark:hover:bg-sky-500/25",
-  orange: "border-orange-500/50 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:bg-orange-500/15 dark:text-orange-200 dark:hover:bg-orange-500/25",
-  amber: "border-amber-500/50 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-200 dark:hover:bg-amber-500/25",
-  yellow: "border-yellow-500/50 bg-yellow-50 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-500/15 dark:text-yellow-200 dark:hover:bg-yellow-500/25",
-  rose: "border-rose-500/50 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25",
-  pink: "border-pink-500/50 bg-pink-50 text-pink-800 hover:bg-pink-100 dark:bg-pink-500/15 dark:text-pink-200 dark:hover:bg-pink-500/25",
-  red: "border-red-500/50 bg-red-50 text-red-800 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-200 dark:hover:bg-red-500/25",
+// Solid colored icon-badge styles (mockup-inspired: white tile, colored rounded icon square)
+const ICON_BADGE_STYLES: Record<string, string> = {
+  blue: "bg-blue-500 text-white",
+  slate: "bg-slate-500 text-white",
+  emerald: "bg-emerald-500 text-white",
+  cyan: "bg-cyan-500 text-white",
+  green: "bg-green-500 text-white",
+  teal: "bg-teal-500 text-white",
+  indigo: "bg-indigo-500 text-white",
+  violet: "bg-violet-500 text-white",
+  sky: "bg-sky-500 text-white",
+  orange: "bg-orange-500 text-white",
+  amber: "bg-amber-500 text-white",
+  yellow: "bg-yellow-500 text-white",
+  rose: "bg-rose-500 text-white",
+  pink: "bg-pink-500 text-white",
+  red: "bg-red-500 text-white",
 };
 
 export default function ClubAdmin() {

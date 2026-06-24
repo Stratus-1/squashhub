@@ -1010,6 +1010,8 @@ export type Database = {
           match_duration_minutes: number
           match_type: string
           name: string
+          no_show_opponent_points: number
+          no_show_player_points: number
           num_groups: number
           partner_mode: string
           payment_methods: string[]
@@ -1062,6 +1064,8 @@ export type Database = {
           match_duration_minutes?: number
           match_type?: string
           name: string
+          no_show_opponent_points?: number
+          no_show_player_points?: number
           num_groups?: number
           partner_mode?: string
           payment_methods?: string[]
@@ -1114,6 +1118,8 @@ export type Database = {
           match_duration_minutes?: number
           match_type?: string
           name?: string
+          no_show_opponent_points?: number
+          no_show_player_points?: number
           num_groups?: number
           partner_mode?: string
           payment_methods?: string[]
@@ -1225,6 +1231,7 @@ export type Database = {
           champ_id: string
           court_id: number | null
           created_at: string
+          forfeit_member_id: string | null
           game_scores: string | null
           group_number: number
           handicap_a: number
@@ -1254,6 +1261,7 @@ export type Database = {
           champ_id: string
           court_id?: number | null
           created_at?: string
+          forfeit_member_id?: string | null
           game_scores?: string | null
           group_number: number
           handicap_a?: number
@@ -1283,6 +1291,7 @@ export type Database = {
           champ_id?: string
           court_id?: number | null
           created_at?: string
+          forfeit_member_id?: string | null
           game_scores?: string | null
           group_number?: number
           handicap_a?: number
@@ -1318,6 +1327,20 @@ export type Database = {
             columns: ["court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_forfeit_member_id_fkey"
+            columns: ["forfeit_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_forfeit_member_id_fkey"
+            columns: ["forfeit_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
           {
@@ -6857,6 +6880,7 @@ export type Database = {
           champ_id: string
           court_id: number | null
           created_at: string
+          forfeit_member_id: string | null
           game_scores: string | null
           group_number: number
           handicap_a: number
@@ -6931,6 +6955,7 @@ export type Database = {
           champ_id: string
           court_id: number | null
           created_at: string
+          forfeit_member_id: string | null
           game_scores: string | null
           group_number: number
           handicap_a: number

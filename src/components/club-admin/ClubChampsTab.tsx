@@ -3527,6 +3527,40 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             )}
 
+            {/* No Show / Injured rule — applies when a player can't play.
+                Opponent gets the opponent points; the absent player records the
+                player points (can be negative as a penalty). */}
+            <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+              <Label className="text-sm">No Show / Injured rule</Label>
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs whitespace-nowrap">Points for opponent</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={noShowOpponentPoints}
+                    onChange={(e) => setNoShowOpponentPoints(Math.max(0, Math.round(Number(e.target.value)) || 0))}
+                    className="h-8 w-20"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs whitespace-nowrap">Points for player</Label>
+                  <Input
+                    type="number"
+                    step={1}
+                    value={noShowPlayerPoints}
+                    onChange={(e) => setNoShowPlayerPoints(Math.round(Number(e.target.value)) || 0)}
+                    className="h-8 w-20"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Used when an admin marks a tournament game as <b>No Show / Injured</b> on the scorecard. Defaults: 10 for the opponent, 0 for the absent player (can be negative as a penalty).
+              </p>
+            </div>
+
+
             {/* Tournament dates are set on the Courts step (one step earlier).
                 Shown here as a read-only summary so the admin doesn't have to
                 jump back to confirm them. */}

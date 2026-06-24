@@ -29,13 +29,20 @@ import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 
-const ADMIN_TABS: { value: string; label: string; icon: any; permission?: PermissionSlug; color: string }[] = [
+type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string };
+
+const SETUP_TABS: AdminTab[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
-  { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald" },
   { value: "courts", label: "Courts", icon: LayoutGrid, permission: "courts", color: "cyan" },
+  { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald" },
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking", color: "green" },
-  { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
+  { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
+  { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
+  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red" },
+];
+
+const OPERATIONS_TABS: AdminTab[] = [
   { value: "members", label: "Members", icon: Users, permission: "members", color: "indigo" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
@@ -43,11 +50,11 @@ const ADMIN_TABS: { value: string; label: string; icon: any; permission?: Permis
   { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow" },
   { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
+  { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
   { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose" },
-  { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
-  { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
-  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red" },
 ];
+
+const ADMIN_TABS: AdminTab[] = [...SETUP_TABS, ...OPERATIONS_TABS];
 
 const COLOR_STYLES: Record<string, string> = {
   blue: "border-blue-500/50 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:hover:bg-blue-500/25",

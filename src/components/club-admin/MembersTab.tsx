@@ -195,7 +195,7 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus }: {
+function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, isSuperAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
@@ -209,6 +209,7 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
   onAssignNumber?: (member: ClubMember) => void;
   numberLabel?: string;
   onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
+  isSuperAdmin?: boolean;
 }) {
   const displayName = m.name || m.profiles?.name || "—";
   const displayEmail = m.email || m.profiles?.email || "";
@@ -216,7 +217,8 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
   const isLinked = !!m.user_id;
   const isAdmin = m.role === "admin" || m.role === "captain";
   const isDelegate = !!delegateTitle;
-  const isProtected = isDelegate;
+  const isProtected = isDelegate && !isSuperAdmin;
+
   const status = (m.status || "active") as "active" | "suspended" | "resigned";
   const inactive = status !== "active";
   const statusStyles: Record<typeof status, string> = {

@@ -60,6 +60,7 @@ export default function MatchMarker() {
     games: GameScore[];
     winnerId: "a" | "b";
     durationSeconds: number;
+    forfeit?: { absentSide: "a" | "b" };
   }) => {
     if (!config) return;
 

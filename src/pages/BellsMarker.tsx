@@ -711,6 +711,15 @@ export default function BellsMarker() {
               <Button onClick={resetAll} variant="outline" className="gap-1">
                 <RotateCcw className="w-4 h-4" /> Reset
               </Button>
+              {!finished && (
+                <Button
+                  onClick={() => setNoShowOpen(true)}
+                  variant="outline"
+                  className="gap-1 border-amber-500 text-amber-700 hover:bg-amber-50 dark:text-amber-400"
+                >
+                  <UserX className="w-4 h-4" /> No show / Injured
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

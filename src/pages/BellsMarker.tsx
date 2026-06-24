@@ -70,7 +70,11 @@ export default function BellsMarker() {
   const liveSyncRef = useRef<number | null>(null);
   const hydratedRef = useRef(false);
   const liveSyncEnabledRef = useRef(false);
-  const resetRequestedRef = useRef(false);
+  const timerStateRef = useRef<{ bell_ends_at: string | null; bell_paused_seconds: number | null }>({
+    bell_ends_at: null,
+    bell_paused_seconds: null,
+  });
+  const scoreStateRef = useRef({ pointsA: 0, pointsB: 0 });
 
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {
@@ -82,17 +86,22 @@ export default function BellsMarker() {
     const liveA = match.side_a_points;
     const liveB = match.side_b_points;
     const hasLive = (liveA != null && liveA !== 0) || (liveB != null && liveB !== 0);
-    setPointsA(hasLive ? (liveA ?? 0) : hcA);
-    setPointsB(hasLive ? (liveB ?? 0) : hcB);
-    setFinished(match.status === "completed");
+    const endMs = match.bell_ends_at ? new Date(match.bell_ends_at).getTime() : null;
+    const bellEndReached = endMs != null && endMs <= Date.now();
+    const bellStopped = (!match.bell_ends_at && match.bell_paused_seconds === 0) || bellEndReached;
+    const nextPointsA = hasLive ? (liveA ?? 0) : hcA;
+    const nextPointsB = hasLive ? (liveB ?? 0) : hcB;
+    setPointsA(nextPointsA);
+    setPointsB(nextPointsB);
+    scoreStateRef.current = { pointsA: nextPointsA, pointsB: nextPointsB };
+    setFinished(match.status === "completed" || bellStopped);
 
     // Resume timer from persisted state so a second marker continues from
     // where the first left off (don't reset to the full cap).
-    if (match.status === "completed") {
+    if (match.status === "completed" || bellStopped) {
       setRemaining(0);
       setRunning(false);
-    } else if (match.bell_ends_at) {
-      const endMs = new Date(match.bell_ends_at).getTime();
+    } else if (endMs != null) {
       const r = Math.max(0, Math.round((endMs - Date.now()) / 1000));
       setRemaining(r);
       setRunning(r > 0);
@@ -103,9 +112,32 @@ export default function BellsMarker() {
       setRemaining(capMinutes * 60);
       setRunning(false);
     }
-    liveSyncEnabledRef.current = match.status === "in_progress";
+    timerStateRef.current = {
+      bell_ends_at: bellEndReached ? null : (match.bell_ends_at ?? null),
+      bell_paused_seconds: bellEndReached ? 0 : (typeof match.bell_paused_seconds === "number" ? match.bell_paused_seconds : null),
+    };
+    liveSyncEnabledRef.current = match.status === "in_progress" && !bellStopped;
+    if (bellEndReached && match.status !== "completed") {
+      rpcExt("sync_bells_match_state", {
+        _match_id: match.id,
+        _side_a_points: nextPointsA,
+        _side_b_points: nextPointsB,
+        _bell_ends_at: null,
+        _bell_paused_seconds: 0,
+        _status: "scheduled",
+        _patch_timer: true,
+      }).then(({ error }) => {
+        if (error) console.warn("Expired bell sync failed:", error.message);
+        qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
+        qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+      });
+    }
     hydratedRef.current = true;
-  }, [match, capMinutes]);
+  }, [match, capMinutes, qc]);
+
+  useEffect(() => {
+    scoreStateRef.current = { pointsA, pointsB };
+  }, [pointsA, pointsB]);
 
 
   // Hold the PWA update poller while a Bells match is live (not finished).
@@ -147,8 +179,30 @@ export default function BellsMarker() {
         if (r <= 1) {
           // Ring the bell
           window.clearInterval(tickRef.current!);
+          if (liveSyncRef.current) {
+            window.clearTimeout(liveSyncRef.current);
+            liveSyncRef.current = null;
+          }
+          liveSyncEnabledRef.current = false;
           setRunning(false);
           setFinished(true);
+          timerStateRef.current = { bell_ends_at: null, bell_paused_seconds: 0 };
+          if (match) {
+            const latest = scoreStateRef.current;
+            rpcExt("sync_bells_match_state", {
+              _match_id: match.id,
+              _side_a_points: latest.pointsA,
+              _side_b_points: latest.pointsB,
+              _bell_ends_at: null,
+              _bell_paused_seconds: 0,
+              _status: "scheduled",
+              _patch_timer: true,
+            }).then(({ error }) => {
+              if (error) console.warn("Bell stop sync failed:", error.message);
+              qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
+              qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+            });
+          }
           ringBellSound(3);
           toast.success("Bell! Time's up — confirm the score.");
           return 0;
@@ -159,7 +213,7 @@ export default function BellsMarker() {
     return () => {
       if (tickRef.current) window.clearInterval(tickRef.current);
     };
-  }, [running]);
+  }, [running, match, qc]);
 
   const mmss = (s: number) => {
     const m = Math.floor(s / 60);
@@ -218,6 +272,10 @@ export default function BellsMarker() {
     // clears the field on the server (Reset / Ring bell rely on this).
     const endsAt = "bell_ends_at" in patch ? patch.bell_ends_at : (match.bell_ends_at ?? null);
     const paused = "bell_paused_seconds" in patch ? patch.bell_paused_seconds : null;
+    timerStateRef.current = {
+      bell_ends_at: endsAt ?? null,
+      bell_paused_seconds: typeof paused === "number" ? paused : null,
+    };
     rpcExt("sync_bells_match_state", {
       _match_id: match.id,
       _side_a_points: patch.side_a_points ?? pointsA,
@@ -254,8 +312,19 @@ export default function BellsMarker() {
     liveSyncEnabledRef.current = true;
     // Auto-start timer if marker forgot to press Start
     if (!running && remaining > 0) startTimer();
-    if (side === "a") setPointsA((v) => v + 1);
-    else setPointsB((v) => v + 1);
+    if (side === "a") {
+      setPointsA((v) => {
+        const next = v + 1;
+        scoreStateRef.current = { ...scoreStateRef.current, pointsA: next };
+        return next;
+      });
+    } else {
+      setPointsB((v) => {
+        const next = v + 1;
+        scoreStateRef.current = { ...scoreStateRef.current, pointsB: next };
+        return next;
+      });
+    }
 
     // Serve switching logic (same as standard match marker)
     if (side === server) {
@@ -266,12 +335,51 @@ export default function BellsMarker() {
     }
   };
 
+  const handleDecrement = (side: "a" | "b") => {
+    if (finished) return;
+    if (side === "a") {
+      setPointsA((v) => {
+        const next = Math.max(0, v - 1);
+        scoreStateRef.current = { ...scoreStateRef.current, pointsA: next };
+        return next;
+      });
+    } else {
+      setPointsB((v) => {
+        const next = Math.max(0, v - 1);
+        scoreStateRef.current = { ...scoreStateRef.current, pointsB: next };
+        return next;
+      });
+    }
+  };
+
   const ringBellNow = () => {
+    liveSyncEnabledRef.current = false;
+    if (liveSyncRef.current) {
+      window.clearTimeout(liveSyncRef.current);
+      liveSyncRef.current = null;
+    }
     if (tickRef.current) window.clearInterval(tickRef.current);
     setRunning(false);
     setFinished(true);
     ringBellSound(3);
-    persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "in_progress" });
+    const latest = scoreStateRef.current;
+    persistTimer({
+      bell_ends_at: null,
+      bell_paused_seconds: 0,
+      status: "scheduled",
+      side_a_points: latest.pointsA,
+      side_b_points: latest.pointsB,
+    });
+    qc.setQueryData(["bells-match", matchId], (old: any) => old ? ({
+      ...old,
+      status: "scheduled",
+      side_a_points: latest.pointsA,
+      side_b_points: latest.pointsB,
+      bell_ends_at: null,
+      bell_paused_seconds: 0,
+    }) : old);
+    qc.invalidateQueries({ queryKey: ["club-champ-matches", match?.champ_id] });
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
   };
 
 
@@ -279,7 +387,6 @@ export default function BellsMarker() {
     const hcA = Number(match?.handicap_a) || 0;
     const hcB = Number(match?.handicap_b) || 0;
     liveSyncEnabledRef.current = false;
-    resetRequestedRef.current = true;
     if (liveSyncRef.current) {
       window.clearTimeout(liveSyncRef.current);
       liveSyncRef.current = null;
@@ -290,6 +397,7 @@ export default function BellsMarker() {
     }
     setPointsA(hcA);
     setPointsB(hcB);
+    scoreStateRef.current = { pointsA: hcA, pointsB: hcB };
     setRemaining(capMinutes * 60);
     setRunning(false);
     setFinished(false);
@@ -305,13 +413,12 @@ export default function BellsMarker() {
       bell_paused_seconds: null,
     }) : old);
     qc.invalidateQueries({ queryKey: ["club-champ-matches", match?.champ_id] });
-    qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
   };
 
-  // When marker leaves the page (Back to tournament/dashboard), always stop
-  // the LIVE state — clear the bell timer and reset to scheduled unless the
-  // match has already been saved as completed. Marker must explicitly Save
-  // Result to keep a result; otherwise exiting cancels the live session.
+  // Leaving the marker only releases the active LIVE scorer. It must not stop
+  // the Bells countdown or clear points, so another marker can take over.
+  // Reset / Ring bell are the only controls that clear or finish the timer.
   const handleLeave = async (to: string) => {
     if (liveSyncRef.current) {
       window.clearTimeout(liveSyncRef.current);
@@ -322,21 +429,21 @@ export default function BellsMarker() {
       tickRef.current = null;
     }
     if (match && match.status !== "completed") {
-      const hcA = Number(match?.handicap_a) || 0;
-      const hcB = Number(match?.handicap_b) || 0;
       liveSyncEnabledRef.current = false;
+      const timerState = timerStateRef.current;
+      const latest = scoreStateRef.current;
       await rpcExt("sync_bells_match_state", {
         _match_id: match.id,
-        _side_a_points: hcA,
-        _side_b_points: hcB,
-        _bell_ends_at: null,
-        _bell_paused_seconds: null,
+        _side_a_points: latest.pointsA,
+        _side_b_points: latest.pointsB,
+        _bell_ends_at: timerState.bell_ends_at,
+        _bell_paused_seconds: timerState.bell_paused_seconds,
         _status: "scheduled",
         _patch_timer: true,
       });
     }
     qc.invalidateQueries({ queryKey: ["club-champ-matches", match?.champ_id] });
-    qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
     navigate(to, { replace: true });
   };
 
@@ -364,7 +471,7 @@ export default function BellsMarker() {
       // staring at a disabled scoring screen while the mirror insert runs.
       qc.invalidateQueries({ queryKey: ["bells-match", matchId] });
       qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
-      qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
+      qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
       toast.success(`Result saved · ${pairAName} ${scoreStr} ${pairBName}`);
       navigate(`/tournaments`, { replace: true });
 
@@ -599,7 +706,7 @@ export default function BellsMarker() {
             label={pairAName}
             value={pointsA}
             onPlus={() => handleIncrement("a")}
-            onMinus={() => setPointsA((v) => Math.max(0, v - 1))}
+            onMinus={() => handleDecrement("a")}
             side="a"
             isServer={server === "a"}
             serveSide={serveSide}
@@ -612,7 +719,7 @@ export default function BellsMarker() {
             label={pairBName}
             value={pointsB}
             onPlus={() => handleIncrement("b")}
-            onMinus={() => setPointsB((v) => Math.max(0, v - 1))}
+            onMinus={() => handleDecrement("b")}
             side="b"
             isServer={server === "b"}
             serveSide={serveSide}

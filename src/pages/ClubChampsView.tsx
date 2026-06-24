@@ -1198,8 +1198,9 @@ export default function ClubChampsView() {
 
     const bellActive = !!m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now();
     const paused = typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0;
+    const bellStopped = !m.bell_ends_at && m.bell_paused_seconds === 0;
     const hasPoints = (m.side_a_points ?? 0) > 0 || (m.side_b_points ?? 0) > 0;
-    const isLiveMatch = !completed && m.status === "in_progress" && (bellActive || paused || hasPoints);
+    const isLiveMatch = !completed && !bellStopped && m.status === "in_progress" && (isBells ? (bellActive || paused) : hasPoints);
     const liveAAhead = isLiveMatch && (m.side_a_points ?? 0) > (m.side_b_points ?? 0);
     const liveBAhead = isLiveMatch && (m.side_b_points ?? 0) > (m.side_a_points ?? 0);
 

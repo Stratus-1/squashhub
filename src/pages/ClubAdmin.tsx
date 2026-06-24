@@ -31,6 +31,7 @@ import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 
 const ADMIN_TABS: { value: string; label: string; icon: any; permission?: PermissionSlug; color: string }[] = [
+  { value: "dashboard", label: "Dashboard", icon: LayoutDashboard, color: "blue" },
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
   { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald" },

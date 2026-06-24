@@ -181,6 +181,8 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   const [castDialogOpen, setCastDialogOpen] = useState(false);
   const [scratchOpen, setScratchOpen] = useState(false);
   const [scratchConfirmText, setScratchConfirmText] = useState("");
+  const [forfeitOpen, setForfeitOpen] = useState(false);
+  const [forfeitSide, setForfeitSide] = useState<"a" | "b" | null>(null);
 
   const sessionKey = getMarkerSessionKey(config);
   const persisted = useRef<PersistedState | null>(loadPersisted(getMarkerSessionKeys(config), config, initialScores)).current;

@@ -40,20 +40,63 @@ export function useSetupStatus(clubId?: string, club?: any): SetupStatusMap {
     enabled: !!clubId,
   });
 
-  const clubComplete = !!(club?.name && club?.address && (club?.contact_email || club?.email) && club?.logo_url);
+  const s: any = secrets || {};
+  const clubComplete = !!(
+    club?.name &&
+    club?.address &&
+    (club?.contact_email || club?.email) &&
+    club?.phone &&
+    club?.logo_url
+  );
   const settingsComplete = !!(
     club?.email_signature &&
     club?.email_disclaimer &&
-    secrets?.sender_email &&
-    secrets?.smtp_host &&
-    secrets?.smtp_user &&
-    secrets?.smtp_pass
+    s.sender_email &&
+    s.smtp_host &&
+    s.smtp_user &&
+    s.smtp_pass
   );
   const courtsComplete = courtsCount > 0;
   const feesComplete = feesCount > 0;
-  const bankingComplete = !!(secrets?.bank_account_number || secrets?.payment_gateway_secret_key);
-  const accessComplete = !!((secrets as any)?.access_control_type && (secrets as any).access_control_type !== "none");
-  const commsComplete = !!(club?.email_signature && secrets?.smtp_host && secrets?.sender_email);
+  const bankingComplete = !!(
+    s.bank_name &&
+    s.bank_account_name &&
+    s.bank_account_number &&
+    s.bank_branch_code
+  );
+
+  // Access: required fields depend on the chosen method
+  const accessType: string = s.access_control_type || "none";
+  let accessComplete = false;
+  if (accessType === "none") {
+    accessComplete = false; // not yet configured
+  } else if (accessType === "key" || accessType === "other") {
+    accessComplete = true; // no extra config required
+  } else if (accessType === "remote_trigger") {
+    accessComplete = !!(s.fluss_api_token && s.fluss_default_device_id);
+  } else if (accessType === "face_recognition") {
+    const provider = s.access_provider;
+    if (provider === "zkbio" || provider === "hikvision") {
+      accessComplete = !!(s.access_control_endpoint && s.access_control_api_user && s.access_control_api_pass);
+    } else if (provider === "zk_push") {
+      accessComplete = !!s.access_control_api_key;
+    } else {
+      accessComplete = !!provider;
+    }
+  } else if (accessType === "tap_card" || accessType === "pin") {
+    accessComplete = !!s.access_control_api_key;
+  }
+
+  const commsComplete = !!(
+    club?.email_signature &&
+    club?.email_disclaimer &&
+    s.smtp_host &&
+    s.smtp_port &&
+    s.smtp_user &&
+    s.smtp_pass &&
+    s.sender_email &&
+    s.sender_name
+  );
 
   return {
     club: clubComplete ? "complete" : "incomplete",

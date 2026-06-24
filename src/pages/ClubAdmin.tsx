@@ -1,13 +1,11 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState } from "react";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, LayoutDashboard } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles } from "lucide-react";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
-import { AdminDashboardOverview } from "@/components/club-admin/AdminDashboardOverview";
 
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
@@ -31,7 +29,6 @@ import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 
 const ADMIN_TABS: { value: string; label: string; icon: any; permission?: PermissionSlug; color: string }[] = [
-  { value: "dashboard", label: "Dashboard", icon: LayoutDashboard, color: "blue" },
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
   { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald" },
@@ -75,22 +72,7 @@ export default function ClubAdmin() {
   const { data, isLoading } = useMyClub();
   const isAdmin = useIsClubAdmin();
   const myPermissions = useMyPermissions();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tabFromUrl = searchParams.get("tab") || "dashboard";
-  const [activeTab, setActiveTab] = useState<string>(tabFromUrl);
-
-  useEffect(() => {
-    if (tabFromUrl !== activeTab) setActiveTab(tabFromUrl);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabFromUrl]);
-
-  const handleSetTab = (tab: string) => {
-    setActiveTab(tab);
-    const next = new URLSearchParams(searchParams);
-    if (tab === "dashboard") next.delete("tab");
-    else next.set("tab", tab);
-    setSearchParams(next, { replace: true });
-  };
+  const [activeTab, setActiveTab] = useState("club");
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -99,24 +81,25 @@ export default function ClubAdmin() {
 
   const club = data.club;
 
+  // Associations have a unified dashboard at "/" — there's no separate admin page.
   if ((club as any).tenant_type === "association") {
     return <Navigate to="/" replace />;
   }
 
+  // Filter tabs by permission — full admins (club captain/admin or platform super-admin) see everything
   const visibleTabs = ADMIN_TABS.filter(tab => {
-    if (tab.value === "dashboard") return true;
     if (isAdmin) return true;
-    if (!tab.permission) return false;
+    if (!tab.permission) return false; // permissions tab only for full admins
     return myPermissions.has(tab.permission);
   });
 
+  // If active tab isn't visible, switch to first visible
   if (visibleTabs.length > 0 && !visibleTabs.find(t => t.value === activeTab)) {
-    handleSetTab("dashboard");
+    setActiveTab(visibleTabs[0].value);
   }
 
   const renderContent = () => {
     switch (activeTab) {
-      case "dashboard": return <AdminDashboardOverview clubId={club.id} clubName={club.name} onTab={handleSetTab} />;
       case "club": return <ClubInfoTab club={club} clubId={club.id} />;
       case "settings": return <SettingsTab club={club} clubId={club.id} />;
       case "fees": return <FeesTab clubId={club.id} />;
@@ -139,63 +122,52 @@ export default function ClubAdmin() {
   };
 
   const activeTabMeta = visibleTabs.find(t => t.value === activeTab);
-  const isOverview = activeTab === "dashboard";
 
   return (
     <div className="min-h-screen pb-20 text-[13px]">
       <div>
         <PageHeader
           title={club.name}
-          subtitle={isOverview ? "Welcome back 👋" : "Club Administration"}
+          subtitle="Club Administration"
         />
         <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
-          {!isOverview && activeTabMeta && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-lg shadow-sm",
-                  ICON_BADGE_STYLES[activeTabMeta.color] || "bg-primary text-primary-foreground"
-                )}>
-                  <activeTabMeta.icon className="w-4 h-4" />
-                </div>
-                <h2 className="text-base font-semibold text-foreground">{activeTabMeta.label}</h2>
-              </div>
-              <button
-                onClick={() => handleSetTab("dashboard")}
-                className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" /> Back to Dashboard
-              </button>
+          {/* Tile grid — mockup-styled: white card, colored icon badge, clean label */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {visibleTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveTab(tab.value)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border bg-card p-3 text-left transition-all hover:shadow-md hover:-translate-y-0.5",
+                    isActive
+                      ? "border-primary ring-2 ring-primary/20 shadow-sm"
+                      : "border-border/70 hover:border-border"
+                  )}
+                >
+                  <div className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-sm",
+                    ICON_BADGE_STYLES[tab.color] || "bg-primary text-primary-foreground"
+                  )}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-[12px] font-semibold leading-tight text-foreground truncate">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active section header + content */}
+          {activeTabMeta && (
+            <div className="flex items-center gap-2 pt-1 border-t border-border/60">
+              <activeTabMeta.icon className="w-4 h-4 text-primary mt-2" />
+              <h2 className="text-sm font-semibold text-foreground mt-2">{activeTabMeta.label}</h2>
             </div>
           )}
 
-          {isOverview && (
-            <div className="rounded-xl border border-border bg-card p-3 md:p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-foreground mb-2 md:mb-3">Admin Sections</h3>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3">
-                {visibleTabs.filter(t => t.value !== "dashboard").map(t => {
-                  const Icon = t.icon;
-                  return (
-                    <button
-                      key={t.value}
-                      onClick={() => handleSetTab(t.value)}
-                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-border bg-background p-2.5 hover:bg-muted/50 active:scale-95 transition"
-                    >
-                      <div className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-lg shadow-sm",
-                        ICON_BADGE_STYLES[t.color] || "bg-primary text-primary-foreground"
-                      )}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <span className="text-[11px] font-medium text-foreground text-center leading-tight">{t.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className={isOverview ? "" : "[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2"}>
+          <div className="[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
             {renderContent()}
           </div>
         </div>

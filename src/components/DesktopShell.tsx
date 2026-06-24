@@ -1,12 +1,12 @@
 import { useIsMobile } from "@/hooks/use-mobile";
-import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useMyClub } from "@/hooks/use-club";
 import { useLocation, useNavigate } from "react-router-dom";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 import { Button } from "@/components/ui/button";
-import { Home, Menu } from "lucide-react";
+import { Home } from "lucide-react";
 
 /**
  * Wraps authenticated app routes with a left sidebar on desktop (>= md).
@@ -38,13 +38,12 @@ export function DesktopShell({
   }
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
-        {/* On mobile the sidebar renders as a Sheet drawer (no width consumed
-            when closed) so rotation doesn't remount the page tree. */}
-        <AppSidebar />
+        {/* Sidebar is hidden on mobile so rotation between portrait/landscape
+            doesn't remount the page tree and lose in-page state (active tabs etc.) */}
+        {!isMobile && <AppSidebar />}
         <div className="flex-1 flex flex-col min-w-0 relative isolate">
-          {isMobile && <MobileSidebarTrigger />}
           {!skipBg && !isMobile && (
             <>
               {/* Layer 1: photo background — confined to main content panel */}
@@ -97,24 +96,5 @@ export function DesktopShell({
         </div>
       </div>
     </SidebarProvider>
-  );
-}
-
-/**
- * Floating hamburger button shown only on mobile that opens the AppSidebar
- * as a slide-in Sheet (handled internally by the shadcn Sidebar component).
- * Must be rendered inside SidebarProvider.
- */
-function MobileSidebarTrigger() {
-  const { setOpenMobile } = useSidebar();
-  return (
-    <button
-      type="button"
-      onClick={() => setOpenMobile(true)}
-      aria-label="Open navigation menu"
-      className="md:hidden fixed top-3 left-3 z-50 h-10 w-10 inline-flex items-center justify-center rounded-full bg-[hsl(220_45%_5%)] text-white shadow-lg ring-1 ring-white/10 hover:bg-[hsl(220_45%_10%)] active:scale-95 transition"
-    >
-      <Menu className="h-5 w-5" />
-    </button>
   );
 }

@@ -105,16 +105,41 @@ export function AppSidebar() {
         { title: "My Account", url: "/my-account", icon: Wallet },
       ];
 
+  // Admin sub-items (mockup: Dashboard, Members, Courts, Competitions, Finance, Communications, Integrations, Settings)
+  const adminItems: Item[] = [
+    { title: "Dashboard", url: "/club-admin", icon: LayoutDashboard },
+    { title: "Club Info", url: "/club-admin?tab=club", icon: Building2 },
+    { title: "Members", url: "/club-admin?tab=members", icon: Users },
+    { title: "Users", url: "/club-admin?tab=users", icon: UserCheck },
+    { title: "Visitors", url: "/club-admin?tab=visitors", icon: Globe },
+    { title: "Courts", url: "/club-admin?tab=courts", icon: LayoutGrid },
+    { title: "Fees", url: "/club-admin?tab=fees", icon: DollarSign },
+    { title: "Banking", url: "/club-admin?tab=banking", icon: Banknote },
+    { title: "Finance", url: "/club-admin?tab=finance", icon: Landmark },
+    { title: "Ladder", url: "/club-admin?tab=ladder", icon: ListOrdered },
+    { title: "Ranking Pts", url: "/club-admin?tab=ranking-points", icon: Sparkles },
+    ...(hasLeagues ? [{ title: "Leagues", url: "/club-admin?tab=leagues", icon: Trophy }] : []),
+    { title: "Tournaments", url: "/club-admin?tab=champs", icon: Medal },
+    ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/club-admin?tab=bar", icon: Beer }] : []),
+    { title: "Access", url: "/club-admin?tab=access", icon: DoorOpen },
+    { title: "Comms", url: "/club-admin?tab=comms", icon: Mail },
+    { title: "Permissions", url: "/club-admin?tab=permissions", icon: ShieldCheck },
+    { title: "Settings", url: "/club-admin?tab=settings", icon: SettingsIcon },
+  ];
+
   // Independent collapsible state per group — auto-open the group containing the active route
   const homeAuto = homeItems.some((i) => isActive(i.url)) || pathname === "/";
   const activitiesAuto = activityItems.some((i) => isActive(i.url));
+  const adminAuto = pathname === "/club-admin" || adminItems.some((i) => isActive(i.url));
 
   const [homeOpen, setHomeOpen] = useState<boolean>(homeAuto);
   const [activitiesOpen, setActivitiesOpen] = useState<boolean>(activitiesAuto);
+  const [adminOpen, setAdminOpen] = useState<boolean>(adminAuto);
 
   // Re-open the group containing the active route when navigation changes
   useEffect(() => { if (homeAuto) setHomeOpen(true); }, [homeAuto]);
   useEffect(() => { if (activitiesAuto) setActivitiesOpen(true); }, [activitiesAuto]);
+  useEffect(() => { if (adminAuto) setAdminOpen(true); }, [adminAuto]);
 
   // Sakana display, uppercase, wider tracking — matches mockup
   const groupHeaderClass =

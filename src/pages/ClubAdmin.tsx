@@ -170,9 +170,9 @@ export default function ClubAdmin() {
           )}
 
           {isOverview && (
-            <div className="md:hidden rounded-xl border border-border bg-card p-3 shadow-sm">
-              <h3 className="text-sm font-semibold text-foreground mb-2">Admin Sections</h3>
-              <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-xl border border-border bg-card p-3 md:p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-foreground mb-2 md:mb-3">Admin Sections</h3>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3">
                 {visibleTabs.filter(t => t.value !== "dashboard").map(t => {
                   const Icon = t.icon;
                   return (

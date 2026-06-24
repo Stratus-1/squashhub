@@ -149,8 +149,8 @@ export default function ClubAdmin() {
               <div className="flex items-center justify-between">
                 <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Setup &amp; Configuration</h3>
                 {(() => {
-                  const total = visibleSetup.filter(t => t.value !== "permissions").length;
-                  const done = visibleSetup.filter(t => t.value !== "permissions" && setupStatus[t.value as keyof SetupStatusMap] === "complete").length;
+                  const total = visibleSetup.filter(t => !t.noStatus).length;
+                  const done = visibleSetup.filter(t => !t.noStatus && setupStatus[t.value as keyof SetupStatusMap] === "complete").length;
                   return <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">{done}/{total} complete</span>;
                 })()}
               </div>
@@ -158,8 +158,8 @@ export default function ClubAdmin() {
                 {visibleSetup.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.value;
-                  const status = setupStatus[tab.value as keyof SetupStatusMap];
-                  const showStatus = tab.value !== "permissions";
+                  const showStatus = !tab.noStatus;
+                  const status = showStatus ? setupStatus[tab.value as keyof SetupStatusMap] : undefined;
                   const isComplete = status === "complete";
                   return (
                     <button

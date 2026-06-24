@@ -331,6 +331,19 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
                 </ol>
               </div>
             )}
+            {selectedGateway.id === "stitch" && (
+              <div className="rounded border border-sky-500/30 bg-sky-500/5 p-2 space-y-1">
+                <p className="text-[11px] font-medium text-sky-700 dark:text-sky-400">How to get your Stitch credentials</p>
+                <ol className="text-[11px] text-muted-foreground list-decimal pl-4 space-y-0.5">
+                  <li>Sign up / sign in at <a href="https://dashboard.stitch.money" target="_blank" rel="noopener noreferrer" className="text-primary underline">dashboard.stitch.money</a>.</li>
+                  <li>Open <strong>Settings → Client credentials</strong> and create a client with the <strong>client_paymentrequest</strong> scope.</li>
+                  <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> into the fields below.</li>
+                  <li>For server-confirmed settlements, add the webhook URL <code className="text-[10px]">https://squashhub.co.za/functions/v1/stitch-webhook</code> in Stitch (Settings → Webhooks).</li>
+                  <li>Use the <em>test</em> client while trialling; switch to <em>live</em> before collecting real money.</li>
+                  <li>For PayByBank payouts, also add your club's bank account number below. Cards work without it.</li>
+                </ol>
+              </div>
+            )}
           </div>
         )}
 
@@ -377,7 +390,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         <Button onClick={handleSave} disabled={isSaving} size="sm" className="text-xs">
           {isSaving ? "Saving..." : "Save Banking Settings"}
         </Button>
-        {gateway === "yoco" && (
+        {(gateway === "yoco" || gateway === "stitch") && (
           <Button
             onClick={handleTestPayment}
             disabled={testing || isSaving}
@@ -386,12 +399,12 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
             className="text-xs gap-1"
           >
             <Zap className="h-3.5 w-3.5" />
-            {testing ? "Opening Yoco…" : "Send Test R10 Payment"}
+            {testing ? `Opening ${gateway === "yoco" ? "Yoco" : "Stitch"}…` : "Send Test R10 Payment"}
           </Button>
         )}
-        {gateway === "yoco" && (
+        {(gateway === "yoco" || gateway === "stitch") && (
           <span className="text-[10px] text-muted-foreground">
-            Uses the saved Yoco keys (test or live). Save first if you just changed them.
+            Uses the saved {gateway === "yoco" ? "Yoco" : "Stitch"} keys (test or live). Save first if you just changed them.
           </span>
         )}
       </div>

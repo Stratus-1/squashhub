@@ -169,6 +169,32 @@ export default function ClubAdmin() {
             </div>
           )}
 
+          {isOverview && (
+            <div className="md:hidden rounded-xl border border-border bg-card p-3 shadow-sm">
+              <h3 className="text-sm font-semibold text-foreground mb-2">Admin Sections</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {visibleTabs.filter(t => t.value !== "dashboard").map(t => {
+                  const Icon = t.icon;
+                  return (
+                    <button
+                      key={t.value}
+                      onClick={() => handleSetTab(t.value)}
+                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-border bg-background p-2.5 hover:bg-muted/50 active:scale-95 transition"
+                    >
+                      <div className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-lg shadow-sm",
+                        ICON_BADGE_STYLES[t.color] || "bg-primary text-primary-foreground"
+                      )}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-medium text-foreground text-center leading-tight">{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className={isOverview ? "" : "[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2"}>
             {renderContent()}
           </div>

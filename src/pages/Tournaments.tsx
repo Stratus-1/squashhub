@@ -91,7 +91,10 @@ export default function Tournaments() {
   // LIVE means an active marker is currently scoring. A scheduled Bells match
   // may still have a future bell_ends_at after the marker exits; that keeps the
   // countdown resumable without showing the flickering LIVE badge.
-  const isLive = (m: any) => m.status === "in_progress";
+  const isLive = (m: any) => {
+    const bellStopped = !m.bell_ends_at && m.bell_paused_seconds === 0;
+    return m.status === "in_progress" && !bellStopped;
+  };
   const activeChampIds = new Set(champs.map((c: any) => c.id));
   const upcomingMatches = allMatches
     .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))

@@ -86,13 +86,14 @@ export default function BellsMarker() {
     const liveA = match.side_a_points;
     const liveB = match.side_b_points;
     const hasLive = (liveA != null && liveA !== 0) || (liveB != null && liveB !== 0);
+    const bellStopped = !match.bell_ends_at && match.bell_paused_seconds === 0;
     setPointsA(hasLive ? (liveA ?? 0) : hcA);
     setPointsB(hasLive ? (liveB ?? 0) : hcB);
-    setFinished(match.status === "completed");
+    setFinished(match.status === "completed" || bellStopped);
 
     // Resume timer from persisted state so a second marker continues from
     // where the first left off (don't reset to the full cap).
-    if (match.status === "completed") {
+    if (match.status === "completed" || bellStopped) {
       setRemaining(0);
       setRunning(false);
     } else if (match.bell_ends_at) {
@@ -111,7 +112,7 @@ export default function BellsMarker() {
       bell_ends_at: match.bell_ends_at ?? null,
       bell_paused_seconds: typeof match.bell_paused_seconds === "number" ? match.bell_paused_seconds : null,
     };
-    liveSyncEnabledRef.current = match.status === "in_progress";
+    liveSyncEnabledRef.current = match.status === "in_progress" && !bellStopped;
     hydratedRef.current = true;
   }, [match, capMinutes]);
 

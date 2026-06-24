@@ -49,6 +49,17 @@ export default function BellsMarker() {
     enabled: !!matchId,
   });
 
+  const { data: allMatches = [] } = useQuery({
+    queryKey: ["club-champ-matches", match?.champ_id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("id, status, is_bye, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name)")
+        .eq("champ_id", match!.champ_id);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!match?.champ_id,
+
   const champ = match?.champ;
   const format = getTournamentFormat(champ?.scoring_mode);
   const isBells = format?.key === BellsFormat.key;

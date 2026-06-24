@@ -11,7 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trophy, Loader2, CreditCard, Check, Landmark, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
-import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
+import {
+  isSupportedGateway, readReturnSession, clearReturnParams,
+  clearPendingClubSession, startClubCheckout, verifyClubCheckout,
+  type GatewayId,
+} from "@/lib/club-payments";
 
 interface Props {
   champ: any;
@@ -100,52 +104,53 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   const verifiedRef = useRef<string | null>(null);
   useEffect(() => {
-    const pending = getPendingYocoSession();
-    const cancelled = searchParams.get("yoco_cancelled");
-    const yocoStatus = searchParams.get("yoco_status");
-    const sid = searchParams.get("yoco_session") || cancelled || (pending?.returnPath === window.location.pathname ? pending.sessionId : null);
     const ctx = searchParams.get("ctx");
-    if ((ctx && ctx !== "tournament") || !sid || verifiedRef.current === sid) return;
+    if (ctx && ctx !== "tournament") return;
+    const found = readReturnSession(searchParams, window.location.pathname);
+    if (!found) return;
+    const { gateway, sid, statusHint, cancelled } = found;
+    if (verifiedRef.current === sid) return;
     verifiedRef.current = sid;
     (async () => {
       try {
         let status = "";
         for (let attempt = 0; attempt < 12; attempt += 1) {
-          const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", { body: { session_id: sid } });
+          const { data, error } = await verifyClubCheckout(gateway, sid);
           if (error) throw error;
-          status = data?.status || "";
+          status = (data as any)?.status || "";
           if (status === "completed") break;
-          if (["failed", "expired", "cancelled"].includes(status) && yocoStatus !== "failure") break;
+          if (["failed", "expired", "cancelled"].includes(status) && statusHint !== "failure") break;
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
         if (status === "completed") {
-          clearPendingYocoSession(sid);
+          clearPendingClubSession(gateway, sid);
           toast.success("Entry fee paid — you're registered!");
           refetch();
         } else if (status === "failed") {
-          clearPendingYocoSession(sid);
+          clearPendingClubSession(gateway, sid);
           toast.error(
-            "Your bank declined the card. Enable Online / Internet Purchases in your FNB or Absa app, then try again — or use Google Pay / EFT.",
+            gateway === "yoco"
+              ? "Your bank declined the card. Enable Online / Internet Purchases in your FNB or Absa app, then try again — or use Google Pay / EFT."
+              : "The payment did not go through. No money was taken — please try again.",
             { duration: 12000 },
           );
         } else if (status === "expired") {
-          clearPendingYocoSession(sid);
+          clearPendingClubSession(gateway, sid);
           toast.error("Payment expired.");
         } else if (status === "cancelled") {
-          clearPendingYocoSession(sid);
+          clearPendingClubSession(gateway, sid);
           toast.info("Payment cancelled.");
-        } else if (yocoStatus === "failure") {
-          toast.info("Yoco returned before final confirmation. I'll keep checking this payment in the background.");
+        } else if (statusHint === "failure") {
+          toast.info("Gateway returned before final confirmation. I'll keep checking this payment in the background.");
+        } else if (cancelled) {
+          toast.info("Payment returned without a final result yet. I'll keep checking when you open this page again.");
         } else {
           toast.info("Payment still processing. I'll keep checking when you open this page again.");
         }
       } catch (e: any) {
         toast.error(e.message || "Could not verify payment");
       } finally {
-        const next = new URLSearchParams(searchParams);
-        next.delete("yoco_session");
-        next.delete("yoco_cancelled");
-        next.delete("yoco_status");
+        const next = clearReturnParams(searchParams);
         next.delete("ctx");
         setSearchParams(next, { replace: true });
       }
@@ -165,7 +170,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     },
     onSuccess: async (reg) => {
       qc.invalidateQueries({ queryKey: ["my-champ-reg", champ.id, memberId] });
-      if (paymentRequired && acceptsCard && paymentGateway === "yoco") {
+      if (paymentRequired && acceptsCard && isSupportedGateway(paymentGateway)) {
         await launchPayment(reg.id);
       } else if (paymentRequired) {
         toast.info("Registered — please pay your entry fee.");
@@ -178,21 +183,16 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   const launchPayment = async (regId: string) => {
     try {
-      const return_url = buildYocoReturnUrl(`${window.location.pathname}?ctx=tournament`);
-      const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
-        body: {
-          club_id: clubId,
-          club_member_id: memberId,
-          amount: entryFee,
-          purpose: "tournament",
-          champ_registration_id: regId,
-          description: `${champ.name} entry fee`,
-          return_url,
-        },
+      if (!isSupportedGateway(paymentGateway)) {
+        throw new Error("No supported online payment gateway is configured for this club.");
+      }
+      await startClubCheckout(paymentGateway as GatewayId, {
+        clubId, clubMemberId: memberId,
+        amount: entryFee, purpose: "tournament",
+        champ_registration_id: regId,
+        description: `${champ.name} entry fee`,
+        returnPath: `${window.location.pathname}?ctx=tournament`,
       });
-      if (error) throw error;
-      if (data?.session_id) rememberPendingYocoSession(data.session_id, window.location.pathname);
-      if (data?.redirect_url) await openYocoCheckout(data.redirect_url);
     } catch (e: any) {
       toast.error(e.message || "Could not start payment");
     }

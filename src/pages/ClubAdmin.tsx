@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
@@ -28,13 +29,20 @@ import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 
-const ADMIN_TABS: { value: string; label: string; icon: any; permission?: PermissionSlug; color: string }[] = [
+type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string };
+
+const SETUP_TABS: AdminTab[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
-  { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald" },
   { value: "courts", label: "Courts", icon: LayoutGrid, permission: "courts", color: "cyan" },
+  { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald" },
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking", color: "green" },
-  { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
+  { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
+  { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
+  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red" },
+];
+
+const OPERATIONS_TABS: AdminTab[] = [
   { value: "members", label: "Members", icon: Users, permission: "members", color: "indigo" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
@@ -42,11 +50,11 @@ const ADMIN_TABS: { value: string; label: string; icon: any; permission?: Permis
   { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow" },
   { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
+  { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
   { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose" },
-  { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
-  { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
-  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red" },
 ];
+
+const ADMIN_TABS: AdminTab[] = [...SETUP_TABS, ...OPERATIONS_TABS];
 
 const COLOR_STYLES: Record<string, string> = {
   blue: "border-blue-500/50 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:hover:bg-blue-500/25",
@@ -86,11 +94,16 @@ export default function ClubAdmin() {
   }
 
   // Filter tabs by permission — full admins (club captain/admin or platform super-admin) see everything
-  const visibleTabs = ADMIN_TABS.filter(tab => {
+  const permFilter = (tab: AdminTab) => {
     if (isAdmin) return true;
     if (!tab.permission) return false; // permissions tab only for full admins
     return myPermissions.has(tab.permission);
-  });
+  };
+  const visibleSetup = SETUP_TABS.filter(permFilter);
+  const visibleOps = OPERATIONS_TABS.filter(permFilter);
+  const visibleTabs = [...visibleSetup, ...visibleOps];
+
+  const setupStatus = useSetupStatus(club.id, club);
 
   // If active tab isn't visible, switch to first visible
   if (visibleTabs.length > 0 && !visibleTabs.find(t => t.value === activeTab)) {
@@ -130,30 +143,87 @@ export default function ClubAdmin() {
           subtitle="Club Administration"
         />
         <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
-          {/* Tile grid — responsive across all breakpoints */}
-          <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm">
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
-              {visibleTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.value;
-                return (
-                <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
-                      isActive
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                    <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
-                  </button>
-                );
-              })}
+          {/* Setup & Configuration tiles — with completion status */}
+          {visibleSetup.length > 0 && (
+            <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Setup &amp; Configuration</h3>
+                {(() => {
+                  const total = visibleSetup.filter(t => t.value !== "permissions").length;
+                  const done = visibleSetup.filter(t => t.value !== "permissions" && setupStatus[t.value as keyof SetupStatusMap] === "complete").length;
+                  return <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">{done}/{total} complete</span>;
+                })()}
+              </div>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
+                {visibleSetup.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.value;
+                  const status = setupStatus[tab.value as keyof SetupStatusMap];
+                  const showStatus = tab.value !== "permissions";
+                  const isComplete = status === "complete";
+                  return (
+                    <button
+                      key={tab.value}
+                      onClick={() => setActiveTab(tab.value)}
+                      title={showStatus ? (isComplete ? "Complete" : "Please complete") : undefined}
+                      className={cn(
+                        "relative flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
+                        isActive
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                      )}
+                    >
+                      {showStatus && (
+                        isComplete ? (
+                          <CheckCircle2 className="absolute top-1 right-1 w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-600 dark:text-emerald-400 fill-background" />
+                        ) : (
+                          <AlertCircle className="absolute top-1 right-1 w-3 h-3 md:w-3.5 md:h-3.5 text-amber-600 dark:text-amber-400 fill-background" />
+                        )
+                      )}
+                      <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                      <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
+                      {showStatus && (
+                        <span className={cn(
+                          "text-[8px] md:text-[9px] font-medium leading-none uppercase tracking-wide",
+                          isActive ? "opacity-90" : isComplete ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
+                        )}>
+                          {isComplete ? "Complete" : "Please complete"}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Operations tiles */}
+          {visibleOps.length > 0 && (
+            <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
+              <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Operations</h3>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
+                {visibleOps.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.value;
+                  return (
+                    <button
+                      key={tab.value}
+                      onClick={() => setActiveTab(tab.value)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
+                        isActive
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                      <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Active section header + content */}
           {activeTabMeta && (

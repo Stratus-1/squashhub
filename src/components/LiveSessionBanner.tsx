@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyBookings } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
+import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X } from "lucide-react";
+import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X, DoorOpen } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -55,11 +57,15 @@ export function LiveSessionBanner() {
   const club = clubData?.club as ClubLightsConfig | undefined;
   const lightFeePerHour = club?.light_fee_per_hour ?? 0;
   const lightsIntegrationEnabled = !!club?.lights_integration_enabled;
+  const { data: clubSecrets } = useClubSecrets(club?.id);
+  const flussEnabled = (clubSecrets as any)?.access_control_type === "remote_trigger";
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [actionLoading, setActionLoading] = useState(false);
+  const [doorLoading, setDoorLoading] = useState(false);
   const [transferOpen, setTransferOpen] = useState<string | null>(null);
   const [confirmEndOpen, setConfirmEndOpen] = useState<string | null>(null);
+
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setNow(new Date()), 30000);
@@ -114,10 +120,11 @@ export function LiveSessionBanner() {
   const displaySession = activeSession || orphanSession;
   const promptKey = displaySession ? `session:${displaySession.id}` : currentBooking ? `booking:${currentBooking.id}` : null;
 
-  // Nothing to show — and never show on clubs without lights integration
-  if (!lightsIntegrationEnabled) return null;
+  // Nothing to show — must have lights integration OR fluss door access to render
+  if (!lightsIntegrationEnabled && !flussEnabled) return null;
   if (!promptKey) return null;
   if (dismissedKey === promptKey) return null;
+
 
   const handleTerminate = async (sessionId: string) => {
     setActionLoading(true);
@@ -208,7 +215,24 @@ export function LiveSessionBanner() {
     }
   };
 
+  const handleOpenDoor = async () => {
+    if (!currentBooking || !club?.id) return;
+    setDoorLoading(true);
+    try {
+      const resp = await supabase.functions.invoke("fluss-trigger", {
+        body: { club_id: club.id, court_id: currentBooking.court_id, booking_id: currentBooking.id },
+      });
+      if (resp.error) throw resp.error;
+      toast.success("Door opening… 🚪");
+    } catch (e) {
+      toast.error(errorMessage(e, "Failed to open door"));
+    } finally {
+      setDoorLoading(false);
+    }
+  };
+
   // Calculate elapsed time for active session
+
   const elapsedMin = displaySession
     ? Math.round((Date.now() - new Date(displaySession.started_at).getTime()) / 60000)
     : 0;
@@ -305,6 +329,19 @@ export function LiveSessionBanner() {
                     Turn On Lights
                   </Button>
                 ) : null}
+                {flussEnabled && currentBooking && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 px-3 text-xs gap-1"
+                    disabled={doorLoading}
+                    onClick={handleOpenDoor}
+                  >
+                    <DoorOpen className="w-3.5 h-3.5" />
+                    Open Door
+                  </Button>
+                )}
+
                 <button
                   className="p-1 rounded-full hover:bg-foreground/10 transition-colors"
                   onClick={() => setDismissedKey(promptKey)}

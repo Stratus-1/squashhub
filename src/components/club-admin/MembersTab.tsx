@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { toTitleCase, formatPhoneNumber } from "@/lib/input-formatting";
 import { useClubMembers, useFeeCategories, useLeagueAssociations, useNationalBodyFees, useMyClub, ClubMember, MemberFeeCategory, SKILL_LEVELS, getSkillLabel } from "@/hooks/use-club";
+import { useMyRoles } from "@/hooks/use-data";
 import { fromExt } from "@/lib/supabase-ext";
+
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -195,7 +197,7 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus }: {
+function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, isSuperAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
@@ -209,6 +211,7 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
   onAssignNumber?: (member: ClubMember) => void;
   numberLabel?: string;
   onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
+  isSuperAdmin?: boolean;
 }) {
   const displayName = m.name || m.profiles?.name || "—";
   const displayEmail = m.email || m.profiles?.email || "";
@@ -216,7 +219,8 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
   const isLinked = !!m.user_id;
   const isAdmin = m.role === "admin" || m.role === "captain";
   const isDelegate = !!delegateTitle;
-  const isProtected = isDelegate;
+  const isProtected = isDelegate && !isSuperAdmin;
+
   const status = (m.status || "active") as "active" | "suspended" | "resigned";
   const inactive = status !== "active";
   const statusStyles: Record<typeof status, string> = {
@@ -351,6 +355,9 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);
   const { data: clubData } = useMyClub();
+  const { data: myRoles } = useMyRoles();
+  const isSuperAdmin = (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
+
   const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "resigned">("all");
@@ -975,7 +982,9 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     onAssignNumber={handleAssignNumber}
                     numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
                     onChangeStatus={handleChangeStatus}
+                    isSuperAdmin={isSuperAdmin}
                   />
+
                 ))}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}
               </div>

@@ -41,12 +41,19 @@ export function useSetupStatus(clubId?: string, club?: any): SetupStatusMap {
   });
 
   const clubComplete = !!(club?.name && club?.address && (club?.contact_email || club?.email) && club?.logo_url);
-  const settingsComplete = !!(club?.email_signature || club?.email_disclaimer);
+  const settingsComplete = !!(
+    club?.email_signature &&
+    club?.email_disclaimer &&
+    secrets?.sender_email &&
+    secrets?.smtp_host &&
+    secrets?.smtp_user &&
+    secrets?.smtp_pass
+  );
   const courtsComplete = courtsCount > 0;
   const feesComplete = feesCount > 0;
   const bankingComplete = !!(secrets?.bank_account_number || secrets?.payment_gateway_secret_key);
   const accessComplete = !!((secrets as any)?.access_control_type && (secrets as any).access_control_type !== "none");
-  const commsComplete = !!(secrets?.smtp_host && secrets?.sender_email);
+  const commsComplete = !!(club?.email_signature && secrets?.smtp_host && secrets?.sender_email);
 
   return {
     club: clubComplete ? "complete" : "incomplete",

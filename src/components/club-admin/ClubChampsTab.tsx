@@ -1591,6 +1591,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             handicap_mode: matchType === "singles" ? handicapMode : "none",
             handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,
             handicap_multiplier: matchType === "singles" ? Math.max(1, Number(handicapMultiplier) || 1) : 1,
+            no_show_opponent_points: Math.max(0, Math.round(Number(noShowOpponentPoints)) || 0),
+            no_show_player_points: Math.round(Number(noShowPlayerPoints)) || 0,
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,

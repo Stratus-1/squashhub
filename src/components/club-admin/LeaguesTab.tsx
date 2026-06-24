@@ -339,7 +339,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1" />Club League Creator
+                    <Plus className="w-4 h-4 mr-1" />Create Internal League Teams
                     <Info className="w-3.5 h-3.5 ml-1.5 opacity-70" />
                   </Button>
                 </TooltipTrigger>
@@ -2639,7 +2639,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Regional League Creator<Info className="w-3.5 h-3.5 ml-1.5 opacity-80" /></Button></DialogTrigger>
+            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Create Regional League Teams<Info className="w-3.5 h-3.5 ml-1.5 opacity-80" /></Button></DialogTrigger>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs space-y-2">
             <p>Typical for inter-club regional leagues like NSA.</p>
@@ -2649,7 +2649,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
         </Tooltip>
       </TooltipProvider>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Regional League Creator</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Create Regional League Teams</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>Association</Label>

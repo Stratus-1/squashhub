@@ -157,6 +157,7 @@ interface Props {
     games: GameScore[];
     winnerId: "a" | "b";
     durationSeconds: number;
+    forfeit?: { absentSide: "a" | "b" };
   }) => void;
   onReset: () => void;
   /** Called when the user scratches the match. If provided, this is invoked

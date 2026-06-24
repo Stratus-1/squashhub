@@ -41,7 +41,7 @@ const SETUP_TABS: AdminTab[] = [
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
   { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true },
   { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true },
-  { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
+  { value: "leagues", label: "Leagues Setup/Creation", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
   { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose", noStatus: true },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
 ];

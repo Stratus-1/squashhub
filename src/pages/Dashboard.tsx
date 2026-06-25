@@ -523,6 +523,10 @@ export default function Dashboard() {
           </div>
         )}
 
+        <div className="px-8 pt-3">
+          <DashboardTournamentInvitesCard />
+        </div>
+
         <DashboardDesktop
           clubName={effectiveClub?.name || "SquashHub"}
           clubLogoUrl={(effectiveClub as any)?.logo_url || null}

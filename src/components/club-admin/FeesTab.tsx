@@ -257,7 +257,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
             <TableBody>
               {fees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={stitchEnabled ? 9 : 8} className="text-center text-muted-foreground py-8">
                     No fees configured. Add membership, league, or national body fees.
                   </TableCell>
                 </TableRow>

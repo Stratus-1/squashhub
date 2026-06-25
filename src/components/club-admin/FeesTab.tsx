@@ -47,6 +47,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   const { data: clubData } = useMyClub();
   const qc = useQueryClient();
   const club = clubData?.club;
+  const stitchEnabled = club?.payment_gateway === "stitch";
   const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -244,17 +245,19 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   On Landing
                   <div className="text-[10px] font-normal text-muted-foreground normal-case">Show on public page</div>
                 </TableHead>
-                <TableHead className="text-center" title="When ON, this fee can be auto-collected from members who set up a Stitch debit order mandate. Edit the fee to choose the rail (DebiCheck / EFT / Either).">
-                  Debit Order
-                  <div className="text-[10px] font-normal text-muted-foreground normal-case">Eligible for Stitch</div>
-                </TableHead>
+                {stitchEnabled && (
+                  <TableHead className="text-center" title="When ON, this fee can be auto-collected from members who set up a Stitch debit order mandate. Edit the fee to choose the rail (DebiCheck / EFT / Either).">
+                    Debit Order
+                    <div className="text-[10px] font-normal text-muted-foreground normal-case">Eligible for Stitch</div>
+                  </TableHead>
+                )}
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={stitchEnabled ? 9 : 8} className="text-center text-muted-foreground py-8">
                     No fees configured. Add membership, league, or national body fees.
                   </TableCell>
                 </TableRow>
@@ -278,18 +281,20 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                       <span className="text-muted-foreground text-xs">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-center">
-                    {fee.type === "registration" ? (
-                      <span className="text-muted-foreground text-xs">—</span>
-                    ) : (
-                      <div className="flex flex-col items-center gap-0.5">
-                        <Switch checked={fee.debitOrderEligible} onCheckedChange={() => handleToggleDebitOrder(fee)} className="mx-auto" />
-                        {fee.debitOrderEligible && (
-                          <span className="text-[10px] text-muted-foreground uppercase">{fee.debitOrderRail}</span>
-                        )}
-                      </div>
-                    )}
-                  </TableCell>
+                  {stitchEnabled && (
+                    <TableCell className="text-center">
+                      {fee.type === "registration" ? (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      ) : (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Switch checked={fee.debitOrderEligible} onCheckedChange={() => handleToggleDebitOrder(fee)} className="mx-auto" />
+                          {fee.debitOrderEligible && (
+                            <span className="text-[10px] text-muted-foreground uppercase">{fee.debitOrderRail}</span>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditFee(fee)}><Edit2 className="w-3.5 h-3.5" /></Button>
@@ -308,10 +313,10 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       <FeesPayableSchedule clubId={clubId} />
 
       {editFee && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
       )}
       {addOpen && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} tenantName={tenantName} />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
       )}
 
       <Card className="p-4 bg-muted/50 space-y-3">
@@ -336,9 +341,10 @@ interface FeeDialogProps {
   existing?: UnifiedFee;
   tenantType?: string;
   tenantName?: string;
+  stitchEnabled?: boolean;
 }
 
-function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", tenantName = "" }: FeeDialogProps) {
+function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", tenantName = "", stitchEnabled = false }: FeeDialogProps) {
   const isAssociation = tenantType === "association";
   const isEdit = !!existing;
   const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? (isAssociation ? "league_affiliation" : "membership"));
@@ -569,8 +575,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             </div>
           )}
 
-          {/* Debit order eligibility — not for once-off registration */}
-          {feeType !== "registration" && (
+          {/* Debit order eligibility — only when Stitch gateway configured */}
+          {feeType !== "registration" && stitchEnabled && (
             <Card className="p-3 bg-muted/30 space-y-2">
               <div className="flex items-center gap-2">
                 <Switch checked={debitOrderEligible} onCheckedChange={setDebitOrderEligible} id="debit-order" />

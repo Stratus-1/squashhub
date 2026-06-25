@@ -313,10 +313,10 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       <FeesPayableSchedule clubId={clubId} />
 
       {editFee && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
       )}
       {addOpen && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} tenantName={tenantName} />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
       )}
 
       <Card className="p-4 bg-muted/50 space-y-3">

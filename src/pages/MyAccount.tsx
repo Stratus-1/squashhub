@@ -32,6 +32,7 @@ import {
   type GatewayId,
 } from "@/lib/club-payments";
 import { SharedAccessCard } from "@/components/SharedAccessCard";
+import PaymentMethodsCard from "@/components/PaymentMethodsCard";
 
 export default function MyAccount() {
   const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();
@@ -699,6 +700,13 @@ export default function MyAccount() {
           when a bar-tab balance was still owing. */}
 
 
+      {clubId && clubMemberId && (
+        <PaymentMethodsCard
+          clubId={clubId}
+          clubMemberId={clubMemberId}
+          paymentGateway={club?.payment_gateway}
+        />
+      )}
 
       {/* Account Statement */}
       <motion.div

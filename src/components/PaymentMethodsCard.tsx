@@ -31,9 +31,8 @@ type FeeCategory = {
   id: string;
   name: string;
   annual_fee: number;
-  recurring_enabled: boolean;
-  recurring_rails: string[];
-  recurring_debit_day: number | null;
+  debit_order_eligible: boolean;
+  debit_order_rail: "debicheck" | "eft" | "either";
 };
 
 interface Props {
@@ -66,13 +65,13 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ["recurring-fee-categories", clubId],
+    queryKey: ["debit-order-fee-categories", clubId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("member_fee_categories")
-        .select("id, name, annual_fee, recurring_enabled, recurring_rails, recurring_debit_day")
+        .select("id, name, annual_fee, debit_order_eligible, debit_order_rail")
         .eq("club_id", clubId)
-        .eq("recurring_enabled", true);
+        .eq("debit_order_eligible", true);
       if (error) throw error;
       return (data || []) as unknown as FeeCategory[];
     },
@@ -99,10 +98,10 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
 
   function openSetup(cat: FeeCategory) {
     setSelectedCategory(cat);
-    const allowed = (cat.recurring_rails || []).filter((r) => r === "debicheck" || r === "eft_debit");
-    setRail((allowed[0] as "debicheck" | "eft_debit") || "debicheck");
+    const r = cat.debit_order_rail;
+    setRail(r === "eft" ? "eft_debit" : "debicheck");
     setAmount(String(cat.annual_fee ?? ""));
-    setDebitDay(String(cat.recurring_debit_day || 1));
+    setDebitDay("1");
     setSetupOpen(true);
   }
 
@@ -255,7 +254,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            {selectedCategory && (selectedCategory.recurring_rails || []).length > 1 && (
+            {selectedCategory && selectedCategory.debit_order_rail === "either" && (
               <div>
                 <Label className="text-xs">Debit method</Label>
                 <Select value={rail} onValueChange={(v) => setRail(v as any)}>
@@ -263,12 +262,8 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(selectedCategory.recurring_rails || []).includes("debicheck") && (
-                      <SelectItem value="debicheck">DebiCheck (bank app authorised)</SelectItem>
-                    )}
-                    {(selectedCategory.recurring_rails || []).includes("eft_debit") && (
-                      <SelectItem value="eft_debit">EFT debit (digital mandate)</SelectItem>
-                    )}
+                    <SelectItem value="debicheck">DebiCheck (bank app authorised)</SelectItem>
+                    <SelectItem value="eft_debit">EFT debit (digital mandate)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

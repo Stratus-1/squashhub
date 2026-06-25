@@ -189,11 +189,22 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const [gateway, setGateway] = useState(club.payment_gateway || "");
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
+  const [acceptedMethods, setAcceptedMethods] = useState<Set<string>>(
+    new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"])
+  );
+
+  const toggleMethod = (m: string) =>
+    setAcceptedMethods(p => {
+      const n = new Set(p);
+      n.has(m) ? n.delete(m) : n.add(m);
+      return n;
+    });
 
   // Resync dropdown when club data finishes loading or changes (e.g. after a save).
   useEffect(() => {
     setGateway(club.payment_gateway || "");
-  }, [club.payment_gateway]);
+    setAcceptedMethods(new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"]));
+  }, [club.payment_gateway, (club as any).accepted_payment_methods]);
 
   const selectedGateway = useMemo(() => GATEWAYS.find(g => g.id === gateway), [gateway]);
 

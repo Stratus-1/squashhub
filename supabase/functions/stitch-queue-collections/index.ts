@@ -78,7 +78,14 @@ Deno.serve(async (req) => {
         .eq("club_member_id", mandate.club_member_id)
         .eq("paid", false);
 
+      const eligibleSet = eligibleByClub[mandate.club_id] || new Set<string>();
+
       for (const fee of fees || []) {
+        // Enforce per-fee debit_order_eligible: skip unless the label matches an eligible source.
+        const lbl = String(fee.fee_label || "").toLowerCase();
+        const isEligible = Array.from(eligibleSet).some((n) => lbl.includes(n));
+        if (!isEligible) { skippedIneligible++; continue; }
+
         const dueRaw = fee.invoice_due_date ? new Date(fee.invoice_due_date) : null;
         if (!dueRaw) { skipped++; continue; }
         if (dueRaw > horizon) continue;

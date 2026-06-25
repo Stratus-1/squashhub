@@ -3444,6 +3444,8 @@ export type Database = {
           contact_email: string | null
           contact_phone: string | null
           created_at: string
+          debit_order_eligible: boolean
+          debit_order_rail: string
           due_day: number
           external_club_id: string | null
           external_source: string | null
@@ -3471,6 +3473,8 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          debit_order_eligible?: boolean
+          debit_order_rail?: string
           due_day?: number
           external_club_id?: string | null
           external_source?: string | null
@@ -3498,6 +3502,8 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          debit_order_eligible?: boolean
+          debit_order_rail?: string
           due_day?: number
           external_club_id?: string | null
           external_source?: string | null
@@ -4890,6 +4896,8 @@ export type Database = {
           annual_fee: number
           club_id: string
           created_at: string
+          debit_order_eligible: boolean
+          debit_order_rail: string
           description: string | null
           due_day: number
           due_month: number
@@ -4909,6 +4917,8 @@ export type Database = {
           annual_fee?: number
           club_id: string
           created_at?: string
+          debit_order_eligible?: boolean
+          debit_order_rail?: string
           description?: string | null
           due_day?: number
           due_month?: number
@@ -4928,6 +4938,8 @@ export type Database = {
           annual_fee?: number
           club_id?: string
           created_at?: string
+          debit_order_eligible?: boolean
+          debit_order_rail?: string
           description?: string | null
           due_day?: number
           due_month?: number
@@ -5203,6 +5215,8 @@ export type Database = {
           body_name: string
           club_id: string
           created_at: string
+          debit_order_eligible: boolean
+          debit_order_rail: string
           due_day: number
           fee_annual: number | null
           fee_class: string
@@ -5221,6 +5235,8 @@ export type Database = {
           body_name?: string
           club_id: string
           created_at?: string
+          debit_order_eligible?: boolean
+          debit_order_rail?: string
           due_day?: number
           fee_annual?: number | null
           fee_class?: string
@@ -5239,6 +5255,8 @@ export type Database = {
           body_name?: string
           club_id?: string
           created_at?: string
+          debit_order_eligible?: boolean
+          debit_order_rail?: string
           due_day?: number
           fee_annual?: number | null
           fee_class?: string

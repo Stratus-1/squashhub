@@ -40,10 +40,35 @@ Deno.serve(async (req) => {
     const { data: mandates, error: mErr } = await mandatesQ;
     if (mErr) return json({ error: mErr.message }, 500);
 
+    // Build per-club eligible fee-label lookups: only fees with debit_order_eligible=true
+    // are auto-queued. We match by fee_label (since club_member_fee_payments holds free-text
+    // labels rather than a FK to the source fee row).
+    const clubIds = Array.from(new Set((mandates || []).map((m: any) => m.club_id)));
+    const eligibleByClub: Record<string, Set<string>> = {};
+    for (const cid of clubIds) {
+      const set = new Set<string>();
+      const [cats, assocs, nats] = await Promise.all([
+        admin.from("member_fee_categories").select("name").eq("club_id", cid).eq("debit_order_eligible", true),
+        admin.from("league_associations").select("name, abbreviation").eq("club_id", cid).eq("debit_order_eligible", true),
+        admin.from("national_body_fees").select("body_name, abbreviation").eq("club_id", cid).eq("debit_order_eligible", true),
+      ]);
+      (cats.data || []).forEach((r: any) => { if (r.name) set.add(String(r.name).toLowerCase()); });
+      (assocs.data || []).forEach((r: any) => {
+        if (r.name) set.add(String(r.name).toLowerCase());
+        if (r.abbreviation) set.add(String(r.abbreviation).toLowerCase());
+      });
+      (nats.data || []).forEach((r: any) => {
+        if (r.body_name) set.add(String(r.body_name).toLowerCase());
+        if (r.abbreviation) set.add(String(r.abbreviation).toLowerCase());
+      });
+      eligibleByClub[cid] = set;
+    }
+
     const today = new Date();
     const horizon = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
     let queued = 0;
     let skipped = 0;
+    let skippedIneligible = 0;
 
     for (const mandate of mandates || []) {
       // Outstanding fee payments for this member.
@@ -53,7 +78,14 @@ Deno.serve(async (req) => {
         .eq("club_member_id", mandate.club_member_id)
         .eq("paid", false);
 
+      const eligibleSet = eligibleByClub[mandate.club_id] || new Set<string>();
+
       for (const fee of fees || []) {
+        // Enforce per-fee debit_order_eligible: skip unless the label matches an eligible source.
+        const lbl = String(fee.fee_label || "").toLowerCase();
+        const isEligible = Array.from(eligibleSet).some((n) => lbl.includes(n));
+        if (!isEligible) { skippedIneligible++; continue; }
+
         const dueRaw = fee.invoice_due_date ? new Date(fee.invoice_due_date) : null;
         if (!dueRaw) { skipped++; continue; }
         if (dueRaw > horizon) continue;
@@ -89,7 +121,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok: true, queued, skipped, mandates_scanned: mandates?.length || 0 });
+    return json({ ok: true, queued, skipped, skipped_ineligible: skippedIneligible, mandates_scanned: mandates?.length || 0 });
   } catch (e) {
     console.error("stitch-queue-collections fatal", e);
     return json({ error: (e as Error).message || "Unexpected" }, 500);

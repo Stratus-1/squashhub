@@ -32,6 +32,8 @@ interface UnifiedFee {
   dueMonth: number; // 1-12
   dueDay: number; // 1-31
   showOnLanding?: boolean;
+  debitOrderEligible: boolean;
+  debitOrderRail: "debicheck" | "eft" | "either";
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
 }
@@ -66,6 +68,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
       active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1, dueDay: (c as any).due_day ?? 1,
       showOnLanding: (c as any).show_on_landing ?? false,
+      debitOrderEligible: (c as any).debit_order_eligible ?? false,
+      debitOrderRail: ((c as any).debit_order_rail ?? "either") as any,
       source: "member_fee_categories", raw: c,
     }));
 
@@ -75,6 +79,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
         id: a.id, name: baseName + (a.abbreviation && a.name ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
         amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
         active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1, dueDay: (a as any).due_day ?? 1,
+        debitOrderEligible: (a as any).debit_order_eligible ?? false,
+        debitOrderRail: ((a as any).debit_order_rail ?? "either") as any,
         source: "league_associations", raw: a,
       });
     });
@@ -92,6 +98,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
         amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
         active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1, dueDay: (f as any).due_day ?? 1,
         showOnLanding: f.show_on_landing ?? false,
+        debitOrderEligible: (f as any).debit_order_eligible ?? false,
+        debitOrderRail: ((f as any).debit_order_rail ?? "either") as any,
         source: "national_body_fees", raw: f,
       });
     });
@@ -147,6 +155,15 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     toast.success(newVal ? "Visible on landing page" : "Hidden from landing page");
   };
 
+  const handleToggleDebitOrder = async (fee: UnifiedFee) => {
+    const newVal = !fee.debitOrderEligible;
+    const { error } = await fromExt(fee.source as any).update({ debit_order_eligible: newVal }).eq("id", fee.id);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["fee-categories"] });
+    qc.invalidateQueries({ queryKey: ["league-associations"] });
+    qc.invalidateQueries({ queryKey: ["national-body-fees"] });
+    toast.success(newVal ? "Eligible for debit order" : "Removed from debit order");
+  };
 
   const handleDelete = async (fee: UnifiedFee) => {
     if (!confirm(`Delete "${fee.name}"?`)) return;
@@ -230,13 +247,17 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   On Landing
                   <div className="text-[10px] font-normal text-muted-foreground normal-case">Show on public page</div>
                 </TableHead>
+                <TableHead className="text-center" title="When ON, this fee can be auto-collected from members who set up a Stitch debit order mandate. Edit the fee to choose the rail (DebiCheck / EFT / Either).">
+                  Debit Order
+                  <div className="text-[10px] font-normal text-muted-foreground normal-case">Eligible for Stitch</div>
+                </TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     No fees configured. Add membership, league, or national body fees.
                   </TableCell>
                 </TableRow>
@@ -258,6 +279,18 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                       <Switch checked={!!fee.showOnLanding} onCheckedChange={() => handleToggleLanding(fee)} className="mx-auto" />
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {fee.type === "registration" ? (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    ) : (
+                      <div className="flex flex-col items-center gap-0.5">
+                        <Switch checked={fee.debitOrderEligible} onCheckedChange={() => handleToggleDebitOrder(fee)} className="mx-auto" />
+                        {fee.debitOrderEligible && (
+                          <span className="text-[10px] text-muted-foreground uppercase">{fee.debitOrderRail}</span>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>
@@ -331,6 +364,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
   const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership" || feeType === "league_affiliation"));
   const [feeDueMonth, setFeeDueMonth] = useState(existing?.dueMonth ?? 1);
   const [feeDueDay, setFeeDueDay] = useState(existing?.dueDay ?? 1);
+  const [debitOrderEligible, setDebitOrderEligible] = useState(existing?.debitOrderEligible ?? false);
+  const [debitOrderRail, setDebitOrderRail] = useState<"debicheck" | "eft" | "either">(existing?.debitOrderRail ?? "either");
   const [description, setDescription] = useState(() => {
     if (existing?.source === "member_fee_categories") return (existing.raw as MemberFeeCategory).description || "";
     return "";
@@ -381,8 +416,12 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
       : table === "league_associations" ? "league-associations"
       : "national-body-fees";
 
+    const debitFields = feeType === "registration"
+      ? {}
+      : { debit_order_eligible: debitOrderEligible, debit_order_rail: debitOrderRail };
+
     if (table === "member_fee_categories") {
-      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay };
+      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay, ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("member_fee_categories").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -391,7 +430,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else if (table === "league_associations") {
-      const payload = { name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
+      const payload = { name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("league_associations").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -400,7 +439,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType) };
+      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType), ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -532,6 +571,31 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
               <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
             </div>
           )}
+
+          {/* Debit order eligibility — not for once-off registration */}
+          {feeType !== "registration" && (
+            <Card className="p-3 bg-muted/30 space-y-2">
+              <div className="flex items-center gap-2">
+                <Switch checked={debitOrderEligible} onCheckedChange={setDebitOrderEligible} id="debit-order" />
+                <Label htmlFor="debit-order" className="cursor-pointer text-sm font-medium">Eligible for Stitch Debit Order</Label>
+              </div>
+              {debitOrderEligible && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Collection Rail</Label>
+                  <Select value={debitOrderRail} onValueChange={v => setDebitOrderRail(v as any)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="either">Either (member chooses)</SelectItem>
+                      <SelectItem value="debicheck">DebiCheck only (authenticated)</SelectItem>
+                      <SelectItem value="eft">EFT debit only (lower cost)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground">Members with an active mandate will be auto-collected (subject to admin approval window).</p>
+                </div>
+              )}
+            </Card>
+          )}
+
 
           <Button onClick={handleSave} className="w-full">{isEdit ? "Update" : "Save"}</Button>
         </div>

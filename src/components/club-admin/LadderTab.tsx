@@ -577,6 +577,27 @@ export function LadderTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-6">
+      <Card className="p-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-primary" />
+          <h3 className="font-semibold text-sm">Challenge Rules</h3>
+        </div>
+        <p className="text-xs text-muted-foreground">How many ladder positions up can a player challenge?</p>
+        <div className="flex items-center gap-3">
+          <Input
+            type="number"
+            min={1}
+            max={10}
+            value={challengeLevelsUp}
+            onChange={(e) => saveChallengeLevels(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+            className="w-24 h-9"
+          />
+          <p className="text-xs text-muted-foreground">
+            Players can challenge up to <span className="font-semibold text-foreground">{challengeLevelsUp}</span> position{challengeLevelsUp !== 1 ? "s" : ""} above them.
+          </p>
+        </div>
+      </Card>
+
       <Card className="p-3 flex items-center gap-3">
         <Users className="w-4 h-4 text-primary shrink-0" />
         <div className="flex-1 min-w-0">

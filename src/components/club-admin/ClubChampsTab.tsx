@@ -3593,8 +3593,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             )}
 
 
-            {/* Invite methods — only relevant when registration / invites are used */}
-            {registrationRequired && (
+            {/* Invite methods — always shown so admins control delivery channel */}
             <div className="space-y-2">
               <Label className="text-sm">Invite delivery method</Label>
               <div className="flex flex-wrap items-center gap-4">
@@ -3627,7 +3626,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 Choose how invited members are notified. Pick both for maximum reach.
               </p>
             </div>
-            )}
 
             {/* Invite send timing — only when invites/registration are used */}
             {registrationRequired && (

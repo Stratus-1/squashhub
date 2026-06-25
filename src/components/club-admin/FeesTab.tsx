@@ -341,9 +341,10 @@ interface FeeDialogProps {
   existing?: UnifiedFee;
   tenantType?: string;
   tenantName?: string;
+  stitchEnabled?: boolean;
 }
 
-function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", tenantName = "" }: FeeDialogProps) {
+function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", tenantName = "", stitchEnabled = false }: FeeDialogProps) {
   const isAssociation = tenantType === "association";
   const isEdit = !!existing;
   const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? (isAssociation ? "league_affiliation" : "membership"));

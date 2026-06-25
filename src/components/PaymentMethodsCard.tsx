@@ -254,7 +254,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            {selectedCategory && (selectedCategory.recurring_rails || []).length > 1 && (
+            {selectedCategory && selectedCategory.debit_order_rail === "either" && (
               <div>
                 <Label className="text-xs">Debit method</Label>
                 <Select value={rail} onValueChange={(v) => setRail(v as any)}>
@@ -262,12 +262,8 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(selectedCategory.recurring_rails || []).includes("debicheck") && (
-                      <SelectItem value="debicheck">DebiCheck (bank app authorised)</SelectItem>
-                    )}
-                    {(selectedCategory.recurring_rails || []).includes("eft_debit") && (
-                      <SelectItem value="eft_debit">EFT debit (digital mandate)</SelectItem>
-                    )}
+                    <SelectItem value="debicheck">DebiCheck (bank app authorised)</SelectItem>
+                    <SelectItem value="eft_debit">EFT debit (digital mandate)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok: true, queued, skipped, mandates_scanned: mandates?.length || 0 });
+    return json({ ok: true, queued, skipped, skipped_ineligible: skippedIneligible, mandates_scanned: mandates?.length || 0 });
   } catch (e) {
     console.error("stitch-queue-collections fatal", e);
     return json({ error: (e as Error).message || "Unexpected" }, 500);

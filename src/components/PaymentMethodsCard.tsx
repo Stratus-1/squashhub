@@ -31,9 +31,8 @@ type FeeCategory = {
   id: string;
   name: string;
   annual_fee: number;
-  recurring_enabled: boolean;
-  recurring_rails: string[];
-  recurring_debit_day: number | null;
+  debit_order_eligible: boolean;
+  debit_order_rail: "debicheck" | "eft" | "either";
 };
 
 interface Props {

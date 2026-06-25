@@ -575,8 +575,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             </div>
           )}
 
-          {/* Debit order eligibility — not for once-off registration */}
-          {feeType !== "registration" && (
+          {/* Debit order eligibility — only when Stitch gateway configured */}
+          {feeType !== "registration" && stitchEnabled && (
             <Card className="p-3 bg-muted/30 space-y-2">
               <div className="flex items-center gap-2">
                 <Switch checked={debitOrderEligible} onCheckedChange={setDebitOrderEligible} id="debit-order" />

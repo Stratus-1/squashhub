@@ -155,6 +155,15 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     toast.success(newVal ? "Visible on landing page" : "Hidden from landing page");
   };
 
+  const handleToggleDebitOrder = async (fee: UnifiedFee) => {
+    const newVal = !fee.debitOrderEligible;
+    const { error } = await fromExt(fee.source as any).update({ debit_order_eligible: newVal }).eq("id", fee.id);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["fee-categories"] });
+    qc.invalidateQueries({ queryKey: ["league-associations"] });
+    qc.invalidateQueries({ queryKey: ["national-body-fees"] });
+    toast.success(newVal ? "Eligible for debit order" : "Removed from debit order");
+  };
 
   const handleDelete = async (fee: UnifiedFee) => {
     if (!confirm(`Delete "${fee.name}"?`)) return;

@@ -32,6 +32,8 @@ interface UnifiedFee {
   dueMonth: number; // 1-12
   dueDay: number; // 1-31
   showOnLanding?: boolean;
+  debitOrderEligible: boolean;
+  debitOrderRail: "debicheck" | "eft" | "either";
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
 }

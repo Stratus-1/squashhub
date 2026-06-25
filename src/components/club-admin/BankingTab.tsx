@@ -189,11 +189,22 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const [gateway, setGateway] = useState(club.payment_gateway || "");
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
+  const [acceptedMethods, setAcceptedMethods] = useState<Set<string>>(
+    new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"])
+  );
+
+  const toggleMethod = (m: string) =>
+    setAcceptedMethods(p => {
+      const n = new Set(p);
+      n.has(m) ? n.delete(m) : n.add(m);
+      return n;
+    });
 
   // Resync dropdown when club data finishes loading or changes (e.g. after a save).
   useEffect(() => {
     setGateway(club.payment_gateway || "");
-  }, [club.payment_gateway]);
+    setAcceptedMethods(new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"]));
+  }, [club.payment_gateway, (club as any).accepted_payment_methods]);
 
   const selectedGateway = useMemo(() => GATEWAYS.find(g => g.id === gateway), [gateway]);
 
@@ -251,6 +262,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         id: club.id,
         payment_gateway: gateway || null,
         payment_gateway_public_key: null, // migrated to credentials JSON
+        accepted_payment_methods: Array.from(acceptedMethods),
       } as any);
 
       // Save bank details + credentials to club_secrets
@@ -274,6 +286,38 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <div className="space-y-4 mt-4">
+      {/* Accepted Payment Methods */}
+      <Card className="p-4 space-y-3">
+        <h3 className="text-sm font-semibold">Accepted Payment Methods</h3>
+        <p className="text-xs text-muted-foreground">
+          Choose which payment methods members can use to settle fees. Unchecked methods are hidden from member-facing payment screens.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {[
+            { key: "cash", label: "Cash", hint: "Admin records cash receipts manually." },
+            { key: "eft", label: "EFT / Bank Transfer", hint: "Members pay via bank details below." },
+            { key: "online", label: "Online (Card / PayByBank)", hint: "Requires payment gateway configured below." },
+          ].map(m => (
+            <label
+              key={m.key}
+              className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/50 ${acceptedMethods.has(m.key) ? "border-primary bg-primary/5" : "border-border"}`}
+            >
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={acceptedMethods.has(m.key)}
+                onChange={() => toggleMethod(m.key)}
+              />
+              <div className="space-y-0.5">
+                <div className="text-xs font-medium">{m.label}</div>
+                <div className="text-[11px] text-muted-foreground leading-tight">{m.hint}</div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </Card>
+
+
       {/* Bank Details */}
       <Card className="p-4 space-y-3">
         <h3 className="text-sm font-semibold">Bank Details</h3>

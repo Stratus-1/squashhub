@@ -98,10 +98,10 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
 
   function openSetup(cat: FeeCategory) {
     setSelectedCategory(cat);
-    const allowed = (cat.recurring_rails || []).filter((r) => r === "debicheck" || r === "eft_debit");
-    setRail((allowed[0] as "debicheck" | "eft_debit") || "debicheck");
+    const r = cat.debit_order_rail;
+    setRail(r === "eft" ? "eft_debit" : "debicheck");
     setAmount(String(cat.annual_fee ?? ""));
-    setDebitDay(String(cat.recurring_debit_day || 1));
+    setDebitDay("1");
     setSetupOpen(true);
   }
 

@@ -30,6 +30,7 @@ import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } f
 import { DashboardDesktop } from "@/components/DashboardDesktop";
 import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityCard";
 import { DashboardTournamentInvitesCard } from "@/components/DashboardTournamentInvitesCard";
+import DebitOrderPromptCard from "@/components/DebitOrderPromptCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";

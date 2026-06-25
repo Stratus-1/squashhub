@@ -596,6 +596,10 @@ export default function Dashboard() {
         </div>
       )}
 
+      <div className="px-4 mt-3">
+        <DashboardTournamentInvitesCard />
+      </div>
+
       {/* Family Member Switcher */}
       {showFamilySwitcher && (
         <div className="px-4 mt-2">

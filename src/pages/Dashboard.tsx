@@ -29,6 +29,7 @@ import { useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadde
 import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } from "@/hooks/use-club";
 import { DashboardDesktop } from "@/components/DashboardDesktop";
 import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityCard";
+import { DashboardTournamentInvitesCard } from "@/components/DashboardTournamentInvitesCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -522,6 +523,10 @@ export default function Dashboard() {
           </div>
         )}
 
+        <div className="px-8 pt-3">
+          <DashboardTournamentInvitesCard />
+        </div>
+
         <DashboardDesktop
           clubName={effectiveClub?.name || "SquashHub"}
           clubLogoUrl={(effectiveClub as any)?.logo_url || null}
@@ -590,6 +595,10 @@ export default function Dashboard() {
           <LeagueWeekAvailabilityCard />
         </div>
       )}
+
+      <div className="px-4 mt-3">
+        <DashboardTournamentInvitesCard />
+      </div>
 
       {/* Family Member Switcher */}
       {showFamilySwitcher && (

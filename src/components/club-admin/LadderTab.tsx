@@ -397,21 +397,33 @@ export function LadderTab({ clubId }: { clubId: string }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Load mixed_ladder_enabled flag
+  // Load mixed_ladder_enabled flag + challenge_levels_up
   const { data: clubFlags } = useQuery({
     queryKey: ["club-ladder-flags", clubId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("mixed_ladder_enabled")
+        .select("mixed_ladder_enabled, challenge_levels_up")
         .eq("id", clubId)
         .maybeSingle();
       if (error) throw error;
-      return data as { mixed_ladder_enabled: boolean } | null;
+      return data as { mixed_ladder_enabled: boolean; challenge_levels_up: number | null } | null;
     },
     enabled: !!clubId,
   });
   const mixedEnabled = !!clubFlags?.mixed_ladder_enabled;
+  const [challengeLevelsUp, setChallengeLevelsUp] = useState<number>(2);
+  useEffect(() => {
+    if (clubFlags?.challenge_levels_up != null) setChallengeLevelsUp(clubFlags.challenge_levels_up);
+  }, [clubFlags?.challenge_levels_up]);
+  const saveChallengeLevels = async (value: number) => {
+    setChallengeLevelsUp(value);
+    const { error } = await supabase.from("clubs").update({ challenge_levels_up: value }).eq("id", clubId);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["club-ladder-flags", clubId] });
+    queryClient.invalidateQueries({ queryKey: ["my-club"] });
+    toast.success("Challenge rule saved");
+  };
 
   // Load club's league associations (LS, NIL, ...)
   const { data: leagues = [] } = useQuery({

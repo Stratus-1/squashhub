@@ -2080,12 +2080,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // Skip anyone already paid, waived, registered or cancelled — they don't
       // need another invite. Also skip rows without a member id.
       const SKIP_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
-      const rows = (regs || []).filter((r: any) =>
+      let rows = (regs || []).filter((r: any) =>
         r.club_member_id && !SKIP_STATUSES.has(String(r.status || "").toLowerCase())
       );
       if (rows.length === 0) {
-        toast.info("No pending invitees to notify — everyone has already registered or cancelled.");
-        return;
+        const all = (regs || []).filter((r: any) =>
+          r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled"
+        );
+        if (all.length === 0) {
+          toast.info("No invitees to notify.");
+          return;
+        }
+        if (!confirm(`Everyone is already registered. Re-send invite to all ${all.length} invited member${all.length === 1 ? "" : "s"} anyway?`)) {
+          return;
+        }
+        rows = all;
       }
 
       // Build a tenant-aware absolute URL so the recipient lands on the correct

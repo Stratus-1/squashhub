@@ -355,9 +355,8 @@ export default function Tournaments() {
           </Card>
         ) : (
           <Tabs defaultValue={champs.length === 0 ? "past" : "upcoming"} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 h-auto">
+            <TabsList className="grid w-full grid-cols-3 h-auto">
               <TabsTrigger value="upcoming" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
-              <TabsTrigger value="fill" className="text-xs sm:text-sm py-2">Fill Up</TabsTrigger>
               <TabsTrigger value="standings" className="text-xs sm:text-sm py-2">Standings</TabsTrigger>
               <TabsTrigger value="past" className="text-xs sm:text-sm py-2">Past</TabsTrigger>
             </TabsList>

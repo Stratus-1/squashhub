@@ -2695,6 +2695,7 @@ export type Database = {
       }
       clubs: {
         Row: {
+          accepted_payment_methods: string[]
           address: string | null
           auto_number_existing_onboarding: boolean
           booking_slot_minutes: number
@@ -2766,6 +2767,7 @@ export type Database = {
           uses_gobook: boolean
         }
         Insert: {
+          accepted_payment_methods?: string[]
           address?: string | null
           auto_number_existing_onboarding?: boolean
           booking_slot_minutes?: number
@@ -2837,6 +2839,7 @@ export type Database = {
           uses_gobook?: boolean
         }
         Update: {
+          accepted_payment_methods?: string[]
           address?: string | null
           auto_number_existing_onboarding?: boolean
           booking_slot_minutes?: number

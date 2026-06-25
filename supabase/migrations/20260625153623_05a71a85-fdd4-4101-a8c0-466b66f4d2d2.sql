@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS accepted_payment_methods text[] NOT NULL DEFAULT ARRAY['cash','eft','online']::text[];

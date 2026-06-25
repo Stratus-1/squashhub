@@ -262,6 +262,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         id: club.id,
         payment_gateway: gateway || null,
         payment_gateway_public_key: null, // migrated to credentials JSON
+        accepted_payment_methods: Array.from(acceptedMethods),
       } as any);
 
       // Save bank details + credentials to club_secrets

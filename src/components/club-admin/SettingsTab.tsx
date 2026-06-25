@@ -164,23 +164,6 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <div className="space-y-6 mt-4">
-      {/* Challenge Rules */}
-
-      <Card className="p-6 space-y-4">
-        <h3 className="font-semibold">Challenge Rules</h3>
-        <p className="text-sm text-muted-foreground">How many ladder positions up can a player challenge?</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label>Levels Up Allowed</Label>
-            <Input type="number" min={1} max={10} value={form.challenge_levels_up} onChange={setNumber("challenge_levels_up")} />
-          </div>
-          <div className="flex items-end">
-            <p className="text-sm text-muted-foreground pb-2">
-              Players can challenge up to <span className="font-semibold text-foreground">{form.challenge_levels_up}</span> position{form.challenge_levels_up !== 1 ? "s" : ""} above them.
-            </p>
-          </div>
-        </div>
-      </Card>
 
       {/* Member Numbering */}
       <Card className="p-6 space-y-4">

@@ -4081,107 +4081,53 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         <Card>
           <CardHeader><CardTitle>Schedule Configuration</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Start Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(parseISO(startDate), "dd MMM yyyy") : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarPicker
-                      mode="single"
-                      selected={startDate ? parseISO(startDate) : undefined}
-                      onSelect={(d) => d && setStartDate(format(d, "yyyy-MM-dd"))}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div>
-                <Label>End Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(parseISO(endDate), "dd MMM yyyy") : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarPicker
-                      mode="single"
-                      selected={endDate ? parseISO(endDate) : undefined}
-                      onSelect={(d) => d && setEndDate(format(d, "yyyy-MM-dd"))}
-                      disabled={(d) => startDate ? d < parseISO(startDate) : false}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            <div>
-              <Label>Play Days</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {DAY_NAMES.map((name, i) => (
-                  <label key={i} className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox
-                      checked={playDays.has(i)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(playDays);
-                        checked ? next.add(i) : next.delete(i);
-                        setPlayDays(next);
-                      }}
-                    />
-                    <span className="text-sm">{name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Start Time</Label><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
-              <div><Label>End Time</Label><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
-              {scoringMode !== "time_capped_points" && (
-                <div>
-                  <Label>Match Duration</Label>
-                  <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
-                    <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                      <SelectItem value="20">20 min</SelectItem>
-                      <SelectItem value="30">30 min</SelectItem>
-                      <SelectItem value="45">45 min</SelectItem>
-                      <SelectItem value="60">60 min</SelectItem>
-                    </SelectContent>
-                  </Select>
+            {/* Read-only summary — dates, times, play days and courts are set on the Courts step */}
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1 text-sm">
+                  <div className="font-medium">
+                    {startDate ? format(parseISO(startDate), "dd MMM yyyy") : "—"}
+                    {endDate && endDate !== startDate ? ` → ${format(parseISO(endDate), "dd MMM yyyy")}` : ""}
+                    {" · "}
+                    {startTime || "—"}–{endTime || "—"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Play days: {playDays.size > 0
+                      ? Array.from(playDays).sort().map((i) => DAY_NAMES[i]).join(", ")
+                      : "—"}
+                    {" · Courts: "}
+                    {selectedCourtIds.size > 0
+                      ? courts.filter((c) => selectedCourtIds.has(c.id)).map((c) => c.name).join(", ")
+                      : "—"}
+                  </div>
                 </div>
-              )}
-
-              <div>
-                <Label>Available Courts</Label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {courts.map((c) => (
-                    <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
-                      <Checkbox
-                        checked={selectedCourtIds.has(c.id)}
-                        onCheckedChange={(checked) => {
-                          const next = new Set(selectedCourtIds);
-                          checked ? next.add(c.id) : next.delete(c.id);
-                          setSelectedCourtIds(next);
-                        }}
-                      />
-                      <span className="text-sm">{c.name}</span>
-                    </label>
-                  ))}
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setStep("courts")}
+                >
+                  Edit on Courts step
+                </Button>
               </div>
             </div>
+
+            {scoringMode !== "time_capped_points" && (
+              <div className="max-w-xs">
+                <Label>Match Duration</Label>
+                <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
+                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
+                    <SelectItem value="20">20 min</SelectItem>
+                    <SelectItem value="30">30 min</SelectItem>
+                    <SelectItem value="45">45 min</SelectItem>
+                    <SelectItem value="60">60 min</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Per-day schedule overrides — useful for short tournaments (Fri eve, Sat morning, Sat afternoon). */}
             <div className="rounded-lg border p-3 space-y-3">

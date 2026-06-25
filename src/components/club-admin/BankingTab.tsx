@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildYocoReturnUrl, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 import { buildStitchReturnUrl, openStitchCheckout, rememberPendingStitchSession } from "@/lib/stitch-checkout";
 import { useMemberContext } from "@/contexts/MemberContext";
+import DebitOrdersPanel from "./DebitOrdersPanel";
 
 // ─── Gateway Registry ───────────────────────────────────────
 type FieldDef = {
@@ -408,6 +409,8 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
           </span>
         )}
       </div>
+
+      {gateway === "stitch" && <DebitOrdersPanel clubId={clubId} />}
     </div>
   );
 }

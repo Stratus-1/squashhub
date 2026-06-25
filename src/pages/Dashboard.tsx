@@ -30,6 +30,7 @@ import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } f
 import { DashboardDesktop } from "@/components/DashboardDesktop";
 import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityCard";
 import { DashboardTournamentInvitesCard } from "@/components/DashboardTournamentInvitesCard";
+import DebitOrderPromptCard from "@/components/DebitOrderPromptCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -525,6 +526,7 @@ export default function Dashboard() {
 
         <div className="px-8 pt-3">
           <DashboardTournamentInvitesCard />
+          <div className="mt-3"><DebitOrderPromptCard clubMemberId={myMemberId} /></div>
         </div>
 
         <DashboardDesktop
@@ -598,6 +600,7 @@ export default function Dashboard() {
 
       <div className="px-4 mt-3">
         <DashboardTournamentInvitesCard />
+        <div className="mt-3"><DebitOrderPromptCard clubMemberId={myMemberId} /></div>
       </div>
 
       {/* Family Member Switcher */}

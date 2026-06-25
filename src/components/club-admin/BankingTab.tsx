@@ -408,6 +408,8 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
           </span>
         )}
       </div>
+
+      {gateway === "stitch" && <DebitOrdersPanel clubId={clubId} />}
     </div>
   );
 }

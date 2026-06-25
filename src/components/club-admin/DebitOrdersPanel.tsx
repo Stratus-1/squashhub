@@ -48,30 +48,43 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
 
-  const { data: mandates } = useQuery({
-    queryKey: ["stitch_mandates", clubId],
+  const { data: memberMap } = useQuery({
+    queryKey: ["club-members-names", clubId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("stitch_mandates")
-        .select("*, club_members(full_name, club_member_number)")
-        .eq("club_id", clubId)
-        .order("created_at", { ascending: false });
-      return (data || []) as Mandate[];
+        .from("club_members")
+        .select("id, full_name, club_member_number")
+        .eq("club_id", clubId);
+      const map = new Map<string, { full_name: string | null; club_member_number: string | null }>();
+      (data || []).forEach((m: any) => map.set(m.id, { full_name: m.full_name, club_member_number: m.club_member_number }));
+      return map;
     },
   });
 
-  const { data: collections } = useQuery({
+  const attachMember = <T extends { club_member_id: string }>(rows: T[]): (T & { club_members: any })[] =>
+    rows.map(r => ({ ...r, club_members: memberMap?.get(r.club_member_id) || null }));
+
+  const { data: mandatesRaw } = useQuery({
+    queryKey: ["stitch_mandates", clubId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("stitch_mandates").select("*")
+        .eq("club_id", clubId).order("created_at", { ascending: false });
+      return (data || []) as unknown as Mandate[];
+    },
+  });
+  const mandates = mandatesRaw ? attachMember(mandatesRaw) as Mandate[] : undefined;
+
+  const { data: collectionsRaw } = useQuery({
     queryKey: ["stitch_collections", clubId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("stitch_collections")
-        .select("*, club_members(full_name)")
-        .eq("club_id", clubId)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      return (data || []) as Collection[];
+        .from("stitch_collections").select("*")
+        .eq("club_id", clubId).order("created_at", { ascending: false }).limit(50);
+      return (data || []) as unknown as Collection[];
     },
   });
+  const collections = collectionsRaw ? attachMember(collectionsRaw) as Collection[] : undefined;
 
   const pending = (collections || []).filter(c => c.status === "queued" && c.approval_required);
 

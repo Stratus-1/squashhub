@@ -2266,6 +2266,7 @@ export type Database = {
       }
       club_members: {
         Row: {
+          access_suspended_at: string | null
           address: string | null
           avatar_url: string | null
           club_id: string
@@ -2296,6 +2297,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          access_suspended_at?: string | null
           address?: string | null
           avatar_url?: string | null
           club_id: string
@@ -2326,6 +2328,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          access_suspended_at?: string | null
           address?: string | null
           avatar_url?: string | null
           club_id?: string
@@ -4894,6 +4897,9 @@ export type Database = {
           id: string
           name: string
           pro_rate: boolean
+          recurring_debit_day: number | null
+          recurring_enabled: boolean
+          recurring_rails: string[]
           show_on_landing: boolean
           sort_order: number
           updated_at: string
@@ -4910,6 +4916,9 @@ export type Database = {
           id?: string
           name: string
           pro_rate?: boolean
+          recurring_debit_day?: number | null
+          recurring_enabled?: boolean
+          recurring_rails?: string[]
           show_on_landing?: boolean
           sort_order?: number
           updated_at?: string
@@ -4926,6 +4935,9 @@ export type Database = {
           id?: string
           name?: string
           pro_rate?: boolean
+          recurring_debit_day?: number | null
+          recurring_enabled?: boolean
+          recurring_rails?: string[]
           show_on_landing?: boolean
           sort_order?: number
           updated_at?: string
@@ -5975,6 +5987,156 @@ export type Database = {
           name?: string
           start_date?: string
           status?: string
+        }
+        Relationships: []
+      }
+      stitch_collections: {
+        Row: {
+          amount_cents: number
+          approval_required: boolean
+          approved_at: string | null
+          approved_by: string | null
+          attempt_number: number
+          club_id: string
+          club_member_id: string
+          created_at: string
+          due_date: string
+          failed_reason: string | null
+          fee_payable_id: string | null
+          id: string
+          mandate_id: string
+          retry_of: string | null
+          settled_at: string | null
+          status: string
+          stitch_collection_id: string | null
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          approval_required?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          attempt_number?: number
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          due_date: string
+          failed_reason?: string | null
+          fee_payable_id?: string | null
+          id?: string
+          mandate_id: string
+          retry_of?: string | null
+          settled_at?: string | null
+          status?: string
+          stitch_collection_id?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          approval_required?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          attempt_number?: number
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          due_date?: string
+          failed_reason?: string | null
+          fee_payable_id?: string | null
+          id?: string
+          mandate_id?: string
+          retry_of?: string | null
+          settled_at?: string | null
+          status?: string
+          stitch_collection_id?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stitch_collections_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "stitch_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stitch_collections_retry_of_fkey"
+            columns: ["retry_of"]
+            isOneToOne: false
+            referencedRelation: "stitch_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stitch_mandates: {
+        Row: {
+          auth_url: string | null
+          authorised_at: string | null
+          cancelled_at: string | null
+          club_id: string
+          club_member_id: string
+          consecutive_failures: number
+          created_at: string
+          debit_day: number | null
+          fee_category_id: string | null
+          frequency: string
+          gateway: string
+          id: string
+          last_collection_at: string | null
+          max_amount_cents: number
+          rail: string
+          status: string
+          stitch_mandate_id: string | null
+          suspended_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth_url?: string | null
+          authorised_at?: string | null
+          cancelled_at?: string | null
+          club_id: string
+          club_member_id: string
+          consecutive_failures?: number
+          created_at?: string
+          debit_day?: number | null
+          fee_category_id?: string | null
+          frequency?: string
+          gateway?: string
+          id?: string
+          last_collection_at?: string | null
+          max_amount_cents: number
+          rail: string
+          status?: string
+          stitch_mandate_id?: string | null
+          suspended_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth_url?: string | null
+          authorised_at?: string | null
+          cancelled_at?: string | null
+          club_id?: string
+          club_member_id?: string
+          consecutive_failures?: number
+          created_at?: string
+          debit_day?: number | null
+          fee_category_id?: string | null
+          frequency?: string
+          gateway?: string
+          id?: string
+          last_collection_at?: string | null
+          max_amount_cents?: number
+          rail?: string
+          status?: string
+          stitch_mandate_id?: string | null
+          suspended_at?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

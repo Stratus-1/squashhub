@@ -247,13 +247,17 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   On Landing
                   <div className="text-[10px] font-normal text-muted-foreground normal-case">Show on public page</div>
                 </TableHead>
+                <TableHead className="text-center" title="When ON, this fee can be auto-collected from members who set up a Stitch debit order mandate. Edit the fee to choose the rail (DebiCheck / EFT / Either).">
+                  Debit Order
+                  <div className="text-[10px] font-normal text-muted-foreground normal-case">Eligible for Stitch</div>
+                </TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     No fees configured. Add membership, league, or national body fees.
                   </TableCell>
                 </TableRow>

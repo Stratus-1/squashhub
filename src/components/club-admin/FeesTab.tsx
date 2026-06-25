@@ -281,6 +281,18 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                       <span className="text-muted-foreground text-xs">—</span>
                     )}
                   </TableCell>
+                  <TableCell className="text-center">
+                    {fee.type === "registration" ? (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    ) : (
+                      <div className="flex flex-col items-center gap-0.5">
+                        <Switch checked={fee.debitOrderEligible} onCheckedChange={() => handleToggleDebitOrder(fee)} className="mx-auto" />
+                        {fee.debitOrderEligible && (
+                          <span className="text-[10px] text-muted-foreground uppercase">{fee.debitOrderRail}</span>
+                        )}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditFee(fee)}><Edit2 className="w-3.5 h-3.5" /></Button>

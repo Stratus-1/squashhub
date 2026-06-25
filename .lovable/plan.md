@@ -1,57 +1,82 @@
-## Goal
-Wire **Stitch** (stitch.money) as a payment option for clubs, supporting:
-- **One-off payments** — PayByBank (instant EFT) + Cards via Stitch's hosted LinkPay checkout
-- **Recurring monthly dues** — DebiCheck mandate + scheduled collection
 
-Mirrors the existing Yoco architecture so the rest of the app (fees, ledger, tournaments) keeps working unchanged.
+# Stitch Recurring Debit Orders
 
-## What changes
+Build monthly/recurring debit collection on top of the existing Stitch one-off integration. Members authorise a mandate once from **My Account**; the club then auto-collects on schedule with an admin approval window. A dashboard prompt nudges eligible members to switch.
 
-### 1. Gateway registry (UI)
-Add Stitch to `src/components/club-admin/BankingTab.tsx` GATEWAYS list with these fields:
-- `client_id` (Stitch client ID)
-- `client_secret` (sensitive)
-- `merchant_payer_reference` (short ZA-bank-safe ref shown on customer statements)
+## 1. Concepts
 
-Setup instructions panel (like the Yoco one) pointing to https://stitch.money → Dashboard → API Credentials.
+- **Mandate** = member's standing authorisation to debit them. Lives in `stitch_mandates`. Rail is either `debicheck` (bank-app authenticated) or `eft_debit` (digital signature).
+- **Collection** = one debit attempt against a mandate. Lives in `stitch_collections`. Links back to a fee record, has `due_date`, `status` (queued → approved → submitted → paid/failed).
+- **Eligible fees** = any `member_fee_categories` row admin has flagged `recurring_enabled`, plus ad-hoc admin-pushed items (bar tab, league entry, NSA/SSA national body fees).
 
-Test-payment button reusing the existing "R10 test" flow when `gateway === "stitch"`.
+## 2. Database (migration)
 
-### 2. Database (one migration)
-- `stitch_payment_sessions` — mirrors `yoco_payment_sessions` (club_id, club_member_id, user_id, amount, purpose, fee_ids, champ_registration_id, status, stitch_request_id, stitch_redirect_url, method `paybybank|card`, completed_at). RLS: user sees own rows; service_role full.
-- `stitch_mandates` — DebiCheck mandates per `club_member_id` (status, stitch_mandate_id, max_amount, frequency, next_collection_date, authorised_at, cancelled_at).
-- `stitch_collections` — each scheduled debit-order pull (links mandate → fee_ids, status, attempted_at, settled_at).
-- All public-schema tables get the standard `GRANT` + `ENABLE RLS` + policies block.
+- `stitch_mandates` — `id, club_id, member_id, gateway, rail, max_amount_cents, frequency, debit_day, status, stitch_mandate_id, auth_url, authorised_at, cancelled_at, last_collection_at, consecutive_failures, suspended_at`
+- `stitch_collections` — `id, club_id, mandate_id, member_id, fee_payable_id, amount_cents, due_date, status, approval_required, approved_at, approved_by, submitted_at, settled_at, failed_reason, stitch_collection_id, retry_of, attempt_number`
+- `member_fee_categories` — add `recurring_enabled bool`, `recurring_rails text[]` (allowed rails), `recurring_debit_day int`.
+- `club_members` — add `access_suspended_at timestamptz` (driven by 3 consecutive failures).
 
-### 3. Edge functions (new)
-- `stitch-create-payment` — auth user, validate, mint a Stitch OAuth token (cached short-lived in-memory), create a LinkPay request for `amount`+`method`, insert session row, return `redirect_url`.
-- `stitch-verify-payment` — called by frontend on return, polls Stitch GraphQL for status, finalises session (mirrors `yoco-verify-checkout`: writes `member_credit_transactions`, marks fees paid, handles tournament registrations, handles partial payments).
-- `stitch-webhook` — public endpoint Stitch hits server-side for async settlements (HMAC-verify the body signature, idempotent claim using same `update where status != completed` pattern).
-- `stitch-create-mandate` — initiates a DebiCheck mandate authorisation flow, stores `stitch_mandates` row.
-- `stitch-collect-mandate` — pulls a scheduled debit against an active mandate (called by the existing `reminders`/cron pattern or a new monthly cron).
+Standard GRANTs + RLS: members see own rows; club admins see club rows; service_role full.
 
-All use Stitch's OAuth2 `client_credentials` against `https://secure.stitch.money/connect/token` and GraphQL at `https://api.stitch.money/graphql`. Credentials read from `club_secrets.payment_gateway_credentials` keyed by `client_id` / `client_secret`.
+## 3. Edge functions
 
-### 4. Client helper
-`src/lib/stitch-checkout.ts` mirroring `yoco-native-checkout.ts` (return-URL builder, redirect opener that breaks iframe, pending-session localStorage).
+- `stitch-create-mandate` — `{member_id, fee_category_id, rail}` → Stitch GraphQL `clientPaymentAuthorizationRequestCreate` (DebiCheck) or `userInitiationRequestCreate` (EFT). Stores `pending` mandate, returns `auth_url`.
+- `stitch-mandate-webhook` — flips mandate to `active` / `failed` on Stitch events.
+- `stitch-cancel-mandate` — member or admin cancels.
+- `stitch-queue-collections` — **daily pg_cron**. For each active mandate, finds outstanding eligible fees due in next 7 days, inserts collections as `queued` with `approval_required=true`.
+- `stitch-submit-collections` — **daily pg_cron**. Submits `approved` rows whose `due_date <= today` via `paymentInitiationRequestCreate`. Auto-approves anything older than 2 days that admin didn't touch.
+- `stitch-collection-webhook` — settle/fail handler. Failures: retry at +2 then +5 days; after 3 fails marks mandate failed, suspends member access, notifies both parties.
 
-### 5. Frontend hookup
-- BankingTab: register the gateway + test button.
-- `MyAccount` fee-pay flow and tournament register card: when `club.payment_gateway === "stitch"`, call `stitch-create-payment` instead of `yoco-create-checkout` (small switch wrapper).
-- Recurring dues: add a "Set up auto-debit" button on member fees screen → calls `stitch-create-mandate`. Active mandates shown with cancel button.
+## 4. Member UI
 
-## Technical notes (skip if non-technical)
-- Stitch LinkPay supports both PayByBank and Cards through one redirect, with a `paymentMethods` filter — we pass the user's chosen method per session.
-- HMAC signature header on webhooks is `X-Stitch-Signature` (HMAC-SHA256 of raw body using `client_secret`).
-- DebiCheck mandates require buyer phone + ID number; we collect these in the mandate setup dialog (already on `club_members.id_number`).
-- Cron for `stitch-collect-mandate` reuses the existing `pg_cron` pattern (monthly on day 1 at 06:00 SAST).
+**My Account → "Payment methods" section** (primary entry point):
+- Active mandates: rail badge, amount cap, next debit date, **Cancel** button.
+- Per debit-eligible fee category: **"Set up monthly debit order"** → rail picker (only if admin enabled both) → redirect to Stitch auth → return handler hydrates UI when webhook confirms.
 
-## Scope split
-- **This PR**: registry entry, DB tables, `stitch-create-payment` + `stitch-verify-payment` + `stitch-webhook`, client lib, BankingTab test button, switch in MyAccount/Tournament card.
-- **Follow-up PR**: `stitch-create-mandate`, `stitch-collect-mandate`, mandate management UI, monthly cron.
+**Pay-now buttons** on outstanding fees (bar tab, league entry, NSA/SSA levy):
+- If member has an active mandate, show **"Debit my account"** alongside card.
 
-Splitting because the recurring flow needs separate KYC on Stitch's side (DebiCheck contract) — clubs can start with one-off payments today and enable recurring once approved.
+**Dashboard prompt** (new `DebitOrderPromptCard`):
+- Shown when member has (a) no active mandate **and** (b) outstanding fees in a debit-eligible category totalling ≥ R100.
+- Copy: *"Switch to monthly debit order — never miss a fee again."* with **Set up** (→ My Account section) and **Not now** (snoozes 30 days via localStorage key `sh.debit.prompt.dismissedUntil`).
+- Auto-hides once a mandate becomes active.
+- Mirrored on `DashboardDesktop.tsx` and `Dashboard.tsx` between the existing fee/availability cards.
 
-## Out of scope
-- Switching existing Yoco payments — Stitch is added side-by-side, clubs pick one in BankingTab.
-- Refunds UI — Stitch refund API exists, can be wired later from the payments admin screen.
+## 5. Admin UI (BankingTab → new "Debit Orders" sub-tab)
+
+- **Mandates table**: member, rail, amount, status, next due, actions.
+- **Pending approvals**: queued rows in 2-day window — bulk-approve / edit / skip.
+- **Collection history**: filterable; failed rows show reason + retry schedule.
+- **Settings** per fee category: toggle Eligible, allowed rails, debit day of month.
+
+Admin never initiates a mandate on a member's behalf (Stitch rule — only the account holder can authorise at their bank).
+
+## 6. Failure & suspension
+
+- `public.check_member_access_suspension(member_id)` — called by booking + court-access edge functions.
+- Suspended members see a banner: *"Your debit order failed — please update payment to restore access."* Auto-clears when any outstanding collection settles.
+
+## 7. Scope coverage
+
+Eligible fee sources (via admin's category toggle):
+- Annual membership (12-way split or single yearly debit)
+- Monthly recurring (court hire, locker)
+- Outstanding bar tab / ad-hoc — admin pushes one-off collection against existing mandate
+- League / tournament entry fees
+- Association & national body fees (NSA, SSA) via existing `national_body_fees` → `club_fees_payable` pipeline
+
+## 8. Secrets
+
+Uses existing `club_secrets.stitch_client_id` / `stitch_client_secret`. Add per-club `stitch_webhook_secret` (generated on first mandate) for webhook signature verification.
+
+## 9. Out of scope (follow-up)
+
+- Pro-rata for mid-month signups
+- Variable-amount debits (DebiCheck supports it; UX complexity)
+- Bulk import of legacy debit orders from another provider
+
+## Rollout
+
+1. **PR 1** — DB migration + `stitch-create-mandate` + mandate webhook + My Account Payment methods section (test mandates end-to-end).
+2. **PR 2** — `stitch-queue-collections`, `stitch-submit-collections`, collection webhook, cron schedules, admin Debit Orders tab.
+3. **PR 3** — Failure/retry/suspension wiring + member banner + booking gate + Dashboard prompt card.

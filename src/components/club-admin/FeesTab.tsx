@@ -364,6 +364,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
   const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership" || feeType === "league_affiliation"));
   const [feeDueMonth, setFeeDueMonth] = useState(existing?.dueMonth ?? 1);
   const [feeDueDay, setFeeDueDay] = useState(existing?.dueDay ?? 1);
+  const [debitOrderEligible, setDebitOrderEligible] = useState(existing?.debitOrderEligible ?? false);
+  const [debitOrderRail, setDebitOrderRail] = useState<"debicheck" | "eft" | "either">(existing?.debitOrderRail ?? "either");
   const [description, setDescription] = useState(() => {
     if (existing?.source === "member_fee_categories") return (existing.raw as MemberFeeCategory).description || "";
     return "";

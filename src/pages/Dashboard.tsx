@@ -600,6 +600,7 @@ export default function Dashboard() {
 
       <div className="px-4 mt-3">
         <DashboardTournamentInvitesCard />
+        <div className="mt-3"><DebitOrderPromptCard clubMemberId={myMemberId} /></div>
       </div>
 
       {/* Family Member Switcher */}

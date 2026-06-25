@@ -65,13 +65,13 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ["recurring-fee-categories", clubId],
+    queryKey: ["debit-order-fee-categories", clubId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("member_fee_categories")
-        .select("id, name, annual_fee, recurring_enabled, recurring_rails, recurring_debit_day")
+        .select("id, name, annual_fee, debit_order_eligible, debit_order_rail")
         .eq("club_id", clubId)
-        .eq("recurring_enabled", true);
+        .eq("debit_order_eligible", true);
       if (error) throw error;
       return (data || []) as unknown as FeeCategory[];
     },

@@ -30,7 +30,7 @@ type Mandate = {
 type FeeCategory = {
   id: string;
   name: string;
-  amount: number;
+  annual_fee: number;
   recurring_enabled: boolean;
   recurring_rails: string[];
   recurring_debit_day: number | null;
@@ -70,11 +70,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     queryFn: async () => {
       const { data, error } = await supabase
         .from("member_fee_categories")
-        .select("id, name, amount, recurring_enabled, recurring_rails, recurring_debit_day")
+        .select("id, name, annual_fee, recurring_enabled, recurring_rails, recurring_debit_day")
         .eq("club_id", clubId)
         .eq("recurring_enabled", true);
       if (error) throw error;
-      return (data || []) as FeeCategory[];
+      return (data || []) as unknown as FeeCategory[];
     },
     enabled: !!clubId,
   });
@@ -101,7 +101,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     setSelectedCategory(cat);
     const allowed = (cat.recurring_rails || []).filter((r) => r === "debicheck" || r === "eft_debit");
     setRail((allowed[0] as "debicheck" | "eft_debit") || "debicheck");
-    setAmount(String(cat.amount ?? ""));
+    setAmount(String(cat.annual_fee ?? ""));
     setDebitDay(String(cat.recurring_debit_day || 1));
     setSetupOpen(true);
   }
@@ -228,7 +228,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                 <div key={cat.id} className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs font-medium truncate">{cat.name}</p>
-                    <p className="text-[10px] text-muted-foreground">R{Number(cat.amount).toFixed(2)} / month</p>
+                    <p className="text-[10px] text-muted-foreground">R{Number(cat.annual_fee || 0).toFixed(2)} / month</p>
                   </div>
                   <Button
                     size="sm"

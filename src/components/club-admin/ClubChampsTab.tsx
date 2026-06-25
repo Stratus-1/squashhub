@@ -258,6 +258,13 @@ function buildInviteDetailLines(opts: {
   const fee = Number(opts.entryFeeRand) || 0;
   lines.push(fee > 0 ? `Entry fee: R${fee.toFixed(2)}` : "Entry fee: Free");
 
+  // Format-specific "how it works" note appended after the bullets.
+  if (opts.scoringMode === "bells") {
+    lines.push("");
+    lines.push("How Bells works:");
+    lines.push("Games are time-capped (a bell signals the end of each game), so you play as many points as you can in the allotted time. Ranking is based on TOTAL POINTS SCORED across all your games — not how many games you won. Every point counts, win or lose, so keep playing hard until the bell.");
+  }
+
   return lines;
 }
 

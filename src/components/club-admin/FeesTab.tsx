@@ -416,8 +416,12 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
       : table === "league_associations" ? "league-associations"
       : "national-body-fees";
 
+    const debitFields = feeType === "registration"
+      ? {}
+      : { debit_order_eligible: debitOrderEligible, debit_order_rail: debitOrderRail };
+
     if (table === "member_fee_categories") {
-      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay };
+      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay, ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("member_fee_categories").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -426,7 +430,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else if (table === "league_associations") {
-      const payload = { name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
+      const payload = { name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("league_associations").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -435,7 +439,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType) };
+      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType), ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }

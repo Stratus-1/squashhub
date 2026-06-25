@@ -225,9 +225,6 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
             <p className="text-xs text-muted-foreground">Fees the club charges to members — all treated as club income</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={handleResyncMemberFees} title="Update unpaid member fees to match current category amounts">
-              Resync Member Fees
-            </Button>
             <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
           </div>
         </div>

@@ -572,6 +572,31 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             </div>
           )}
 
+          {/* Debit order eligibility — not for once-off registration */}
+          {feeType !== "registration" && (
+            <Card className="p-3 bg-muted/30 space-y-2">
+              <div className="flex items-center gap-2">
+                <Switch checked={debitOrderEligible} onCheckedChange={setDebitOrderEligible} id="debit-order" />
+                <Label htmlFor="debit-order" className="cursor-pointer text-sm font-medium">Eligible for Stitch Debit Order</Label>
+              </div>
+              {debitOrderEligible && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Collection Rail</Label>
+                  <Select value={debitOrderRail} onValueChange={v => setDebitOrderRail(v as any)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="either">Either (member chooses)</SelectItem>
+                      <SelectItem value="debicheck">DebiCheck only (authenticated)</SelectItem>
+                      <SelectItem value="eft">EFT debit only (lower cost)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground">Members with an active mandate will be auto-collected (subject to admin approval window).</p>
+                </div>
+              )}
+            </Card>
+          )}
+
+
           <Button onClick={handleSave} className="w-full">{isEdit ? "Update" : "Save"}</Button>
         </div>
       </DialogContent>

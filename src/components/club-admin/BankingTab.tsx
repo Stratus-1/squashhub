@@ -286,6 +286,38 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <div className="space-y-4 mt-4">
+      {/* Accepted Payment Methods */}
+      <Card className="p-4 space-y-3">
+        <h3 className="text-sm font-semibold">Accepted Payment Methods</h3>
+        <p className="text-xs text-muted-foreground">
+          Choose which payment methods members can use to settle fees. Unchecked methods are hidden from member-facing payment screens.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {[
+            { key: "cash", label: "Cash", hint: "Admin records cash receipts manually." },
+            { key: "eft", label: "EFT / Bank Transfer", hint: "Members pay via bank details below." },
+            { key: "online", label: "Online (Card / PayByBank)", hint: "Requires payment gateway configured below." },
+          ].map(m => (
+            <label
+              key={m.key}
+              className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/50 ${acceptedMethods.has(m.key) ? "border-primary bg-primary/5" : "border-border"}`}
+            >
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={acceptedMethods.has(m.key)}
+                onChange={() => toggleMethod(m.key)}
+              />
+              <div className="space-y-0.5">
+                <div className="text-xs font-medium">{m.label}</div>
+                <div className="text-[11px] text-muted-foreground leading-tight">{m.hint}</div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </Card>
+
+
       {/* Bank Details */}
       <Card className="p-4 space-y-3">
         <h3 className="text-sm font-semibold">Bank Details</h3>

@@ -526,6 +526,7 @@ export default function Dashboard() {
 
         <div className="px-8 pt-3">
           <DashboardTournamentInvitesCard />
+          <div className="mt-3"><DebitOrderPromptCard clubMemberId={myMemberId} /></div>
         </div>
 
         <DashboardDesktop

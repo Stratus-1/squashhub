@@ -128,6 +128,12 @@ function computeExpectedFees(
     fees.push({ fee_type: lp.fee_type, fee_label: lp.fee_label, amount: lp.amount, existing: lp });
   }
 
+  // 5. Renewal invoices (annual renewal cycle) — always shown if present
+  const renewalPayments = memberPayments.filter(p => p.fee_type === "renewal");
+  for (const rp of renewalPayments) {
+    fees.push({ fee_type: rp.fee_type, fee_label: rp.fee_label, amount: rp.amount, existing: rp });
+  }
+
   return fees;
 }
 

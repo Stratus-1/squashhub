@@ -93,37 +93,17 @@ Deno.serve(async (req) => {
       })
       if (sendErr) throw sendErr
 
-      // Charge member account ledger (debit) — idempotent via reference = invoice number
-      const ref = r.invoice_number
-      const { data: existingCharge } = await supabase
-        .from('member_credit_transactions')
-        .select('id')
-        .eq('club_id', cm.club_id)
-        .eq('reference', ref)
-        .eq('type', 'debit')
-        .maybeSingle()
-
-      if (!existingCharge) {
-        await supabase.from('member_credit_transactions').insert({
-          club_id: cm.club_id,
-          club_member_id: cm.id,
-          user_id: cm.user_id ?? null,
-          type: 'debit',
-          method: 'invoice',
-          amount: r.amount,
-          description: `${r.fee_label} — invoice ${ref}`,
-          reference: ref,
-          status: 'confirmed',
-          confirmed_at: new Date().toISOString(),
-        })
-      }
+      // Atomic: posts member sub-ledger debit AND triggers GL (Dr Debtors / Cr Income)
+      const { error: issueErr } = await supabase.rpc('issue_member_invoice', {
+        _fee_payment_id: r.id,
+      })
+      if (issueErr) throw issueErr
 
       await supabase
         .from('club_member_fee_payments')
         .update({
           invoice_email_status: 'sent',
           invoice_email_sent_at: new Date().toISOString(),
-          invoice_issued_at: r.invoice_issued_at ?? new Date().toISOString(),
         })
         .eq('id', r.id)
 

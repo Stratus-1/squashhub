@@ -1177,7 +1177,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   className="pl-8 h-9 text-xs"
                 />
                 {memberDropdownOpen && (
-                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-background border rounded-md shadow-lg max-h-96 overflow-y-auto">
+                  <div className="absolute z-[100] left-0 right-0 top-full mt-1 bg-popover border rounded-md shadow-xl max-h-[60vh] overflow-y-auto overscroll-contain">
                     {(members || [])
                       .slice()
                       .filter((m: any) => {
@@ -1192,8 +1192,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                         <button
                           key={m.id}
                           type="button"
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center gap-2"
-                          onClick={() => {
+                          style={{ touchAction: "manipulation" }}
+                          className="w-full text-left px-3 py-3 min-h-[44px] text-sm hover:bg-muted active:bg-muted flex items-center gap-2 border-b last:border-b-0"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
                             setStatementMemberId(m.id);
                             setStatementSearch(m.name || m.profiles?.name || m.email || "");
                             setMemberDropdownOpen(false);

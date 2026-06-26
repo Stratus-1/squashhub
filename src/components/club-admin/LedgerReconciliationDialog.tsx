@@ -100,9 +100,26 @@ export function LedgerReconciliationDialog({
     }
   };
 
+  const [fixingAll, setFixingAll] = useState(false);
+  const handleFixAll = async () => {
+    setFixingAll(true);
+    let ok = 0, fail = 0;
+    for (const r of filtered) {
+      if (!r.fee_payment_id) { fail++; continue; }
+      try {
+        const { data, error } = await supabase.rpc("issue_member_invoice" as any, { _fee_payment_id: r.fee_payment_id });
+        if (error || (data as any)?.ok === false) fail++; else ok++;
+      } catch { fail++; }
+    }
+    setFixingAll(false);
+    toast.success(`Re-posted ${ok}${fail ? `, ${fail} failed` : ""}`);
+    await refetch();
+    qc.invalidateQueries({ queryKey: ["journal"] });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wrench className="w-4 h-4" /> Ledger Reconciliation
@@ -112,78 +129,76 @@ export function LedgerReconciliationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[160px]">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search invoice # or member"
-              className="h-8 pl-8 text-xs"
+              className="h-9 pl-8 text-xs"
             />
           </div>
-          <Button size="sm" variant="outline" onClick={() => refetch()} className="gap-1.5 h-8">
+          <Button size="sm" variant="outline" onClick={() => refetch()} className="gap-1.5 h-9">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </Button>
-          <Badge variant="outline" className="text-[10px]">{filtered.length} issues</Badge>
+          <Button
+            size="sm"
+            onClick={handleFixAll}
+            disabled={fixingAll || filtered.length === 0}
+            className="gap-1.5 h-9"
+          >
+            {fixingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wrench className="w-3.5 h-3.5" />}
+            Fix all ({filtered.length})
+          </Button>
         </div>
 
-        <div className="border rounded-lg max-h-[55vh] overflow-y-auto">
+        <div className="space-y-2 max-h-[55vh] overflow-y-auto">
           {isLoading ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> Loading…
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
+            <div className="p-6 text-center text-xs text-muted-foreground border rounded-lg">
               ✅ All invoice charges reconcile cleanly between the member sub-ledger and the GL.
             </div>
           ) : (
-            <table className="w-full text-xs">
-              <thead className="bg-muted/40 sticky top-0">
-                <tr>
-                  <th className="text-left p-2">Member</th>
-                  <th className="text-left p-2">Invoice #</th>
-                  <th className="text-right p-2">GL</th>
-                  <th className="text-right p-2">Member a/c</th>
-                  <th className="text-left p-2">Status</th>
-                  <th className="p-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r, i) => {
-                  const meta = STATUS_LABEL[r.status];
-                  const key = `${r.invoice_number}-${i}`;
-                  return (
-                    <tr key={key} className="border-t">
-                      <td className="p-2">{nameOf.get(r.club_member_id || "") || "—"}</td>
-                      <td className="p-2 font-mono">{r.invoice_number}</td>
-                      <td className="p-2 text-right tabular-nums">{fmt(r.gl_amount)}</td>
-                      <td className="p-2 text-right tabular-nums">{fmt(r.sub_amount)}</td>
-                      <td className="p-2">
-                        <Badge variant={meta?.variant || "outline"} className="text-[10px]">
-                          {meta?.label || r.status}
-                        </Badge>
-                      </td>
-                      <td className="p-2 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={!r.fee_payment_id || fixingId === r.fee_payment_id}
-                          onClick={() => handleFix(r)}
-                          className="h-7 text-xs"
-                        >
-                          {fixingId === r.fee_payment_id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            "Re-post"
-                          )}
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            filtered.map((r, i) => {
+              const meta = STATUS_LABEL[r.status];
+              const key = `${r.invoice_number}-${i}`;
+              return (
+                <div key={key} className="border rounded-lg p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm truncate">{nameOf.get(r.club_member_id || "") || "—"}</div>
+                      <div className="font-mono text-[11px] text-muted-foreground truncate">{r.invoice_number}</div>
+                    </div>
+                    <Badge variant={meta?.variant || "outline"} className="text-[10px] shrink-0">
+                      {meta?.label || r.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex gap-3">
+                      <span><span className="text-muted-foreground">GL:</span> <span className="tabular-nums font-medium">{fmt(r.gl_amount)}</span></span>
+                      <span><span className="text-muted-foreground">Member:</span> <span className="tabular-nums font-medium">{fmt(r.sub_amount)}</span></span>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={!r.fee_payment_id || fixingId === r.fee_payment_id || fixingAll}
+                      onClick={() => handleFix(r)}
+                      className="h-8 text-xs gap-1"
+                    >
+                      {fixingId === r.fee_payment_id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Wrench className="w-3 h-3" />
+                      )}
+                      Re-post
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </DialogContent>

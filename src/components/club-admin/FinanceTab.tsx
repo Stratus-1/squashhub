@@ -693,7 +693,6 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <Wallet className="w-3.5 h-3.5" /> GL vs Member a/c
                 </Button>
                 <LedgerReconciliationDialog clubId={clubId} open={ledgerReconOpen} onOpenChange={setLedgerReconOpen} />
-                </Button>
                 <Button size="sm" variant="outline" onClick={handleResyncFeesGL} className="gap-1.5 h-8">
                   <ListTree className="w-3.5 h-3.5" /> Resync Fees
                 </Button>

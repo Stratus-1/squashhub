@@ -1137,35 +1137,43 @@ export function MemberOnboardingWizard({
                     </p>
                   </Card>
                 ) : feeBreakdown.length > 0 ? (
-                  <Card className="p-4 space-y-3">
-                    {feeBreakdown.map((fee, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px]">
-                            {fee.type === "club" ? "Club" : fee.type === "association" ? "League" : "National"}
-                          </Badge>
-                          <span>{fee.label}</span>
+                  <>
+                    <Card className="p-4 space-y-3">
+                      {feeBreakdown.map((fee, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px]">
+                              {fee.type === "club" ? "Club" : fee.type === "association" ? "League" : "National"}
+                            </Badge>
+                            <span>{fee.label}</span>
+                          </div>
+                          <span className="font-mono font-medium">R{fee.amount.toFixed(2)}</span>
                         </div>
-                        <span className="font-mono font-medium">R{fee.amount.toFixed(2)}</span>
+                      ))}
+                      <Separator />
+                      <div className="flex items-center justify-between font-semibold">
+                        <span>Total Billable</span>
+                        <span className="font-mono text-primary">R{totalFees.toFixed(2)}</span>
                       </div>
-                    ))}
-                    <Separator />
-                    <div className="flex items-center justify-between font-semibold">
-                      <span>Total Due</span>
-                      <span className="font-mono text-primary">R{totalFees.toFixed(2)}</span>
-                    </div>
-                  </Card>
+                    </Card>
+                    <Card className="p-3 bg-primary/5 border-primary/20 space-y-1.5">
+                      <p className="text-xs font-semibold text-foreground">
+                        No payment required right now
+                      </p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        These fees will be added to your member account. Once your club admin approves your membership, an invoice will be emailed to you with payment options (EFT, cash, card or debit order — depending on what your club accepts).
+                      </p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        You can view your balance and pay at any time from <strong className="text-foreground">My Account</strong>.
+                      </p>
+                    </Card>
+                  </>
                 ) : (
                   <Card className="p-4 text-center text-sm text-muted-foreground">
                     No fees configured for this club yet.
                   </Card>
                 )}
 
-                {!isExistingMember && (
-                  <p className="text-[10px] text-muted-foreground">
-                    Fees will be added to your member account. You can pay via EFT or card from your dashboard.
-                  </p>
-                )}
               </motion.div>
             )}
 

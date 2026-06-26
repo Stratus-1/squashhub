@@ -107,6 +107,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [txMemberId, setTxMemberId] = useState<string>("");
   const [txSubmitting, setTxSubmitting] = useState(false);
   const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [ledgerReconOpen, setLedgerReconOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetSubmitting, setResetSubmitting] = useState(false);

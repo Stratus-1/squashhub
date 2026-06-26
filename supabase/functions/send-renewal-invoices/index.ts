@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     .from('club_member_fee_payments')
     .select(`
       id, fee_label, amount, invoice_number, invoice_due_date, club_member_id,
-      club_members:club_member_id ( id, full_name, email, club_id,
+      club_members:club_member_id ( id, name, email, club_id,
         clubs:club_id ( name, payment_gateway, subdomain )
       )
     `)
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
           recipientEmail: cm.email,
           idempotencyKey: `renewal-invoice-${r.id}`,
           templateData: {
-            memberName: cm.full_name,
+            memberName: cm.name,
             clubName: club.name,
             invoiceNumber: r.invoice_number,
             feeLabel: r.fee_label,

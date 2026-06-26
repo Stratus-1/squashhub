@@ -1,0 +1,1 @@
+UPDATE public.club_members SET role='admin' WHERE id='b34b768d-888b-4373-80d5-867e2a4a7aa4';

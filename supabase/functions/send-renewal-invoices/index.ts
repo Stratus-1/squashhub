@@ -120,8 +120,13 @@ Deno.serve(async (req) => {
 
       await supabase
         .from('club_member_fee_payments')
-        .update({ invoice_email_status: 'sent', invoice_email_sent_at: new Date().toISOString() })
+        .update({
+          invoice_email_status: 'sent',
+          invoice_email_sent_at: new Date().toISOString(),
+          invoice_issued_at: r.invoice_issued_at ?? new Date().toISOString(),
+        })
         .eq('id', r.id)
+
       sent++
     } catch (e) {
       console.error('send failed for', r.id, e)

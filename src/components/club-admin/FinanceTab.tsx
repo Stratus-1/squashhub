@@ -20,6 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AssociationPayablesPanel } from "./AssociationPayablesPanel";
 import { RenewalInvoicesTab } from "./RenewalInvoicesTab";
 import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
+import { LedgerReconciliationDialog } from "./LedgerReconciliationDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
 import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 

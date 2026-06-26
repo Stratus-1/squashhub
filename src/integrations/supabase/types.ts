@@ -6646,15 +6646,7 @@ export type Database = {
           status: string | null
           sub_amount: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "club_journal_entries_fee_payment_id_fkey"
-            columns: ["fee_payment_id"]
-            isOneToOne: false
-            referencedRelation: "club_member_fee_payments"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {

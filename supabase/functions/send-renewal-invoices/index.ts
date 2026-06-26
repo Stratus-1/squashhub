@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   let query = supabase
     .from('club_member_fee_payments')
     .select(`
-      id, fee_label, amount, invoice_number, invoice_due_date, club_member_id,
+      id, fee_label, amount, invoice_number, invoice_due_date, invoice_issued_at, club_member_id,
       club_members:club_member_id ( id, name, email, club_id, user_id,
         clubs:club_id ( name, payment_gateway, subdomain )
       )
@@ -120,8 +120,13 @@ Deno.serve(async (req) => {
 
       await supabase
         .from('club_member_fee_payments')
-        .update({ invoice_email_status: 'sent', invoice_email_sent_at: new Date().toISOString() })
+        .update({
+          invoice_email_status: 'sent',
+          invoice_email_sent_at: new Date().toISOString(),
+          invoice_issued_at: r.invoice_issued_at ?? new Date().toISOString(),
+        })
         .eq('id', r.id)
+
       sent++
     } catch (e) {
       console.error('send failed for', r.id, e)

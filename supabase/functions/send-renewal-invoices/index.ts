@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     .from('club_member_fee_payments')
     .select(`
       id, fee_label, amount, invoice_number, invoice_due_date, club_member_id,
-      club_members:club_member_id ( id, name, email, club_id,
+      club_members:club_member_id ( id, name, email, club_id, user_id,
         clubs:club_id ( name, payment_gateway, subdomain )
       )
     `)
@@ -92,6 +92,31 @@ Deno.serve(async (req) => {
         },
       })
       if (sendErr) throw sendErr
+
+      // Charge member account ledger (debit) — idempotent via reference = invoice number
+      const ref = r.invoice_number
+      const { data: existingCharge } = await supabase
+        .from('member_credit_transactions')
+        .select('id')
+        .eq('club_id', cm.club_id)
+        .eq('reference', ref)
+        .eq('type', 'debit')
+        .maybeSingle()
+
+      if (!existingCharge) {
+        await supabase.from('member_credit_transactions').insert({
+          club_id: cm.club_id,
+          club_member_id: cm.id,
+          user_id: cm.user_id ?? null,
+          type: 'debit',
+          method: 'invoice',
+          amount: r.amount,
+          description: `${r.fee_label} — invoice ${ref}`,
+          reference: ref,
+          status: 'confirmed',
+          confirmed_at: new Date().toISOString(),
+        })
+      }
 
       await supabase
         .from('club_member_fee_payments')

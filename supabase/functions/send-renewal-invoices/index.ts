@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
           recipientEmail: cm.email,
           idempotencyKey: `renewal-invoice-${r.id}`,
           templateData: {
-            memberName: cm.full_name,
+            memberName: cm.name,
             clubName: club.name,
             invoiceNumber: r.invoice_number,
             feeLabel: r.fee_label,

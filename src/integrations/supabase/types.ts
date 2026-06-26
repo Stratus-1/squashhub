@@ -6636,6 +6636,26 @@ export type Database = {
           },
         ]
       }
+      v_ledger_reconciliation: {
+        Row: {
+          club_id: string | null
+          club_member_id: string | null
+          fee_payment_id: string | null
+          gl_amount: number | null
+          invoice_number: string | null
+          status: string | null
+          sub_amount: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_journal_entries_fee_payment_id_fkey"
+            columns: ["fee_payment_id"]
+            isOneToOne: false
+            referencedRelation: "club_member_fee_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _match_rollups_for_member: {
@@ -6924,6 +6944,7 @@ export type Database = {
       }
       is_member_owner: { Args: { _member_id: string }; Returns: boolean }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
       lookup_existing_member_for_signup: {
         Args: {
           _club_id: string

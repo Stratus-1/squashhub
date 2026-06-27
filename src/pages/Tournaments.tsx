@@ -126,12 +126,17 @@ export default function Tournaments() {
       )
     : [];
 
+  const hcLabel = (h: any) => {
+    const n = Number(h) || 0;
+    return n !== 0 ? ` (${n > 0 ? "+" : ""}${n})` : "";
+  };
+
   const renderMatchRow = (m: any) => {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles";
     const tournamentFormat = getTournamentFormat(champ?.scoring_mode);
-    const teamA = isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a);
-    const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
+    const teamA = (isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a)) + hcLabel(m.n_a);
+    const teamB = (isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b)) + hcLabel(m.n_b);
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const today = matchDate && isToday(matchDate);
     const markRoute = tournamentFormat.markerRoute(m.id);

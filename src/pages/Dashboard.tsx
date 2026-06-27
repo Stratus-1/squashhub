@@ -230,8 +230,9 @@ export default function Dashboard() {
       }
 
       return merged.sort((a: any, b: any) => {
-        if (a.inLineup !== b.inLineup) return a.inLineup ? -1 : 1;
-        return a.fixture_date.localeCompare(b.fixture_date);
+        const dateCmp = String(a.fixture_date || "").localeCompare(String(b.fixture_date || ""));
+        if (dateCmp !== 0) return dateCmp;
+        return String(a.fixture_time || "99:99").localeCompare(String(b.fixture_time || "99:99"));
       });
     },
     enabled: !!clubId && !!myMemberId,

@@ -363,6 +363,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [matchType, setMatchType] = useState<MatchType>("singles");
   const [enablePlayoffs, setEnablePlayoffs] = useState(false);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
+  const [playerSearch, setPlayerSearch] = useState("");
   const [numGroups, setNumGroups] = useState(0);
   const [champName, setChampName] = useState("");
   const [startDate, setStartDate] = useState("");

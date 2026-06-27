@@ -646,6 +646,28 @@ export default function Dashboard() {
       <div className="px-4 mt-3 space-y-3">
         <ClubStatsCard clubId={clubId} />
         <ClubSetsPlayedCard clubId={clubId} />
+        {(() => {
+          const myLadderEntry = (ladder || []).find((p: any) =>
+            (myMemberId && p.club_member_id === myMemberId) ||
+            (user?.id && (p.user_id === user.id || p.id === user.id))
+          ) as any;
+          const wins = myLadderEntry?.wins ?? 0;
+          const losses = myLadderEntry?.losses ?? 0;
+          const played = myLadderEntry?.matches_played ?? (wins + losses);
+          const winRate = played > 0 ? (wins / played) * 100 : 0;
+          const courtsUsed = new Set((myBookings || []).map((b: any) => b.court_id)).size;
+          return (
+            <DashboardMyStatsCard
+              played={played}
+              wins={wins}
+              losses={losses}
+              winRate={winRate}
+              rank={myLadderPosition}
+              totalBookings={(myBookings || []).length}
+              courtsUsed={courtsUsed}
+            />
+          );
+        })()}
       </div>
 
 

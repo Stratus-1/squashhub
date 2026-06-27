@@ -109,10 +109,10 @@ export function ShadowRankPromptDialog({
 
         <div className="space-y-2.5">
           {missing.map((m) => {
-            const p = picks[m.registration_id] || { division: 1, slot: 1 };
+            const p = picks[m.registration_id || m.member_id] || { division: 1, slot: 1 };
             const sizeForDiv = sizes[p.division] || 5;
             return (
-              <div key={m.registration_id} className="rounded border p-2 space-y-1.5 bg-muted/30">
+              <div key={m.registration_id || m.member_id} className="rounded border p-2 space-y-1.5 bg-muted/30">
                 <div className="text-xs font-medium">
                   {memberNames.get(m.member_id) || "Reserve"}
                   <span className="ml-2 text-[10px] text-muted-foreground font-normal">
@@ -129,7 +129,7 @@ export function ShadowRankPromptDialog({
                       value={p.division}
                       onChange={(e) => {
                         const v = Math.max(1, parseInt(e.target.value) || 1);
-                        setPicks((prev) => ({ ...prev, [m.registration_id]: { ...p, division: v } }));
+                        setPicks((prev) => ({ ...prev, [m.registration_id || m.member_id]: { ...p, division: v } }));
                       }}
                       className="h-8 text-sm"
                     />
@@ -144,7 +144,7 @@ export function ShadowRankPromptDialog({
                       value={p.slot}
                       onChange={(e) => {
                         const v = Math.max(1, parseInt(e.target.value) || 1);
-                        setPicks((prev) => ({ ...prev, [m.registration_id]: { ...p, slot: v } }));
+                        setPicks((prev) => ({ ...prev, [m.registration_id || m.member_id]: { ...p, slot: v } }));
                       }}
                       className="h-8 text-sm"
                     />

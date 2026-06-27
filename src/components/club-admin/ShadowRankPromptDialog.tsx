@@ -61,14 +61,25 @@ export function ShadowRankPromptDialog({
       }
       // Persist sequentially — small N, simpler error handling.
       for (const m of missing) {
-        const p = picks[m.registration_id];
-        const { error } = await fromExt("member_league_registrations")
-          .update({
+        const p = picks[m.registration_id || m.member_id];
+        if (m.needs_insert) {
+          const { error } = await fromExt("member_league_registrations").insert({
+            club_member_id: m.member_id,
+            league_id: m.league_id,
+            is_reserve: true,
             shadow_division: p.division,
             shadow_player_rank: p.slot,
-          })
-          .eq("id", m.registration_id);
-        if (error) throw error;
+          });
+          if (error) throw error;
+        } else {
+          const { error } = await fromExt("member_league_registrations")
+            .update({
+              shadow_division: p.division,
+              shadow_player_rank: p.slot,
+            })
+            .eq("id", m.registration_id);
+          if (error) throw error;
+        }
       }
       toast.success(`Saved shadow rank for ${missing.length} reserve${missing.length === 1 ? "" : "s"}`);
       onSaved();

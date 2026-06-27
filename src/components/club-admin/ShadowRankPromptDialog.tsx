@@ -45,7 +45,7 @@ export function ShadowRankPromptDialog({
     for (const m of missing) {
       const div = m.current_reserve_division || maxDiv || 1;
       const size = sizes[div] || 5;
-      init[m.registration_id] = { division: div, slot: size + 1 };
+      init[m.registration_id || m.member_id] = { division: div, slot: size + 1 };
     }
     setPicks(init);
   }, [open, missing, maxDiv, sizes]);
@@ -54,7 +54,7 @@ export function ShadowRankPromptDialog({
     setSaving(true);
     try {
       for (const m of missing) {
-        const p = picks[m.registration_id];
+        const p = picks[m.registration_id || m.member_id];
         if (!p || !(p.division > 0) || !(p.slot > 0)) {
           throw new Error(`Pick a division & slot for ${memberNames.get(m.member_id) || "reserve"}`);
         }

@@ -763,9 +763,14 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold font-heading flex items-center gap-1.5">
               <Trophy className="w-4 h-4 text-primary" /> My Upcoming League & Tournament Games
             </h2>
-            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/league-games")}>
-              View all <ChevronRight className="w-3 h-3 ml-1" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => navigate("/league-games")}>
+                Leagues
+              </Button>
+              <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => navigate("/tournaments")}>
+                Tournaments <ChevronRight className="w-3 h-3 ml-0.5" />
+              </Button>
+            </div>
           </div>
           <div className="space-y-1.5">
             {myLeagueFixtures.slice(0, 5).map((f: any) => (

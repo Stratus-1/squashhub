@@ -319,10 +319,13 @@ export async function loadClubLadderContext(clubId: string): Promise<{
  */
 export type MissingShadowRank = {
   member_id: string;
+  /** Empty string when the member has no reserve registration yet — the
+   *  dialog will INSERT one using `league_id`. */
   registration_id: string;
   league_id: string;
   league_name: string;
   current_reserve_division: number;
+  needs_insert?: boolean;
 };
 
 export async function findReservesMissingShadowRank(
@@ -399,6 +402,26 @@ export async function findReservesMissingShadowRank(
       league_id: target.league_id,
       league_name: nameById.get(target.league_id) || "Reserves",
       current_reserve_division: meta?.division ?? 1,
+    });
+  }
+
+  // Members provided but with NO MLR row at all (e.g. visitors / guest
+  // members added to a handicap tournament). They need a reserve MLR
+  // row created with a shadow rank.
+  const seen = new Set<string>(perMember.keys());
+  const fallbackLeagueId = (leagues as any[])[0]?.id as string;
+  const fallbackLeagueName = (leagues as any[])[0]?.name as string;
+  const maxDiv = Math.max(1, ...Array.from(classify.values()).map(m => m.division));
+  for (const mid of memberIds) {
+    if (seen.has(mid)) continue;
+    if (!fallbackLeagueId) break;
+    missing.push({
+      member_id: mid,
+      registration_id: "",
+      league_id: fallbackLeagueId,
+      league_name: fallbackLeagueName || "Reserves",
+      current_reserve_division: maxDiv,
+      needs_insert: true,
     });
   }
 

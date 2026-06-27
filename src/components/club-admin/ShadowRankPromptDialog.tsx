@@ -45,7 +45,7 @@ export function ShadowRankPromptDialog({
     for (const m of missing) {
       const div = m.current_reserve_division || maxDiv || 1;
       const size = sizes[div] || 5;
-      init[m.registration_id] = { division: div, slot: size + 1 };
+      init[m.registration_id || m.member_id] = { division: div, slot: size + 1 };
     }
     setPicks(init);
   }, [open, missing, maxDiv, sizes]);
@@ -54,21 +54,32 @@ export function ShadowRankPromptDialog({
     setSaving(true);
     try {
       for (const m of missing) {
-        const p = picks[m.registration_id];
+        const p = picks[m.registration_id || m.member_id];
         if (!p || !(p.division > 0) || !(p.slot > 0)) {
           throw new Error(`Pick a division & slot for ${memberNames.get(m.member_id) || "reserve"}`);
         }
       }
       // Persist sequentially — small N, simpler error handling.
       for (const m of missing) {
-        const p = picks[m.registration_id];
-        const { error } = await fromExt("member_league_registrations")
-          .update({
+        const p = picks[m.registration_id || m.member_id];
+        if (m.needs_insert) {
+          const { error } = await fromExt("member_league_registrations").insert({
+            club_member_id: m.member_id,
+            league_id: m.league_id,
+            is_reserve: true,
             shadow_division: p.division,
             shadow_player_rank: p.slot,
-          })
-          .eq("id", m.registration_id);
-        if (error) throw error;
+          });
+          if (error) throw error;
+        } else {
+          const { error } = await fromExt("member_league_registrations")
+            .update({
+              shadow_division: p.division,
+              shadow_player_rank: p.slot,
+            })
+            .eq("id", m.registration_id);
+          if (error) throw error;
+        }
       }
       toast.success(`Saved shadow rank for ${missing.length} reserve${missing.length === 1 ? "" : "s"}`);
       onSaved();
@@ -98,10 +109,10 @@ export function ShadowRankPromptDialog({
 
         <div className="space-y-2.5">
           {missing.map((m) => {
-            const p = picks[m.registration_id] || { division: 1, slot: 1 };
+            const p = picks[m.registration_id || m.member_id] || { division: 1, slot: 1 };
             const sizeForDiv = sizes[p.division] || 5;
             return (
-              <div key={m.registration_id} className="rounded border p-2 space-y-1.5 bg-muted/30">
+              <div key={m.registration_id || m.member_id} className="rounded border p-2 space-y-1.5 bg-muted/30">
                 <div className="text-xs font-medium">
                   {memberNames.get(m.member_id) || "Reserve"}
                   <span className="ml-2 text-[10px] text-muted-foreground font-normal">
@@ -118,7 +129,7 @@ export function ShadowRankPromptDialog({
                       value={p.division}
                       onChange={(e) => {
                         const v = Math.max(1, parseInt(e.target.value) || 1);
-                        setPicks((prev) => ({ ...prev, [m.registration_id]: { ...p, division: v } }));
+                        setPicks((prev) => ({ ...prev, [m.registration_id || m.member_id]: { ...p, division: v } }));
                       }}
                       className="h-8 text-sm"
                     />
@@ -133,7 +144,7 @@ export function ShadowRankPromptDialog({
                       value={p.slot}
                       onChange={(e) => {
                         const v = Math.max(1, parseInt(e.target.value) || 1);
-                        setPicks((prev) => ({ ...prev, [m.registration_id]: { ...p, slot: v } }));
+                        setPicks((prev) => ({ ...prev, [m.registration_id || m.member_id]: { ...p, slot: v } }));
                       }}
                       className="h-8 text-sm"
                     />

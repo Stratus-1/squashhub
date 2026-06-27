@@ -319,10 +319,13 @@ export async function loadClubLadderContext(clubId: string): Promise<{
  */
 export type MissingShadowRank = {
   member_id: string;
+  /** Empty string when the member has no reserve registration yet — the
+   *  dialog will INSERT one using `league_id`. */
   registration_id: string;
   league_id: string;
   league_name: string;
   current_reserve_division: number;
+  needs_insert?: boolean;
 };
 
 export async function findReservesMissingShadowRank(

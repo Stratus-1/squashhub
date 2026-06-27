@@ -363,6 +363,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [matchType, setMatchType] = useState<MatchType>("singles");
   const [enablePlayoffs, setEnablePlayoffs] = useState(false);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
+  const [playerSearch, setPlayerSearch] = useState("");
   const [numGroups, setNumGroups] = useState(0);
   const [champName, setChampName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -3837,25 +3838,49 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             {allSelectablePlayers.length === 0 ? (
               <p className="text-muted-foreground py-4">No matching players found. Check member gender settings.</p>
             ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {allSelectablePlayers.map((m: any, i: number) => (
-                  <label key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer">
-                    <Checkbox
-                      checked={selectedPlayerIds.has(m.id)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selectedPlayerIds);
-                        checked ? next.add(m.id) : next.delete(m.id);
-                        setSelectedPlayerIds(next);
-                      }}
-                    />
-                    <span className="w-6 text-right text-muted-foreground text-sm">{i + 1}.</span>
-                    <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
-                    {m._isVisitor && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor · {m._homeClub}</Badge>}
-                    {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
-                    {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
-                  </label>
-                ))}
-              </div>
+              <>
+                <Input
+                  placeholder="Search by name…"
+                  value={playerSearch}
+                  onChange={(e) => setPlayerSearch(e.target.value)}
+                  className="mb-3 h-9"
+                />
+                {(() => {
+                  const q = playerSearch.trim().toLowerCase();
+                  const filtered = q
+                    ? allSelectablePlayers.filter((m: any) =>
+                        ((m.name || m.profiles?.name || "") as string).toLowerCase().includes(q)
+                      )
+                    : allSelectablePlayers;
+                  if (filtered.length === 0) {
+                    return <p className="text-sm text-muted-foreground py-4 text-center">No players match "{playerSearch}"</p>;
+                  }
+                  return (
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                      {filtered.map((m: any) => {
+                        const i = allSelectablePlayers.findIndex((p: any) => p.id === m.id);
+                        return (
+                          <label key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer">
+                            <Checkbox
+                              checked={selectedPlayerIds.has(m.id)}
+                              onCheckedChange={(checked) => {
+                                const next = new Set(selectedPlayerIds);
+                                checked ? next.add(m.id) : next.delete(m.id);
+                                setSelectedPlayerIds(next);
+                              }}
+                            />
+                            <span className="w-6 text-right text-muted-foreground text-sm">{i + 1}.</span>
+                            <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
+                            {m._isVisitor && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor · {m._homeClub}</Badge>}
+                            {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
+                            {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </>
             )}
           </CardContent>
         </Card>

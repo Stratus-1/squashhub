@@ -405,6 +405,26 @@ export async function findReservesMissingShadowRank(
     });
   }
 
+  // Members provided but with NO MLR row at all (e.g. visitors / guest
+  // members added to a handicap tournament). They need a reserve MLR
+  // row created with a shadow rank.
+  const seen = new Set<string>(perMember.keys());
+  const fallbackLeagueId = (leagues as any[])[0]?.id as string;
+  const fallbackLeagueName = (leagues as any[])[0]?.name as string;
+  const maxDiv = Math.max(1, ...Array.from(classify.values()).map(m => m.division));
+  for (const mid of memberIds) {
+    if (seen.has(mid)) continue;
+    if (!fallbackLeagueId) break;
+    missing.push({
+      member_id: mid,
+      registration_id: "",
+      league_id: fallbackLeagueId,
+      league_name: fallbackLeagueName || "Reserves",
+      current_reserve_division: maxDiv,
+      needs_insert: true,
+    });
+  }
+
   return { missing, sizes };
 }
 

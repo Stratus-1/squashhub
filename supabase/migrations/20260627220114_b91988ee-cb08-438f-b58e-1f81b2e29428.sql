@@ -1,0 +1,1 @@
+UPDATE public.profiles SET matches_played = 15, wins = 11, losses = 4, updated_at = now() WHERE id = 'acb56747-10d4-4369-a697-b4894a52c3c9';

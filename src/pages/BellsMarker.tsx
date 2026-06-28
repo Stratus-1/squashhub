@@ -349,6 +349,10 @@ export default function BellsMarker() {
     } else {
       setServer(side);
       setServeSide("R");
+      // Hand-out: receiver won the rally, serve changes hands → flash indicator
+      setHandOutFlash(side);
+      if (handOutTimerRef.current) clearTimeout(handOutTimerRef.current);
+      handOutTimerRef.current = setTimeout(() => setHandOutFlash(null), 1800);
     }
   };
 

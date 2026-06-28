@@ -669,6 +669,32 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
         </button>
       </div>
 
+      {/* Serving direction + Hand-out flash */}
+      <div
+        className={cn(
+          "rounded-lg border px-3 py-2 flex items-center justify-center gap-3 transition-all",
+          handOutFlash
+            ? "bg-amber-500/15 border-amber-500/60 animate-pulse"
+            : "bg-muted/40 border-border"
+        )}
+        aria-live="polite"
+      >
+        {server === "a" ? (
+          <ArrowLeft className={cn("w-5 h-5", handOutFlash ? "text-amber-600" : "text-primary")} />
+        ) : null}
+        <Hand className={cn("w-5 h-5", handOutFlash ? "text-amber-600" : "text-primary")} />
+        <span className="text-sm font-semibold">
+          {handOutFlash ? (
+            <>HAND-OUT · serve to <span className="uppercase">{server === "a" ? playerAName : playerBName}</span></>
+          ) : (
+            <>Serving: {server === "a" ? playerAName : playerBName} ({serveSide})</>
+          )}
+        </span>
+        {server === "b" ? (
+          <ArrowRight className={cn("w-5 h-5", handOutFlash ? "text-amber-600" : "text-primary")} />
+        ) : null}
+      </div>
+
       {/* Server indicator (side auto-toggles when server scores; tap the R/L badge next to the server's score to correct) */}
       <p className="text-center text-xs text-muted-foreground">
         {isEnglish ? "Hand-in/Hand-out · " : ""}Serving: <span className="font-semibold">{server === "a" ? playerAName : playerBName}</span> ({serveSide}) <span className="opacity-60">· tap the R/L badge to correct</span>

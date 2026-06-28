@@ -290,6 +290,10 @@ export default function Home() {
               <p className="text-xs text-amber-200/90 drop-shadow max-w-2xl">
                 Pretoria clubs affiliated with NSA don't need to register — just request SquashHub to activate your full administrative functionality. SquashHub is fully integrated with NSA via API.
               </p>
+              <p className="text-xs text-amber-200/90 drop-shadow max-w-2xl">
+                All NSA league results can be marked and posted via API to NSA. Set up your teams from available players in your league.
+              </p>
+
             </motion.div>
           </div>
         </div>

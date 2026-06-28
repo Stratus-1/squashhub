@@ -730,6 +730,32 @@ export default function BellsMarker() {
           </CardContent>
         </Card>
 
+        {/* Hand-out / serve indicator */}
+        {!finished && (
+          <div
+            className={cn(
+              "rounded-lg border px-3 py-2 flex items-center justify-center gap-2 text-sm font-semibold transition",
+              handOutFlash
+                ? "border-amber-500 bg-amber-100 text-amber-900 animate-pulse dark:bg-amber-500/20 dark:text-amber-200"
+                : "border-border bg-muted/50 text-foreground",
+            )}
+          >
+            {server === "a" ? (
+              <>
+                <Hand className="w-4 h-4" />
+                <span>{handOutFlash ? "HAND-OUT · serve to" : "Serving:"} {pairAName}</span>
+                <ArrowLeft className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                <ArrowRight className="w-4 h-4" />
+                <span>{handOutFlash ? "HAND-OUT · serve to" : "Serving:"} {pairBName}</span>
+                <Hand className="w-4 h-4 scale-x-[-1]" />
+              </>
+            )}
+          </div>
+        )}
+
         {/* Counters */}
         <div className="grid grid-cols-2 gap-3">
           <Counter

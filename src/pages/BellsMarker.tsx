@@ -9,7 +9,7 @@ import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check, Info, UserX } from "lucide-react";
+import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check, Info, UserX, Hand, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BellsFormat, getTournamentFormat } from "@/lib/tournament-formats";
@@ -80,6 +80,8 @@ export default function BellsMarker() {
   const [saving, setSaving] = useState(false);
   const [server, setServer] = useState<"a" | "b">("a");
   const [serveSide, setServeSide] = useState<"L" | "R">("R");
+  const [handOutFlash, setHandOutFlash] = useState<"a" | "b" | null>(null);
+  const handOutTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [noShowOpen, setNoShowOpen] = useState(false);
   const tickRef = useRef<number | null>(null);
   const liveSyncRef = useRef<number | null>(null);
@@ -347,6 +349,10 @@ export default function BellsMarker() {
     } else {
       setServer(side);
       setServeSide("R");
+      // Hand-out: receiver won the rally, serve changes hands → flash indicator
+      setHandOutFlash(side);
+      if (handOutTimerRef.current) clearTimeout(handOutTimerRef.current);
+      handOutTimerRef.current = setTimeout(() => setHandOutFlash(null), 1800);
     }
   };
 
@@ -723,6 +729,32 @@ export default function BellsMarker() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Hand-out / serve indicator */}
+        {!finished && (
+          <div
+            className={cn(
+              "rounded-lg border px-3 py-2 flex items-center justify-center gap-2 text-sm font-semibold transition",
+              handOutFlash
+                ? "border-amber-500 bg-amber-100 text-amber-900 animate-pulse dark:bg-amber-500/20 dark:text-amber-200"
+                : "border-border bg-muted/50 text-foreground",
+            )}
+          >
+            {server === "a" ? (
+              <>
+                <Hand className="w-4 h-4" />
+                <span>{handOutFlash ? "HAND-OUT · serve to" : "Serving:"} {pairAName}</span>
+                <ArrowLeft className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                <ArrowRight className="w-4 h-4" />
+                <span>{handOutFlash ? "HAND-OUT · serve to" : "Serving:"} {pairBName}</span>
+                <Hand className="w-4 h-4 scale-x-[-1]" />
+              </>
+            )}
+          </div>
+        )}
 
         {/* Counters */}
         <div className="grid grid-cols-2 gap-3">

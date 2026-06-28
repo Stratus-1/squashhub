@@ -351,6 +351,10 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
       } else {
         setServer(scorer);
         setServeSide("R");
+        // Hand-out: serve transfers. Flash an indicator pointing to the new server.
+        if (handOutTimerRef.current) clearTimeout(handOutTimerRef.current);
+        setHandOutFlash(scorer);
+        handOutTimerRef.current = setTimeout(() => setHandOutFlash(null), 1800);
       }
 
       setHistory((h) => [

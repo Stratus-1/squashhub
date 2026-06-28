@@ -1,4 +1,5 @@
 // SportyHQ Sync Edge Function (stub)
+// Operator: Stratus Software Solutions (Pty) Ltd — SquashHub
 // Status: AWAITING CREDENTIALS from SportyHQ partner API team.
 // Once credentials arrive, set the following secrets via Lovable Cloud:
 //   - SPORTYHQ_API_KEY        (the partner API key issued by SportyHQ)

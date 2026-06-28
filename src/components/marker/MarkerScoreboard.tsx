@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Undo2, RotateCcw, Flag, Clock, Pause, Play, Cast, Trash2, UserX } from "lucide-react";
+import { Undo2, RotateCcw, Flag, Clock, Pause, Play, Cast, Trash2, UserX, Hand, ArrowLeft, ArrowRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -198,6 +198,8 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   const [history, setHistory] = useState<PointEvent[]>(persisted?.history ?? []);
   const [matchOver, setMatchOver] = useState(persisted?.matchOver ?? false);
   const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? null);
+  const [handOutFlash, setHandOutFlash] = useState<"a" | "b" | null>(null);
+  const handOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Toss: must be explicitly decided before scoring starts. Old 0-0 saved sessions
   // did not include the prompt version, so force them to ask again instead of hiding it.
@@ -349,6 +351,10 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
       } else {
         setServer(scorer);
         setServeSide("R");
+        // Hand-out: serve transfers. Flash an indicator pointing to the new server.
+        if (handOutTimerRef.current) clearTimeout(handOutTimerRef.current);
+        setHandOutFlash(scorer);
+        handOutTimerRef.current = setTimeout(() => setHandOutFlash(null), 1800);
       }
 
       setHistory((h) => [
@@ -661,6 +667,32 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
             </Badge>
           </div>
         </button>
+      </div>
+
+      {/* Serving direction + Hand-out flash */}
+      <div
+        className={cn(
+          "rounded-lg border px-3 py-2 flex items-center justify-center gap-3 transition-all",
+          handOutFlash
+            ? "bg-amber-500/15 border-amber-500/60 animate-pulse"
+            : "bg-muted/40 border-border"
+        )}
+        aria-live="polite"
+      >
+        {server === "a" ? (
+          <ArrowLeft className={cn("w-5 h-5", handOutFlash ? "text-amber-600" : "text-primary")} />
+        ) : null}
+        <Hand className={cn("w-5 h-5", handOutFlash ? "text-amber-600" : "text-primary")} />
+        <span className="text-sm font-semibold">
+          {handOutFlash ? (
+            <>HAND-OUT · serve to <span className="uppercase">{server === "a" ? playerAName : playerBName}</span></>
+          ) : (
+            <>Serving: {server === "a" ? playerAName : playerBName} ({serveSide})</>
+          )}
+        </span>
+        {server === "b" ? (
+          <ArrowRight className={cn("w-5 h-5", handOutFlash ? "text-amber-600" : "text-primary")} />
+        ) : null}
       </div>
 
       {/* Server indicator (side auto-toggles when server scores; tap the R/L badge next to the server's score to correct) */}

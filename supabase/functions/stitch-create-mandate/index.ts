@@ -55,11 +55,12 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const { data: member } = await admin
+    const { data: member, error: memberErr } = await admin
       .from("club_members")
-      .select("id, club_id, user_id, full_name, club_member_number, cellphone, email")
+      .select("id, club_id, user_id, name, club_member_number, phone, email")
       .eq("id", club_member_id)
       .maybeSingle();
+    if (memberErr) console.error("member lookup error", memberErr);
     if (!member || member.club_id !== club_id || member.user_id !== userId) {
       return json({ error: "Member not found or not yours" }, 403);
     }
@@ -133,7 +134,7 @@ Deno.serve(async (req) => {
 
     // Build the appropriate Stitch GraphQL mutation
     const externalRef = `MND-${mandate.id.slice(0, 8)}`;
-    const fullName = member.full_name || "Member";
+    const fullName = member.name || "Member";
     const [firstName, ...rest] = fullName.split(" ");
     const lastName = rest.join(" ") || firstName;
 
@@ -153,7 +154,7 @@ Deno.serve(async (req) => {
           payer: {
             name: fullName.slice(0, 50),
             email: member.email || `${member.id}@noemail.local`,
-            mobileNumber: member.cellphone || undefined,
+            mobileNumber: member.phone || undefined,
           },
           amount: { quantity: amt.toFixed(2), currency: "ZAR" },
           externalReference: externalRef,
@@ -170,7 +171,7 @@ Deno.serve(async (req) => {
         input: {
           fullName,
           email: member.email || `${member.id}@noemail.local`,
-          mobileNumber: member.cellphone || undefined,
+          mobileNumber: member.phone || undefined,
           externalReference: externalRef,
         },
       };

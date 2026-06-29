@@ -42,10 +42,11 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const { data: member } = await admin
+    const { data: member, error: memberErr } = await admin
       .from("club_members")
-      .select("id, club_id, user_id, full_name, club_member_number")
+      .select("id, club_id, user_id, name, club_member_number")
       .eq("id", club_member_id).maybeSingle();
+    if (memberErr) console.error("member lookup error", memberErr);
     if (!member || member.club_id !== club_id || member.user_id !== userId) {
       return json({ error: "Member not found or not yours" }, 200);
     }

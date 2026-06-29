@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     return json({ session_id: session.id, redirect_url: node.url, request_id: node.id });
   } catch (e: any) {
     console.error("stitch-create-payment error:", e);
-    return json({ error: e.message || "Unexpected error" }, 500);
+    return json({ error: e?.message || "Unexpected error" }, 200);
   }
 });
 

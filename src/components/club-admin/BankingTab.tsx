@@ -115,7 +115,8 @@ const GATEWAYS: GatewayDef[] = [
     fields: [
       { key: "test_mode", label: "Test mode (sandbox credentials)", placeholder: "", type: "checkbox", helperText: "Enable while using a Stitch test client (client_id usually starts with 'test-'). Disable before going live." },
       { key: "client_id", label: "Client ID", placeholder: "test-...", helperText: "Stitch Dashboard → Settings → Client credentials → copy the Client ID." },
-      { key: "client_secret", label: "Client Secret", placeholder: "Your Stitch client secret", sensitive: true, helperText: "Same screen → reveal & copy the Client Secret. Treat like a password." },
+      { key: "key_id", label: "Key ID (kid)", placeholder: "e.g. 5f2e...", helperText: "Stitch Dashboard → Settings → Client credentials → the 'kid' shown next to your registered public key." },
+      { key: "private_key_pem", label: "Private Key (PEM)", placeholder: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----", sensitive: true, type: "textarea", helperText: "ES256 (P-256) private key in PKCS#8 PEM format that matches the public key you registered in Stitch. Paste the full file including BEGIN/END lines." },
       { key: "merchant_payer_reference", label: "Statement Reference (optional)", placeholder: "e.g. NSQ", helperText: "Up to 12 chars shown on the payer's bank statement. Defaults to the club name." },
       { key: "beneficiary_account_number", label: "PayByBank Beneficiary Account (optional)", placeholder: "Your club bank account number", helperText: "Required for PayByBank payouts. Cards work without this." },
     ],

@@ -987,7 +987,7 @@ export default function MyAccount() {
                     Card payment via {club?.payment_gateway || "payment gateway"}. You will be redirected to complete the card payment before fees are marked as paid.
                   </p>
                 </Card>
-                <FnbPaymentNotice />
+                <FnbPaymentNotice gateway={club?.payment_gateway} />
               </>
             )}
 

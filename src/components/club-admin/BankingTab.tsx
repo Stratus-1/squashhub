@@ -22,7 +22,9 @@ type FieldDef = {
   placeholder: string;
   sensitive?: boolean;
   helperText?: string;
+  type?: "text" | "checkbox";
 };
+
 
 type GatewayDef = {
   id: string;

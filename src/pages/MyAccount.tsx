@@ -833,7 +833,7 @@ export default function MyAccount() {
                     Your top-up will be confirmed by the admin after payment is verified.
                   </p>
                 </Card>
-                <FnbPaymentNotice />
+                <FnbPaymentNotice gateway={club?.payment_gateway} />
               </>
             )}
 

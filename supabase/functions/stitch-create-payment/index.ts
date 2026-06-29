@@ -143,9 +143,11 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // Append redirect_url so the payer returns to our app after paying.
-    // NOTE: this URL must be pre-registered in Stitch dashboard → Settings → Redirect URLs.
-    const redirectUrl = appendParam(payment.link, "redirect_url", successUrl);
+    // IMPORTANT: do NOT append query params to Stitch's hosted payment link —
+    // their page returns 404 if the URL is altered. The payer closes the tab
+    // after paying; we poll status on return via the pending-session record.
+    const redirectUrl = payment.link as string;
+    void successUrl; // reserved for future Stitch field that accepts merchant return URL
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,

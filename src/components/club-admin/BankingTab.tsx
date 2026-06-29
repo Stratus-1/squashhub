@@ -403,32 +403,54 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
               Enter your {selectedGateway.name} credentials below. Secret keys are stored securely and never exposed.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {selectedGateway.fields.map(field => (
-                <div key={field.key} className="space-y-1">
-                  <Label className="text-xs">{field.label}</Label>
-                  <div className="relative">
-                    <Input
-                      className="h-8 text-xs font-mono pr-8"
-                      type={field.sensitive && !visibleFields.has(field.key) ? "password" : "text"}
-                      value={credentials[field.key] || ""}
-                      onChange={e => setCred(field.key, e.target.value)}
-                      placeholder={field.placeholder}
-                    />
-                    {field.sensitive && (
-                      <button
-                        type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        onClick={() => toggleVisible(field.key)}
-                      >
-                        {visibleFields.has(field.key) ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                      </button>
+              {selectedGateway.fields.map(field => {
+                if (field.type === "checkbox") {
+                  const checked = credentials[field.key] === "true";
+                  return (
+                    <label
+                      key={field.key}
+                      className={`md:col-span-2 flex items-start gap-2 rounded-md border p-2 cursor-pointer ${checked ? "border-amber-500 bg-amber-500/10" : "border-border"}`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={checked}
+                        onChange={(e) => setCred(field.key, e.target.checked ? "true" : "false")}
+                      />
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-medium">{field.label}</div>
+                        {field.helperText && <div className="text-[10px] text-muted-foreground">{field.helperText}</div>}
+                      </div>
+                    </label>
+                  );
+                }
+                return (
+                  <div key={field.key} className="space-y-1">
+                    <Label className="text-xs">{field.label}</Label>
+                    <div className="relative">
+                      <Input
+                        className="h-8 text-xs font-mono pr-8"
+                        type={field.sensitive && !visibleFields.has(field.key) ? "password" : "text"}
+                        value={credentials[field.key] || ""}
+                        onChange={e => setCred(field.key, e.target.value)}
+                        placeholder={field.placeholder}
+                      />
+                      {field.sensitive && (
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          onClick={() => toggleVisible(field.key)}
+                        >
+                          {visibleFields.has(field.key) ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                    {field.helperText && (
+                      <p className="text-[10px] text-muted-foreground">{field.helperText}</p>
                     )}
                   </div>
-                  {field.helperText && (
-                    <p className="text-[10px] text-muted-foreground">{field.helperText}</p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

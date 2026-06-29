@@ -198,3 +198,49 @@ function sanitizeReturnUrl(raw: string) {
     return `${PUBLIC_APP_ORIGIN}${path}`;
   }
 }
+
+// ─── Stitch private_key_jwt helpers ─────────────────────────
+function b64urlEncode(bytes: Uint8Array | string): string {
+  const bin = typeof bytes === "string" ? bytes : String.fromCharCode(...bytes);
+  return btoa(bin).replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+function pemToPkcs8(pem: string): Uint8Array {
+  const cleaned = pem
+    .replace(/-----BEGIN [^-]+-----/g, "")
+    .replace(/-----END [^-]+-----/g, "")
+    .replace(/\s+/g, "");
+  const bin = atob(cleaned);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function buildClientAssertion(clientId: string, kid: string, privateKeyPem: string): Promise<string> {
+  const pkcs8 = pemToPkcs8(privateKeyPem);
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    pkcs8,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"],
+  );
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "ES256", typ: "JWT", kid };
+  const payload = {
+    iss: clientId,
+    sub: clientId,
+    aud: "https://secure.stitch.money/connect/token",
+    iat: now,
+    nbf: now,
+    exp: now + 60,
+    jti: crypto.randomUUID(),
+  };
+  const enc = new TextEncoder();
+  const signingInput = `${b64urlEncode(enc.encode(JSON.stringify(header)))}.${b64urlEncode(enc.encode(JSON.stringify(payload)))}`;
+  const sig = new Uint8Array(await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    key,
+    enc.encode(signingInput),
+  ));
+  // WebCrypto returns raw r||s (64 bytes) which is the JWS ES256 format.
+  return `${signingInput}.${b64urlEncode(sig)}`;
+}

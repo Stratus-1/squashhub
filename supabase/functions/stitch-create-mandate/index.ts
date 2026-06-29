@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
 
     // Build the appropriate Stitch GraphQL mutation
     const externalRef = `MND-${mandate.id.slice(0, 8)}`;
-    const fullName = member.full_name || "Member";
+    const fullName = member.name || "Member";
     const [firstName, ...rest] = fullName.split(" ");
     const lastName = rest.join(" ") || firstName;
 
@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
           payer: {
             name: fullName.slice(0, 50),
             email: member.email || `${member.id}@noemail.local`,
-            mobileNumber: member.cellphone || undefined,
+            mobileNumber: member.phone || undefined,
           },
           amount: { quantity: amt.toFixed(2), currency: "ZAR" },
           externalReference: externalRef,
@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
         input: {
           fullName,
           email: member.email || `${member.id}@noemail.local`,
-          mobileNumber: member.cellphone || undefined,
+          mobileNumber: member.phone || undefined,
           externalReference: externalRef,
         },
       };

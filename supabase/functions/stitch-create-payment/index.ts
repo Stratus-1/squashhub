@@ -65,10 +65,19 @@ Deno.serve(async (req) => {
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
     const clientId = creds.client_id;
     const clientSecret = creds.client_secret;
+    const testMode = String(creds.test_mode || "") === "true";
+    const looksLikeTest = /^test[-_]/i.test(clientId || "");
     const merchantRef = (creds.merchant_payer_reference || (club.name || "Club")).slice(0, 12).replace(/[^A-Za-z0-9 ]/g, "");
     if (!clientId || !clientSecret) {
       return json({ error: "Stitch client_id / client_secret not configured for this club." }, 200);
     }
+    if (testMode && !looksLikeTest) {
+      return json({ error: "Test mode is ON but the Client ID does not look like a Stitch test credential (expected to start with 'test-'). Either disable Test mode or paste your sandbox client_id / client_secret." }, 200);
+    }
+    if (!testMode && looksLikeTest) {
+      return json({ error: "Test mode is OFF but the Client ID looks like a Stitch test credential. Enable Test mode in Club Admin → Banking, or replace with live Stitch credentials." }, 200);
+    }
+    console.log(`[stitch-create-payment] mode=${testMode ? "TEST" : "LIVE"} club=${club.id}`);
 
     // OAuth token (client_credentials)
     const tokenResp = await fetch(STITCH_TOKEN_URL, {

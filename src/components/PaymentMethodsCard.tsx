@@ -238,12 +238,12 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
           </p>
         )}
 
-        {categories.length > 0 && (
+        {visibleCategories.length > 0 && (
           <div className="border-t pt-2 space-y-1.5">
             <p className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wide">
               Set up monthly debit
             </p>
-            {categories.map((cat) => {
+            {visibleCategories.map((cat) => {
               const has = activeMandates.some((m) => m.fee_category_id === cat.id);
               return (
                 <div key={cat.id} className="flex items-center justify-between gap-2">

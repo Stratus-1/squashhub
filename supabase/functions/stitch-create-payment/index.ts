@@ -1,4 +1,7 @@
-// Creates a Stitch LinkPay request for a member: PayByBank or card.
+// Creates a Stitch EXPRESS payment link for a member.
+// Stitch Express REST API: https://express.stitch.money/api/v1/
+// This is a separate product from Stitch Enterprise (GraphQL). Most accounts
+// are provisioned as Express — Enterprise requires a separate contract.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -7,8 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const STITCH_TOKEN_URL = "https://secure.stitch.money/connect/token";
-const STITCH_GRAPHQL = "https://api.stitch.money/graphql";
+const STITCH_BASE = "https://express.stitch.money/api/v1";
 const PUBLIC_APP_ORIGIN = "https://squashhub.co.za";
 
 Deno.serve(async (req) => {
@@ -36,15 +38,16 @@ Deno.serve(async (req) => {
       return json({ error: "Missing required fields" }, 200);
     }
     if (!["fee", "topup", "tournament"].includes(purpose)) return json({ error: "Invalid purpose" }, 200);
-    if (!["paybybank", "card"].includes(method)) return json({ error: "Invalid method" }, 200);
     const amt = Number(amount);
     if (!(amt > 0)) return json({ error: "Invalid amount" }, 200);
+    const amountCents = Math.round(amt * 100);
+    if (amountCents < 100) return json({ error: "Minimum payment is R1.00" }, 200);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const { data: member, error: memberErr } = await admin
       .from("club_members")
-      .select("id, club_id, user_id, name, club_member_number")
+      .select("id, club_id, user_id, name, email, phone, club_member_number")
       .eq("id", club_member_id).maybeSingle();
     if (memberErr) console.error("member lookup error", memberErr);
     if (!member || member.club_id !== club_id || member.user_id !== userId) {
@@ -63,14 +66,12 @@ Deno.serve(async (req) => {
       .select("payment_gateway_credentials")
       .eq("club_id", club_id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
-    const clientId = creds.client_id;
-    const keyId = creds.key_id;
-    const privateKeyPem = creds.private_key_pem;
+    const clientId = (creds.client_id || "").trim();
+    const clientSecret = (creds.client_secret || "").trim();
     const testMode = String(creds.test_mode || "") === "true";
-    const looksLikeTest = /^test[-_]/i.test(clientId || "");
-    const merchantRef = (creds.merchant_payer_reference || (club.name || "Club")).slice(0, 12).replace(/[^A-Za-z0-9 ]/g, "");
-    if (!clientId || !keyId || !privateKeyPem) {
-      return json({ error: "Stitch credentials incomplete. Required: Client ID, Key ID (kid), and Private Key (PEM)." }, 200);
+    const looksLikeTest = /^test[-_]/i.test(clientId);
+    if (!clientId || !clientSecret) {
+      return json({ error: "Stitch Express credentials incomplete. Required: Client ID and Client Secret." }, 200);
     }
     if (testMode && !looksLikeTest) {
       return json({ error: "Test mode is ON but the Client ID does not look like a Stitch test credential (expected to start with 'test-')." }, 200);
@@ -80,39 +81,26 @@ Deno.serve(async (req) => {
     }
     console.log(`[stitch-create-payment] mode=${testMode ? "TEST" : "LIVE"} club=${club.id}`);
 
-    // OAuth token via private_key_jwt (Stitch requires JWT client assertion for client_paymentrequest)
-    let clientAssertion: string;
-    try {
-      clientAssertion = await buildClientAssertion(clientId, keyId, privateKeyPem);
-    } catch (e: any) {
-      console.error("client_assertion build error:", e);
-      return json({ error: `Could not sign Stitch client assertion: ${e?.message || e}. Make sure the Private Key is a valid PKCS#8 ES256 (P-256) PEM.` }, 200);
-    }
-
-    const tokenResp = await fetch(STITCH_TOKEN_URL, {
+    // 1. Get Express bearer token
+    const tokenResp = await fetch(`${STITCH_BASE}/token`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: clientId,
-        scope: "client_paymentrequest",
-        audience: "https://secure.stitch.money",
-        client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-        client_assertion: clientAssertion,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, clientSecret, scope: "client_paymentrequest" }),
     });
     const tokenJson = await tokenResp.json().catch(() => ({}));
-    if (!tokenResp.ok || !tokenJson.access_token) {
-      console.error("Stitch token error", tokenResp.status, JSON.stringify(tokenJson));
-      return json({ error: `Stitch auth failed [${tokenResp.status}]: ${tokenJson?.error_description || tokenJson?.error || "check client_id / key_id / private_key"}` }, 200);
+    if (!tokenResp.ok || !tokenJson?.data?.accessToken) {
+      console.error("Stitch Express token error", tokenResp.status, JSON.stringify(tokenJson));
+      const msg = tokenJson?.error?.message || tokenJson?.message || tokenJson?.error || "check Client ID / Client Secret";
+      return json({ error: `Stitch Express auth failed [${tokenResp.status}]: ${msg}` }, 200);
     }
-    const accessToken: string = tokenJson.access_token;
+    const accessToken: string = tokenJson.data.accessToken;
 
-    // Insert session
+    // 2. Insert local session
     const defaultDesc =
       purpose === "topup" ? "Wallet top-up" :
       purpose === "tournament" ? "Tournament entry fee" : "Fee payment";
-    const payerRef = `${merchantRef}${member.club_member_number ? "-" + member.club_member_number : ""}`.slice(0, 18);
+    const refPrefix = (creds.merchant_payer_reference || (club.name || "Club"))
+      .slice(0, 12).replace(/[^A-Za-z0-9 ]/g, "");
 
     const { data: session, error: sessErr } = await admin
       .from("stitch_payment_sessions").insert({
@@ -120,58 +108,50 @@ Deno.serve(async (req) => {
         amount: amt, purpose, method,
         fee_ids, champ_registration_id,
         description: description || defaultDesc,
-        payer_reference: payerRef,
+        payer_reference: refPrefix,
         status: "created",
       }).select("id").single();
     if (sessErr || !session) return json({ error: sessErr?.message || "Could not create session" }, 200);
 
+    const merchantReference = `${refPrefix}-${String(session.id).slice(0, 8)}`
+      .replace(/[^a-zA-Z0-9\s\-)]/g, "").slice(0, 50) || String(session.id).slice(0, 50);
+
     const safeReturnUrl = sanitizeReturnUrl(return_url);
     const successUrl = appendParam(appendParam(safeReturnUrl, "stitch_session", session.id), "stitch_status", "success");
 
-    // Stitch LinkPay (clientPaymentInitiationRequestCreate) presents the user
-    // with a hosted checkout that supports PayByBank and Card. We use the same
-    // mutation for both methods — Stitch shows the appropriate payment options
-    // on the hosted page based on the merchant's enabled methods.
-    const mutation = `
-      mutation CreatePaymentRequest($input: ClientPaymentInitiationRequestInput!) {
-        clientPaymentInitiationRequestCreate(input: $input) {
-          paymentInitiationRequest { id url }
-        }
-      }`;
-    const variables: Record<string, unknown> = {
-      input: {
-        amount: { quantity: amt.toFixed(2), currency: "ZAR" },
-        payerReference: payerRef,
-        beneficiaryReference: payerRef,
-        externalReference: session.id,
-        beneficiary: { bankAccount: { name: club.name, bankId: "fnb", accountNumber: creds.beneficiary_account_number || "" } },
-      },
+    // 3. Create payment link
+    const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
+    const plBody: Record<string, unknown> = {
+      amount: amountCents,
+      payerName,
+      merchantReference,
     };
+    if (member.email) plBody.payerEmailAddress = member.email;
+    if (member.phone) plBody.payerPhoneNumber = String(member.phone);
 
-    const gqlResp = await fetch(STITCH_GRAPHQL, {
+    const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query: mutation, variables }),
+      body: JSON.stringify(plBody),
     });
-    const gqlData = await gqlResp.json().catch(() => ({}));
-    if (!gqlResp.ok || gqlData.errors) {
-      console.error("Stitch GraphQL error", gqlResp.status, JSON.stringify(gqlData));
+    const plJson = await plResp.json().catch(() => ({}));
+    if (!plResp.ok || !plJson?.success || !plJson?.data?.payment?.link) {
+      console.error("Stitch Express payment-link error", plResp.status, JSON.stringify(plJson));
       await admin.from("stitch_payment_sessions").update({ status: "failed" }).eq("id", session.id);
-      const msg = gqlData?.errors?.[0]?.message || gqlData?.error_description || `HTTP ${gqlResp.status}`;
-      return json({ error: `Stitch API error: ${msg}` }, 200);
+      const msg = plJson?.error?.message || plJson?.message || (plJson?.errors && JSON.stringify(plJson.errors)) || `HTTP ${plResp.status}`;
+      return json({ error: `Stitch Express API error: ${msg}` }, 200);
     }
 
-    const node = gqlData.data?.clientPaymentInitiationRequestCreate?.paymentInitiationRequest;
-    if (!node?.id || !node?.url) {
-      await admin.from("stitch_payment_sessions").update({ status: "failed" }).eq("id", session.id);
-      return json({ error: "Stitch did not return a redirect URL." }, 200);
-    }
+    const payment = plJson.data.payment;
+    // Append redirect_url so the payer returns to our app after paying.
+    // NOTE: this URL must be pre-registered in Stitch dashboard → Settings → Redirect URLs.
+    const redirectUrl = appendParam(payment.link, "redirect_url", successUrl);
 
     await admin.from("stitch_payment_sessions").update({
-      stitch_request_id: node.id, stitch_redirect_url: node.url,
+      stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
     }).eq("id", session.id);
 
-    return json({ session_id: session.id, redirect_url: node.url, request_id: node.id });
+    return json({ session_id: session.id, redirect_url: redirectUrl, request_id: payment.id });
   } catch (e: any) {
     console.error("stitch-create-payment error:", e);
     return json({ error: e?.message || "Unexpected error" }, 200);
@@ -197,50 +177,4 @@ function sanitizeReturnUrl(raw: string) {
     const path = String(raw || "/my-account").startsWith("/") ? String(raw) : `/${String(raw || "my-account")}`;
     return `${PUBLIC_APP_ORIGIN}${path}`;
   }
-}
-
-// ─── Stitch private_key_jwt helpers ─────────────────────────
-function b64urlEncode(bytes: Uint8Array | string): string {
-  const bin = typeof bytes === "string" ? bytes : String.fromCharCode(...bytes);
-  return btoa(bin).replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-}
-function pemToPkcs8(pem: string): Uint8Array {
-  const cleaned = pem
-    .replace(/-----BEGIN [^-]+-----/g, "")
-    .replace(/-----END [^-]+-----/g, "")
-    .replace(/\s+/g, "");
-  const bin = atob(cleaned);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-async function buildClientAssertion(clientId: string, kid: string, privateKeyPem: string): Promise<string> {
-  const pkcs8 = pemToPkcs8(privateKeyPem);
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pkcs8,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
-  );
-  const now = Math.floor(Date.now() / 1000);
-  const header = { alg: "ES256", typ: "JWT", kid };
-  const payload = {
-    iss: clientId,
-    sub: clientId,
-    aud: "https://secure.stitch.money/connect/token",
-    iat: now,
-    nbf: now,
-    exp: now + 60,
-    jti: crypto.randomUUID(),
-  };
-  const enc = new TextEncoder();
-  const signingInput = `${b64urlEncode(enc.encode(JSON.stringify(header)))}.${b64urlEncode(enc.encode(JSON.stringify(payload)))}`;
-  const sig = new Uint8Array(await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    key,
-    enc.encode(signingInput),
-  ));
-  // WebCrypto returns raw r||s (64 bytes) which is the JWS ES256 format.
-  return `${signingInput}.${b64urlEncode(sig)}`;
 }

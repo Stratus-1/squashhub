@@ -705,6 +705,7 @@ export default function MyAccount() {
           clubId={clubId}
           clubMemberId={clubMemberId}
           paymentGateway={club?.payment_gateway}
+          memberFeeCategoryId={feeCategoryId}
         />
       )}
 

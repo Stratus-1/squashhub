@@ -425,6 +425,36 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
                     </label>
                   );
                 }
+                if (field.type === "textarea") {
+                  const visible = visibleFields.has(field.key);
+                  return (
+                    <div key={field.key} className="space-y-1 md:col-span-2">
+                      <Label className="text-xs flex items-center justify-between">
+                        <span>{field.label}</span>
+                        {field.sensitive && (
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground"
+                            onClick={() => toggleVisible(field.key)}
+                          >
+                            {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
+                      </Label>
+                      <textarea
+                        className="w-full min-h-[120px] rounded-md border bg-background px-2 py-1.5 text-[11px] font-mono"
+                        style={field.sensitive && !visible ? { WebkitTextSecurity: "disc" } as any : undefined}
+                        value={credentials[field.key] || ""}
+                        onChange={e => setCred(field.key, e.target.value)}
+                        placeholder={field.placeholder}
+                        spellCheck={false}
+                      />
+                      {field.helperText && (
+                        <p className="text-[10px] text-muted-foreground">{field.helperText}</p>
+                      )}
+                    </div>
+                  );
+                }
                 return (
                   <div key={field.key} className="space-y-1">
                     <Label className="text-xs">{field.label}</Label>

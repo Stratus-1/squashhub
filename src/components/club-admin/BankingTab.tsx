@@ -22,7 +22,7 @@ type FieldDef = {
   placeholder: string;
   sensitive?: boolean;
   helperText?: string;
-  type?: "text" | "checkbox";
+  type?: "text" | "checkbox" | "textarea";
 };
 
 
@@ -115,7 +115,8 @@ const GATEWAYS: GatewayDef[] = [
     fields: [
       { key: "test_mode", label: "Test mode (sandbox credentials)", placeholder: "", type: "checkbox", helperText: "Enable while using a Stitch test client (client_id usually starts with 'test-'). Disable before going live." },
       { key: "client_id", label: "Client ID", placeholder: "test-...", helperText: "Stitch Dashboard → Settings → Client credentials → copy the Client ID." },
-      { key: "client_secret", label: "Client Secret", placeholder: "Your Stitch client secret", sensitive: true, helperText: "Same screen → reveal & copy the Client Secret. Treat like a password." },
+      { key: "key_id", label: "Key ID (kid)", placeholder: "e.g. 5f2e...", helperText: "Stitch Dashboard → Settings → Client credentials → the 'kid' shown next to your registered public key." },
+      { key: "private_key_pem", label: "Private Key (PEM)", placeholder: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----", sensitive: true, type: "textarea", helperText: "ES256 (P-256) private key in PKCS#8 PEM format that matches the public key you registered in Stitch. Paste the full file including BEGIN/END lines." },
       { key: "merchant_payer_reference", label: "Statement Reference (optional)", placeholder: "e.g. NSQ", helperText: "Up to 12 chars shown on the payer's bank statement. Defaults to the club name." },
       { key: "beneficiary_account_number", label: "PayByBank Beneficiary Account (optional)", placeholder: "Your club bank account number", helperText: "Required for PayByBank payouts. Cards work without this." },
     ],
@@ -422,6 +423,36 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
                         {field.helperText && <div className="text-[10px] text-muted-foreground">{field.helperText}</div>}
                       </div>
                     </label>
+                  );
+                }
+                if (field.type === "textarea") {
+                  const visible = visibleFields.has(field.key);
+                  return (
+                    <div key={field.key} className="space-y-1 md:col-span-2">
+                      <Label className="text-xs flex items-center justify-between">
+                        <span>{field.label}</span>
+                        {field.sensitive && (
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground"
+                            onClick={() => toggleVisible(field.key)}
+                          >
+                            {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
+                      </Label>
+                      <textarea
+                        className="w-full min-h-[120px] rounded-md border bg-background px-2 py-1.5 text-[11px] font-mono"
+                        style={field.sensitive && !visible ? { WebkitTextSecurity: "disc" } as any : undefined}
+                        value={credentials[field.key] || ""}
+                        onChange={e => setCred(field.key, e.target.value)}
+                        placeholder={field.placeholder}
+                        spellCheck={false}
+                      />
+                      {field.helperText && (
+                        <p className="text-[10px] text-muted-foreground">{field.helperText}</p>
+                      )}
+                    </div>
                   );
                 }
                 return (

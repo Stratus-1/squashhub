@@ -113,6 +113,7 @@ const GATEWAYS: GatewayDef[] = [
     description: "SA-first PayByBank (instant EFT) + cards. Lowest fees on EFT; supports DebiCheck recurring dues.",
     website: "https://stitch.money",
     fields: [
+      { key: "test_mode", label: "Test mode (sandbox credentials)", placeholder: "", type: "checkbox", helperText: "Enable while using a Stitch test client (client_id usually starts with 'test-'). Disable before going live." },
       { key: "client_id", label: "Client ID", placeholder: "test-...", helperText: "Stitch Dashboard → Settings → Client credentials → copy the Client ID." },
       { key: "client_secret", label: "Client Secret", placeholder: "Your Stitch client secret", sensitive: true, helperText: "Same screen → reveal & copy the Client Secret. Treat like a password." },
       { key: "merchant_payer_reference", label: "Statement Reference (optional)", placeholder: "e.g. NSQ", helperText: "Up to 12 chars shown on the payer's bank statement. Defaults to the club name." },

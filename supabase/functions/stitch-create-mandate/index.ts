@@ -82,9 +82,18 @@ Deno.serve(async (req) => {
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
     const clientId = creds.client_id;
     const clientSecret = creds.client_secret;
+    const testMode = String(creds.test_mode || "") === "true";
+    const looksLikeTest = /^test[-_]/i.test(clientId || "");
     if (!clientId || !clientSecret) {
       return json({ error: "Stitch client_id / client_secret not configured for this club." }, 400);
     }
+    if (testMode && !looksLikeTest) {
+      return json({ error: "Test mode is ON but the Client ID does not look like a Stitch test credential (expected to start with 'test-')." }, 400);
+    }
+    if (!testMode && looksLikeTest) {
+      return json({ error: "Test mode is OFF but the Client ID looks like a Stitch test credential. Enable Test mode in Club Admin → Banking, or replace with live credentials." }, 400);
+    }
+    console.log(`[stitch-create-mandate] mode=${testMode ? "TEST" : "LIVE"} club=${club.id}`);
 
     // OAuth token (client_credentials) — scope depends on rail
     const scope = rail === "debicheck"

@@ -1,4 +1,9 @@
-// Creates a Stitch recurring debit mandate (DebiCheck or EFT) for a member.
+// Creates a Stitch Express recurring card subscription for a member.
+// NOTE: Stitch Express does not offer DebiCheck or EFT-debit mandates — those
+// are Enterprise-only. On Express we use a recurring CARD subscription. The
+// member's card is saved and charged on the chosen day each month.
+// Requires the `client_recurringpaymentconsentrequest` scope to be enabled on
+// the Stitch Express client — contact express-support@stitch.money to enable.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -7,8 +12,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const STITCH_TOKEN_URL = "https://secure.stitch.money/connect/token";
-const STITCH_GRAPHQL = "https://api.stitch.money/graphql";
+const STITCH_BASE = "https://express.stitch.money/api/v1";
 const PUBLIC_APP_ORIGIN = "https://squashhub.co.za";
 
 function json(body: unknown, status = 200) {
@@ -47,29 +51,27 @@ Deno.serve(async (req) => {
     if (!club_id || !club_member_id || !max_amount || !return_url) {
       return json({ error: "Missing required fields" }, 400);
     }
-    if (!["debicheck", "eft_debit"].includes(rail)) {
-      return json({ error: "Invalid rail" }, 400);
-    }
     const amt = Number(max_amount);
     if (!(amt > 0)) return json({ error: "Invalid amount" }, 400);
+    const amountCents = Math.round(amt * 100);
+    if (amountCents < 100) return json({ error: "Minimum recurring amount is R1.00" }, 400);
+
+    const day = Math.min(31, Math.max(1, Number(debit_day) || 1));
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const { data: member, error: memberErr } = await admin
+    const { data: member } = await admin
       .from("club_members")
       .select("id, club_id, user_id, name, club_member_number, phone, email")
       .eq("id", club_member_id)
       .maybeSingle();
-    if (memberErr) console.error("member lookup error", memberErr);
     if (!member || member.club_id !== club_id || member.user_id !== userId) {
       return json({ error: "Member not found or not yours" }, 403);
     }
 
     const { data: club } = await admin
-      .from("clubs")
-      .select("id, name, payment_gateway")
-      .eq("id", club_id)
-      .maybeSingle();
+      .from("clubs").select("id, name, payment_gateway")
+      .eq("id", club_id).maybeSingle();
     if (!club || club.payment_gateway !== "stitch") {
       return json({ error: "Stitch is not configured for this club" }, 400);
     }
@@ -77,60 +79,40 @@ Deno.serve(async (req) => {
     const { data: secrets } = await admin
       .from("club_secrets")
       .select("payment_gateway_credentials")
-      .eq("club_id", club_id)
-      .maybeSingle();
+      .eq("club_id", club_id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
-    const clientId = creds.client_id;
-    const keyId = creds.key_id;
-    const privateKeyPem = creds.private_key_pem;
+    const clientId = (creds.client_id || "").trim();
+    const clientSecret = (creds.client_secret || "").trim();
     const testMode = String(creds.test_mode || "") === "true";
-    const looksLikeTest = /^test[-_]/i.test(clientId || "");
-    if (!clientId || !keyId || !privateKeyPem) {
-      return json({ error: "Stitch credentials incomplete. Required: Client ID, Key ID (kid), and Private Key (PEM)." }, 400);
+    const looksLikeTest = /^test[-_]/i.test(clientId);
+    if (!clientId || !clientSecret) {
+      return json({ error: "Stitch Express credentials incomplete. Required: Client ID and Client Secret." }, 400);
     }
     if (testMode && !looksLikeTest) {
-      return json({ error: "Test mode is ON but the Client ID does not look like a Stitch test credential (expected to start with 'test-')." }, 400);
+      return json({ error: "Test mode is ON but the Client ID is not a Stitch test credential." }, 400);
     }
     if (!testMode && looksLikeTest) {
-      return json({ error: "Test mode is OFF but the Client ID looks like a Stitch test credential. Enable Test mode or paste live credentials." }, 400);
+      return json({ error: "Test mode is OFF but the Client ID looks like a test credential." }, 400);
     }
     console.log(`[stitch-create-mandate] mode=${testMode ? "TEST" : "LIVE"} club=${club.id}`);
 
-    // OAuth token (private_key_jwt) — scope depends on rail
-    const scope = rail === "debicheck"
-      ? "client_paymentauthorizationrequest"
-      : "client_userinitiationrequest";
-
-    let clientAssertion: string;
-    try {
-      clientAssertion = await buildClientAssertion(clientId, keyId, privateKeyPem);
-    } catch (e: any) {
-      console.error("client_assertion build error:", e);
-      return json({ error: `Could not sign Stitch client assertion: ${e?.message || e}. Make sure the Private Key is a valid PKCS#8 ES256 (P-256) PEM.` }, 400);
-    }
-
-    const tokenResp = await fetch(STITCH_TOKEN_URL, {
+    // 1. Token (subscriptions scope)
+    const tokenResp = await fetch(`${STITCH_BASE}/token`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: clientId,
-        scope,
-        audience: "https://secure.stitch.money",
-        client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-        client_assertion: clientAssertion,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, clientSecret, scope: "client_recurringpaymentconsentrequest" }),
     });
     const tokenJson = await tokenResp.json().catch(() => ({}));
-    if (!tokenResp.ok || !tokenJson.access_token) {
-      console.error("Stitch token error", tokenResp.status, tokenJson);
+    if (!tokenResp.ok || !tokenJson?.data?.accessToken) {
+      console.error("Stitch Express token error", tokenResp.status, tokenJson);
+      const msg = tokenJson?.error?.message || tokenJson?.message || tokenJson?.error || "unknown";
       return json({
-        error: `Stitch auth failed [${tokenResp.status}]: ${tokenJson?.error_description || tokenJson?.error || "check client_id / key_id / private_key"}`,
+        error: `Stitch Express auth failed [${tokenResp.status}]: ${msg}. Recurring payments require the 'client_recurringpaymentconsentrequest' scope — email express-support@stitch.money to enable it on your client.`,
       }, 502);
     }
-    const accessToken: string = tokenJson.access_token;
+    const accessToken: string = tokenJson.data.accessToken;
 
-    // Insert pending mandate
+    // 2. Insert pending mandate
     const { data: mandate, error: mErr } = await admin
       .from("stitch_mandates")
       .insert({
@@ -138,9 +120,9 @@ Deno.serve(async (req) => {
         club_member_id,
         user_id: userId,
         rail,
-        max_amount_cents: Math.round(amt * 100),
+        max_amount_cents: amountCents,
         frequency: "monthly",
-        debit_day,
+        debit_day: day,
         status: "pending",
         fee_category_id,
       })
@@ -151,73 +133,47 @@ Deno.serve(async (req) => {
       return json({ error: "Failed to create mandate record" }, 500);
     }
 
-    // Build the appropriate Stitch GraphQL mutation
-    const externalRef = `MND-${mandate.id.slice(0, 8)}`;
-    const fullName = member.name || "Member";
-    const [firstName, ...rest] = fullName.split(" ");
-    const lastName = rest.join(" ") || firstName;
+    // 3. Create Express card subscription
+    const refPrefix = (creds.merchant_payer_reference || (club.name || "Club"))
+      .slice(0, 12).replace(/[^A-Za-z0-9 ]/g, "");
+    const merchantReference = `${refPrefix}-${mandate.id.slice(0, 8)}`
+      .replace(/[^a-zA-Z0-9\s\-)]/g, "").slice(0, 50);
 
-    let mutation: string;
-    let variables: Record<string, unknown>;
+    const startDate = new Date();
+    // Move to next occurrence of the chosen day-of-month
+    const startIso = startDate.toISOString();
 
-    if (rail === "debicheck") {
-      mutation = `
-        mutation CreateAuth($input: ClientPaymentAuthorizationRequestCreateInput!) {
-          clientPaymentAuthorizationRequestCreate(input: $input) {
-            authorizationRequest { id url }
-          }
-        }`;
-      variables = {
-        input: {
-          beneficiary: { bankAccount: { name: club.name?.slice(0, 50) || "Club" } },
-          payer: {
-            name: fullName.slice(0, 50),
-            email: member.email || `${member.id}@noemail.local`,
-            mobileNumber: member.phone || undefined,
-          },
-          amount: { quantity: amt.toFixed(2), currency: "ZAR" },
-          externalReference: externalRef,
-        },
-      };
-    } else {
-      mutation = `
-        mutation CreateUserInit($input: UserInitiationRequestCreateInput!) {
-          userInitiationRequestCreate(input: $input) {
-            userInitiationRequest { id url }
-          }
-        }`;
-      variables = {
-        input: {
-          fullName,
-          email: member.email || `${member.id}@noemail.local`,
-          mobileNumber: member.phone || undefined,
-          externalReference: externalRef,
-        },
-      };
-    }
-
-    const gqlResp = await fetch(STITCH_GRAPHQL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
+    const subBody = {
+      amount: amountCents,
+      initialAmount: amountCents,
+      merchantReference,
+      startDate: startIso,
+      payerFullName: (member.name || "Member").slice(0, 20),
+      email: member.email || `${member.id}@noemail.local`,
+      payerId: member.id,
+      recurrence: {
+        frequency: "MONTHLY",
+        interval: 1,
+        byMonthDay: day,
       },
-      body: JSON.stringify({ query: mutation, variables }),
+    };
+
+    const subResp = await fetch(`${STITCH_BASE}/subscriptions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(subBody),
     });
-    const gqlJson = await gqlResp.json().catch(() => ({}));
-    if (!gqlResp.ok || gqlJson.errors) {
-      console.error("Stitch mandate error", gqlResp.status, gqlJson);
+    const subJson = await subResp.json().catch(() => ({}));
+    if (!subResp.ok || !subJson?.success || !subJson?.data?.url) {
+      console.error("Stitch Express subscription error", subResp.status, JSON.stringify(subJson));
       await admin.from("stitch_mandates").update({ status: "failed" }).eq("id", mandate.id);
-      return json({
-        error: `Stitch mandate failed [${gqlResp.status}]: ${gqlJson?.errors?.[0]?.message || "unknown"}`,
-      }, 502);
+      const msg = subJson?.error?.message || subJson?.message || (subJson?.errors && JSON.stringify(subJson.errors)) || `HTTP ${subResp.status}`;
+      return json({ error: `Stitch Express subscription failed: ${msg}` }, 502);
     }
 
-    const node =
-      gqlJson?.data?.clientPaymentAuthorizationRequestCreate?.authorizationRequest ||
-      gqlJson?.data?.userInitiationRequestCreate?.userInitiationRequest;
-    const stitchId = node?.id;
-    const authUrl = node?.url ? appendParam(node.url, "redirect_uri", sanitizeReturnUrl(return_url)) : null;
+    const stitchId = subJson.data.id;
+    const safeReturn = sanitizeReturnUrl(return_url);
+    const authUrl = appendParam(subJson.data.url, "redirect_url", safeReturn);
 
     await admin
       .from("stitch_mandates")
@@ -251,49 +207,4 @@ function sanitizeReturnUrl(raw: string): string {
   } catch {
     return `${PUBLIC_APP_ORIGIN}/account`;
   }
-}
-
-// ─── Stitch private_key_jwt helpers ─────────────────────────
-function b64urlEncode(bytes: Uint8Array | string): string {
-  const bin = typeof bytes === "string" ? bytes : String.fromCharCode(...bytes);
-  return btoa(bin).replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-}
-function pemToPkcs8(pem: string): Uint8Array {
-  const cleaned = pem
-    .replace(/-----BEGIN [^-]+-----/g, "")
-    .replace(/-----END [^-]+-----/g, "")
-    .replace(/\s+/g, "");
-  const bin = atob(cleaned);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-async function buildClientAssertion(clientId: string, kid: string, privateKeyPem: string): Promise<string> {
-  const pkcs8 = pemToPkcs8(privateKeyPem);
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pkcs8,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
-  );
-  const now = Math.floor(Date.now() / 1000);
-  const header = { alg: "ES256", typ: "JWT", kid };
-  const payload = {
-    iss: clientId,
-    sub: clientId,
-    aud: "https://secure.stitch.money/connect/token",
-    iat: now,
-    nbf: now,
-    exp: now + 60,
-    jti: crypto.randomUUID(),
-  };
-  const enc = new TextEncoder();
-  const signingInput = `${b64urlEncode(enc.encode(JSON.stringify(header)))}.${b64urlEncode(enc.encode(JSON.stringify(payload)))}`;
-  const sig = new Uint8Array(await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    key,
-    enc.encode(signingInput),
-  ));
-  return `${signingInput}.${b64urlEncode(sig)}`;
 }

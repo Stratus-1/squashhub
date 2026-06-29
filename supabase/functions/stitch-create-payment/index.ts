@@ -83,8 +83,8 @@ Deno.serve(async (req) => {
     });
     const tokenJson = await tokenResp.json().catch(() => ({}));
     if (!tokenResp.ok || !tokenJson.access_token) {
-      console.error("Stitch token error", tokenResp.status, tokenJson);
-      return json({ error: `Stitch auth failed [${tokenResp.status}]: ${tokenJson?.error_description || tokenJson?.error || "unknown"}` }, 502);
+      console.error("Stitch token error", tokenResp.status, JSON.stringify(tokenJson));
+      return json({ error: `Stitch auth failed [${tokenResp.status}]: ${tokenJson?.error_description || tokenJson?.error || "check client_id / client_secret"}` }, 200);
     }
     const accessToken: string = tokenJson.access_token;
 
@@ -108,42 +108,25 @@ Deno.serve(async (req) => {
     const safeReturnUrl = sanitizeReturnUrl(return_url);
     const successUrl = appendParam(appendParam(safeReturnUrl, "stitch_session", session.id), "stitch_status", "success");
 
-    // GraphQL: clientPaymentInitiationRequestCreate (PayByBank) or clientCardPaymentRequestCreate (Card)
-    let mutation: string;
-    let variables: Record<string, unknown>;
-    if (method === "paybybank") {
-      mutation = `
-        mutation CreatePaymentRequest($input: ClientPaymentInitiationRequestInput!) {
-          clientPaymentInitiationRequestCreate(input: $input) {
-            paymentInitiationRequest { id url }
-          }
-        }`;
-      variables = {
-        input: {
-          amount: { quantity: amt.toFixed(2), currency: "ZAR" },
-          payerReference: payerRef,
-          beneficiaryReference: payerRef,
-          externalReference: session.id,
-          beneficiary: { bankAccount: { name: club.name, bankId: "fnb", accountNumber: creds.beneficiary_account_number || "" } },
-        },
-      };
-    } else {
-      mutation = `
-        mutation CreateCardPaymentRequest($input: ClientCardPaymentRequestInput!) {
-          clientCardPaymentRequestCreate(input: $input) {
-            cardPaymentRequest { id url }
-          }
-        }`;
-      variables = {
-        input: {
-          amount: { quantity: amt.toFixed(2), currency: "ZAR" },
-          merchantReference: session.id,
-          payerReference: payerRef,
-          successUrl,
-          failureUrl: successUrl,
-        },
-      };
-    }
+    // Stitch LinkPay (clientPaymentInitiationRequestCreate) presents the user
+    // with a hosted checkout that supports PayByBank and Card. We use the same
+    // mutation for both methods — Stitch shows the appropriate payment options
+    // on the hosted page based on the merchant's enabled methods.
+    const mutation = `
+      mutation CreatePaymentRequest($input: ClientPaymentInitiationRequestInput!) {
+        clientPaymentInitiationRequestCreate(input: $input) {
+          paymentInitiationRequest { id url }
+        }
+      }`;
+    const variables: Record<string, unknown> = {
+      input: {
+        amount: { quantity: amt.toFixed(2), currency: "ZAR" },
+        payerReference: payerRef,
+        beneficiaryReference: payerRef,
+        externalReference: session.id,
+        beneficiary: { bankAccount: { name: club.name, bankId: "fnb", accountNumber: creds.beneficiary_account_number || "" } },
+      },
+    };
 
     const gqlResp = await fetch(STITCH_GRAPHQL, {
       method: "POST",
@@ -152,17 +135,16 @@ Deno.serve(async (req) => {
     });
     const gqlData = await gqlResp.json().catch(() => ({}));
     if (!gqlResp.ok || gqlData.errors) {
-      console.error("Stitch GraphQL error", gqlResp.status, gqlData);
+      console.error("Stitch GraphQL error", gqlResp.status, JSON.stringify(gqlData));
       await admin.from("stitch_payment_sessions").update({ status: "failed" }).eq("id", session.id);
-      return json({ error: `Stitch API error: ${gqlData?.errors?.[0]?.message || JSON.stringify(gqlData)}` }, 502);
+      const msg = gqlData?.errors?.[0]?.message || gqlData?.error_description || `HTTP ${gqlResp.status}`;
+      return json({ error: `Stitch API error: ${msg}` }, 200);
     }
 
-    const node = method === "paybybank"
-      ? gqlData.data?.clientPaymentInitiationRequestCreate?.paymentInitiationRequest
-      : gqlData.data?.clientCardPaymentRequestCreate?.cardPaymentRequest;
+    const node = gqlData.data?.clientPaymentInitiationRequestCreate?.paymentInitiationRequest;
     if (!node?.id || !node?.url) {
       await admin.from("stitch_payment_sessions").update({ status: "failed" }).eq("id", session.id);
-      return json({ error: "Stitch did not return a redirect URL." }, 502);
+      return json({ error: "Stitch did not return a redirect URL." }, 200);
     }
 
     await admin.from("stitch_payment_sessions").update({

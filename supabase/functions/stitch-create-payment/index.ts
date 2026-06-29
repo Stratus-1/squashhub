@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
         payer_reference: payerRef,
         status: "created",
       }).select("id").single();
-    if (sessErr || !session) return json({ error: sessErr?.message || "Could not create session" }, 500);
+    if (sessErr || !session) return json({ error: sessErr?.message || "Could not create session" }, 200);
 
     const safeReturnUrl = sanitizeReturnUrl(return_url);
     const successUrl = appendParam(appendParam(safeReturnUrl, "stitch_session", session.id), "stitch_status", "success");

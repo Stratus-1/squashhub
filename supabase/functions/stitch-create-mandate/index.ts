@@ -81,24 +81,33 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
     const clientId = creds.client_id;
-    const clientSecret = creds.client_secret;
+    const keyId = creds.key_id;
+    const privateKeyPem = creds.private_key_pem;
     const testMode = String(creds.test_mode || "") === "true";
     const looksLikeTest = /^test[-_]/i.test(clientId || "");
-    if (!clientId || !clientSecret) {
-      return json({ error: "Stitch client_id / client_secret not configured for this club." }, 400);
+    if (!clientId || !keyId || !privateKeyPem) {
+      return json({ error: "Stitch credentials incomplete. Required: Client ID, Key ID (kid), and Private Key (PEM)." }, 400);
     }
     if (testMode && !looksLikeTest) {
       return json({ error: "Test mode is ON but the Client ID does not look like a Stitch test credential (expected to start with 'test-')." }, 400);
     }
     if (!testMode && looksLikeTest) {
-      return json({ error: "Test mode is OFF but the Client ID looks like a Stitch test credential. Enable Test mode in Club Admin → Banking, or replace with live credentials." }, 400);
+      return json({ error: "Test mode is OFF but the Client ID looks like a Stitch test credential. Enable Test mode or paste live credentials." }, 400);
     }
     console.log(`[stitch-create-mandate] mode=${testMode ? "TEST" : "LIVE"} club=${club.id}`);
 
-    // OAuth token (client_credentials) — scope depends on rail
+    // OAuth token (private_key_jwt) — scope depends on rail
     const scope = rail === "debicheck"
       ? "client_paymentauthorizationrequest"
       : "client_userinitiationrequest";
+
+    let clientAssertion: string;
+    try {
+      clientAssertion = await buildClientAssertion(clientId, keyId, privateKeyPem);
+    } catch (e: any) {
+      console.error("client_assertion build error:", e);
+      return json({ error: `Could not sign Stitch client assertion: ${e?.message || e}. Make sure the Private Key is a valid PKCS#8 ES256 (P-256) PEM.` }, 400);
+    }
 
     const tokenResp = await fetch(STITCH_TOKEN_URL, {
       method: "POST",
@@ -106,16 +115,17 @@ Deno.serve(async (req) => {
       body: new URLSearchParams({
         grant_type: "client_credentials",
         client_id: clientId,
-        client_secret: clientSecret,
         scope,
         audience: "https://secure.stitch.money",
+        client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+        client_assertion: clientAssertion,
       }),
     });
     const tokenJson = await tokenResp.json().catch(() => ({}));
     if (!tokenResp.ok || !tokenJson.access_token) {
       console.error("Stitch token error", tokenResp.status, tokenJson);
       return json({
-        error: `Stitch auth failed [${tokenResp.status}]: ${tokenJson?.error_description || tokenJson?.error || "unknown"}`,
+        error: `Stitch auth failed [${tokenResp.status}]: ${tokenJson?.error_description || tokenJson?.error || "check client_id / key_id / private_key"}`,
       }, 502);
     }
     const accessToken: string = tokenJson.access_token;

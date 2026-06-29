@@ -46,7 +46,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   const [setupOpen, setSetupOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<FeeCategory | null>(null);
   const [rail, setRail] = useState<"debicheck" | "eft_debit">("debicheck");
+  const [months, setMonths] = useState("6");
   const [amount, setAmount] = useState("");
+  const [amountTouched, setAmountTouched] = useState(false);
   const [debitDay, setDebitDay] = useState("1");
   const [submitting, setSubmitting] = useState(false);
 

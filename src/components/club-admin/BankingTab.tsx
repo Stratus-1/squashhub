@@ -380,14 +380,14 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
             )}
             {selectedGateway.id === "stitch" && (
               <div className="rounded border border-sky-500/30 bg-sky-500/5 p-2 space-y-1">
-                <p className="text-[11px] font-medium text-sky-700 dark:text-sky-400">How to get your Stitch credentials</p>
+                <p className="text-[11px] font-medium text-sky-700 dark:text-sky-400">How to get your Stitch Express credentials</p>
                 <ol className="text-[11px] text-muted-foreground list-decimal pl-4 space-y-0.5">
-                  <li>Sign up / sign in at <a href="https://dashboard.stitch.money" target="_blank" rel="noopener noreferrer" className="text-primary underline">dashboard.stitch.money</a>.</li>
-                  <li>Open <strong>Settings → Client credentials</strong> and create a client with the <strong>client_paymentrequest</strong> scope.</li>
-                  <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> into the fields below.</li>
-                  <li>For server-confirmed settlements, add the webhook URL <code className="text-[10px]">https://squashhub.co.za/functions/v1/stitch-webhook</code> in Stitch (Settings → Webhooks).</li>
-                  <li>Use the <em>test</em> client while trialling; switch to <em>live</em> before collecting real money.</li>
-                  <li>For PayByBank payouts, also add your club's bank account number below. Cards work without it.</li>
+                  <li>Sign in at <a href="https://express.stitch.money" target="_blank" rel="noopener noreferrer" className="text-primary underline">express.stitch.money</a> (this is the <strong>Express</strong> product, not Enterprise).</li>
+                  <li>Open <strong>Settings → API credentials</strong> and copy the <strong>Client ID</strong>.</li>
+                  <li>Click <strong>View Client Secret</strong> — Stitch regenerates the secret each time you view it, so paste it into the field below and Save immediately.</li>
+                  <li>Register <code className="text-[10px]">https://squashhub.co.za/my-account</code> (and any other return URLs you use) under <strong>Settings → Redirect URLs</strong> in the Stitch Express dashboard — required for the customer to be sent back to the app after paying.</li>
+                  <li>For server-confirmed settlements, add the webhook URL <code className="text-[10px]">https://squashhub.co.za/functions/v1/stitch-webhook</code> under <strong>Settings → Webhooks</strong>.</li>
+                  <li>Use the <em>test</em> client (Client ID starts with <code>test-</code>) while trialling; switch to <em>live</em> before collecting real money.</li>
                 </ol>
               </div>
             )}

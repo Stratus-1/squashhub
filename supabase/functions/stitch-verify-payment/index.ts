@@ -1,4 +1,4 @@
-// Verifies a Stitch payment by session and finalises it in our DB.
+// Verifies a Stitch Express payment by session and finalises it in our DB.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -6,8 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const STITCH_TOKEN_URL = "https://secure.stitch.money/connect/token";
-const STITCH_GRAPHQL = "https://api.stitch.money/graphql";
+const STITCH_BASE = "https://express.stitch.money/api/v1";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -44,47 +43,38 @@ Deno.serve(async (req) => {
     const { data: secrets } = await admin.from("club_secrets")
       .select("payment_gateway_credentials").eq("club_id", session.club_id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
-    if (!creds.client_id || !creds.client_secret) return json({ error: "Stitch keys missing" }, 400);
+    const clientId = (creds.client_id || "").trim();
+    const clientSecret = (creds.client_secret || "").trim();
+    if (!clientId || !clientSecret) return json({ error: "Stitch Express keys missing" }, 400);
 
     // Token
-    const tokenResp = await fetch(STITCH_TOKEN_URL, {
-      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials", client_id: creds.client_id, client_secret: creds.client_secret,
-        scope: "client_paymentrequest", audience: "https://secure.stitch.money",
-      }),
+    const tokenResp = await fetch(`${STITCH_BASE}/token`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, clientSecret, scope: "client_paymentrequest" }),
     });
     const tokenJson = await tokenResp.json().catch(() => ({}));
-    if (!tokenResp.ok) return json({ error: "Stitch auth failed" }, 502);
-    const accessToken = tokenJson.access_token;
+    if (!tokenResp.ok || !tokenJson?.data?.accessToken) {
+      console.error("Stitch Express token error", tokenResp.status, tokenJson);
+      return json({ error: "Stitch Express auth failed" }, 502);
+    }
+    const accessToken: string = tokenJson.data.accessToken;
 
-    // Query payment status
-    const query = `
-      query Status($id: ID!) {
-        node(id: $id) {
-          ... on PaymentInitiationRequest { id status { __typename } }
-          ... on CardPaymentRequest { id state { __typename } }
-        }
-      }`;
-    const gqlResp = await fetch(STITCH_GRAPHQL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query, variables: { id: session.stitch_request_id } }),
+    const plResp = await fetch(`${STITCH_BASE}/payment-links/${encodeURIComponent(session.stitch_request_id)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const gqlData = await gqlResp.json().catch(() => ({}));
-    if (!gqlResp.ok) {
-      console.error("Stitch status error", gqlData);
+    const plJson = await plResp.json().catch(() => ({}));
+    if (!plResp.ok) {
+      console.error("Stitch Express status error", plJson);
       return json({ error: "Stitch verify failed" }, 502);
     }
-    const node = gqlData.data?.node;
-    const statusName: string = node?.status?.__typename || node?.state?.__typename || "Pending";
-    const completed = /Complete|Settled|Successful/i.test(statusName);
-    const failed = /Failed|Cancel|Expired|Rejected/i.test(statusName);
+    const status: string = plJson?.data?.payment?.status || "PENDING";
+    const completed = status === "PAID";
+    const failed = status === "EXPIRED" || status === "CANCELLED";
 
     if (!completed) {
       const next = failed ? "failed" : "processing";
       await admin.from("stitch_payment_sessions").update({ status: next }).eq("id", session.id);
-      return json({ status: next, stitch_state: statusName });
+      return json({ status: next, stitch_state: status });
     }
 
     // Atomic claim

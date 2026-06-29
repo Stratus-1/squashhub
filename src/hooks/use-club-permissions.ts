@@ -170,6 +170,7 @@ export function useUpsertMemberPermission() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["member-permission", vars.club_member_id] });
+      qc.invalidateQueries({ queryKey: ["all-member-permissions"] });
     },
   });
 }

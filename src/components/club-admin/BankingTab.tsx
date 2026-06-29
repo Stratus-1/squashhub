@@ -22,7 +22,7 @@ type FieldDef = {
   placeholder: string;
   sensitive?: boolean;
   helperText?: string;
-  type?: "text" | "checkbox";
+  type?: "text" | "checkbox" | "textarea";
 };
 
 

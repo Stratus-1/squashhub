@@ -39,9 +39,10 @@ interface Props {
   clubId: string;
   clubMemberId: string;
   paymentGateway: string | null | undefined;
+  memberFeeCategoryId?: string | null;
 }
 
-export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGateway }: Props) {
+export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGateway, memberFeeCategoryId }: Props) {
   const qc = useQueryClient();
   const [setupOpen, setSetupOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<FeeCategory | null>(null);

@@ -64,37 +64,47 @@ Deno.serve(async (req) => {
       .eq("club_id", club_id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
     const clientId = creds.client_id;
-    const clientSecret = creds.client_secret;
+    const keyId = creds.key_id;
+    const privateKeyPem = creds.private_key_pem;
     const testMode = String(creds.test_mode || "") === "true";
     const looksLikeTest = /^test[-_]/i.test(clientId || "");
     const merchantRef = (creds.merchant_payer_reference || (club.name || "Club")).slice(0, 12).replace(/[^A-Za-z0-9 ]/g, "");
-    if (!clientId || !clientSecret) {
-      return json({ error: "Stitch client_id / client_secret not configured for this club." }, 200);
+    if (!clientId || !keyId || !privateKeyPem) {
+      return json({ error: "Stitch credentials incomplete. Required: Client ID, Key ID (kid), and Private Key (PEM)." }, 200);
     }
     if (testMode && !looksLikeTest) {
-      return json({ error: "Test mode is ON but the Client ID does not look like a Stitch test credential (expected to start with 'test-'). Either disable Test mode or paste your sandbox client_id / client_secret." }, 200);
+      return json({ error: "Test mode is ON but the Client ID does not look like a Stitch test credential (expected to start with 'test-')." }, 200);
     }
     if (!testMode && looksLikeTest) {
-      return json({ error: "Test mode is OFF but the Client ID looks like a Stitch test credential. Enable Test mode in Club Admin → Banking, or replace with live Stitch credentials." }, 200);
+      return json({ error: "Test mode is OFF but the Client ID looks like a Stitch test credential. Enable Test mode or paste live credentials." }, 200);
     }
     console.log(`[stitch-create-payment] mode=${testMode ? "TEST" : "LIVE"} club=${club.id}`);
 
-    // OAuth token (client_credentials)
+    // OAuth token via private_key_jwt (Stitch requires JWT client assertion for client_paymentrequest)
+    let clientAssertion: string;
+    try {
+      clientAssertion = await buildClientAssertion(clientId, keyId, privateKeyPem);
+    } catch (e: any) {
+      console.error("client_assertion build error:", e);
+      return json({ error: `Could not sign Stitch client assertion: ${e?.message || e}. Make sure the Private Key is a valid PKCS#8 ES256 (P-256) PEM.` }, 200);
+    }
+
     const tokenResp = await fetch(STITCH_TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "client_credentials",
         client_id: clientId,
-        client_secret: clientSecret,
         scope: "client_paymentrequest",
         audience: "https://secure.stitch.money",
+        client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+        client_assertion: clientAssertion,
       }),
     });
     const tokenJson = await tokenResp.json().catch(() => ({}));
     if (!tokenResp.ok || !tokenJson.access_token) {
       console.error("Stitch token error", tokenResp.status, JSON.stringify(tokenJson));
-      return json({ error: `Stitch auth failed [${tokenResp.status}]: ${tokenJson?.error_description || tokenJson?.error || "check client_id / client_secret"}` }, 200);
+      return json({ error: `Stitch auth failed [${tokenResp.status}]: ${tokenJson?.error_description || tokenJson?.error || "check client_id / key_id / private_key"}` }, 200);
     }
     const accessToken: string = tokenJson.access_token;
 

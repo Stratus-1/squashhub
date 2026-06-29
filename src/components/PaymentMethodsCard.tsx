@@ -39,9 +39,10 @@ interface Props {
   clubId: string;
   clubMemberId: string;
   paymentGateway: string | null | undefined;
+  memberFeeCategoryId?: string | null;
 }
 
-export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGateway }: Props) {
+export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGateway, memberFeeCategoryId }: Props) {
   const qc = useQueryClient();
   const [setupOpen, setSetupOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<FeeCategory | null>(null);
@@ -80,6 +81,12 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     enabled: !!clubId,
   });
 
+  const visibleCategories = useMemo(() => {
+    if (!memberFeeCategoryId) return categories;
+    const mine = categories.filter((c) => c.id === memberFeeCategoryId);
+    return mine.length > 0 ? mine : categories;
+  }, [categories, memberFeeCategoryId]);
+
   const activeMandates = useMemo(
     () => mandates.filter((m) => m.status === "active" || m.status === "pending"),
     [mandates],
@@ -105,7 +112,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   }, [months, selectedCategory, amountTouched]);
 
   if (paymentGateway !== "stitch") return null;
-  if (categories.length === 0 && activeMandates.length === 0) return null;
+  if (visibleCategories.length === 0 && activeMandates.length === 0) return null;
 
   function openSetup(cat: FeeCategory) {
     setSelectedCategory(cat);
@@ -231,12 +238,12 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
           </p>
         )}
 
-        {categories.length > 0 && (
+        {visibleCategories.length > 0 && (
           <div className="border-t pt-2 space-y-1.5">
             <p className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wide">
               Set up monthly debit
             </p>
-            {categories.map((cat) => {
+            {visibleCategories.map((cat) => {
               const has = activeMandates.some((m) => m.fee_category_id === cat.id);
               return (
                 <div key={cat.id} className="flex items-center justify-between gap-2">

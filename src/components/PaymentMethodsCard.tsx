@@ -112,7 +112,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   }, [months, selectedCategory, amountTouched]);
 
   if (paymentGateway !== "stitch") return null;
-  if (categories.length === 0 && activeMandates.length === 0) return null;
+  if (visibleCategories.length === 0 && activeMandates.length === 0) return null;
 
   function openSetup(cat: FeeCategory) {
     setSelectedCategory(cat);

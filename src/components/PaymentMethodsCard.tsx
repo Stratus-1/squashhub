@@ -95,6 +95,15 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
   }, [clubMemberId, qc]);
 
+  // Auto-recalculate monthly amount when months changes (unless user typed an override)
+  // MUST be declared before any conditional early-return to satisfy Rules of Hooks.
+  useEffect(() => {
+    if (!selectedCategory || amountTouched) return;
+    const n = Number(months);
+    const annual = Number(selectedCategory.annual_fee || 0);
+    if (n > 0 && annual > 0) setAmount((annual / n).toFixed(2));
+  }, [months, selectedCategory, amountTouched]);
+
   if (paymentGateway !== "stitch") return null;
   if (categories.length === 0 && activeMandates.length === 0) return null;
 
@@ -110,14 +119,6 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     setDebitDay("1");
     setSetupOpen(true);
   }
-
-  // Auto-recalculate monthly amount when months changes (unless user typed an override)
-  useEffect(() => {
-    if (!selectedCategory || amountTouched) return;
-    const n = Number(months);
-    const annual = Number(selectedCategory.annual_fee || 0);
-    if (n > 0 && annual > 0) setAmount((annual / n).toFixed(2));
-  }, [months, selectedCategory, amountTouched]);
 
   async function submitSetup() {
     if (!selectedCategory) return;

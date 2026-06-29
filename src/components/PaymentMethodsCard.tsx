@@ -46,7 +46,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   const [setupOpen, setSetupOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<FeeCategory | null>(null);
   const [rail, setRail] = useState<"debicheck" | "eft_debit">("debicheck");
+  const [months, setMonths] = useState("6");
   const [amount, setAmount] = useState("");
+  const [amountTouched, setAmountTouched] = useState(false);
   const [debitDay, setDebitDay] = useState("1");
   const [submitting, setSubmitting] = useState(false);
 
@@ -100,10 +102,22 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     setSelectedCategory(cat);
     const r = cat.debit_order_rail;
     setRail(r === "eft" ? "eft_debit" : "debicheck");
-    setAmount(String(cat.annual_fee ?? ""));
+    const defaultMonths = 6;
+    setMonths(String(defaultMonths));
+    const annual = Number(cat.annual_fee || 0);
+    setAmount(annual > 0 ? (annual / defaultMonths).toFixed(2) : "");
+    setAmountTouched(false);
     setDebitDay("1");
     setSetupOpen(true);
   }
+
+  // Auto-recalculate monthly amount when months changes (unless user typed an override)
+  useEffect(() => {
+    if (!selectedCategory || amountTouched) return;
+    const n = Number(months);
+    const annual = Number(selectedCategory.annual_fee || 0);
+    if (n > 0 && annual > 0) setAmount((annual / n).toFixed(2));
+  }, [months, selectedCategory, amountTouched]);
 
   async function submitSetup() {
     if (!selectedCategory) return;
@@ -266,8 +280,38 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                     <SelectItem value="eft_debit">EFT debit (digital mandate)</SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="mt-2 rounded-md border bg-muted/40 p-2 text-[11px] leading-snug space-y-1.5">
+                  <p>
+                    <strong>DebiCheck</strong> — you approve the mandate <em>once</em> inside your
+                    own banking app (FNB, Standard Bank, ABSA, Capitec, Nedbank…). It's the most
+                    secure option, can't be disputed later, and the bank can't randomly reject the
+                    debit. <em>Recommended.</em>
+                  </p>
+                  <p>
+                    <strong>EFT debit</strong> — you sign a digital mandate here (no banking-app
+                    step). Faster to set up, works for any bank account, but the debit can be
+                    reversed by the account holder for up to 40 days.
+                  </p>
+                </div>
               </div>
             )}
+
+            <div>
+              <Label className="text-xs">Split annual fee over (months)</Label>
+              <Select value={months} onValueChange={(v) => { setMonths(v); setAmountTouched(false); }}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[3, 4, 6, 10, 12].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n} months {selectedCategory ? `· R${(Number(selectedCategory.annual_fee || 0) / n).toFixed(2)} / month` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">Monthly amount (R)</Label>
@@ -276,7 +320,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   min="1"
                   step="0.01"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => { setAmount(e.target.value); setAmountTouched(true); }}
                   className="h-9"
                 />
               </div>
@@ -292,9 +336,13 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                 />
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              You can cancel this debit order at any time from this screen.
-            </p>
+            {selectedCategory && (
+              <p className="text-[11px] text-muted-foreground">
+                Annual fee R{Number(selectedCategory.annual_fee || 0).toFixed(2)} ÷ {months} ={" "}
+                R{(Number(selectedCategory.annual_fee || 0) / Math.max(Number(months) || 1, 1)).toFixed(2)} per month.
+                You can override the monthly amount above. Cancel any time from this screen.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setSetupOpen(false)} disabled={submitting}>

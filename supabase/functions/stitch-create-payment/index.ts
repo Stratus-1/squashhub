@@ -83,8 +83,8 @@ Deno.serve(async (req) => {
     });
     const tokenJson = await tokenResp.json().catch(() => ({}));
     if (!tokenResp.ok || !tokenJson.access_token) {
-      console.error("Stitch token error", tokenResp.status, tokenJson);
-      return json({ error: `Stitch auth failed [${tokenResp.status}]: ${tokenJson?.error_description || tokenJson?.error || "unknown"}` }, 502);
+      console.error("Stitch token error", tokenResp.status, JSON.stringify(tokenJson));
+      return json({ error: `Stitch auth failed [${tokenResp.status}]: ${tokenJson?.error_description || tokenJson?.error || "check client_id / client_secret"}` }, 200);
     }
     const accessToken: string = tokenJson.access_token;
 

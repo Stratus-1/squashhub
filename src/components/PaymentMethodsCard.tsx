@@ -102,10 +102,22 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     setSelectedCategory(cat);
     const r = cat.debit_order_rail;
     setRail(r === "eft" ? "eft_debit" : "debicheck");
-    setAmount(String(cat.annual_fee ?? ""));
+    const defaultMonths = 6;
+    setMonths(String(defaultMonths));
+    const annual = Number(cat.annual_fee || 0);
+    setAmount(annual > 0 ? (annual / defaultMonths).toFixed(2) : "");
+    setAmountTouched(false);
     setDebitDay("1");
     setSetupOpen(true);
   }
+
+  // Auto-recalculate monthly amount when months changes (unless user typed an override)
+  useEffect(() => {
+    if (!selectedCategory || amountTouched) return;
+    const n = Number(months);
+    const annual = Number(selectedCategory.annual_fee || 0);
+    if (n > 0 && annual > 0) setAmount((annual / n).toFixed(2));
+  }, [months, selectedCategory, amountTouched]);
 
   async function submitSetup() {
     if (!selectedCategory) return;

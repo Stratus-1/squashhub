@@ -21,10 +21,10 @@ Deno.serve(async (req) => {
 
     const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
     const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
+    if (userErr || !userData.user) return json({ error: "Unauthorized" }, 200);
     const userId = userData.user.id;
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const {
       club_id, club_member_id, amount, purpose,
       method = "paybybank",
@@ -33,12 +33,12 @@ Deno.serve(async (req) => {
     } = body || {};
 
     if (!club_id || !club_member_id || !amount || !purpose || !return_url) {
-      return json({ error: "Missing required fields" }, 400);
+      return json({ error: "Missing required fields" }, 200);
     }
-    if (!["fee", "topup", "tournament"].includes(purpose)) return json({ error: "Invalid purpose" }, 400);
-    if (!["paybybank", "card"].includes(method)) return json({ error: "Invalid method" }, 400);
+    if (!["fee", "topup", "tournament"].includes(purpose)) return json({ error: "Invalid purpose" }, 200);
+    if (!["paybybank", "card"].includes(method)) return json({ error: "Invalid method" }, 200);
     const amt = Number(amount);
-    if (!(amt > 0)) return json({ error: "Invalid amount" }, 400);
+    if (!(amt > 0)) return json({ error: "Invalid amount" }, 200);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -47,14 +47,14 @@ Deno.serve(async (req) => {
       .select("id, club_id, user_id, full_name, club_member_number")
       .eq("id", club_member_id).maybeSingle();
     if (!member || member.club_id !== club_id || member.user_id !== userId) {
-      return json({ error: "Member not found or not yours" }, 403);
+      return json({ error: "Member not found or not yours" }, 200);
     }
 
     const { data: club } = await admin
       .from("clubs").select("id, name, payment_gateway")
       .eq("id", club_id).maybeSingle();
     if (!club || club.payment_gateway !== "stitch") {
-      return json({ error: "Stitch is not configured for this club" }, 400);
+      return json({ error: "Stitch is not configured for this club" }, 200);
     }
 
     const { data: secrets } = await admin
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     const clientSecret = creds.client_secret;
     const merchantRef = (creds.merchant_payer_reference || (club.name || "Club")).slice(0, 12).replace(/[^A-Za-z0-9 ]/g, "");
     if (!clientId || !clientSecret) {
-      return json({ error: "Stitch client_id / client_secret not configured for this club." }, 400);
+      return json({ error: "Stitch client_id / client_secret not configured for this club." }, 200);
     }
 
     // OAuth token (client_credentials)
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
         payer_reference: payerRef,
         status: "created",
       }).select("id").single();
-    if (sessErr || !session) return json({ error: sessErr?.message || "Could not create session" }, 500);
+    if (sessErr || !session) return json({ error: sessErr?.message || "Could not create session" }, 200);
 
     const safeReturnUrl = sanitizeReturnUrl(return_url);
     const successUrl = appendParam(appendParam(safeReturnUrl, "stitch_session", session.id), "stitch_status", "success");
@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     return json({ session_id: session.id, redirect_url: node.url, request_id: node.id });
   } catch (e: any) {
     console.error("stitch-create-payment error:", e);
-    return json({ error: e.message || "Unexpected error" }, 500);
+    return json({ error: e?.message || "Unexpected error" }, 200);
   }
 });
 

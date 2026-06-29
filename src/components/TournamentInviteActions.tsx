@@ -360,7 +360,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                 </Button>
               </div>
               {yocoReady && paymentRequired && (
-                <FnbPaymentNotice className="mt-2" />
+                <FnbPaymentNotice className="mt-2" gateway={clubInfo?.payment_gateway} />
               )}
             </>
           )}

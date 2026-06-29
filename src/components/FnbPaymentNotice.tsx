@@ -4,15 +4,16 @@ import { cn } from "@/lib/utils";
 interface FnbPaymentNoticeProps {
   className?: string;
   showEftFallback?: boolean;
+  gateway?: string | null;
 }
 
 /**
  * Bank-specific warning shown next to Yoco / card payment buttons.
- * FNB **and Absa** both block Yoco card payments, Google Pay and Apple Pay
- * by default unless the cardholder enables online purchases in their
- * banking app. (Component name kept for backwards compatibility.)
+ * Only relevant for Yoco — other gateways (stitch, payfast, etc.) don't have
+ * this issue, so we hide the notice unless the active gateway is Yoco.
  */
-export const FnbPaymentNotice = ({ className, showEftFallback = true }: FnbPaymentNoticeProps) => {
+export const FnbPaymentNotice = ({ className, showEftFallback = true, gateway }: FnbPaymentNoticeProps) => {
+  if (gateway && gateway.toLowerCase() !== "yoco") return null;
   return (
     <div
       className={cn(

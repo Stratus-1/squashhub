@@ -15,7 +15,21 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
     const safePath = pathAndSearch.startsWith("/") && !pathAndSearch.startsWith("//")
       ? pathAndSearch
       : `/${pathAndSearch.replace(/^\/+/, "")}`;
-    return `${PUBLIC_APP_ORIGIN}${safePath}`;
+    // Prefer the current tenant origin (e.g. https://gb.squashhub.co.za) so
+    // the payer is returned to the same club subdomain they paid from.
+    let origin = PUBLIC_APP_ORIGIN;
+    if (typeof window !== "undefined" && window.location?.origin) {
+      const host = window.location.hostname;
+      if (
+        host === "squashhub.co.za" ||
+        host.endsWith(".squashhub.co.za") ||
+        host.endsWith(".lovable.app") ||
+        host === "localhost"
+      ) {
+        origin = window.location.origin.replace(/\/+$/, "");
+      }
+    }
+    return `${origin}${safePath}`;
   }
   const nativePath = pathAndSearch.replace(/^\/+/, "");
   return `${APP_SCHEME}://${nativePath}`;

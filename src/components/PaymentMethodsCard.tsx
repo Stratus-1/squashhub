@@ -81,6 +81,12 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     enabled: !!clubId,
   });
 
+  const visibleCategories = useMemo(() => {
+    if (!memberFeeCategoryId) return categories;
+    const mine = categories.filter((c) => c.id === memberFeeCategoryId);
+    return mine.length > 0 ? mine : categories;
+  }, [categories, memberFeeCategoryId]);
+
   const activeMandates = useMemo(
     () => mandates.filter((m) => m.status === "active" || m.status === "pending"),
     [mandates],

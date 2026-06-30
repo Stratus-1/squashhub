@@ -125,17 +125,17 @@ Deno.serve(async (req) => {
       amount: amountCents,
       payerName,
       merchantReference,
-      // Stitch Express post-payment redirect. The correct field name per the
-      // Express payment-links API is `merchantRedirectUrl`. We also send the
-      // legacy `redirectUrl` for forward/back compatibility — Stitch ignores
-      // unknown fields.
+      // Some Stitch Express surfaces accept a body redirect, but the official
+      // WooCommerce plugin uses a `redirect_url` query param on the returned
+      // hosted payment link. We keep these body fields as harmless fallbacks.
       merchantRedirectUrl: successUrl,
       redirectUrl: successUrl,
+      currency: "ZAR",
     };
     if (member.email) plBody.payerEmailAddress = member.email;
     if (member.phone) plBody.payerPhoneNumber = String(member.phone);
 
-    const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
+    const plResp = await fetch(`${STITCH_BASE}/payments`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify(plBody),
@@ -149,11 +149,10 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // IMPORTANT: do NOT append query params to Stitch's hosted payment link —
-    // their page returns 404 if the URL is altered. The payer closes the tab
-    // after paying; we poll status on return via the pending-session record.
-    const redirectUrl = payment.link as string;
-    void successUrl; // reserved for future Stitch field that accepts merchant return URL
+    // Stitch Express expects the merchant return URL as `redirect_url` on the
+    // hosted link itself. Do not append our own tracking params to the Stitch
+    // link — only pass them inside the encoded return URL.
+    const redirectUrl = appendParam(payment.link as string, "redirect_url", successUrl);
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,

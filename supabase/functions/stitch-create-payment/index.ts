@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
     if (member.email) plBody.payerEmailAddress = member.email;
     if (member.phone) plBody.payerPhoneNumber = String(member.phone);
 
-    const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
+    const plResp = await fetch(`${STITCH_BASE}/payments`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify(plBody),

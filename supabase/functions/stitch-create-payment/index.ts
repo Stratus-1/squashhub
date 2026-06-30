@@ -125,6 +125,11 @@ Deno.serve(async (req) => {
       amount: amountCents,
       payerName,
       merchantReference,
+      // Stitch Express supports a post-payment redirect back to the merchant.
+      // Field name per Express docs is `redirectUrl` (camelCase). We send the
+      // tenant-aware success URL so the payer lands on /my-account on the
+      // same subdomain they paid from.
+      redirectUrl: successUrl,
     };
     if (member.email) plBody.payerEmailAddress = member.email;
     if (member.phone) plBody.payerPhoneNumber = String(member.phone);

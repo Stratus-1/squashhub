@@ -103,9 +103,15 @@ export function readReturnSession(
 
 export function clearReturnParams(searchParams: URLSearchParams): URLSearchParams {
   const next = new URLSearchParams(searchParams);
-  ["yoco_session", "yoco_cancelled", "yoco_status", "stitch_session", "stitch_status"].forEach(k => next.delete(k));
+  [
+    "yoco_session", "yoco_cancelled", "yoco_status",
+    "stitch_session", "stitch_status",
+    // Stitch hosted checkout adds these on return — strip so back/refresh doesn't re-trigger
+    "reference", "payment_id", "id",
+  ].forEach(k => next.delete(k));
   return next;
 }
+
 
 export function clearPendingClubSession(gateway: GatewayId, sid?: string) {
   if (gateway === "yoco") clearPendingYocoSession(sid);

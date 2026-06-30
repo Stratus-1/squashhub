@@ -48,7 +48,21 @@ export function PageHeader({
   const isTopLevel = pathname === "/" || pathname === "/dashboard" || pathname === "/auth";
   const shouldShowBack = showBack ?? !isTopLevel;
   const fallbackTo = backTo || getBackFallback(pathname);
-  const canGoBack = typeof window !== "undefined" && window.history.length > 1;
+  // If the previous page was an external origin (e.g. Stitch / Yoco checkout),
+  // browser-back would leave the app. Force the fallback in that case.
+  let cameFromExternal = false;
+  if (typeof window !== "undefined" && typeof document !== "undefined") {
+    try {
+      const ref = document.referrer;
+      if (ref) {
+        const refOrigin = new URL(ref).origin;
+        if (refOrigin && refOrigin !== window.location.origin) cameFromExternal = true;
+      }
+    } catch { /* ignore */ }
+  }
+  const canGoBack =
+    typeof window !== "undefined" && window.history.length > 1 && !cameFromExternal;
+
   const activeMemberId = activeMember?.id;
   const { data: switchedMember } = useQuery({
     queryKey: ["club-member-by-id", activeMemberId],

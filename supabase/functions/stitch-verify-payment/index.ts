@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     }
     const accessToken: string = tokenJson.data.accessToken;
 
-    const plResp = await fetch(`${STITCH_BASE}/payments/${encodeURIComponent(session.stitch_request_id)}`, {
+    const plResp = await fetch(`${STITCH_BASE}/payment-links/${encodeURIComponent(session.stitch_request_id)}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const plJson = await plResp.json().catch(() => ({}));

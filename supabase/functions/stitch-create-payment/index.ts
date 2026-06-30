@@ -117,7 +117,6 @@ Deno.serve(async (req) => {
       .replace(/[^a-zA-Z0-9\s\-)]/g, "").slice(0, 50) || String(session.id).slice(0, 50);
 
     const safeReturnUrl = sanitizeReturnUrl(return_url);
-    const successUrl = appendParam(appendParam(safeReturnUrl, "stitch_session", session.id), "stitch_status", "success");
 
     // 3. Create payment link
     const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
@@ -125,11 +124,11 @@ Deno.serve(async (req) => {
       amount: amountCents,
       payerName,
       merchantReference,
-      // Some Stitch Express surfaces accept a body redirect, but the official
-      // WooCommerce plugin uses a `redirect_url` query param on the returned
-      // hosted payment link. We keep these body fields as harmless fallbacks.
-      merchantRedirectUrl: successUrl,
-      redirectUrl: successUrl,
+      // Keep the merchant URL EXACTLY as allow-listed in Stitch Express. Dynamic
+      // query params can leave users stuck on Stitch's /pay/complete page.
+      // The app verifies via the locally saved pending Stitch session after return.
+      merchantRedirectUrl: safeReturnUrl,
+      redirectUrl: safeReturnUrl,
       currency: "ZAR",
     };
     if (member.email) plBody.payerEmailAddress = member.email;
@@ -150,9 +149,8 @@ Deno.serve(async (req) => {
 
     const payment = plJson.data.payment;
     // Stitch Express expects the merchant return URL as `redirect_url` on the
-    // hosted link itself. Do not append our own tracking params to the Stitch
-    // link — only pass them inside the encoded return URL.
-    const redirectUrl = appendParam(payment.link as string, "redirect_url", successUrl);
+    // hosted link itself. It must match the dashboard allow-list exactly.
+    const redirectUrl = appendParam(payment.link as string, "redirect_url", safeReturnUrl);
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,

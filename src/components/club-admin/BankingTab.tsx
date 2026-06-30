@@ -157,7 +157,10 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         toast.success("Opening Yoco test checkout…");
         await openYocoCheckout(redirect);
       } else {
-        const return_url = buildStitchReturnUrl("/club-admin?tab=banking");
+        // Stitch Express validates the exact redirect URL on the hosted payment
+        // page. Use the member account return URL, which is the allow-listed
+        // payment callback for this tenant, instead of the admin tab URL.
+        const return_url = buildStitchReturnUrl("/my-account");
         const { data, error } = await supabase.functions.invoke("stitch-create-payment", {
           body: {
             club_id: clubId, club_member_id: activeMember.id,
@@ -169,7 +172,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         if ((data as any)?.error) throw new Error((data as any).error);
         const redirect = (data as any)?.redirect_url;
         if (!redirect) throw new Error("Stitch did not return a redirect URL");
-        rememberPendingStitchSession((data as any).session_id, "/club-admin?tab=banking");
+        rememberPendingStitchSession((data as any).session_id, "/my-account");
         toast.success("Opening Stitch test checkout…");
         await openStitchCheckout(redirect);
       }

@@ -2745,6 +2745,33 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           </DialogContent>
         </Dialog>
 
+        <Dialog open={!!duplicateSource} onOpenChange={(v) => !v && setDuplicateSource(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Duplicate tournament</DialogTitle></DialogHeader>
+            <div className="space-y-3 py-2 text-sm">
+              <p className="text-muted-foreground">
+                Copy all settings from <strong>{duplicateSource?.name}</strong> into a new draft. You'll set new dates in the wizard.
+              </p>
+              <p className="text-muted-foreground">Include the same players?</p>
+            </div>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setDuplicateSource(null)}>Cancel</Button>
+              <Button
+                variant="outline"
+                onClick={() => { const src = duplicateSource; setDuplicateSource(null); if (src) duplicateChamp(src, false); }}
+              >
+                Without players
+              </Button>
+              <Button
+                onClick={() => { const src = duplicateSource; setDuplicateSource(null); if (src) duplicateChamp(src, true); }}
+              >
+                With same players
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+
         {registrationsChamp && (
           <TournamentRegistrationsDialog
             open={!!registrationsChamp}

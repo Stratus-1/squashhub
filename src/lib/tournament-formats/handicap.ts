@@ -261,11 +261,21 @@ export async function loadClubLadderContext(clubId: string): Promise<{
     if (pr <= 0) continue;
     sizes[d] = Math.max(sizes[d] || 0, pr);
   }
-  // Make sure every division that has ANY team has a size entry, so the
-  // offset table grows monotonically even for empty divisions.
-  for (const meta of classify.values()) {
-    if (sizes[meta.division] == null) sizes[meta.division] = 5;
+  // Also honour reserve shadow ranks: a reserve pinned to division D with
+  // shadow_player_rank P means D is "active" for handicap purposes even
+  // if no main-team reg was recorded there.
+  for (const r of (regs || []) as any[]) {
+    const sd = Number(r.shadow_division) || 0;
+    const sp = Number(r.shadow_player_rank) || 0;
+    if (sd <= 0 || sp <= 0) continue;
+    sizes[sd] = Math.max(sizes[sd] || 0, sp);
   }
+  // NOTE: We deliberately do NOT seed a default size for every division
+  // present in `classify.values()`. Inactive tiers (no registrations at
+  // all) must be skipped so adjacent active divisions collapse together
+  // — e.g. CSIR 2nd↔4th League or 10th↔13th League should be treated as
+  // one step apart, not 2–3 steps apart.
+
 
   const offsets = buildDivisionOffsets(sizes);
 
@@ -371,9 +381,9 @@ export async function findReservesMissingShadowRank(
     if (pr <= 0) continue;
     sizes[meta.division] = Math.max(sizes[meta.division] || 0, pr);
   }
-  for (const meta of classify.values()) {
-    if (sizes[meta.division] == null) sizes[meta.division] = 5;
-  }
+  // Skip default-seeding empty divisions — inactive tiers must collapse
+  // so the shadow-rank picker only offers slots in active divisions.
+
 
   const missing: MissingShadowRank[] = [];
   for (const [memberId, mRegs] of perMember.entries()) {

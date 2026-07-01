@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
-import { applyHandicapsToChamp, findReservesMissingShadowRank, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
+import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { useClubMembers, type ClubMember } from "@/hooks/use-club";
 import { Button } from "@/components/ui/button";

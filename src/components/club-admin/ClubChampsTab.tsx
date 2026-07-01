@@ -357,6 +357,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [step, setStep] = useState<WizardStep>("category");
   const [showWizard, setShowWizard] = useState(false);
   const [editingChampId, setEditingChampId] = useState<string | null>(null);
+  // Snapshot of entities (players / doubles pairs) at the moment an existing
+  // tournament was loaded for edit. Used to prompt the admin to rebuild the
+  // schedule when players are added / removed / swapped.
+  const [entitiesSnapshotAtLoad, setEntitiesSnapshotAtLoad] = useState<string | null>(null);
+  const [rebuildToastFiredForSnapshot, setRebuildToastFiredForSnapshot] = useState<string | null>(null);
 
   // Wizard state
   const [gender, setGender] = useState<GenderCategory>("men");

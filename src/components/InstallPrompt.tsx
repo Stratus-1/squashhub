@@ -69,18 +69,7 @@ export function InstallPrompt() {
       handleReinstallSignal();
       setDeferred(e as BeforeInstallPromptEvent);
       if (shouldAsk("install-prompt-android")) {
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [show, setShow] = useState(false);
-  const [iosSheet, setIosSheet] = useState(false);
 
-  // Restrict per project memory: only club subdomains trigger install prompts.
-  const allowedHost = !!subdomain;
-
-  useEffect(() => {
-    if (!allowedHost) return;
-    if (Capacitor.isNativePlatform()) return;
-    // Already running as installed PWA — never show install card.
-    if (detectStandalone()) return;
 
     // Android / Chromium
     const onBip = (e: Event) => {

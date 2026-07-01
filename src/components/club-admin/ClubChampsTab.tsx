@@ -17,7 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save } from "lucide-react";
+import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, eachDayOfInterval, getDay, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
@@ -2440,6 +2441,34 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setShowWizard(true);
   };
 
+  const [duplicateSource, setDuplicateSource] = useState<any>(null);
+
+  const duplicateChamp = async (champ: any, includePlayers: boolean) => {
+    await loadChampForEdit(champ);
+    // Treat as brand-new tournament — save will insert, not update.
+    setEditingChampId(null);
+    setChampName(`${champ.name} (copy)`);
+    setStartDate("");
+    setEndDate("");
+    setRegistrationOpensAt("");
+    setRegistrationClosesAt("");
+    setInviteScheduledAt("");
+    if (!includePlayers) {
+      setSelectedPlayerIds(new Set());
+      setPlayerOrder([]);
+      setGroupAssignments(new Map());
+      setDoublesPairs([]);
+      setPairOrder([]);
+      setPairGroupAssignments(new Map());
+      setInviteExcludedMemberIds(new Set());
+    }
+    setEntitiesSnapshotAtLoad(null);
+    setRebuildToastFiredForSnapshot(null);
+    toast.success(includePlayers
+      ? "Duplicated with players — set new dates and review"
+      : "Duplicated — pick players and set new dates");
+  };
+
   const getMemberName = (id: string) => {
     const m = members.find((x) => x.id === id);
     return m?.name || m?.profiles?.name || "Unknown";
@@ -2594,9 +2623,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Club Tournaments</h2>
-          <Button onClick={() => { resetWizard(); setShowWizard(true); }}>
-            <Trophy className="w-4 h-4 mr-2" /> Plan New Tournament
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={() => { resetWizard(); setShowWizard(true); }}>
+                  <Trophy className="w-4 h-4 mr-2" /> Plan New Tournament
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                Tip: to save time, use the <strong>Copy</strong> button next to a completed tournament below to duplicate its setup with new dates.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {champsLoading ? (
@@ -2644,6 +2682,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       onClick={() => setChampStatus.mutate({ id: c.id, status: "active" })}
                     >
                       Re-open
+                    </Button>
+                  )}
+                  {isCompleted && (
+                    <Button variant="outline" size="sm" onClick={() => setDuplicateSource(c)} title="Duplicate this tournament with new dates">
+                      <Copy className="w-4 h-4 mr-1" /> Copy
                     </Button>
                   )}
                   <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })}>
@@ -2701,6 +2744,33 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={!!duplicateSource} onOpenChange={(v) => !v && setDuplicateSource(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Duplicate tournament</DialogTitle></DialogHeader>
+            <div className="space-y-3 py-2 text-sm">
+              <p className="text-muted-foreground">
+                Copy all settings from <strong>{duplicateSource?.name}</strong> into a new draft. You'll set new dates in the wizard.
+              </p>
+              <p className="text-muted-foreground">Include the same players?</p>
+            </div>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setDuplicateSource(null)}>Cancel</Button>
+              <Button
+                variant="outline"
+                onClick={() => { const src = duplicateSource; setDuplicateSource(null); if (src) duplicateChamp(src, false); }}
+              >
+                Without players
+              </Button>
+              <Button
+                onClick={() => { const src = duplicateSource; setDuplicateSource(null); if (src) duplicateChamp(src, true); }}
+              >
+                With same players
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
 
         {registrationsChamp && (
           <TournamentRegistrationsDialog

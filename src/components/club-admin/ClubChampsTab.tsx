@@ -3554,7 +3554,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                         let scoreByMember: Map<string, number> | undefined;
                         if (handicapMode === "league_rank") {
                           const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
-                          scoreByMember = buildScoreMapFromGroups(groupIds);
+                          const allIds = groupIds.flat();
+                          if (await isCrossLeagueTournament(clubId, allIds)) {
+                            scoreByMember = buildScoreMapFromGroups(groupIds);
+                          }
                         }
                         const n = await applyHandicapsToChamp(editingChampId, clubId, {
                           mode: handicapMode,

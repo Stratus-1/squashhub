@@ -2192,10 +2192,31 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await fromExt("club_champs").update({ status }).eq("id", id);
       if (error) throw error;
+      // When cancelling a tournament, also release any court bookings it created.
+      if (status === "cancelled") {
+        await fromExt("bookings").delete().like("external_id", `champ:${id}:%`);
+        const { data: champMatches } = await fromExt("club_champs_matches")
+          .select("scheduled_date, scheduled_time, court_id")
+          .eq("champ_id", id);
+        for (const m of (champMatches || []) as any[]) {
+          if (!m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
+          await fromExt("bookings").delete()
+            .eq("court_id", m.court_id)
+            .eq("date", m.scheduled_date)
+            .eq("start_time", m.scheduled_time)
+            .eq("source", "club_event");
+        }
+      }
     },
     onSuccess: (_d, vars) => {
-      toast.success(vars.status === "completed" ? "Tournament closed" : "Tournament re-opened");
+      toast.success(
+        vars.status === "completed" ? "Tournament closed"
+        : vars.status === "cancelled" ? "Tournament cancelled — court bookings released"
+        : "Tournament re-opened"
+      );
       qc.invalidateQueries({ queryKey: ["club-champs"] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
     },
   });
 

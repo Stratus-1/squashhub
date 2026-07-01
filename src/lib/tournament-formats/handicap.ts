@@ -457,6 +457,32 @@ export async function loadClubLadderPositions(
 export type HandicapMode = "none" | "league_rank" | "club_ladder";
 
 /**
+ * Build a rank-score map from the tournament's own group ordering.
+ * `groupsByMemberOrder[groupIndex]` is the ordered list of member IDs
+ * in that group (group 0 = strongest league, row 0 = strongest player).
+ *
+ * The score is a global position across all groups — group 0 rows come
+ * first, then group 1, etc. Feed this map into `applyHandicapsToChamp`
+ * via `opts.scoreByMember` to make handicaps follow exactly what the
+ * admin sees on the Groups step, ignoring the underlying league rank.
+ */
+export function buildScoreMapFromGroups(
+  groupsByMemberOrder: string[][],
+): Map<string, number> {
+  const out = new Map<string, number>();
+  let cursor = 1;
+  for (const group of groupsByMemberOrder) {
+    for (const memberId of group) {
+      if (!memberId) continue;
+      if (!out.has(memberId)) out.set(memberId, cursor);
+      cursor += 1;
+    }
+  }
+  return out;
+}
+
+
+/**
  * Bulk-apply handicap to every non-completed singles match in a tournament.
  *
  * - `league_rank`: uses league division + player_rank (default behaviour).
@@ -470,7 +496,18 @@ export type HandicapMode = "none" | "league_rank" | "club_ladder";
 export async function applyHandicapsToChamp(
   champId: string,
   clubId: string,
-  opts: { mode?: HandicapMode; divider?: number; multiplier?: number } = {},
+  opts: {
+    mode?: HandicapMode;
+    divider?: number;
+    multiplier?: number;
+    /**
+     * Optional pre-computed rank map. When supplied, the DB lookups
+     * (league_rank / club_ladder) are skipped entirely and this map is
+     * used verbatim. Used by the tournament "groups" editor where the
+     * admin's drag-and-drop ordering IS the rank source of truth.
+     */
+    scoreByMember?: Map<string, number>;
+  } = {},
 ): Promise<number> {
   const mode: HandicapMode = opts.mode ?? "league_rank";
   const divider = Math.max(1, Number(opts.divider) || 1);
@@ -480,7 +517,9 @@ export async function applyHandicapsToChamp(
   // global index (offset + player_rank); for club_ladder we use the
   // ladder_position directly. Both let us compute gap = |a - b|.
   let scoreByMember = new Map<string, number>();
-  if (mode === "club_ladder") {
+  if (opts.scoreByMember && opts.scoreByMember.size > 0) {
+    scoreByMember = opts.scoreByMember;
+  } else if (mode === "club_ladder") {
     scoreByMember = await loadClubLadderPositions(clubId);
   } else {
     const ctx = await loadClubLadderContext(clubId);

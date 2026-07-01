@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
-import { applyHandicapsToChamp, findReservesMissingShadowRank, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
+import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { useClubMembers, type ClubMember } from "@/hooks/use-club";
 import { Button } from "@/components/ui/button";
@@ -1788,21 +1788,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // League-ranking handicap: compute starting-score offsets for every match.
       if (matchType === "singles" && handicapMode !== "none") {
         try {
-          // Option C: for league-rank mode, prompt admin for any reserve
-          // participants who don't yet have a shadow rank assigned.
+          // For league_rank mode we now use the admin's own group ordering
+          // (top of League 1 = strongest) as the rank source of truth —
+          // no shadow-rank prompt needed, reserves/subs slot in wherever
+          // the admin dragged them.
+          let scoreByMember: Map<string, number> | undefined;
           if (handicapMode === "league_rank") {
-            const memberIds = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
-            const { missing, sizes } = await findReservesMissingShadowRank(clubId, memberIds);
-            if (missing.length > 0) {
-              await new Promise<void>((resolve, reject) => {
-                setShadowPrompt({ open: true, missing, sizes, resolve, reject });
-              });
-            }
+            const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
+            scoreByMember = buildScoreMapFromGroups(groupIds);
           }
           const n = await applyHandicapsToChamp(champId, clubId, {
             mode: handicapMode,
             divider: handicapDivider,
             multiplier: handicapMultiplier,
+            scoreByMember,
           });
           if (n > 0) toast.success(`Applied handicap to ${n} match${n === 1 ? "" : "es"}`);
         } catch (e) {
@@ -3534,7 +3533,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <p className="text-xs text-muted-foreground">
                   {handicapMode === "club_ladder"
                     ? "Stronger player (lower ladder position) starts on a negative score equal to the ladder-position gap, scaled by the multiplier/divider above."
-                    : "Stronger player starts on a negative score equal to the position gap (e.g. 3rd league #1 vs 3rd league #4 → −3 / 0; vs 4th league #2 → −10 / 0). Recomputed automatically when a sub is pulled in."}
+                    : "Handicaps follow the order on the Groups step — top of League 1 = strongest player. Drag players between/within leagues to change handicaps. Subs slot in wherever you drop them, no shadow-rank prompt needed."}
                 </p>
                 {editingChampId && handicapMode !== "none" && (
                   <Button
@@ -3544,10 +3543,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     onClick={async () => {
                       if (!clubId) return;
                       try {
+                        let scoreByMember: Map<string, number> | undefined;
+                        if (handicapMode === "league_rank") {
+                          const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
+                          scoreByMember = buildScoreMapFromGroups(groupIds);
+                        }
                         const n = await applyHandicapsToChamp(editingChampId, clubId, {
                           mode: handicapMode,
                           divider: handicapDivider,
                           multiplier: handicapMultiplier,
+                          scoreByMember,
                         });
                         toast.success(
                           n > 0
@@ -4025,6 +4030,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             <Separator />
             <p className="text-xs text-muted-foreground">
               {isDoubles ? "Pairs" : "Players"} are auto-distributed by order. Drag a row into another league to move it, drag within a league to reorder, or use the dropdown.
+              {!isDoubles && handicapMode === "league_rank" && (
+                <> <span className="text-primary font-medium">Sort strongest → weakest — this order determines handicaps</span> (top of League 1 = strongest, bottom of the last league = weakest). Subs slot in wherever you drop them.</>
+              )}
             </p>
             <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCrossLeagueDragEnd}>
               <div className="space-y-4">

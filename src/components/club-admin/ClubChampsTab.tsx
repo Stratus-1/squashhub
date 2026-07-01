@@ -3533,7 +3533,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <p className="text-xs text-muted-foreground">
                   {handicapMode === "club_ladder"
                     ? "Stronger player (lower ladder position) starts on a negative score equal to the ladder-position gap, scaled by the multiplier/divider above."
-                    : "Stronger player starts on a negative score equal to the position gap (e.g. 3rd league #1 vs 3rd league #4 → −3 / 0; vs 4th league #2 → −10 / 0). Recomputed automatically when a sub is pulled in."}
+                    : "Handicaps follow the order on the Groups step — top of League 1 = strongest player. Drag players between/within leagues to change handicaps. Subs slot in wherever you drop them, no shadow-rank prompt needed."}
                 </p>
                 {editingChampId && handicapMode !== "none" && (
                   <Button
@@ -3543,10 +3543,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     onClick={async () => {
                       if (!clubId) return;
                       try {
+                        let scoreByMember: Map<string, number> | undefined;
+                        if (handicapMode === "league_rank") {
+                          const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
+                          scoreByMember = buildScoreMapFromGroups(groupIds);
+                        }
                         const n = await applyHandicapsToChamp(editingChampId, clubId, {
                           mode: handicapMode,
                           divider: handicapDivider,
                           multiplier: handicapMultiplier,
+                          scoreByMember,
                         });
                         toast.success(
                           n > 0

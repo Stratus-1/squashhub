@@ -2286,6 +2286,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setCustomizeDailySchedule(false);
     setDaySchedules([]);
     setEditingChampId(null);
+    setEntitiesSnapshotAtLoad(null);
+    setRebuildToastFiredForSnapshot(null);
   };
 
   const loadChampForEdit = async (champ: any) => {

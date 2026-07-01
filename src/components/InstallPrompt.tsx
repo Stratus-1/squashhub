@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Download, X, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,22 @@ import {
   handleReinstallSignal,
   recordInstalled,
 } from "@/lib/pwa-detect";
+
+// Routes where the install prompt must never appear — it can overlap
+// form buttons on small phones and block the user from finishing signup.
+const BLOCKED_PATH_PREFIXES = [
+  "/auth",
+  "/club-auth",
+  "/register-club",
+  "/reset-password",
+  "/onboarding",
+  "/league-signup",
+  "/booking-response",
+  "/marker",
+  "/bells-marker",
+  "/match-marker",
+  "/match-tracker",
+];
 
 
 type BeforeInstallPromptEvent = Event & {
@@ -27,15 +44,19 @@ function isIos(): boolean {
 
 export function InstallPrompt() {
   const { subdomain } = useClubContext();
+  const { pathname } = useLocation();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);
   const [iosSheet, setIosSheet] = useState(false);
+
+  const onBlockedRoute = BLOCKED_PATH_PREFIXES.some((p) => pathname.startsWith(p));
 
   // Restrict per project memory: only club subdomains trigger install prompts.
   const allowedHost = !!subdomain;
 
   useEffect(() => {
     if (!allowedHost) return;
+    if (onBlockedRoute) return;
     if (Capacitor.isNativePlatform()) return;
     // Already running as installed PWA — never show install card.
     if (detectStandalone()) return;
@@ -75,7 +96,13 @@ export function InstallPrompt() {
     }
 
     return () => window.removeEventListener("beforeinstallprompt", onBip);
-  }, [allowedHost]);
+  }, [allowedHost, onBlockedRoute]);
+
+  // Hide immediately if the user navigates onto a blocked route (e.g. /auth)
+  // — otherwise the toast can sit over the signup form and block submit.
+  useEffect(() => {
+    if (onBlockedRoute && show) setShow(false);
+  }, [onBlockedRoute, show]);
 
   // Listen for actual installation
   useEffect(() => {
@@ -88,7 +115,7 @@ export function InstallPrompt() {
   }, []);
 
 
-  if (!allowedHost || !show) return null;
+  if (!allowedHost || onBlockedRoute || !show) return null;
 
   const handleInstall = async () => {
     if (deferred) {
@@ -155,8 +182,13 @@ export function InstallPrompt() {
                   </Button>
                 </div>
               </div>
-              <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground">
-                <X className="w-4 h-4" />
+              <button
+                onClick={handleDismiss}
+                aria-label="Dismiss install prompt"
+                className="-m-2 p-2 text-muted-foreground hover:text-foreground touch-manipulation"
+                style={{ touchAction: "manipulation" }}
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
           </CardContent>

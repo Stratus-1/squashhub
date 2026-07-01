@@ -221,7 +221,15 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                           {r.partner && !r.partner_confirmed && <span className="ml-1 text-amber-600">(pending)</span>}
                         </p>
                       )}
-                      {r.invited_by_admin && <Badge variant="outline" className="text-[10px] mt-0.5">Invited</Badge>}
+                      <div className="flex gap-1 mt-0.5 flex-wrap">
+                        {r.invited_by_admin && <Badge variant="outline" className="text-[10px]">Invited</Badge>}
+                        {r.confirmed_at && r.confirmation_source === "rsvp" && (
+                          <Badge variant="default" className="text-[10px] bg-emerald-600 hover:bg-emerald-600">Accepted</Badge>
+                        )}
+                        {r.status === "cancelled" && (
+                          <Badge variant="destructive" className="text-[10px]">Declined</Badge>
+                        )}
+                      </div>
                     </div>
                     <Badge variant={STATUS_VARIANT[r.status] || "outline"} className="text-[10px]">
                       {STATUS_LABEL[r.status] || r.status}

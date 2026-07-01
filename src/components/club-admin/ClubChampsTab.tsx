@@ -2050,9 +2050,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     onError: (err: any) => toast.error(err.message || "Failed to create court bookings"),
   });
 
+  // Guard against double-clicks / concurrent invocations that would create
+  // duplicate notifications + emails for every invitee.
+  const sendingInvitesRef = useRef<Set<string>>(new Set());
+  const [invitesSendingFor, setInvitesSendingFor] = useState<string | null>(null);
+
   // Shared helper: send invite notifications (and flag rows as invited) for a champ.
   // Used by both the post-create prompt and the "Send / Re-send invites" button.
   async function sendChampInvites(champId: string, opts?: { confirm?: boolean }) {
+    if (sendingInvitesRef.current.has(champId)) {
+      toast.info("Invites are already being sent — please wait.");
+      return;
+    }
+    sendingInvitesRef.current.add(champId);
+    setInvitesSendingFor(champId);
     try {
       if (opts?.confirm && !confirm("Send invite notification/email to all invited members now?")) return;
 
@@ -2160,6 +2171,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       toast.success(`Sent invites to ${rows.length} member${rows.length === 1 ? "" : "s"}.`);
     } catch (e: any) {
       toast.error(e?.message || "Failed to send invites");
+    } finally {
+      sendingInvitesRef.current.delete(champId);
+      setInvitesSendingFor((cur) => (cur === champId ? null : cur));
     }
   }
 
@@ -3795,9 +3809,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <Button
                     type="button"
                     size="sm"
+                    disabled={invitesSendingFor === editingChampId}
                     onClick={() => sendChampInvites(editingChampId, { confirm: true })}
                   >
-                    Send / Re-send invites
+                    {invitesSendingFor === editingChampId ? "Sending…" : "Send / Re-send invites"}
                   </Button>
                 </div>
               )}

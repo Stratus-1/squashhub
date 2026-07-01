@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
-import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
+import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { useClubMembers, type ClubMember } from "@/hooks/use-club";
 import { Button } from "@/components/ui/button";
@@ -1795,7 +1795,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           let scoreByMember: Map<string, number> | undefined;
           if (handicapMode === "league_rank") {
             const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
-            scoreByMember = buildScoreMapFromGroups(groupIds);
+            const allIds = groupIds.flat();
+            // Only override the DB league-rank calculation when the
+            // tournament actually spans multiple divisions. Same-league
+            // tournaments (e.g. NSC-style multiple teams in one division)
+            // must keep using each player's team player_rank so that #1s
+            // across teams are treated equally strong.
+            if (await isCrossLeagueTournament(clubId, allIds)) {
+              scoreByMember = buildScoreMapFromGroups(groupIds);
+            }
           }
           const n = await applyHandicapsToChamp(champId, clubId, {
             mode: handicapMode,
@@ -3533,7 +3541,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <p className="text-xs text-muted-foreground">
                   {handicapMode === "club_ladder"
                     ? "Stronger player (lower ladder position) starts on a negative score equal to the ladder-position gap, scaled by the multiplier/divider above."
-                    : "Handicaps follow the order on the Groups step — top of League 1 = strongest player. Drag players between/within leagues to change handicaps. Subs slot in wherever you drop them, no shadow-rank prompt needed."}
+                    : "Same-league tournaments (one division, multiple teams) use each player's league team rank — all #1s are treated equally strong. Cross-league tournaments (e.g. 2nd vs 4th League) follow the order on the Groups step — top of League 1 = strongest. Sort strongest → weakest in that case."}
                 </p>
                 {editingChampId && handicapMode !== "none" && (
                   <Button
@@ -3546,7 +3554,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                         let scoreByMember: Map<string, number> | undefined;
                         if (handicapMode === "league_rank") {
                           const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
-                          scoreByMember = buildScoreMapFromGroups(groupIds);
+                          const allIds = groupIds.flat();
+                          if (await isCrossLeagueTournament(clubId, allIds)) {
+                            scoreByMember = buildScoreMapFromGroups(groupIds);
+                          }
                         }
                         const n = await applyHandicapsToChamp(editingChampId, clubId, {
                           mode: handicapMode,

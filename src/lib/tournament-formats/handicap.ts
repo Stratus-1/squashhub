@@ -481,6 +481,29 @@ export function buildScoreMapFromGroups(
   return out;
 }
 
+/**
+ * Returns true when the tournament's players span more than one league
+ * division. Used to decide whether handicaps should follow the admin's
+ * group ordering (cross-league) or the underlying league team setup
+ * (same-league, e.g. NSC where multiple teams share one division and #1s
+ * across teams are equally strong).
+ */
+export async function isCrossLeagueTournament(
+  clubId: string,
+  memberIds: string[],
+): Promise<boolean> {
+  if (memberIds.length < 2) return false;
+  const ctx = await loadClubLadderContext(clubId);
+  if (!ctx) return false;
+  const divisions = new Set<number>();
+  for (const mid of memberIds) {
+    const r = ctx.rankByMember.get(mid);
+    if (r) divisions.add(r.division);
+    if (divisions.size > 1) return true;
+  }
+  return false;
+}
+
 
 /**
  * Bulk-apply handicap to every non-completed singles match in a tournament.

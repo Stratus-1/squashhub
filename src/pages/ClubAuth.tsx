@@ -1116,11 +1116,14 @@ export default function ClubAuth() {
                           <Input
                             id="existing-member-number"
                             type="text"
-                            placeholder="e.g. WSC001 or NSF1234"
+                            placeholder="e.g. WSC001 or NSF1404"
                             value={memberNumber}
                             onChange={(e) => { setMemberNumber(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
                             maxLength={20}
                           />
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            League player? Include your league prefix (e.g. <span className="font-medium text-foreground">NSF1404</span>, <span className="font-medium text-foreground">NSA231</span>, <span className="font-medium text-foreground">SSA45</span>) — not just the digits.
+                          </p>
                         </div>
                         <div>
                           <Label htmlFor="existing-phone">Cell Phone Number</Label>

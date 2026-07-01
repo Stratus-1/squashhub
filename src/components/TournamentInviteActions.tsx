@@ -112,7 +112,12 @@ export function TournamentInviteActions({ notification, champId, registrationId,
   const acceptsEft = paymentMethods.includes("eft");
   const yocoReady = acceptsCard && clubInfo?.payment_gateway === "yoco";
   const status = String(registration?.status || "");
-  const isAccepted = ["paid", "waived", "pending_eft"].includes(status) || (isPartnerInvite && registration?.partner_confirmed);
+  // Acceptance is an explicit user action (confirmed_at set via RSVP). Admin
+  // pre-marking someone as Paid must NOT flip the invite to Accepted.
+  const hasRsvp = !!registration?.confirmed_at;
+  const isAccepted = isPartnerInvite
+    ? !!registration?.partner_confirmed
+    : hasRsvp;
   const isDeclined = status === "cancelled" || (isPartnerInvite && !registration?.partner_member_id && registration?.partner_confirmed === false);
 
   // Auto-clear the notification once the invite is already resolved (accepted/paid/declined),

@@ -148,6 +148,7 @@ export function LeagueWeekAvailabilityCard() {
 
   if (!clubId || !memberId) return null;
   if (!isLeaguePlayer) return null;
+  if (!hasFixture) return null;
 
   const niceRange = `${format(new Date(weekStartStr), "EEE d MMM")} – ${format(new Date(weekEndStr), "EEE d MMM")}`;
 

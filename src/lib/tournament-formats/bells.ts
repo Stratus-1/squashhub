@@ -24,7 +24,7 @@ export const BellsFormat: TournamentFormat = {
     return `/bells-marker/${matchId}`;
   },
 
-  markerLabel: "Bell",
+  markerLabel: "Ring & Score",
 
   badge: { label: "Bells", variant: "secondary" },
 

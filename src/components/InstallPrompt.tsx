@@ -43,6 +43,7 @@ function isIos(): boolean {
 }
 
 export function InstallPrompt() {
+  const { subdomain } = useClubContext();
   const { pathname } = useLocation();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);

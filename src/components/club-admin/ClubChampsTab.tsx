@@ -2684,6 +2684,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       Re-open
                     </Button>
                   )}
+                  <Button variant="outline" size="sm" onClick={() => setDuplicateSource(c)} title="Duplicate this tournament with new dates">
+                    <Copy className="w-4 h-4 mr-1" /> Copy
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })}>
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>

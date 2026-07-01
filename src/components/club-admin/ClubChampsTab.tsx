@@ -2441,6 +2441,34 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setShowWizard(true);
   };
 
+  const [duplicateSource, setDuplicateSource] = useState<any>(null);
+
+  const duplicateChamp = async (champ: any, includePlayers: boolean) => {
+    await loadChampForEdit(champ);
+    // Treat as brand-new tournament — save will insert, not update.
+    setEditingChampId(null);
+    setChampName(`${champ.name} (copy)`);
+    setStartDate("");
+    setEndDate("");
+    setRegistrationOpensAt("");
+    setRegistrationClosesAt("");
+    setInviteScheduledAt("");
+    if (!includePlayers) {
+      setSelectedPlayerIds(new Set());
+      setPlayerOrder([]);
+      setGroupAssignments(new Map());
+      setDoublesPairs([]);
+      setPairOrder([]);
+      setPairGroupAssignments(new Map());
+      setInviteExcludedMemberIds(new Set());
+    }
+    setEntitiesSnapshotAtLoad(null);
+    setRebuildToastFiredForSnapshot(null);
+    toast.success(includePlayers
+      ? "Duplicated with players — set new dates and review"
+      : "Duplicated — pick players and set new dates");
+  };
+
   const getMemberName = (id: string) => {
     const m = members.find((x) => x.id === id);
     return m?.name || m?.profiles?.name || "Unknown";

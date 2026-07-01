@@ -43,7 +43,32 @@ function isIos(): boolean {
 }
 
 export function InstallPrompt() {
-  const { subdomain } = useClubContext();
+  const { pathname } = useLocation();
+  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [show, setShow] = useState(false);
+  const [iosSheet, setIosSheet] = useState(false);
+
+  const onBlockedRoute = BLOCKED_PATH_PREFIXES.some((p) => pathname.startsWith(p));
+
+  // Restrict per project memory: only club subdomains trigger install prompts.
+  const allowedHost = !!subdomain;
+
+  useEffect(() => {
+    if (!allowedHost) return;
+    if (onBlockedRoute) return;
+    if (Capacitor.isNativePlatform()) return;
+    // Already running as installed PWA — never show install card.
+    if (detectStandalone()) return;
+
+    // Android / Chromium
+    const onBip = (e: Event) => {
+      e.preventDefault();
+      // Browser only fires this when app is NOT installed. If we had a
+      // cached "installed/granted" state, the user uninstalled — wipe
+      // the stale flags so we can prompt them again.
+      handleReinstallSignal();
+      setDeferred(e as BeforeInstallPromptEvent);
+      if (shouldAsk("install-prompt-android")) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);
   const [iosSheet, setIosSheet] = useState(false);

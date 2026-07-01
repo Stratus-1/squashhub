@@ -2171,6 +2171,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       toast.success(`Sent invites to ${rows.length} member${rows.length === 1 ? "" : "s"}.`);
     } catch (e: any) {
       toast.error(e?.message || "Failed to send invites");
+    } finally {
+      sendingInvitesRef.current.delete(champId);
+      setInvitesSendingFor((cur) => (cur === champId ? null : cur));
     }
   }
 

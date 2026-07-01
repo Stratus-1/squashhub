@@ -73,6 +73,36 @@ export function LeagueWeekAvailabilityCard() {
     },
   });
 
+  // Is there actually a league fixture scheduled for this club during the
+  // upcoming week? If not, hide the prompt entirely.
+  const { data: hasFixture } = useQuery({
+    queryKey: ["lwa-has-fixture", clubId, weekStartStr, weekEndStr],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data: leagues } = await fromExt("leagues")
+        .select("association_id")
+        .eq("club_id", clubId!);
+      const assocIds = Array.from(
+        new Set(((leagues || []) as any[]).map((l) => l.association_id).filter(Boolean)),
+      ) as string[];
+      if (assocIds.length === 0) return false;
+      const { data: assocRows } = await fromExt("league_associations")
+        .select("id, platform_association_id")
+        .in("id", assocIds);
+      const platformIds = Array.from(
+        new Set(((assocRows || []) as any[]).map((a) => a.platform_association_id || a.id)),
+      ) as string[];
+      if (platformIds.length === 0) return false;
+      const { count } = await fromExt("platform_league_fixtures")
+        .select("id", { count: "exact", head: true })
+        .in("association_id", platformIds)
+        .gte("fixture_date", weekStartStr)
+        .lte("fixture_date", weekEndStr);
+      return (count ?? 0) > 0;
+    },
+  });
+
+
   // Existing response for the upcoming week
   const { data: status } = useQuery({
     queryKey: ["lwa-status", clubId, memberId, weekStartStr],

@@ -96,7 +96,13 @@ export function InstallPrompt() {
     }
 
     return () => window.removeEventListener("beforeinstallprompt", onBip);
-  }, [allowedHost]);
+  }, [allowedHost, onBlockedRoute]);
+
+  // Hide immediately if the user navigates onto a blocked route (e.g. /auth)
+  // — otherwise the toast can sit over the signup form and block submit.
+  useEffect(() => {
+    if (onBlockedRoute && show) setShow(false);
+  }, [onBlockedRoute, show]);
 
   // Listen for actual installation
   useEffect(() => {
@@ -109,7 +115,7 @@ export function InstallPrompt() {
   }, []);
 
 
-  if (!allowedHost || !show) return null;
+  if (!allowedHost || onBlockedRoute || !show) return null;
 
   const handleInstall = async () => {
     if (deferred) {

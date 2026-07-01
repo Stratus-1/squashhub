@@ -2621,20 +2621,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   if (!showWizard) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <h2 className="text-lg font-semibold">Club Tournaments</h2>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button onClick={() => { resetWizard(); setShowWizard(true); }}>
-                  <Trophy className="w-4 h-4 mr-2" /> Plan New Tournament
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs">
-                Tip: to save time, use the <strong>Copy</strong> button next to a completed tournament below to duplicate its setup with new dates.
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="flex flex-col items-end gap-1">
+            <Button onClick={() => { resetWizard(); setShowWizard(true); }}>
+              <Trophy className="w-4 h-4 mr-2" /> Plan New Tournament
+            </Button>
+            <p className="text-xs text-muted-foreground max-w-xs text-right">
+              Tip: to save time, use the <strong>Copy</strong> button next to a completed tournament below to duplicate its setup with new dates.
+            </p>
+          </div>
         </div>
 
         {champsLoading ? (

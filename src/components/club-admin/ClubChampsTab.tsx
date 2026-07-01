@@ -4649,6 +4649,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </p>
             )}
 
+            {entitiesChangedSinceLoad && (
+              <div className="rounded-lg border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+                <p className="font-semibold">⚠ Players changed since this tournament was opened</p>
+                <p className="text-xs mt-0.5">
+                  Click <strong>Rebuild Schedule</strong> below to regenerate fixtures and recompute handicaps for the updated player list. Existing completed matches are preserved.
+                </p>
+              </div>
+            )}
+
             {!awaitingPlayerPairs && schedulePreview && (
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 {Array.from({ length: numGroups }, (_, gi) => {

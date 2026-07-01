@@ -200,13 +200,16 @@ export default function Tournaments() {
         <Button
           size="sm"
           variant="default"
-          className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto"
+          className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto animate-pulse-slow"
+          title={tournamentFormat.key === "time_capped_points" ? "Start the bell timer and score this game" : "Open the marker to score this match"}
           onClick={(e) => {
             e.stopPropagation();
             navigate(markRoute);
           }}
         >
-          <Gavel className="w-3 h-3" /> {tournamentFormat.markerLabel}
+          {tournamentFormat.key === "time_capped_points"
+            ? <BellRing className="w-3 h-3" />
+            : <Gavel className="w-3 h-3" />} {tournamentFormat.markerLabel}
         </Button>
       </div>
     );

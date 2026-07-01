@@ -182,8 +182,13 @@ export function InstallPrompt() {
                   </Button>
                 </div>
               </div>
-              <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground">
-                <X className="w-4 h-4" />
+              <button
+                onClick={handleDismiss}
+                aria-label="Dismiss install prompt"
+                className="-m-2 p-2 text-muted-foreground hover:text-foreground touch-manipulation"
+                style={{ touchAction: "manipulation" }}
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
           </CardContent>

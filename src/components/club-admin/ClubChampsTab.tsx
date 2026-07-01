@@ -357,6 +357,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [step, setStep] = useState<WizardStep>("category");
   const [showWizard, setShowWizard] = useState(false);
   const [editingChampId, setEditingChampId] = useState<string | null>(null);
+  // Snapshot of entities (players / doubles pairs) at the moment an existing
+  // tournament was loaded for edit. Used to prompt the admin to rebuild the
+  // schedule when players are added / removed / swapped.
+  const [entitiesSnapshotAtLoad, setEntitiesSnapshotAtLoad] = useState<string | null>(null);
+  const [rebuildToastFiredForSnapshot, setRebuildToastFiredForSnapshot] = useState<string | null>(null);
 
   // Wizard state
   const [gender, setGender] = useState<GenderCategory>("men");
@@ -2281,6 +2286,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setCustomizeDailySchedule(false);
     setDaySchedules([]);
     setEditingChampId(null);
+    setEntitiesSnapshotAtLoad(null);
+    setRebuildToastFiredForSnapshot(null);
   };
 
   const loadChampForEdit = async (champ: any) => {
@@ -2404,6 +2411,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     }
 
+    // Snapshot loaded entities so we can detect edits and prompt for rebuild.
+    if (champ.match_type === "doubles") {
+      const pairSig = (entries || []).map((e: any) => `${e.club_member_id}+${e.partner_member_id}`).sort().join("|");
+      setEntitiesSnapshotAtLoad(`d:${pairSig}`);
+    } else {
+      const ids = ((entries || []).map((e: any) => e.club_member_id) as string[]).sort();
+      setEntitiesSnapshotAtLoad(`s:${ids.join(",")}`);
+    }
+    setRebuildToastFiredForSnapshot(null);
+
     // Open the wizard at step 1 so admin can review/edit every step.
     setStep("category");
     setShowWizard(true);
@@ -2426,6 +2443,37 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     }
     return getMemberName(entityId);
   };
+
+  // Detects whether the currently-selected players / pairs differ from what
+  // was on the tournament when it was opened for edit. When true, the review
+  // step nags the admin to hit "Rebuild Schedule" so fixtures & handicaps
+  // are regenerated.
+  const currentEntitiesSignature = useMemo(() => {
+    if (isDoubles) {
+      const sig = doublesPairs
+        .map((p) => `${p.player1Id}+${p.player2Id}`)
+        .sort()
+        .join("|");
+      return `d:${sig}`;
+    }
+    return `s:${Array.from(selectedPlayerIds).sort().join(",")}`;
+  }, [isDoubles, doublesPairs, selectedPlayerIds]);
+
+  const entitiesChangedSinceLoad =
+    !!editingChampId &&
+    !!entitiesSnapshotAtLoad &&
+    entitiesSnapshotAtLoad !== currentEntitiesSignature;
+
+  useEffect(() => {
+    if (!entitiesChangedSinceLoad) return;
+    if (rebuildToastFiredForSnapshot === entitiesSnapshotAtLoad) return;
+    setRebuildToastFiredForSnapshot(entitiesSnapshotAtLoad);
+    toast.warning("Players changed — rebuild the schedule", {
+      description:
+        "On the final Review step, click Rebuild Schedule so fixtures and handicaps are regenerated for the new player list.",
+      duration: 8000,
+    });
+  }, [entitiesChangedSinceLoad, entitiesSnapshotAtLoad, rebuildToastFiredForSnapshot]);
 
   // Doubles pair builder helpers
   const usedPlayerIds = useMemo(() => {
@@ -4599,6 +4647,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <p className="text-xs text-muted-foreground rounded-lg border p-2 bg-muted/30">
                 <strong>Rebuild Schedule</strong> recreates the fixture list and tournament page entries using the leagues/pairs shown above — it does <em>not</em> change who's paired with whom or which league they're in. Court bookings are written separately via <strong>Make Court Bookings</strong>.
               </p>
+            )}
+
+            {entitiesChangedSinceLoad && (
+              <div className="rounded-lg border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+                <p className="font-semibold">⚠ Players changed since this tournament was opened</p>
+                <p className="text-xs mt-0.5">
+                  Click <strong>Rebuild Schedule</strong> below to regenerate fixtures and recompute handicaps for the updated player list. Existing completed matches are preserved.
+                </p>
+              </div>
             )}
 
             {!awaitingPlayerPairs && schedulePreview && (

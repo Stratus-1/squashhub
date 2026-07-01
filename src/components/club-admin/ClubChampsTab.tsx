@@ -2411,6 +2411,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     }
 
+    // Snapshot loaded entities so we can detect edits and prompt for rebuild.
+    if (champ.match_type === "doubles") {
+      const pairSig = (entries || []).map((e: any) => `${e.club_member_id}+${e.partner_member_id}`).sort().join("|");
+      setEntitiesSnapshotAtLoad(`d:${pairSig}`);
+    } else {
+      const ids = ((entries || []).map((e: any) => e.club_member_id) as string[]).sort();
+      setEntitiesSnapshotAtLoad(`s:${ids.join(",")}`);
+    }
+    setRebuildToastFiredForSnapshot(null);
+
     // Open the wizard at step 1 so admin can review/edit every step.
     setStep("category");
     setShowWizard(true);

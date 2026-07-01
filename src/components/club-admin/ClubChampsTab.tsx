@@ -3541,7 +3541,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <p className="text-xs text-muted-foreground">
                   {handicapMode === "club_ladder"
                     ? "Stronger player (lower ladder position) starts on a negative score equal to the ladder-position gap, scaled by the multiplier/divider above."
-                    : "Handicaps follow the order on the Groups step — top of League 1 = strongest player. Drag players between/within leagues to change handicaps. Subs slot in wherever you drop them, no shadow-rank prompt needed."}
+                    : "Same-league tournaments (one division, multiple teams) use each player's league team rank — all #1s are treated equally strong. Cross-league tournaments (e.g. 2nd vs 4th League) follow the order on the Groups step — top of League 1 = strongest. Sort strongest → weakest in that case."}
                 </p>
                 {editingChampId && handicapMode !== "none" && (
                   <Button

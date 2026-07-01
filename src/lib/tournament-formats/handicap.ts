@@ -457,6 +457,32 @@ export async function loadClubLadderPositions(
 export type HandicapMode = "none" | "league_rank" | "club_ladder";
 
 /**
+ * Build a rank-score map from the tournament's own group ordering.
+ * `groupsByMemberOrder[groupIndex]` is the ordered list of member IDs
+ * in that group (group 0 = strongest league, row 0 = strongest player).
+ *
+ * The score is a global position across all groups — group 0 rows come
+ * first, then group 1, etc. Feed this map into `applyHandicapsToChamp`
+ * via `opts.scoreByMember` to make handicaps follow exactly what the
+ * admin sees on the Groups step, ignoring the underlying league rank.
+ */
+export function buildScoreMapFromGroups(
+  groupsByMemberOrder: string[][],
+): Map<string, number> {
+  const out = new Map<string, number>();
+  let cursor = 1;
+  for (const group of groupsByMemberOrder) {
+    for (const memberId of group) {
+      if (!memberId) continue;
+      if (!out.has(memberId)) out.set(memberId, cursor);
+      cursor += 1;
+    }
+  }
+  return out;
+}
+
+
+/**
  * Bulk-apply handicap to every non-completed singles match in a tournament.
  *
  * - `league_rank`: uses league division + player_rank (default behaviour).

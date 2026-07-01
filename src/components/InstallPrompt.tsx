@@ -70,17 +70,6 @@ export function InstallPrompt() {
       handleReinstallSignal();
       setDeferred(e as BeforeInstallPromptEvent);
       if (shouldAsk("install-prompt-android")) {
-
-
-    // Android / Chromium
-    const onBip = (e: Event) => {
-      e.preventDefault();
-      // Browser only fires this when app is NOT installed. If we had a
-      // cached "installed/granted" state, the user uninstalled — wipe
-      // the stale flags so we can prompt them again.
-      handleReinstallSignal();
-      setDeferred(e as BeforeInstallPromptEvent);
-      if (shouldAsk("install-prompt-android")) {
         // Slight delay so it doesn't fight with auth UX
         setTimeout(() => setShow(true), 4000);
       }

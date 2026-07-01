@@ -2050,9 +2050,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     onError: (err: any) => toast.error(err.message || "Failed to create court bookings"),
   });
 
+  // Guard against double-clicks / concurrent invocations that would create
+  // duplicate notifications + emails for every invitee.
+  const sendingInvitesRef = useRef<Set<string>>(new Set());
+  const [invitesSendingFor, setInvitesSendingFor] = useState<string | null>(null);
+
   // Shared helper: send invite notifications (and flag rows as invited) for a champ.
   // Used by both the post-create prompt and the "Send / Re-send invites" button.
   async function sendChampInvites(champId: string, opts?: { confirm?: boolean }) {
+    if (sendingInvitesRef.current.has(champId)) {
+      toast.info("Invites are already being sent — please wait.");
+      return;
+    }
+    sendingInvitesRef.current.add(champId);
+    setInvitesSendingFor(champId);
     try {
       if (opts?.confirm && !confirm("Send invite notification/email to all invited members now?")) return;
 

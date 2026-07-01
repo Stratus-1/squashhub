@@ -3543,41 +3543,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     ? "Stronger player (lower ladder position) starts on a negative score equal to the ladder-position gap, scaled by the multiplier/divider above."
                     : "Same-league tournaments (one division, multiple teams) use each player's league team rank — all #1s are treated equally strong. Cross-league tournaments (e.g. 2nd vs 4th League) follow the order on the Groups step — top of League 1 = strongest. Sort strongest → weakest in that case."}
                 </p>
-                {editingChampId && handicapMode !== "none" && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      if (!clubId) return;
-                      try {
-                        let scoreByMember: Map<string, number> | undefined;
-                        if (handicapMode === "league_rank") {
-                          const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
-                          const allIds = groupIds.flat();
-                          if (await isCrossLeagueTournament(clubId, allIds)) {
-                            scoreByMember = buildScoreMapFromGroups(groupIds);
-                          }
-                        }
-                        const n = await applyHandicapsToChamp(editingChampId, clubId, {
-                          mode: handicapMode,
-                          divider: handicapDivider,
-                          multiplier: handicapMultiplier,
-                          scoreByMember,
-                        });
-                        toast.success(
-                          n > 0
-                            ? `Recomputed handicaps on ${n} match${n === 1 ? "" : "es"}`
-                            : "Handicaps already up to date",
-                        );
-                      } catch (e: any) {
-                        toast.error(e?.message || "Failed to recompute handicaps");
-                      }
-                    }}
-                  >
-                    Recompute handicaps now
-                  </Button>
-                )}
               </div>
             )}
 

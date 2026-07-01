@@ -2160,7 +2160,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           app_silent: !sendApp,
           description: description.trim() || null,
         },
-        read: !sendApp,
+        read: false,
       }));
       const { error: insErr } = await fromExt("notifications").insert(notifRows);
       if (insErr) throw insErr;

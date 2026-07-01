@@ -3809,9 +3809,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <Button
                     type="button"
                     size="sm"
+                    disabled={invitesSendingFor === editingChampId}
                     onClick={() => sendChampInvites(editingChampId, { confirm: true })}
                   >
-                    Send / Re-send invites
+                    {invitesSendingFor === editingChampId ? "Sending…" : "Send / Re-send invites"}
                   </Button>
                 </div>
               )}

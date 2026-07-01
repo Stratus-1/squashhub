@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Download, X, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,22 @@ import {
   handleReinstallSignal,
   recordInstalled,
 } from "@/lib/pwa-detect";
+
+// Routes where the install prompt must never appear — it can overlap
+// form buttons on small phones and block the user from finishing signup.
+const BLOCKED_PATH_PREFIXES = [
+  "/auth",
+  "/club-auth",
+  "/register-club",
+  "/reset-password",
+  "/onboarding",
+  "/league-signup",
+  "/booking-response",
+  "/marker",
+  "/bells-marker",
+  "/match-marker",
+  "/match-tracker",
+];
 
 
 type BeforeInstallPromptEvent = Event & {

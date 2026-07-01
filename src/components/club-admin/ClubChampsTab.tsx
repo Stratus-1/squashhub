@@ -1788,21 +1788,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // League-ranking handicap: compute starting-score offsets for every match.
       if (matchType === "singles" && handicapMode !== "none") {
         try {
-          // Option C: for league-rank mode, prompt admin for any reserve
-          // participants who don't yet have a shadow rank assigned.
+          // For league_rank mode we now use the admin's own group ordering
+          // (top of League 1 = strongest) as the rank source of truth —
+          // no shadow-rank prompt needed, reserves/subs slot in wherever
+          // the admin dragged them.
+          let scoreByMember: Map<string, number> | undefined;
           if (handicapMode === "league_rank") {
-            const memberIds = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
-            const { missing, sizes } = await findReservesMissingShadowRank(clubId, memberIds);
-            if (missing.length > 0) {
-              await new Promise<void>((resolve, reject) => {
-                setShadowPrompt({ open: true, missing, sizes, resolve, reject });
-              });
-            }
+            const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
+            scoreByMember = buildScoreMapFromGroups(groupIds);
           }
           const n = await applyHandicapsToChamp(champId, clubId, {
             mode: handicapMode,
             divider: handicapDivider,
             multiplier: handicapMultiplier,
+            scoreByMember,
           });
           if (n > 0) toast.success(`Applied handicap to ${n} match${n === 1 ? "" : "es"}`);
         } catch (e) {

@@ -2757,8 +2757,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                     <SelectItem value="single_round_robin">Single round-robin (within same league — each player plays every other player in their league once)</SelectItem>
                     <SelectItem value="double_round_robin">Double round-robin (within same league — each player plays every other player in their league twice, home &amp; away)</SelectItem>
-                    <SelectItem value="cross_league" disabled={numGroups < 2}>
-                      League vs League (cross-league only — players only play opponents from the other league, not their own)
+                    <SelectItem value="cross_league">
+                      League vs League (cross-league only — players only play opponents from the other league, not their own) — set 2+ leagues on the Groups step
                     </SelectItem>
                   </SelectContent>
                 </Select>

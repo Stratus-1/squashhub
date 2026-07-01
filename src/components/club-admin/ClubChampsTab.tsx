@@ -2444,6 +2444,37 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     return getMemberName(entityId);
   };
 
+  // Detects whether the currently-selected players / pairs differ from what
+  // was on the tournament when it was opened for edit. When true, the review
+  // step nags the admin to hit "Rebuild Schedule" so fixtures & handicaps
+  // are regenerated.
+  const currentEntitiesSignature = useMemo(() => {
+    if (isDoubles) {
+      const sig = doublesPairs
+        .map((p) => `${p.player1Id}+${p.player2Id}`)
+        .sort()
+        .join("|");
+      return `d:${sig}`;
+    }
+    return `s:${Array.from(selectedPlayerIds).sort().join(",")}`;
+  }, [isDoubles, doublesPairs, selectedPlayerIds]);
+
+  const entitiesChangedSinceLoad =
+    !!editingChampId &&
+    !!entitiesSnapshotAtLoad &&
+    entitiesSnapshotAtLoad !== currentEntitiesSignature;
+
+  useEffect(() => {
+    if (!entitiesChangedSinceLoad) return;
+    if (rebuildToastFiredForSnapshot === entitiesSnapshotAtLoad) return;
+    setRebuildToastFiredForSnapshot(entitiesSnapshotAtLoad);
+    toast.warning("Players changed — rebuild the schedule", {
+      description:
+        "On the final Review step, click Rebuild Schedule so fixtures and handicaps are regenerated for the new player list.",
+      duration: 8000,
+    });
+  }, [entitiesChangedSinceLoad, entitiesSnapshotAtLoad, rebuildToastFiredForSnapshot]);
+
   // Doubles pair builder helpers
   const usedPlayerIds = useMemo(() => {
     const ids = new Set<string>();

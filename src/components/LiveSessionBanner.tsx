@@ -269,6 +269,8 @@ export function LiveSessionBanner() {
         if (resp.error) throw resp.error;
         toast.success("Door opening… 🚪");
       }
+      markDoorOpened(currentBooking.id);
+      setDismissedKey(promptKey);
     } catch (e) {
       toast.error(errorMessage(e, "Failed to open door"));
     } finally {

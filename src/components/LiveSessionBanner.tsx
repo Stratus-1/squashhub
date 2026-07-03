@@ -114,14 +114,21 @@ export function LiveSessionBanner() {
   });
   const getCourtName = (id: number) => courtsData?.find((c) => c.id === id)?.name || `Court ${id}`;
 
-  // Find current active booking (happening right now)
+  // Find the booking to prompt for: from 15 min before start until end_time.
+  // This lets members open the door on arrival, before their slot begins.
   const todayStr = format(now, "yyyy-MM-dd");
+  const PRE_WINDOW_MS = 15 * 60 * 1000;
   const currentBooking = ((myBookings || []) as BookingForLights[]).find((b) => {
     if (b.status !== "active" || b.date !== todayStr) return false;
     const start = new Date(`${b.date}T${b.start_time}`);
     const end = new Date(`${b.date}T${b.end_time}`);
-    return now >= start && now <= end;
+    return now.getTime() >= start.getTime() - PRE_WINDOW_MS && now <= end;
   });
+
+  // Has the booking actually started (used to gate the lights UI, which must
+  // only appear once play begins — not during the 15-min pre-arrival window)?
+  const bookingHasStarted = !!currentBooking &&
+    now >= new Date(`${currentBooking.date}T${currentBooking.start_time}`);
 
   const activeSession = activeSessions.find(
     (s) => currentBooking && s.booking_id === currentBooking.id

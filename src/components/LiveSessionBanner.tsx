@@ -399,7 +399,7 @@ export function LiveSessionBanner() {
                     Turn On Lights
                   </Button>
                 ) : null}
-                {doorEnabled && currentBooking && (
+                {doorPromptActive && (
                   <Button
                     size="sm"
                     variant="secondary"

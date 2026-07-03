@@ -61,6 +61,18 @@ export function DashboardOpenDoorCard() {
         if (resp.error) throw resp.error;
         toast.success("Door opening… 🚪");
       }
+      // Mark opened so the LiveSessionBanner door prompt suppresses itself
+      // when this member's booking window rolls around.
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      const PRE_WINDOW_MS = 15 * 60 * 1000;
+      const now = Date.now();
+      const upcoming = ((myBookings || []) as any[]).find((b) => {
+        if (b.status !== "active" || b.date !== todayStr) return false;
+        const start = new Date(`${b.date}T${b.start_time}`).getTime();
+        const end = new Date(`${b.date}T${b.end_time}`).getTime();
+        return now >= start - PRE_WINDOW_MS && now <= end;
+      });
+      markDoorOpened(upcoming?.id ?? null);
     } catch (e) {
       toast.error(errorMessage(e, "Failed to open door"));
     } finally {

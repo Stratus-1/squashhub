@@ -102,11 +102,11 @@ export function LiveSessionBanner() {
   const { data: courtsData } = useQuery({
     queryKey: ["courts-list", clubId],
     queryFn: async () => {
-      let q = supabase.from("courts").select("id, name, relay_device_id").order("id");
+      let q = supabase.from("courts").select("id, name, relay_device_id, relay_ble_mac").order("id");
       if (clubId) q = q.eq("club_id", clubId);
       const { data, error } = await q;
       if (error) throw error;
-      return (data || []) as { id: number; name: string; relay_device_id: string | null }[];
+      return (data || []) as { id: number; name: string; relay_device_id: string | null; relay_ble_mac: string | null }[];
     },
     enabled: !!clubId,
   });

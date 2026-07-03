@@ -14,6 +14,7 @@ import { template as supportNewMessage } from './support-new-message.tsx'
 import { template as supportAdminReply } from './support-admin-reply.tsx'
 import { template as membershipRenewalInvoice } from './membership-renewal-invoice.tsx'
 import { template as subscriptionInvoice } from './subscription-invoice.tsx'
+import { template as arrearsWarning } from './arrears-warning.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-club-registered': newClubRegistered,
@@ -21,4 +22,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'support-admin-reply': supportAdminReply,
   'membership-renewal-invoice': membershipRenewalInvoice,
   'subscription-invoice': subscriptionInvoice,
+  'arrears-warning': arrearsWarning,
 }

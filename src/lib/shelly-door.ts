@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueOutbox, type AccessEventPayload } from "@/lib/outbox";
 import { pulseShellyBle, isWebBluetoothAvailable } from "@/lib/shelly-ble";
+import { extractFunctionError } from "@/lib/shelly-errors";
 
 export type ShellyDoorOptions = {
   clubId: string;

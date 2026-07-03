@@ -204,18 +204,26 @@ export function LiveSessionBanner() {
   };
 
   const handleTurnOnLights = async () => {
-    if (!currentBooking || !user) return;
+    if (!currentBooking || !user || !club?.id) return;
     setActionLoading(true);
     try {
-      const resp = await supabase.functions.invoke("court-lights", {
-        body: { action: "turn_on", booking_id: currentBooking.id },
+      const s: any = clubSecrets || {};
+      const court = courtsData?.find((c) => c.id === currentBooking.court_id);
+      const res = await triggerShellyLights({
+        clubId: club.id,
+        bookingId: currentBooking.id,
+        courtId: currentBooking.court_id,
+        courtName: court?.name,
+        clubMemberId: activeMember?.id ?? null,
+        courtRelayBleMac: court?.relay_ble_mac ?? null,
+        ble: {
+          enabled: !!s.ble_fallback_enabled,
+          password: s.shelly_ble_control_password,
+          channel: 0,
+          pulseMs: 3600_000,
+        },
       });
-
-      if (resp.error) {
-        throw new Error(resp.error.message || "Failed to turn on lights");
-      }
-
-      toast.success("Lights are on! ⚡");
+      toast.success(res.message);
       refetchSessions();
       queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
       queryClient.invalidateQueries({ queryKey: ["live-light-sessions", user.id] });

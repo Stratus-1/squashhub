@@ -13,7 +13,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { triggerShellyDoor } from "@/lib/shelly-door";
-import { isWebBluetoothAvailable } from "@/lib/shelly-ble";
+import { isBleFallbackAvailable } from "@/lib/shelly-ble-auto";
 
 const ACCESS_METHODS = [
   { value: "none", label: "No Access Control", icon: Lock, description: "Courts are open — no electronic access system" },

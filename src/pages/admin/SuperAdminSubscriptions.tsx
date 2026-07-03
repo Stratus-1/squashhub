@@ -53,12 +53,33 @@ const STATUS_COLORS: Record<string, string> = {
   suspended: "bg-destructive/10 text-destructive",
 };
 
+const EMPTY_INVOICE_SETTINGS = {
+  company_name: "",
+  trading_as: "",
+  vat_number: "",
+  registration_number: "",
+  email: "",
+  phone: "",
+  address: "",
+  bank_name: "",
+  bank_account_name: "",
+  bank_account_number: "",
+  bank_branch_code: "",
+  bank_swift: "",
+  invoice_prefix: "INV-",
+  invoice_footer: "",
+  logo_url: "",
+};
+type InvoiceSettings = typeof EMPTY_INVOICE_SETTINGS;
+
 export default function SuperAdminSubscriptions() {
   const qc = useQueryClient();
   const [planDialog, setPlanDialog] = useState<Plan | "new" | null>(null);
   const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", trial_days: "30", is_default: false, active: true });
   const [editSub, setEditSub] = useState<ClubSub | null>(null);
   const [subForm, setSubForm] = useState({ plan_id: "", status: "", trial_ends_at: "", member_count: "0", amount_due: "0" });
+  const [invoiceForm, setInvoiceForm] = useState<InvoiceSettings>(EMPTY_INVOICE_SETTINGS);
+  const [invoiceDirty, setInvoiceDirty] = useState(false);
 
   // --- Queries ---
   const { data: plans = [], isLoading: plansLoading } = useQuery({

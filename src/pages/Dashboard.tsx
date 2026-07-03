@@ -32,6 +32,7 @@ import { DashboardDesktop } from "@/components/DashboardDesktop";
 import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityCard";
 import { DashboardTournamentInvitesCard } from "@/components/DashboardTournamentInvitesCard";
 import DebitOrderPromptCard from "@/components/DebitOrderPromptCard";
+import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";

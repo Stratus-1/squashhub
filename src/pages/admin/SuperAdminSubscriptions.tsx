@@ -116,6 +116,47 @@ export default function SuperAdminSubscriptions() {
     },
   });
 
+  // --- Invoice settings (platform / head-office) ---
+  useQuery({
+    queryKey: ["sa-invoice-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "platform_invoice_settings")
+        .maybeSingle();
+      if (error && error.code !== "PGRST116") throw error;
+      const parsed = data?.value ? { ...EMPTY_INVOICE_SETTINGS, ...JSON.parse(data.value) } : EMPTY_INVOICE_SETTINGS;
+      setInvoiceForm(parsed);
+      setInvoiceDirty(false);
+      return parsed;
+    },
+  });
+
+  const saveInvoiceSettings = useMutation({
+    mutationFn: async (val: InvoiceSettings) => {
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert({ key: "platform_invoice_settings", value: JSON.stringify(val) }, { onConflict: "key" });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Invoice details saved"); setInvoiceDirty(false); qc.invalidateQueries({ queryKey: ["sa-invoice-settings"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateInvoiceField = <K extends keyof InvoiceSettings>(k: K, v: InvoiceSettings[K]) => {
+    setInvoiceForm(f => ({ ...f, [k]: v }));
+    setInvoiceDirty(true);
+  };
+
+  const handleLogoUpload = (file: File | null) => {
+    if (!file) return;
+    if (file.size > 500_000) { toast.error("Logo must be under 500 KB"); return; }
+    const reader = new FileReader();
+    reader.onload = () => updateInvoiceField("logo_url", String(reader.result || ""));
+    reader.readAsDataURL(file);
+  };
+
   // --- Plan mutations ---
   const savePlan = useMutation({
     mutationFn: async (plan: Partial<Plan> & { id?: string }) => {

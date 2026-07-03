@@ -8,6 +8,9 @@ import { useMyClub } from "@/hooks/use-club";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { triggerShellyDoor } from "@/lib/shelly-door";
+import { markDoorOpened } from "@/lib/door-open-state";
+import { useMyBookings } from "@/hooks/use-data";
+import { format } from "date-fns";
 
 const errorMessage = (e: unknown, fallback: string) =>
   e instanceof Error ? e.message : fallback;

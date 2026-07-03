@@ -20,6 +20,7 @@ import { triggerShellyDoor } from "@/lib/shelly-door";
 import { triggerShellyLights } from "@/lib/shelly-lights";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { markDoorOpened, wasDoorOpenedForBooking } from "@/lib/door-open-state";
+import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 
 
 
@@ -68,7 +69,8 @@ export function LiveSessionBanner() {
   const accessType = (clubSecrets as any)?.access_control_type;
   const flussEnabled = accessType === "remote_trigger";
   const shellyEnabled = accessType === "shelly_relay";
-  const doorEnabled = flussEnabled || shellyEnabled;
+  const accessGate = useMemberAccessGate();
+  const doorEnabled = (flussEnabled || shellyEnabled) && !accessGate.isBlocked("door");
   const { activeMember } = useMemberContext();
 
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);

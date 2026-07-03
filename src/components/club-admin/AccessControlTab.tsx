@@ -132,6 +132,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         shelly_door_device_id: form.shelly_door_device_id || null,
         shelly_door_channel: form.shelly_door_channel ? Number(form.shelly_door_channel) : 0,
         shelly_door_pulse_ms: form.shelly_door_pulse_ms ? Number(form.shelly_door_pulse_ms) : 3000,
+        ble_fallback_enabled: form.ble_fallback_enabled,
+        shelly_door_ble_mac: form.shelly_door_ble_mac || null,
+        shelly_ble_control_password: form.shelly_ble_control_password || null,
       } as any);
 
 

@@ -281,12 +281,17 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     <div className="space-y-6 mt-4">
       {/* Associations */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div>
             <h3 className="font-semibold">League Associations</h3>
             <p className="text-xs text-muted-foreground">Fee settings are managed in the Fees tab</p>
           </div>
-          <AssociationDialog clubId={clubId} open={addAssocOpen} onOpenChange={setAddAssocOpen} />
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setBulkBookOpen(true)}>
+              <CalendarDays className="w-4 h-4 mr-1" />Bulk book home fixtures
+            </Button>
+            <AssociationDialog clubId={clubId} open={addAssocOpen} onOpenChange={setAddAssocOpen} />
+          </div>
         </div>
         <div className="space-y-2">
           {associations.map((a: any) => (

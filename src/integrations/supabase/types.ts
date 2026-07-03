@@ -6363,6 +6363,7 @@ export type Database = {
           description: string | null
           id: string
           is_default: boolean
+          max_billable_members: number | null
           minimum_charge: number
           name: string
           price_per_member: number
@@ -6376,6 +6377,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_default?: boolean
+          max_billable_members?: number | null
           minimum_charge?: number
           name: string
           price_per_member?: number
@@ -6389,6 +6391,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_default?: boolean
+          max_billable_members?: number | null
           minimum_charge?: number
           name?: string
           price_per_member?: number

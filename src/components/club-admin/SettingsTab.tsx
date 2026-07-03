@@ -166,6 +166,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <div className="space-y-6 mt-4">
+      <SuspensionRulesPanel club={club} />
+
 
       {/* Member Numbering */}
       <Card className="p-6 space-y-4">

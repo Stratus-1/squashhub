@@ -275,7 +275,8 @@ export default function SuperAdminSubscriptions() {
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
     const count = Number(memberCount) || 0;
-    const calculated = Math.max(count * plan.price_per_member, plan.minimum_charge);
+    const billable = plan.max_billable_members ? Math.min(count, plan.max_billable_members) : count;
+    const calculated = Math.max(billable * plan.price_per_member, plan.minimum_charge);
     setSubForm(f => ({ ...f, amount_due: String(calculated) }));
   };
 

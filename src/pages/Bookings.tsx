@@ -1171,6 +1171,7 @@ export default function Bookings() {
 
   return (
     <div className="bottom-nav-safe">
+      <MemberSuspensionBanner />
       {/* Header */}
       <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2">
         <div className="flex items-start justify-between gap-3">

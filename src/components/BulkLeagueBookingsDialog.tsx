@@ -139,27 +139,33 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
     if (!open || courts.length === 0) return;
     let p: number | null = null;
     let s: number | null = null;
+    let st: string | null = null;
+    let en: string | null = null;
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (courts.some((c) => c.id === parsed.primary)) p = parsed.primary;
         if (courts.some((c) => c.id === parsed.secondary)) s = parsed.secondary;
+        if (typeof parsed.startTime === "string") st = parsed.startTime;
+        if (typeof parsed.endTime === "string") en = parsed.endTime;
       }
     } catch {}
     if (p == null) p = courts[0].id;
     if (s == null) s = courts[Math.min(1, courts.length - 1)].id;
     setPrimaryCourtId(p);
     setSecondaryCourtId(s);
+    if (st) setDefaultStart(st);
+    if (en) setDefaultEnd(en);
   }, [courts, open, storageKey]);
 
   // Persist defaults
   useEffect(() => {
     if (primaryCourtId == null || secondaryCourtId == null) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ primary: primaryCourtId, secondary: secondaryCourtId }));
+      localStorage.setItem(storageKey, JSON.stringify({ primary: primaryCourtId, secondary: secondaryCourtId, startTime: defaultStart, endTime: defaultEnd }));
     } catch {}
-  }, [primaryCourtId, secondaryCourtId, storageKey]);
+  }, [primaryCourtId, secondaryCourtId, defaultStart, defaultEnd, storageKey]);
 
   // Build/rebuild rows whenever fixtures or the default courts change
   useEffect(() => {
@@ -178,6 +184,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
         built.push({
           fixtureId: f.id,
           date,
+
           label: `${f.division} — ${f.home_team_code} vs ${f.away_team_code}`,
           courtId,
           startTime: DEFAULT_START,

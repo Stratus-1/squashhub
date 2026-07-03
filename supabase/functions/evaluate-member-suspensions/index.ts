@@ -335,9 +335,17 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { data: clubs, error } = await supa
-      .from("clubs")
-      .select("id, name, suspension_rules");
+    let targetClubId: string | undefined;
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (body?.club_id) targetClubId = String(body.club_id);
+      } catch { /* no body */ }
+    }
+
+    let query = supa.from("clubs").select("id, name, suspension_rules");
+    if (targetClubId) query = query.eq("id", targetClubId);
+    const { data: clubs, error } = await query;
     if (error) throw error;
 
     const summary: any[] = [];
@@ -350,6 +358,7 @@ Deno.serve(async (req) => {
         summary.push({ club_id: club.id, error: (e as Error).message });
       }
     }
+
 
     return new Response(JSON.stringify({ ok: true, summary }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

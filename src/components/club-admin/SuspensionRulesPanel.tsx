@@ -7,9 +7,11 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ShieldOff, Save } from "lucide-react";
+import { ShieldOff, Save, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
+import { supabase } from "@/integrations/supabase/client";
+
 
 const BLOCK_OPTIONS: { key: string; label: string }[] = [
   { key: "bookings", label: "Court bookings" },
@@ -59,6 +61,26 @@ export function SuspensionRulesPanel({ club }: { club: Club }) {
     ...((club as any).suspension_rules || {}),
   });
   const [saving, setSaving] = useState(false);
+  const [running, setRunning] = useState(false);
+
+  const runNow = async () => {
+    setRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("evaluate-member-suspensions", {
+        body: { club_id: club.id },
+      });
+      if (error) throw error;
+      const r = (data as any)?.result || data;
+      toast.success(
+        `Evaluation complete: ${r?.warned ?? 0} warned, ${r?.suspended ?? 0} suspended, ${r?.reinstated ?? 0} reinstated`,
+      );
+    } catch (e: any) {
+      toast.error(e.message || "Failed to run evaluation");
+    } finally {
+      setRunning(false);
+    }
+  };
+
 
   useEffect(() => {
     setRules({ ...DEFAULTS, ...((club as any).suspension_rules || {}) });
@@ -253,7 +275,11 @@ export function SuspensionRulesPanel({ club }: { club: Club }) {
       </div>
 
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={runNow} disabled={running} className="gap-1.5">
+          <Play className="w-4 h-4" />
+          {running ? "Running…" : "Run evaluation now"}
+        </Button>
         <Button onClick={save} disabled={saving} className="gap-1.5">
           <Save className="w-4 h-4" />
           {saving ? "Saving…" : "Save rules"}

@@ -74,6 +74,8 @@ export function useSetupStatus(clubId?: string, club?: any): SetupStatusMap {
     accessComplete = true; // no extra config required
   } else if (accessType === "remote_trigger") {
     accessComplete = !!(s.fluss_api_token && s.fluss_default_device_id);
+  } else if (accessType === "shelly_relay") {
+    accessComplete = !!(s.shelly_auth_key && s.shelly_door_device_id);
   } else if (accessType === "face_recognition") {
     const provider = s.access_provider;
     if (provider === "zkbio" || provider === "hikvision") {

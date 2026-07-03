@@ -33,6 +33,7 @@ import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityC
 import { DashboardTournamentInvitesCard } from "@/components/DashboardTournamentInvitesCard";
 import DebitOrderPromptCard from "@/components/DebitOrderPromptCard";
 import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
+import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -751,6 +752,9 @@ export default function Dashboard() {
           </Card>
         </div>
       )}
+
+      {/* Arrears / suspension banner (always visible if applicable) */}
+      <MemberSuspensionBanner />
 
       {/* Open Door quick access (shown when club uses SquashHub-controlled access) */}
       <DashboardOpenDoorCard />

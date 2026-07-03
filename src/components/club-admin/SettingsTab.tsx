@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { SuspensionRulesPanel } from "./SuspensionRulesPanel";
+
 
 
 export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
@@ -164,6 +166,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <div className="space-y-6 mt-4">
+      <SuspensionRulesPanel club={club} />
+
 
       {/* Member Numbering */}
       <Card className="p-6 space-y-4">

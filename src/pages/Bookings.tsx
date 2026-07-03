@@ -57,6 +57,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
 import { useMyClub, useIsSuperAdmin, useIsClubAdmin } from "@/hooks/use-club";
+import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
+import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
 import { useHasPermission } from "@/hooks/use-club-permissions";
 import { fromExt } from "@/lib/supabase-ext";
 import { enqueueOutbox } from "@/lib/outbox";
@@ -602,6 +604,7 @@ export default function Bookings() {
   }, [bookings, champsBookings]);
 
   const createBooking = useCreateBooking();
+  const accessGate = useMemberAccessGate();
   const createChallenge = useCreateChallenge();
   const cancelBooking = useCancelBooking();
 
@@ -718,6 +721,10 @@ export default function Bookings() {
 
   const handleBook = async () => {
     if (!bookingDialog) return;
+    if (accessGate.isBlocked("bookings")) {
+      toast.error(accessGate.reason || "Account suspended — settle outstanding fees to book courts.");
+      return;
+    }
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
 
@@ -1164,6 +1171,7 @@ export default function Bookings() {
 
   return (
     <div className="bottom-nav-safe">
+      <MemberSuspensionBanner />
       {/* Header */}
       <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2">
         <div className="flex items-start justify-between gap-3">

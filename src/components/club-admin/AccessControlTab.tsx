@@ -457,6 +457,98 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
+        {isShelly && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
+              <Wifi className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p className="text-sm font-medium text-foreground">Shelly Cloud Relay</p>
+                <p>
+                  Best pairing: <strong>Shelly 1 Mini Gen3</strong> (door strike) or <strong>Shelly Plus 1/2PM</strong>.
+                  Wire the relay across your existing door strike or maglock. SquashHub pulses the relay via
+                  Shelly Cloud when a member with an active booking taps "Open door" — no Bluetooth pairing needed
+                  and every open is logged against the member.
+                </p>
+                <p>
+                  Get the <strong>Auth Key</strong> and <strong>Server URL</strong> from the Shelly app:
+                  <em> Settings → User Settings → Authorization Cloud Key</em>. Copy the device ID from the
+                  device's <em>Settings → Device Information</em> page.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1 md:col-span-2">
+                <Label>Shelly Cloud Auth Key</Label>
+                <Input
+                  type="password"
+                  value={form.shelly_auth_key}
+                  onChange={e => setForm(p => ({ ...p, shelly_auth_key: e.target.value }))}
+                  placeholder="Long token from Shelly app → User Settings"
+                />
+                <p className="text-[10px] text-muted-foreground">Shared with court lights if you also use Shelly for lighting.</p>
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label>Server URL (optional)</Label>
+                <Input
+                  value={form.shelly_server_url}
+                  onChange={e => setForm(p => ({ ...p, shelly_server_url: e.target.value }))}
+                  placeholder="e.g. https://shelly-44-eu.shelly.cloud"
+                />
+                <p className="text-[10px] text-muted-foreground">Leave blank for the EU default. Check the Shelly app if unsure.</p>
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label>Door Device ID</Label>
+                <Input
+                  value={form.shelly_door_device_id}
+                  onChange={e => setForm(p => ({ ...p, shelly_door_device_id: e.target.value }))}
+                  placeholder="e.g. 84fce612abcd"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Relay Channel</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.shelly_door_channel}
+                  onChange={e => setForm(p => ({ ...p, shelly_door_channel: e.target.value }))}
+                />
+                <p className="text-[10px] text-muted-foreground">0 for single-channel devices like the 1 Mini.</p>
+              </div>
+              <div className="space-y-1">
+                <Label>Pulse Duration (ms)</Label>
+                <Input
+                  type="number"
+                  min={500}
+                  step={500}
+                  value={form.shelly_door_pulse_ms}
+                  onChange={e => setForm(p => ({ ...p, shelly_door_pulse_ms: e.target.value }))}
+                />
+                <p className="text-[10px] text-muted-foreground">How long the relay stays energised. 3000 ms works for most strikes.</p>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!form.shelly_auth_key || !form.shelly_door_device_id}
+              onClick={async () => {
+                try {
+                  const { error } = await supabase.functions.invoke("shelly-door-trigger", {
+                    body: { club_id: clubId, door_name: "Admin test" },
+                  });
+                  if (error) throw error;
+                  toast.success("Door pulsed via Shelly Cloud");
+                } catch (err: any) {
+                  toast.error(err.message || "Test failed");
+                }
+              }}
+            >
+              Test open door
+            </Button>
+          </div>
+        )}
+
 
         {isOther && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">

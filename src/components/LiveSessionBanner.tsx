@@ -130,8 +130,9 @@ export function LiveSessionBanner() {
   const displaySession = activeSession || orphanSession;
   const promptKey = displaySession ? `session:${displaySession.id}` : currentBooking ? `booking:${currentBooking.id}` : null;
 
-  // Nothing to show — must have lights integration OR fluss door access to render
-  if (!lightsIntegrationEnabled && !flussEnabled) return null;
+  // Nothing to show — must have lights integration OR door access to render
+  if (!lightsIntegrationEnabled && !doorEnabled) return null;
+
   if (!promptKey) return null;
   if (dismissedKey === promptKey) return null;
 

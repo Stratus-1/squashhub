@@ -219,6 +219,11 @@ async function flushCreateMatch(item: Extract<OutboxItem, { kind: "create_match"
   }
 }
 
+async function flushAccessEvent(item: Extract<OutboxItem, { kind: "access_event" }>) {
+  const { error } = await supabase.from("access_events").insert(item.payload.event as any);
+  if (error) throw error;
+}
+
 export async function flushOutbox(options?: { maxAttempts?: number }) {
   const maxAttempts = options?.maxAttempts ?? 5;
   const { data: { session } } = await supabase.auth.getSession();

@@ -288,7 +288,22 @@ export function LiveSessionBanner() {
     ? Math.round(((elapsedMin / 60) * Number(displaySession.fee_per_hour || 0)) * 100) / 100
     : 0;
 
-  const lightsNotOn = currentBooking && !displaySession;
+  // Lights UI only makes sense once the booking has actually started.
+  const lightsNotOn = currentBooking && bookingHasStarted && !displaySession;
+
+  // "Open Door" prompt rules (per user spec):
+  //  • Show from 15 min before start until pressed.
+  //  • If never pressed, stop showing 5 min after start.
+  //  • Never show if the member already opened the door for this booking
+  //    (e.g. via the always-visible dashboard tile after arriving early).
+  const startMs = currentBooking
+    ? new Date(`${currentBooking.date}T${currentBooking.start_time}`).getTime()
+    : 0;
+  const doorPromptActive =
+    doorEnabled &&
+    !!currentBooking &&
+    !wasDoorOpenedForBooking(currentBooking.id) &&
+    now.getTime() <= startMs + 5 * 60 * 1000;
 
   return (
     <>

@@ -68,7 +68,8 @@ export function LiveSessionBanner() {
   const accessType = (clubSecrets as any)?.access_control_type;
   const flussEnabled = accessType === "remote_trigger";
   const shellyEnabled = accessType === "shelly_relay";
-  const doorEnabled = flussEnabled || shellyEnabled;
+  const accessGate = useMemberAccessGate();
+  const doorEnabled = (flussEnabled || shellyEnabled) && !accessGate.isBlocked("door");
   const { activeMember } = useMemberContext();
 
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);

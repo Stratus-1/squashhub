@@ -62,16 +62,16 @@ export function SuspendedMembersPanel({ clubId }: { clubId: string }) {
       };
       const { error } = await supabase.from("club_members").update(patch).eq("id", row.id);
       if (error) throw error;
-      await supabase.from("member_suspension_log").insert({
+      await supabase.from("member_suspension_log").insert([{
         club_id: clubId,
         club_member_id: row.id,
-        previous_status: row.suspension_status,
-        new_status: nextStatus,
+        previous_status: row.suspension_status as any,
+        new_status: nextStatus as any,
         reason: patch.suspension_reason,
-        outstanding: row.suspension_outstanding,
+        outstanding: row.suspension_outstanding ?? undefined,
         changed_by: user?.id,
         automatic: false,
-      });
+      }]);
       toast.success(action === "suspend" ? "Member suspended" : "Access restored");
       qc.invalidateQueries({ queryKey: ["suspended-members", clubId] });
       qc.invalidateQueries({ queryKey: ["access-gate"] });

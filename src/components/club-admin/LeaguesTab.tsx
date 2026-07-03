@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
 import AssociationPenaltiesTab from "@/components/super-admin/league/AssociationPenaltiesTab";
 import { Settings2 } from "lucide-react";
+import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -129,6 +130,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const { data: leagues = [] } = useLeagues(clubId);
   const { data: members = [] } = useClubMembers(clubId);
   const [addAssocOpen, setAddAssocOpen] = useState(false);
+  const [bulkBookOpen, setBulkBookOpen] = useState(false);
   const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
   const [rulesAssoc, setRulesAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
@@ -281,12 +283,17 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     <div className="space-y-6 mt-4">
       {/* Associations */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div>
             <h3 className="font-semibold">League Associations</h3>
             <p className="text-xs text-muted-foreground">Fee settings are managed in the Fees tab</p>
           </div>
-          <AssociationDialog clubId={clubId} open={addAssocOpen} onOpenChange={setAddAssocOpen} />
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setBulkBookOpen(true)}>
+              <CalendarDays className="w-4 h-4 mr-1" />Bulk book home fixtures
+            </Button>
+            <AssociationDialog clubId={clubId} open={addAssocOpen} onOpenChange={setAddAssocOpen} />
+          </div>
         </div>
         <div className="space-y-2">
           {associations.map((a: any) => (
@@ -476,6 +483,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           onOpenChange={(o) => !o && setRulesAssoc(null)}
         />
       )}
+      <BulkLeagueBookingsDialog open={bulkBookOpen} onOpenChange={setBulkBookOpen} clubId={clubId} />
     </div>
   );
 }

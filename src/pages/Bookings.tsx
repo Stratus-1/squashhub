@@ -32,6 +32,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { toast } from "sonner";
 import { Zap, ZapOff, ArrowRightLeft, ChevronsUpDown, Check } from "lucide-react";
 import { ShareBookingDialog } from "@/components/ShareBookingDialog";
+import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -338,6 +339,7 @@ export default function Bookings() {
     opponentName: string | null;
   }>({ open: false, bookingId: "", courtId: 1, dateStr: "", startTime: "", endTime: "", opponentName: null });
   const navigate = useNavigate();
+  const [bulkLeagueOpen, setBulkLeagueOpen] = useState(false);
   const { user } = useAuth();
   const { activeMember, isAdmin: isMemberAdmin } = useMemberContext();
   const isSuperAdmin = useIsSuperAdmin();
@@ -1402,15 +1404,29 @@ export default function Bookings() {
 
       {/* Date chips */}
       {!isLoading && (
-        <div className="px-4 mt-2">
+        <div className="px-4 mt-2 flex items-center justify-between gap-2 flex-wrap">
           <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/80 backdrop-blur-sm px-3 py-1 text-xs">
             <CalendarCheck className="w-3.5 h-3.5 text-primary" />
             <span className="font-semibold tabular-nums">{dayBookingsCount}</span>
             <span className="text-muted-foreground">bookings</span>
           </div>
+          {isFullAdmin && myClub?.id && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() => setBulkLeagueOpen(true)}
+            >
+              <CalendarCheck className="w-3.5 h-3.5 mr-1" />
+              Bulk book league fixtures
+            </Button>
+          )}
         </div>
       )}
       <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} isAdmin={isMemberAdmin} isSuperAdmin={isSuperAdmin} />
+      {isFullAdmin && myClub?.id && (
+        <BulkLeagueBookingsDialog open={bulkLeagueOpen} onOpenChange={setBulkLeagueOpen} clubId={myClub.id} />
+      )}
 
       {/* Court availability stats */}
 

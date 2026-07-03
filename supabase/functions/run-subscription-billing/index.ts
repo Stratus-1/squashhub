@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
               billingCycle: plan.billing_cycle,
               periodStart: inv.period_start,
               periodEnd: inv.period_end,
-              memberCount,
+              memberCount: billableMembers,
               pricePerMember: plan.price_per_member,
               minimumCharge: plan.minimum_charge,
               subtotal,

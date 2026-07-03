@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
 import AssociationPenaltiesTab from "@/components/super-admin/league/AssociationPenaltiesTab";
 import { Settings2 } from "lucide-react";
+import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 

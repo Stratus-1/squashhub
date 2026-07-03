@@ -586,9 +586,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                       Prevents anyone in Bluetooth range from toggling the relay from another app.
                     </p>
                   </div>
-                  {!isWebBluetoothAvailable() && (
+                  {!isBleFallbackAvailable() && (
                     <p className="text-[11px] text-amber-600 md:col-span-2">
-                      This browser doesn't support Web Bluetooth — members will need the SquashHub app or Chrome on Android for the fallback to work.
+                      This device can't use Bluetooth fallback — members need the SquashHub app (iOS or Android) or Chrome on Android/desktop for the fallback to work. iPhone browsers don't support Web Bluetooth.
                     </p>
                   )}
                 </div>

@@ -604,6 +604,7 @@ export default function Bookings() {
   }, [bookings, champsBookings]);
 
   const createBooking = useCreateBooking();
+  const accessGate = useMemberAccessGate();
   const createChallenge = useCreateChallenge();
   const cancelBooking = useCancelBooking();
 

@@ -277,10 +277,47 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
             Bulk book home league fixtures
           </DialogTitle>
           <DialogDescription>
-            Review upcoming home fixtures, adjust courts/times if needed, then check for conflicts and book them all at once.
-            When two fixtures fall on the same night, they auto-assign to Court 1 and Court 2 — override per row.
+            Pick your default primary court (used for every fixture) and secondary court (used when two fixtures fall on the same evening).
+            Any row can still be overridden individually below.
           </DialogDescription>
         </DialogHeader>
+
+        {courts.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg border bg-muted/30">
+            <div>
+              <Label className="text-xs">Primary court</Label>
+              <Select
+                value={primaryCourtId != null ? String(primaryCourtId) : ""}
+                onValueChange={(v) => setPrimaryCourtId(Number(v))}
+              >
+                <SelectTrigger className="h-9 mt-1 text-xs">
+                  <SelectValue placeholder="Select primary court" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courts.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)} className="text-xs">{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Secondary court (2nd fixture same night)</Label>
+              <Select
+                value={secondaryCourtId != null ? String(secondaryCourtId) : ""}
+                onValueChange={(v) => setSecondaryCourtId(Number(v))}
+              >
+                <SelectTrigger className="h-9 mt-1 text-xs">
+                  <SelectValue placeholder="Select secondary court" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courts.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)} className="text-xs">{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
 
         {fixturesLoading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">

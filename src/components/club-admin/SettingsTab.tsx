@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Send } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { SuspensionRulesPanel } from "./SuspensionRulesPanel";
+import { SuspendedMembersPanel } from "./SuspendedMembersPanel";
 
 
 

@@ -8,9 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen, Wifi } from "lucide-react";
+import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen, Wifi, Bluetooth } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
+import { Switch } from "@/components/ui/switch";
+import { triggerShellyDoor } from "@/lib/shelly-door";
+import { isWebBluetoothAvailable } from "@/lib/shelly-ble";
 
 const ACCESS_METHODS = [
   { value: "none", label: "No Access Control", icon: Lock, description: "Courts are open — no electronic access system" },

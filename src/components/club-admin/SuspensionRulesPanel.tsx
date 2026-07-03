@@ -28,6 +28,9 @@ interface Rules {
   exempt_with_mandate: boolean;
   blocks: string[];
   grace_message: string;
+  notification_days: number[];
+  channels: string[];
+  suspended_reminder_days: number;
 }
 
 const DEFAULTS: Rules = {
@@ -38,7 +41,16 @@ const DEFAULTS: Rules = {
   exempt_with_mandate: true,
   blocks: ["bookings", "door", "league", "challenges", "events", "bar"],
   grace_message: "Your account is in arrears. Please settle outstanding fees to restore access.",
+  notification_days: [7, 3, 1],
+  channels: ["email", "push", "in_app"],
+  suspended_reminder_days: 7,
 };
+
+const CHANNEL_OPTIONS: { key: string; label: string }[] = [
+  { key: "email", label: "Email" },
+  { key: "push", label: "Push notification" },
+  { key: "in_app", label: "In-app banner + Notifications bell" },
+];
 
 export function SuspensionRulesPanel({ club }: { club: Club }) {
   const updateClub = useUpdateClub();

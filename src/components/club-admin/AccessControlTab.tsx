@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen } from "lucide-react";
+import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen, Wifi } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,8 +19,10 @@ const ACCESS_METHODS = [
   { value: "pin", label: "PIN Code", icon: KeyRound, description: "Keypad entry with member-specific PINs" },
   { value: "face_recognition", label: "Face Recognition", icon: ScanFace, description: "Biometric facial recognition for court access" },
   { value: "remote_trigger", label: "Remote Door Trigger (Fluss+)", icon: DoorOpen, description: "WiFi relay opens the gate/door on demand from the SquashHub app" },
+  { value: "shelly_relay", label: "Shelly Cloud Relay (1 Mini / Plus 1)", icon: Wifi, description: "Low-cost WiFi relay (Shelly 1 Mini Gen3) — SquashHub pulses the relay via Shelly Cloud and logs which member opened the door" },
   { value: "other", label: "Other", icon: HelpCircle, description: "Custom system — contact SquashHub for integration" },
 ] as const;
+
 
 
 type AccessType = typeof ACCESS_METHODS[number]["value"];
@@ -49,6 +51,11 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     zk_webhook_secret: "",
     fluss_api_token: "",
     fluss_default_device_id: "",
+    shelly_auth_key: "",
+    shelly_server_url: "",
+    shelly_door_device_id: "",
+    shelly_door_channel: "0",
+    shelly_door_pulse_ms: "3000",
   });
 
 
@@ -73,6 +80,11 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         zk_webhook_secret: s.zk_webhook_secret || "",
         fluss_api_token: s.fluss_api_token || "",
         fluss_default_device_id: s.fluss_default_device_id || "",
+        shelly_auth_key: s.shelly_auth_key || "",
+        shelly_server_url: s.shelly_server_url || "",
+        shelly_door_device_id: s.shelly_door_device_id || "",
+        shelly_door_channel: String(s.shelly_door_channel ?? 0),
+        shelly_door_pulse_ms: String(s.shelly_door_pulse_ms ?? 3000),
       });
 
     }
@@ -109,6 +121,11 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         zk_webhook_secret: form.zk_webhook_secret || null,
         fluss_api_token: form.fluss_api_token || null,
         fluss_default_device_id: form.fluss_default_device_id || null,
+        shelly_auth_key: form.shelly_auth_key || null,
+        shelly_server_url: form.shelly_server_url || null,
+        shelly_door_device_id: form.shelly_door_device_id || null,
+        shelly_door_channel: form.shelly_door_channel ? Number(form.shelly_door_channel) : 0,
+        shelly_door_pulse_ms: form.shelly_door_pulse_ms ? Number(form.shelly_door_pulse_ms) : 3000,
       } as any);
 
 

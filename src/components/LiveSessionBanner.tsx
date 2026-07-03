@@ -358,7 +358,7 @@ export function LiveSessionBanner() {
                     Turn On Lights
                   </Button>
                 ) : null}
-                {flussEnabled && currentBooking && (
+                {doorEnabled && currentBooking && (
                   <Button
                     size="sm"
                     variant="secondary"

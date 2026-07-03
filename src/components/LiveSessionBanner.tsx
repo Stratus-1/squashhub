@@ -16,6 +16,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X, DoorOpen } from "lucide-react";
+import { triggerShellyDoor } from "@/lib/shelly-door";
+import { useMemberContext } from "@/contexts/MemberContext";
+
+
+
 
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -58,7 +63,12 @@ export function LiveSessionBanner() {
   const lightFeePerHour = club?.light_fee_per_hour ?? 0;
   const lightsIntegrationEnabled = !!club?.lights_integration_enabled;
   const { data: clubSecrets } = useClubSecrets(club?.id);
-  const flussEnabled = (clubSecrets as any)?.access_control_type === "remote_trigger";
+  const accessType = (clubSecrets as any)?.access_control_type;
+  const flussEnabled = accessType === "remote_trigger";
+  const shellyEnabled = accessType === "shelly_relay";
+  const doorEnabled = flussEnabled || shellyEnabled;
+  const { activeMember } = useMemberContext();
+
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [actionLoading, setActionLoading] = useState(false);
@@ -120,8 +130,9 @@ export function LiveSessionBanner() {
   const displaySession = activeSession || orphanSession;
   const promptKey = displaySession ? `session:${displaySession.id}` : currentBooking ? `booking:${currentBooking.id}` : null;
 
-  // Nothing to show — must have lights integration OR fluss door access to render
-  if (!lightsIntegrationEnabled && !flussEnabled) return null;
+  // Nothing to show — must have lights integration OR door access to render
+  if (!lightsIntegrationEnabled && !doorEnabled) return null;
+
   if (!promptKey) return null;
   if (dismissedKey === promptKey) return null;
 
@@ -219,17 +230,35 @@ export function LiveSessionBanner() {
     if (!currentBooking || !club?.id) return;
     setDoorLoading(true);
     try {
-      const resp = await supabase.functions.invoke("fluss-trigger", {
-        body: { club_id: club.id, court_id: currentBooking.court_id, booking_id: currentBooking.id },
-      });
-      if (resp.error) throw resp.error;
-      toast.success("Door opening… 🚪");
+      if (shellyEnabled) {
+        const s: any = clubSecrets || {};
+        const res = await triggerShellyDoor({
+          clubId: club.id,
+          doorName: "Main door",
+          clubMemberId: activeMember?.id ?? null,
+          ble: {
+            enabled: !!s.ble_fallback_enabled,
+            mac: s.shelly_door_ble_mac,
+            password: s.shelly_ble_control_password,
+            channel: s.shelly_door_channel,
+            pulseMs: s.shelly_door_pulse_ms,
+          },
+        });
+        toast.success(res.message || "Door opening… 🚪");
+      } else {
+        const resp = await supabase.functions.invoke("fluss-trigger", {
+          body: { club_id: club.id, court_id: currentBooking.court_id, booking_id: currentBooking.id },
+        });
+        if (resp.error) throw resp.error;
+        toast.success("Door opening… 🚪");
+      }
     } catch (e) {
       toast.error(errorMessage(e, "Failed to open door"));
     } finally {
       setDoorLoading(false);
     }
   };
+
 
   // Calculate elapsed time for active session
 
@@ -329,7 +358,7 @@ export function LiveSessionBanner() {
                     Turn On Lights
                   </Button>
                 ) : null}
-                {flussEnabled && currentBooking && (
+                {doorEnabled && currentBooking && (
                   <Button
                     size="sm"
                     variant="secondary"

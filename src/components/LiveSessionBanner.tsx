@@ -230,17 +230,35 @@ export function LiveSessionBanner() {
     if (!currentBooking || !club?.id) return;
     setDoorLoading(true);
     try {
-      const resp = await supabase.functions.invoke("fluss-trigger", {
-        body: { club_id: club.id, court_id: currentBooking.court_id, booking_id: currentBooking.id },
-      });
-      if (resp.error) throw resp.error;
-      toast.success("Door opening… 🚪");
+      if (shellyEnabled) {
+        const s: any = clubSecrets || {};
+        const res = await triggerShellyDoor({
+          clubId: club.id,
+          doorName: "Main door",
+          clubMemberId: activeMember?.id ?? null,
+          ble: {
+            enabled: !!s.ble_fallback_enabled,
+            mac: s.shelly_door_ble_mac,
+            password: s.shelly_ble_control_password,
+            channel: s.shelly_door_channel,
+            pulseMs: s.shelly_door_pulse_ms,
+          },
+        });
+        toast.success(res.message || "Door opening… 🚪");
+      } else {
+        const resp = await supabase.functions.invoke("fluss-trigger", {
+          body: { club_id: club.id, court_id: currentBooking.court_id, booking_id: currentBooking.id },
+        });
+        if (resp.error) throw resp.error;
+        toast.success("Door opening… 🚪");
+      }
     } catch (e) {
       toast.error(errorMessage(e, "Failed to open door"));
     } finally {
       setDoorLoading(false);
     }
   };
+
 
   // Calculate elapsed time for active session
 

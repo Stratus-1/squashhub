@@ -179,13 +179,18 @@ export default function SuperAdminSubscriptions() {
 
   // --- Plan mutations ---
   const savePlan = useMutation({
-    mutationFn: async (plan: Partial<Plan> & { id?: string }) => {
+    mutationFn: async (plan: Partial<Plan> & { id?: string; max_billable_members?: number | null | string }) => {
+      const mbmRaw = plan.max_billable_members;
+      const mbm = mbmRaw === "" || mbmRaw === null || mbmRaw === undefined || Number(mbmRaw) <= 0
+        ? null
+        : Math.floor(Number(mbmRaw));
       const payload = {
         name: plan.name!,
         description: plan.description || null,
         price_per_member: Number(plan.price_per_member),
         billing_cycle: plan.billing_cycle!,
         minimum_charge: Number(plan.minimum_charge),
+        max_billable_members: mbm,
         trial_days: Number(plan.trial_days),
         is_default: plan.is_default || false,
         active: plan.active ?? true,

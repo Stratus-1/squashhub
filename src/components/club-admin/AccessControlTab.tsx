@@ -183,6 +183,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
   const isFaceRec = form.access_control_type === "face_recognition";
   const isOther = form.access_control_type === "other";
   const isFluss = form.access_control_type === "remote_trigger";
+  const isShelly = form.access_control_type === "shelly_relay";
   const isSimple = ["none", "key"].includes(form.access_control_type);
   const providerInfo = FACE_PROVIDERS.find(p => p.value === form.access_provider);
 

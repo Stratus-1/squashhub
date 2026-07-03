@@ -70,10 +70,11 @@ export function SuspensionRulesPanel({ club }: { club: Club }) {
         body: { club_id: club.id },
       });
       if (error) throw error;
-      const r = (data as any)?.result || data;
+      const r = (data as any)?.summary?.[0] || {};
       toast.success(
-        `Evaluation complete: ${r?.warned ?? 0} warned, ${r?.suspended ?? 0} suspended, ${r?.reinstated ?? 0} reinstated`,
+        `Evaluation complete: ${r.warned ?? 0} warned, ${r.suspended ?? 0} suspended, ${r.reinstated ?? 0} reinstated (${r.processed ?? 0} processed)`,
       );
+
     } catch (e: any) {
       toast.error(e.message || "Failed to run evaluation");
     } finally {

@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueOutbox, type AccessEventPayload } from "@/lib/outbox";
 import { pulseShellyBle, isWebBluetoothAvailable } from "@/lib/shelly-ble";
+import { extractFunctionError } from "@/lib/shelly-errors";
 
 export type ShellyLightsOptions = {
   clubId: string;
@@ -84,7 +85,10 @@ export async function triggerShellyLights(opts: ShellyLightsOptions): Promise<Sh
       message: `Lights on! ⚡${data?.fee_charged ? ` R${Number(data.fee_charged).toFixed(2)}` : ""}`,
     };
   } catch (cloudErr: any) {
-    if (!isNetworkError(cloudErr)) throw cloudErr;
+    if (!isNetworkError(cloudErr)) {
+      const msg = await extractFunctionError(cloudErr, "Failed to turn on lights");
+      throw new Error(msg);
+    }
 
     // 2) BLE fallback (per-court MAC + club-wide password)
     const ble = opts.ble;

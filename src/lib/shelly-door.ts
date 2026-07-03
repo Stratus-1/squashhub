@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueOutbox, type AccessEventPayload } from "@/lib/outbox";
 import { pulseShellyBle, isWebBluetoothAvailable } from "@/lib/shelly-ble";
+import { extractFunctionError } from "@/lib/shelly-errors";
 
 export type ShellyDoorOptions = {
   clubId: string;
@@ -67,7 +68,11 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
     if (error) throw error;
     return { ok: true, via: "cloud", message: "Door pulsed via Shelly Cloud" };
   } catch (cloudErr: any) {
-    if (!isNetworkError(cloudErr)) throw cloudErr;
+    if (!isNetworkError(cloudErr)) {
+      // Not a network problem — surface the real reason from the function body.
+      const msg = await extractFunctionError(cloudErr, "Failed to open door");
+      throw new Error(msg);
+    }
 
     // 2) Fallback: BLE (only if admin enabled it and a MAC is configured).
     const ble = opts.ble;

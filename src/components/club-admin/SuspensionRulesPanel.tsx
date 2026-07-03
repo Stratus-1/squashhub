@@ -183,6 +183,76 @@ export function SuspensionRulesPanel({ club }: { club: Club }) {
         />
       </div>
 
+      <Separator />
+
+      <div className="space-y-3">
+        <div>
+          <Label className="text-sm font-semibold">Warning notifications</Label>
+          <p className="text-xs text-muted-foreground">
+            When to nudge members before automatic suspension kicks in.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="warn-days">Warn on these days before suspension</Label>
+            <Input
+              id="warn-days"
+              value={rules.notification_days.join(", ")}
+              onChange={(e) =>
+                setRules((r) => ({
+                  ...r,
+                  notification_days: e.target.value
+                    .split(/[,\s]+/)
+                    .map((v) => parseInt(v.trim(), 10))
+                    .filter((n) => Number.isFinite(n) && n >= 0),
+                }))
+              }
+              placeholder="7, 3, 1"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Comma-separated. E.g. <code>7, 3, 1</code> sends a warning 7, 3 and 1 day before suspension.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="susp-reminder">Reminder every N days once suspended</Label>
+            <Input
+              id="susp-reminder"
+              type="number"
+              min={0}
+              value={rules.suspended_reminder_days}
+              onChange={(e) =>
+                setRules((r) => ({ ...r, suspended_reminder_days: Number(e.target.value) || 0 }))
+              }
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Set 0 to disable reminders after suspension.
+            </p>
+          </div>
+        </div>
+        <div>
+          <Label>Channels</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+            {CHANNEL_OPTIONS.map((c) => (
+              <label key={c.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={rules.channels.includes(c.key)}
+                  onCheckedChange={() =>
+                    setRules((r) => ({
+                      ...r,
+                      channels: r.channels.includes(c.key)
+                        ? r.channels.filter((x) => x !== c.key)
+                        : [...r.channels, c.key],
+                    }))
+                  }
+                />
+                <span>{c.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+
+
       <div className="flex justify-end">
         <Button onClick={save} disabled={saving} className="gap-1.5">
           <Save className="w-4 h-4" />

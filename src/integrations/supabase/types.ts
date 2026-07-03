@@ -2463,6 +2463,10 @@ export type Database = {
           sender_email: string | null
           sender_name: string | null
           shelly_auth_key: string | null
+          shelly_door_channel: number | null
+          shelly_door_device_id: string | null
+          shelly_door_pulse_ms: number | null
+          shelly_server_url: string | null
           smtp_host: string | null
           smtp_pass: string | null
           smtp_port: number | null
@@ -2496,6 +2500,10 @@ export type Database = {
           sender_email?: string | null
           sender_name?: string | null
           shelly_auth_key?: string | null
+          shelly_door_channel?: number | null
+          shelly_door_device_id?: string | null
+          shelly_door_pulse_ms?: number | null
+          shelly_server_url?: string | null
           smtp_host?: string | null
           smtp_pass?: string | null
           smtp_port?: number | null
@@ -2529,6 +2537,10 @@ export type Database = {
           sender_email?: string | null
           sender_name?: string | null
           shelly_auth_key?: string | null
+          shelly_door_channel?: number | null
+          shelly_door_device_id?: string | null
+          shelly_door_pulse_ms?: number | null
+          shelly_server_url?: string | null
           smtp_host?: string | null
           smtp_pass?: string | null
           smtp_port?: number | null

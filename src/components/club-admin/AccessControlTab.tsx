@@ -88,6 +88,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         shelly_door_device_id: s.shelly_door_device_id || "",
         shelly_door_channel: String(s.shelly_door_channel ?? 0),
         shelly_door_pulse_ms: String(s.shelly_door_pulse_ms ?? 3000),
+        ble_fallback_enabled: !!s.ble_fallback_enabled,
+        shelly_door_ble_mac: s.shelly_door_ble_mac || "",
+        shelly_ble_control_password: s.shelly_ble_control_password || "",
       });
 
     }

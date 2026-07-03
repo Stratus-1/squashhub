@@ -13,7 +13,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { triggerShellyDoor } from "@/lib/shelly-door";
-import { isWebBluetoothAvailable } from "@/lib/shelly-ble";
+import { isBleFallbackAvailable } from "@/lib/shelly-ble-auto";
 
 const ACCESS_METHODS = [
   { value: "none", label: "No Access Control", icon: Lock, description: "Courts are open — no electronic access system" },
@@ -586,9 +586,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                       Prevents anyone in Bluetooth range from toggling the relay from another app.
                     </p>
                   </div>
-                  {!isWebBluetoothAvailable() && (
+                  {!isBleFallbackAvailable() && (
                     <p className="text-[11px] text-amber-600 md:col-span-2">
-                      This browser doesn't support Web Bluetooth — members will need the SquashHub app or Chrome on Android for the fallback to work.
+                      This device can't use Bluetooth fallback — members need the SquashHub app (iOS or Android) or Chrome on Android/desktop for the fallback to work. iPhone browsers don't support Web Bluetooth.
                     </p>
                   )}
                 </div>

@@ -26,6 +26,7 @@ export function DashboardOpenDoorCard() {
   const club = clubData?.club as { id?: string } | undefined;
   const { data: clubSecrets } = useClubSecrets(club?.id);
   const { activeMember } = useMemberContext();
+  const { data: myBookings } = useMyBookings();
   const [loading, setLoading] = useState(false);
 
   const accessType = (clubSecrets as any)?.access_control_type;

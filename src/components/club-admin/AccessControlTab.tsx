@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen } from "lucide-react";
+import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen, Wifi } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,8 +19,10 @@ const ACCESS_METHODS = [
   { value: "pin", label: "PIN Code", icon: KeyRound, description: "Keypad entry with member-specific PINs" },
   { value: "face_recognition", label: "Face Recognition", icon: ScanFace, description: "Biometric facial recognition for court access" },
   { value: "remote_trigger", label: "Remote Door Trigger (Fluss+)", icon: DoorOpen, description: "WiFi relay opens the gate/door on demand from the SquashHub app" },
+  { value: "shelly_relay", label: "Shelly Cloud Relay (1 Mini / Plus 1)", icon: Wifi, description: "Low-cost WiFi relay (Shelly 1 Mini Gen3) — SquashHub pulses the relay via Shelly Cloud and logs which member opened the door" },
   { value: "other", label: "Other", icon: HelpCircle, description: "Custom system — contact SquashHub for integration" },
 ] as const;
+
 
 
 type AccessType = typeof ACCESS_METHODS[number]["value"];
@@ -49,6 +51,11 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     zk_webhook_secret: "",
     fluss_api_token: "",
     fluss_default_device_id: "",
+    shelly_auth_key: "",
+    shelly_server_url: "",
+    shelly_door_device_id: "",
+    shelly_door_channel: "0",
+    shelly_door_pulse_ms: "3000",
   });
 
 
@@ -73,6 +80,11 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         zk_webhook_secret: s.zk_webhook_secret || "",
         fluss_api_token: s.fluss_api_token || "",
         fluss_default_device_id: s.fluss_default_device_id || "",
+        shelly_auth_key: s.shelly_auth_key || "",
+        shelly_server_url: s.shelly_server_url || "",
+        shelly_door_device_id: s.shelly_door_device_id || "",
+        shelly_door_channel: String(s.shelly_door_channel ?? 0),
+        shelly_door_pulse_ms: String(s.shelly_door_pulse_ms ?? 3000),
       });
 
     }
@@ -109,6 +121,11 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         zk_webhook_secret: form.zk_webhook_secret || null,
         fluss_api_token: form.fluss_api_token || null,
         fluss_default_device_id: form.fluss_default_device_id || null,
+        shelly_auth_key: form.shelly_auth_key || null,
+        shelly_server_url: form.shelly_server_url || null,
+        shelly_door_device_id: form.shelly_door_device_id || null,
+        shelly_door_channel: form.shelly_door_channel ? Number(form.shelly_door_channel) : 0,
+        shelly_door_pulse_ms: form.shelly_door_pulse_ms ? Number(form.shelly_door_pulse_ms) : 3000,
       } as any);
 
 
@@ -166,6 +183,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
   const isFaceRec = form.access_control_type === "face_recognition";
   const isOther = form.access_control_type === "other";
   const isFluss = form.access_control_type === "remote_trigger";
+  const isShelly = form.access_control_type === "shelly_relay";
   const isSimple = ["none", "key"].includes(form.access_control_type);
   const providerInfo = FACE_PROVIDERS.find(p => p.value === form.access_provider);
 
@@ -435,6 +453,98 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
               }}
             >
               Test trigger (default device)
+            </Button>
+          </div>
+        )}
+
+        {isShelly && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
+              <Wifi className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p className="text-sm font-medium text-foreground">Shelly Cloud Relay</p>
+                <p>
+                  Best pairing: <strong>Shelly 1 Mini Gen3</strong> (door strike) or <strong>Shelly Plus 1/2PM</strong>.
+                  Wire the relay across your existing door strike or maglock. SquashHub pulses the relay via
+                  Shelly Cloud when a member with an active booking taps "Open door" — no Bluetooth pairing needed
+                  and every open is logged against the member.
+                </p>
+                <p>
+                  Get the <strong>Auth Key</strong> and <strong>Server URL</strong> from the Shelly app:
+                  <em> Settings → User Settings → Authorization Cloud Key</em>. Copy the device ID from the
+                  device's <em>Settings → Device Information</em> page.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1 md:col-span-2">
+                <Label>Shelly Cloud Auth Key</Label>
+                <Input
+                  type="password"
+                  value={form.shelly_auth_key}
+                  onChange={e => setForm(p => ({ ...p, shelly_auth_key: e.target.value }))}
+                  placeholder="Long token from Shelly app → User Settings"
+                />
+                <p className="text-[10px] text-muted-foreground">Shared with court lights if you also use Shelly for lighting.</p>
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label>Server URL (optional)</Label>
+                <Input
+                  value={form.shelly_server_url}
+                  onChange={e => setForm(p => ({ ...p, shelly_server_url: e.target.value }))}
+                  placeholder="e.g. https://shelly-44-eu.shelly.cloud"
+                />
+                <p className="text-[10px] text-muted-foreground">Leave blank for the EU default. Check the Shelly app if unsure.</p>
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label>Door Device ID</Label>
+                <Input
+                  value={form.shelly_door_device_id}
+                  onChange={e => setForm(p => ({ ...p, shelly_door_device_id: e.target.value }))}
+                  placeholder="e.g. 84fce612abcd"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Relay Channel</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.shelly_door_channel}
+                  onChange={e => setForm(p => ({ ...p, shelly_door_channel: e.target.value }))}
+                />
+                <p className="text-[10px] text-muted-foreground">0 for single-channel devices like the 1 Mini.</p>
+              </div>
+              <div className="space-y-1">
+                <Label>Pulse Duration (ms)</Label>
+                <Input
+                  type="number"
+                  min={500}
+                  step={500}
+                  value={form.shelly_door_pulse_ms}
+                  onChange={e => setForm(p => ({ ...p, shelly_door_pulse_ms: e.target.value }))}
+                />
+                <p className="text-[10px] text-muted-foreground">How long the relay stays energised. 3000 ms works for most strikes.</p>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!form.shelly_auth_key || !form.shelly_door_device_id}
+              onClick={async () => {
+                try {
+                  const { error } = await supabase.functions.invoke("shelly-door-trigger", {
+                    body: { club_id: clubId, door_name: "Admin test" },
+                  });
+                  if (error) throw error;
+                  toast.success("Door pulsed via Shelly Cloud");
+                } catch (err: any) {
+                  toast.error(err.message || "Test failed");
+                }
+              }}
+            >
+              Test open door
             </Button>
           </div>
         )}

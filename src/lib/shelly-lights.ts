@@ -100,15 +100,15 @@ export async function triggerShellyLights(opts: ShellyLightsOptions): Promise<Sh
         "You're offline and Bluetooth fallback isn't configured for this court. Ask your admin to add a BLE MAC in Court settings.",
       );
     }
-    if (!isWebBluetoothAvailable()) {
+    if (!isBleFallbackAvailable()) {
       throw new Error(
-        "You're offline. This browser can't use Bluetooth fallback — open in the SquashHub app or Chrome on Android to turn lights on locally.",
+        "You're offline. This device can't use Bluetooth fallback — install the SquashHub app (iOS/Android) or open in Chrome on Android/desktop to turn lights on locally.",
       );
     }
 
     let bleErr: any = null;
     try {
-      await pulseShellyBle({
+      await pulseShellyBleAuto({
         mac: opts.courtRelayBleMac,
         password: ble.password ?? undefined,
         channel: ble.channel ?? 0,

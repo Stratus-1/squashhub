@@ -179,9 +179,10 @@ export default function SuperAdminSubscriptions() {
 
   // --- Plan mutations ---
   const savePlan = useMutation({
-    mutationFn: async (plan: Partial<Plan> & { id?: string; max_billable_members?: number | null | string }) => {
+    mutationFn: async (plan: any) => {
       const mbmRaw = plan.max_billable_members;
-      const mbm = mbmRaw === "" || mbmRaw === null || mbmRaw === undefined || Number(mbmRaw as any) <= 0
+      const mbmNum = Number(mbmRaw);
+      const mbm = mbmRaw === "" || mbmRaw === null || mbmRaw === undefined || !isFinite(mbmNum) || mbmNum <= 0
         ? null
         : Math.floor(Number(mbmRaw));
       const payload = {

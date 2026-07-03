@@ -131,9 +131,37 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
     },
   });
 
-  // Build initial rows when fixtures load
+  // Default primary/secondary courts (persisted per club)
+  const storageKey = `bulk-league:default-courts:${clubId}`;
   useEffect(() => {
     if (!open || courts.length === 0) return;
+    let p: number | null = null;
+    let s: number | null = null;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (courts.some((c) => c.id === parsed.primary)) p = parsed.primary;
+        if (courts.some((c) => c.id === parsed.secondary)) s = parsed.secondary;
+      }
+    } catch {}
+    if (p == null) p = courts[0].id;
+    if (s == null) s = courts[Math.min(1, courts.length - 1)].id;
+    setPrimaryCourtId(p);
+    setSecondaryCourtId(s);
+  }, [courts, open, storageKey]);
+
+  // Persist defaults
+  useEffect(() => {
+    if (primaryCourtId == null || secondaryCourtId == null) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({ primary: primaryCourtId, secondary: secondaryCourtId }));
+    } catch {}
+  }, [primaryCourtId, secondaryCourtId, storageKey]);
+
+  // Build/rebuild rows whenever fixtures or the default courts change
+  useEffect(() => {
+    if (!open || courts.length === 0 || primaryCourtId == null || secondaryCourtId == null) return;
     const grouped: Record<string, Fixture[]> = {};
     for (const f of fixtures) (grouped[f.fixture_date] ||= []).push(f);
 
@@ -141,12 +169,15 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
     for (const date of Object.keys(grouped).sort()) {
       const list = grouped[date];
       list.forEach((f, idx) => {
-        const court = courts[Math.min(idx, courts.length - 1)];
+        const courtId =
+          idx === 0 ? primaryCourtId
+          : idx === 1 ? secondaryCourtId
+          : courts[Math.min(idx, courts.length - 1)].id;
         built.push({
           fixtureId: f.id,
           date,
           label: `${f.division} — ${f.home_team_code} vs ${f.away_team_code}`,
-          courtId: court.id,
+          courtId,
           startTime: DEFAULT_START,
           endTime: DEFAULT_END,
           enabled: true,
@@ -155,7 +186,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
       });
     }
     setRows(built);
-  }, [fixtures, courts, open]);
+  }, [fixtures, courts, open, primaryCourtId, secondaryCourtId]);
 
   const runConflictCheck = async () => {
     if (rows.length === 0) return;

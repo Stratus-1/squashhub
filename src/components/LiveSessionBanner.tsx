@@ -20,6 +20,7 @@ import { triggerShellyDoor } from "@/lib/shelly-door";
 import { triggerShellyLights } from "@/lib/shelly-lights";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { markDoorOpened, wasDoorOpenedForBooking } from "@/lib/door-open-state";
+import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 
 
 

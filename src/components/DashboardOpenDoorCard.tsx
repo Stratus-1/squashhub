@@ -8,6 +8,9 @@ import { useMyClub } from "@/hooks/use-club";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { triggerShellyDoor } from "@/lib/shelly-door";
+import { markDoorOpened } from "@/lib/door-open-state";
+import { useMyBookings } from "@/hooks/use-data";
+import { format } from "date-fns";
 
 const errorMessage = (e: unknown, fallback: string) =>
   e instanceof Error ? e.message : fallback;
@@ -23,6 +26,7 @@ export function DashboardOpenDoorCard() {
   const club = clubData?.club as { id?: string } | undefined;
   const { data: clubSecrets } = useClubSecrets(club?.id);
   const { activeMember } = useMemberContext();
+  const { data: myBookings } = useMyBookings();
   const [loading, setLoading] = useState(false);
 
   const accessType = (clubSecrets as any)?.access_control_type;
@@ -57,6 +61,18 @@ export function DashboardOpenDoorCard() {
         if (resp.error) throw resp.error;
         toast.success("Door opening… 🚪");
       }
+      // Mark opened so the LiveSessionBanner door prompt suppresses itself
+      // when this member's booking window rolls around.
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      const PRE_WINDOW_MS = 15 * 60 * 1000;
+      const now = Date.now();
+      const upcoming = ((myBookings || []) as any[]).find((b) => {
+        if (b.status !== "active" || b.date !== todayStr) return false;
+        const start = new Date(`${b.date}T${b.start_time}`).getTime();
+        const end = new Date(`${b.date}T${b.end_time}`).getTime();
+        return now >= start - PRE_WINDOW_MS && now <= end;
+      });
+      markDoorOpened(upcoming?.id ?? null);
     } catch (e) {
       toast.error(errorMessage(e, "Failed to open door"));
     } finally {

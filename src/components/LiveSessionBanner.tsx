@@ -19,6 +19,7 @@ import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X, DoorOpen } from "lucide-reac
 import { triggerShellyDoor } from "@/lib/shelly-door";
 import { triggerShellyLights } from "@/lib/shelly-lights";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { markDoorOpened, wasDoorOpenedForBooking } from "@/lib/door-open-state";
 
 
 
@@ -113,14 +114,21 @@ export function LiveSessionBanner() {
   });
   const getCourtName = (id: number) => courtsData?.find((c) => c.id === id)?.name || `Court ${id}`;
 
-  // Find current active booking (happening right now)
+  // Find the booking to prompt for: from 15 min before start until end_time.
+  // This lets members open the door on arrival, before their slot begins.
   const todayStr = format(now, "yyyy-MM-dd");
+  const PRE_WINDOW_MS = 15 * 60 * 1000;
   const currentBooking = ((myBookings || []) as BookingForLights[]).find((b) => {
     if (b.status !== "active" || b.date !== todayStr) return false;
     const start = new Date(`${b.date}T${b.start_time}`);
     const end = new Date(`${b.date}T${b.end_time}`);
-    return now >= start && now <= end;
+    return now.getTime() >= start.getTime() - PRE_WINDOW_MS && now <= end;
   });
+
+  // Has the booking actually started (used to gate the lights UI, which must
+  // only appear once play begins — not during the 15-min pre-arrival window)?
+  const bookingHasStarted = !!currentBooking &&
+    now >= new Date(`${currentBooking.date}T${currentBooking.start_time}`);
 
   const activeSession = activeSessions.find(
     (s) => currentBooking && s.booking_id === currentBooking.id
@@ -261,6 +269,8 @@ export function LiveSessionBanner() {
         if (resp.error) throw resp.error;
         toast.success("Door opening… 🚪");
       }
+      markDoorOpened(currentBooking.id);
+      setDismissedKey(promptKey);
     } catch (e) {
       toast.error(errorMessage(e, "Failed to open door"));
     } finally {
@@ -278,7 +288,26 @@ export function LiveSessionBanner() {
     ? Math.round(((elapsedMin / 60) * Number(displaySession.fee_per_hour || 0)) * 100) / 100
     : 0;
 
-  const lightsNotOn = currentBooking && !displaySession;
+  // Lights UI only makes sense once the booking has actually started.
+  const lightsNotOn = currentBooking && bookingHasStarted && !displaySession;
+
+  // "Open Door" prompt rules (per user spec):
+  //  • Show from 15 min before start until pressed.
+  //  • If never pressed, stop showing 5 min after start.
+  //  • Never show if the member already opened the door for this booking
+  //    (e.g. via the always-visible dashboard tile after arriving early).
+  const startMs = currentBooking
+    ? new Date(`${currentBooking.date}T${currentBooking.start_time}`).getTime()
+    : 0;
+  const doorPromptActive =
+    doorEnabled &&
+    !!currentBooking &&
+    !wasDoorOpenedForBooking(currentBooking.id) &&
+    now.getTime() <= startMs + 5 * 60 * 1000;
+
+  // If nothing actionable to show (e.g. pre-booking window but door already
+  // opened via the dashboard tile), don't render at all.
+  if (!displaySession && !lightsNotOn && !doorPromptActive) return null;
 
   return (
     <>
@@ -324,9 +353,12 @@ export function LiveSessionBanner() {
                   </>
                 ) : (
                   <>
-                    <span className="text-sm font-semibold">Playing Now</span>
+                    <span className="text-sm font-semibold">
+                      {bookingHasStarted ? "Playing Now" : "Booking starting soon"}
+                    </span>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {getCourtName(currentBooking!.court_id)} · Lights are off
+                      {getCourtName(currentBooking!.court_id)}
+                      {bookingHasStarted ? " · Lights are off" : ` · Starts at ${currentBooking!.start_time.slice(0, 5)}`}
                     </p>
                   </>
                 )}
@@ -367,7 +399,7 @@ export function LiveSessionBanner() {
                     Turn On Lights
                   </Button>
                 ) : null}
-                {doorEnabled && currentBooking && (
+                {doorPromptActive && (
                   <Button
                     size="sm"
                     variant="secondary"

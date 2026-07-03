@@ -93,15 +93,15 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
       );
     }
 
-    if (!isWebBluetoothAvailable()) {
+    if (!isBleFallbackAvailable()) {
       throw new Error(
-        "You're offline. This browser can't use Bluetooth fallback — install SquashHub or open in Chrome on Android to trigger the door locally.",
+        "You're offline. This device can't use Bluetooth fallback — install the SquashHub app (iOS/Android) or open in Chrome on Android/desktop to trigger the door locally.",
       );
     }
 
     let bleErr: any = null;
     try {
-      await pulseShellyBle({
+      await pulseShellyBleAuto({
         mac: ble.mac,
         password: ble.password ?? undefined,
         channel: ble.channel ?? 0,

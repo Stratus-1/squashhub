@@ -365,6 +365,13 @@ export default function SuperAdminSubscriptions() {
                       <span className="text-muted-foreground">Min charge:</span>
                       <span className="font-mono font-medium text-foreground">R{plan.minimum_charge}</span>
                     </div>
+                    {plan.max_billable_members != null && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Billing cap:</span>
+                        <span className="font-mono font-medium text-foreground">{plan.max_billable_members} members</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 text-xs">
                       <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                       <span className="text-muted-foreground">Free trial:</span>

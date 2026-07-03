@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     .select(
       `id, club_id, plan_id, status, current_period_start, current_period_end, member_count,
        clubs:club_id ( name, subdomain ),
-       subscription_plans:plan_id ( name, price_per_member, billing_cycle, minimum_charge )`,
+       subscription_plans:plan_id ( name, price_per_member, billing_cycle, minimum_charge, max_billable_members )`,
     )
     .in('status', ['active', 'trial', 'past_due'])
     .limit(1000)

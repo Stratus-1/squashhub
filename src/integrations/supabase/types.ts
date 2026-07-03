@@ -2293,6 +2293,12 @@ export type Database = {
           role: Database["public"]["Enums"]["club_member_role"]
           skill_level: string | null
           status: Database["public"]["Enums"]["member_status"]
+          suspended_at: string | null
+          suspension_cleared_at: string | null
+          suspension_manual: boolean
+          suspension_outstanding: number | null
+          suspension_reason: string | null
+          suspension_status: Database["public"]["Enums"]["member_suspension_status"]
           updated_at: string
           user_id: string | null
         }
@@ -2324,6 +2330,12 @@ export type Database = {
           role?: Database["public"]["Enums"]["club_member_role"]
           skill_level?: string | null
           status?: Database["public"]["Enums"]["member_status"]
+          suspended_at?: string | null
+          suspension_cleared_at?: string | null
+          suspension_manual?: boolean
+          suspension_outstanding?: number | null
+          suspension_reason?: string | null
+          suspension_status?: Database["public"]["Enums"]["member_suspension_status"]
           updated_at?: string
           user_id?: string | null
         }
@@ -2355,6 +2367,12 @@ export type Database = {
           role?: Database["public"]["Enums"]["club_member_role"]
           skill_level?: string | null
           status?: Database["public"]["Enums"]["member_status"]
+          suspended_at?: string | null
+          suspension_cleared_at?: string | null
+          suspension_manual?: boolean
+          suspension_outstanding?: number | null
+          suspension_reason?: string | null
+          suspension_status?: Database["public"]["Enums"]["member_suspension_status"]
           updated_at?: string
           user_id?: string | null
         }
@@ -2783,6 +2801,7 @@ export type Database = {
           sla_billing_option: string | null
           sla_version: string | null
           subdomain: string | null
+          suspension_rules: Json
           tenant_type: string
           updated_at: string
           uses_gobook: boolean
@@ -2855,6 +2874,7 @@ export type Database = {
           sla_billing_option?: string | null
           sla_version?: string | null
           subdomain?: string | null
+          suspension_rules?: Json
           tenant_type?: string
           updated_at?: string
           uses_gobook?: boolean
@@ -2927,6 +2947,7 @@ export type Database = {
           sla_billing_option?: string | null
           sla_version?: string | null
           subdomain?: string | null
+          suspension_rules?: Json
           tenant_type?: string
           updated_at?: string
           uses_gobook?: boolean
@@ -5235,6 +5256,51 @@ export type Database = {
           },
         ]
       }
+      member_suspension_log: {
+        Row: {
+          automatic: boolean
+          changed_by: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          new_status: Database["public"]["Enums"]["member_suspension_status"]
+          outstanding: number | null
+          previous_status:
+            | Database["public"]["Enums"]["member_suspension_status"]
+            | null
+          reason: string | null
+        }
+        Insert: {
+          automatic?: boolean
+          changed_by?: string | null
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          new_status: Database["public"]["Enums"]["member_suspension_status"]
+          outstanding?: number | null
+          previous_status?:
+            | Database["public"]["Enums"]["member_suspension_status"]
+            | null
+          reason?: string | null
+        }
+        Update: {
+          automatic?: boolean
+          changed_by?: string | null
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["member_suspension_status"]
+          outstanding?: number | null
+          previous_status?:
+            | Database["public"]["Enums"]["member_suspension_status"]
+            | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
       national_body_fees: {
         Row: {
           abbreviation: string | null
@@ -7357,6 +7423,11 @@ export type Database = {
         | "samsung_health"
         | "garmin"
       member_status: "active" | "suspended" | "resigned"
+      member_suspension_status:
+        | "active"
+        | "warning"
+        | "suspended"
+        | "manual_hold"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -7518,6 +7589,12 @@ export const Constants = {
         "garmin",
       ],
       member_status: ["active", "suspended", "resigned"],
+      member_suspension_status: [
+        "active",
+        "warning",
+        "suspended",
+        "manual_hold",
+      ],
     },
   },
 } as const

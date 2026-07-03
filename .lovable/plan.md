@@ -1,39 +1,59 @@
-## Problem
 
-At CSIR, the "3rd League" and "11th/12th League" tiers are inactive (no players registered), but the league team rows still classify into those divisions. Today's handicap builder fills a default size (5) into every division present in the classification table — even empty ones — so a #1 in the 4th League ends up ~5 slots behind a #1 in the 2nd League, and 10↔13 blows out to ~15 slots. That's why Tertius de Bruin shows `-12` against Christiaan Daniels.
+# Member Suspension for Arrears
 
-The user wants inactive tiers ignored so the next active division is treated as the immediately adjacent one:
-- 2nd League → 4th League = 1 division apart
-- 10th League → 13th League = 1 division apart
+Introduce a "suspended" state for members whose fee accounts are in arrears beyond club-defined thresholds. Suspended members can log in, view their account, and pay — but cannot book courts, open doors, join leagues, or use any club-billable feature.
 
-## Fix
+## 1. Admin rules (Club Admin → Finance / Membership Rules)
 
-Change how `sizes` / offsets are built in `src/lib/tournament-formats/handicap.ts` so only divisions with at least one **active main-team player registration** count toward the cumulative offset.
+New settings block on the club (persisted on `clubs` or a new `club_suspension_rules` JSON column — small enough for `clubs`):
 
-### `loadClubLadderContext`
+- **Enable auto-suspension** (toggle)
+- **Grace period** — days after fee due date before arrears count (e.g. 30)
+- **Amount threshold** — suspend when outstanding balance ≥ R X (e.g. R500)
+- **Age threshold** — suspend when any unpaid fee is older than Y days (e.g. 60)
+- **Debit order exemption** — do not suspend members with an active `stitch_mandates` row (status `active`)
+- **What gets blocked** (checkbox list): court bookings, door access, league signup, challenges, event RSVPs, bar tab
+- **Grace message** shown to member on dashboard
+- **Manual override** — admin can force-suspend or force-clear on any member row
 
-1. Populate `sizes[d]` only from main-team registrations that carry a real `player_rank` (already the case).
-2. Remove the block that fills a default `sizes[meta.division] = 5` for every division seen in `classify.values()` — that block is what re-inflates inactive tiers.
-3. If a division ends up with no registrations but IS the home division of the strongest reserve rank in use, still include it with a size derived from the max `shadow_player_rank` seen. (Keeps shadow-ranked reserves consistent.)
-4. `buildDivisionOffsets` already sorts numerically and cumulates only what's in `sizes`, so once inactive tiers are dropped the offset table naturally collapses (e.g. divisions {2,4,10,13} → offsets {2:0, 4:5, 10:10, 13:15} instead of a slot-per-missing-tier expansion).
+## 2. Data model
 
-### `findReservesMissingShadowRank`
+- Add `suspension_status` (`active` | `warning` | `suspended` | `manual_hold`), `suspension_reason`, `suspended_at`, `suspension_cleared_at` to `club_members`.
+- Add `club_suspension_rules jsonb` to `clubs` (or dedicated table if it grows).
+- Nightly edge function `evaluate-member-suspensions` (cron) recomputes status per member using the rules + `club_member_fee_payments` + `stitch_mandates`. Also runs on-demand after any payment via a DB trigger or invoke.
+- Audit trail in `club_journal_entries` or new `member_suspension_log`.
 
-Apply the same rule so the shadow-rank dialog offers slot pickers only for active divisions.
+## 3. Enforcement (single source of truth)
 
-### `applyHandicapsToChamp`
+- New hook `useMemberAccessGate()` returns `{ suspended, reason, outstanding, allowedActions }` derived from `activeMember` + `club_members.suspension_status`.
+- Gate points:
+  - `Bookings.tsx` — disable slot clicks; show banner "Account suspended — settle R X to book".
+  - `DashboardOpenDoorCard.tsx` — hide/disable tile.
+  - `LiveSessionBanner.tsx` door prompt — suppress.
+  - Challenge/league/event/tournament CTAs — disable with tooltip.
+  - Server-side belt-and-braces: RLS policy or edge-function check on `bookings` insert and on `fluss-trigger` / `shelly-door` invoke (reject if suspended).
 
-No signature change — it consumes the offsets we just fixed, so all existing tournaments (Bells + standard) recompute correctly on the next "Apply handicaps" click / schedule rebuild.
+## 4. Member UX
 
-## Validation
+- Persistent red banner on Dashboard: "Your account is suspended. Outstanding: R X. Pay now to restore access." → deep-links to `/account#fees`.
+- MyAccount and fee-payment flows remain fully functional.
+- On successful payment that clears the threshold, trigger re-evaluation and toast "Access restored".
+- Warning state (approaching threshold) shows an amber banner but keeps access.
 
-- Rebuild CSIR "Bells night 2nd & 4th League" schedule → expect small handicaps (~0–5 range at multiplier 1), not `-12`.
-- Rebuild "Bells night 10th & 13th" → same.
-- Check "Bells night 6 & 7th League" (adjacent tiers, no inactive gap between them) still produces the same handicaps it does today (regression guard).
-- Standard tournaments spanning divisions with no gaps must remain unchanged.
+## 5. Admin UX
 
-## Out of scope
+- New "Suspensions" section in Club Admin → Finance: list of suspended/warning members, outstanding amount, days overdue, mandate status, quick actions (Suspend, Clear, Send reminder).
+- Badge on member roster rows.
 
-- No DB migration or schema change.
-- No UI change; the handicap suffixes in `Tournaments.tsx` and Bells marker will just show corrected numbers after rebuild.
-- Multiplier / divider settings per tournament stay as-is.
+## Technical notes
+
+- All new tables/columns need `GRANT` + RLS scoped by `club_id` and `has_role`.
+- Server-side check is mandatory — client gating alone is bypassable.
+- Reuse existing `DebitOrderPromptCard` copy patterns and `member_credit_transactions` for balance math.
+- Suspension evaluation must respect `account_delegations` — a delegate paying clears the principal's status.
+
+## Open questions
+
+1. Should suspension be **per-club** only, or also propagate to league eligibility (block from being picked in fixtures)?
+2. Do we want an **automatic email + push** on state change (warning → suspended → cleared)?
+3. Should the door remain openable for **exit** even when suspended (safety), or is the door entry-only?

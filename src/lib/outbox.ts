@@ -1,6 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type OutboxKind = "booking_flow" | "create_match";
+export type OutboxKind = "booking_flow" | "create_match" | "access_event";
+
+export type AccessEventPayload = {
+  event: {
+    club_id: string;
+    club_member_id: string | null;
+    door_name: string;
+    event_type: string; // e.g. "shelly_ble_fallback" | "shelly_cloud_offline"
+    occurred_at: string;
+    raw?: Record<string, unknown> | null;
+  };
+};
 
 export type OutboxItemBase = {
   id: string;

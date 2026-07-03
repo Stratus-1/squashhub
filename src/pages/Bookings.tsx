@@ -339,6 +339,7 @@ export default function Bookings() {
     opponentName: string | null;
   }>({ open: false, bookingId: "", courtId: 1, dateStr: "", startTime: "", endTime: "", opponentName: null });
   const navigate = useNavigate();
+  const [bulkLeagueOpen, setBulkLeagueOpen] = useState(false);
   const { user } = useAuth();
   const { activeMember, isAdmin: isMemberAdmin } = useMemberContext();
   const isSuperAdmin = useIsSuperAdmin();

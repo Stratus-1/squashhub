@@ -145,6 +145,27 @@ export default function SuperAdminSubscriptions() {
   });
 
   const updateInvoiceField = <K extends keyof InvoiceSettings>(k: K, v: InvoiceSettings[K]) => {
+
+  const runBilling = useMutation({
+    mutationFn: async (dryRun: boolean) => {
+      const { data, error } = await supabase.functions.invoke("run-subscription-billing", {
+        body: { dryRun },
+      });
+      if (error) throw error;
+      return data as { dryRun: boolean; processed: number; issued: number; skipped: number; failed: number };
+    },
+    onSuccess: (r) => {
+      if (r.dryRun) {
+        toast.success(`Dry-run: ${r.processed} subscription(s) would be billed`);
+      } else {
+        toast.success(`Billing complete — ${r.issued} issued, ${r.skipped} skipped, ${r.failed} failed`);
+      }
+      qc.invalidateQueries({ queryKey: ["sa-club-subscriptions"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Billing run failed"),
+  });
+
+  const updateInvoiceFieldOld = <K extends keyof InvoiceSettings>(k: K, v: InvoiceSettings[K]) => {
     setInvoiceForm(f => ({ ...f, [k]: v }));
     setInvoiceDirty(true);
   };

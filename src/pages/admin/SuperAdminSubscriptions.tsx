@@ -449,6 +449,145 @@ export default function SuperAdminSubscriptions() {
             </Table>
           </Card>
         </TabsContent>
+
+        {/* ─── INVOICE DETAILS TAB ─── */}
+        <TabsContent value="invoice" className="space-y-4 mt-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                Head-office details printed on every club subscription invoice
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                These details appear as the "From" party on monthly/annual invoices auto-generated for each active club subscription.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => saveInvoiceSettings.mutate(invoiceForm)}
+              disabled={!invoiceDirty || saveInvoiceSettings.isPending}
+            >
+              <Save className="w-3.5 h-3.5 mr-1" />
+              {saveInvoiceSettings.isPending ? "Saving..." : "Save"}
+            </Button>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            {/* Logo card */}
+            <Card className="p-4 space-y-3">
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">Company Logo</h3>
+              <div className="flex items-center justify-center border-2 border-dashed border-border rounded-md h-32 bg-muted/30 relative overflow-hidden">
+                {invoiceForm.logo_url ? (
+                  <>
+                    <img src={invoiceForm.logo_url} alt="Logo" className="max-h-full max-w-full object-contain" />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="absolute top-1 right-1 h-6 w-6 bg-background/80"
+                      onClick={() => updateInvoiceField("logo_url", "")}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">No logo uploaded</span>
+                )}
+              </div>
+              <label className="flex items-center justify-center gap-1.5 h-8 text-xs border border-input rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Upload logo (PNG/JPG, &lt; 500 KB)</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleLogoUpload(e.target.files?.[0] || null)}
+                />
+              </label>
+            </Card>
+
+            {/* Company card */}
+            <Card className="p-4 space-y-3 lg:col-span-2">
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">Company / Head Office</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label className="text-xs">Registered Name</Label>
+                  <Input className="h-8 text-xs" value={invoiceForm.company_name} onChange={e => updateInvoiceField("company_name", e.target.value)} placeholder="Straight to Software Solutions (Pty) Ltd" />
+                </div>
+                <div>
+                  <Label className="text-xs">Trading As</Label>
+                  <Input className="h-8 text-xs" value={invoiceForm.trading_as} onChange={e => updateInvoiceField("trading_as", e.target.value)} placeholder="SquashHub" />
+                </div>
+                <div>
+                  <Label className="text-xs">VAT Number</Label>
+                  <Input className="h-8 text-xs font-mono" value={invoiceForm.vat_number} onChange={e => updateInvoiceField("vat_number", e.target.value)} placeholder="4123456789" />
+                </div>
+                <div>
+                  <Label className="text-xs">Registration Number</Label>
+                  <Input className="h-8 text-xs font-mono" value={invoiceForm.registration_number} onChange={e => updateInvoiceField("registration_number", e.target.value)} placeholder="2024/123456/07" />
+                </div>
+                <div>
+                  <Label className="text-xs">Billing Email</Label>
+                  <Input type="email" className="h-8 text-xs" value={invoiceForm.email} onChange={e => updateInvoiceField("email", e.target.value)} placeholder="billing@squashhub.co.za" />
+                </div>
+                <div>
+                  <Label className="text-xs">Phone</Label>
+                  <Input className="h-8 text-xs" value={invoiceForm.phone} onChange={e => updateInvoiceField("phone", e.target.value)} placeholder="+27 ..." />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label className="text-xs">Postal / Physical Address</Label>
+                  <Textarea rows={2} className="text-xs" value={invoiceForm.address} onChange={e => updateInvoiceField("address", e.target.value)} placeholder="Street, City, Postal Code, Country" />
+                </div>
+              </div>
+            </Card>
+
+            {/* Bank card */}
+            <Card className="p-4 space-y-3 lg:col-span-2">
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">Banking Details</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label className="text-xs">Bank Name</Label>
+                  <Input className="h-8 text-xs" value={invoiceForm.bank_name} onChange={e => updateInvoiceField("bank_name", e.target.value)} placeholder="FNB" />
+                </div>
+                <div>
+                  <Label className="text-xs">Account Name</Label>
+                  <Input className="h-8 text-xs" value={invoiceForm.bank_account_name} onChange={e => updateInvoiceField("bank_account_name", e.target.value)} placeholder="Straight to Software Solutions" />
+                </div>
+                <div>
+                  <Label className="text-xs">Account Number</Label>
+                  <Input className="h-8 text-xs font-mono" value={invoiceForm.bank_account_number} onChange={e => updateInvoiceField("bank_account_number", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Branch Code</Label>
+                  <Input className="h-8 text-xs font-mono" value={invoiceForm.bank_branch_code} onChange={e => updateInvoiceField("bank_branch_code", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">SWIFT / BIC (optional)</Label>
+                  <Input className="h-8 text-xs font-mono" value={invoiceForm.bank_swift} onChange={e => updateInvoiceField("bank_swift", e.target.value)} placeholder="FIRNZAJJ" />
+                </div>
+              </div>
+            </Card>
+
+            {/* Invoice options */}
+            <Card className="p-4 space-y-3">
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">Invoice Options</h3>
+              <div>
+                <Label className="text-xs">Invoice Number Prefix</Label>
+                <Input className="h-8 text-xs font-mono" value={invoiceForm.invoice_prefix} onChange={e => updateInvoiceField("invoice_prefix", e.target.value)} placeholder="INV-" />
+                <p className="text-[10px] text-muted-foreground mt-1">e.g. {invoiceForm.invoice_prefix || "INV-"}2026-00001</p>
+              </div>
+              <div>
+                <Label className="text-xs">Footer / Terms</Label>
+                <Textarea rows={3} className="text-xs" value={invoiceForm.invoice_footer} onChange={e => updateInvoiceField("invoice_footer", e.target.value)} placeholder="Payment due within 14 days. E&OE." />
+              </div>
+            </Card>
+          </div>
+
+          <Card className="p-3 border-dashed bg-muted/30">
+            <p className="text-[11px] text-muted-foreground">
+              <strong className="text-foreground">Automated billing:</strong> Once configured, an invoice will be auto-generated at the end of each billing period for every club with an active subscription — using their assigned plan, the member count on the run date, and these head-office details as the sender.
+            </p>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* ─── Plan Dialog ─── */}

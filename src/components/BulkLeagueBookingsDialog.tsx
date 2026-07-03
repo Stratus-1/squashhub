@@ -187,15 +187,15 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
 
           label: `${f.division} — ${f.home_team_code} vs ${f.away_team_code}`,
           courtId,
-          startTime: DEFAULT_START,
-          endTime: DEFAULT_END,
+          startTime: defaultStart,
+          endTime: defaultEnd,
           enabled: true,
           conflict: null,
         });
       });
     }
     setRows(built);
-  }, [fixtures, courts, open, primaryCourtId, secondaryCourtId]);
+  }, [fixtures, courts, open, primaryCourtId, secondaryCourtId, defaultStart, defaultEnd]);
 
   const runConflictCheck = async () => {
     if (rows.length === 0) return;

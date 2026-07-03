@@ -752,6 +752,10 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Open Door quick access (shown when club uses SquashHub-controlled access) */}
+      <DashboardOpenDoorCard />
+
+
 
       {/* My Upcoming League Games — dedicated section */}
       {hasLeagues && myLeagueFixtures && myLeagueFixtures.length > 0 && (

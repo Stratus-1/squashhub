@@ -686,6 +686,21 @@ export default function SuperAdminSubscriptions() {
                 <Input type="number" min="0" value={planForm.trial_days} onChange={e => setPlanForm(f => ({ ...f, trial_days: e.target.value }))} className="h-8 text-xs font-mono" />
               </div>
             </div>
+            <div>
+              <Label className="text-xs">Max Billable Members (optional cap)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="Leave blank for no cap"
+                value={planForm.max_billable_members}
+                onChange={e => setPlanForm(f => ({ ...f, max_billable_members: e.target.value }))}
+                className="h-8 text-xs font-mono"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                If set, clubs are billed for at most this many members regardless of actual roster size (e.g. cap at 150 even if the club has 200).
+              </p>
+            </div>
             <div className="flex items-center justify-between pt-1">
               <div className="flex items-center gap-2">
                 <Switch checked={planForm.is_default} onCheckedChange={v => setPlanForm(f => ({ ...f, is_default: v }))} />

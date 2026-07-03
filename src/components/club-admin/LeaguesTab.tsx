@@ -482,6 +482,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           onOpenChange={(o) => !o && setRulesAssoc(null)}
         />
       )}
+      <BulkLeagueBookingsDialog open={bulkBookOpen} onOpenChange={setBulkBookOpen} clubId={clubId} />
     </div>
   );
 }

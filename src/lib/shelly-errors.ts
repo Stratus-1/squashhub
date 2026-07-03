@@ -47,6 +47,14 @@ export function friendlyShellyMessage(raw: string, fallback: string): string {
   }
 
   // === Cloud API responses ===
+  // IMPORTANT: check Shelly-specific errors BEFORE the generic "permission" bucket.
+  if (
+    s.includes("no_permissions") ||
+    s.includes("do not have permission") ||
+    s.includes("do not have permissions to control")
+  ) {
+    return "Shelly Cloud says this key doesn't own the relay. The Authorization Cloud Key must come from the Shelly account that the device is paired to (or the device must be shared with that account). Ask your admin to check in Shelly Cloud → Settings → Authorization Cloud Key.";
+  }
   if (s.includes("device not found") || s.includes("device is not found")) {
     return "Shelly Cloud can't see this relay. Check the device is online in the Shelly app, and that the Device ID matches exactly.";
   }
@@ -62,7 +70,7 @@ export function friendlyShellyMessage(raw: string, fallback: string): string {
   if (s.includes("shelly rejected")) {
     return `Shelly Cloud rejected the request: ${raw.replace(/^shelly rejected:\s*/i, "")}. Check the Device ID and channel in Court settings.`;
   }
-  if (s.includes("shelly ") && /shelly \d{3}/.test(s)) {
+  if (/shelly \d{3}/.test(s) || s.includes("shelly on failed") || s.includes("shelly off failed")) {
     return `Shelly Cloud error: ${raw}. Check device ID, channel and Cloud key.`;
   }
 

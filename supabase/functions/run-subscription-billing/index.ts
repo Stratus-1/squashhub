@@ -116,7 +116,9 @@ Deno.serve(async (req) => {
       }
 
       const memberCount = memberCounts.get(sub.club_id) ?? sub.member_count ?? 0
-      const gross = memberCount * Number(plan.price_per_member)
+      const cap = plan.max_billable_members ? Number(plan.max_billable_members) : null
+      const billableMembers = cap && cap > 0 ? Math.min(memberCount, cap) : memberCount
+      const gross = billableMembers * Number(plan.price_per_member)
       const subtotal = Math.max(gross, Number(plan.minimum_charge || 0))
       const vatAmount = +(subtotal * vatRate).toFixed(2)
       const total = +(subtotal + vatAmount).toFixed(2)

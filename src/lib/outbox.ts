@@ -1,6 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type OutboxKind = "booking_flow" | "create_match";
+export type OutboxKind = "booking_flow" | "create_match" | "access_event";
+
+export type AccessEventPayload = {
+  event: {
+    club_id: string;
+    club_member_id: string | null;
+    door_name: string;
+    event_type: string; // e.g. "shelly_ble_fallback" | "shelly_cloud_offline"
+    occurred_at: string;
+    raw?: Record<string, unknown> | null;
+  };
+};
 
 export type OutboxItemBase = {
   id: string;
@@ -58,7 +69,8 @@ export type CreateMatchPayload = {
 
 export type OutboxItem =
   | (OutboxItemBase & { kind: "booking_flow"; payload: BookingFlowPayload })
-  | (OutboxItemBase & { kind: "create_match"; payload: CreateMatchPayload });
+  | (OutboxItemBase & { kind: "create_match"; payload: CreateMatchPayload })
+  | (OutboxItemBase & { kind: "access_event"; payload: AccessEventPayload });
 
 const STORAGE_KEY = "gb_outbox_v1";
 const CHANGE_EVENT = "gb:outbox:changed";
@@ -207,6 +219,11 @@ async function flushCreateMatch(item: Extract<OutboxItem, { kind: "create_match"
   }
 }
 
+async function flushAccessEvent(item: Extract<OutboxItem, { kind: "access_event" }>) {
+  const { error } = await supabase.from("access_events").insert(item.payload.event as any);
+  if (error) throw error;
+}
+
 export async function flushOutbox(options?: { maxAttempts?: number }) {
   const maxAttempts = options?.maxAttempts ?? 5;
   const { data: { session } } = await supabase.auth.getSession();
@@ -234,6 +251,7 @@ export async function flushOutbox(options?: { maxAttempts?: number }) {
     try {
       if (item.kind === "booking_flow") await flushBookingFlow(item);
       if (item.kind === "create_match") await flushCreateMatch(item);
+      if (item.kind === "access_event") await flushAccessEvent(item);
       flushed += 1;
     } catch (e: any) {
       // Keep it for retry later.

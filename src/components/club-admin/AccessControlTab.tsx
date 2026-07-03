@@ -8,9 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen, Wifi } from "lucide-react";
+import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen, Wifi, Bluetooth } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
+import { Switch } from "@/components/ui/switch";
+import { triggerShellyDoor } from "@/lib/shelly-door";
+import { isWebBluetoothAvailable } from "@/lib/shelly-ble";
 
 const ACCESS_METHODS = [
   { value: "none", label: "No Access Control", icon: Lock, description: "Courts are open — no electronic access system" },
@@ -56,6 +59,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     shelly_door_device_id: "",
     shelly_door_channel: "0",
     shelly_door_pulse_ms: "3000",
+    ble_fallback_enabled: false,
+    shelly_door_ble_mac: "",
+    shelly_ble_control_password: "",
   });
 
 
@@ -85,6 +91,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         shelly_door_device_id: s.shelly_door_device_id || "",
         shelly_door_channel: String(s.shelly_door_channel ?? 0),
         shelly_door_pulse_ms: String(s.shelly_door_pulse_ms ?? 3000),
+        ble_fallback_enabled: !!s.ble_fallback_enabled,
+        shelly_door_ble_mac: s.shelly_door_ble_mac || "",
+        shelly_ble_control_password: s.shelly_ble_control_password || "",
       });
 
     }
@@ -126,6 +135,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         shelly_door_device_id: form.shelly_door_device_id || null,
         shelly_door_channel: form.shelly_door_channel ? Number(form.shelly_door_channel) : 0,
         shelly_door_pulse_ms: form.shelly_door_pulse_ms ? Number(form.shelly_door_pulse_ms) : 3000,
+        ble_fallback_enabled: form.ble_fallback_enabled,
+        shelly_door_ble_mac: form.shelly_door_ble_mac || null,
+        shelly_ble_control_password: form.shelly_ble_control_password || null,
       } as any);
 
 
@@ -528,17 +540,79 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
               </div>
             </div>
 
+            {/* ─── Bluetooth fallback (offline) ─────────────────────────── */}
+            <div className="rounded-lg border border-border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <Bluetooth className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Bluetooth fallback (offline)</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      If the internet or Shelly Cloud is unreachable, the SquashHub app pulses the relay
+                      directly over Bluetooth from the member's phone and queues the access event to sync
+                      once you're back online. Enable BLE on the Shelly device (<em>Settings → Bluetooth</em>)
+                      and set a BLE control password.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={form.ble_fallback_enabled}
+                  onCheckedChange={(v) => setForm(p => ({ ...p, ble_fallback_enabled: v }))}
+                />
+              </div>
+
+              {form.ble_fallback_enabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1 md:col-span-2">
+                    <Label>Door Shelly BLE MAC</Label>
+                    <Input
+                      value={form.shelly_door_ble_mac}
+                      onChange={e => setForm(p => ({ ...p, shelly_door_ble_mac: e.target.value }))}
+                      placeholder="e.g. 84:FC:E6:12:AB:CD"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Copy from the Shelly app: <em>Settings → Device Information → MAC address</em>.
+                    </p>
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <Label>BLE Control Password (shared)</Label>
+                    <Input
+                      type="password"
+                      value={form.shelly_ble_control_password}
+                      onChange={e => setForm(p => ({ ...p, shelly_ble_control_password: e.target.value }))}
+                      placeholder="Set the same password on every Shelly device"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Prevents anyone in Bluetooth range from toggling the relay from another app.
+                    </p>
+                  </div>
+                  {!isWebBluetoothAvailable() && (
+                    <p className="text-[11px] text-amber-600 md:col-span-2">
+                      This browser doesn't support Web Bluetooth — members will need the SquashHub app or Chrome on Android for the fallback to work.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
             <Button
               type="button"
               variant="outline"
               disabled={!form.shelly_auth_key || !form.shelly_door_device_id}
               onClick={async () => {
                 try {
-                  const { error } = await supabase.functions.invoke("shelly-door-trigger", {
-                    body: { club_id: clubId, door_name: "Admin test" },
+                  const res = await triggerShellyDoor({
+                    clubId,
+                    doorName: "Admin test",
+                    ble: {
+                      enabled: form.ble_fallback_enabled,
+                      mac: form.shelly_door_ble_mac,
+                      password: form.shelly_ble_control_password,
+                      channel: Number(form.shelly_door_channel || 0),
+                      pulseMs: Number(form.shelly_door_pulse_ms || 3000),
+                    },
                   });
-                  if (error) throw error;
-                  toast.success("Door pulsed via Shelly Cloud");
+                  toast.success(res.message);
                 } catch (err: any) {
                   toast.error(err.message || "Test failed");
                 }

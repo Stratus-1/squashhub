@@ -76,7 +76,7 @@ type InvoiceSettings = typeof EMPTY_INVOICE_SETTINGS;
 export default function SuperAdminSubscriptions() {
   const qc = useQueryClient();
   const [planDialog, setPlanDialog] = useState<Plan | "new" | null>(null);
-  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", trial_days: "30", is_default: false, active: true });
+  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", max_billable_members: "", trial_days: "30", is_default: false, active: true });
   const [editSub, setEditSub] = useState<ClubSub | null>(null);
   const [subForm, setSubForm] = useState({ plan_id: "", status: "", trial_ends_at: "", member_count: "0", amount_due: "0" });
   const [invoiceForm, setInvoiceForm] = useState<InvoiceSettings>(EMPTY_INVOICE_SETTINGS);

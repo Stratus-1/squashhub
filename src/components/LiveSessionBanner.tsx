@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X, DoorOpen } from "lucide-react";
 import { triggerShellyDoor } from "@/lib/shelly-door";
+import { triggerShellyLights } from "@/lib/shelly-lights";
 import { useMemberContext } from "@/contexts/MemberContext";
 
 

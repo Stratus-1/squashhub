@@ -52,6 +52,8 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
   const [rows, setRows] = useState<Row[]>([]);
   const [checkingConflicts, setCheckingConflicts] = useState(false);
   const [booking, setBooking] = useState(false);
+  const [primaryCourtId, setPrimaryCourtId] = useState<number | null>(null);
+  const [secondaryCourtId, setSecondaryCourtId] = useState<number | null>(null);
 
   // Courts for this club
   const { data: courts = [] } = useQuery({

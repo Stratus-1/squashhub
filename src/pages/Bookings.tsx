@@ -720,6 +720,10 @@ export default function Bookings() {
 
   const handleBook = async () => {
     if (!bookingDialog) return;
+    if (accessGate.isBlocked("bookings")) {
+      toast.error(accessGate.reason || "Account suspended — settle outstanding fees to book courts.");
+      return;
+    }
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
 

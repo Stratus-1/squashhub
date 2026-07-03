@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { SuspensionRulesPanel } from "./SuspensionRulesPanel";
+
 
 
 export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {

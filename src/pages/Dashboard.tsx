@@ -753,6 +753,9 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Arrears / suspension banner (always visible if applicable) */}
+      <MemberSuspensionBanner />
+
       {/* Open Door quick access (shown when club uses SquashHub-controlled access) */}
       <DashboardOpenDoorCard />
 

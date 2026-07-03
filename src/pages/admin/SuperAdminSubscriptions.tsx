@@ -144,6 +144,25 @@ export default function SuperAdminSubscriptions() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const runBilling = useMutation({
+    mutationFn: async (dryRun: boolean) => {
+      const { data, error } = await supabase.functions.invoke("run-subscription-billing", {
+        body: { dryRun },
+      });
+      if (error) throw error;
+      return data as { dryRun: boolean; processed: number; issued: number; skipped: number; failed: number };
+    },
+    onSuccess: (r) => {
+      if (r.dryRun) {
+        toast.success(`Dry-run: ${r.processed} subscription(s) would be billed`);
+      } else {
+        toast.success(`Billing complete — ${r.issued} issued, ${r.skipped} skipped, ${r.failed} failed`);
+      }
+      qc.invalidateQueries({ queryKey: ["sa-club-subscriptions"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Billing run failed"),
+  });
+
   const updateInvoiceField = <K extends keyof InvoiceSettings>(k: K, v: InvoiceSettings[K]) => {
     setInvoiceForm(f => ({ ...f, [k]: v }));
     setInvoiceDirty(true);
@@ -461,15 +480,40 @@ export default function SuperAdminSubscriptions() {
                 These details appear as the "From" party on monthly/annual invoices auto-generated for each active club subscription.
               </p>
             </div>
-            <Button
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => saveInvoiceSettings.mutate(invoiceForm)}
-              disabled={!invoiceDirty || saveInvoiceSettings.isPending}
-            >
-              <Save className="w-3.5 h-3.5 mr-1" />
-              {saveInvoiceSettings.isPending ? "Saving..." : "Save"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => runBilling.mutate(true)}
+                disabled={runBilling.isPending}
+                title="Preview what would be billed (no invoices created)"
+              >
+                Dry-Run
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => {
+                  if (confirm("Generate and email invoices for every active subscription now?")) {
+                    runBilling.mutate(false);
+                  }
+                }}
+                disabled={runBilling.isPending}
+              >
+                {runBilling.isPending ? "Running..." : "Run Billing Now"}
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => saveInvoiceSettings.mutate(invoiceForm)}
+                disabled={!invoiceDirty || saveInvoiceSettings.isPending}
+              >
+                <Save className="w-3.5 h-3.5 mr-1" />
+                {saveInvoiceSettings.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">

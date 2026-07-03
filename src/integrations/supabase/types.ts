@@ -5639,6 +5639,112 @@ export type Database = {
           },
         ]
       }
+      platform_subscription_invoices: {
+        Row: {
+          billing_cycle: string
+          club_id: string
+          created_at: string
+          currency: string
+          due_date: string | null
+          email_sent_at: string | null
+          email_status: string | null
+          id: string
+          invoice_number: string
+          issued_at: string
+          member_count: number
+          minimum_charge: number
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          plan_id: string | null
+          plan_name: string
+          price_per_member: number
+          snapshot: Json | null
+          status: string
+          subscription_id: string | null
+          subtotal: number
+          total: number
+          updated_at: string
+          vat_amount: number
+        }
+        Insert: {
+          billing_cycle: string
+          club_id: string
+          created_at?: string
+          currency?: string
+          due_date?: string | null
+          email_sent_at?: string | null
+          email_status?: string | null
+          id?: string
+          invoice_number: string
+          issued_at?: string
+          member_count?: number
+          minimum_charge?: number
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          plan_id?: string | null
+          plan_name: string
+          price_per_member?: number
+          snapshot?: Json | null
+          status?: string
+          subscription_id?: string | null
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          vat_amount?: number
+        }
+        Update: {
+          billing_cycle?: string
+          club_id?: string
+          created_at?: string
+          currency?: string
+          due_date?: string | null
+          email_sent_at?: string | null
+          email_status?: string | null
+          id?: string
+          invoice_number?: string
+          issued_at?: string
+          member_count?: number
+          minimum_charge?: number
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          plan_id?: string | null
+          plan_name?: string
+          price_per_member?: number
+          snapshot?: Json | null
+          status?: string
+          subscription_id?: string | null
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_subscription_invoices_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_subscription_invoices_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_subscription_invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "club_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_availability: {
         Row: {
           created_at: string

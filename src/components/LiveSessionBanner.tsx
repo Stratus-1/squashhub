@@ -353,9 +353,12 @@ export function LiveSessionBanner() {
                   </>
                 ) : (
                   <>
-                    <span className="text-sm font-semibold">Playing Now</span>
+                    <span className="text-sm font-semibold">
+                      {bookingHasStarted ? "Playing Now" : "Booking starting soon"}
+                    </span>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {getCourtName(currentBooking!.court_id)} · Lights are off
+                      {getCourtName(currentBooking!.court_id)}
+                      {bookingHasStarted ? " · Lights are off" : ` · Starts at ${currentBooking!.start_time.slice(0, 5)}`}
                     </p>
                   </>
                 )}

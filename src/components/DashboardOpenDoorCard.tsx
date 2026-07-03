@@ -28,14 +28,16 @@ export function DashboardOpenDoorCard() {
   const { data: clubSecrets } = useClubSecrets(club?.id);
   const { activeMember } = useMemberContext();
   const { data: myBookings } = useMyBookings();
+  const gate = useMemberAccessGate();
   const [loading, setLoading] = useState(false);
 
   const accessType = (clubSecrets as any)?.access_control_type;
   const flussEnabled = accessType === "remote_trigger";
   const shellyEnabled = accessType === "shelly_relay";
   const doorEnabled = flussEnabled || shellyEnabled;
+  const doorBlocked = gate.isBlocked("door");
 
-  if (!club?.id || !doorEnabled) return null;
+  if (!club?.id || !doorEnabled || doorBlocked) return null;
 
   const handleOpenDoor = async () => {
     setLoading(true);

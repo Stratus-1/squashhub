@@ -69,7 +69,8 @@ export type CreateMatchPayload = {
 
 export type OutboxItem =
   | (OutboxItemBase & { kind: "booking_flow"; payload: BookingFlowPayload })
-  | (OutboxItemBase & { kind: "create_match"; payload: CreateMatchPayload });
+  | (OutboxItemBase & { kind: "create_match"; payload: CreateMatchPayload })
+  | (OutboxItemBase & { kind: "access_event"; payload: AccessEventPayload });
 
 const STORAGE_KEY = "gb_outbox_v1";
 const CHANGE_EVENT = "gb:outbox:changed";

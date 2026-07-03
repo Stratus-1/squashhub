@@ -2452,6 +2452,7 @@ export type Database = {
           bank_branch_code: string | null
           bank_name: string | null
           bank_reference: string | null
+          ble_fallback_enabled: boolean
           club_id: string
           created_at: string
           fluss_api_token: string | null
@@ -2463,6 +2464,8 @@ export type Database = {
           sender_email: string | null
           sender_name: string | null
           shelly_auth_key: string | null
+          shelly_ble_control_password: string | null
+          shelly_door_ble_mac: string | null
           shelly_door_channel: number | null
           shelly_door_device_id: string | null
           shelly_door_pulse_ms: number | null
@@ -2489,6 +2492,7 @@ export type Database = {
           bank_branch_code?: string | null
           bank_name?: string | null
           bank_reference?: string | null
+          ble_fallback_enabled?: boolean
           club_id: string
           created_at?: string
           fluss_api_token?: string | null
@@ -2500,6 +2504,8 @@ export type Database = {
           sender_email?: string | null
           sender_name?: string | null
           shelly_auth_key?: string | null
+          shelly_ble_control_password?: string | null
+          shelly_door_ble_mac?: string | null
           shelly_door_channel?: number | null
           shelly_door_device_id?: string | null
           shelly_door_pulse_ms?: number | null
@@ -2526,6 +2532,7 @@ export type Database = {
           bank_branch_code?: string | null
           bank_name?: string | null
           bank_reference?: string | null
+          ble_fallback_enabled?: boolean
           club_id?: string
           created_at?: string
           fluss_api_token?: string | null
@@ -2537,6 +2544,8 @@ export type Database = {
           sender_email?: string | null
           sender_name?: string | null
           shelly_auth_key?: string | null
+          shelly_ble_control_password?: string | null
+          shelly_door_ble_mac?: string | null
           shelly_door_channel?: number | null
           shelly_door_device_id?: string | null
           shelly_door_pulse_ms?: number | null
@@ -2973,6 +2982,7 @@ export type Database = {
           fluss_device_id: string | null
           id: number
           name: string
+          relay_ble_mac: string | null
           relay_channel: number
           relay_device_id: string | null
           relay_server: string | null
@@ -2982,6 +2992,7 @@ export type Database = {
           fluss_device_id?: string | null
           id?: number
           name: string
+          relay_ble_mac?: string | null
           relay_channel?: number
           relay_device_id?: string | null
           relay_server?: string | null
@@ -2991,6 +3002,7 @@ export type Database = {
           fluss_device_id?: string | null
           id?: number
           name?: string
+          relay_ble_mac?: string | null
           relay_channel?: number
           relay_device_id?: string | null
           relay_server?: string | null

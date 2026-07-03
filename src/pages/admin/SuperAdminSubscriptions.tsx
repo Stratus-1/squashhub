@@ -24,6 +24,7 @@ type Plan = {
   price_per_member: number;
   billing_cycle: string;
   minimum_charge: number;
+  max_billable_members: number | null;
   trial_days: number;
   is_default: boolean;
   active: boolean;

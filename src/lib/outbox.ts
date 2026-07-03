@@ -251,6 +251,7 @@ export async function flushOutbox(options?: { maxAttempts?: number }) {
     try {
       if (item.kind === "booking_flow") await flushBookingFlow(item);
       if (item.kind === "create_match") await flushCreateMatch(item);
+      if (item.kind === "access_event") await flushAccessEvent(item);
       flushed += 1;
     } catch (e: any) {
       // Keep it for retry later.

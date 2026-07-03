@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     .select(
       `id, club_id, plan_id, status, current_period_start, current_period_end, member_count,
        clubs:club_id ( name, subdomain ),
-       subscription_plans:plan_id ( name, price_per_member, billing_cycle, minimum_charge )`,
+       subscription_plans:plan_id ( name, price_per_member, billing_cycle, minimum_charge, max_billable_members )`,
     )
     .in('status', ['active', 'trial', 'past_due'])
     .limit(1000)
@@ -116,7 +116,9 @@ Deno.serve(async (req) => {
       }
 
       const memberCount = memberCounts.get(sub.club_id) ?? sub.member_count ?? 0
-      const gross = memberCount * Number(plan.price_per_member)
+      const cap = plan.max_billable_members ? Number(plan.max_billable_members) : null
+      const billableMembers = cap && cap > 0 ? Math.min(memberCount, cap) : memberCount
+      const gross = billableMembers * Number(plan.price_per_member)
       const subtotal = Math.max(gross, Number(plan.minimum_charge || 0))
       const vatAmount = +(subtotal * vatRate).toFixed(2)
       const total = +(subtotal + vatAmount).toFixed(2)
@@ -161,7 +163,7 @@ Deno.serve(async (req) => {
           billing_cycle: plan.billing_cycle,
           period_start: periodStart.toISOString().slice(0, 10),
           period_end: periodEnd.toISOString().slice(0, 10),
-          member_count: memberCount,
+          member_count: billableMembers,
           price_per_member: plan.price_per_member,
           minimum_charge: plan.minimum_charge,
           subtotal,
@@ -192,7 +194,7 @@ Deno.serve(async (req) => {
               billingCycle: plan.billing_cycle,
               periodStart: inv.period_start,
               periodEnd: inv.period_end,
-              memberCount,
+              memberCount: billableMembers,
               pricePerMember: plan.price_per_member,
               minimumCharge: plan.minimum_charge,
               subtotal,

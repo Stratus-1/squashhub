@@ -24,6 +24,7 @@ type Plan = {
   price_per_member: number;
   billing_cycle: string;
   minimum_charge: number;
+  max_billable_members: number | null;
   trial_days: number;
   is_default: boolean;
   active: boolean;
@@ -75,7 +76,7 @@ type InvoiceSettings = typeof EMPTY_INVOICE_SETTINGS;
 export default function SuperAdminSubscriptions() {
   const qc = useQueryClient();
   const [planDialog, setPlanDialog] = useState<Plan | "new" | null>(null);
-  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", trial_days: "30", is_default: false, active: true });
+  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", max_billable_members: "", trial_days: "30", is_default: false, active: true });
   const [editSub, setEditSub] = useState<ClubSub | null>(null);
   const [subForm, setSubForm] = useState({ plan_id: "", status: "", trial_ends_at: "", member_count: "0", amount_due: "0" });
   const [invoiceForm, setInvoiceForm] = useState<InvoiceSettings>(EMPTY_INVOICE_SETTINGS);
@@ -178,13 +179,19 @@ export default function SuperAdminSubscriptions() {
 
   // --- Plan mutations ---
   const savePlan = useMutation({
-    mutationFn: async (plan: Partial<Plan> & { id?: string }) => {
+    mutationFn: async (plan: any) => {
+      const mbmRaw = plan.max_billable_members;
+      const mbmNum = Number(mbmRaw);
+      const mbm = mbmRaw === "" || mbmRaw === null || mbmRaw === undefined || !isFinite(mbmNum) || mbmNum <= 0
+        ? null
+        : Math.floor(Number(mbmRaw));
       const payload = {
         name: plan.name!,
         description: plan.description || null,
         price_per_member: Number(plan.price_per_member),
         billing_cycle: plan.billing_cycle!,
         minimum_charge: Number(plan.minimum_charge),
+        max_billable_members: mbm,
         trial_days: Number(plan.trial_days),
         is_default: plan.is_default || false,
         active: plan.active ?? true,
@@ -217,14 +224,16 @@ export default function SuperAdminSubscriptions() {
       const trialEnd = new Date();
       trialEnd.setDate(trialEnd.getDate() + (plan?.trial_days || 30));
 
+      const rawCount = club?.member_count || 0;
+      const billable = plan?.max_billable_members ? Math.min(rawCount, plan.max_billable_members) : rawCount;
       const { error } = await fromExt("club_subscriptions").upsert({
         club_id: clubId,
         plan_id: planId,
         status: "trial",
         trial_ends_at: trialEnd.toISOString(),
-        member_count: club?.member_count || 0,
+        member_count: rawCount,
         amount_due: Math.max(
-          (club?.member_count || 0) * (plan?.price_per_member || 0),
+          billable * (plan?.price_per_member || 0),
           plan?.minimum_charge || 0
         ),
         current_period_start: new Date().toISOString(),
@@ -266,13 +275,14 @@ export default function SuperAdminSubscriptions() {
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
     const count = Number(memberCount) || 0;
-    const calculated = Math.max(count * plan.price_per_member, plan.minimum_charge);
+    const billable = plan.max_billable_members ? Math.min(count, plan.max_billable_members) : count;
+    const calculated = Math.max(billable * plan.price_per_member, plan.minimum_charge);
     setSubForm(f => ({ ...f, amount_due: String(calculated) }));
   };
 
   const openPlanDialog = (plan: Plan | "new") => {
     if (plan === "new") {
-      setPlanForm({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", trial_days: "30", is_default: false, active: true });
+      setPlanForm({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", max_billable_members: "", trial_days: "30", is_default: false, active: true });
     } else {
       setPlanForm({
         name: plan.name,
@@ -280,6 +290,7 @@ export default function SuperAdminSubscriptions() {
         price_per_member: String(plan.price_per_member),
         billing_cycle: plan.billing_cycle,
         minimum_charge: String(plan.minimum_charge),
+        max_billable_members: plan.max_billable_members != null ? String(plan.max_billable_members) : "",
         trial_days: String(plan.trial_days),
         is_default: plan.is_default,
         active: plan.active,
@@ -354,6 +365,13 @@ export default function SuperAdminSubscriptions() {
                       <span className="text-muted-foreground">Min charge:</span>
                       <span className="font-mono font-medium text-foreground">R{plan.minimum_charge}</span>
                     </div>
+                    {plan.max_billable_members != null && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Billing cap:</span>
+                        <span className="font-mono font-medium text-foreground">{plan.max_billable_members} members</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 text-xs">
                       <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                       <span className="text-muted-foreground">Free trial:</span>
@@ -674,6 +692,21 @@ export default function SuperAdminSubscriptions() {
                 <Label className="text-xs">Free Trial (days)</Label>
                 <Input type="number" min="0" value={planForm.trial_days} onChange={e => setPlanForm(f => ({ ...f, trial_days: e.target.value }))} className="h-8 text-xs font-mono" />
               </div>
+            </div>
+            <div>
+              <Label className="text-xs">Max Billable Members (optional cap)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="Leave blank for no cap"
+                value={planForm.max_billable_members}
+                onChange={e => setPlanForm(f => ({ ...f, max_billable_members: e.target.value }))}
+                className="h-8 text-xs font-mono"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                If set, clubs are billed for at most this many members regardless of actual roster size (e.g. cap at 150 even if the club has 200).
+              </p>
             </div>
             <div className="flex items-center justify-between pt-1">
               <div className="flex items-center gap-2">

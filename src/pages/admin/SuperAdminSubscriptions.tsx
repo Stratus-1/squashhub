@@ -144,8 +144,6 @@ export default function SuperAdminSubscriptions() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const updateInvoiceField = <K extends keyof InvoiceSettings>(k: K, v: InvoiceSettings[K]) => {
-
   const runBilling = useMutation({
     mutationFn: async (dryRun: boolean) => {
       const { data, error } = await supabase.functions.invoke("run-subscription-billing", {
@@ -165,7 +163,7 @@ export default function SuperAdminSubscriptions() {
     onError: (e: any) => toast.error(e.message || "Billing run failed"),
   });
 
-  const updateInvoiceFieldOld = <K extends keyof InvoiceSettings>(k: K, v: InvoiceSettings[K]) => {
+  const updateInvoiceField = <K extends keyof InvoiceSettings>(k: K, v: InvoiceSettings[K]) => {
     setInvoiceForm(f => ({ ...f, [k]: v }));
     setInvoiceDirty(true);
   };

@@ -224,14 +224,16 @@ export default function SuperAdminSubscriptions() {
       const trialEnd = new Date();
       trialEnd.setDate(trialEnd.getDate() + (plan?.trial_days || 30));
 
+      const rawCount = club?.member_count || 0;
+      const billable = plan?.max_billable_members ? Math.min(rawCount, plan.max_billable_members) : rawCount;
       const { error } = await fromExt("club_subscriptions").upsert({
         club_id: clubId,
         plan_id: planId,
         status: "trial",
         trial_ends_at: trialEnd.toISOString(),
-        member_count: club?.member_count || 0,
+        member_count: rawCount,
         amount_due: Math.max(
-          (club?.member_count || 0) * (plan?.price_per_member || 0),
+          billable * (plan?.price_per_member || 0),
           plan?.minimum_charge || 0
         ),
         current_period_start: new Date().toISOString(),

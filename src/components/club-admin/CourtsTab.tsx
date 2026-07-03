@@ -510,6 +510,25 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                   className="h-7 text-[11px] font-mono"
                 />
               )}
+              {lightsEnabled && (
+                <Input
+                  defaultValue={(c as any).relay_ble_mac ?? ""}
+                  onBlur={async (e) => {
+                    const v = e.target.value.trim().toUpperCase() || null;
+                    if (v === ((c as any).relay_ble_mac ?? null)) return;
+                    const { error } = await fromExt("courts").update({ relay_ble_mac: v }).eq("id", courtId);
+                    if (error) toast.error(error.message);
+                    else {
+                      toast.success(v ? `BLE MAC saved: ${v}` : "BLE MAC cleared");
+                      qc.invalidateQueries({ queryKey: ["club-courts"] });
+                    }
+                  }}
+                  placeholder="BLE fallback MAC (e.g. AA:BB:CC:DD:EE:FF)"
+                  aria-label="Court relay BLE MAC"
+                  title="Bluetooth MAC of this court's Shelly relay — used as offline fallback"
+                  className="h-7 text-[11px] font-mono"
+                />
+              )}
               {lightsEnabled && c.relay_device_id && editingRelay[courtId] === undefined && (
                 <p className="text-[10px] text-muted-foreground">✅ Relay configured</p>
               )}

@@ -63,7 +63,12 @@ export function LiveSessionBanner() {
   const lightFeePerHour = club?.light_fee_per_hour ?? 0;
   const lightsIntegrationEnabled = !!club?.lights_integration_enabled;
   const { data: clubSecrets } = useClubSecrets(club?.id);
-  const flussEnabled = (clubSecrets as any)?.access_control_type === "remote_trigger";
+  const accessType = (clubSecrets as any)?.access_control_type;
+  const flussEnabled = accessType === "remote_trigger";
+  const shellyEnabled = accessType === "shelly_relay";
+  const doorEnabled = flussEnabled || shellyEnabled;
+  const { activeMember } = useMemberContext();
+
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [actionLoading, setActionLoading] = useState(false);

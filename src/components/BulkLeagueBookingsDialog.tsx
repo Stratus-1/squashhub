@@ -325,8 +325,27 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label className="text-xs">Default start time</Label>
+              <Input
+                type="time"
+                value={defaultStart}
+                onChange={(e) => setDefaultStart(e.target.value)}
+                className="h-9 mt-1 text-xs"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Default end time</Label>
+              <Input
+                type="time"
+                value={defaultEnd}
+                onChange={(e) => setDefaultEnd(e.target.value)}
+                className="h-9 mt-1 text-xs"
+              />
+            </div>
           </div>
         )}
+
 
         {fixturesLoading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">

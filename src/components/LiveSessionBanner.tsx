@@ -305,6 +305,10 @@ export function LiveSessionBanner() {
     !wasDoorOpenedForBooking(currentBooking.id) &&
     now.getTime() <= startMs + 5 * 60 * 1000;
 
+  // If nothing actionable to show (e.g. pre-booking window but door already
+  // opened via the dashboard tile), don't render at all.
+  if (!displaySession && !lightsNotOn && !doorPromptActive) return null;
+
   return (
     <>
       <AnimatePresence>

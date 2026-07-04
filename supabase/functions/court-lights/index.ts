@@ -45,13 +45,17 @@ async function setShellyRelay(params: {
 }) {
   const shellyServer = normalizeShellyServer(params.server);
   const channel = Number(params.channel ?? 0);
-  const v2Response = await fetch(`${shellyServer}/v2/devices/api/set/switch?auth_key=${encodeURIComponent(params.authKey)}`, {
+  // Gen2+ RPC endpoint (Shelly Pro, Plus, Mini). Works for all modern Shelly relays.
+  const v2Response = await fetch(`${shellyServer}/v2/devices/api/rpc?auth_key=${encodeURIComponent(params.authKey)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       id: params.deviceId,
-      channel,
-      on: params.turn === "on",
+      method: "Switch.Set",
+      params: {
+        id: channel,
+        on: params.turn === "on",
+      },
     }),
   });
   const v2Detail = await v2Response.text();

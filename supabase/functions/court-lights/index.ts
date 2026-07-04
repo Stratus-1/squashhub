@@ -279,16 +279,17 @@ Deno.serve(async (req) => {
 
       let shellyResult = "";
       try {
+        const remainingSec = bookingRemainingSeconds(booking.date, booking.end_time);
         shellyResult = await setShellyRelay({
           server: (courtInfo as any).relay_server,
           authKey,
           deviceId: courtInfo.relay_device_id,
           channel: (courtInfo as any).relay_channel,
           turn: "on",
+          toggleAfterSeconds: remainingSec,
         });
         // Set the device's auto-off timer so the Shelly turns itself off
         // at the end of the booking even if our cron misses the window.
-        const remainingSec = bookingRemainingSeconds(booking.date, booking.end_time);
         await setShellyAutoOff({
           server: (courtInfo as any).relay_server,
           authKey,
@@ -693,11 +694,11 @@ Deno.serve(async (req) => {
           let shellyResult = "no-relay";
           let relayOk = true;
           if (hasRelay) {
-            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "on" });
+            const remainingSec = activeBooking ? bookingRemainingSeconds(activeBooking.date, activeBooking.end_time) : undefined;
+            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "on", toggleAfterSeconds: remainingSec });
             // Use the device's auto-off timer so the Shelly turns itself off at
             // the end of the booking even if our cron misses the turn-off window.
             if (activeBooking) {
-              const remainingSec = bookingRemainingSeconds(activeBooking.date, activeBooking.end_time);
               await setShellyAutoOff({
                 server: court.relay_server,
                 authKey: authKey!,

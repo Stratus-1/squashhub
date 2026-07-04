@@ -392,6 +392,17 @@ Deno.serve(async (req) => {
       })
       .eq("id", sessionId);
 
+    // Prevent the scheduled sweep from auto-turning the lights back on for the
+    // remainder of this booking. Only clear on "terminate" — a "transfer"
+    // immediately opens a fresh session on the target court, so the booking
+    // should keep its lights_requested flag intact.
+    if (action === "terminate" && session.booking_id) {
+      await supabase
+        .from("bookings")
+        .update({ lights_requested: false })
+        .eq("id", session.booking_id);
+    }
+
     // Deduct fee from member credit (with split support)
     if (feeCharged > 0) {
       // Check booking for fee split preference

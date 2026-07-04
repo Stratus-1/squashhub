@@ -1049,10 +1049,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select account..." /></SelectTrigger>
                 <SelectContent>
                   {(txDirection === "income" ? CREDIT_ACCOUNTS : DEBIT_ACCOUNTS)
-                    .filter(a => !["bank", "bank_current", "cash", "debtors"].includes(a))
+                    .filter(a => !["bank", "bank_current", "cash"].includes(a))
+                    .filter(a => txDirection === "income" ? a !== "debtors" : true)
                     .map(a => (
                       <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
                     ))}
+                  {txDirection === "income" && (
+                    <SelectItem value="debtors">
+                      Member Paying Outstanding Account (settles their bill)
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               {txAccount && txAmount && parseFloat(txAmount) > 0 && (

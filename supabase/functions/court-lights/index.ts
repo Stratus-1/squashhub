@@ -42,68 +42,93 @@ async function setShellyRelay(params: {
   deviceId: string;
   channel?: number | string | null;
   turn: "on" | "off";
+  toggleAfterSeconds?: number | null;
 }) {
   const shellyServer = normalizeShellyServer(params.server);
   const channel = Number(params.channel ?? 0);
-  // Gen2+ RPC endpoint (Shelly Pro, Plus, Mini). Works for all modern Shelly relays.
-  const v2Response = await fetch(`${shellyServer}/v2/devices/api/rpc?auth_key=${encodeURIComponent(params.authKey)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      id: params.deviceId,
-      method: "Switch.Set",
-      params: {
-        id: channel,
-        on: params.turn === "on",
-      },
-    }),
-  });
-  const v2Detail = await v2Response.text();
-  if (v2Response.ok) {
-    try {
-      const parsed = JSON.parse(v2Detail);
-      if (parsed?.isok === false) {
-        const errorDetail = typeof parsed.errors === "string" ? parsed.errors : JSON.stringify(parsed.errors ?? parsed);
-        throw new Error(`Shelly ${params.turn} rejected the command: ${errorDetail}`);
+  const on = params.turn === "on";
+  const toggleAfter = on && params.toggleAfterSeconds
+    ? Math.max(1, Math.round(params.toggleAfterSeconds))
+    : undefined;
+  const v2Body = {
+    id: params.deviceId,
+    channel,
+    on,
+    ...(toggleAfter ? { toggle_after: toggleAfter } : {}),
+  };
+
+  const errors: string[] = [];
+  const v2Attempts = [
+    { label: "v2 switch", path: "/v2/devices/api/set/switch" },
+    { label: "v2 light", path: "/v2/devices/api/set/light" },
+  ];
+
+  for (const attempt of v2Attempts) {
+    const response = await fetch(`${shellyServer}${attempt.path}?auth_key=${encodeURIComponent(params.authKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(v2Body),
+    });
+    const detail = await response.text();
+    if (response.ok) {
+      try {
+        const parsed = JSON.parse(detail);
+        const failedCommands = parsed?.failedCommands;
+        if (failedCommands && Object.keys(failedCommands).length > 0) {
+          errors.push(`${attempt.label}: (200) ${detail}`);
+          continue;
+        }
+        if (parsed?.isok === false || parsed?.error) {
+          errors.push(`${attempt.label}: (200) ${detail}`);
+          continue;
+        }
+      } catch {
+        // Empty / non-JSON bodies are valid for Shelly Cloud v2 success.
       }
-    } catch (e: any) {
-      if (e?.message?.startsWith("Shelly ")) throw e;
+      return detail || `${attempt.label} ok`;
     }
-    return v2Detail;
+    errors.push(`${attempt.label}: (${response.status}) ${detail || response.statusText}`);
   }
 
-  const legacyResponse = await fetch(`${shellyServer}/device/relay/control`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      auth_key: params.authKey,
-      id: params.deviceId,
-      channel: String(channel),
-      turn: params.turn,
-    }),
+  const legacyBody = (kind: "relay" | "light") => new URLSearchParams({
+    auth_key: params.authKey,
+    id: params.deviceId,
+    channel: String(channel),
+    turn: params.turn,
+    ...(toggleAfter && kind === "relay" ? { timer: String(toggleAfter) } : {}),
   });
-  const legacyDetail = await legacyResponse.text();
-  if (!legacyResponse.ok) {
-    throw new Error(`Shelly ${params.turn} failed. v2: (${v2Response.status}) ${v2Detail || v2Response.statusText}; legacy: (${legacyResponse.status}) ${legacyDetail || legacyResponse.statusText}`);
-  }
-  try {
-    const parsed = JSON.parse(legacyDetail);
-    if (parsed?.isok === false) {
-      const errorDetail = typeof parsed.errors === "string" ? parsed.errors : JSON.stringify(parsed.errors ?? parsed);
-      throw new Error(`Shelly ${params.turn} rejected the command. v2: (${v2Response.status}) ${v2Detail || v2Response.statusText}; legacy: ${errorDetail}`);
+
+  const legacyAttempts = [
+    { label: "legacy relay", path: "/device/relay/control", body: legacyBody("relay") },
+    { label: "legacy light", path: "/device/light/control", body: legacyBody("light") },
+  ];
+
+  for (const attempt of legacyAttempts) {
+    const response = await fetch(`${shellyServer}${attempt.path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: attempt.body,
+    });
+    const detail = await response.text();
+    if (response.ok) {
+      try {
+        const parsed = JSON.parse(detail);
+        if (parsed?.isok === false) {
+          const errorDetail = typeof parsed.errors === "string" ? parsed.errors : JSON.stringify(parsed.errors ?? parsed);
+          errors.push(`${attempt.label}: rejected ${errorDetail}`);
+          continue;
+        }
+      } catch {
+        // Empty / non-JSON bodies are valid for Shelly legacy success.
+      }
+      return detail || `${attempt.label} ok`;
     }
-  } catch (e: any) {
-    if (e?.message?.startsWith("Shelly ")) throw e;
+    errors.push(`${attempt.label}: (${response.status}) ${detail || response.statusText}`);
   }
-  return legacyDetail;
+
+  throw new Error(`Shelly ${params.turn} failed. ${errors.join("; ")}`);
 }
 
-/**
- * Set the device's auto-off timer (the "Auto off" feature shown in the
- * Shelly app). When the switch turns on it will automatically turn off
- * after `delaySeconds`. Uses Gen2 Switch.SetConfig via the cloud RPC
- * tunnel; falls back silently so the cron remains the ultimate fallback.
- */
 async function setShellyAutoOff(params: {
   server?: string | null;
   authKey: string;
@@ -111,55 +136,24 @@ async function setShellyAutoOff(params: {
   channel?: number | string | null;
   delaySeconds: number;
 }) {
-  const shellyServer = normalizeShellyServer(params.server);
-  const channel = Number(params.channel ?? 0);
-  const delay = Math.max(60, Math.round(params.delaySeconds));
-
   try {
-    const resp = await fetch(
-      `${shellyServer}/v2/devices/api/rpc?auth_key=${encodeURIComponent(params.authKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: params.deviceId,
-          method: "Switch.SetConfig",
-          params: {
-            id: channel,
-            config: {
-              auto_off: true,
-              auto_off_delay: delay,
-            },
-          },
-        }),
-      }
-    );
-    const text = await resp.text();
-    if (!resp.ok) {
-      console.warn("Shelly Switch.SetConfig HTTP error:", resp.status, text);
-      return false;
-    }
-    let parsed: any = null;
-    try { parsed = JSON.parse(text); } catch { /* ignore */ }
-    if (parsed?.isok === false) {
-      console.warn("Shelly Switch.SetConfig rejected:", text);
-      return false;
-    }
-    console.log("Shelly auto-off set:", delay, "s — channel", channel);
-    return true;
+    // Shelly Cloud v2 supports one-shot auto-off via `toggle_after` on the
+    // same set/switch or set/light command. The old RPC tunnel is not exposed
+    // on all cloud hosts, so this helper intentionally avoids a second call.
+    return params.delaySeconds > 0;
   } catch (e) {
-    console.warn("Shelly Switch.SetConfig threw:", (e as Error).message);
+    console.warn("Shelly auto-off skipped:", (e as Error).message);
     return false;
   }
 }
 
-async function clearShellyAutoOff(params: {
+async function clearShellyAutoOff(_params: {
   server?: string | null;
   authKey: string;
   deviceId: string;
   channel?: number | string | null;
 }) {
-  return setShellyAutoOff({ ...params, delaySeconds: 0 });
+  return true;
 }
 
 function minutesFromMidnight(timeStr: string): number {
@@ -285,16 +279,17 @@ Deno.serve(async (req) => {
 
       let shellyResult = "";
       try {
+        const remainingSec = bookingRemainingSeconds(booking.date, booking.end_time);
         shellyResult = await setShellyRelay({
           server: (courtInfo as any).relay_server,
           authKey,
           deviceId: courtInfo.relay_device_id,
           channel: (courtInfo as any).relay_channel,
           turn: "on",
+          toggleAfterSeconds: remainingSec,
         });
         // Set the device's auto-off timer so the Shelly turns itself off
         // at the end of the booking even if our cron misses the window.
-        const remainingSec = bookingRemainingSeconds(booking.date, booking.end_time);
         await setShellyAutoOff({
           server: (courtInfo as any).relay_server,
           authKey,
@@ -699,11 +694,11 @@ Deno.serve(async (req) => {
           let shellyResult = "no-relay";
           let relayOk = true;
           if (hasRelay) {
-            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "on" });
+            const remainingSec = activeBooking ? bookingRemainingSeconds(activeBooking.date, activeBooking.end_time) : undefined;
+            shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "on", toggleAfterSeconds: remainingSec });
             // Use the device's auto-off timer so the Shelly turns itself off at
             // the end of the booking even if our cron misses the turn-off window.
             if (activeBooking) {
-              const remainingSec = bookingRemainingSeconds(activeBooking.date, activeBooking.end_time);
               await setShellyAutoOff({
                 server: court.relay_server,
                 authKey: authKey!,

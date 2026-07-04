@@ -1048,18 +1048,19 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <Select value={txAccount} onValueChange={setTxAccount}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select account..." /></SelectTrigger>
                 <SelectContent>
+                  {txDirection === "income" && (
+                    <SelectItem value="debtors">
+                      Member Paying Outstanding Account (settles their bill)
+                    </SelectItem>
+                  )}
                   {(txDirection === "income" ? CREDIT_ACCOUNTS : DEBIT_ACCOUNTS)
                     .filter(a => !["bank", "bank_current", "cash"].includes(a))
                     .filter(a => txDirection === "income" ? a !== "debtors" : true)
                     .map(a => (
                       <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
                     ))}
-                  {txDirection === "income" && (
-                    <SelectItem value="debtors">
-                      Member Paying Outstanding Account (settles their bill)
-                    </SelectItem>
-                  )}
                 </SelectContent>
+
               </Select>
               {txAccount && txAmount && parseFloat(txAmount) > 0 && (
                 <div className="mt-2 p-2 rounded bg-muted/60 text-[10px] text-muted-foreground space-y-0.5">

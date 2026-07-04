@@ -42,10 +42,194 @@ async function setShellyRelay(params: {
   deviceId: string;
   channel?: number | string | null;
   turn: "on" | "off";
+  toggleAfterSeconds?: number | null;
 }) {
   const shellyServer = normalizeShellyServer(params.server);
   const channel = Number(params.channel ?? 0);
-  // Gen2+ RPC endpoint (Shelly Pro, Plus, Mini). Works for all modern Shelly relays.
+  const on = params.turn === "on";
+  const toggleAfter = on && params.toggleAfterSeconds
+    ? Math.max(1, Math.round(params.toggleAfterSeconds))
+    : undefined;
+  const v2Body = {
+    id: params.deviceId,
+    channel,
+    on,
+    ...(toggleAfter ? { toggle_after: toggleAfter } : {}),
+  };
+
+  const errors: string[] = [];
+  const v2Attempts = [
+    { label: "v2 switch", path: "/v2/devices/api/set/switch" },
+    { label: "v2 light", path: "/v2/devices/api/set/light" },
+  ];
+
+  for (const attempt of v2Attempts) {
+    const response = await fetch(`${shellyServer}${attempt.path}?auth_key=${encodeURIComponent(params.authKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(v2Body),
+    });
+    const detail = await response.text();
+    if (response.ok) {
+      try {
+        const parsed = JSON.parse(detail);
+        const failedCommands = parsed?.failedCommands;
+        if (failedCommands && Object.keys(failedCommands).length > 0) {
+          errors.push(`${attempt.label}: (200) ${detail}`);
+          continue;
+        }
+        if (parsed?.isok === false || parsed?.error) {
+          errors.push(`${attempt.label}: (200) ${detail}`);
+          continue;
+        }
+      } catch {
+        // Empty / non-JSON bodies are valid for Shelly Cloud v2 success.
+      }
+      return detail || `${attempt.label} ok`;
+    }
+    errors.push(`${attempt.label}: (${response.status}) ${detail || response.statusText}`);
+  }
+
+  const legacyBody = (kind: "relay" | "light") => new URLSearchParams({
+    auth_key: params.authKey,
+    id: params.deviceId,
+    channel: String(channel),
+    turn: params.turn,
+    ...(toggleAfter && kind === "relay" ? { timer: String(toggleAfter) } : {}),
+  });
+
+  const legacyAttempts = [
+    { label: "legacy relay", path: "/device/relay/control", body: legacyBody("relay") },
+    { label: "legacy light", path: "/device/light/control", body: legacyBody("light") },
+  ];
+
+  for (const attempt of legacyAttempts) {
+    const response = await fetch(`${shellyServer}${attempt.path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: attempt.body,
+    });
+    const detail = await response.text();
+    if (response.ok) {
+      try {
+        const parsed = JSON.parse(detail);
+        if (parsed?.isok === false) {
+          const errorDetail = typeof parsed.errors === "string" ? parsed.errors : JSON.stringify(parsed.errors ?? parsed);
+          errors.push(`${attempt.label}: rejected ${errorDetail}`);
+          continue;
+        }
+      } catch {
+        // Empty / non-JSON bodies are valid for Shelly legacy success.
+      }
+      return detail || `${attempt.label} ok`;
+    }
+    errors.push(`${attempt.label}: (${response.status}) ${detail || response.statusText}`);
+  }
+
+  throw new Error(`Shelly ${params.turn} failed. ${errors.join("; ")}`);
+}
+
+async function setShellyAutoOff(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  channel?: number | string | null;
+  delaySeconds: number;
+}) {
+  try {
+    // Shelly Cloud v2 supports one-shot auto-off via `toggle_after` on the
+    // same set/switch or set/light command. The old RPC tunnel is not exposed
+    // on all cloud hosts, so this helper intentionally avoids a second call.
+    return params.delaySeconds > 0;
+  } catch (e) {
+    console.warn("Shelly auto-off skipped:", (e as Error).message);
+    return false;
+  }
+}
+
+async function clearShellyAutoOff(_params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  channel?: number | string | null;
+}) {
+  return true;
+}
+
+/*
+  Previous implementation kept for reference in deployed diffs: cloud RPC is
+  not available on all Shelly Cloud hosts and returns WEB_SERVER_HANDLER 404.
+*/
+async function unusedLegacySetShellyAutoOff(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  channel?: number | string | null;
+  delaySeconds: number;
+}) {
+  const shellyServer = normalizeShellyServer(params.server);
+  const channel = Number(params.channel ?? 0);
+  const delay = Math.max(60, Math.round(params.delaySeconds));
+
+  try {
+    const resp = await fetch(
+      `${shellyServer}/v2/devices/api/rpc?auth_key=${encodeURIComponent(params.authKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: params.deviceId,
+          method: "Switch.SetConfig",
+          params: {
+            id: channel,
+            config: {
+              auto_off: true,
+              auto_off_delay: delay,
+            },
+          },
+        }),
+      }
+    );
+    const text = await resp.text();
+    if (!resp.ok) {
+      console.warn("Shelly Switch.SetConfig HTTP error:", resp.status, text);
+      return false;
+    }
+    let parsed: any = null;
+    try { parsed = JSON.parse(text); } catch { /* ignore */ }
+    if (parsed?.isok === false) {
+      console.warn("Shelly Switch.SetConfig rejected:", text);
+      return false;
+    }
+    console.log("Shelly auto-off set:", delay, "s — channel", channel);
+    return true;
+  } catch (e) {
+    console.warn("Shelly Switch.SetConfig threw:", (e as Error).message);
+    return false;
+  }
+}
+
+/*
+async function clearShellyAutoOff(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  channel?: number | string | null;
+}) {
+  return setShellyAutoOff({ ...params, delaySeconds: 0 });
+}
+*/
+
+/*
+async function oldSetShellyRelay(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+  channel?: number | string | null;
+  turn: "on" | "off";
+}) {
+  const shellyServer = normalizeShellyServer(params.server);
+  const channel = Number(params.channel ?? 0);
   const v2Response = await fetch(`${shellyServer}/v2/devices/api/rpc?auth_key=${encodeURIComponent(params.authKey)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -97,6 +281,7 @@ async function setShellyRelay(params: {
   }
   return legacyDetail;
 }
+*/
 
 /**
  * Set the device's auto-off timer (the "Auto off" feature shown in the
@@ -104,7 +289,7 @@ async function setShellyRelay(params: {
  * after `delaySeconds`. Uses Gen2 Switch.SetConfig via the cloud RPC
  * tunnel; falls back silently so the cron remains the ultimate fallback.
  */
-async function setShellyAutoOff(params: {
+async function oldUnusedSetShellyAutoOff(params: {
   server?: string | null;
   authKey: string;
   deviceId: string;

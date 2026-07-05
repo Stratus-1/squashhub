@@ -185,6 +185,9 @@ export default function Home() {
               <Button variant="ghost" size="sm" onClick={() => navigate("/lights")} className="text-white hover:bg-white/10 hover:text-white">
                 <Zap className="w-3.5 h-3.5 mr-1 text-amber-400" />Lights
               </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/lights#access")} className="text-white hover:bg-white/10 hover:text-white">
+                <Zap className="w-3.5 h-3.5 mr-1 text-emerald-400" />Access
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => scrollTo("contact")} className="text-white hover:bg-white/10 hover:text-white">Contact Us</Button>
             </nav>
 
@@ -221,6 +224,9 @@ export default function Home() {
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("pricing"))}>Pricing</Button>
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => navigate("/lights"))}>
                       <Zap className="w-4 h-4 mr-1 text-amber-500" />Lights Integration
+                    </Button>
+                    <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => navigate("/lights#access"))}>
+                      <Zap className="w-4 h-4 mr-1 text-emerald-500" />Access Control
                     </Button>
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("contact"))}>Contact Us</Button>
                     <div className="h-px bg-border my-3" />

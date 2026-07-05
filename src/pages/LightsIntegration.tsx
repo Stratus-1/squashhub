@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
-import { ArrowLeft, Zap, Lightbulb, Wifi, Gauge, ShieldCheck, Wrench, Receipt, CheckCircle2, Users, CalendarClock } from "lucide-react";
+import { ArrowLeft, Zap, Lightbulb, Wifi, Gauge, ShieldCheck, Wrench, Receipt, CheckCircle2, Users, CalendarClock, DoorOpen, Fingerprint, Smartphone, UserCheck, KeyRound, Sparkles } from "lucide-react";
 import shellyImg from "@/assets/shelly-pro-4pm.jpg";
 
 export default function LightsIntegration() {
@@ -12,8 +12,8 @@ export default function LightsIntegration() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[hsl(220_45%_8%)] via-[hsl(220_40%_12%)] to-background text-foreground">
       <SEO
-        title="Smart Court Lights Integration — Shelly Ready | SquashHub"
-        description="Pay-as-you-play court lighting. SquashHub is Shelly Pro 4PM ready — automatic on/off, fair per-minute billing, and zero wasted electricity."
+        title="Smart Court Lights & Access Control — Shelly Ready | SquashHub"
+        description="One app for bookings, court lights and door access. SquashHub is Shelly Pro 4PM + Shelly 1 Mini ready — automatic unlock for active members, fair per-minute lighting, and hassle-free visitor access."
       />
 
       {/* Header */}
@@ -22,7 +22,7 @@ export default function LightsIntegration() {
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="text-white hover:bg-white/10 hover:text-white gap-1">
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
-          <span className="text-white font-heading uppercase tracking-tight text-sm">Court Lights</span>
+          <span className="text-white font-heading uppercase tracking-tight text-sm">Lights &amp; Access</span>
           <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold">
             Get Started
           </Button>
@@ -34,29 +34,31 @@ export default function LightsIntegration() {
         <div className="grid md:grid-cols-2 gap-10 items-center">
           <div className="space-y-5">
             <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/20">
-              <Zap className="w-3 h-3 mr-1" /> Shelly Ready
+              <Zap className="w-3 h-3 mr-1" /> Shelly Ready — Lights &amp; Access
             </Badge>
             <h1 className="text-4xl md:text-5xl font-heading uppercase tracking-tight text-white leading-tight">
-              Pay-as-you-play <span className="text-amber-400">court lighting</span>
+              One app. <span className="text-amber-400">Bookings, lights &amp; door access.</span>
             </h1>
             <p className="text-lg text-white/70 leading-relaxed">
-              SquashHub talks directly to <strong className="text-white">Shelly Pro 4PM</strong> smart relays.
-              Lights switch on the moment a member taps "Play", off the second they finish — and every cent
-              is billed to the right player automatically.
+              SquashHub talks directly to <strong className="text-white">Shelly Pro 4PM</strong> smart relays
+              for court lighting <em>and</em> <strong className="text-white">Shelly 1 Mini / Plus 1</strong> relays
+              on your door strike or gate. Active members walk up, the door unlocks, the lights come on,
+              and the session is billed automatically — no keys, no fobs, no separate hardware app.
             </p>
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
               <p className="text-sm text-white/85 leading-relaxed">
-                <strong className="text-amber-300">One app does it all.</strong> SquashHub is your booking
-                system <em>and</em> your court-lights controller. No separate hardware app, no third-party
-                booking tool — members book, the lights come on, and the cost is charged
+                <strong className="text-amber-300">The latest tech, one screen.</strong> Members book, lights fire,
+                the door unlocks for the booking window, and cost is charged
                 <strong className="text-white"> per your club's own rules</strong> (per minute, per hour,
-                peak / off-peak, member vs visitor).
+                peak / off-peak, member vs visitor). Visitors get a one-tap booking link with a
+                time-boxed access pass — no fumbling for the club secretary at 6am.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 pt-2">
               <FeatureChip icon={Wifi} label="No app for the player" />
               <FeatureChip icon={Gauge} label="Per-minute billing" />
-              <FeatureChip icon={ShieldCheck} label="Zero wasted power" />
+              <FeatureChip icon={DoorOpen} label="Auto-unlock for members" />
+              <FeatureChip icon={UserCheck} label="Hassle-free visitors" />
             </div>
           </div>
           <div className="relative">
@@ -105,6 +107,63 @@ export default function LightsIntegration() {
         </div>
       </section>
 
+      {/* Access Control */}
+      <section id="access" className="max-w-6xl mx-auto px-4 py-12 scroll-mt-20">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+            <DoorOpen className="w-5 h-5 text-emerald-400" />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-heading uppercase tracking-tight text-white">
+            Smart Access Control
+          </h2>
+        </div>
+        <p className="text-white/60 mb-8 max-w-3xl">
+          Pair SquashHub with a <strong className="text-white">Shelly 1 Mini</strong> (or Shelly Plus 1) wired
+          to your door strike, magnetic lock, or gate motor. Active members with a valid booking get automatic,
+          time-boxed entry — everyone else stays out. No shared PINs, no lost keys, no 24/7 door open.
+        </p>
+
+        <div className="grid md:grid-cols-3 gap-4">
+          <StepCard step="1" icon={UserCheck} title="Active member arrives">
+            SquashHub checks their status live: paid up, not suspended, and holding a booking in the next 15
+            minutes. If yes, the door is armed for them.
+          </StepCard>
+          <StepCard step="2" icon={Smartphone} title="Tap Unlock (or auto)">
+            One tap in the app fires the Shelly 1 Mini relay for 3–5 seconds — the strike releases, they walk
+            in. Or set geofence auto-unlock for hands-free entry at the front door.
+          </StepCard>
+          <StepCard step="3" icon={KeyRound} title="Auto-locks after their slot">
+            The relay only responds during the booking window. When the session ends, access rights expire
+            automatically — no manual revocation, no forgotten keys in circulation.
+          </StepCard>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4 mt-4">
+          <StepCard step="+" icon={Sparkles} title="Visitors, without the hassle">
+            A visitor books and pays online, receives an SMS/email with a one-tap access link valid only for
+            their slot. No committee member needs to drive out to unlock the club — the door opens for them,
+            for their booking, and only then.
+          </StepCard>
+          <StepCard step="+" icon={Fingerprint} title="Dual system friendly">
+            Keep your existing card/biometric reader if you have one. Shelly runs in parallel as a second
+            channel controlled by the app, so members always have a backup way in — and admins get a
+            live event log of every unlock.
+          </StepCard>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 mt-6">
+          <p className="text-sm text-white/85 leading-relaxed">
+            <strong className="text-emerald-300">Why Shelly 1 Mini?</strong> It's the smallest smart relay on
+            the market (fits inside a wall box), draws almost no power, works over club WiFi, and costs a
+            fraction of a proprietary access controller. One tiny device turns your existing door strike or
+            gate motor into a fully app-managed access point — with the exact same login members already use
+            for bookings and lights.
+          </p>
+        </div>
+      </section>
+
+
+
       {/* Costs */}
       <section className="max-w-6xl mx-auto px-4 py-12">
         <h2 className="text-2xl md:text-3xl font-heading uppercase tracking-tight text-white mb-2">
@@ -143,7 +202,26 @@ export default function LightsIntegration() {
               and connects it to the club WiFi. Typically 2–3 hours on site.
             </p>
           </Card>
+
+          <Card className="p-6 bg-white/5 border-white/10 backdrop-blur-md">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <DoorOpen className="w-5 h-5 text-emerald-400" />
+              </div>
+              <h3 className="text-white font-semibold text-lg">Shelly 1 Mini — door / gate access</h3>
+            </div>
+            <p className="text-3xl font-heading text-white">~R450 <span className="text-sm text-white/50 font-sans">once-off, per door</span></p>
+            <p className="text-sm text-white/60 mt-2">
+              Tiny 1-channel smart relay that fits inside the door frame or wall box. Wires to any 12V/24V
+              electric strike, mag-lock or gate motor. Add one per entry point you want app-controlled.
+            </p>
+            <p className="text-xs text-white/40 mt-2 italic">
+              Shelly Plus 1 (~R650) is the beefier alternative when you need dry-contact switching for
+              higher-current locks or industrial gate motors.
+            </p>
+          </Card>
         </div>
+
 
         <Card className="p-6 mt-4 bg-gradient-to-r from-amber-500/10 to-amber-500/5 border-amber-500/30 backdrop-blur-md">
           <div className="flex flex-col md:flex-row md:items-center gap-4">

@@ -199,15 +199,33 @@ export function SuspensionRulesPanel({ club }: { club: Club }) {
         </div>
       </div>
 
-      <div>
-        <Label htmlFor="grace-msg">Message shown to suspended members</Label>
-        <Textarea
-          id="grace-msg"
-          value={rules.grace_message}
-          onChange={(e) => setRules((r) => ({ ...r, grace_message: e.target.value }))}
-          rows={2}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <Label htmlFor="warn-msg">Warning message (in arrears, not yet suspended)</Label>
+          <Textarea
+            id="warn-msg"
+            value={rules.warning_message}
+            onChange={(e) => setRules((r) => ({ ...r, warning_message: e.target.value }))}
+            rows={3}
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Shown in the amber banner and warning emails before suspension kicks in.
+          </p>
+        </div>
+        <div>
+          <Label htmlFor="grace-msg">Suspended message</Label>
+          <Textarea
+            id="grace-msg"
+            value={rules.grace_message}
+            onChange={(e) => setRules((r) => ({ ...r, grace_message: e.target.value }))}
+            rows={3}
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Shown in the red banner and suspension emails once access is blocked.
+          </p>
+        </div>
       </div>
+
 
       <Separator />
 

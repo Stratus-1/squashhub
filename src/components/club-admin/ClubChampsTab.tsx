@@ -1883,7 +1883,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           let scoreByMember: Map<string, number> | undefined;
           if (handicapMode === "group_order") {
             const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
-            scoreByMember = buildScoreMapFromGroups(groupIds);
+            scoreByMember = buildScoreMapFromGroups(groupIds, groupRankScope);
           } else if (handicapMode === "league_rank") {
             const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
             const allIds = groupIds.flat();

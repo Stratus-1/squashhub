@@ -61,19 +61,34 @@ export default function LightsIntegration() {
               <FeatureChip icon={UserCheck} label="Hassle-free visitors" />
             </div>
           </div>
-          <div className="relative">
-            <div className="absolute inset-0 bg-amber-500/20 blur-3xl rounded-full" />
-            <img
-              src={shellyImg}
-              alt="Shelly Pro 4PM smart relay on DIN rail"
-              width={1024}
-              height={1024}
-              className="relative rounded-2xl border border-white/10 shadow-2xl bg-white"
-            />
-            <p className="text-center text-xs text-white/50 mt-2 italic">Shelly Pro 4PM — one device controls four courts</p>
+          <div className="grid grid-cols-2 gap-4 items-start">
+            <div className="relative">
+              <div className="absolute inset-0 bg-amber-500/20 blur-3xl rounded-full" />
+              <img
+                src={shellyImg}
+                alt="Shelly Pro 4PM smart relay on DIN rail"
+                width={512}
+                height={512}
+                className="relative rounded-xl border border-white/10 shadow-2xl bg-white w-full aspect-square object-cover"
+              />
+              <p className="text-center text-[11px] text-white/50 mt-2 italic">Shelly Pro 4PM — controls 4 courts</p>
+            </div>
+            <div>
+              <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-[9/16]">
+                <iframe
+                  src="https://www.youtube.com/embed/atTVQQRayn4"
+                  title="Shelly relay — ready to install"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="w-full h-full block"
+                />
+              </div>
+              <p className="text-center text-[11px] text-white/50 mt-2 italic">Ready to install in your DB board</p>
+            </div>
           </div>
         </div>
       </section>
+
 
       {/* Video */}
       <section className="max-w-md mx-auto px-4 pb-8">

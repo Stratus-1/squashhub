@@ -40,10 +40,10 @@ export default function LightsIntegration() {
               One app. <span className="text-amber-400">Bookings, lights &amp; door access.</span>
             </h1>
             <p className="text-lg text-white/70 leading-relaxed">
-              SquashHub talks directly to <strong className="text-white">Shelly Pro 4PM</strong> smart relays
-              for court lighting <em>and</em> <strong className="text-white">Shelly 1 Mini / Plus 1</strong> relays
-              on your door strike or gate. Active members walk up, the door unlocks, the lights come on,
-              and the session is billed automatically — no keys, no fobs, no separate hardware app.
+              SquashHub talks directly to Shelly devices — like the <strong className="text-white">Shelly Pro 4PM</strong> smart
+              relay for court lighting and <strong className="text-white">Shelly 1 Mini / Plus 1</strong> relays on your door
+              strike or gate. Active members walk up, the door unlocks, the lights come on, and the session
+              is billed automatically — no keys, no fobs, no separate hardware app.
             </p>
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
               <p className="text-sm text-white/85 leading-relaxed">

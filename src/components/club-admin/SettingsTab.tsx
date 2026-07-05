@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ShieldAlert, Hash, Mail, PenLine } from "lucide-react";
 import { SuspensionRulesPanel } from "./SuspensionRulesPanel";
 import { SuspendedMembersPanel } from "./SuspendedMembersPanel";
 

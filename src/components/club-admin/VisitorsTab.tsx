@@ -34,11 +34,54 @@ interface HomeClubOption {
 
 export function VisitorsTab({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
+  const { data: clubData } = useMyClub();
+  const club = clubData?.club as any;
   const [search, setSearch] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editing, setEditing] = useState<Visitor | null>(null);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Visitor policy state (persisted on clubs row)
+  const [canBook, setCanBook] = useState<boolean>(!!club?.visitors_can_book);
+  const [accessCtrl, setAccessCtrl] = useState<boolean>(!!club?.visitors_access_control);
+  const [visitorFee, setVisitorFee] = useState<string>(String(club?.visitor_booking_fee ?? 0));
+  const [policySaving, setPolicySaving] = useState(false);
+  const [policyDirty, setPolicyDirty] = useState(false);
+
+  // Sync when club loads
+  useMemo(() => {
+    if (club) {
+      setCanBook(!!club.visitors_can_book);
+      setAccessCtrl(!!club.visitors_access_control);
+      setVisitorFee(String(club.visitor_booking_fee ?? 0));
+      setPolicyDirty(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [club?.id, club?.visitors_can_book, club?.visitors_access_control, club?.visitor_booking_fee]);
+
+  const savePolicy = async () => {
+    setPolicySaving(true);
+    try {
+      const fee = Number(visitorFee) || 0;
+      const { error } = await (supabase.from("clubs") as any)
+        .update({
+          visitors_can_book: canBook,
+          visitors_access_control: accessCtrl,
+          visitor_booking_fee: fee,
+        })
+        .eq("id", clubId);
+      if (error) throw error;
+      toast.success("Visitor policy updated");
+      setPolicyDirty(false);
+      queryClient.invalidateQueries({ queryKey: ["my-club"] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save");
+    } finally {
+      setPolicySaving(false);
+    }
+  };
+
 
   // Add Visitor dialog state
   const [addOpen, setAddOpen] = useState(false);

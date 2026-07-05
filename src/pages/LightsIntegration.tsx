@@ -76,6 +76,26 @@ export default function LightsIntegration() {
         </div>
       </section>
 
+      {/* Video */}
+      <section className="max-w-5xl mx-auto px-4 pb-8">
+        <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
+          <video
+            src={shellyVideo.url}
+            controls
+            playsInline
+            preload="metadata"
+            className="w-full h-auto block"
+          >
+            Your browser does not support the video tag.
+          </video>
+        </div>
+        <p className="text-center text-xs text-white/50 mt-2 italic">
+          Shelly relay — ready to install in your DB board
+        </p>
+      </section>
+
+
+
       {/* How it works */}
       <section className="max-w-6xl mx-auto px-4 py-12">
         <h2 className="text-2xl md:text-3xl font-heading uppercase tracking-tight text-white mb-8">

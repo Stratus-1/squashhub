@@ -443,6 +443,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   //  - group_order  → drag order on the tournament Leagues step
   //  - club_ladder  → club_members.ladder_position
   const [handicapMode, setHandicapMode] = useState<"none" | "league_rank" | "group_order" | "club_ladder">("none");
+  // When group_order + multiple leagues: how to rank across leagues.
+  //  - continuous: League 1 supersedes League 2 (global 1..N across all)
+  //  - parallel:   each league is 1..N independently (even strength)
+  const [groupRankScope, setGroupRankScope] = useState<"continuous" | "parallel">("continuous");
   // Divider/multiplier scale the raw gap. final = floor(gap * multiplier / divider).
   const [handicapDivider, setHandicapDivider] = useState<number>(1);
   const [handicapMultiplier, setHandicapMultiplier] = useState<number>(1);

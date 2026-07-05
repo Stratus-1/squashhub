@@ -40,6 +40,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editing, setEditing] = useState<Visitor | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [editMode, setEditMode] = useState<"picker" | "other">("picker");
   const [saving, setSaving] = useState(false);
 
   // Visitor policy state (persisted on clubs row)
@@ -201,8 +202,14 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
 
   const openEdit = (v: Visitor) => {
     setEditing(v);
-    setEditValue(v.home_club_name && v.home_club_name !== "Club visitor" ? v.home_club_name : "");
+    const current = v.home_club_name && v.home_club_name !== "Club visitor" ? v.home_club_name : "";
+    setEditValue(current);
+    // If current value matches a known option (or blank / No club), use picker; else "other"
+    const known = current === "" || current.toLowerCase() === "no club" ||
+      homeClubRows.some((r) => r.name.toLowerCase() === current.toLowerCase());
+    setEditMode(known ? "picker" : "other");
   };
+
 
   const saveEdit = async () => {
     if (!editing) return;
@@ -508,16 +515,43 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="home-club">Home club name</Label>
-            <Input
-              id="home-club"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              placeholder="e.g. White River Squash Club"
-              maxLength={100}
-            />
+            <Label htmlFor="edit-home-club">Home club name</Label>
+            <Select
+              value={editMode === "other" ? "__other__" : (editValue || "__none__")}
+              onValueChange={(v) => {
+                if (v === "__other__") {
+                  setEditMode("other");
+                  setEditValue("");
+                } else if (v === "__none__") {
+                  setEditMode("picker");
+                  setEditValue("");
+                } else {
+                  setEditMode("picker");
+                  setEditValue(v);
+                }
+              }}
+            >
+              <SelectTrigger id="edit-home-club"><SelectValue placeholder="Select home club" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="__none__">— Clear (no club) —</SelectItem>
+                {homeClubOptions.map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+                <SelectItem value="No club">No club (independent)</SelectItem>
+                <SelectItem value="__other__">Other (type in)</SelectItem>
+              </SelectContent>
+            </Select>
+            {editMode === "other" && (
+              <Input
+                id="home-club"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                placeholder="Type club name"
+                maxLength={100}
+              />
+            )}
             <p className="text-[11px] text-muted-foreground">
-              Leave blank to clear. This is shown next to the visitor's name.
+              Manage the dropdown list via the <span className="font-medium">Home Clubs</span> button. Clear to remove.
             </p>
           </div>
           <DialogFooter>

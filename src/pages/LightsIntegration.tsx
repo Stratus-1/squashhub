@@ -34,29 +34,31 @@ export default function LightsIntegration() {
         <div className="grid md:grid-cols-2 gap-10 items-center">
           <div className="space-y-5">
             <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/20">
-              <Zap className="w-3 h-3 mr-1" /> Shelly Ready
+              <Zap className="w-3 h-3 mr-1" /> Shelly Ready — Lights &amp; Access
             </Badge>
             <h1 className="text-4xl md:text-5xl font-heading uppercase tracking-tight text-white leading-tight">
-              Pay-as-you-play <span className="text-amber-400">court lighting</span>
+              One app. <span className="text-amber-400">Bookings, lights &amp; door access.</span>
             </h1>
             <p className="text-lg text-white/70 leading-relaxed">
-              SquashHub talks directly to <strong className="text-white">Shelly Pro 4PM</strong> smart relays.
-              Lights switch on the moment a member taps "Play", off the second they finish — and every cent
-              is billed to the right player automatically.
+              SquashHub talks directly to <strong className="text-white">Shelly Pro 4PM</strong> smart relays
+              for court lighting <em>and</em> <strong className="text-white">Shelly 1 Mini / Plus 1</strong> relays
+              on your door strike or gate. Active members walk up, the door unlocks, the lights come on,
+              and the session is billed automatically — no keys, no fobs, no separate hardware app.
             </p>
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
               <p className="text-sm text-white/85 leading-relaxed">
-                <strong className="text-amber-300">One app does it all.</strong> SquashHub is your booking
-                system <em>and</em> your court-lights controller. No separate hardware app, no third-party
-                booking tool — members book, the lights come on, and the cost is charged
+                <strong className="text-amber-300">The latest tech, one screen.</strong> Members book, lights fire,
+                the door unlocks for the booking window, and cost is charged
                 <strong className="text-white"> per your club's own rules</strong> (per minute, per hour,
-                peak / off-peak, member vs visitor).
+                peak / off-peak, member vs visitor). Visitors get a one-tap booking link with a
+                time-boxed access pass — no fumbling for the club secretary at 6am.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 pt-2">
               <FeatureChip icon={Wifi} label="No app for the player" />
               <FeatureChip icon={Gauge} label="Per-minute billing" />
-              <FeatureChip icon={ShieldCheck} label="Zero wasted power" />
+              <FeatureChip icon={DoorOpen} label="Auto-unlock for members" />
+              <FeatureChip icon={UserCheck} label="Hassle-free visitors" />
             </div>
           </div>
           <div className="relative">

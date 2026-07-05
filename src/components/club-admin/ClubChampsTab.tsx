@@ -1770,13 +1770,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
       await fromExt("club_champs_matches").delete().eq("champ_id", champId);
 
-      // Create entries
+      // Create entries. Promote any `visitor-*` IDs to real club_members rows
+      // first, otherwise the FK on club_champs_entries.club_member_id fails.
       if (isDoubles) {
+        const rawIds = (groups as DoublePair[][]).flatMap((gp) => gp.flatMap((p) => [p.player1Id, p.player2Id]));
+        const resolved = await promoteVisitorIds(rawIds);
+        const idMap = new Map<string, string>();
+        rawIds.forEach((raw, i) => idMap.set(raw, resolved[i]));
+        const resolveId = (id: string) => idMap.get(id) || toDbId(id);
         const entries = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
           groupPairs.map((pair, orderIndex) => ({
               champ_id: champId,
-              club_member_id: toDbId(pair.player1Id),
-              partner_member_id: toDbId(pair.player2Id),
+              club_member_id: resolveId(pair.player1Id),
+              partner_member_id: resolveId(pair.player2Id),
               group_number: gi + 1,
               order_index: orderIndex,
           }))
@@ -1786,10 +1792,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         const keepIds = entries.map((e) => e.club_member_id);
         if (keepIds.length > 0) await fromExt("club_champs_entries").delete().eq("champ_id", champId).not("club_member_id", "in", `(${keepIds.join(",")})`);
       } else {
+        const rawIds = (groups as ClubMember[][]).flatMap((gp) => gp.map((p) => p.id));
+        const resolved = await promoteVisitorIds(rawIds);
+        const idMap = new Map<string, string>();
+        rawIds.forEach((raw, i) => idMap.set(raw, resolved[i]));
         const entries = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
           groupPlayers.map((p, orderIndex) => ({
             champ_id: champId,
-            club_member_id: toDbId(p.id),
+            club_member_id: idMap.get(p.id) || toDbId(p.id),
             group_number: gi + 1,
             order_index: orderIndex,
           }))

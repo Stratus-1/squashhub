@@ -4692,8 +4692,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     // → max N such that N*(N-1)/2 ≤ G  ⇒  N = floor((1+√(1+8G))/2)
                     const maxEntitiesFor = (G: number) => Math.max(0, Math.floor((1 + Math.sqrt(1 + 8 * G)) / 2));
                     const leagues = Array.from({ length: numGroups }, (_, i) => i + 1);
+                    const sharedSlot = Number(groupDurations["1"]) || matchDuration || 20;
                     const perLeague = leagues.map((gn) => {
-                      const slot = Number(groupDurations[String(gn)]) || matchDuration || 20;
+                      const slot = roundFormat === "cross_league"
+                        ? sharedSlot
+                        : (Number(groupDurations[String(gn)]) || matchDuration || 20);
                       const games = capSessions.reduce((a, s) => a + Math.floor(s.minutes / slot) * s.courts, 0);
                       const maxEntities = maxEntitiesFor(games); // capacity in entities
                       const maxGamesUsed = (maxEntities * (maxEntities - 1)) / 2;

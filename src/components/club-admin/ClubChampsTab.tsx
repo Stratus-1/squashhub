@@ -806,7 +806,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // persist the selection directly to club_champs_registrations.
       if (selfPairInviteSelection) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
-        const ids = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
+        const ids = await promoteVisitorIds(Array.from(selectedPlayerIds));
         const regRows = ids.map((memberId) => ({
           champ_id: champIdToUse,
           club_member_id: memberId,

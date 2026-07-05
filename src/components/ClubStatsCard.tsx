@@ -22,13 +22,14 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
     queryFn: async () => {
       if (!clubId) return null;
 
-      const [totalRes, activeRes, suspendedRes, resignedRes, leagueRes, visitorsRes] = await Promise.all([
+      const [totalRes, activeRes, suspendedRes, resignedRes, leagueRes, visitorsRes, visitorMembersRes] = await Promise.all([
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId),
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "active"),
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "suspended"),
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "resigned"),
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("plays_league", true),
         supabase.from("club_visitors").select("*", { count: "exact", head: true }).eq("club_id", clubId),
+        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("role", "visitor"),
       ]);
 
       return {
@@ -37,7 +38,7 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
         suspended: suspendedRes.count ?? 0,
         resigned: resignedRes.count ?? 0,
         league: leagueRes.count ?? 0,
-        visitors: visitorsRes.count ?? 0,
+        visitors: (visitorsRes.count ?? 0) + (visitorMembersRes.count ?? 0),
       };
     },
   });

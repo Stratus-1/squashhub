@@ -107,6 +107,63 @@ export default function LightsIntegration() {
         </div>
       </section>
 
+      {/* Access Control */}
+      <section id="access" className="max-w-6xl mx-auto px-4 py-12 scroll-mt-20">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+            <DoorOpen className="w-5 h-5 text-emerald-400" />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-heading uppercase tracking-tight text-white">
+            Smart Access Control
+          </h2>
+        </div>
+        <p className="text-white/60 mb-8 max-w-3xl">
+          Pair SquashHub with a <strong className="text-white">Shelly 1 Mini</strong> (or Shelly Plus 1) wired
+          to your door strike, magnetic lock, or gate motor. Active members with a valid booking get automatic,
+          time-boxed entry — everyone else stays out. No shared PINs, no lost keys, no 24/7 door open.
+        </p>
+
+        <div className="grid md:grid-cols-3 gap-4">
+          <StepCard step="1" icon={UserCheck} title="Active member arrives">
+            SquashHub checks their status live: paid up, not suspended, and holding a booking in the next 15
+            minutes. If yes, the door is armed for them.
+          </StepCard>
+          <StepCard step="2" icon={Smartphone} title="Tap Unlock (or auto)">
+            One tap in the app fires the Shelly 1 Mini relay for 3–5 seconds — the strike releases, they walk
+            in. Or set geofence auto-unlock for hands-free entry at the front door.
+          </StepCard>
+          <StepCard step="3" icon={KeyRound} title="Auto-locks after their slot">
+            The relay only responds during the booking window. When the session ends, access rights expire
+            automatically — no manual revocation, no forgotten keys in circulation.
+          </StepCard>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4 mt-4">
+          <StepCard step="+" icon={Sparkles} title="Visitors, without the hassle">
+            A visitor books and pays online, receives an SMS/email with a one-tap access link valid only for
+            their slot. No committee member needs to drive out to unlock the club — the door opens for them,
+            for their booking, and only then.
+          </StepCard>
+          <StepCard step="+" icon={Fingerprint} title="Dual system friendly">
+            Keep your existing card/biometric reader if you have one. Shelly runs in parallel as a second
+            channel controlled by the app, so members always have a backup way in — and admins get a
+            live event log of every unlock.
+          </StepCard>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 mt-6">
+          <p className="text-sm text-white/85 leading-relaxed">
+            <strong className="text-emerald-300">Why Shelly 1 Mini?</strong> It's the smallest smart relay on
+            the market (fits inside a wall box), draws almost no power, works over club WiFi, and costs a
+            fraction of a proprietary access controller. One tiny device turns your existing door strike or
+            gate motor into a fully app-managed access point — with the exact same login members already use
+            for bookings and lights.
+          </p>
+        </div>
+      </section>
+
+
+
       {/* Costs */}
       <section className="max-w-6xl mx-auto px-4 py-12">
         <h2 className="text-2xl md:text-3xl font-heading uppercase tracking-tight text-white mb-2">

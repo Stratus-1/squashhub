@@ -3770,6 +3770,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     </div>
                   </div>
                 )}
+                {handicapMode !== "none" && (
                   <div className="flex flex-wrap items-center gap-4 text-sm pt-1">
                     <div className="flex items-center gap-2">
                       <Label className="text-xs whitespace-nowrap">Multiplier</Label>

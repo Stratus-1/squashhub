@@ -2805,6 +2805,9 @@ export type Database = {
           tenant_type: string
           updated_at: string
           uses_gobook: boolean
+          visitor_booking_fee: number
+          visitors_access_control: boolean
+          visitors_can_book: boolean
         }
         Insert: {
           accepted_payment_methods?: string[]
@@ -2878,6 +2881,9 @@ export type Database = {
           tenant_type?: string
           updated_at?: string
           uses_gobook?: boolean
+          visitor_booking_fee?: number
+          visitors_access_control?: boolean
+          visitors_can_book?: boolean
         }
         Update: {
           accepted_payment_methods?: string[]
@@ -2951,6 +2957,9 @@ export type Database = {
           tenant_type?: string
           updated_at?: string
           uses_gobook?: boolean
+          visitor_booking_fee?: number
+          visitors_access_control?: boolean
+          visitors_can_book?: boolean
         }
         Relationships: [
           {

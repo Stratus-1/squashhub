@@ -8,7 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Trash2, Search, Pencil, UserPlus, Settings2, Plus, X } from "lucide-react";
+import { Loader2, Trash2, Search, Pencil, UserPlus, Settings2, Plus, X, DoorOpen } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { supabase } from "@/integrations/supabase/client";
+import { useMyClub } from "@/hooks/use-club";
 import { toast } from "sonner";
 
 interface Visitor {
@@ -31,11 +34,54 @@ interface HomeClubOption {
 
 export function VisitorsTab({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
+  const { data: clubData } = useMyClub();
+  const club = clubData?.club as any;
   const [search, setSearch] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editing, setEditing] = useState<Visitor | null>(null);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Visitor policy state (persisted on clubs row)
+  const [canBook, setCanBook] = useState<boolean>(!!club?.visitors_can_book);
+  const [accessCtrl, setAccessCtrl] = useState<boolean>(!!club?.visitors_access_control);
+  const [visitorFee, setVisitorFee] = useState<string>(String(club?.visitor_booking_fee ?? 0));
+  const [policySaving, setPolicySaving] = useState(false);
+  const [policyDirty, setPolicyDirty] = useState(false);
+
+  // Sync when club loads
+  useMemo(() => {
+    if (club) {
+      setCanBook(!!club.visitors_can_book);
+      setAccessCtrl(!!club.visitors_access_control);
+      setVisitorFee(String(club.visitor_booking_fee ?? 0));
+      setPolicyDirty(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [club?.id, club?.visitors_can_book, club?.visitors_access_control, club?.visitor_booking_fee]);
+
+  const savePolicy = async () => {
+    setPolicySaving(true);
+    try {
+      const fee = Number(visitorFee) || 0;
+      const { error } = await (supabase.from("clubs") as any)
+        .update({
+          visitors_can_book: canBook,
+          visitors_access_control: accessCtrl,
+          visitor_booking_fee: fee,
+        })
+        .eq("id", clubId);
+      if (error) throw error;
+      toast.success("Visitor policy updated");
+      setPolicyDirty(false);
+      queryClient.invalidateQueries({ queryKey: ["my-club"] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save");
+    } finally {
+      setPolicySaving(false);
+    }
+  };
+
 
   // Add Visitor dialog state
   const [addOpen, setAddOpen] = useState(false);
@@ -315,6 +361,73 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
           </Button>
         </div>
       </div>
+
+      {/* Visitor policy — bookings & access control */}
+      <Card className="p-3 md:p-4 space-y-3 border-primary/30 bg-primary/[0.03]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-semibold flex items-center gap-1.5">
+              <DoorOpen className="w-4 h-4 text-primary" />
+              Visitor bookings & access
+            </h4>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Controls whether visitors (non-members) can book courts through SquashHub and get access-control entry to the facility.
+            </p>
+          </div>
+          {policyDirty && (
+            <Button size="sm" onClick={savePolicy} disabled={policySaving}>
+              {policySaving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+              Save
+            </Button>
+          )}
+        </div>
+
+        <div className="grid gap-2.5 md:grid-cols-2">
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2.5 cursor-pointer">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold">Allow visitor bookings</div>
+              <div className="text-[10px] text-muted-foreground">Visitors can book a court from the app.</div>
+            </div>
+            <Switch
+              checked={canBook}
+              onCheckedChange={(v) => { setCanBook(v); setPolicyDirty(true); }}
+            />
+          </label>
+
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2.5 cursor-pointer">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold">Grant access control</div>
+              <div className="text-[10px] text-muted-foreground">Open the door / gate for a visitor at booking time.</div>
+            </div>
+            <Switch
+              checked={accessCtrl}
+              onCheckedChange={(v) => { setAccessCtrl(v); setPolicyDirty(true); }}
+            />
+          </label>
+        </div>
+
+        {canBook && (
+          <div className="flex items-center gap-3 rounded-md border border-border bg-card p-2.5">
+            <div className="flex-1 min-w-0">
+              <Label htmlFor="visitor-fee" className="text-xs font-semibold">Visitor booking fee</Label>
+              <p className="text-[10px] text-muted-foreground">Charged per booking made by a visitor. Set to 0 for free.</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-xs text-muted-foreground">R</span>
+              <Input
+                id="visitor-fee"
+                type="number"
+                min={0}
+                step="0.01"
+                value={visitorFee}
+                onChange={(e) => { setVisitorFee(e.target.value); setPolicyDirty(true); }}
+                className="w-24 h-8 text-right"
+              />
+            </div>
+          </div>
+        )}
+      </Card>
+
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

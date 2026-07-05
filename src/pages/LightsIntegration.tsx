@@ -90,21 +90,7 @@ export default function LightsIntegration() {
       </section>
 
 
-      {/* Video */}
-      <section className="max-w-md mx-auto px-4 pb-8">
-        <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-[9/16]">
-          <iframe
-            src="https://www.youtube.com/embed/atTVQQRayn4"
-            title="Shelly relay — ready to install"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-            className="w-full h-full block"
-          />
-        </div>
-        <p className="text-center text-xs text-white/50 mt-2 italic">
-          Shelly relay — ready to install in your DB board
-        </p>
-      </section>
+
 
 
 

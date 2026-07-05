@@ -4678,10 +4678,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     const perLeague = leagues.map((gn) => {
                       const slot = Number(groupDurations[String(gn)]) || matchDuration || 20;
                       const games = capSessions.reduce((a, s) => a + Math.floor(s.minutes / slot) * s.courts, 0);
-                      const entities = maxEntitiesFor(games); // players (singles) or pairs (doubles)
-                      const gamesUsed = (entities * (entities - 1)) / 2;
-                      const players = isDoubles ? entities * 2 : entities;
-                      return { gn, slot, games, gamesUsed, entities, players };
+                      const maxEntities = maxEntitiesFor(games); // capacity in entities
+                      const maxGamesUsed = (maxEntities * (maxEntities - 1)) / 2;
+                      const maxPlayers = isDoubles ? maxEntities * 2 : maxEntities;
+                      // Actual players/pairs currently assigned to this league
+                      const groupItems = (groups as any[])[gn - 1] || [];
+                      const actualEntities = groupItems.length;
+                      const actualPlayers = isDoubles ? actualEntities * 2 : actualEntities;
+                      const gamesNeeded = actualEntities > 1 ? (actualEntities * (actualEntities - 1)) / 2 : 0;
+                      const fits = gamesNeeded <= games;
+                      return { gn, slot, games, maxEntities, maxGamesUsed, maxPlayers, actualEntities, actualPlayers, gamesNeeded, fits };
                     });
                     const sessionsCount = capSessions.length;
                     const courtsUsed = capSessions.reduce((a, s) => Math.max(a, s.courts), 0);
@@ -4695,18 +4701,25 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           <div className="text-muted-foreground italic">Pick a number of leagues to see per-league capacity.</div>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                            {perLeague.map(({ gn, slot, games, gamesUsed, entities, players }) => (
-                              <div key={gn} className="flex flex-col gap-0.5 p-1.5 rounded border bg-background">
+                            {perLeague.map(({ gn, slot, games, maxPlayers, maxEntities, actualPlayers, actualEntities, gamesNeeded, fits }) => (
+                              <div key={gn} className={`flex flex-col gap-0.5 p-1.5 rounded border ${actualEntities > 0 && !fits ? "bg-destructive/10 border-destructive/40" : "bg-background"}`}>
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium w-16">League {gn}</span>
                                   <span className="text-muted-foreground">{slot} min/slot</span>
                                   <span className="ml-auto">
-                                    up to <strong>{players}</strong> players
-                                    {isDoubles && <> (<strong>{entities}</strong> pairs)</>}
+                                    {actualEntities > 0 ? (
+                                      <><strong>{actualPlayers}</strong> player{actualPlayers === 1 ? "" : "s"}{isDoubles && <> (<strong>{actualEntities}</strong> pairs)</>}</>
+                                    ) : (
+                                      <>up to <strong>{maxPlayers}</strong> players{isDoubles && <> (<strong>{maxEntities}</strong> pairs)</>}</>
+                                    )}
                                   </span>
                                 </div>
                                 <div className="text-[11px] text-muted-foreground pl-[4.5rem]">
-                                  fits {games} game{games === 1 ? "" : "s"} · {gamesUsed} used for full round-robin
+                                  {actualEntities > 0 ? (
+                                    <>needs {gamesNeeded} game{gamesNeeded === 1 ? "" : "s"} · {games} available {fits ? "✓" : `· short by ${gamesNeeded - games}`}</>
+                                  ) : (
+                                    <>fits {games} game{games === 1 ? "" : "s"} · capacity for full round-robin</>
+                                  )}
                                 </div>
                               </div>
                             ))}

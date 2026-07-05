@@ -468,8 +468,26 @@ export type HandicapMode = "none" | "league_rank" | "club_ladder";
  */
 export function buildScoreMapFromGroups(
   groupsByMemberOrder: string[][],
+  scope: "continuous" | "parallel" = "continuous",
 ): Map<string, number> {
   const out = new Map<string, number>();
+  if (scope === "parallel") {
+    // Each league/group is treated as equal strength: position within the
+    // group is the rank (1..N). A #4 in League 2 has the same score as a
+    // #4 in League 1, so their handicap gap vs #1 in either league is the
+    // same (e.g. 3).
+    for (const group of groupsByMemberOrder) {
+      let rank = 1;
+      for (const memberId of group) {
+        if (!memberId) continue;
+        if (!out.has(memberId)) out.set(memberId, rank);
+        rank += 1;
+      }
+    }
+    return out;
+  }
+  // Continuous: League 1 supersedes League 2 — global position across all
+  // groups (group 0 rows first, then group 1, etc.).
   let cursor = 1;
   for (const group of groupsByMemberOrder) {
     for (const memberId of group) {

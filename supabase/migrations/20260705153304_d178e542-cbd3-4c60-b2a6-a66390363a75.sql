@@ -1,0 +1,1 @@
+ALTER TABLE public.club_champs DROP CONSTRAINT IF EXISTS club_champs_handicap_mode_check; ALTER TABLE public.club_champs ADD CONSTRAINT club_champs_handicap_mode_check CHECK (handicap_mode IN ('none','league_rank','club_ladder'));

@@ -438,6 +438,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   // Handicap (singles only): none, by league ranking, or by club ladder
   const [handicapMode, setHandicapMode] = useState<"none" | "league_rank" | "club_ladder">("none");
+  // When league_rank is selected, admins can force the handicap to follow
+  // the current group ordering on the Leagues step instead of the auto
+  // cross-league detection. Enables "By ranking" for single-group / same-
+  // league tournaments where the admin wants their manual order to win.
+  const [handicapUseGroupOrder, setHandicapUseGroupOrder] = useState<boolean>(false);
   // Divider/multiplier scale the raw gap. final = floor(gap * multiplier / divider).
   const [handicapDivider, setHandicapDivider] = useState<number>(1);
   const [handicapMultiplier, setHandicapMultiplier] = useState<number>(1);
@@ -1874,12 +1879,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           if (handicapMode === "league_rank") {
             const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
             const allIds = groupIds.flat();
-            // Only override the DB league-rank calculation when the
-            // tournament actually spans multiple divisions. Same-league
-            // tournaments (e.g. NSC-style multiple teams in one division)
-            // must keep using each player's team player_rank so that #1s
-            // across teams are treated equally strong.
-            if (await isCrossLeagueTournament(clubId, allIds)) {
+            // Admin can force group-order handicaps via the "By ranking"
+            // toggle on the Leagues step (works for one-group / same-
+            // league setups too). Otherwise fall back to auto detection:
+            // only override the DB league-rank calc when the tournament
+            // actually spans multiple divisions.
+            if (handicapUseGroupOrder || (await isCrossLeagueTournament(clubId, allIds))) {
               scoreByMember = buildScoreMapFromGroups(groupIds);
             }
           }
@@ -3704,7 +3709,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       checked={handicapMode === "league_rank"}
                       onChange={() => setHandicapMode("league_rank")}
                     />
-                    By league ranking
+                    By Club League main setup
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -4218,6 +4223,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <> <span className="text-primary font-medium">Sort strongest → weakest — this order determines handicaps</span> (top of League 1 = strongest, bottom of the last league = weakest). Subs slot in wherever you drop them.</>
               )}
             </p>
+            {!isDoubles && handicapMode === "league_rank" && (
+              <label className="flex items-start gap-2 text-xs cursor-pointer rounded-md border border-border/60 bg-muted/30 p-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={handicapUseGroupOrder}
+                  onChange={(e) => setHandicapUseGroupOrder(e.target.checked)}
+                />
+                <span>
+                  <span className="font-medium">By ranking</span> — use the current group ordering above for handicaps, ignoring the club's league team setup. Turn on for single-group or same-league tournaments where you want your manual order to win.
+                </span>
+              </label>
+            )}
             <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCrossLeagueDragEnd}>
               <div className="space-y-4">
                 {isDoubles ? (

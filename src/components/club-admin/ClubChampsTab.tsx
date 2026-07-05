@@ -834,13 +834,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         return;
       }
       let allocatedMemberIds: string[] = [];
+      // Collect every visitor-* ID that will hit the DB so we can promote them
+      // to real club_members rows in one batch and build a lookup map.
+      const visitorRawIds: string[] = isDoubles
+        ? (doublesPairs as any[]).flatMap((p) => [p.player1Id, p.player2Id]).filter((id: string) => id?.startsWith("visitor-"))
+        : (groups as ClubMember[][]).flatMap((gp) => gp.map((p) => p.id)).filter((id: string) => id?.startsWith("visitor-"));
+      const promotedList = visitorRawIds.length > 0 ? await promoteVisitorIds(visitorRawIds) : [];
+      const visitorMap = new Map<string, string>();
+      visitorRawIds.forEach((raw, i) => visitorMap.set(raw, promotedList[i]));
+      const resolveId = (id: string) => (id?.startsWith("visitor-") ? (visitorMap.get(id) || toDbId(id)) : id);
+
       if (isDoubles) {
         if (doublesPairs.length === 0) return;
         const rows = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
           groupPairs.map((pair, orderIndex) => ({
             champ_id: champIdToUse,
-            club_member_id: toDbId(pair.player1Id),
-            partner_member_id: toDbId(pair.player2Id),
+            club_member_id: resolveId(pair.player1Id),
+            partner_member_id: resolveId(pair.player2Id),
             group_number: gi + 1,
             order_index: orderIndex,
           }))
@@ -853,11 +863,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       } else {
         if (selectedPlayerIds.size === 0) return;
         const rows = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
-          groupPlayers
-          .filter((p) => !p.id.startsWith("visitor-"))
-          .map((p, orderIndex) => ({
+          groupPlayers.map((p, orderIndex) => ({
             champ_id: champIdToUse,
-            club_member_id: toDbId(p.id),
+            club_member_id: resolveId(p.id),
             group_number: gi + 1,
             order_index: orderIndex,
           }))

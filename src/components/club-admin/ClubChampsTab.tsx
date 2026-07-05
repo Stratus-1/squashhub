@@ -2203,6 +2203,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             .eq("source", "club_event");
         }
       }
+      // Clean up any pending invite / partner-invite notifications pointing at this tournament
+      try {
+        await fromExt("notifications")
+          .delete()
+          .in("type", ["tournament_invite", "tournament_partner_invite"])
+          .like("url", `/club-champs/${id}%`);
+      } catch (e) { console.warn("Could not clean tournament notifications:", e); }
       const { error } = await fromExt("club_champs").delete().eq("id", id);
       if (error) throw error;
     },

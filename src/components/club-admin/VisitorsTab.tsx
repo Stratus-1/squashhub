@@ -202,8 +202,14 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
 
   const openEdit = (v: Visitor) => {
     setEditing(v);
-    setEditValue(v.home_club_name && v.home_club_name !== "Club visitor" ? v.home_club_name : "");
+    const current = v.home_club_name && v.home_club_name !== "Club visitor" ? v.home_club_name : "";
+    setEditValue(current);
+    // If current value matches a known option (or blank / No club), use picker; else "other"
+    const known = current === "" || current.toLowerCase() === "no club" ||
+      homeClubRows.some((r) => r.name.toLowerCase() === current.toLowerCase());
+    setEditMode(known ? "picker" : "other");
   };
+
 
   const saveEdit = async () => {
     if (!editing) return;

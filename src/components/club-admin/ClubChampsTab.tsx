@@ -3737,7 +3737,39 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     By club ladder
                   </label>
                 </div>
-                {handicapMode !== "none" && (
+                {handicapMode === "group_order" && Array.isArray(groups) && groups.length > 1 && (
+                  <div className="rounded-md border border-border/60 bg-background p-2 space-y-1.5">
+                    <Label className="text-xs">League strength (across {groups.length} leagues)</Label>
+                    <div className="flex flex-col gap-1.5 text-sm">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="group-rank-scope"
+                          className="mt-1"
+                          checked={groupRankScope === "continuous"}
+                          onChange={() => setGroupRankScope("continuous")}
+                        />
+                        <span>
+                          <span className="font-medium">League 1 supersedes League 2</span>
+                          <span className="text-xs text-muted-foreground block">Continuous ranking 1…N across all leagues (top of L1 = strongest, bottom of last league = weakest).</span>
+                        </span>
+                      </label>
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="group-rank-scope"
+                          className="mt-1"
+                          checked={groupRankScope === "parallel"}
+                          onChange={() => setGroupRankScope("parallel")}
+                        />
+                        <span>
+                          <span className="font-medium">Leagues are even strength</span>
+                          <span className="text-xs text-muted-foreground block">Each league is ranked 1…N independently. A #4 in any league gets a 3-point handicap vs #1 in any league.</span>
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
                   <div className="flex flex-wrap items-center gap-4 text-sm pt-1">
                     <div className="flex items-center gap-2">
                       <Label className="text-xs whitespace-nowrap">Multiplier</Label>

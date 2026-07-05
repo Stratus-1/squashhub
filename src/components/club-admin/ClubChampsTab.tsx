@@ -879,7 +879,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           champ_id: champIdToUse,
           club_member_id: memberId,
           status: "paid",
-          invited_by_admin: true,
+          // Do NOT set invited_by_admin here — the notify_champ_registration_event
+          // trigger fires "Tournament invitation" notifications on INSERT when this
+          // flag is true. Allocating players into groups is not the same as sending
+          // invites; notifications must only go out when the admin explicitly clicks
+          // "Send invites" (which sets invited_by_admin=true via UPDATE, not INSERT).
+          invited_by_admin: false,
           fee_paid_cents: 0,
         }));
         await fromExt("club_champs_registrations").upsert(regRows, {

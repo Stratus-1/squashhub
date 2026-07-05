@@ -30,10 +30,11 @@ interface Rules {
   exempt_with_mandate: boolean;
   blocks: string[];
   grace_message: string;
+  warning_message: string;
   notification_days: number[];
   channels: string[];
   suspended_reminder_days: number;
-}
+
 
 const DEFAULTS: Rules = {
   enabled: false,

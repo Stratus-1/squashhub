@@ -4269,7 +4269,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             <p className="text-xs text-muted-foreground">
               {isDoubles ? "Pairs" : "Players"} are auto-distributed by order. Drag a row into another league to move it, drag within a league to reorder, or use the dropdown.
               {!isDoubles && (handicapMode === "league_rank" || handicapMode === "group_order") && (
-                <> <span className="text-primary font-medium">Sort strongest → weakest — {handicapMode === "group_order" ? "this order is the handicap ranking" : "this order determines handicaps"}</span> (top of League 1 = strongest, bottom of the last league = weakest). Subs slot in wherever you drop them.</>
+                <> <span className="text-primary font-medium">Sort strongest → weakest within each league — {handicapMode === "group_order" ? "this order is the handicap ranking" : "this order determines handicaps"}</span>
+                  {handicapMode === "group_order" && groups.length > 1 && groupRankScope === "parallel"
+                    ? " (each league ranked 1…N independently — e.g. a #4 in any league gets the same handicap vs a #1 in any league)."
+                    : " (top of League 1 = strongest, bottom of the last league = weakest)."}
+                  {" "}Subs slot in wherever you drop them.</>
               )}
             </p>
             <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCrossLeagueDragEnd}>

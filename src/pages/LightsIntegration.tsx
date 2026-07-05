@@ -12,8 +12,8 @@ export default function LightsIntegration() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[hsl(220_45%_8%)] via-[hsl(220_40%_12%)] to-background text-foreground">
       <SEO
-        title="Smart Court Lights Integration — Shelly Ready | SquashHub"
-        description="Pay-as-you-play court lighting. SquashHub is Shelly Pro 4PM ready — automatic on/off, fair per-minute billing, and zero wasted electricity."
+        title="Smart Court Lights & Access Control — Shelly Ready | SquashHub"
+        description="One app for bookings, court lights and door access. SquashHub is Shelly Pro 4PM + Shelly 1 Mini ready — automatic unlock for active members, fair per-minute lighting, and hassle-free visitor access."
       />
 
       {/* Header */}
@@ -22,7 +22,7 @@ export default function LightsIntegration() {
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="text-white hover:bg-white/10 hover:text-white gap-1">
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
-          <span className="text-white font-heading uppercase tracking-tight text-sm">Court Lights</span>
+          <span className="text-white font-heading uppercase tracking-tight text-sm">Lights &amp; Access</span>
           <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold">
             Get Started
           </Button>

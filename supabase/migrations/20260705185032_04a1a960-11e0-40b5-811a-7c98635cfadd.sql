@@ -1,0 +1,1 @@
+DELETE FROM public.notifications WHERE type IN ('tournament_invite','tournament_partner_invite');

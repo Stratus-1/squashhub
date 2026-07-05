@@ -30,6 +30,7 @@ interface Rules {
   exempt_with_mandate: boolean;
   blocks: string[];
   grace_message: string;
+  warning_message: string;
   notification_days: number[];
   channels: string[];
   suspended_reminder_days: number;
@@ -42,10 +43,12 @@ const DEFAULTS: Rules = {
   age_days_threshold: 60,
   exempt_with_mandate: true,
   blocks: ["bookings", "door", "league", "challenges", "events", "bar"],
-  grace_message: "Your account is in arrears. Please settle outstanding fees to restore access.",
+  grace_message: "Your account is suspended for arrears. Settle your outstanding balance to restore court bookings, door access, and other club features.",
+  warning_message: "Your account is in arrears. Please settle outstanding fees soon to avoid automatic suspension of bookings, door access, and other club features.",
   notification_days: [7, 3, 1],
   channels: ["email", "push", "in_app"],
   suspended_reminder_days: 7,
+
 };
 
 const CHANNEL_OPTIONS: { key: string; label: string }[] = [
@@ -196,15 +199,33 @@ export function SuspensionRulesPanel({ club }: { club: Club }) {
         </div>
       </div>
 
-      <div>
-        <Label htmlFor="grace-msg">Message shown to suspended members</Label>
-        <Textarea
-          id="grace-msg"
-          value={rules.grace_message}
-          onChange={(e) => setRules((r) => ({ ...r, grace_message: e.target.value }))}
-          rows={2}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <Label htmlFor="warn-msg">Warning message (in arrears, not yet suspended)</Label>
+          <Textarea
+            id="warn-msg"
+            value={rules.warning_message}
+            onChange={(e) => setRules((r) => ({ ...r, warning_message: e.target.value }))}
+            rows={3}
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Shown in the amber banner and warning emails before suspension kicks in.
+          </p>
+        </div>
+        <div>
+          <Label htmlFor="grace-msg">Suspended message</Label>
+          <Textarea
+            id="grace-msg"
+            value={rules.grace_message}
+            onChange={(e) => setRules((r) => ({ ...r, grace_message: e.target.value }))}
+            rows={3}
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Shown in the red banner and suspension emails once access is blocked.
+          </p>
+        </div>
       </div>
+
 
       <Separator />
 

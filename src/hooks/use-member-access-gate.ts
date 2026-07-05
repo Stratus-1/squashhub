@@ -14,6 +14,7 @@ export interface SuspensionRules {
   exempt_with_mandate: boolean;
   blocks: SuspensionBlock[];
   grace_message: string;
+  warning_message: string;
 }
 
 const DEFAULTS: SuspensionRules = {
@@ -23,8 +24,10 @@ const DEFAULTS: SuspensionRules = {
   age_days_threshold: 60,
   exempt_with_mandate: true,
   blocks: ["bookings", "door", "league", "challenges", "events", "bar"],
-  grace_message: "Your account is in arrears. Please settle outstanding fees to restore access.",
+  grace_message: "Your account is suspended for arrears. Settle your outstanding balance to restore court bookings, door access, and other club features.",
+  warning_message: "Your account is in arrears. Please settle outstanding fees soon to avoid automatic suspension of bookings, door access, and other club features.",
 };
+
 
 export interface MemberAccessGate {
   status: SuspensionStatus;
@@ -139,7 +142,7 @@ export function useMemberAccessGate(): MemberAccessGate {
     outstanding,
     blocks,
     rules,
-    message: rules.grace_message,
+    message: suspended ? rules.grace_message : rules.warning_message,
     isBlocked: (b) => suspended && blocks.includes(b),
   };
 }

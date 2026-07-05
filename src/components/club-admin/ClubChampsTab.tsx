@@ -2139,7 +2139,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const shouldBackfillOpenAudience = editingChampId === champId && registrationRequired && effectiveRegistrationMode === "open";
       const audienceMemberIds = shouldBackfillOpenAudience
         ? members.filter((m) => memberMatchesTournamentGender(m.gender, gender)).map((m) => m.id)
-        : Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
+        : await promoteVisitorIds(Array.from(selectedPlayerIds));
 
       if (editingChampId === champId && audienceMemberIds.length > 0) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);

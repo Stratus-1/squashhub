@@ -40,6 +40,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editing, setEditing] = useState<Visitor | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [editMode, setEditMode] = useState<"picker" | "other">("picker");
   const [saving, setSaving] = useState(false);
 
   // Visitor policy state (persisted on clubs row)

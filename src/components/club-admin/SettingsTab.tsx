@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ShieldAlert, Hash, Mail, PenLine } from "lucide-react";
 import { SuspensionRulesPanel } from "./SuspensionRulesPanel";
 import { SuspendedMembersPanel } from "./SuspendedMembersPanel";
 
@@ -166,199 +168,227 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
   };
 
   return (
-    <div className="space-y-6 mt-4">
-      <SuspensionRulesPanel club={club} />
-      <SuspendedMembersPanel clubId={clubId} />
+    <div className="space-y-4 mt-4">
+      <Tabs defaultValue="arrears" className="w-full">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto">
+          <TabsTrigger value="arrears" className="gap-1.5 text-xs md:text-sm">
+            <ShieldAlert className="w-3.5 h-3.5" /> Arrears
+          </TabsTrigger>
+          <TabsTrigger value="numbering" className="gap-1.5 text-xs md:text-sm">
+            <Hash className="w-3.5 h-3.5" /> Numbering
+          </TabsTrigger>
+          <TabsTrigger value="email" className="gap-1.5 text-xs md:text-sm">
+            <Mail className="w-3.5 h-3.5" /> Email
+          </TabsTrigger>
+          <TabsTrigger value="signature" className="gap-1.5 text-xs md:text-sm">
+            <PenLine className="w-3.5 h-3.5" /> Signature
+          </TabsTrigger>
+        </TabsList>
 
+        <TabsContent value="arrears" className="space-y-6 mt-4">
+          <SuspensionRulesPanel club={club} />
+          <SuspendedMembersPanel clubId={clubId} />
+        </TabsContent>
 
-
-      {/* Member Numbering */}
-      <Card className="p-6 space-y-4">
-        <h3 className="font-semibold">Member Numbering</h3>
-        <p className="text-sm text-muted-foreground">Configure how member numbers are generated (e.g. WRT-0001).</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label>Prefix</Label>
-              {(club.member_number_prefix || "").trim() !== "" && (
-                <button
-                  type="button"
-                  onClick={() => setPrefixUnlocked(u => !u)}
-                  className="text-[11px] text-muted-foreground hover:text-foreground underline"
-                >
-                  {prefixUnlocked ? "Lock" : "Unlock to edit"}
-                </button>
-              )}
+        <TabsContent value="numbering" className="space-y-4 mt-4">
+          {/* Member Numbering */}
+          <Card className="p-6 space-y-4">
+            <h3 className="font-semibold">Member Numbering</h3>
+            <p className="text-sm text-muted-foreground">Configure how member numbers are generated (e.g. WRT-0001).</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label>Prefix</Label>
+                  {(club.member_number_prefix || "").trim() !== "" && (
+                    <button
+                      type="button"
+                      onClick={() => setPrefixUnlocked(u => !u)}
+                      className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                    >
+                      {prefixUnlocked ? "Lock" : "Unlock to edit"}
+                    </button>
+                  )}
+                </div>
+                <Input
+                  value={form.member_number_prefix}
+                  onChange={set("member_number_prefix")}
+                  placeholder="e.g. WRT"
+                  readOnly={(club.member_number_prefix || "").trim() !== "" && !prefixUnlocked}
+                  className={(club.member_number_prefix || "").trim() !== "" && !prefixUnlocked ? "bg-muted cursor-not-allowed" : ""}
+                />
+                {(club.member_number_prefix || "").trim() !== "" && !prefixUnlocked && (
+                  <p className="text-[11px] text-muted-foreground">Locked to prevent accidental changes. Unlock to edit.</p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label>Number Length (digits)</Label>
+                <Input type="number" min={1} max={10} value={form.member_number_length} onChange={setNumber("member_number_length")} />
+              </div>
+              <div className="space-y-1">
+                <Label>Start From</Label>
+                <Input type="number" min={0} value={form.member_number_start} onChange={setNumber("member_number_start")} />
+              </div>
             </div>
-            <Input
-              value={form.member_number_prefix}
-              onChange={set("member_number_prefix")}
-              placeholder="e.g. WRT"
-              readOnly={(club.member_number_prefix || "").trim() !== "" && !prefixUnlocked}
-              className={(club.member_number_prefix || "").trim() !== "" && !prefixUnlocked ? "bg-muted cursor-not-allowed" : ""}
-            />
-            {(club.member_number_prefix || "").trim() !== "" && !prefixUnlocked && (
-              <p className="text-[11px] text-muted-foreground">Locked to prevent accidental changes. Unlock to edit.</p>
+            {form.member_number_prefix && (
+              <p className="text-xs text-muted-foreground">
+                Preview: <span className="font-mono font-semibold text-foreground">{form.member_number_prefix}-{String(form.member_number_start).padStart(form.member_number_length, "0")}</span>
+              </p>
             )}
-          </div>
-          <div className="space-y-1">
-            <Label>Number Length (digits)</Label>
-            <Input type="number" min={1} max={10} value={form.member_number_length} onChange={setNumber("member_number_length")} />
-          </div>
-          <div className="space-y-1">
-            <Label>Start From</Label>
-            <Input type="number" min={0} value={form.member_number_start} onChange={setNumber("member_number_start")} />
-          </div>
-        </div>
-        {form.member_number_prefix && (
-          <p className="text-xs text-muted-foreground">
-            Preview: <span className="font-mono font-semibold text-foreground">{form.member_number_prefix}-{String(form.member_number_start).padStart(form.member_number_length, "0")}</span>
-          </p>
-        )}
-        <div className="flex items-start justify-between gap-4 pt-3 border-t">
-          <div className="space-y-0.5">
-            <Label htmlFor="auto-num-existing" className="text-sm font-medium">
-              Allocate to existing members onboarding who don't have a number yet
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              When enabled, pre-existing members (admin-created or imported) without a club number
-              will be auto-allocated one when they complete the onboarding wizard.
-            </p>
-          </div>
-          <Switch
-            id="auto-num-existing"
-            checked={form.auto_number_existing_onboarding}
-            onCheckedChange={(v) => setForm(p => ({ ...p, auto_number_existing_onboarding: v }))}
-          />
-        </div>
-      </Card>
-
-      {/* Email Sender Settings */}
-      <Card className="p-6 space-y-4">
-        <h3 className="font-semibold">Email Notifications</h3>
-        <p className="text-sm text-muted-foreground">
-          Configure your club's outgoing email settings for member communications.
-          If left blank, the platform default will be used.
-        </p>
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-2 text-xs">
-          <p className="font-medium text-amber-700 dark:text-amber-400">How to set this up</p>
-          <div>
-            <p className="font-medium text-foreground">Using Gmail / Google Workspace?</p>
-            <ol className="list-decimal pl-4 text-muted-foreground space-y-0.5 mt-1">
-              <li>Enable 2-Step Verification on your Google account (required).</li>
-              <li>Visit <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-primary underline">myaccount.google.com/apppasswords</a>.</li>
-              <li>Create an App Password for "Mail" — copy the 16-character password.</li>
-              <li>Use <code className="bg-muted px-1 rounded">smtp.gmail.com</code>, port <code className="bg-muted px-1 rounded">587</code>, your full Gmail address as Username, and the App Password as Password.</li>
-            </ol>
-          </div>
-          <div>
-            <p className="font-medium text-foreground">Using another provider (cPanel, Outlook, hosting)?</p>
-            <p className="text-muted-foreground mt-1">
-              Ask your IT/email provider for the <strong>outgoing mail (SMTP) server</strong> details:
-              host (e.g. <code className="bg-muted px-1 rounded">mail.yourdomain.co.za</code>),
-              port (usually <code className="bg-muted px-1 rounded">587</code> TLS or <code className="bg-muted px-1 rounded">465</code> SSL),
-              username (typically your full email address) and password.
-            </p>
-          </div>
-          <p className="text-muted-foreground">
-            Credentials are stored encrypted in our secrets vault and only used to send emails on your club's behalf. Use the <strong>Send Test Email</strong> button below to verify your settings.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label>Sender Name</Label>
-            <Input value={form.sender_name} onChange={set("sender_name")} placeholder="e.g. CSIR Squash Club" />
-          </div>
-          <div className="space-y-1">
-            <Label>Sender Email</Label>
-            <Input type="email" value={form.sender_email} onChange={set("sender_email")} placeholder="e.g. noreply@csir-squash.co.za" />
-          </div>
-          <div className="space-y-1">
-            <Label>SMTP Host</Label>
-            <Input value={form.smtp_host} onChange={set("smtp_host")} placeholder="e.g. smtp.gmail.com" />
-          </div>
-          <div className="space-y-1">
-            <Label>SMTP Port</Label>
-            <Input type="number" value={form.smtp_port} onChange={e => setForm(p => ({ ...p, smtp_port: e.target.value }))} placeholder="587" />
-          </div>
-          <div className="space-y-1">
-            <Label>SMTP Username</Label>
-            <Input value={form.smtp_user} onChange={set("smtp_user")} placeholder="SMTP username" />
-          </div>
-          <div className="space-y-1">
-            <Label>SMTP Password</Label>
-            <Input type="password" value={form.smtp_pass} onChange={set("smtp_pass")} placeholder="SMTP password" />
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
-          <div className="space-y-1 flex-1 w-full sm:w-auto">
-            <Label htmlFor="test-email-to">Send Test To</Label>
-            <Input
-              id="test-email-to"
-              type="email"
-              value={testEmailTo}
-              onChange={(e) => setTestEmailTo(e.target.value)}
-              placeholder="recipient@example.com"
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSendTestEmail}
-            disabled={sendingTest || !form.sender_email || !form.smtp_host || !testEmailTo}
-            className="shrink-0"
-          >
-            <Send className="w-4 h-4 mr-2" />
-            {sendingTest ? "Sending..." : "Send Test Email"}
+            <div className="flex items-start justify-between gap-4 pt-3 border-t">
+              <div className="space-y-0.5">
+                <Label htmlFor="auto-num-existing" className="text-sm font-medium">
+                  Allocate to existing members onboarding who don't have a number yet
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  When enabled, pre-existing members (admin-created or imported) without a club number
+                  will be auto-allocated one when they complete the onboarding wizard.
+                </p>
+              </div>
+              <Switch
+                id="auto-num-existing"
+                checked={form.auto_number_existing_onboarding}
+                onCheckedChange={(v) => setForm(p => ({ ...p, auto_number_existing_onboarding: v }))}
+              />
+            </div>
+          </Card>
+          <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
+            {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
           </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Sends a test email to verify your SMTP settings work.
-        </p>
-      </Card>
+        </TabsContent>
 
-      {/* Email Signature Generator */}
-      <Card className="p-6 space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h3 className="font-semibold">Email Signature</h3>
+        <TabsContent value="email" className="space-y-4 mt-4">
+          {/* Email Sender Settings */}
+          <Card className="p-6 space-y-4">
+            <h3 className="font-semibold">Email Notifications</h3>
             <p className="text-sm text-muted-foreground">
-              Auto-generated from your Club Information (logo, contact person, phone, email, address).
+              Configure your club's outgoing email settings for member communications.
+              If left blank, the platform default will be used.
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={generateSignature}>Generate / Refresh</Button>
-            {form.email_signature_html && <Button variant="ghost" size="sm" onClick={copySignature}>Copy HTML</Button>}
-          </div>
-        </div>
-        <div className="space-y-1">
-          <Label>Disclaimer</Label>
-          <textarea
-            className="w-full min-h-[72px] rounded-md border bg-background px-3 py-2 text-sm"
-            value={form.email_disclaimer}
-            onChange={(e) => setForm(p => ({ ...p, email_disclaimer: e.target.value }))}
-            placeholder="Confidentiality / legal disclaimer shown at the bottom of the signature"
-          />
-        </div>
-        {form.email_signature_html ? (
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Preview</Label>
-            <div className="rounded-md border bg-white p-4 overflow-x-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(form.email_signature_html) }} />
-            <details className="text-xs">
-              <summary className="cursor-pointer text-muted-foreground">View HTML source</summary>
-              <pre className="mt-2 p-2 bg-muted rounded text-[11px] overflow-x-auto whitespace-pre-wrap">{form.email_signature_html}</pre>
-            </details>
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Click <strong>Generate / Refresh</strong> to build a signature from your club info. Make sure your Club Info tab has the logo, contact person, phone, email, and address filled in first.
-          </p>
-        )}
-      </Card>
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-2 text-xs">
+              <p className="font-medium text-amber-700 dark:text-amber-400">How to set this up</p>
+              <div>
+                <p className="font-medium text-foreground">Using Gmail / Google Workspace?</p>
+                <ol className="list-decimal pl-4 text-muted-foreground space-y-0.5 mt-1">
+                  <li>Enable 2-Step Verification on your Google account (required).</li>
+                  <li>Visit <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-primary underline">myaccount.google.com/apppasswords</a>.</li>
+                  <li>Create an App Password for "Mail" — copy the 16-character password.</li>
+                  <li>Use <code className="bg-muted px-1 rounded">smtp.gmail.com</code>, port <code className="bg-muted px-1 rounded">587</code>, your full Gmail address as Username, and the App Password as Password.</li>
+                </ol>
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Using another provider (cPanel, Outlook, hosting)?</p>
+                <p className="text-muted-foreground mt-1">
+                  Ask your IT/email provider for the <strong>outgoing mail (SMTP) server</strong> details:
+                  host (e.g. <code className="bg-muted px-1 rounded">mail.yourdomain.co.za</code>),
+                  port (usually <code className="bg-muted px-1 rounded">587</code> TLS or <code className="bg-muted px-1 rounded">465</code> SSL),
+                  username (typically your full email address) and password.
+                </p>
+              </div>
+              <p className="text-muted-foreground">
+                Credentials are stored encrypted in our secrets vault and only used to send emails on your club's behalf. Use the <strong>Send Test Email</strong> button below to verify your settings.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Sender Name</Label>
+                <Input value={form.sender_name} onChange={set("sender_name")} placeholder="e.g. CSIR Squash Club" />
+              </div>
+              <div className="space-y-1">
+                <Label>Sender Email</Label>
+                <Input type="email" value={form.sender_email} onChange={set("sender_email")} placeholder="e.g. noreply@csir-squash.co.za" />
+              </div>
+              <div className="space-y-1">
+                <Label>SMTP Host</Label>
+                <Input value={form.smtp_host} onChange={set("smtp_host")} placeholder="e.g. smtp.gmail.com" />
+              </div>
+              <div className="space-y-1">
+                <Label>SMTP Port</Label>
+                <Input type="number" value={form.smtp_port} onChange={e => setForm(p => ({ ...p, smtp_port: e.target.value }))} placeholder="587" />
+              </div>
+              <div className="space-y-1">
+                <Label>SMTP Username</Label>
+                <Input value={form.smtp_user} onChange={set("smtp_user")} placeholder="SMTP username" />
+              </div>
+              <div className="space-y-1">
+                <Label>SMTP Password</Label>
+                <Input type="password" value={form.smtp_pass} onChange={set("smtp_pass")} placeholder="SMTP password" />
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
+              <div className="space-y-1 flex-1 w-full sm:w-auto">
+                <Label htmlFor="test-email-to">Send Test To</Label>
+                <Input
+                  id="test-email-to"
+                  type="email"
+                  value={testEmailTo}
+                  onChange={(e) => setTestEmailTo(e.target.value)}
+                  placeholder="recipient@example.com"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSendTestEmail}
+                disabled={sendingTest || !form.sender_email || !form.smtp_host || !testEmailTo}
+                className="shrink-0"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                {sendingTest ? "Sending..." : "Send Test Email"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Sends a test email to verify your SMTP settings work.
+            </p>
+          </Card>
+          <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
+            {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
+          </Button>
+        </TabsContent>
 
-      <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
-        {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
-      </Button>
+        <TabsContent value="signature" className="space-y-4 mt-4">
+          {/* Email Signature Generator */}
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h3 className="font-semibold">Email Signature</h3>
+                <p className="text-sm text-muted-foreground">
+                  Auto-generated from your Club Information (logo, contact person, phone, email, address).
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={generateSignature}>Generate / Refresh</Button>
+                {form.email_signature_html && <Button variant="ghost" size="sm" onClick={copySignature}>Copy HTML</Button>}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Disclaimer</Label>
+              <textarea
+                className="w-full min-h-[72px] rounded-md border bg-background px-3 py-2 text-sm"
+                value={form.email_disclaimer}
+                onChange={(e) => setForm(p => ({ ...p, email_disclaimer: e.target.value }))}
+                placeholder="Confidentiality / legal disclaimer shown at the bottom of the signature"
+              />
+            </div>
+            {form.email_signature_html ? (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Preview</Label>
+                <div className="rounded-md border bg-white p-4 overflow-x-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(form.email_signature_html) }} />
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-muted-foreground">View HTML source</summary>
+                  <pre className="mt-2 p-2 bg-muted rounded text-[11px] overflow-x-auto whitespace-pre-wrap">{form.email_signature_html}</pre>
+                </details>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Click <strong>Generate / Refresh</strong> to build a signature from your club info. Make sure your Club Info tab has the logo, contact person, phone, email, and address filled in first.
+              </p>
+            )}
+          </Card>
+          <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
+            {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
+          </Button>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

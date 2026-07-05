@@ -806,7 +806,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // persist the selection directly to club_champs_registrations.
       if (selfPairInviteSelection) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
-        const ids = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
+        const ids = await promoteVisitorIds(Array.from(selectedPlayerIds));
         const regRows = ids.map((memberId) => ({
           champ_id: champIdToUse,
           club_member_id: memberId,
@@ -834,13 +834,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         return;
       }
       let allocatedMemberIds: string[] = [];
+      // Collect every visitor-* ID that will hit the DB so we can promote them
+      // to real club_members rows in one batch and build a lookup map.
+      const visitorRawIds: string[] = isDoubles
+        ? (doublesPairs as any[]).flatMap((p) => [p.player1Id, p.player2Id]).filter((id: string) => id?.startsWith("visitor-"))
+        : (groups as ClubMember[][]).flatMap((gp) => gp.map((p) => p.id)).filter((id: string) => id?.startsWith("visitor-"));
+      const promotedList = visitorRawIds.length > 0 ? await promoteVisitorIds(visitorRawIds) : [];
+      const visitorMap = new Map<string, string>();
+      visitorRawIds.forEach((raw, i) => visitorMap.set(raw, promotedList[i]));
+      const resolveId = (id: string) => (id?.startsWith("visitor-") ? (visitorMap.get(id) || toDbId(id)) : id);
+
       if (isDoubles) {
         if (doublesPairs.length === 0) return;
         const rows = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
           groupPairs.map((pair, orderIndex) => ({
             champ_id: champIdToUse,
-            club_member_id: toDbId(pair.player1Id),
-            partner_member_id: toDbId(pair.player2Id),
+            club_member_id: resolveId(pair.player1Id),
+            partner_member_id: resolveId(pair.player2Id),
             group_number: gi + 1,
             order_index: orderIndex,
           }))
@@ -853,11 +863,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       } else {
         if (selectedPlayerIds.size === 0) return;
         const rows = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
-          groupPlayers
-          .filter((p) => !p.id.startsWith("visitor-"))
-          .map((p, orderIndex) => ({
+          groupPlayers.map((p, orderIndex) => ({
             champ_id: champIdToUse,
-            club_member_id: toDbId(p.id),
+            club_member_id: resolveId(p.id),
             group_number: gi + 1,
             order_index: orderIndex,
           }))
@@ -994,6 +1002,56 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   // Helper to strip "visitor-" prefix for DB inserts
   const toDbId = (id: string) => id.replace(/^visitor-/, "");
+
+  // Promote any `visitor-<uuid>` IDs to real club_members rows (role='visitor')
+  // so tournament tables (which only accept club_member_id) can reference them.
+  // Idempotent: keyed by club_member_number='visitor:<visitor_id>' so re-selecting
+  // the same visitor reuses the same member row instead of creating duplicates.
+  // Returns the input list with visitor-* IDs mapped to the promoted member IDs.
+  const promoteVisitorIds = async (ids: string[]): Promise<string[]> => {
+    const visitorIds = ids.filter((id) => id.startsWith("visitor-")).map((id) => id.slice("visitor-".length));
+    if (visitorIds.length === 0) return ids;
+    const markers = visitorIds.map((vid) => `visitor:${vid}`);
+    // Fetch already-promoted rows
+    const { data: existing } = await fromExt("club_members")
+      .select("id, club_member_number")
+      .eq("club_id", clubId)
+      .in("club_member_number", markers);
+    const promoted = new Map<string, string>(); // visitor_id -> member_id
+    for (const row of (existing || []) as any[]) {
+      const vid = String(row.club_member_number || "").replace(/^visitor:/, "");
+      if (vid) promoted.set(vid, row.id);
+    }
+    const missing = visitorIds.filter((vid) => !promoted.has(vid));
+    if (missing.length > 0) {
+      const rows = missing.map((vid) => {
+        const v = allVisitors.find((x) => x.id === vid);
+        return {
+          club_id: clubId,
+          role: "visitor" as const,
+          club_member_number: `visitor:${vid}`,
+          name: v ? `${v.first_name} ${v.last_name}`.trim() : "Visitor",
+          gender: v?.category === "Ladies" ? "Ladies" : "Men",
+          home_club_name: v?.home_club_name || null,
+          status: "active" as const,
+        };
+      });
+      const { data: inserted, error: insErr } = await fromExt("club_members")
+        .insert(rows)
+        .select("id, club_member_number");
+      if (insErr) throw insErr;
+      for (const row of (inserted || []) as any[]) {
+        const vid = String(row.club_member_number || "").replace(/^visitor:/, "");
+        if (vid) promoted.set(vid, row.id);
+      }
+    }
+    return ids.map((id) => {
+      if (!id.startsWith("visitor-")) return id;
+      const vid = id.slice("visitor-".length);
+      return promoted.get(vid) || id;
+    });
+  };
+
 
   // Build visitor entries as pseudo-members for the player list
   const visitorAsMembers = useMemo(() => {
@@ -1677,9 +1735,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (awaitingPlayerPairs) {
         if (registrationUsesInviteList) {
           const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
-          const registrations = Array.from(selectedPlayerIds)
-            .filter((id) => !id.startsWith("visitor-"))
-            .map((memberId) => ({
+          const resolvedIds = await promoteVisitorIds(Array.from(selectedPlayerIds));
+          const registrations = resolvedIds.map((memberId) => ({
               champ_id: champId,
               club_member_id: memberId,
               status: fee > 0 && paymentRequired ? "pending_payment" : "paid",
@@ -2082,7 +2139,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const shouldBackfillOpenAudience = editingChampId === champId && registrationRequired && effectiveRegistrationMode === "open";
       const audienceMemberIds = shouldBackfillOpenAudience
         ? members.filter((m) => memberMatchesTournamentGender(m.gender, gender)).map((m) => m.id)
-        : Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
+        : await promoteVisitorIds(Array.from(selectedPlayerIds));
 
       if (editingChampId === champId && audienceMemberIds.length > 0) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);

@@ -437,12 +437,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [inviteExcludedMemberIds, setInviteExcludedMemberIds] = useState<Set<string>>(new Set());
 
   // Handicap (singles only): none, by league ranking, or by club ladder
-  const [handicapMode, setHandicapMode] = useState<"none" | "league_rank" | "club_ladder">("none");
-  // When league_rank is selected, admins can force the handicap to follow
-  // the current group ordering on the Leagues step instead of the auto
-  // cross-league detection. Enables "By ranking" for single-group / same-
-  // league tournaments where the admin wants their manual order to win.
-  const [handicapUseGroupOrder, setHandicapUseGroupOrder] = useState<boolean>(false);
+  // Handicap source:
+  //  - none         → no handicap
+  //  - league_rank  → club admin's league team setup (DB player_rank + division)
+  //  - group_order  → drag order on the tournament Leagues step
+  //  - club_ladder  → club_members.ladder_position
+  const [handicapMode, setHandicapMode] = useState<"none" | "league_rank" | "group_order" | "club_ladder">("none");
   // Divider/multiplier scale the raw gap. final = floor(gap * multiplier / divider).
   const [handicapDivider, setHandicapDivider] = useState<number>(1);
   const [handicapMultiplier, setHandicapMultiplier] = useState<number>(1);

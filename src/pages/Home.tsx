@@ -225,6 +225,9 @@ export default function Home() {
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => navigate("/lights"))}>
                       <Zap className="w-4 h-4 mr-1 text-amber-500" />Lights Integration
                     </Button>
+                    <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => navigate("/lights#access"))}>
+                      <Zap className="w-4 h-4 mr-1 text-emerald-500" />Access Control
+                    </Button>
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("contact"))}>Contact Us</Button>
                     <div className="h-px bg-border my-3" />
                     <Button className="rounded-full w-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold" onClick={() => handleMobileNav(() => navigate("/league"))}>

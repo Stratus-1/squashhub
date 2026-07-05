@@ -142,7 +142,7 @@ export function useMemberAccessGate(): MemberAccessGate {
     outstanding,
     blocks,
     rules,
-    message: rules.grace_message,
+    message: suspended ? rules.grace_message : rules.warning_message,
     isBlocked: (b) => suspended && blocks.includes(b),
   };
 }

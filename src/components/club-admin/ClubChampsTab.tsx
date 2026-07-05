@@ -1735,9 +1735,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (awaitingPlayerPairs) {
         if (registrationUsesInviteList) {
           const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
-          const registrations = Array.from(selectedPlayerIds)
-            .filter((id) => !id.startsWith("visitor-"))
-            .map((memberId) => ({
+          const resolvedIds = await promoteVisitorIds(Array.from(selectedPlayerIds));
+          const registrations = resolvedIds.map((memberId) => ({
               champ_id: champId,
               club_member_id: memberId,
               status: fee > 0 && paymentRequired ? "pending_payment" : "paid",

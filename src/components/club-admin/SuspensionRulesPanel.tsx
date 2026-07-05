@@ -34,7 +34,7 @@ interface Rules {
   notification_days: number[];
   channels: string[];
   suspended_reminder_days: number;
-
+}
 
 const DEFAULTS: Rules = {
   enabled: false,
@@ -43,10 +43,12 @@ const DEFAULTS: Rules = {
   age_days_threshold: 60,
   exempt_with_mandate: true,
   blocks: ["bookings", "door", "league", "challenges", "events", "bar"],
-  grace_message: "Your account is in arrears. Please settle outstanding fees to restore access.",
+  grace_message: "Your account is suspended for arrears. Settle your outstanding balance to restore court bookings, door access, and other club features.",
+  warning_message: "Your account is in arrears. Please settle outstanding fees soon to avoid automatic suspension of bookings, door access, and other club features.",
   notification_days: [7, 3, 1],
   channels: ["email", "push", "in_app"],
   suspended_reminder_days: 7,
+
 };
 
 const CHANNEL_OPTIONS: { key: string; label: string }[] = [

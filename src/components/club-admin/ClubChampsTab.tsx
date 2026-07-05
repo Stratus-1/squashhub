@@ -3715,6 +3715,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <input
                       type="radio"
                       name="handicap-mode"
+                      checked={handicapMode === "group_order"}
+                      onChange={() => setHandicapMode("group_order")}
+                    />
+                    By tournament ranking (Leagues page)
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="handicap-mode"
                       checked={handicapMode === "club_ladder"}
                       onChange={() => setHandicapMode("club_ladder")}
                     />

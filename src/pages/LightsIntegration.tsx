@@ -202,7 +202,26 @@ export default function LightsIntegration() {
               and connects it to the club WiFi. Typically 2–3 hours on site.
             </p>
           </Card>
+
+          <Card className="p-6 bg-white/5 border-white/10 backdrop-blur-md">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <DoorOpen className="w-5 h-5 text-emerald-400" />
+              </div>
+              <h3 className="text-white font-semibold text-lg">Shelly 1 Mini — door / gate access</h3>
+            </div>
+            <p className="text-3xl font-heading text-white">~R450 <span className="text-sm text-white/50 font-sans">once-off, per door</span></p>
+            <p className="text-sm text-white/60 mt-2">
+              Tiny 1-channel smart relay that fits inside the door frame or wall box. Wires to any 12V/24V
+              electric strike, mag-lock or gate motor. Add one per entry point you want app-controlled.
+            </p>
+            <p className="text-xs text-white/40 mt-2 italic">
+              Shelly Plus 1 (~R650) is the beefier alternative when you need dry-contact switching for
+              higher-current locks or industrial gate motors.
+            </p>
+          </Card>
         </div>
+
 
         <Card className="p-6 mt-4 bg-gradient-to-r from-amber-500/10 to-amber-500/5 border-amber-500/30 backdrop-blur-md">
           <div className="flex flex-col md:flex-row md:items-center gap-4">

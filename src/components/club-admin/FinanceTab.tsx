@@ -1054,8 +1054,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     </SelectItem>
                   )}
                   {(txDirection === "income" ? CREDIT_ACCOUNTS : DEBIT_ACCOUNTS)
-                    .filter(a => !["bank", "bank_current", "cash"].includes(a))
-                    .filter(a => txDirection === "income" ? a !== "debtors" : true)
+                    .filter(a => !["bank", "bank_current", "cash", "debtors"].includes(a))
                     .map(a => (
                       <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
                     ))}

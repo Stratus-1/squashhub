@@ -568,48 +568,46 @@ export default function ClubAuth() {
     const phone = visitorPhone.trim();
     const homeClub = visitorHomeClub.trim();
     const memNum = visitorMemberNumber.trim();
+    const visEmail = visitorEmail.trim().toLowerCase();
+    const visPass = visitorPassword;
 
-    if (!firstName || firstName.length < 2) {
-      toast.error("Please enter your first name");
-      return;
-    }
-    if (!lastName || lastName.length < 2) {
-      toast.error("Please enter your last name");
-      return;
-    }
-    if (!homeClub || homeClub.length < 2) {
-      toast.error("Please enter your home club name");
-      return;
-    }
-    if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) {
-      toast.error("Please enter a valid phone number");
-      return;
-    }
-
-    if (!club?.id) {
-      toast.error("Club not found");
-      return;
-    }
+    if (!firstName || firstName.length < 2) { toast.error("Please enter your first name"); return; }
+    if (!lastName || lastName.length < 2) { toast.error("Please enter your last name"); return; }
+    if (!visEmail || !visEmail.includes("@")) { toast.error("Please enter a valid email"); return; }
+    if (visPass.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (!homeClub || homeClub.length < 2) { toast.error("Please enter your home club name"); return; }
+    if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
+    if (!club?.id) { toast.error("Club not found"); return; }
 
     setLoading(true);
     try {
-      const visEmail = visitorEmail.trim();
-      const { error } = await fromExt("club_visitors").insert({
-        club_id: club.id,
-        first_name: firstName,
-        last_name: lastName,
-        phone: phone || null,
-        email: visEmail || null,
-        home_club_name: homeClub,
-        member_number: memNum || null,
-        category: visitorCategory,
+      const { data, error } = await supabase.functions.invoke("register-visitor-user", {
+        body: {
+          club_id: club.id,
+          first_name: firstName,
+          last_name: lastName,
+          email: visEmail,
+          password: visPass,
+          phone: phone || null,
+          home_club_name: homeClub,
+          member_number: memNum || null,
+          category: visitorCategory,
+        },
       });
-      if (error) {
-        toast.error(error.message);
-      } else {
-        setVisitorDone(true);
-        toast.success("Visitor registered successfully!");
+      if (error || (data as any)?.error) {
+        toast.error((data as any)?.error || error?.message || "Failed to register visitor");
+        setLoading(false);
+        return;
       }
+      // Auto sign-in with the same credentials
+      const { error: signInErr } = await signIn(visEmail, visPass);
+      if (signInErr) {
+        toast.error("Registered, but sign-in failed: " + signInErr.message);
+        setLoading(false);
+        return;
+      }
+      toast.success("Welcome! You're signed in.");
+      setVisitorDone(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to register visitor");
     }

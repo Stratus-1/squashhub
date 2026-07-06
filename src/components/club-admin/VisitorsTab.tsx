@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Trash2, Search, Pencil, UserPlus, Settings2, Plus, X, DoorOpen } from "lucide-react";
+import { Loader2, Trash2, Search, Pencil, UserPlus, Settings2, Plus, X, DoorOpen, Ban, CheckCircle2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyClub } from "@/hooks/use-club";

@@ -2280,7 +2280,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
       if (!form.name.trim()) return;
       const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId, scope });
       if (error) toast.error(error.message);
-      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); setScope("region"); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
+      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     }
   };
 

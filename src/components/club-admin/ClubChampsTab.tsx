@@ -1062,18 +1062,30 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   };
 
 
-  // Build visitor entries as pseudo-members for the player list
+  // Build visitor entries as pseudo-members for the player list.
+  // Dedupe against existing club members by normalized full name so a person
+  // who already exists as a member (or was promoted from a previous visitor
+  // selection) does not appear twice in the invite list — which would let the
+  // admin tick both and end up with a duplicate + an "unknown player" in the
+  // schedule when only one side resolves to a real member id.
   const visitorAsMembers = useMemo(() => {
-    return filteredVisitors.map((v) => ({
-      id: `visitor-${v.id}`,
-      name: `${v.first_name} ${v.last_name}`,
-      gender: v.category === "Ladies" ? "Ladies" : "Men",
-      ladder_position: null as number | null,
-      profiles: null,
-      _isVisitor: true,
-      _homeClub: v.home_club_name,
-    }));
-  }, [filteredVisitors]);
+    const norm = (s: string | null | undefined) =>
+      (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const memberNames = new Set(
+      (members || []).map((m: any) => norm(m.name || m.profiles?.name))
+    );
+    return filteredVisitors
+      .filter((v) => !memberNames.has(norm(`${v.first_name} ${v.last_name}`)))
+      .map((v) => ({
+        id: `visitor-${v.id}`,
+        name: `${v.first_name} ${v.last_name}`,
+        gender: v.category === "Ladies" ? "Ladies" : "Men",
+        ladder_position: null as number | null,
+        profiles: null,
+        _isVisitor: true,
+        _homeClub: v.home_club_name,
+      }));
+  }, [filteredVisitors, members]);
 
   // Combined list of members + visitors for admin player selection.
   // Admins can shortlist any club member (gender filter is only used for self-registration

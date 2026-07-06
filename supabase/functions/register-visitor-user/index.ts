@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
   const admin = createClient(supaUrl, serviceKey, { auth: { persistSession: false } });
 
   const fullName = `${firstName} ${lastName}`.trim();
-  const gender = category.toLowerCase() === "ladies" ? "female" : "male";
+  const gender = category.toLowerCase() === "ladies" ? "Ladies" : "Men";
 
   // 1. Create auth user (email pre-confirmed).
   const { data: created, error: createErr } = await admin.auth.admin.createUser({

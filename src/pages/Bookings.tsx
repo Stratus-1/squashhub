@@ -725,6 +725,12 @@ export default function Bookings() {
       toast.error(accessGate.reason || "Account suspended — settle outstanding fees to book courts.");
       return;
     }
+    // Enforce club-level visitor booking permission
+    const isVisitorRole = String((activeMember as any)?.role || "").toLowerCase() === "visitor";
+    if (isVisitorRole && !(myClub as any)?.visitors_can_book) {
+      toast.error("Visitor bookings aren't enabled at this club. Please ask a member or the club admin to book on your behalf.");
+      return;
+    }
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
 

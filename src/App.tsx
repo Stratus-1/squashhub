@@ -241,6 +241,29 @@ function MobileOnlyBottomNav() {
   return <BottomNav />;
 }
 
+/**
+ * On a club subdomain, block Dashboard rendering for users who have no
+ * `club_members` row (member OR visitor) at this club. Prevents the
+ * Dashboard ↔ /auth redirect flicker for users from another club.
+ */
+function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { subdomain, club } = useClubContext();
+  const { data: myClubMember, isLoading } = useMyClubMember();
+
+  // Only gate on club subdomains, once the club context and user are known.
+  if (!user || !subdomain || !club?.id) return <>{children}</>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+  if (!myClubMember) return <NoClubAccess />;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth();
   const { subdomain: clubSubdomain, club: clubFromHost, isLoading: clubLoading } = useClubContext();

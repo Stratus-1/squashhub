@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { SEO } from "@/components/SEO";
-import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard, Save, FileText, Upload, X } from "lucide-react";
+import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard, Save, FileText, Upload, X, Link2, Eye, EyeOff } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 
 type Plan = {

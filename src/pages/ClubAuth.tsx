@@ -1488,7 +1488,7 @@ export default function ClubAuth() {
                     <p className="text-[10px] text-muted-foreground mt-1 text-center">
                       {canGoogle
                         ? "You'll be registered automatically when you return from Google."
-                        : "Fill in your first name, last name and home club above, then continue with Google."}
+                        : "Fill in your first name, last name and home club below, then continue with Google."}
                     </p>
                   </div>
                 );

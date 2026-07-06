@@ -695,6 +695,18 @@ export default function ClubAuth() {
 
     setLoading(true);
     try {
+      // Safeguard: force a local sign-out first so a stale session on a shared
+      // browser (e.g. another member left themselves signed in) can't silently
+      // attach this visitor registration to the wrong account. Combined with
+      // Google's `prompt: "select_account"` the user always picks the intended
+      // Google identity before the visitor row is created.
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("sb-") && k.endsWith("-auth-token"))
+          .forEach((k) => localStorage.removeItem(k));
+      } catch { /* ignore */ }
+
       const { getClubSubdomain } = await import("@/lib/subdomain");
       const { getTenantAwareAuthRedirect } = await import("@/lib/site");
       const sub = getClubSubdomain();

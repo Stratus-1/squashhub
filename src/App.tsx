@@ -319,7 +319,7 @@ function AppRoutes() {
           isClubSubdomain && !user
             ? <ClubLanding hostClub={clubFromHost} />
             : user
-              ? <Dashboard />
+              ? <SubdomainMembershipGate><Dashboard /></SubdomainMembershipGate>
               : <Home />
         } />
         <Route path="/welcome" element={<Home />} />

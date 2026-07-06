@@ -569,9 +569,25 @@ export default function SuperAdminSubscriptions() {
                         {sub.trial_ends_at ? new Date(sub.trial_ends_at).toLocaleDateString() : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditSub(sub)}>
-                          <Pencil className="h-3 w-3" />
-                        </Button>
+                        <div className="flex justify-end gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditSub(sub)} title="Edit">
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive hover:text-destructive"
+                            title="Remove from subscription list"
+                            disabled={removeSub.isPending}
+                            onClick={() => {
+                              if (confirm(`Remove ${sub.clubs?.name || "this club"} from the subscription list? You can re-add them later.`)) {
+                                removeSub.mutate(sub.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

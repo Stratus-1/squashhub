@@ -78,6 +78,7 @@ export default function ClubAuth() {
   const [visitorHomeClubMode, setVisitorHomeClubMode] = useState<"picker" | "other">("picker");
   const [visitorMemberNumber, setVisitorMemberNumber] = useState("");
   const [visitorEmail, setVisitorEmail] = useState("");
+  const [visitorPassword, setVisitorPassword] = useState("");
   const [visitorCategory, setVisitorCategory] = useState("Men");
   const [visitorDone, setVisitorDone] = useState(false);
 
@@ -567,48 +568,46 @@ export default function ClubAuth() {
     const phone = visitorPhone.trim();
     const homeClub = visitorHomeClub.trim();
     const memNum = visitorMemberNumber.trim();
+    const visEmail = visitorEmail.trim().toLowerCase();
+    const visPass = visitorPassword;
 
-    if (!firstName || firstName.length < 2) {
-      toast.error("Please enter your first name");
-      return;
-    }
-    if (!lastName || lastName.length < 2) {
-      toast.error("Please enter your last name");
-      return;
-    }
-    if (!homeClub || homeClub.length < 2) {
-      toast.error("Please enter your home club name");
-      return;
-    }
-    if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) {
-      toast.error("Please enter a valid phone number");
-      return;
-    }
-
-    if (!club?.id) {
-      toast.error("Club not found");
-      return;
-    }
+    if (!firstName || firstName.length < 2) { toast.error("Please enter your first name"); return; }
+    if (!lastName || lastName.length < 2) { toast.error("Please enter your last name"); return; }
+    if (!visEmail || !visEmail.includes("@")) { toast.error("Please enter a valid email"); return; }
+    if (visPass.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (!homeClub || homeClub.length < 2) { toast.error("Please enter your home club name"); return; }
+    if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
+    if (!club?.id) { toast.error("Club not found"); return; }
 
     setLoading(true);
     try {
-      const visEmail = visitorEmail.trim();
-      const { error } = await fromExt("club_visitors").insert({
-        club_id: club.id,
-        first_name: firstName,
-        last_name: lastName,
-        phone: phone || null,
-        email: visEmail || null,
-        home_club_name: homeClub,
-        member_number: memNum || null,
-        category: visitorCategory,
+      const { data, error } = await supabase.functions.invoke("register-visitor-user", {
+        body: {
+          club_id: club.id,
+          first_name: firstName,
+          last_name: lastName,
+          email: visEmail,
+          password: visPass,
+          phone: phone || null,
+          home_club_name: homeClub,
+          member_number: memNum || null,
+          category: visitorCategory,
+        },
       });
-      if (error) {
-        toast.error(error.message);
-      } else {
-        setVisitorDone(true);
-        toast.success("Visitor registered successfully!");
+      if (error || (data as any)?.error) {
+        toast.error((data as any)?.error || error?.message || "Failed to register visitor");
+        setLoading(false);
+        return;
       }
+      // Auto sign-in with the same credentials
+      const { error: signInErr } = await signIn(visEmail, visPass);
+      if (signInErr) {
+        toast.error("Registered, but sign-in failed: " + signInErr.message);
+        setLoading(false);
+        return;
+      }
+      toast.success("Welcome! You're signed in.");
+      setVisitorDone(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to register visitor");
     }
@@ -728,12 +727,12 @@ export default function ClubAuth() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-lg font-bold font-heading">Welcome, Visitor! 🏸</h2>
+            <h2 className="text-lg font-bold font-heading">Welcome, {visitorFirstName || "Visitor"}! 🏸</h2>
             <p className="text-sm text-muted-foreground">
-              You've been registered as a visitor at <span className="font-medium text-foreground">{clubName}</span>. The club admin can now select you for tournaments and league matches.
+              You're signed in as a visitor at <span className="font-medium text-foreground">{clubName}</span>. You can now be selected for tournaments and league matches.
             </p>
-            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorEmail(""); setVisitorHomeClub(""); setVisitorHomeClubMode("picker"); setVisitorMemberNumber(""); setVisitorCategory("Men"); }}>
-              Register Another Visitor
+            <Button className="w-full" onClick={() => { window.location.href = "/"; }}>
+              Continue to {clubName}
             </Button>
           </Card>
           <PoweredBySquashHub />
@@ -1362,15 +1361,42 @@ export default function ClubAuth() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="visitor-email">Email</Label>
+                  <Label htmlFor="visitor-email">Email <span className="text-destructive">*</span></Label>
                   <Input
                     id="visitor-email"
                     type="email"
                     placeholder="john@example.com"
                     value={visitorEmail}
                     onChange={(e) => setVisitorEmail(e.target.value)}
+                    required
                     maxLength={255}
                   />
+                </div>
+                <div>
+                  <Label htmlFor="visitor-password">Password <span className="text-destructive">*</span></Label>
+                  <div className="relative">
+                    <Input
+                      id="visitor-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="At least 6 characters"
+                      value={visitorPassword}
+                      onChange={(e) => setVisitorPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      maxLength={72}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    You'll use this to sign in and manage your tournament entries.
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="visitor-category">Category <span className="text-destructive">*</span></Label>
@@ -1449,7 +1475,7 @@ export default function ClubAuth() {
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Registering..." : "Register as Visitor"}
+                  {loading ? "Registering..." : "Register & Sign In"}
                 </Button>
               </form>
             </Card>

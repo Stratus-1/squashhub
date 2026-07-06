@@ -96,7 +96,7 @@ export default function ClubAuth() {
   const pendingVisitorKey = `sh.pending_visitor_registration.${club?.id || "unknown"}`;
 
   // If user just returned from Google OAuth and had a pending visitor payload
-  // for THIS club, complete their visitor registration now.
+  // for THIS club, prefill/complete their visitor registration now.
   useEffect(() => {
     if (!user || !club?.id) return;
     const raw = localStorage.getItem(pendingVisitorKey);
@@ -104,6 +104,23 @@ export default function ClubAuth() {
     let payload: any = null;
     try { payload = JSON.parse(raw); } catch { localStorage.removeItem(pendingVisitorKey); return; }
     if (!payload || payload.club_id !== club.id) return;
+
+    // Prefill visitor form from Google identity + any details captured pre-OAuth.
+    const meta: any = (user as any).user_metadata || {};
+    const fullName = String(meta.full_name || meta.name || "").trim();
+    const [gFirst, ...gRest] = fullName ? fullName.split(/\s+/) : [];
+    const gLast = gRest.join(" ");
+    setVisitorFirstName((prev) => prev || payload.first_name || gFirst || "");
+    setVisitorLastName((prev) => prev || payload.last_name || gLast || "");
+    setVisitorEmail((prev) => prev || user.email || "");
+    if (payload.phone) setVisitorPhone((prev) => prev || payload.phone);
+    if (payload.home_club_name) { setVisitorHomeClub(payload.home_club_name); setVisitorHomeClubMode("picker"); }
+    if (payload.member_number) setVisitorMemberNumber((prev) => prev || payload.member_number);
+    if (payload.category) setVisitorCategory(payload.category);
+    setActiveTab("visitor");
+
+    const hasAll = payload.first_name && payload.last_name && payload.home_club_name;
+    if (!hasAll) return; // user must complete the form manually
     (async () => {
       setLoading(true);
       try {
@@ -604,13 +621,14 @@ export default function ClubAuth() {
     const phone = visitorPhone.trim();
     const homeClub = visitorHomeClub.trim();
     const memNum = visitorMemberNumber.trim();
-    const visEmail = visitorEmail.trim().toLowerCase();
+    const visEmail = (user?.email || visitorEmail).trim().toLowerCase();
     const visPass = visitorPassword;
+    const googleMode = !!user; // already authed via Google
 
     if (!firstName || firstName.length < 2) { toast.error("Please enter your first name"); return; }
     if (!lastName || lastName.length < 2) { toast.error("Please enter your last name"); return; }
     if (!visEmail || !visEmail.includes("@")) { toast.error("Please enter a valid email"); return; }
-    if (visPass.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (!googleMode && visPass.length < 6) { toast.error("Password must be at least 6 characters"); return; }
     if (!homeClub || homeClub.length < 2) { toast.error("Please enter your home club name"); return; }
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
     if (!club?.id) { toast.error("Club not found"); return; }
@@ -623,7 +641,7 @@ export default function ClubAuth() {
           first_name: firstName,
           last_name: lastName,
           email: visEmail,
-          password: visPass,
+          password: googleMode ? "" : visPass,
           phone: phone || null,
           home_club_name: homeClub,
           member_number: memNum || null,
@@ -635,15 +653,20 @@ export default function ClubAuth() {
         setLoading(false);
         return;
       }
-      // Auto sign-in with the same credentials
-      const { error: signInErr } = await signIn(visEmail, visPass);
-      if (signInErr) {
-        toast.error("Registered, but sign-in failed: " + signInErr.message);
-        setLoading(false);
-        return;
+      localStorage.removeItem(pendingVisitorKey);
+      if (googleMode) {
+        toast.success("Welcome! You're signed in as a visitor.");
+        setVisitorDone(true);
+      } else {
+        const { error: signInErr } = await signIn(visEmail, visPass);
+        if (signInErr) {
+          toast.error("Registered, but sign-in failed: " + signInErr.message);
+          setLoading(false);
+          return;
+        }
+        toast.success("Welcome! You're signed in.");
+        setVisitorDone(true);
       }
-      toast.success("Welcome! You're signed in.");
-      setVisitorDone(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to register visitor");
     }
@@ -651,26 +674,21 @@ export default function ClubAuth() {
   };
 
   const handleVisitorGoogle = async () => {
-    const firstName = visitorFirstName.trim();
-    const lastName = visitorLastName.trim();
+    if (!club?.id) { toast.error("Club not found"); return; }
+    // No field validation — Google can be clicked first. Any details already
+    // filled are preserved across the OAuth round-trip and re-hydrated on return.
     const phone = visitorPhone.trim();
-    const homeClub = visitorHomeClub.trim();
-    const memNum = visitorMemberNumber.trim();
-
-    if (!firstName || firstName.length < 2) { toast.error("Please enter your first name"); return; }
-    if (!lastName || lastName.length < 2) { toast.error("Please enter your last name"); return; }
-    if (!homeClub || homeClub.length < 2) { toast.error("Please select your home club"); return; }
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
     if (!club?.id) { toast.error("Club not found"); return; }
 
-    // Persist the visitor details across the Google OAuth round-trip.
+    // Persist any details already filled across the Google OAuth round-trip.
     const payload = {
       club_id: club.id,
-      first_name: firstName,
-      last_name: lastName,
+      first_name: visitorFirstName.trim() || null,
+      last_name: visitorLastName.trim() || null,
       phone: phone || null,
-      home_club_name: homeClub,
-      member_number: memNum || null,
+      home_club_name: visitorHomeClub.trim() || null,
+      member_number: visitorMemberNumber.trim() || null,
       category: visitorCategory,
     };
     localStorage.setItem(pendingVisitorKey, JSON.stringify(payload));
@@ -1422,31 +1440,38 @@ export default function ClubAuth() {
           <TabsContent value="visitor">
             <Card className="p-6">
               <p className="text-xs text-muted-foreground mb-4">
-                Visiting {clubName} for a tournament or league? Register your details below — no account needed.
+                Visiting {clubName} for a tournament or league? Sign up in seconds with Google, or use email & password below.
               </p>
 
-              {/* Google sign-up shortcut — fills name/email from Google, skips password. */}
-              <div className="mb-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={loading}
-                  onClick={handleVisitorGoogle}
-                  className="w-full gap-2 bg-white text-black hover:bg-white/90 border-input"
-                >
-                  <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
-                    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
-                    <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
-                    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/>
-                  </svg>
-                  Continue with Google
-                </Button>
-                <p className="text-[10px] text-muted-foreground mt-1 text-center">
-                  Fill in your details below first — we'll link them to your Google account.
-                </p>
-              </div>
-              <GoogleAuthDivider text="or use email & password" />
+              {/* Google sign-up shortcut — fastest path, no password required. */}
+              {!user && (
+                <div className="mb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={loading}
+                    onClick={handleVisitorGoogle}
+                    className="w-full gap-2 bg-white text-black hover:bg-white/90 border-input"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+                      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+                      <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
+                      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/>
+                    </svg>
+                    Sign up with Google (fastest)
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                    You'll finish your visitor details right after.
+                  </p>
+                </div>
+              )}
+              {user && (
+                <div className="mb-4 rounded-md border border-primary/40 bg-primary/5 p-3 text-xs">
+                  ✓ Signed in with Google as <span className="font-medium">{user.email}</span>. Finish your visitor details below and click <span className="font-medium">Register</span>.
+                </div>
+              )}
+              {!user && <GoogleAuthDivider text="or use email & password" />}
 
               <form onSubmit={handleVisitorRegister} className="space-y-3 mt-3">
                 <div>
@@ -1479,38 +1504,41 @@ export default function ClubAuth() {
                     id="visitor-email"
                     type="email"
                     placeholder="john@example.com"
-                    value={visitorEmail}
+                    value={user?.email || visitorEmail}
                     onChange={(e) => setVisitorEmail(e.target.value)}
                     required
+                    disabled={!!user}
                     maxLength={255}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="visitor-password">Password <span className="text-destructive">*</span></Label>
-                  <div className="relative">
-                    <Input
-                      id="visitor-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="At least 6 characters"
-                      value={visitorPassword}
-                      onChange={(e) => setVisitorPassword(e.target.value)}
-                      required
-                      minLength={6}
-                      maxLength={72}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                {!user && (
+                  <div>
+                    <Label htmlFor="visitor-password">Password <span className="text-destructive">*</span></Label>
+                    <div className="relative">
+                      <Input
+                        id="visitor-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="At least 6 characters"
+                        value={visitorPassword}
+                        onChange={(e) => setVisitorPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        maxLength={72}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      You'll use this to sign in and manage your tournament entries.
+                    </p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    You'll use this to sign in and manage your tournament entries.
-                  </p>
-                </div>
+                )}
                 <div>
                   <Label htmlFor="visitor-category">Category <span className="text-destructive">*</span></Label>
                   <select

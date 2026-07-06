@@ -650,6 +650,59 @@ export default function ClubAuth() {
     setLoading(false);
   };
 
+  const handleVisitorGoogle = async () => {
+    const firstName = visitorFirstName.trim();
+    const lastName = visitorLastName.trim();
+    const phone = visitorPhone.trim();
+    const homeClub = visitorHomeClub.trim();
+    const memNum = visitorMemberNumber.trim();
+
+    if (!firstName || firstName.length < 2) { toast.error("Please enter your first name"); return; }
+    if (!lastName || lastName.length < 2) { toast.error("Please enter your last name"); return; }
+    if (!homeClub || homeClub.length < 2) { toast.error("Please select your home club"); return; }
+    if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
+    if (!club?.id) { toast.error("Club not found"); return; }
+
+    // Persist the visitor details across the Google OAuth round-trip.
+    const payload = {
+      club_id: club.id,
+      first_name: firstName,
+      last_name: lastName,
+      phone: phone || null,
+      home_club_name: homeClub,
+      member_number: memNum || null,
+      category: visitorCategory,
+    };
+    localStorage.setItem(pendingVisitorKey, JSON.stringify(payload));
+
+    setLoading(true);
+    try {
+      const { getClubSubdomain } = await import("@/lib/subdomain");
+      const { getTenantAwareAuthRedirect } = await import("@/lib/site");
+      const sub = getClubSubdomain();
+      const callback = new URL(getTenantAwareAuthRedirect("/auth/callback"));
+      if (sub && !callback.searchParams.has("tenant")) callback.searchParams.set("tenant", sub);
+      if (sub) callback.searchParams.set("club", sub);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callback.toString(),
+          queryParams: { prompt: "select_account" },
+        },
+      });
+      if (error) {
+        localStorage.removeItem(pendingVisitorKey);
+        toast.error(error.message || "Google sign-in failed");
+        setLoading(false);
+      }
+      // Browser is redirecting to Google.
+    } catch (err: any) {
+      localStorage.removeItem(pendingVisitorKey);
+      toast.error(err?.message || "Google sign-in failed");
+      setLoading(false);
+    }
+  };
+
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);

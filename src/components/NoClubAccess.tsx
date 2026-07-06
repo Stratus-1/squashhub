@@ -36,7 +36,14 @@ export function NoClubAccess() {
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
           <Button
             className="flex-1"
-            onClick={() => navigate("/auth?intent=visitor", { replace: true })}
+            onClick={async () => {
+              // Must be signed out before /auth will render the visitor
+              // registration form — otherwise AuthGate sees the active
+              // session and just redirects back to "/", causing NoClubAccess
+              // to reappear (looks like "no response").
+              await signOut();
+              window.location.assign("/auth?intent=visitor");
+            }}
           >
             Register as visitor
           </Button>

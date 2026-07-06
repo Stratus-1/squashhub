@@ -37,3 +37,6 @@ verify_jwt = false
 
 [functions.generate-bar-item-image]
 verify_jwt = false
+
+[functions.register-visitor-user]
+verify_jwt = false

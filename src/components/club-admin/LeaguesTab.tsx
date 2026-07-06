@@ -2210,7 +2210,9 @@ const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
 function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [form, setForm] = useState({ name: "", abbreviation: "" });
   const [mode, setMode] = useState<"select" | "create">("select");
-  const [scope, setScope] = useState<"internal" | "region">("region");
+  // Clubs may only create Internal leagues themselves. Regional/external leagues
+  // must be joined via "Select Existing" (platform-managed by super admin).
+  const scope: "internal" = "internal";
   const [selectedPlatformId, setSelectedPlatformId] = useState("");
   const qc = useQueryClient();
 

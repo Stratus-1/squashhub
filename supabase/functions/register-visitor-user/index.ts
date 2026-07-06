@@ -98,20 +98,44 @@ Deno.serve(async (req) => {
       const msg = createErr?.message || "Failed to create user";
       const isDuplicate =
         msg.toLowerCase().includes("already") ||
+        msg.toLowerCase().includes("registered") ||
         (createErr as any)?.code === "email_exists";
 
       if (!isDuplicate) return json({ error: msg }, 400);
 
+      // Account exists — could be password OR OAuth (e.g. Google). Try password
+      // sign-in first; if that fails, fall back to admin lookup by email so we
+      // can still create the visitor membership for their existing account.
       const anonClient = createClient(supaUrl, anonKey, { auth: { persistSession: false } });
-      const { data: signIn, error: signInErr } = await anonClient.auth.signInWithPassword({ email, password });
-      if (signInErr || !signIn?.user) {
-        return json({
-          error:
-            "An account with this email already exists. Sign in with your existing password, or reset it.",
-        }, 409);
+      const { data: signIn } = await anonClient.auth.signInWithPassword({ email, password });
+      if (signIn?.user) {
+        userId = signIn.user.id;
+        reusedExistingAccount = true;
+      } else {
+        // Look up the existing user via admin API (works for OAuth accounts too).
+        let foundId: string | null = null;
+        try {
+          // @ts-ignore — getUserByEmail exists in newer supabase-js admin API
+          const byEmail: any = await (admin.auth.admin as any).getUserByEmail?.(email);
+          if (byEmail?.data?.user?.id) foundId = byEmail.data.user.id;
+        } catch (_) { /* ignore */ }
+        if (!foundId) {
+          // Fallback: page through listUsers to find by email.
+          try {
+            const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+            const match = list?.users?.find((u: any) => (u.email || "").toLowerCase() === email);
+            if (match?.id) foundId = match.id;
+          } catch (_) { /* ignore */ }
+        }
+        if (!foundId) {
+          return json({
+            error:
+              "An account with this email already exists. Please sign in first (e.g. with Google), then register as a visitor.",
+          }, 409);
+        }
+        userId = foundId;
+        reusedExistingAccount = true;
       }
-      userId = signIn.user.id;
-      reusedExistingAccount = true;
     } else {
       userId = created.user.id;
     }

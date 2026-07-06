@@ -132,7 +132,21 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       if (memberError) throw memberError;
 
       const registeredVisitors = (data || []).map((v: Visitor) => ({ ...v, source: "visitor_registration" as const }));
-      const visitorMembers = (memberVisitors || []).map((m: any) => {
+      // Shadow member rows (created by the tournament wizard to satisfy FKs)
+      // store their origin as `club_member_number = 'visitor:<original_uuid>'`.
+      // Skip any shadow row whose origin uuid is already in club_visitors so
+      // the same person doesn't appear twice.
+      const registeredIds = new Set(registeredVisitors.map((v: any) => v.id));
+      const visitorMembers = (memberVisitors || [])
+        .filter((m: any) => {
+          const num = String(m.club_member_number || "");
+          if (num.startsWith("visitor:")) {
+            const originId = num.slice("visitor:".length);
+            if (registeredIds.has(originId)) return false;
+          }
+          return true;
+        })
+        .map((m: any) => {
         const parts = String(m.name || "Visitor").trim().split(/\s+/);
         return {
           id: m.id,

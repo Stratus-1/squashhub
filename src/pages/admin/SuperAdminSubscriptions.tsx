@@ -697,6 +697,94 @@ export default function SuperAdminSubscriptions() {
             </Card>
           </div>
 
+          {/* ── Stitch Express (platform payment gateway for subscriptions) ── */}
+          <Card className="p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5" /> Stitch Express — Subscription Payments
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Head-office credentials used to attach a Stitch payment link (card + PayByBank) to every subscription invoice sent to clubs.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => saveStitchSettings.mutate(stitchForm)}
+                disabled={!stitchDirty || saveStitchSettings.isPending}
+              >
+                <Save className="w-3.5 h-3.5 mr-1" />
+                {saveStitchSettings.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2 flex items-center justify-between rounded-md border border-border p-2.5">
+                <div>
+                  <Label className="text-xs">Enable Stitch on subscription invoices</Label>
+                  <p className="text-[10px] text-muted-foreground">When on, every subscription invoice includes a "Pay Now" link.</p>
+                </div>
+                <Switch checked={stitchForm.enabled} onCheckedChange={v => updateStitchField("enabled", v)} />
+              </div>
+
+              <div className="sm:col-span-2 flex items-center justify-between rounded-md border border-border p-2.5">
+                <div>
+                  <Label className="text-xs">Test mode (sandbox credentials)</Label>
+                  <p className="text-[10px] text-muted-foreground">Enable while using a Stitch Express test client (Client ID starts with <code>test-</code>). Disable before going live.</p>
+                </div>
+                <Switch checked={stitchForm.test_mode} onCheckedChange={v => updateStitchField("test_mode", v)} />
+              </div>
+
+              <div className="sm:col-span-2">
+                <Label className="text-xs">Client ID</Label>
+                <Input
+                  className="h-8 text-xs font-mono"
+                  value={stitchForm.client_id}
+                  onChange={e => updateStitchField("client_id", e.target.value)}
+                  placeholder="test-958fd377-..."
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Stitch Express Dashboard → Settings → API credentials → copy the Client ID.
+                </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <Label className="text-xs">Client Secret</Label>
+                <div className="relative">
+                  <Input
+                    className="h-8 text-xs font-mono pr-9"
+                    type={showStitchSecret ? "text" : "password"}
+                    value={stitchForm.client_secret}
+                    onChange={e => updateStitchField("client_secret", e.target.value)}
+                    placeholder="Your Stitch Express secret"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowStitchSecret(s => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showStitchSecret ? "Hide secret" : "Show secret"}
+                  >
+                    {showStitchSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Same screen → reveal &amp; copy the Client Secret. <strong>Viewing the secret in Stitch regenerates it</strong> — paste it here immediately and Save. The previous secret stops working the moment a new one is revealed.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-sky-500/30 bg-sky-500/5 p-2.5 space-y-1">
+              <p className="text-[11px] font-medium text-sky-700 dark:text-sky-400">Stitch Express setup checklist</p>
+              <ol className="list-decimal pl-4 text-[11px] text-muted-foreground space-y-0.5">
+                <li>Sign in at <a href="https://express.stitch.money" target="_blank" rel="noopener noreferrer" className="text-primary underline">express.stitch.money</a> using the platform (Stratus) Stitch Express account.</li>
+                <li>Copy the Client ID and reveal the Client Secret; paste both here and Save.</li>
+                <li>Register the redirect URL <code className="text-[10px]">https://squashhub.co.za/admin/subscriptions</code> under <strong>Settings → Redirect URLs</strong>.</li>
+                <li>Add the webhook URL <code className="text-[10px]">https://squashhub.co.za/functions/v1/stitch-webhook</code> under <strong>Settings → Webhooks</strong> so paid subscription invoices auto-settle.</li>
+              </ol>
+            </div>
+          </Card>
+
           <Card className="p-3 border-dashed bg-muted/30">
             <p className="text-[11px] text-muted-foreground">
               <strong className="text-foreground">Automated billing:</strong> Once configured, an invoice will be auto-generated at the end of each billing period for every club with an active subscription — using their assigned plan, the member count on the run date, and these head-office details as the sender.
@@ -704,6 +792,7 @@ export default function SuperAdminSubscriptions() {
           </Card>
         </TabsContent>
       </Tabs>
+
 
       {/* ─── Plan Dialog ─── */}
       <Dialog open={!!planDialog} onOpenChange={(o) => !o && setPlanDialog(null)}>

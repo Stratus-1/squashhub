@@ -1333,7 +1333,9 @@ export default function ClubChampsView() {
     const leagueWinners = groupNumbers
       .map((gn: number) => {
         const s = getGroupStandings(gn);
-        const w = s.find((r: any) => (r.played || 0) > 0 || (r.byes || 0) > 0) || null;
+        // Prefer someone who has played, otherwise top of standings so the
+        // card is visible even before the first match is completed.
+        const w = s.find((r: any) => (r.played || 0) > 0) || s[0] || null;
         return { gn, winner: w };
       })
       .filter((w) => w.winner);
@@ -1341,9 +1343,9 @@ export default function ClubChampsView() {
       .flatMap((gn: number) =>
         getGroupStandings(gn).map((s: any) => ({ ...s, _groupNumber: gn }))
       )
-      .filter((s: any) => (s.played || 0) > 0 || (s.byes || 0) > 0)
       .sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
-    const overallWinner = overallRows[0] || null;
+    const overallWinner =
+      overallRows.find((s: any) => (s.played || 0) > 0) || overallRows[0] || null;
     const winnersCard = leagueWinners.length > 0 ? (
       <Card key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5">
         <CardHeader className="pb-2">

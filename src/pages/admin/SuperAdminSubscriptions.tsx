@@ -708,15 +708,44 @@ export default function SuperAdminSubscriptions() {
                   Head-office credentials used to attach a Stitch payment link (card + PayByBank) to every subscription invoice sent to clubs.
                 </p>
               </div>
-              <Button
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => saveStitchSettings.mutate(stitchForm)}
-                disabled={!stitchDirty || saveStitchSettings.isPending}
-              >
-                <Save className="w-3.5 h-3.5 mr-1" />
-                {saveStitchSettings.isPending ? "Saving..." : "Save"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  onClick={async () => {
+                    if (stitchDirty) { toast.error("Save credentials first"); return; }
+                    if (!stitchForm.enabled) { toast.error("Enable Stitch first"); return; }
+                    const t = toast.loading("Creating R10 test payment link…");
+                    try {
+                      const { data, error } = await supabase.functions.invoke("platform-stitch-test-payment", {
+                        body: { amount: 10, return_url: `${window.location.origin}/admin/subscriptions` },
+                      });
+                      if (error) throw new Error(error.message);
+                      if ((data as any)?.error) throw new Error((data as any).error);
+                      const url = (data as any)?.redirect_url;
+                      if (!url) throw new Error("No redirect URL returned");
+                      toast.success(`Test link ready (${(data as any).mode})`, { id: t });
+                      window.open(url, "_blank", "noopener");
+                    } catch (e: any) {
+                      toast.error(e.message || "Test payment failed", { id: t });
+                    }
+                  }}
+                  disabled={stitchDirty || !stitchForm.enabled}
+                >
+                  <CreditCard className="w-3.5 h-3.5 mr-1" />
+                  Test R10 payment
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => saveStitchSettings.mutate(stitchForm)}
+                  disabled={!stitchDirty || saveStitchSettings.isPending}
+                >
+                  <Save className="w-3.5 h-3.5 mr-1" />
+                  {saveStitchSettings.isPending ? "Saving..." : "Save"}
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

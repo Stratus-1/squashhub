@@ -2744,6 +2744,7 @@ export type Database = {
           contact_person_name: string | null
           created_at: string
           created_by: string | null
+          dynamic_court_reflow_enabled: boolean
           email: string | null
           email_disclaimer: string | null
           email_signature_html: string | null
@@ -2820,6 +2821,7 @@ export type Database = {
           contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
+          dynamic_court_reflow_enabled?: boolean
           email?: string | null
           email_disclaimer?: string | null
           email_signature_html?: string | null
@@ -2896,6 +2898,7 @@ export type Database = {
           contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
+          dynamic_court_reflow_enabled?: boolean
           email?: string | null
           email_disclaimer?: string | null
           email_signature_html?: string | null
@@ -3005,6 +3008,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      court_reflow_log: {
+        Row: {
+          club_id: string | null
+          created_at: string
+          fixture_date: string | null
+          from_court_id: number | null
+          from_start_time: string | null
+          id: string
+          moved_id: string
+          moved_kind: string
+          reason: string | null
+          source_id: string
+          source_kind: string
+          to_court_id: number | null
+          to_start_time: string | null
+        }
+        Insert: {
+          club_id?: string | null
+          created_at?: string
+          fixture_date?: string | null
+          from_court_id?: number | null
+          from_start_time?: string | null
+          id?: string
+          moved_id: string
+          moved_kind: string
+          reason?: string | null
+          source_id: string
+          source_kind: string
+          to_court_id?: number | null
+          to_start_time?: string | null
+        }
+        Update: {
+          club_id?: string | null
+          created_at?: string
+          fixture_date?: string | null
+          from_court_id?: number | null
+          from_start_time?: string | null
+          id?: string
+          moved_id?: string
+          moved_kind?: string
+          reason?: string | null
+          source_id?: string
+          source_kind?: string
+          to_court_id?: number | null
+          to_start_time?: string | null
+        }
+        Relationships: []
       }
       courts: {
         Row: {

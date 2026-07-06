@@ -147,6 +147,7 @@ export default function Ladder() {
         .from("club_members")
         .select("id, name, ranking_points, ladder_position, avatar_url")
         .eq("club_id", clubId!)
+        .neq("role", "visitor")
         .order("ranking_points", { ascending: false })
         .limit(300);
       return data || [];

@@ -25,6 +25,7 @@ interface Visitor {
   member_number: string | null;
   category: string;
   created_at: string;
+  suspension_status?: string | null;
 }
 
 interface HomeClubOption {

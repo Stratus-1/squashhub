@@ -434,6 +434,19 @@ export default function Dashboard() {
       myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor";
     if (isVisitorMember) return;
 
+    // In-progress visitor registration: user clicked "Sign up with Google" on
+    // the Visitor tab, returned from OAuth, but hasn't completed the visitor
+    // form yet (no first name/last name/home club → server didn't auto-create
+    // the visitor row). Send them back to /auth to finish visitor details
+    // instead of forcing them through member onboarding at this club.
+    if (hasClub && !myClubMember && typeof window !== "undefined") {
+      const pendingKey = `sh.pending_visitor_registration.${effectiveClub?.id || ""}`;
+      if (localStorage.getItem(pendingKey)) {
+        navigate("/auth", { replace: true });
+        return;
+      }
+    }
+
     const legacyNeedsOnboarding =
       !profile.name || profile.name === "" || profile.name === "New Player";
 
@@ -444,10 +457,34 @@ export default function Dashboard() {
       myClubMember &&
       !myClubMember.club_member_number;
 
-    // If no club member record at all but club exists, they may need to register
+    // If no club member record at all but club exists, they may need to register.
+    // BUT: if this user already has a `club_members` row at some OTHER club
+    // (e.g. they're an admin at Riverside visiting CSI), they're not a "new
+    // member" here — they arrived via a foreign login (usually Google) and
+    // should be sent to /auth to register as a visitor, not pushed through
+    // member onboarding for this club.
     const noMemberRecord = hasClub && !myClubMember && !isClubMemberLoading;
 
-    if ((legacyNeedsOnboarding || missingMemberData || noMemberRecord) && !onboardingDone) {
+    if (noMemberRecord) {
+      (async () => {
+        const { count } = await supabase
+          .from("club_members")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user!.id);
+        if ((count || 0) > 0) {
+          // Existing member elsewhere — don't force member onboarding here.
+          navigate("/auth", { replace: true });
+        } else if (!onboardingDone) {
+          const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile.id}`;
+          const seen = typeof window !== "undefined" && localStorage.getItem(introKey) === "1";
+          if (!seen) setShowIntro(true); else setShowOnboarding(true);
+        }
+      })();
+      return;
+    }
+
+    if ((legacyNeedsOnboarding || missingMemberData) && !onboardingDone) {
+
       // Show the intro modal first (once per club per user); wizard opens after dismissal
       const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile.id}`;
       const seen = typeof window !== "undefined" && localStorage.getItem(introKey) === "1";

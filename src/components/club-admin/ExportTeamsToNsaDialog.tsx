@@ -76,13 +76,13 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
     enabled: open && !!association?.id,
     queryKey: ["export-nsa-teams", clubId, association?.id],
     queryFn: async () => {
-      // 1. Leagues in this association for this club
+      // 1. Leagues (teams) in this association for this club.
+      //    `leagues` = the club's teams in the association. `league_associations` = the association itself.
       const { data: leagues, error: le } = await fromExt("leagues")
-        .select("id, name, team_code, gender, league_number")
+        .select("id, name, code, nsa_team_code")
         .eq("club_id", clubId)
         .eq("association_id", association.id)
-        .order("gender", { ascending: true })
-        .order("league_number", { ascending: true });
+        .order("name", { ascending: true });
       if (le) throw le;
       const leagueList = (leagues || []) as any[];
       if (leagueList.length === 0) return { leagues: [] as LeagueRow[] };

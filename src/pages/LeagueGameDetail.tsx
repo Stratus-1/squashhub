@@ -1836,6 +1836,13 @@ export default function LeagueGameDetail() {
         match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot, permanentSquadSnapshot, originalCountAdjustment: originalCountAdj },
       } as any, { onConflict: "fixture_id" });
       if (sumErr) throw sumErr;
+      // Fire-and-forget: try to shift the next queued fixture onto this
+      // now-free court + time. Never block submission on this.
+      try {
+        supabase.functions.invoke("reflow-freed-court", {
+          body: { fixture_id: fixtureId },
+        }).catch(() => {});
+      } catch { /* ignore */ }
       toast.success("League results submitted!");
       queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });

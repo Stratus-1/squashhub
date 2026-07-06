@@ -185,6 +185,14 @@ export default function MatchMarker() {
           queryClient.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
           queryClient.invalidateQueries({ queryKey: ["my-champ-matches-events"] });
           queryClient.invalidateQueries({ queryKey: ["club-champs-all-entries"] });
+          // Fire-and-forget: shift the next queued tournament match onto this
+          // freed court + time if it makes the day run tighter.
+          try {
+            (await import("@/integrations/supabase/client")).supabase.functions.invoke(
+              "reflow-freed-court",
+              { body: { tournament_match_id: config.sourceId } },
+            ).catch(() => {});
+          } catch { /* ignore */ }
         } catch (e) {
           console.warn("Could not update tournament match:", e);
         }

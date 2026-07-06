@@ -1475,7 +1475,7 @@ export default function ClubAuth() {
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Registering..." : "Register as Visitor"}
+                  {loading ? "Registering..." : "Register & Sign In"}
                 </Button>
               </form>
             </Card>

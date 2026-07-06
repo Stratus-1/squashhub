@@ -144,9 +144,14 @@ export default function ClubAuth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, club?.id]);
 
-  // Redirect if already logged in — unless a Google-visitor completion is pending.
+  // Redirect if already logged in — unless a Google-visitor completion is
+  // pending, OR the caller explicitly asked us to stay so the user can
+  // register as a visitor (Dashboard redirect for foreign-club members).
   const hasPendingVisitor = !!(club?.id && typeof window !== "undefined" && localStorage.getItem(pendingVisitorKey));
-  if (user && !hasPendingVisitor && !visitorDone) return <Navigate to="/" replace />;
+  const visitorIntent =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("intent") === "visitor";
+  if (user && !hasPendingVisitor && !visitorDone && !visitorIntent) return <Navigate to="/" replace />;
 
   const clubName = club?.name || "Club";
 

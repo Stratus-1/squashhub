@@ -215,16 +215,22 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     );
   });
 
+  const [suspending, setSuspending] = useState<string | null>(null);
+
   const handleDelete = async (id: string) => {
+    const visitor = visitors.find((v) => v.id === id);
+    if (!visitor) return;
+    const label = `${visitor.first_name} ${visitor.last_name}`.trim();
+    if (!confirm(`Delete visitor "${label}"? This cannot be undone.`)) return;
     setDeleting(id);
     try {
-      const visitor = visitors.find((v) => v.id === id);
-      if (visitor?.source === "member_record") {
-        toast.info("This visitor is linked to an account — edit or remove them from Members.");
-        return;
+      if (visitor.source === "member_record") {
+        const { error } = await fromExt("club_members").delete().eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await fromExt("club_visitors").delete().eq("id", id);
+        if (error) throw error;
       }
-      const { error } = await fromExt("club_visitors").delete().eq("id", id);
-      if (error) throw error;
       toast.success("Visitor removed");
       queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });
       queryClient.invalidateQueries({ queryKey: ["club-members", clubId] });
@@ -232,6 +238,32 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       toast.error(e.message || "Failed to delete visitor");
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleToggleSuspend = async (v: Visitor) => {
+    if (v.source !== "member_record") {
+      toast.info("Suspension only applies to account-linked visitors. Delete this entry instead.");
+      return;
+    }
+    const isSuspended = v.suspension_status === "suspended";
+    const next = isSuspended ? "active" : "suspended";
+    setSuspending(v.id);
+    try {
+      const { error } = await (fromExt("club_members") as any)
+        .update({
+          suspension_status: next,
+          suspended_at: isSuspended ? null : new Date().toISOString(),
+        })
+        .eq("id", v.id);
+      if (error) throw error;
+      toast.success(isSuspended ? "Visitor reinstated" : "Visitor suspended");
+      queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["club-members", clubId] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update suspension");
+    } finally {
+      setSuspending(null);
     }
   };
 

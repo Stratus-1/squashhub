@@ -491,6 +491,14 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         />
       )}
       <BulkLeagueBookingsDialog open={bulkBookOpen} onOpenChange={setBulkBookOpen} clubId={clubId} />
+      {exportAssoc && (
+        <ExportTeamsToNsaDialog
+          clubId={clubId}
+          association={exportAssoc}
+          open={!!exportAssoc}
+          onOpenChange={(o) => !o && setExportAssoc(null)}
+        />
+      )}
     </div>
   );
 }

@@ -496,29 +496,48 @@ export default function Tournaments() {
 
 
             <TabsContent value="standings" className="mt-4 space-y-3">
-              {champs.map((champ: any) => (
-                <Card key={champ.id}>
-                  <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-                    <div>
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Trophy className="w-4 h-4 text-primary" /> {champ.name}
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {GENDER_LABELS[champ.gender] || champ.gender} ·{" "}
-                        {champ.match_type === "doubles" ? "Doubles" : "Singles"}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1"
-                      onClick={() => navigate(`/club-champs/${champ.id}`)}
-                    >
-                      <BarChart3 className="w-3.5 h-3.5" /> View Standings
-                    </Button>
-                  </CardHeader>
-                </Card>
-              ))}
+              {champs.map((champ: any, idx: number) => {
+                const autoOpen = idx === 0;
+                return (
+                  <Card key={champ.id}>
+                    <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+                      <div>
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-primary" /> {champ.name}
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {GENDER_LABELS[champ.gender] || champ.gender} ·{" "}
+                          {champ.match_type === "doubles" ? "Doubles" : "Singles"}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => navigate(`/club-champs/${champ.id}`)}
+                      >
+                        <BarChart3 className="w-3.5 h-3.5" /> View Standings
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <details open={autoOpen}>
+                        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none py-1">
+                          {autoOpen ? "Standings (next tournament)" : "Show standings"}
+                        </summary>
+                        <div className="mt-2 rounded-md border overflow-hidden bg-background">
+                          <iframe
+                            src={`/club-champs/${champ.id}?embed=1`}
+                            title={`${champ.name} standings`}
+                            className="w-full"
+                            style={{ height: 520, border: 0 }}
+                            loading="lazy"
+                          />
+                        </div>
+                      </details>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </TabsContent>
 
             <TabsContent value="past" className="mt-4 space-y-3">

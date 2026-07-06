@@ -40,6 +40,7 @@ interface DashboardDesktopProps {
   // sidebar-equivalent flags for Quick Access tiles
   honestyBarEnabled?: boolean;
   hasAnyAdminAccess?: boolean;
+  isVisitor?: boolean;
   // children for slot-in components (events list, etc.)
   eventsSlot?: React.ReactNode;
 }

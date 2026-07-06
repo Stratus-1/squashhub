@@ -326,6 +326,11 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 <Button size="sm" variant="outline" onClick={() => setRulesAssoc(a)}>
                   <Settings2 className="w-4 h-4 mr-1" />Rules & Penalties
                 </Button>
+                {a.scope !== "internal" && (
+                  <Button size="sm" variant="outline" onClick={() => setExportAssoc(a)}>
+                    <Send className="w-4 h-4 mr-1" />Export teams to {a.abbreviation || a.name}
+                  </Button>
+                )}
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
                   <Trash2 className="w-4 h-4" />

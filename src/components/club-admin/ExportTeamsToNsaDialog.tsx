@@ -52,9 +52,17 @@ interface LeagueRow {
   name: string;
   team_code: string | null;
   gender: string | null;
-  league_number: number | null;
   regs: RegRow[];
 }
+
+/** Best-effort gender inference from league name (e.g. "Men's 3rd League 2026"). */
+const inferGender = (name: string): string | null => {
+  const n = (name || "").toLowerCase();
+  if (/\b(ladies|women|woman|female)\b/.test(n)) return "Ladies";
+  if (/\b(mixed)\b/.test(n)) return "Mixed";
+  if (/\b(men|man|male)\b/.test(n)) return "Men";
+  return null;
+};
 
 const csvEscape = (v: string | number | null | undefined) => {
   const s = v == null ? "" : String(v);
@@ -68,13 +76,13 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
     enabled: open && !!association?.id,
     queryKey: ["export-nsa-teams", clubId, association?.id],
     queryFn: async () => {
-      // 1. Leagues in this association for this club
+      // 1. Leagues (teams) in this association for this club.
+      //    `leagues` = the club's teams in the association. `league_associations` = the association itself.
       const { data: leagues, error: le } = await fromExt("leagues")
-        .select("id, name, team_code, gender, league_number")
+        .select("id, name, code, nsa_team_code")
         .eq("club_id", clubId)
         .eq("association_id", association.id)
-        .order("gender", { ascending: true })
-        .order("league_number", { ascending: true });
+        .order("name", { ascending: true });
       if (le) throw le;
       const leagueList = (leagues || []) as any[];
       if (leagueList.length === 0) return { leagues: [] as LeagueRow[] };
@@ -117,9 +125,8 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
       const grouped: LeagueRow[] = leagueList.map((l) => ({
         id: l.id,
         name: l.name,
-        team_code: l.team_code,
-        gender: l.gender,
-        league_number: l.league_number,
+        team_code: (l.nsa_team_code as string | null) || (l.code as string | null) || null,
+        gender: inferGender(l.name),
         regs: regList
           .filter((r) => r.league_id === l.id)
           .sort(

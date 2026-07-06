@@ -532,6 +532,9 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
                   {v.source === "member_record" && (
                     <Badge variant="outline" className="text-[10px] shrink-0">Member record</Badge>
                   )}
+                  {v.suspension_status === "suspended" && (
+                    <Badge variant="destructive" className="text-[10px] shrink-0">Suspended</Badge>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {v.home_club_name}
@@ -552,21 +555,38 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
               >
                 <Pencil className="w-4 h-4" />
               </Button>
-              {v.source !== "member_record" && (
+              {v.source === "member_record" && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="shrink-0 text-destructive hover:text-destructive"
-                  disabled={deleting === v.id}
-                  onClick={() => handleDelete(v.id)}
+                  className="shrink-0"
+                  disabled={suspending === v.id}
+                  onClick={() => handleToggleSuspend(v)}
+                  title={v.suspension_status === "suspended" ? "Reinstate visitor" : "Suspend visitor"}
                 >
-                  {deleting === v.id ? (
+                  {suspending === v.id ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : v.suspension_status === "suspended" ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   ) : (
-                    <Trash2 className="w-4 h-4" />
+                    <Ban className="w-4 h-4 text-amber-600" />
                   )}
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-destructive hover:text-destructive"
+                disabled={deleting === v.id}
+                onClick={() => handleDelete(v.id)}
+                title="Delete visitor"
+              >
+                {deleting === v.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+              </Button>
             </Card>
           ))}
         </div>

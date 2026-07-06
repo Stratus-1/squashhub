@@ -517,9 +517,20 @@ export default function SuperAdminSubscriptions() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="secondary" className="text-[10px]">
-                          <Users className="h-3 w-3 mr-0.5" />{sub.member_count}
-                        </Badge>
+                        {(() => {
+                          const live = clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count;
+                          const stale = live !== sub.member_count;
+                          return (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px]"
+                              title={stale ? `Snapshot on record: ${sub.member_count}` : undefined}
+                            >
+                              <Users className="h-3 w-3 mr-0.5" />{live}
+                              {stale && <span className="ml-1 text-amber-600">•</span>}
+                            </Badge>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs">
                         R{Number(sub.amount_due).toLocaleString()}

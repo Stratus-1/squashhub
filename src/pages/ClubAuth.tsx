@@ -78,6 +78,7 @@ export default function ClubAuth() {
   const [visitorHomeClubMode, setVisitorHomeClubMode] = useState<"picker" | "other">("picker");
   const [visitorMemberNumber, setVisitorMemberNumber] = useState("");
   const [visitorEmail, setVisitorEmail] = useState("");
+  const [visitorPassword, setVisitorPassword] = useState("");
   const [visitorCategory, setVisitorCategory] = useState("Men");
   const [visitorDone, setVisitorDone] = useState(false);
 

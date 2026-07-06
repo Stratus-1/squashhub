@@ -425,19 +425,23 @@ export default function Dashboard() {
       return;
     }
 
-    const legacyNeedsOnboarding =
-      !profile.name || profile.name === "" || profile.name === "New Player";
-
     const hasClub = !!effectiveClub;
-    // Only show onboarding if the member hasn't been assigned a member number yet
-    // (member number is assigned during the onboarding wizard completion)
+
+    // Visitors never see the member onboarding wizard — they registered as
+    // visitors and have no member number / SA ID to provide.
     const isVisitorMember =
       (myClubMember?.role as string | undefined) === "visitor" ||
       myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor";
+    if (isVisitorMember) return;
+
+    const legacyNeedsOnboarding =
+      !profile.name || profile.name === "" || profile.name === "New Player";
+
+    // Only show onboarding if the member hasn't been assigned a member number yet
+    // (member number is assigned during the onboarding wizard completion)
     const missingMemberData =
       hasClub &&
       myClubMember &&
-      !isVisitorMember &&
       !myClubMember.club_member_number;
 
     // If no club member record at all but club exists, they may need to register
@@ -453,6 +457,7 @@ export default function Dashboard() {
         setShowOnboarding(true);
       }
     }
+
   }, [
     isLoading,
     isClubLoading,

@@ -26,8 +26,9 @@ import { TeamLogo } from "@/components/league-games/TeamLogo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
 import AssociationPenaltiesTab from "@/components/super-admin/league/AssociationPenaltiesTab";
-import { Settings2 } from "lucide-react";
+import { Settings2, Send } from "lucide-react";
 import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog";
+import { ExportTeamsToNsaDialog } from "@/components/club-admin/ExportTeamsToNsaDialog";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -133,6 +134,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [bulkBookOpen, setBulkBookOpen] = useState(false);
   const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
   const [rulesAssoc, setRulesAssoc] = useState<LeagueAssociation | null>(null);
+  const [exportAssoc, setExportAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
   const [editSetup, setEditSetup] = useState<null | {
@@ -324,6 +326,11 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 <Button size="sm" variant="outline" onClick={() => setRulesAssoc(a)}>
                   <Settings2 className="w-4 h-4 mr-1" />Rules & Penalties
                 </Button>
+                {a.scope !== "internal" && (
+                  <Button size="sm" variant="outline" onClick={() => setExportAssoc(a)}>
+                    <Send className="w-4 h-4 mr-1" />Export teams to {a.abbreviation || a.name}
+                  </Button>
+                )}
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
                   <Trash2 className="w-4 h-4" />
@@ -484,6 +491,14 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         />
       )}
       <BulkLeagueBookingsDialog open={bulkBookOpen} onOpenChange={setBulkBookOpen} clubId={clubId} />
+      {exportAssoc && (
+        <ExportTeamsToNsaDialog
+          clubId={clubId}
+          association={exportAssoc}
+          open={!!exportAssoc}
+          onOpenChange={(o) => !o && setExportAssoc(null)}
+        />
+      )}
     </div>
   );
 }

@@ -30,18 +30,29 @@ type Freed = {
   source_id: string;
 };
 
+async function clubCourtIds(clubId?: string | null): Promise<number[] | null> {
+  if (!clubId) return null;
+  const { data } = await admin.from("courts").select("id").eq("club_id", clubId);
+  return (data || []).map((r: any) => r.id as number);
+}
+
 async function findCandidate(freed: Freed) {
   const cutoff = freed.start; // we want anything scheduled strictly later
+  const courtIds = await clubCourtIds(freed.club_id);
+
   if (freed.round_id) {
-    const { data } = await admin
+    // Search ALL leagues at this club on this date — not just the same round —
+    // so a fixture from a different league can slot into a freed court.
+    let q = admin
       .from("platform_league_fixtures")
       .select("id, court_id, fixture_date, start_time, round_id, home_team_code, away_team_code")
       .eq("fixture_date", freed.date)
-      .eq("round_id", freed.round_id)
       .gt("start_time", cutoff)
       .neq("id", freed.source_id)
       .order("start_time", { ascending: true })
-      .limit(10);
+      .limit(20);
+    if (courtIds && courtIds.length) q = q.in("court_id", courtIds);
+    const { data } = await q;
     const ids = (data || []).map((r: any) => r.id);
     const locks = ids.length
       ? (await admin
@@ -71,6 +82,7 @@ async function findCandidate(freed: Freed) {
   }
   return null;
 }
+
 
 async function reflowCell(freed: Freed, depth: number, moved: any[]): Promise<void> {
   if (depth > 6) return; // safety
@@ -149,6 +161,10 @@ Deno.serve(async (req) => {
       freedDate = (f as any).fixture_date;
       sourceStart = hhmm((f as any).start_time);
       roundId = (f as any).round_id;
+      if (!clubId && freedCourtId) {
+        const { data: c } = await admin.from("courts").select("club_id").eq("id", freedCourtId).maybeSingle();
+        if (c) clubId = (c as any).club_id;
+      }
     } else if (body.tournament_match_id) {
       sourceKind = "tournament_match";
       sourceId = body.tournament_match_id;

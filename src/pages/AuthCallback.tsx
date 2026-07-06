@@ -30,6 +30,18 @@ export default function AuthCallback() {
           const oauthReturnClub = getClubSubdomain();
           const registrationType = meta.club_registration_type as string | undefined;
 
+          // If a Google-visitor registration is pending for any club, return the
+          // user to /auth on the current (tenant) origin so ClubAuth can finish it.
+          try {
+            const hasPendingVisitor = Object.keys(localStorage).some((k) =>
+              k.startsWith("sh.pending_visitor_registration.")
+            );
+            if (hasPendingVisitor) {
+              navigate("/auth", { replace: true });
+              return;
+            }
+          } catch { /* ignore */ }
+
           // If this user signed up with club/association registration metadata, redirect to their tenant
           // Only do the sign-out + redirect flow for tenant OWNERS (not members)
           const isTenantOwner = registrationType === "club_owner" || registrationType === "association_owner";

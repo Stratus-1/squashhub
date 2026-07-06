@@ -727,12 +727,12 @@ export default function ClubAuth() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-lg font-bold font-heading">Welcome, Visitor! 🏸</h2>
+            <h2 className="text-lg font-bold font-heading">Welcome, {visitorFirstName || "Visitor"}! 🏸</h2>
             <p className="text-sm text-muted-foreground">
-              You've been registered as a visitor at <span className="font-medium text-foreground">{clubName}</span>. The club admin can now select you for tournaments and league matches.
+              You're signed in as a visitor at <span className="font-medium text-foreground">{clubName}</span>. You can now be selected for tournaments and league matches.
             </p>
-            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorEmail(""); setVisitorHomeClub(""); setVisitorHomeClubMode("picker"); setVisitorMemberNumber(""); setVisitorCategory("Men"); }}>
-              Register Another Visitor
+            <Button className="w-full" onClick={() => { window.location.href = "/"; }}>
+              Continue to {clubName}
             </Button>
           </Card>
           <PoweredBySquashHub />

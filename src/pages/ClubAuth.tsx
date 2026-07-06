@@ -1504,38 +1504,41 @@ export default function ClubAuth() {
                     id="visitor-email"
                     type="email"
                     placeholder="john@example.com"
-                    value={visitorEmail}
+                    value={user?.email || visitorEmail}
                     onChange={(e) => setVisitorEmail(e.target.value)}
                     required
+                    disabled={!!user}
                     maxLength={255}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="visitor-password">Password <span className="text-destructive">*</span></Label>
-                  <div className="relative">
-                    <Input
-                      id="visitor-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="At least 6 characters"
-                      value={visitorPassword}
-                      onChange={(e) => setVisitorPassword(e.target.value)}
-                      required
-                      minLength={6}
-                      maxLength={72}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                {!user && (
+                  <div>
+                    <Label htmlFor="visitor-password">Password <span className="text-destructive">*</span></Label>
+                    <div className="relative">
+                      <Input
+                        id="visitor-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="At least 6 characters"
+                        value={visitorPassword}
+                        onChange={(e) => setVisitorPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        maxLength={72}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      You'll use this to sign in and manage your tournament entries.
+                    </p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    You'll use this to sign in and manage your tournament entries.
-                  </p>
-                </div>
+                )}
                 <div>
                   <Label htmlFor="visitor-category">Category <span className="text-destructive">*</span></Label>
                   <select

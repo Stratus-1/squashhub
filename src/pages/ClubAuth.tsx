@@ -675,23 +675,31 @@ export default function ClubAuth() {
 
   const handleVisitorGoogle = async () => {
     if (!club?.id) { toast.error("Club not found"); return; }
-    // No field validation — Google can be clicked first. Any details already
-    // filled are preserved across the OAuth round-trip and re-hydrated on return.
+    // Require the essentials BEFORE the OAuth round-trip so we never end up
+    // with a signed-in user who never finished registration (invisible visitor).
+    const firstName = visitorFirstName.trim();
+    const lastName = visitorLastName.trim();
+    const homeClub = visitorHomeClub.trim();
     const phone = visitorPhone.trim();
+    if (!firstName) { toast.error("Please enter your first name before continuing with Google"); return; }
+    if (!lastName) { toast.error("Please enter your last name before continuing with Google"); return; }
+    if (!homeClub) { toast.error("Please select your home club before continuing with Google"); return; }
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
-    if (!club?.id) { toast.error("Club not found"); return; }
 
-    // Persist any details already filled across the Google OAuth round-trip.
+    // Persist details across the Google OAuth round-trip so we can auto-create
+    // the visitor row as soon as the user returns from Google.
     const payload = {
       club_id: club.id,
-      first_name: visitorFirstName.trim() || null,
-      last_name: visitorLastName.trim() || null,
+      first_name: firstName,
+      last_name: lastName,
       phone: phone || null,
-      home_club_name: visitorHomeClub.trim() || null,
+      home_club_name: homeClub,
       member_number: visitorMemberNumber.trim() || null,
       category: visitorCategory,
     };
     localStorage.setItem(pendingVisitorKey, JSON.stringify(payload));
+
+
 
     setLoading(true);
     try {

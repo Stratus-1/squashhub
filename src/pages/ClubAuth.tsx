@@ -90,7 +90,12 @@ export default function ClubAuth() {
 
   // Controlled tab state — login is the default view; the other "tabs"
   // are reached via links underneath the sign-in form (per UX redesign).
-  const [activeTab, setActiveTab] = useState<"login" | "existing" | "new" | "visitor">("login");
+  const initialTab: "login" | "existing" | "new" | "visitor" =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("intent") === "visitor"
+      ? "visitor"
+      : "login";
+  const [activeTab, setActiveTab] = useState<"login" | "existing" | "new" | "visitor">(initialTab);
 
   // Storage key for pending Google-visitor completion (survives OAuth round-trip).
   const pendingVisitorKey = `sh.pending_visitor_registration.${club?.id || "unknown"}`;

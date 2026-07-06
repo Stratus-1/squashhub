@@ -100,7 +100,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
               </p>
             </div>
             <h1 className="text-3xl font-sans font-bold text-slate-900 tracking-tight truncate">
-              Welcome back, {props.firstName}
+              {props.isVisitor ? `Welcome back to visiting our club, ${props.firstName}` : `Welcome back, ${props.firstName}`}
             </h1>
           </div>
         </div>

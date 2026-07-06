@@ -175,19 +175,13 @@ Deno.serve(async (req) => {
     clubMemberId = inserted!.id;
   }
 
-  // 4. Legacy club_visitors row (best-effort; ignore duplicates/errors)
-  try {
-    await admin.from("club_visitors").insert({
-      club_id: clubId,
-      first_name: firstName,
-      last_name: lastName,
-      phone: phone || null,
-      email,
-      home_club_name: homeClubName,
-      member_number: memberNumber || null,
-      category,
-    });
-  } catch (_) { /* ignore */ }
+  // NOTE: We deliberately do NOT insert into the legacy `club_visitors` table
+  // here. The `club_members` row above (role='visitor') is the authoritative
+  // record for self-registered visitors, and writing to both tables caused the
+  // same person to appear twice in the club admin Visitors tab (once as a plain
+  // visitor entry, once as a "Member record"). Legacy `club_visitors` rows are
+  // still used by the tournament wizard's ad-hoc visitor entries.
+
 
   return json({
     ok: true,

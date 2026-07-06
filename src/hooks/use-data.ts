@@ -583,10 +583,13 @@ export function useLadder(clubId?: string) {
       const normalizeNsaCode = (value: unknown) =>
         String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-      // 1. Get club members scoped to the user's club
+      // 1. Get club members scoped to the user's club.
+      // Exclude promoted visitor shadow rows (role='visitor') — they exist only
+      // as FK targets for tournament tables and must never appear on the ladder.
       let query = supabase
         .from("club_members")
-        .select("id, name, email, user_id, gender, skill_level, plays_league, ladder_position, avatar_url");
+        .select("id, name, email, user_id, gender, skill_level, plays_league, ladder_position, avatar_url, role")
+        .neq("role", "visitor");
       if (clubId) {
         query = query.eq("club_id", clubId);
       }

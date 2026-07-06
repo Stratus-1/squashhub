@@ -598,6 +598,7 @@ export default function Dashboard() {
           hasLeagues={hasLeagues}
           honestyBarEnabled={!!(effectiveClub as any)?.honesty_bar_enabled}
           hasAnyAdminAccess={hasAnyAdminAccess}
+          isVisitor={(myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor"}
           eventsSlot={<CreateClubEvent />}
         />
       </div>

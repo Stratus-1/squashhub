@@ -161,6 +161,10 @@ Deno.serve(async (req) => {
       freedDate = (f as any).fixture_date;
       sourceStart = hhmm((f as any).start_time);
       roundId = (f as any).round_id;
+      if (!clubId && freedCourtId) {
+        const { data: c } = await admin.from("courts").select("club_id").eq("id", freedCourtId).maybeSingle();
+        if (c) clubId = (c as any).club_id;
+      }
     } else if (body.tournament_match_id) {
       sourceKind = "tournament_match";
       sourceId = body.tournament_match_id;

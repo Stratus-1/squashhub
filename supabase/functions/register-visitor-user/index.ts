@@ -102,45 +102,59 @@ Deno.serve(async (req) => {
   }
 
   // 2. Upsert profile
-  await admin.from("profiles").upsert({
+  const { error: profileErr } = await admin.from("profiles").upsert({
     id: userId,
     email,
     name: fullName,
     phone: phone || null,
   }, { onConflict: "id" });
+  if (profileErr) {
+    console.error("[register-visitor-user] profile upsert failed:", profileErr);
+    if (!reusedExistingAccount) {
+      try { await admin.auth.admin.deleteUser(userId); } catch (_) { /* ignore */ }
+    }
+    return json({ error: "Failed to create profile: " + profileErr.message }, 500);
+  }
 
   // 3. Insert club_members row as visitor (if not already present for this club+user)
-  const { data: existingMember } = await admin
+  const { data: existingMember, error: existingErr } = await admin
     .from("club_members")
     .select("id")
     .eq("club_id", clubId)
     .eq("user_id", userId)
     .maybeSingle();
+  if (existingErr) console.error("[register-visitor-user] existing member lookup error:", existingErr);
 
   let clubMemberId = existingMember?.id as string | undefined;
 
   if (!clubMemberId) {
+    const insertPayload: Record<string, any> = {
+      club_id: clubId,
+      user_id: userId,
+      role: "visitor",
+      name: fullName,
+      email,
+      phone: phone || null,
+      gender,
+      home_club_name: homeClubName,
+      club_member_number: memberNumber || null,
+    };
+    console.log("[register-visitor-user] inserting club_members:", { clubId, userId, email, gender });
     const { data: inserted, error: memberErr } = await admin
       .from("club_members")
-      .insert({
-        club_id: clubId,
-        user_id: userId,
-        role: "visitor",
-        name: fullName,
-        email,
-        phone: phone || null,
-        gender,
-        home_club_name: homeClubName,
-        club_member_number: memberNumber || null,
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
 
     if (memberErr) {
+      console.error("[register-visitor-user] club_members insert failed:", memberErr);
       if (!reusedExistingAccount) {
         try { await admin.auth.admin.deleteUser(userId); } catch (_) { /* ignore */ }
       }
-      return json({ error: "Failed to create visitor membership: " + memberErr.message }, 500);
+      return json({
+        error: "Failed to create visitor membership: " + memberErr.message,
+        details: memberErr,
+      }, 500);
     }
     clubMemberId = inserted!.id;
   }

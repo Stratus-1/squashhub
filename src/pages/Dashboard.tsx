@@ -442,7 +442,7 @@ export default function Dashboard() {
     if (hasClub && !myClubMember && typeof window !== "undefined") {
       const pendingKey = `sh.pending_visitor_registration.${effectiveClub?.id || ""}`;
       if (localStorage.getItem(pendingKey)) {
-        navigate("/auth", { replace: true });
+        navigate("/auth?intent=visitor", { replace: true });
         return;
       }
     }
@@ -473,7 +473,8 @@ export default function Dashboard() {
           .eq("user_id", user!.id);
         if ((count || 0) > 0) {
           // Existing member elsewhere — don't force member onboarding here.
-          navigate("/auth", { replace: true });
+          // Pass an explicit intent so /auth doesn't bounce them straight back.
+          navigate("/auth?intent=visitor", { replace: true });
         } else if (!onboardingDone) {
           const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile.id}`;
           const seen = typeof window !== "undefined" && localStorage.getItem(introKey) === "1";
@@ -482,6 +483,7 @@ export default function Dashboard() {
       })();
       return;
     }
+
 
     if ((legacyNeedsOnboarding || missingMemberData) && !onboardingDone) {
 

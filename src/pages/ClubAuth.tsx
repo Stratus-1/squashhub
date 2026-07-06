@@ -90,7 +90,12 @@ export default function ClubAuth() {
 
   // Controlled tab state — login is the default view; the other "tabs"
   // are reached via links underneath the sign-in form (per UX redesign).
-  const [activeTab, setActiveTab] = useState<"login" | "existing" | "new" | "visitor">("login");
+  const initialTab: "login" | "existing" | "new" | "visitor" =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("intent") === "visitor"
+      ? "visitor"
+      : "login";
+  const [activeTab, setActiveTab] = useState<"login" | "existing" | "new" | "visitor">(initialTab);
 
   // Storage key for pending Google-visitor completion (survives OAuth round-trip).
   const pendingVisitorKey = `sh.pending_visitor_registration.${club?.id || "unknown"}`;
@@ -144,9 +149,14 @@ export default function ClubAuth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, club?.id]);
 
-  // Redirect if already logged in — unless a Google-visitor completion is pending.
+  // Redirect if already logged in — unless a Google-visitor completion is
+  // pending, OR the caller explicitly asked us to stay so the user can
+  // register as a visitor (Dashboard redirect for foreign-club members).
   const hasPendingVisitor = !!(club?.id && typeof window !== "undefined" && localStorage.getItem(pendingVisitorKey));
-  if (user && !hasPendingVisitor && !visitorDone) return <Navigate to="/" replace />;
+  const visitorIntent =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("intent") === "visitor";
+  if (user && !hasPendingVisitor && !visitorDone && !visitorIntent) return <Navigate to="/" replace />;
 
   const clubName = club?.name || "Club";
 

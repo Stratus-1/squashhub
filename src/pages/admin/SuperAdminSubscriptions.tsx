@@ -156,6 +156,48 @@ export default function SuperAdminSubscriptions() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // --- Platform Stitch Express credentials (private key in app_settings) ---
+  useQuery({
+    queryKey: ["sa-platform-stitch"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "platform_stitch_private_settings")
+        .maybeSingle();
+      if (error && error.code !== "PGRST116") throw error;
+      const parsed = data?.value
+        ? { ...EMPTY_STITCH_SETTINGS, ...JSON.parse(data.value) }
+        : EMPTY_STITCH_SETTINGS;
+      setStitchForm(parsed);
+      setStitchDirty(false);
+      return parsed;
+    },
+  });
+
+  const saveStitchSettings = useMutation({
+    mutationFn: async (val: StitchSettings) => {
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert(
+          { key: "platform_stitch_private_settings", value: JSON.stringify(val) },
+          { onConflict: "key" },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Stitch Express credentials saved");
+      setStitchDirty(false);
+      qc.invalidateQueries({ queryKey: ["sa-platform-stitch"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateStitchField = <K extends keyof StitchSettings>(k: K, v: StitchSettings[K]) => {
+    setStitchForm(f => ({ ...f, [k]: v }));
+    setStitchDirty(true);
+  };
+
   const runBilling = useMutation({
     mutationFn: async (dryRun: boolean) => {
       const { data, error } = await supabase.functions.invoke("run-subscription-billing", {

@@ -463,24 +463,19 @@ export default function Dashboard() {
     // member" here — they arrived via a foreign login (usually Google) and
     // should be sent to /auth to register as a visitor, not pushed through
     // member onboarding for this club.
+    // If no club member record at all but club exists, they may need to register.
+    // NOTE: Users who have no membership (member or visitor) at this club are
+    // now blocked at the App root by <SubdomainMembershipGate/>, so this
+    // branch only runs on the root host (no subdomain) or during a brief
+    // context race. Never navigate to /auth here — that caused a flicker loop.
     const noMemberRecord = hasClub && !myClubMember && !isClubMemberLoading;
 
     if (noMemberRecord) {
-      (async () => {
-        const { count } = await supabase
-          .from("club_members")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user!.id);
-        if ((count || 0) > 0) {
-          // Existing member elsewhere — don't force member onboarding here.
-          // Pass an explicit intent so /auth doesn't bounce them straight back.
-          navigate("/auth?intent=visitor", { replace: true });
-        } else if (!onboardingDone) {
-          const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile.id}`;
-          const seen = typeof window !== "undefined" && localStorage.getItem(introKey) === "1";
-          if (!seen) setShowIntro(true); else setShowOnboarding(true);
-        }
-      })();
+      if (!onboardingDone) {
+        const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile.id}`;
+        const seen = typeof window !== "undefined" && localStorage.getItem(introKey) === "1";
+        if (!seen) setShowIntro(true); else setShowOnboarding(true);
+      }
       return;
     }
 

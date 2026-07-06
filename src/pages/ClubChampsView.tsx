@@ -1329,16 +1329,110 @@ export default function ClubChampsView() {
         })
       : groupNumbers;
 
-    // Overall leaderboard — combined across every league, ranked by the format's
-    // own comparator so the tournament-wide leader is always on top.
+    // Winners table — top of each league plus the overall tournament winner.
+    const leagueWinners = groupNumbers
+      .map((gn: number) => {
+        const s = getGroupStandings(gn);
+        const w = s.find((r: any) => (r.played || 0) > 0 || (r.byes || 0) > 0) || null;
+        return { gn, winner: w };
+      })
+      .filter((w) => w.winner);
     const overallRows = groupNumbers
       .flatMap((gn: number) =>
         getGroupStandings(gn).map((s: any) => ({ ...s, _groupNumber: gn }))
       )
       .filter((s: any) => (s.played || 0) > 0 || (s.byes || 0) > 0)
       .sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
-    const overallMaxGames = Math.max(0, ...overallRows.map((s: any) => s.gamePoints?.length || 0));
-    const overallWinner = overallRows[0];
+    const overallWinner = overallRows[0] || null;
+    const winnersCard = leagueWinners.length > 0 ? (
+      <Card key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-amber-600" />
+            Winners
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs text-muted-foreground">
+                  <th className="pb-1.5 font-medium">League</th>
+                  <th className="pb-1.5 font-medium">{isDoubles ? "Team" : "Player"}</th>
+                  {isBells ? (
+                    <>
+                      <th className="pb-1.5 font-medium text-center">PF</th>
+                      <th className="pb-1.5 font-medium text-center">PA</th>
+                      <th className="pb-1.5 font-medium text-center">W-L</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="pb-1.5 font-medium text-center">W-L</th>
+                      {standingsColumns.map((col) => (
+                        <th key={col.key} className="pb-1.5 font-medium text-center" title={col.title}>{col.label}</th>
+                      ))}
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {leagueWinners.map(({ gn, winner: w }) => (
+                  <tr key={gn} className="border-b border-border/30">
+                    <td className="py-1.5 font-medium">{getGroupLabel(champ, gn)}</td>
+                    <td className="py-1.5">{w.name}</td>
+                    {isBells ? (
+                      <>
+                        <td className="py-1.5 text-center font-semibold tabular-nums">{w.pointsFor}</td>
+                        <td className="py-1.5 text-center tabular-nums">{w.pointsAgainst}</td>
+                        <td className="py-1.5 text-center tabular-nums">{w.won}-{w.lost}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-1.5 text-center tabular-nums">{w.won}-{w.lost}</td>
+                        {standingsColumns.map((col) => (
+                          <td key={col.key} className={cn("py-1.5 text-center", col.cellClassName)}>{col.render(w)}</td>
+                        ))}
+                      </>
+                    )}
+                  </tr>
+                ))}
+                {overallWinner && (
+                  <tr className="bg-amber-500/10 font-semibold">
+                    <td className="py-2">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Trophy className="h-3.5 w-3.5 text-amber-600" />
+                        Overall
+                      </span>
+                    </td>
+                    <td className="py-2">
+                      {overallWinner.name}
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                        ({getGroupLabel(champ, overallWinner._groupNumber)})
+                      </span>
+                    </td>
+                    {isBells ? (
+                      <>
+                        <td className="py-2 text-center tabular-nums">{overallWinner.pointsFor}</td>
+                        <td className="py-2 text-center tabular-nums">{overallWinner.pointsAgainst}</td>
+                        <td className="py-2 text-center tabular-nums">{overallWinner.won}-{overallWinner.lost}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-2 text-center tabular-nums">{overallWinner.won}-{overallWinner.lost}</td>
+                        {standingsColumns.map((col) => (
+                          <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(overallWinner)}</td>
+                        ))}
+                      </>
+                    )}
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    ) : null;
+
 
     const groups = orderedGroups.map((gn: number) => {
       const standings = getGroupStandings(gn);

@@ -160,6 +160,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
           member_number: m.club_member_number || null,
           category: m.gender || "Men",
           created_at: m.joined_at,
+          suspension_status: m.suspension_status || "active",
         };
         });
       // Dedupe: when the same person exists in both club_members (as visitor)

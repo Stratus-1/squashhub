@@ -1479,8 +1479,16 @@ export default function ClubAuth() {
                 </div>
               )}
               {user && (
-                <div className="mb-4 rounded-md border border-primary/40 bg-primary/5 p-3 text-xs">
-                  ✓ Signed in with Google as <span className="font-medium">{user.email}</span>. Finish your visitor details below and click <span className="font-medium">Register</span>.
+                <div className="mb-4 rounded-md border border-primary/40 bg-primary/5 p-3 space-y-1">
+                  <p className="text-sm font-semibold">
+                    👋 Welcome as a visitor to {clubName}
+                    {(visitorFirstName || (user.user_metadata as any)?.full_name || "").toString().trim()
+                      ? `, ${(visitorFirstName || String((user.user_metadata as any)?.full_name || "").split(/\s+/)[0]).trim()}!`
+                      : "!"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Signed in with Google as <span className="font-medium">{user.email}</span>. Please finish your visitor details below and click <span className="font-medium">Register</span>.
+                  </p>
                 </div>
               )}
               {!user && <GoogleAuthDivider text="or use email & password" />}

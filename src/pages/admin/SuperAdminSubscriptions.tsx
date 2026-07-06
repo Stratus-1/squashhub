@@ -549,21 +549,42 @@ export default function SuperAdminSubscriptions() {
                       <TableCell className="text-center">
                         {(() => {
                           const live = clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count;
+                          const plan = plans.find(p => p.id === sub.plan_id);
+                          const cap = plan?.max_billable_members ?? null;
+                          const billable = cap ? Math.min(live, cap) : live;
+                          const capped = cap && live > cap;
                           const stale = live !== sub.member_count;
                           return (
                             <Badge
                               variant="secondary"
                               className="text-[10px]"
-                              title={stale ? `Snapshot on record: ${sub.member_count}` : undefined}
+                              title={
+                                (capped ? `Billable capped at ${cap} (of ${live} live). ` : "") +
+                                (stale ? `Snapshot on record: ${sub.member_count}.` : "")
+                              }
                             >
-                              <Users className="h-3 w-3 mr-0.5" />{live}
+                              <Users className="h-3 w-3 mr-0.5" />
+                              {capped ? `${billable}/${live}` : live}
                               {stale && <span className="ml-1 text-amber-600">•</span>}
                             </Badge>
                           );
                         })()}
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs">
-                        R{Number(sub.amount_due).toLocaleString()}
+                        {(() => {
+                          const live = clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count;
+                          const plan = plans.find(p => p.id === sub.plan_id);
+                          if (!plan) return `R${Number(sub.amount_due).toLocaleString()}`;
+                          const billable = plan.max_billable_members ? Math.min(live, plan.max_billable_members) : live;
+                          const calc = Math.max(billable * plan.price_per_member, plan.minimum_charge);
+                          const stale = Math.abs(calc - Number(sub.amount_due)) > 0.001;
+                          return (
+                            <span title={stale ? `Stored: R${Number(sub.amount_due).toLocaleString()}` : undefined}>
+                              R{calc.toLocaleString()}
+                              {stale && <span className="ml-1 text-amber-600">•</span>}
+                            </span>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {sub.trial_ends_at ? new Date(sub.trial_ends_at).toLocaleDateString() : "—"}

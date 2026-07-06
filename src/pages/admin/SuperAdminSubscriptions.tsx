@@ -313,6 +313,15 @@ export default function SuperAdminSubscriptions() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const removeSub = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await fromExt("club_subscriptions").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Club removed from list"); qc.invalidateQueries({ queryKey: ["sa-club-subscriptions"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const openEditSub = (sub: ClubSub) => {
     setEditSub(sub);
     setSubForm({
@@ -447,12 +456,33 @@ export default function SuperAdminSubscriptions() {
 
         {/* ─── CLUB SUBSCRIPTIONS TAB ─── */}
         <TabsContent value="clubs" className="space-y-4 mt-4">
-          {unsubscribedClubs.length > 0 && defaultPlan && (
+          {defaultPlan && (
             <Card className="p-3 border-dashed">
               <p className="text-xs text-muted-foreground mb-2">
-                <strong>{unsubscribedClubs.length}</strong> club(s) without a subscription. Assign the default plan:
+                Add a club to the subscription list{unsubscribedClubs.length > 0 && <> — <strong>{unsubscribedClubs.length}</strong> without a subscription</>}:
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  value=""
+                  onValueChange={(clubId) => {
+                    if (clubId) assignSub.mutate({ clubId, planId: defaultPlan.id });
+                  }}
+                  disabled={assignSub.isPending || unsubscribedClubs.length === 0}
+                >
+                  <SelectTrigger className="h-8 text-xs w-[260px]">
+                    <SelectValue placeholder={unsubscribedClubs.length === 0 ? "All clubs subscribed" : "Select a club to add…"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {unsubscribedClubs
+                      .slice()
+                      .sort((a: any, b: any) => a.name.localeCompare(b.name))
+                      .map((c: any) => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          {c.name} {c.subdomain ? <span className="text-muted-foreground">({c.subdomain})</span> : null}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
                 {unsubscribedClubs.slice(0, 5).map((c: any) => (
                   <Button
                     key={c.id}
@@ -466,7 +496,7 @@ export default function SuperAdminSubscriptions() {
                   </Button>
                 ))}
                 {unsubscribedClubs.length > 5 && (
-                  <span className="text-xs text-muted-foreground self-center">+{unsubscribedClubs.length - 5} more</span>
+                  <span className="text-xs text-muted-foreground self-center">+{unsubscribedClubs.length - 5} more in dropdown</span>
                 )}
               </div>
             </Card>
@@ -539,9 +569,25 @@ export default function SuperAdminSubscriptions() {
                         {sub.trial_ends_at ? new Date(sub.trial_ends_at).toLocaleDateString() : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditSub(sub)}>
-                          <Pencil className="h-3 w-3" />
-                        </Button>
+                        <div className="flex justify-end gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditSub(sub)} title="Edit">
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive hover:text-destructive"
+                            title="Remove from subscription list"
+                            disabled={removeSub.isPending}
+                            onClick={() => {
+                              if (confirm(`Remove ${sub.clubs?.name || "this club"} from the subscription list? You can re-add them later.`)) {
+                                removeSub.mutate(sub.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

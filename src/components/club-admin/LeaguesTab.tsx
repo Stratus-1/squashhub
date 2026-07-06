@@ -2210,7 +2210,9 @@ const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
 function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [form, setForm] = useState({ name: "", abbreviation: "" });
   const [mode, setMode] = useState<"select" | "create">("select");
-  const [scope, setScope] = useState<"internal" | "region">("region");
+  // Clubs may only create Internal leagues themselves. Regional/external leagues
+  // must be joined via "Select Existing" (platform-managed by super admin).
+  const scope: "internal" = "internal";
   const [selectedPlatformId, setSelectedPlatformId] = useState("");
   const qc = useQueryClient();
 
@@ -2278,7 +2280,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
       if (!form.name.trim()) return;
       const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId, scope });
       if (error) toast.error(error.message);
-      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); setScope("region"); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
+      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     }
   };
 
@@ -2315,18 +2317,10 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
             <>
               <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. My Club League" /></div>
               <div className="space-y-1"><Label>Abbreviation</Label><Input value={form.abbreviation} onChange={e => setForm(p => ({ ...p, abbreviation: e.target.value }))} placeholder="e.g. MCL" /></div>
-              <div className="space-y-1">
-                <Label>Scope</Label>
-                <div className="flex gap-2">
-                  <Button type="button" variant={scope === "internal" ? "default" : "outline"} size="sm" onClick={() => setScope("internal")} className="flex-1">Internal</Button>
-                  <Button type="button" variant={scope === "region" ? "default" : "outline"} size="sm" onClick={() => setScope("region")} className="flex-1">Regional</Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {scope === "internal"
-                    ? "Internal: only your club's members participate. No external integration."
-                    : "Regional: external/regional league involving other clubs."}
-                </p>
-                <p className="text-[11px] text-muted-foreground italic">National bodies (e.g. SSA) are not leagues — they auto-seed as fees on every club.</p>
+              <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">Scope: Internal only</p>
+                <p className="mt-0.5">Only your club's members participate. Regional/external leagues must be joined via <em>Select Existing</em> — clubs cannot create their own regional leagues.</p>
+                <p className="mt-1 italic">National bodies (e.g. SSA) are not leagues — they auto-seed as fees on every club.</p>
               </div>
             </>
           )}

@@ -160,10 +160,29 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
           category: m.gender || "Men",
           created_at: m.joined_at,
         };
+        });
+      // Dedupe: when the same person exists in both club_members (as visitor)
+      // and the legacy club_visitors table (from earlier registrations), keep
+      // the account-backed member_record and drop the legacy entry. Match on
+      // normalised email first, then on first+last name as a fallback.
+      const memberKeys = new Set<string>();
+      for (const m of visitorMembers as any[]) {
+        const e = String(m.email || "").trim().toLowerCase();
+        if (e) memberKeys.add(`e:${e}`);
+        const nm = `${String(m.first_name || "").trim().toLowerCase()} ${String(m.last_name || "").trim().toLowerCase()}`.trim();
+        if (nm) memberKeys.add(`n:${nm}`);
+      }
+      const dedupedRegistered = registeredVisitors.filter((v: any) => {
+        const e = String(v.email || "").trim().toLowerCase();
+        if (e && memberKeys.has(`e:${e}`)) return false;
+        const nm = `${String(v.first_name || "").trim().toLowerCase()} ${String(v.last_name || "").trim().toLowerCase()}`.trim();
+        if (nm && memberKeys.has(`n:${nm}`)) return false;
+        return true;
       });
-      return [...registeredVisitors, ...visitorMembers] as Visitor[];
+      return [...dedupedRegistered, ...visitorMembers] as Visitor[];
     },
   });
+
 
   // Distinct home-club names for the dropdown — curated table + any derived names
   const homeClubOptions = useMemo(() => {

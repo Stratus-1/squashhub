@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -92,8 +92,44 @@ export default function ClubAuth() {
   // are reached via links underneath the sign-in form (per UX redesign).
   const [activeTab, setActiveTab] = useState<"login" | "existing" | "new" | "visitor">("login");
 
-  // Redirect if already logged in
-  if (user) return <Navigate to="/" replace />;
+  // Storage key for pending Google-visitor completion (survives OAuth round-trip).
+  const pendingVisitorKey = `sh.pending_visitor_registration.${club?.id || "unknown"}`;
+
+  // If user just returned from Google OAuth and had a pending visitor payload
+  // for THIS club, complete their visitor registration now.
+  useEffect(() => {
+    if (!user || !club?.id) return;
+    const raw = localStorage.getItem(pendingVisitorKey);
+    if (!raw) return;
+    let payload: any = null;
+    try { payload = JSON.parse(raw); } catch { localStorage.removeItem(pendingVisitorKey); return; }
+    if (!payload || payload.club_id !== club.id) return;
+    (async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("register-visitor-user", {
+          body: { ...payload, password: "" },
+        });
+        if (error || (data as any)?.error) {
+          toast.error((data as any)?.error || error?.message || "Failed to finish visitor registration");
+        } else {
+          setVisitorFirstName(payload.first_name || "");
+          setVisitorDone(true);
+          toast.success("Welcome! You're signed in as a visitor.");
+        }
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to finish visitor registration");
+      } finally {
+        localStorage.removeItem(pendingVisitorKey);
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, club?.id]);
+
+  // Redirect if already logged in — unless a Google-visitor completion is pending.
+  const hasPendingVisitor = !!(club?.id && typeof window !== "undefined" && localStorage.getItem(pendingVisitorKey));
+  if (user && !hasPendingVisitor && !visitorDone) return <Navigate to="/" replace />;
 
   const clubName = club?.name || "Club";
 
@@ -612,6 +648,59 @@ export default function ClubAuth() {
       toast.error(err.message || "Failed to register visitor");
     }
     setLoading(false);
+  };
+
+  const handleVisitorGoogle = async () => {
+    const firstName = visitorFirstName.trim();
+    const lastName = visitorLastName.trim();
+    const phone = visitorPhone.trim();
+    const homeClub = visitorHomeClub.trim();
+    const memNum = visitorMemberNumber.trim();
+
+    if (!firstName || firstName.length < 2) { toast.error("Please enter your first name"); return; }
+    if (!lastName || lastName.length < 2) { toast.error("Please enter your last name"); return; }
+    if (!homeClub || homeClub.length < 2) { toast.error("Please select your home club"); return; }
+    if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
+    if (!club?.id) { toast.error("Club not found"); return; }
+
+    // Persist the visitor details across the Google OAuth round-trip.
+    const payload = {
+      club_id: club.id,
+      first_name: firstName,
+      last_name: lastName,
+      phone: phone || null,
+      home_club_name: homeClub,
+      member_number: memNum || null,
+      category: visitorCategory,
+    };
+    localStorage.setItem(pendingVisitorKey, JSON.stringify(payload));
+
+    setLoading(true);
+    try {
+      const { getClubSubdomain } = await import("@/lib/subdomain");
+      const { getTenantAwareAuthRedirect } = await import("@/lib/site");
+      const sub = getClubSubdomain();
+      const callback = new URL(getTenantAwareAuthRedirect("/auth/callback"));
+      if (sub && !callback.searchParams.has("tenant")) callback.searchParams.set("tenant", sub);
+      if (sub) callback.searchParams.set("club", sub);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callback.toString(),
+          queryParams: { prompt: "select_account" },
+        },
+      });
+      if (error) {
+        localStorage.removeItem(pendingVisitorKey);
+        toast.error(error.message || "Google sign-in failed");
+        setLoading(false);
+      }
+      // Browser is redirecting to Google.
+    } catch (err: any) {
+      localStorage.removeItem(pendingVisitorKey);
+      toast.error(err?.message || "Google sign-in failed");
+      setLoading(false);
+    }
   };
 
   const handleReset = async (e: React.FormEvent) => {
@@ -1335,7 +1424,31 @@ export default function ClubAuth() {
               <p className="text-xs text-muted-foreground mb-4">
                 Visiting {clubName} for a tournament or league? Register your details below — no account needed.
               </p>
-              <form onSubmit={handleVisitorRegister} className="space-y-3">
+
+              {/* Google sign-up shortcut — fills name/email from Google, skips password. */}
+              <div className="mb-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading}
+                  onClick={handleVisitorGoogle}
+                  className="w-full gap-2 bg-white text-black hover:bg-white/90 border-input"
+                >
+                  <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+                    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+                    <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
+                    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/>
+                  </svg>
+                  Continue with Google
+                </Button>
+                <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                  Fill in your details below first — we'll link them to your Google account.
+                </p>
+              </div>
+              <GoogleAuthDivider text="or use email & password" />
+
+              <form onSubmit={handleVisitorRegister} className="space-y-3 mt-3">
                 <div>
                   <Label htmlFor="visitor-first-name">First Name <span className="text-destructive">*</span></Label>
                   <Input

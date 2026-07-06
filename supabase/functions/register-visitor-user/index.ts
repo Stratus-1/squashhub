@@ -40,65 +40,81 @@ Deno.serve(async (req) => {
   const clubId = String(body.club_id || "").trim();
   const firstName = String(body.first_name || "").trim();
   const lastName = String(body.last_name || "").trim();
-  const email = String(body.email || "").trim().toLowerCase();
+  const emailIn = String(body.email || "").trim().toLowerCase();
   const password = String(body.password || "");
   const phone = body.phone ? String(body.phone).trim() : null;
   const homeClubName = String(body.home_club_name || "").trim();
   const memberNumber = body.member_number ? String(body.member_number).trim() : null;
   const category = String(body.category || "Men").trim();
 
-  if (!clubId) return json({ error: "Club is required" }, 400);
-  if (firstName.length < 2) return json({ error: "First name is required" }, 400);
-  if (lastName.length < 2) return json({ error: "Last name is required" }, 400);
-  if (!email || !email.includes("@")) return json({ error: "Valid email is required" }, 400);
-  if (password.length < 6) return json({ error: "Password must be at least 6 characters" }, 400);
-  if (homeClubName.length < 2) return json({ error: "Home club is required" }, 400);
-
   const supaUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const admin = createClient(supaUrl, serviceKey, { auth: { persistSession: false } });
 
+  // Google-mode: caller is already authenticated (e.g. via Google OAuth) and
+  // only needs a visitor club_members row created for their existing account.
+  const authHeader = req.headers.get("Authorization") || req.headers.get("authorization") || "";
+  const bearer = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7).trim() : "";
+  let authedUser: { id: string; email?: string | null } | null = null;
+  if (bearer) {
+    const { data: userData } = await admin.auth.getUser(bearer);
+    if (userData?.user) authedUser = { id: userData.user.id, email: userData.user.email };
+  }
+  const googleMode = !!authedUser;
+  const email = (emailIn || authedUser?.email || "").toLowerCase();
+
+  if (!clubId) return json({ error: "Club is required" }, 400);
+  if (firstName.length < 2) return json({ error: "First name is required" }, 400);
+  if (lastName.length < 2) return json({ error: "Last name is required" }, 400);
+  if (!email || !email.includes("@")) return json({ error: "Valid email is required" }, 400);
+  if (!googleMode && password.length < 6) return json({ error: "Password must be at least 6 characters" }, 400);
+  if (homeClubName.length < 2) return json({ error: "Home club is required" }, 400);
+
   const fullName = `${firstName} ${lastName}`.trim();
   const gender = category.toLowerCase() === "ladies" ? "Ladies" : "Men";
-
-  // 1. Create auth user (email pre-confirmed).
-  const { data: created, error: createErr } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: {
-      name: fullName,
-      phone: phone || undefined,
-      terms_accepted_at: new Date().toISOString(),
-      privacy_accepted_at: new Date().toISOString(),
-    },
-  });
 
   let userId: string;
   let reusedExistingAccount = false;
 
-  if (createErr || !created?.user) {
-    const msg = createErr?.message || "Failed to create user";
-    const isDuplicate =
-      msg.toLowerCase().includes("already") ||
-      (createErr as any)?.code === "email_exists";
-
-    if (!isDuplicate) return json({ error: msg }, 400);
-
-    // Email in use — verify supplied password so we don't hijack a stranger's account
-    const anonClient = createClient(supaUrl, anonKey, { auth: { persistSession: false } });
-    const { data: signIn, error: signInErr } = await anonClient.auth.signInWithPassword({ email, password });
-    if (signInErr || !signIn?.user) {
-      return json({
-        error:
-          "An account with this email already exists. Sign in with your existing password, or reset it.",
-      }, 409);
-    }
-    userId = signIn.user.id;
+  if (googleMode) {
+    userId = authedUser!.id;
     reusedExistingAccount = true;
   } else {
-    userId = created.user.id;
+    // 1. Create auth user (email pre-confirmed).
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        name: fullName,
+        phone: phone || undefined,
+        terms_accepted_at: new Date().toISOString(),
+        privacy_accepted_at: new Date().toISOString(),
+      },
+    });
+
+    if (createErr || !created?.user) {
+      const msg = createErr?.message || "Failed to create user";
+      const isDuplicate =
+        msg.toLowerCase().includes("already") ||
+        (createErr as any)?.code === "email_exists";
+
+      if (!isDuplicate) return json({ error: msg }, 400);
+
+      const anonClient = createClient(supaUrl, anonKey, { auth: { persistSession: false } });
+      const { data: signIn, error: signInErr } = await anonClient.auth.signInWithPassword({ email, password });
+      if (signInErr || !signIn?.user) {
+        return json({
+          error:
+            "An account with this email already exists. Sign in with your existing password, or reset it.",
+        }, 409);
+      }
+      userId = signIn.user.id;
+      reusedExistingAccount = true;
+    } else {
+      userId = created.user.id;
+    }
   }
 
   // 2. Upsert profile

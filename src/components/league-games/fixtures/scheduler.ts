@@ -462,3 +462,125 @@ export function inferTiersFromPriorFixtures(
   return out;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Cross-pool allocator — lets multiple leagues (or tournament groups) that play
+// on the same night share their combined court list. Every pool keeps its own
+// pairings, but any pool's fixture can slot onto any pool's court, taking the
+// earliest free (date × time × court) cell. Existing single-pool allocators
+// above are unchanged, so opt-in behaviour only.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type SchedulingPool = {
+  id: string;
+  pairings: Pairing[];
+  courtIds: number[]; // this pool's own courts (used as tie-breaker preference)
+};
+
+export type PoolSlotAssignment = SlotAssignment & { poolId: string };
+
+export function allocateAcrossPools(
+  pools: SchedulingPool[],
+  startTime: string,
+  endTime: string,
+  slotMinutes: number,
+  startDate: string,
+  endDate?: string,
+  playDows?: number[],
+): { slots: PoolSlotAssignment[]; error?: string } {
+  const sharedCourts = Array.from(
+    new Set(pools.flatMap((p) => p.courtIds)),
+  ).sort((a, b) => a - b);
+  if (!sharedCourts.length) return { slots: [], error: "No courts assigned to any pool." };
+
+  const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
+  const openEnded = !endDate || endDate === startDate;
+  const dates = openEnded
+    ? nextNPlayDates(startDate, Math.max(1, Math.ceil(
+        pools.reduce((n, p) => n + p.pairings.length, 0) /
+          Math.max(1, sharedCourts.length * Math.max(1, slotTimes.length)),
+      )), playDows)
+    : eachDate(startDate, endDate!, playDows);
+
+  if (!dates.length || !slotTimes.length) {
+    return { slots: [], error: "Check the start date, time window, and slot length." };
+  }
+
+  // Build grid cells (date × time × court) in chronological order.
+  type Cell = { date: string; time: string; court: number; used: boolean };
+  const grid: Cell[] = [];
+  for (const d of dates) for (const t of slotTimes) for (const c of sharedCourts) {
+    grid.push({ date: d, time: t, court: c, used: false });
+  }
+
+  // Track when each team last played, to avoid back-to-back.
+  const lastCellByTeam = new Map<string, number>();
+  const cellIndexAt = (date: string, time: string) => `${date}|${time}`;
+  const cellIndex = new Map<string, number>();
+  grid.forEach((c, i) => {
+    const k = cellIndexAt(c.date, c.time);
+    if (!cellIndex.has(k)) cellIndex.set(k, i);
+  });
+
+  // Interleave pairings from each pool so no single pool hogs early slots.
+  const queues = pools.map((p) => ({ id: p.id, own: new Set(p.courtIds), remaining: [...p.pairings] }));
+  const out: PoolSlotAssignment[] = [];
+
+  let progressing = true;
+  while (progressing) {
+    progressing = false;
+    for (const q of queues) {
+      if (!q.remaining.length) continue;
+      const pair = q.remaining[0];
+      // Find earliest cell where (a) court is free, (b) neither team is already
+      // in that time slot, (c) not immediately after the same team's last game
+      // if avoidable. Prefer this pool's own courts, then any shared court.
+      let picked = -1;
+      let pickedSameCourt = -1;
+      for (let i = 0; i < grid.length; i++) {
+        const cell = grid[i];
+        if (cell.used) continue;
+        // Same time+date must not already contain either team
+        const timeStart = cellIndex.get(cellIndexAt(cell.date, cell.time)) ?? i;
+        let clash = false;
+        for (let j = timeStart; j < grid.length; j++) {
+          const other = grid[j];
+          if (other.date !== cell.date || other.time !== cell.time) break;
+          if (other === cell) continue;
+          if (!other.used) continue;
+          // find slot placed at that cell
+          const placed = out.find((s) =>
+            s.date === other.date && s.startTime === other.time && s.courtId === other.court,
+          );
+          if (placed && (placed.home === pair.home || placed.away === pair.away ||
+                          placed.home === pair.away || placed.away === pair.home)) {
+            clash = true; break;
+          }
+        }
+        if (clash) continue;
+        if (q.own.has(cell.court) && pickedSameCourt === -1) pickedSameCourt = i;
+        if (picked === -1) picked = i;
+        if (pickedSameCourt !== -1) break;
+      }
+      const chosen = pickedSameCourt !== -1 ? pickedSameCourt : picked;
+      if (chosen === -1) continue;
+      const cell = grid[chosen];
+      cell.used = true;
+      out.push({
+        poolId: q.id,
+        home: pair.home, away: pair.away,
+        courtId: cell.court, startTime: cell.time, date: cell.date,
+      });
+      lastCellByTeam.set(pair.home, chosen);
+      lastCellByTeam.set(pair.away, chosen);
+      q.remaining.shift();
+      progressing = true;
+    }
+  }
+
+  const leftover = queues.reduce((n, q) => n + q.remaining.length, 0);
+  if (leftover > 0) {
+    return { slots: out, error: `Not enough court capacity: ${leftover} pairing(s) could not be placed.` };
+  }
+  return { slots: out };
+}
+

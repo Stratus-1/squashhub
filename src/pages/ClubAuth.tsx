@@ -681,14 +681,14 @@ export default function ClubAuth() {
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
     if (!club?.id) { toast.error("Club not found"); return; }
 
-    // Persist the visitor details across the Google OAuth round-trip.
+    // Persist any details already filled across the Google OAuth round-trip.
     const payload = {
       club_id: club.id,
-      first_name: firstName,
-      last_name: lastName,
+      first_name: visitorFirstName.trim() || null,
+      last_name: visitorLastName.trim() || null,
       phone: phone || null,
-      home_club_name: homeClub,
-      member_number: memNum || null,
+      home_club_name: visitorHomeClub.trim() || null,
+      member_number: visitorMemberNumber.trim() || null,
       category: visitorCategory,
     };
     localStorage.setItem(pendingVisitorKey, JSON.stringify(payload));

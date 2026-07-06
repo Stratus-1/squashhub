@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -92,8 +92,44 @@ export default function ClubAuth() {
   // are reached via links underneath the sign-in form (per UX redesign).
   const [activeTab, setActiveTab] = useState<"login" | "existing" | "new" | "visitor">("login");
 
-  // Redirect if already logged in
-  if (user) return <Navigate to="/" replace />;
+  // Storage key for pending Google-visitor completion (survives OAuth round-trip).
+  const pendingVisitorKey = `sh.pending_visitor_registration.${club?.id || "unknown"}`;
+
+  // If user just returned from Google OAuth and had a pending visitor payload
+  // for THIS club, complete their visitor registration now.
+  useEffect(() => {
+    if (!user || !club?.id) return;
+    const raw = localStorage.getItem(pendingVisitorKey);
+    if (!raw) return;
+    let payload: any = null;
+    try { payload = JSON.parse(raw); } catch { localStorage.removeItem(pendingVisitorKey); return; }
+    if (!payload || payload.club_id !== club.id) return;
+    (async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("register-visitor-user", {
+          body: { ...payload, password: "" },
+        });
+        if (error || (data as any)?.error) {
+          toast.error((data as any)?.error || error?.message || "Failed to finish visitor registration");
+        } else {
+          setVisitorFirstName(payload.first_name || "");
+          setVisitorDone(true);
+          toast.success("Welcome! You're signed in as a visitor.");
+        }
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to finish visitor registration");
+      } finally {
+        localStorage.removeItem(pendingVisitorKey);
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, club?.id]);
+
+  // Redirect if already logged in — unless a Google-visitor completion is pending.
+  const hasPendingVisitor = !!(club?.id && typeof window !== "undefined" && localStorage.getItem(pendingVisitorKey));
+  if (user && !hasPendingVisitor && !visitorDone) return <Navigate to="/" replace />;
 
   const clubName = club?.name || "Club";
 

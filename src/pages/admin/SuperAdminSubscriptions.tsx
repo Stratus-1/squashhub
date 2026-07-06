@@ -73,6 +73,14 @@ const EMPTY_INVOICE_SETTINGS = {
 };
 type InvoiceSettings = typeof EMPTY_INVOICE_SETTINGS;
 
+const EMPTY_STITCH_SETTINGS = {
+  enabled: false,
+  test_mode: true,
+  client_id: "",
+  client_secret: "",
+};
+type StitchSettings = typeof EMPTY_STITCH_SETTINGS;
+
 export default function SuperAdminSubscriptions() {
   const qc = useQueryClient();
   const [planDialog, setPlanDialog] = useState<Plan | "new" | null>(null);
@@ -81,6 +89,9 @@ export default function SuperAdminSubscriptions() {
   const [subForm, setSubForm] = useState({ plan_id: "", status: "", trial_ends_at: "", member_count: "0", amount_due: "0" });
   const [invoiceForm, setInvoiceForm] = useState<InvoiceSettings>(EMPTY_INVOICE_SETTINGS);
   const [invoiceDirty, setInvoiceDirty] = useState(false);
+  const [stitchForm, setStitchForm] = useState<StitchSettings>(EMPTY_STITCH_SETTINGS);
+  const [stitchDirty, setStitchDirty] = useState(false);
+  const [showStitchSecret, setShowStitchSecret] = useState(false);
 
   // --- Queries ---
   const { data: plans = [], isLoading: plansLoading } = useQuery({

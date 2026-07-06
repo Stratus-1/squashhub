@@ -96,7 +96,7 @@ export default function ClubAuth() {
   const pendingVisitorKey = `sh.pending_visitor_registration.${club?.id || "unknown"}`;
 
   // If user just returned from Google OAuth and had a pending visitor payload
-  // for THIS club, complete their visitor registration now.
+  // for THIS club, prefill/complete their visitor registration now.
   useEffect(() => {
     if (!user || !club?.id) return;
     const raw = localStorage.getItem(pendingVisitorKey);
@@ -104,6 +104,23 @@ export default function ClubAuth() {
     let payload: any = null;
     try { payload = JSON.parse(raw); } catch { localStorage.removeItem(pendingVisitorKey); return; }
     if (!payload || payload.club_id !== club.id) return;
+
+    // Prefill visitor form from Google identity + any details captured pre-OAuth.
+    const meta: any = (user as any).user_metadata || {};
+    const fullName = String(meta.full_name || meta.name || "").trim();
+    const [gFirst, ...gRest] = fullName ? fullName.split(/\s+/) : [];
+    const gLast = gRest.join(" ");
+    setVisitorFirstName((prev) => prev || payload.first_name || gFirst || "");
+    setVisitorLastName((prev) => prev || payload.last_name || gLast || "");
+    setVisitorEmail((prev) => prev || user.email || "");
+    if (payload.phone) setVisitorPhone((prev) => prev || payload.phone);
+    if (payload.home_club_name) { setVisitorHomeClub(payload.home_club_name); setVisitorHomeClubMode("picker"); }
+    if (payload.member_number) setVisitorMemberNumber((prev) => prev || payload.member_number);
+    if (payload.category) setVisitorCategory(payload.category);
+    setActiveTab("visitor");
+
+    const hasAll = payload.first_name && payload.last_name && payload.home_club_name;
+    if (!hasAll) return; // user must complete the form manually
     (async () => {
       setLoading(true);
       try {

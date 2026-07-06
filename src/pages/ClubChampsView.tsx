@@ -1328,6 +1328,18 @@ export default function ClubChampsView() {
           return (tb.pf - ta.pf) || ((tb.pf - tb.pa) - (ta.pf - ta.pa)) || (a - b);
         })
       : groupNumbers;
+
+    // Overall leaderboard — combined across every league, ranked by the format's
+    // own comparator so the tournament-wide leader is always on top.
+    const overallRows = groupNumbers
+      .flatMap((gn: number) =>
+        getGroupStandings(gn).map((s: any) => ({ ...s, _groupNumber: gn }))
+      )
+      .filter((s: any) => (s.played || 0) > 0 || (s.byes || 0) > 0)
+      .sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
+    const overallMaxGames = Math.max(0, ...overallRows.map((s: any) => s.gamePoints?.length || 0));
+    const overallWinner = overallRows[0];
+
     const groups = orderedGroups.map((gn: number) => {
       const standings = getGroupStandings(gn);
       const groupMemberIds = new Set<string>(

@@ -24,7 +24,7 @@ const errorMessage = (e: unknown, fallback: string) =>
  */
 export function DashboardOpenDoorCard() {
   const { data: clubData } = useMyClub();
-  const club = clubData?.club as { id?: string } | undefined;
+  const club = clubData?.club as { id?: string; visitors_access_control?: boolean } | undefined;
   const { data: clubSecrets } = useClubSecrets(club?.id);
   const { activeMember } = useMemberContext();
   const { data: myBookings } = useMyBookings();
@@ -36,8 +36,10 @@ export function DashboardOpenDoorCard() {
   const shellyEnabled = accessType === "shelly_relay";
   const doorEnabled = flussEnabled || shellyEnabled;
   const doorBlocked = gate.isBlocked("door");
+  const isVisitorRole = String((activeMember as any)?.role || "").toLowerCase() === "visitor";
+  const visitorBlocked = isVisitorRole && !club?.visitors_access_control;
 
-  if (!club?.id || !doorEnabled || doorBlocked) return null;
+  if (!club?.id || !doorEnabled || doorBlocked || visitorBlocked) return null;
 
   const handleOpenDoor = async () => {
     setLoading(true);

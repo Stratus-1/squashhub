@@ -1,59 +1,56 @@
+# Dynamic Court Reuse
 
-# Member Suspension for Arrears
+Right now each league round and tournament group allocates fixtures onto its own fixed court list, at fixed slot times. If League A finishes on Court 1 at 20:30 but League B still has matches queued for 21:00 on Court 2, League B's fixtures don't slide over — Court 1 sits idle. Same story inside a tournament: if a Group A match ends early, Group B keeps waiting for its scheduled slot.
 
-Introduce a "suspended" state for members whose fee accounts are in arrears beyond club-defined thresholds. Suspended members can log in, view their account, and pay — but cannot book courts, open doors, join leagues, or use any club-billable feature.
+This work makes the scheduler court-pool aware, at both generation time and live during play.
 
-## 1. Admin rules (Club Admin → Finance / Membership Rules)
+## Phase A – Generation-time court pooling
 
-New settings block on the club (persisted on `clubs` or a new `club_suspension_rules` JSON column — small enough for `clubs`):
+Goal: when multiple leagues (or tournament groups) share a play night, the allocator treats their combined courts as one pool and packs fixtures into the earliest free (court × time) cell.
 
-- **Enable auto-suspension** (toggle)
-- **Grace period** — days after fee due date before arrears count (e.g. 30)
-- **Amount threshold** — suspend when outstanding balance ≥ R X (e.g. R500)
-- **Age threshold** — suspend when any unpaid fee is older than Y days (e.g. 60)
-- **Debit order exemption** — do not suspend members with an active `stitch_mandates` row (status `active`)
-- **What gets blocked** (checkbox list): court bookings, door access, league signup, challenges, event RSVPs, bar tab
-- **Grace message** shown to member on dashboard
-- **Manual override** — admin can force-suspend or force-clear on any member row
+Changes:
+- New helper `allocateAcrossPools()` in `src/components/league-games/fixtures/scheduler.ts` that takes an array of `{ id, pairings, courtIds }` pools + a shared time window, and greedily assigns each pairing to the earliest slot where any of its own courts is free — falling back to any pool court if the league admin opts into shared courts.
+- Reuses existing `buildSlotTimes` / `nextNPlayDates` / court-fairness logic — no behaviour change for leagues that don't opt in.
+- Wire an opt-in "Share courts with other leagues on the same night" toggle into the league round generator dialog (`GenerateFixturesDialog` under `src/components/league-games/`), default OFF so nothing existing shifts unexpectedly.
+- For tournaments (`ClubChampsTab` → `generate schedule` path via `src/lib/tournament-formats/*`), apply the same pooled allocator across groups that share the same date + courts. Bells format already schedules by court list; extend it to consume freed slots from sibling groups.
 
-## 2. Data model
+## Phase B – Live court reuse when matches finish early
 
-- Add `suspension_status` (`active` | `warning` | `suspended` | `manual_hold`), `suspension_reason`, `suspended_at`, `suspension_cleared_at` to `club_members`.
-- Add `club_suspension_rules jsonb` to `clubs` (or dedicated table if it grows).
-- Nightly edge function `evaluate-member-suspensions` (cron) recomputes status per member using the rules + `club_member_fee_payments` + `stitch_mandates`. Also runs on-demand after any payment via a DB trigger or invoke.
-- Audit trail in `club_journal_entries` or new `member_suspension_log`.
+Goal: as a fixture is marked complete (or a marker session ends), pull the next unstarted fixture on the same evening onto that freed court + time.
 
-## 3. Enforcement (single source of truth)
+Changes:
+- New edge function `reflow-freed-court` (`supabase/functions/reflow-freed-court/index.ts`):
+  - Input: `{ fixture_id }` that just completed, or `{ tournament_match_id }`.
+  - Looks up sibling fixtures on the same `fixture_date` after `now()` on shared/adjacent courts, whose current start_time is later than the freed slot.
+  - Picks the earliest queued fixture whose teams aren't already playing right now, and updates its `court_id` + `start_time` to the freed cell.
+  - Writes an audit row so the change is visible and reversible.
+- Trigger the function from:
+  - `league_fixture_results` insert (existing result-recording path in `LeagueGameDetail`).
+  - Tournament match completion path (`club_champs_matches` update where `status → completed`).
+  - Marker session end (`live_marker_sessions` cleanup) as a safety net.
+- Frontend already subscribes to fixture / match realtime updates, so the UI re-renders automatically. Add a subtle "Moved earlier — Court X, HH:MM" toast on the affected fixture card via existing notification hooks.
 
-- New hook `useMemberAccessGate()` returns `{ suspended, reason, outstanding, allowedActions }` derived from `activeMember` + `club_members.suspension_status`.
-- Gate points:
-  - `Bookings.tsx` — disable slot clicks; show banner "Account suspended — settle R X to book".
-  - `DashboardOpenDoorCard.tsx` — hide/disable tile.
-  - `LiveSessionBanner.tsx` door prompt — suppress.
-  - Challenge/league/event/tournament CTAs — disable with tooltip.
-  - Server-side belt-and-braces: RLS policy or edge-function check on `bookings` insert and on `fluss-trigger` / `shelly-door` invoke (reject if suspended).
+Guardrails:
+- Never move a fixture whose players are actively marking (`league_marker_locks` fresh < 60s) — the existing `useFixtureLiveMarkers` check.
+- Never move within 5 minutes of the original start (players may already be on court).
+- Only reflow fixtures inside the same round / same tournament / same evening — no cross-day shifts.
+- Admin-level kill switch: `clubs.dynamic_court_reflow_enabled boolean default true` so a club can disable it.
 
-## 4. Member UX
+## Phase C – Visibility
 
-- Persistent red banner on Dashboard: "Your account is suspended. Outstanding: R X. Pay now to restore access." → deep-links to `/account#fees`.
-- MyAccount and fee-payment flows remain fully functional.
-- On successful payment that clears the threshold, trigger re-evaluation and toast "Access restored".
-- Warning state (approaching threshold) shows an amber banner but keeps access.
+- Add a small "Auto-shifted" indicator on fixture rows whose start_time or court_id was moved by the reflow function (badge next to the time).
+- Log every reflow in a new `court_reflow_log` table so admins can see what moved and why.
 
-## 5. Admin UX
+## Technical section (for reviewers)
 
-- New "Suspensions" section in Club Admin → Finance: list of suspended/warning members, outstanding amount, days overdue, mandate status, quick actions (Suspend, Clear, Send reminder).
-- Badge on member roster rows.
+Files touched:
+- `src/components/league-games/fixtures/scheduler.ts` – add `allocateAcrossPools`, keep existing exports untouched.
+- `src/components/league-games/GenerateFixturesDialog.tsx` – add opt-in toggle + pass sibling league court lists.
+- `src/components/club-admin/ClubChampsTab.tsx` + `src/lib/tournament-formats/bells.ts` – route through pooled allocator when groups share courts.
+- `supabase/functions/reflow-freed-court/index.ts` – new function, `verify_jwt` on, service-role writes.
+- New migration: `clubs.dynamic_court_reflow_enabled bool`, new `court_reflow_log` table with RLS (`club_id` scoped, admin read).
+- Result-recording paths add a fire-and-forget `supabase.functions.invoke('reflow-freed-court', …)`.
 
-## Technical notes
+No changes to existing ladder, results, or points logic. Rollout is opt-in per league at generation time; live reflow is on by default but killable per club.
 
-- All new tables/columns need `GRANT` + RLS scoped by `club_id` and `has_role`.
-- Server-side check is mandatory — client gating alone is bypassable.
-- Reuse existing `DebitOrderPromptCard` copy patterns and `member_credit_transactions` for balance math.
-- Suspension evaluation must respect `account_delegations` — a delegate paying clears the principal's status.
-
-## Open questions
-
-1. Should suspension be **per-club** only, or also propagate to league eligibility (block from being picked in fixtures)?
-2. Do we want an **automatic email + push** on state change (warning → suspended → cleared)?
-3. Should the door remain openable for **exit** even when suspended (safety), or is the door entry-only?
+Approve to start with Phase A (generation-time pooling for leagues + tournaments), then Phase B, then Phase C.

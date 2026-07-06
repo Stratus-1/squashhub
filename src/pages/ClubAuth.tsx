@@ -621,13 +621,14 @@ export default function ClubAuth() {
     const phone = visitorPhone.trim();
     const homeClub = visitorHomeClub.trim();
     const memNum = visitorMemberNumber.trim();
-    const visEmail = visitorEmail.trim().toLowerCase();
+    const visEmail = (user?.email || visitorEmail).trim().toLowerCase();
     const visPass = visitorPassword;
+    const googleMode = !!user; // already authed via Google
 
     if (!firstName || firstName.length < 2) { toast.error("Please enter your first name"); return; }
     if (!lastName || lastName.length < 2) { toast.error("Please enter your last name"); return; }
     if (!visEmail || !visEmail.includes("@")) { toast.error("Please enter a valid email"); return; }
-    if (visPass.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (!googleMode && visPass.length < 6) { toast.error("Password must be at least 6 characters"); return; }
     if (!homeClub || homeClub.length < 2) { toast.error("Please enter your home club name"); return; }
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
     if (!club?.id) { toast.error("Club not found"); return; }
@@ -640,7 +641,7 @@ export default function ClubAuth() {
           first_name: firstName,
           last_name: lastName,
           email: visEmail,
-          password: visPass,
+          password: googleMode ? "" : visPass,
           phone: phone || null,
           home_club_name: homeClub,
           member_number: memNum || null,
@@ -652,15 +653,20 @@ export default function ClubAuth() {
         setLoading(false);
         return;
       }
-      // Auto sign-in with the same credentials
-      const { error: signInErr } = await signIn(visEmail, visPass);
-      if (signInErr) {
-        toast.error("Registered, but sign-in failed: " + signInErr.message);
-        setLoading(false);
-        return;
+      localStorage.removeItem(pendingVisitorKey);
+      if (googleMode) {
+        toast.success("Welcome! You're signed in as a visitor.");
+        setVisitorDone(true);
+      } else {
+        const { error: signInErr } = await signIn(visEmail, visPass);
+        if (signInErr) {
+          toast.error("Registered, but sign-in failed: " + signInErr.message);
+          setLoading(false);
+          return;
+        }
+        toast.success("Welcome! You're signed in.");
+        setVisitorDone(true);
       }
-      toast.success("Welcome! You're signed in.");
-      setVisitorDone(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to register visitor");
     }
@@ -668,15 +674,10 @@ export default function ClubAuth() {
   };
 
   const handleVisitorGoogle = async () => {
-    const firstName = visitorFirstName.trim();
-    const lastName = visitorLastName.trim();
+    if (!club?.id) { toast.error("Club not found"); return; }
+    // No field validation — Google can be clicked first. Any details already
+    // filled are preserved across the OAuth round-trip and re-hydrated on return.
     const phone = visitorPhone.trim();
-    const homeClub = visitorHomeClub.trim();
-    const memNum = visitorMemberNumber.trim();
-
-    if (!firstName || firstName.length < 2) { toast.error("Please enter your first name"); return; }
-    if (!lastName || lastName.length < 2) { toast.error("Please enter your last name"); return; }
-    if (!homeClub || homeClub.length < 2) { toast.error("Please select your home club"); return; }
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
     if (!club?.id) { toast.error("Club not found"); return; }
 

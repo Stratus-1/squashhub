@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Trash2, Search, Pencil, UserPlus, Settings2, Plus, X, DoorOpen } from "lucide-react";
+import { Loader2, Trash2, Search, Pencil, UserPlus, Settings2, Plus, X, DoorOpen, Ban, CheckCircle2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyClub } from "@/hooks/use-club";
@@ -25,6 +25,7 @@ interface Visitor {
   member_number: string | null;
   category: string;
   created_at: string;
+  suspension_status?: string | null;
 }
 
 interface HomeClubOption {
@@ -125,7 +126,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         .order("created_at", { ascending: false });
       if (error) throw error;
       const { data: memberVisitors, error: memberError } = await fromExt("club_members")
-        .select("id, name, email, phone, club_member_number, gender, joined_at, home_club_name, profiles:user_id(email, phone)")
+        .select("id, name, email, phone, club_member_number, gender, joined_at, home_club_name, suspension_status, profiles:user_id(email, phone)")
         .eq("club_id", clubId)
         .eq("role", "visitor")
         .order("joined_at", { ascending: false });
@@ -159,6 +160,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
           member_number: m.club_member_number || null,
           category: m.gender || "Men",
           created_at: m.joined_at,
+          suspension_status: m.suspension_status || "active",
         };
         });
       // Dedupe: when the same person exists in both club_members (as visitor)
@@ -213,16 +215,22 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     );
   });
 
+  const [suspending, setSuspending] = useState<string | null>(null);
+
   const handleDelete = async (id: string) => {
+    const visitor = visitors.find((v) => v.id === id);
+    if (!visitor) return;
+    const label = `${visitor.first_name} ${visitor.last_name}`.trim();
+    if (!confirm(`Delete visitor "${label}"? This cannot be undone.`)) return;
     setDeleting(id);
     try {
-      const visitor = visitors.find((v) => v.id === id);
-      if (visitor?.source === "member_record") {
-        toast.info("This visitor is linked to an account — edit or remove them from Members.");
-        return;
+      if (visitor.source === "member_record") {
+        const { error } = await fromExt("club_members").delete().eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await fromExt("club_visitors").delete().eq("id", id);
+        if (error) throw error;
       }
-      const { error } = await fromExt("club_visitors").delete().eq("id", id);
-      if (error) throw error;
       toast.success("Visitor removed");
       queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });
       queryClient.invalidateQueries({ queryKey: ["club-members", clubId] });
@@ -230,6 +238,32 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       toast.error(e.message || "Failed to delete visitor");
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleToggleSuspend = async (v: Visitor) => {
+    if (v.source !== "member_record") {
+      toast.info("Suspension only applies to account-linked visitors. Delete this entry instead.");
+      return;
+    }
+    const isSuspended = v.suspension_status === "suspended";
+    const next = isSuspended ? "active" : "suspended";
+    setSuspending(v.id);
+    try {
+      const { error } = await (fromExt("club_members") as any)
+        .update({
+          suspension_status: next,
+          suspended_at: isSuspended ? null : new Date().toISOString(),
+        })
+        .eq("id", v.id);
+      if (error) throw error;
+      toast.success(isSuspended ? "Visitor reinstated" : "Visitor suspended");
+      queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["club-members", clubId] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update suspension");
+    } finally {
+      setSuspending(null);
     }
   };
 
@@ -498,6 +532,9 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
                   {v.source === "member_record" && (
                     <Badge variant="outline" className="text-[10px] shrink-0">Member record</Badge>
                   )}
+                  {v.suspension_status === "suspended" && (
+                    <Badge variant="destructive" className="text-[10px] shrink-0">Suspended</Badge>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {v.home_club_name}
@@ -518,21 +555,38 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
               >
                 <Pencil className="w-4 h-4" />
               </Button>
-              {v.source !== "member_record" && (
+              {v.source === "member_record" && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="shrink-0 text-destructive hover:text-destructive"
-                  disabled={deleting === v.id}
-                  onClick={() => handleDelete(v.id)}
+                  className="shrink-0"
+                  disabled={suspending === v.id}
+                  onClick={() => handleToggleSuspend(v)}
+                  title={v.suspension_status === "suspended" ? "Reinstate visitor" : "Suspend visitor"}
                 >
-                  {deleting === v.id ? (
+                  {suspending === v.id ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : v.suspension_status === "suspended" ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   ) : (
-                    <Trash2 className="w-4 h-4" />
+                    <Ban className="w-4 h-4 text-amber-600" />
                   )}
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-destructive hover:text-destructive"
+                disabled={deleting === v.id}
+                onClick={() => handleDelete(v.id)}
+                title="Delete visitor"
+              >
+                {deleting === v.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+              </Button>
             </Card>
           ))}
         </div>

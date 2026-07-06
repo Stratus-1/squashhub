@@ -2667,11 +2667,22 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>Association</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={associationId} onChange={e => setAssociationId(e.target.value)}>
-              <option value="">None</option>
-              {associations.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-            <p className="text-xs text-muted-foreground">Members allocated to these leagues will be filtered by their affiliation to the selected association.</p>
+            {(() => {
+              const regionalAssocs = associations.filter(a => (a as any).scope !== "internal");
+              return (
+                <>
+                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={associationId} onChange={e => setAssociationId(e.target.value)}>
+                    <option value="">None</option>
+                    {regionalAssocs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    {regionalAssocs.length === 0
+                      ? "No regional associations linked yet. Add one via Select Existing above — internal leagues cannot be used here."
+                      : "Only regional/external associations are shown. Members will be filtered by their affiliation to the selected association."}
+                  </p>
+                </>
+              );
+            })()}
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>

@@ -313,6 +313,15 @@ export default function SuperAdminSubscriptions() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const removeSub = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await fromExt("club_subscriptions").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Club removed from list"); qc.invalidateQueries({ queryKey: ["sa-club-subscriptions"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const openEditSub = (sub: ClubSub) => {
     setEditSub(sub);
     setSubForm({

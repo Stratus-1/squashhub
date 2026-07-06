@@ -22,14 +22,17 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
     queryFn: async () => {
       if (!clubId) return null;
 
-      const [totalRes, activeRes, suspendedRes, resignedRes, leagueRes, visitorsRes, visitorMembersRes] = await Promise.all([
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId),
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "active"),
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "suspended"),
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "resigned"),
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("plays_league", true),
+      // Exclude synthetic role='visitor' shadow member rows (created by the
+      // tournament wizard to satisfy FKs) from the real member headcounts.
+      // Visitors are counted from `club_visitors` only — every shadow member
+      // is created from a `club_visitors` row, so counting both double-counts.
+      const [totalRes, activeRes, suspendedRes, resignedRes, leagueRes, visitorsRes] = await Promise.all([
+        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).neq("role", "visitor"),
+        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "active").neq("role", "visitor"),
+        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "suspended").neq("role", "visitor"),
+        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "resigned").neq("role", "visitor"),
+        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("plays_league", true).neq("role", "visitor"),
         supabase.from("club_visitors").select("*", { count: "exact", head: true }).eq("club_id", clubId),
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("role", "visitor"),
       ]);
 
       return {
@@ -38,7 +41,7 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
         suspended: suspendedRes.count ?? 0,
         resigned: resignedRes.count ?? 0,
         league: leagueRes.count ?? 0,
-        visitors: (visitorsRes.count ?? 0) + (visitorMembersRes.count ?? 0),
+        visitors: visitorsRes.count ?? 0,
       };
     },
   });

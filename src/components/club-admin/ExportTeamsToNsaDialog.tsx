@@ -52,9 +52,17 @@ interface LeagueRow {
   name: string;
   team_code: string | null;
   gender: string | null;
-  league_number: number | null;
   regs: RegRow[];
 }
+
+/** Best-effort gender inference from league name (e.g. "Men's 3rd League 2026"). */
+const inferGender = (name: string): string | null => {
+  const n = (name || "").toLowerCase();
+  if (/\b(ladies|women|woman|female)\b/.test(n)) return "Ladies";
+  if (/\b(mixed)\b/.test(n)) return "Mixed";
+  if (/\b(men|man|male)\b/.test(n)) return "Men";
+  return null;
+};
 
 const csvEscape = (v: string | number | null | undefined) => {
   const s = v == null ? "" : String(v);

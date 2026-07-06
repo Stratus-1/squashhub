@@ -125,9 +125,8 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
       const grouped: LeagueRow[] = leagueList.map((l) => ({
         id: l.id,
         name: l.name,
-        team_code: l.team_code,
-        gender: l.gender,
-        league_number: l.league_number,
+        team_code: (l.nsa_team_code as string | null) || (l.code as string | null) || null,
+        gender: inferGender(l.name),
         regs: regList
           .filter((r) => r.league_id === l.id)
           .sort(

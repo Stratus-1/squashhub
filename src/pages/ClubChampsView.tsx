@@ -1573,6 +1573,7 @@ export default function ClubChampsView() {
     return (
       <>
         {summary}
+        {winnersCard}
         {groups}
         {combinedFixtures}
       </>

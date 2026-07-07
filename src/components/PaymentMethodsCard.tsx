@@ -177,7 +177,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
   }
 
-  const railLabel = (r: string) => (r === "debicheck" ? "DebiCheck" : "EFT debit");
+  const railLabel = (_r: string) => "Recurring card";
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
       active: "bg-green-500/10 text-green-700 border-green-500/20",
@@ -338,7 +338,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
               Cancel
             </Button>
             <Button onClick={submitSetup} disabled={submitting}>
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue to bank"}
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue to card setup"}
             </Button>
           </DialogFooter>
         </DialogContent>

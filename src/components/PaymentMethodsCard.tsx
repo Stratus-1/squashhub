@@ -117,8 +117,6 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
 
   function openSetup(cat: FeeCategory) {
     setSelectedCategory(cat);
-    const r = cat.debit_order_rail;
-    setRail(r === "eft" ? "eft_debit" : "debicheck");
     const defaultMonths = 6;
     setMonths(String(defaultMonths));
     const annual = Number(cat.annual_fee || 0);
@@ -143,7 +141,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
           club_id: clubId,
           club_member_id: clubMemberId,
           fee_category_id: selectedCategory.id,
-          rail,
+          mandate_type: "subscription",
           max_amount: amt,
           debit_day: Number(debitDay) || 1,
           return_url: returnUrl,

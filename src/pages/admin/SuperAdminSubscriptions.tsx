@@ -199,18 +199,22 @@ export default function SuperAdminSubscriptions() {
   };
 
   const runBilling = useMutation({
-    mutationFn: async (dryRun: boolean) => {
+    mutationFn: async (opts: boolean | { dryRun: boolean; subscriptionIds?: string[]; clubLabel?: string }) => {
+      const dryRun = typeof opts === "boolean" ? opts : opts.dryRun;
+      const subscriptionIds = typeof opts === "boolean" ? undefined : opts.subscriptionIds;
+      const clubLabel = typeof opts === "boolean" ? undefined : opts.clubLabel;
       const { data, error } = await supabase.functions.invoke("run-subscription-billing", {
-        body: { dryRun },
+        body: { dryRun, subscriptionIds },
       });
       if (error) throw error;
-      return data as { dryRun: boolean; processed: number; issued: number; skipped: number; failed: number };
+      return { ...(data as { dryRun: boolean; processed: number; issued: number; skipped: number; failed: number; results?: any[] }), clubLabel };
     },
-    onSuccess: (r) => {
+    onSuccess: (r: any) => {
+      const who = r.clubLabel ? ` for ${r.clubLabel}` : "";
       if (r.dryRun) {
-        toast.success(`Dry-run: ${r.processed} subscription(s) would be billed`);
+        toast.success(`Dry-run${who}: ${r.processed} subscription(s) would be billed`);
       } else {
-        toast.success(`Billing complete — ${r.issued} issued, ${r.skipped} skipped, ${r.failed} failed`);
+        toast.success(`Billing${who} complete — ${r.issued} issued, ${r.skipped} skipped, ${r.failed} failed`);
       }
       qc.invalidateQueries({ queryKey: ["sa-club-subscriptions"] });
     },

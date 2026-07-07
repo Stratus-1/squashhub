@@ -270,39 +270,20 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Set up debit order</DialogTitle>
+            <DialogTitle>Set up recurring card payment</DialogTitle>
             <DialogDescription>
-              {selectedCategory?.name} — you will be redirected to authorise this with your bank.
+              {selectedCategory?.name} — you'll be redirected to save a card that will be
+              charged automatically each month.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            {selectedCategory && selectedCategory.debit_order_rail === "either" && (
-              <div>
-                <Label className="text-xs">Debit method</Label>
-                <Select value={rail} onValueChange={(v) => setRail(v as any)}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="debicheck">DebiCheck (bank app authorised)</SelectItem>
-                    <SelectItem value="eft_debit">EFT debit (digital mandate)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="mt-2 rounded-md border bg-muted/40 p-2 text-[11px] leading-snug space-y-1.5">
-                  <p>
-                    <strong>DebiCheck</strong> — you approve the mandate <em>once</em> inside your
-                    own banking app (FNB, Standard Bank, ABSA, Capitec, Nedbank…). It's the most
-                    secure option, can't be disputed later, and the bank can't randomly reject the
-                    debit. <em>Recommended.</em>
-                  </p>
-                  <p>
-                    <strong>EFT debit</strong> — you sign a digital mandate here (no banking-app
-                    step). Faster to set up, works for any bank account, but the debit can be
-                    reversed by the account holder for up to 40 days.
-                  </p>
-                </div>
-              </div>
-            )}
+            <div className="rounded-md border bg-muted/40 p-2 text-[11px] leading-snug">
+              <p>
+                <strong>Recurring card</strong> — enter your card once; it's securely stored
+                by our payment provider and charged on your chosen day each month. Cancel any
+                time from this screen. (True DebiCheck / EFT debit orders coming soon.)
+              </p>
+            </div>
 
             <div>
               <Label className="text-xs">Split annual fee over (months)</Label>

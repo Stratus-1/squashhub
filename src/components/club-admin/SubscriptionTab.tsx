@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,9 @@ const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString() : "
 export function SubscriptionTab({ clubId }: { clubId: string }) {
   const { data: myClub } = useMyClub();
   const club = myClub?.club;
+  const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const verifiedRef = useRef<string | null>(null);
 
   const { data: invoices = [], isLoading: invLoading } = useQuery({
     queryKey: ["club-platform-invoices", clubId],

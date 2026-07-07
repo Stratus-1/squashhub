@@ -496,9 +496,9 @@ export default function Tournaments() {
 
 
             <TabsContent value="standings" className="mt-4 space-y-3">
-              {champs.map((champ: any, idx: number) => {
-                const autoOpen = idx === 0;
+              {champs.map((champ: any) => {
                 return (
+
                   <Card key={champ.id}>
                     <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
                       <div>

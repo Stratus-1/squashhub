@@ -18,7 +18,8 @@ import { toast } from "sonner";
 
 type Mandate = {
   id: string;
-  rail: "debicheck" | "eft_debit";
+  rail: string;
+  mandate_type: "card_consent" | "subscription";
   max_amount_cents: number;
   debit_day: number | null;
   status: "pending" | "active" | "cancelled" | "failed";
@@ -46,7 +47,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   const qc = useQueryClient();
   const [setupOpen, setSetupOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<FeeCategory | null>(null);
-  const [rail, setRail] = useState<"debicheck" | "eft_debit">("debicheck");
+  const [mandateType, setMandateType] = useState<"card_consent" | "subscription">("card_consent");
   const [months, setMonths] = useState("6");
   const [amount, setAmount] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);

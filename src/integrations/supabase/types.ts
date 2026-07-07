@@ -6363,6 +6363,7 @@ export type Database = {
           gateway: string
           id: string
           last_collection_at: string | null
+          mandate_type: string
           max_amount_cents: number
           rail: string
           status: string
@@ -6385,6 +6386,7 @@ export type Database = {
           gateway?: string
           id?: string
           last_collection_at?: string | null
+          mandate_type?: string
           max_amount_cents: number
           rail: string
           status?: string
@@ -6407,6 +6409,7 @@ export type Database = {
           gateway?: string
           id?: string
           last_collection_at?: string | null
+          mandate_type?: string
           max_amount_cents?: number
           rail?: string
           status?: string

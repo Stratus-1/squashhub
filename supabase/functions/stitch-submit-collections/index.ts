@@ -1,6 +1,14 @@
-// Daily job: submits approved collections that are due today (or earlier) to
-// Stitch via paymentInitiationRequestCreate. Also auto-approves any 'queued'
-// row older than 2 days that admin didn't edit/cancel (the approval window).
+// Daily job: submits approved collections that are due today (or earlier).
+//
+// For each collection we look at its mandate:
+//   • mandate_type = "card_consent" → POST /card-consents/{id}/initiate-payment
+//     (Stitch Express) with the exact amount owed.
+//   • mandate_type = "subscription" → Stitch Express charges automatically on
+//     the subscription day; we mark the collection as `auto` and let the
+//     collection webhook flip it to succeeded/failed when Stitch reports back.
+//
+// Also auto-approves any 'queued' row older than 2 days that admin didn't edit
+// or cancel (the 2-day approval window).
 //
 // Auth: service-role for cron, or club admin JWT for manual run.
 
@@ -11,8 +19,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const STITCH_TOKEN_URL = "https://secure.stitch.money/connect/token";
-const STITCH_GRAPHQL = "https://api.stitch.money/graphql";
+const STITCH_BASE = "https://express.stitch.money/api/v1";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -21,20 +28,14 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function getToken(clientId: string, clientSecret: string, scope: string): Promise<string | null> {
-  const resp = await fetch(STITCH_TOKEN_URL, {
+async function getExpressToken(clientId: string, clientSecret: string): Promise<string | null> {
+  const resp = await fetch(`${STITCH_BASE}/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope,
-      audience: "https://secure.stitch.money",
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientId, clientSecret, scope: "client_recurringpaymentconsentrequest" }),
   });
   const j = await resp.json().catch(() => ({}));
-  return resp.ok ? j.access_token || null : null;
+  return resp.ok ? j?.data?.accessToken || null : null;
 }
 
 Deno.serve(async (req) => {
@@ -61,7 +62,7 @@ Deno.serve(async (req) => {
     const today = new Date().toISOString().slice(0, 10);
     let dueQ = admin
       .from("stitch_collections")
-      .select("id, club_id, mandate_id, club_member_id, amount_cents, due_date, fee_payable_id, attempt_number, stitch_mandates(stitch_mandate_id, rail)")
+      .select("id, club_id, mandate_id, club_member_id, amount_cents, due_date, fee_payable_id, attempt_number, stitch_mandates(stitch_mandate_id, mandate_type)")
       .eq("status", "approved")
       .lte("due_date", today);
     if (restrictClubId) dueQ = dueQ.eq("club_id", restrictClubId);
@@ -70,6 +71,7 @@ Deno.serve(async (req) => {
 
     let submitted = 0;
     let failed = 0;
+    let deferred = 0;
 
     // Group by club so we only request a token once per club.
     const byClub = new Map<string, any[]>();
@@ -86,78 +88,92 @@ Deno.serve(async (req) => {
         .eq("club_id", clubId)
         .maybeSingle();
       const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
-      if (!creds.client_id || !creds.client_secret) {
-        for (const r of rows) {
-          await admin.from("stitch_collections").update({
-            status: "failed",
-            failed_reason: "Stitch credentials missing on club",
-          }).eq("id", r.id);
-          failed++;
+      const clientId = (creds.client_id || "").trim();
+      const clientSecret = (creds.client_secret || "").trim();
+
+      // We only need a token if there are card_consent collections to charge.
+      const needsToken = rows.some((r: any) => r.stitch_mandates?.mandate_type === "card_consent");
+      let token: string | null = null;
+      if (needsToken) {
+        if (!clientId || !clientSecret) {
+          for (const r of rows) {
+            if (r.stitch_mandates?.mandate_type !== "card_consent") continue;
+            await admin.from("stitch_collections").update({
+              status: "failed", failed_reason: "Stitch credentials missing on club",
+            }).eq("id", r.id);
+            failed++;
+          }
+          continue;
         }
-        continue;
-      }
-      const token = await getToken(creds.client_id, creds.client_secret, "client_paymentrequest");
-      if (!token) {
-        for (const r of rows) {
-          await admin.from("stitch_collections").update({
-            status: "failed",
-            failed_reason: "Stitch token request failed",
-          }).eq("id", r.id);
-          failed++;
+        token = await getExpressToken(clientId, clientSecret);
+        if (!token) {
+          for (const r of rows) {
+            if (r.stitch_mandates?.mandate_type !== "card_consent") continue;
+            await admin.from("stitch_collections").update({
+              status: "failed", failed_reason: "Stitch token request failed",
+            }).eq("id", r.id);
+            failed++;
+          }
+          continue;
         }
-        continue;
       }
 
       for (const r of rows) {
-        const mandateRef = (r as any).stitch_mandates?.stitch_mandate_id;
-        if (!mandateRef) {
+        const mandateType = (r as any).stitch_mandates?.mandate_type || "card_consent";
+        const stitchRef = (r as any).stitch_mandates?.stitch_mandate_id;
+
+        if (mandateType === "subscription") {
+          // Stitch charges automatically on its schedule — nothing to submit.
+          // Flag the row so it stops showing in the "due" queue and the webhook
+          // can finalise it when Stitch reports success/failure.
           await admin.from("stitch_collections").update({
-            status: "failed", failed_reason: "Mandate not linked to Stitch ID",
+            status: "auto",
+            submitted_at: new Date().toISOString(),
+            failed_reason: null,
+          }).eq("id", r.id);
+          deferred++;
+          continue;
+        }
+
+        // card_consent → charge via Express initiate-payment.
+        if (!stitchRef) {
+          await admin.from("stitch_collections").update({
+            status: "failed", failed_reason: "Mandate not linked to Stitch card consent",
           }).eq("id", r.id);
           failed++;
           continue;
         }
-        const amount = (r.amount_cents / 100).toFixed(2);
-        const mutation = `
-          mutation Init($input: PaymentInitiationRequestCreateInput!) {
-            paymentInitiationRequestCreate(input: $input) {
-              paymentInitiationRequest { id }
-            }
-          }`;
-        const variables = {
-          input: {
-            amount: { quantity: amount, currency: "ZAR" },
-            payerReference: `MND-${r.mandate_id.slice(0, 8)}`,
-            beneficiaryReference: `COL-${r.id.slice(0, 8)}`,
-            externalReference: r.id,
-            mandateId: mandateRef,
-          },
+        const initBody = {
+          amount: r.amount_cents,
+          merchantReference: `COL-${r.id.slice(0, 8)}`,
+          externalReference: r.id,
         };
-        const resp = await fetch(STITCH_GRAPHQL, {
+        const resp = await fetch(`${STITCH_BASE}/card-consents/${encodeURIComponent(stitchRef)}/initiate-payment`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ query: mutation, variables }),
+          body: JSON.stringify(initBody),
         });
         const j = await resp.json().catch(() => ({}));
-        if (!resp.ok || j.errors) {
-          const msg = j?.errors?.[0]?.message || `HTTP ${resp.status}`;
+        if (!resp.ok || !j?.success) {
+          const msg = j?.error?.message || j?.message || (j?.errors && JSON.stringify(j.errors)) || `HTTP ${resp.status}`;
+          console.error("initiate-payment failed", r.id, resp.status, msg);
           await admin.from("stitch_collections").update({
-            status: "failed", failed_reason: msg.slice(0, 500),
+            status: "failed", failed_reason: String(msg).slice(0, 500),
           }).eq("id", r.id);
           failed++;
           continue;
         }
-        const stitchId = j?.data?.paymentInitiationRequestCreate?.paymentInitiationRequest?.id || null;
+        const stitchPaymentId = j?.data?.payment?.id || j?.data?.id || null;
         await admin.from("stitch_collections").update({
           status: "submitted",
           submitted_at: new Date().toISOString(),
-          stitch_collection_id: stitchId,
+          stitch_collection_id: stitchPaymentId,
         }).eq("id", r.id);
         submitted++;
       }
     }
 
-    return json({ ok: true, submitted, failed, due_count: due?.length || 0 });
+    return json({ ok: true, submitted, failed, deferred, due_count: due?.length || 0 });
   } catch (e) {
     console.error("stitch-submit-collections fatal", e);
     return json({ error: (e as Error).message || "Unexpected" }, 500);

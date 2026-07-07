@@ -822,6 +822,11 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
             </Button>
           </div>
 
+          <Button variant="outline" size="sm" className="w-full" onClick={bulkAddPopularClubs} disabled={addingOption}>
+            {addingOption ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-1.5" />}
+            Add popular Gauteng / North West clubs
+          </Button>
+
           <div className="max-h-72 overflow-y-auto space-y-1 border rounded-md p-2 bg-muted/20">
             {homeClubRows.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">

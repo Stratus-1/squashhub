@@ -647,6 +647,11 @@ export default function SuperAdminSubscriptions() {
           </Card>
         </TabsContent>
 
+        {/* ─── ALL INVOICES TAB ─── */}
+        <TabsContent value="invoices-list" className="space-y-4 mt-4">
+          <AllInvoicesList />
+        </TabsContent>
+
         {/* ─── INVOICE DETAILS TAB ─── */}
         <TabsContent value="invoice" className="space-y-4 mt-4">
           <div className="flex items-start justify-between gap-4">

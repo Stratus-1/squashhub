@@ -78,7 +78,7 @@ import HonestyBar from "./pages/HonestyBar";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
-import { useMyClub, useMyClubMember } from "@/hooks/use-club";
+import { useMyClub, useMyClubMember, useIsSuperAdmin } from "@/hooks/use-club";
 import { NoClubAccess } from "@/components/NoClubAccess";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -250,9 +250,12 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { subdomain, club } = useClubContext();
   const { data: myClubMember, isLoading } = useMyClubMember();
+  const isSuperAdmin = useIsSuperAdmin();
 
   // Only gate on club subdomains, once the club context and user are known.
   if (!user || !subdomain || !club?.id) return <>{children}</>;
+  // Platform super-admins can access any club subdomain without a membership row.
+  if (isSuperAdmin) return <>{children}</>;
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

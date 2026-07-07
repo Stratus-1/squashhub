@@ -47,7 +47,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   const qc = useQueryClient();
   const [setupOpen, setSetupOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<FeeCategory | null>(null);
-  const [mandateType, setMandateType] = useState<"card_consent" | "subscription">("card_consent");
+  
   const [months, setMonths] = useState("6");
   const [amount, setAmount] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);

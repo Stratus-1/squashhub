@@ -412,6 +412,61 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     }
   };
 
+  const GAUTENG_NW_CLUBS = [
+    // Pretoria
+    "Berea Park Squash Club",
+    "Pretoria Country Club",
+    "Groenkloof Squash Club",
+    "Wingate Park Country Club",
+    "Waterkloof Country Club",
+    "Centurion Country Club",
+    "CSIR Squash Club",
+    "Zwartkop Country Club",
+    "Loftus Squash Club",
+    "University of Pretoria (Tuks)",
+    // Johannesburg
+    "Wanderers Club",
+    "Country Club Johannesburg",
+    "Old Edwardians",
+    "Killarney Country Club",
+    "Kyalami Country Club",
+    "Bryanston Sports Club",
+    "Parkview Golf Club",
+    "Rand Park Club",
+    "Houghton Golf Club",
+    "Fourways Country Estate",
+    "Randburg Squash Club",
+    "Roodepoort Squash Club",
+    "Krugersdorp Squash Club",
+    "Wits University Squash Club",
+    "Jeppe Quondam",
+    // Potchefstroom
+    "Potchefstroom Country Club",
+    "NWU Pukke Squash Club",
+    "Klerksdorp Country Club",
+  ];
+
+  const bulkAddPopularClubs = async () => {
+    const existing = new Set(homeClubRows.map((r) => r.name.toLowerCase()));
+    const toAdd = GAUTENG_NW_CLUBS.filter((n) => !existing.has(n.toLowerCase()));
+    if (toAdd.length === 0) {
+      toast.info("All popular Gauteng / NW clubs are already in your list");
+      return;
+    }
+    setAddingOption(true);
+    try {
+      const rows = toAdd.map((name) => ({ club_id: clubId, name }));
+      const { error } = await fromExt("club_visitor_home_clubs").insert(rows);
+      if (error) throw error;
+      toast.success(`Added ${toAdd.length} clubs`);
+      queryClient.invalidateQueries({ queryKey: ["club-visitor-home-clubs", clubId] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to add clubs");
+    } finally {
+      setAddingOption(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">

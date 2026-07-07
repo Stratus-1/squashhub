@@ -1,9 +1,13 @@
 // Receives Stitch webhook events for mandate (authorization) status changes.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  getStitchSignature,
+  verifyStitchSignature,
+} from "../_shared/stitch-signature.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stitch-signature",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-stitch-signature, stitch-signature",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -22,7 +26,11 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const body = await req.json().catch(() => ({}));
+    const rawBody = await req.text();
+    const signature = getStitchSignature(req);
+    let body: any;
+    try { body = JSON.parse(rawBody); } catch { return json({ error: "bad json" }, 400); }
+
     // Stitch sends event envelopes with `data.node` for the resource
     const node = body?.data?.node || body?.node || body;
     const stitchId: string | undefined = node?.id;
@@ -34,13 +42,28 @@ Deno.serve(async (req) => {
       return json({ ok: true, ignored: true });
     }
 
-    // Find mandate by stitch_mandate_id
+    // Find mandate by stitch_mandate_id and the owning club so we can verify
+    // the signature against that club's stored signing secret.
     const { data: mandate } = await admin
       .from("stitch_mandates")
-      .select("id, status")
+      .select("id, status, club_id")
       .eq("stitch_mandate_id", stitchId)
       .maybeSingle();
     if (!mandate) return json({ ok: true, unmatched: true });
+
+    const { data: secrets } = await admin.from("club_secrets")
+      .select("payment_gateway_credentials").eq("club_id", mandate.club_id).maybeSingle();
+    const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
+    const signingSecret = creds.webhook_secret || creds.client_secret || "";
+    if (signingSecret && signature) {
+      const valid = await verifyStitchSignature(rawBody, signature, signingSecret);
+      if (!valid) {
+        console.error("stitch-mandate-webhook: invalid signature for mandate", stitchId);
+        return json({ error: "invalid signature" }, 401);
+      }
+    } else if (signature) {
+      console.warn("stitch-mandate-webhook: signature present but no signing secret for club", mandate.club_id);
+    }
 
     let newStatus: string | null = null;
     const t = (stateType + " " + eventType).toLowerCase();

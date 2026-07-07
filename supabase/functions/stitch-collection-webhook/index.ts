@@ -4,10 +4,14 @@
 // failures.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  getStitchSignature,
+  verifyStitchSignature,
+} from "../_shared/stitch-signature.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-stitch-signature, stitch-signature",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -25,7 +29,11 @@ Deno.serve(async (req) => {
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const payload = await req.json().catch(() => ({}));
+    const rawBody = await req.text();
+    const signature = getStitchSignature(req);
+    let payload: any;
+    try { payload = JSON.parse(rawBody); } catch { return json({ error: "bad json" }, 400); }
+
     // Stitch wraps events under "data": { paymentEvent: { ... } } shapes vary.
     const ev = payload?.data || payload;
     const stitchId =
@@ -51,6 +59,21 @@ Deno.serve(async (req) => {
       col = byExt as any;
     }
     if (!col) return json({ ok: true, unknown: true });
+
+    // Verify the Stitch signature using this club's webhook signing secret.
+    const { data: secrets } = await admin.from("club_secrets")
+      .select("payment_gateway_credentials").eq("club_id", col.club_id).maybeSingle();
+    const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
+    const signingSecret = creds.webhook_secret || creds.client_secret || "";
+    if (signingSecret && signature) {
+      const valid = await verifyStitchSignature(rawBody, signature, signingSecret);
+      if (!valid) {
+        console.error("stitch-collection-webhook: invalid signature for collection", stitchId);
+        return json({ error: "invalid signature" }, 401);
+      }
+    } else if (signature) {
+      console.warn("stitch-collection-webhook: signature present but no signing secret for club", col.club_id);
+    }
 
     const isPaid = /complete|paid|settled|success/i.test(eventType);
     const isFailed = /fail|reject|expir|cancel/i.test(eventType);

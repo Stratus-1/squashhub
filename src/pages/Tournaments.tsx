@@ -496,9 +496,9 @@ export default function Tournaments() {
 
 
             <TabsContent value="standings" className="mt-4 space-y-3">
-              {champs.map((champ: any, idx: number) => {
-                const autoOpen = idx === 0;
+              {champs.map((champ: any) => {
                 return (
+
                   <Card key={champ.id}>
                     <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
                       <div>
@@ -520,21 +520,11 @@ export default function Tournaments() {
                       </Button>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <details open={autoOpen}>
-                        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none py-1">
-                          {autoOpen ? "Standings (next tournament)" : "Show standings"}
-                        </summary>
-                        <div className="mt-2 rounded-md border overflow-hidden bg-background">
-                          <iframe
-                            src={`/club-champs/${champ.id}?embed=1`}
-                            title={`${champ.name} standings`}
-                            className="w-full"
-                            style={{ height: 520, border: 0 }}
-                            loading="lazy"
-                          />
-                        </div>
-                      </details>
+                      <p className="text-xs text-muted-foreground">
+                        Tap <span className="font-medium">View Standings</span> to open the full standings table.
+                      </p>
                     </CardContent>
+
                   </Card>
                 );
               })}

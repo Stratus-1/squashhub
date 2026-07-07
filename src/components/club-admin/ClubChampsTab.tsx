@@ -1887,25 +1887,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // League-ranking handicap: compute starting-score offsets for every match.
       if (matchType === "singles" && handicapMode !== "none") {
         try {
-          // Two modes derive their rank map from the tournament's own
-          // Leagues-step ordering rather than DB data:
-          //  - group_order: always uses the drag order (single-source rule).
-          //  - league_rank: only overrides the DB league-rank calc when
-          //    the tournament spans multiple divisions.
+          // Rank source per mode:
+          //  - group_order: uses the drag order on the Leagues/Groups step.
+          //  - league_rank: ALWAYS uses the club's league main setup
+          //    (DB player_rank + division), even across divisions.
+          //    Admin explicitly picked "By Club League main setup" so we
+          //    must honour it — do NOT silently switch to group order.
+          //  - club_ladder: uses club_members.ladder_position.
           let scoreByMember: Map<string, number> | undefined;
           if (handicapMode === "group_order") {
             const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
             scoreByMember = buildScoreMapFromGroups(groupIds, groupRankScope);
-          } else if (handicapMode === "league_rank") {
-            const groupIds = (groups as ClubMember[][]).map((g) => g.map((m) => m.id));
-            const allIds = groupIds.flat();
-            if (await isCrossLeagueTournament(clubId, allIds)) {
-              scoreByMember = buildScoreMapFromGroups(groupIds);
-            }
           }
-          // applyHandicapsToChamp only consults `mode` when scoreByMember
-          // is not supplied; for group_order we always supply one, so map
-          // the mode down to league_rank for the DB helper's typing.
           const dbMode = handicapMode === "group_order" ? "league_rank" : handicapMode;
           const n = await applyHandicapsToChamp(champId, clubId, {
             mode: dbMode,

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
@@ -81,7 +82,12 @@ export default function ClubAdmin() {
   const { data, isLoading } = useMyClub();
   const isAdmin = useIsClubAdmin();
   const myPermissions = useMyPermissions();
-  const [activeTab, setActiveTab] = useState("club");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "club");
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t) setActiveTab(t);
+  }, [searchParams]);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 

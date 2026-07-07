@@ -172,84 +172,24 @@ export default function MyAccount() {
 
   // Light sessions no longer needed separately — light fees come through member_credit_transactions
 
-  // Build unified statement lines sorted chronologically (oldest first)
-  // NEW ACCOUNTING MODEL:
-  // - Fees charged → Credit on member statement (they owe the club)
-  // - Payments/top-ups → Debit on member statement (reduces what they owe)
-  // Transaction types:
-  // - "credit" = fee/charge applied to member → shows in Credit column (member owes)
-  // - "debit"  = payment/topup by member → shows in Debit column (member paid)
-  // - "refund" = reversal → shows in Debit column
-  // Balance: debits - credits; positive = member in credit, negative = member owes
+  // Build statement lines from the GL control accounts, sorted chronologically.
+  // Balance: debits − credits. Positive = member owes, negative = member in credit.
   type StatementLine = { id: string; date: string; description: string; debit: number; credit: number; balance: number; status: string };
   const statementLines: StatementLine[] = (() => {
     const lines: Omit<StatementLine, "balance">[] = [];
 
-    // Build a set of "fee charges" already represented by a credit transaction,
-    // so we don't double-count them as "Opening balance" lines below.
-    const txChargeKeys = new Set<string>();
-    for (const tx of (transactions || [])) {
-      if ((tx as any).type !== "credit") continue;
-      const desc = String((tx as any).description || "").trim().toLowerCase();
-      const amt = Math.abs(Number((tx as any).amount));
-      if (!desc || !(amt > 0)) continue;
-      txChargeKeys.add(`${desc}|${amt.toFixed(2)}`);
-    }
-
-    // Fee raised → DEBIT column (member owes it). Mirrors admin Member Statement + GL.
-    for (const fee of (fees || [])) {
-      const feeAmt = Number((fee as any).amount) || 0;
-      const isPaid = !!(fee as any).paid;
-      const label = String((fee as any).fee_label || "").trim().toLowerCase();
-      let chargeAmt = Math.abs(feeAmt);
-      const matchingPaymentTx = (transactions || []).find((tx: any) => {
-        if (tx.type !== "debit") return false;
-        const d = String(tx.description || "").toLowerCase();
-        return d.includes(label) && label.length > 0;
-      });
-      if (isPaid && chargeAmt === 0) {
-        if (matchingPaymentTx) chargeAmt = Math.abs(Number((matchingPaymentTx as any).amount));
-      }
-      if (chargeAmt <= 0) continue;
-      if (isPaid && !matchingPaymentTx) continue;
-      if (txChargeKeys.has(`${label}|${chargeAmt.toFixed(2)}`)) continue;
+    for (const entry of (journalEntries || [])) {
+      const debit = Math.abs(Number((entry as any).debit || 0));
+      const credit = Math.abs(Number((entry as any).credit || 0));
+      if (debit <= 0 && credit <= 0) continue;
       lines.push({
-        id: `fee-${(fee as any).id}`,
-        date: (fee as any).created_at,
-        description: `Fee raised: ${(fee as any).fee_label || "Outstanding fee"}`,
-        debit: chargeAmt,
-        credit: 0,
+        id: `gl-${(entry as any).id}`,
+        date: (entry as any).created_at,
+        description: (entry as any).description || "Account transaction",
+        debit,
+        credit,
         status: "confirmed",
       });
-    }
-
-    for (const tx of (transactions || [])) {
-      const txType = (tx as any).type;
-      const amt = Math.abs(Number((tx as any).amount));
-      const txStatus = String((tx as any).status || "").toLowerCase();
-      if (["rejected", "cancelled", "failed", "expired"].includes(txStatus)) continue;
-
-      if (txType === "credit") {
-        // Additional charge (rare — most flow via `fees` above) → DEBIT column
-        lines.push({
-          id: `tx-${(tx as any).id}`,
-          date: (tx as any).created_at,
-          description: (tx as any).description || "Fee charged",
-          debit: amt,
-          credit: 0,
-          status: (tx as any).status,
-        });
-      } else if (txType === "debit" || txType === "refund") {
-        // Payment, top-up, or refund → CREDIT column (reduces amount owed)
-        lines.push({
-          id: `tx-${(tx as any).id}`,
-          date: (tx as any).created_at,
-          description: (tx as any).description || (txType === "refund" ? "Reversal" : "Payment"),
-          debit: 0,
-          credit: amt,
-          status: (tx as any).status,
-        });
-      }
     }
 
     // Sort oldest first

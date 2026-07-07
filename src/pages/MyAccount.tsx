@@ -244,6 +244,7 @@ export default function MyAccount() {
           toast.success("Payment received — thank you!");
           queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
           queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+          queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
         } else if (status === "failed") {
           clearPendingClubSession(gateway, sid);
           toast.error(
@@ -289,6 +290,7 @@ export default function MyAccount() {
             toast.success("Payment received — thank you!");
             queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
             queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+            queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
             return;
           }
         } catch {
@@ -369,6 +371,7 @@ export default function MyAccount() {
     onSuccess: () => {
       if (topUpMethod === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
       toast.success("EFT top-up request submitted. Upload proof of payment for faster processing.");
       setTopUpOpen(false);
     },
@@ -462,6 +465,7 @@ export default function MyAccount() {
       if (vars.method === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
       if (vars.method === "eft") {
         toast.success("EFT payment recorded. Your secretary/admin will confirm receipt.");
       } else {
@@ -664,7 +668,7 @@ export default function MyAccount() {
         transition={{ delay: 0.15 }}
       >
         <h2 className="text-sm font-semibold font-heading mb-2">Account Statement</h2>
-        {(txLoading || feesLoading) ? (
+        {(journalLoading || txLoading || feesLoading) ? (
           <Card className="p-4 flex justify-center">
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </Card>

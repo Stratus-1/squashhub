@@ -76,7 +76,18 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 4) Fetch admin email addresses (first admin per club)
+  // 4) Determine invoice recipient per club: prefer clubs.email (tenant billing email),
+  //    fall back to the first admin's email on club_members.
+  const clubEmails = new Map<string, string>()
+  if (clubIds.length) {
+    const { data: clubRows } = await supabase
+      .from('clubs')
+      .select('id, email')
+      .in('id', clubIds)
+    for (const c of clubRows || []) {
+      if (c.email && String(c.email).trim()) clubEmails.set(c.id, String(c.email).trim())
+    }
+  }
   const adminEmails = new Map<string, string>()
   if (clubIds.length) {
     const { data: admins } = await supabase
@@ -89,6 +100,7 @@ Deno.serve(async (req) => {
       if (!adminEmails.has(a.club_id)) adminEmails.set(a.club_id, a.email)
     }
   }
+  const recipientFor = (clubId: string) => clubEmails.get(clubId) || adminEmails.get(clubId) || null
 
   const results: any[] = []
   let issued = 0

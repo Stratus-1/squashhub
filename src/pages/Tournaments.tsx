@@ -372,13 +372,13 @@ export default function Tournaments() {
               </TabsTrigger>
               <TabsTrigger
                 value="standings"
-                className="text-sm py-2.5 font-semibold data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="text-sm py-2.5 font-semibold border-2 border-amber-500/60 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:border-amber-500 data-[state=active]:shadow-md transition-all"
               >
                 🏆 Standings
               </TabsTrigger>
               <TabsTrigger
                 value="past"
-                className="text-sm py-2.5 font-semibold data-[state=active]:bg-slate-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="text-sm py-2.5 font-semibold border-2 border-slate-500/60 data-[state=active]:bg-slate-700 data-[state=active]:text-white data-[state=active]:border-slate-700 data-[state=active]:shadow-md transition-all"
               >
                 ✓ Past
               </TabsTrigger>

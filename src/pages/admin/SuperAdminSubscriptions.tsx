@@ -391,6 +391,7 @@ export default function SuperAdminSubscriptions() {
         <TabsList className="h-8">
           <TabsTrigger value="plans" className="text-xs h-7 px-3"><Settings2 className="w-3.5 h-3.5 mr-1" />Fee Structure</TabsTrigger>
           <TabsTrigger value="clubs" className="text-xs h-7 px-3"><Building2 className="w-3.5 h-3.5 mr-1" />Club Subscriptions</TabsTrigger>
+          <TabsTrigger value="invoices-list" className="text-xs h-7 px-3"><Receipt className="w-3.5 h-3.5 mr-1" />Invoices</TabsTrigger>
           <TabsTrigger value="invoice" className="text-xs h-7 px-3"><FileText className="w-3.5 h-3.5 mr-1" />Invoice Details</TabsTrigger>
         </TabsList>
 
@@ -646,6 +647,11 @@ export default function SuperAdminSubscriptions() {
           </Card>
         </TabsContent>
 
+        {/* ─── ALL INVOICES TAB ─── */}
+        <TabsContent value="invoices-list" className="space-y-4 mt-4">
+          <AllInvoicesList />
+        </TabsContent>
+
         {/* ─── INVOICE DETAILS TAB ─── */}
         <TabsContent value="invoice" className="space-y-4 mt-4">
           <div className="flex items-start justify-between gap-4">
@@ -657,21 +663,20 @@ export default function SuperAdminSubscriptions() {
                 These details appear as the "From" party on monthly/annual invoices auto-generated for each active club subscription.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 size="sm"
-                variant="outline"
-                className="h-7 text-xs"
+                variant="secondary"
+                className="h-8 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/30"
                 onClick={() => runBilling.mutate(true)}
                 disabled={runBilling.isPending}
                 title="Preview what would be billed (no invoices created)"
               >
-                Dry-Run
+                <Eye className="w-3.5 h-3.5 mr-1" /> Dry-Run
               </Button>
               <Button
                 size="sm"
-                variant="outline"
-                className="h-7 text-xs"
+                className="h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white"
                 onClick={() => {
                   if (confirm("Generate and email invoices for every active subscription now?")) {
                     runBilling.mutate(false);
@@ -679,11 +684,12 @@ export default function SuperAdminSubscriptions() {
                 }}
                 disabled={runBilling.isPending}
               >
+                <Play className="w-3.5 h-3.5 mr-1" />
                 {runBilling.isPending ? "Running..." : "Run Billing Now"}
               </Button>
               <Button
                 size="sm"
-                className="h-7 text-xs"
+                className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={() => saveInvoiceSettings.mutate(invoiceForm)}
                 disabled={!invoiceDirty || saveInvoiceSettings.isPending}
               >
@@ -1062,3 +1068,157 @@ export default function SuperAdminSubscriptions() {
     </div>
   );
 }
+
+// ─── All Platform Subscription Invoices (Super Admin view) ───
+function AllInvoicesList() {
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [q, setQ] = useState("");
+
+  const { data: invoices = [], isLoading, refetch, isFetching } = useQuery({
+    queryKey: ["all-platform-invoices"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("platform_subscription_invoices")
+        .select("id, invoice_number, status, issued_at, due_date, paid_at, period_start, period_end, plan_name, member_count, total, currency, email_sent_at, email_status, club_id, clubs:club_id(name, subdomain)")
+        .order("issued_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
+  const filtered = invoices.filter((i) => {
+    if (statusFilter !== "all" && i.status !== statusFilter) return false;
+    if (q) {
+      const s = q.toLowerCase();
+      if (!(i.invoice_number?.toLowerCase().includes(s) || i.clubs?.name?.toLowerCase().includes(s))) return false;
+    }
+    return true;
+  });
+
+  const totals = filtered.reduce(
+    (acc, i) => {
+      acc.count += 1;
+      acc.value += Number(i.total || 0);
+      if (i.status === "paid") { acc.paidCount += 1; acc.paidValue += Number(i.total || 0); }
+      else if (i.status !== "void") { acc.dueCount += 1; acc.dueValue += Number(i.total || 0); }
+      return acc;
+    },
+    { count: 0, value: 0, paidCount: 0, paidValue: 0, dueCount: 0, dueValue: 0 }
+  );
+
+  const fmt = (n: number) => `R ${Number(n || 0).toFixed(2)}`;
+  const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" }) : "—");
+
+  const statusBadge = (s: string) => {
+    const map: Record<string, string> = {
+      paid: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300",
+      issued: "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300",
+      overdue: "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300",
+      void: "bg-muted text-muted-foreground",
+      draft: "bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300",
+    };
+    return map[s] || "bg-muted text-muted-foreground";
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Card className="p-3">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Invoices</div>
+          <div className="text-lg font-bold">{totals.count}</div>
+          <div className="text-[11px] text-muted-foreground">{fmt(totals.value)}</div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-[10px] uppercase tracking-wide text-emerald-600">Paid</div>
+          <div className="text-lg font-bold text-emerald-600">{totals.paidCount}</div>
+          <div className="text-[11px] text-muted-foreground">{fmt(totals.paidValue)}</div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-[10px] uppercase tracking-wide text-amber-600">Outstanding</div>
+          <div className="text-lg font-bold text-amber-600">{totals.dueCount}</div>
+          <div className="text-[11px] text-muted-foreground">{fmt(totals.dueValue)}</div>
+        </Card>
+        <Card className="p-3 flex items-center justify-center">
+          <Button size="sm" variant="outline" className="h-8 text-xs w-full" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? "Refreshing…" : "Refresh"}
+          </Button>
+        </Card>
+      </div>
+
+      <Card className="p-3 space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Input
+            placeholder="Search invoice # or club…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="h-8 text-xs max-w-xs"
+          />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="issued">Issued</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="void">Void</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="text-[11px] text-muted-foreground ml-auto">{filtered.length} shown</div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Invoice #</TableHead>
+                <TableHead className="text-xs">Club</TableHead>
+                <TableHead className="text-xs">Plan</TableHead>
+                <TableHead className="text-xs text-right">Members</TableHead>
+                <TableHead className="text-xs text-right">Total</TableHead>
+                <TableHead className="text-xs">Issued</TableHead>
+                <TableHead className="text-xs">Due</TableHead>
+                <TableHead className="text-xs">Paid</TableHead>
+                <TableHead className="text-xs">Status</TableHead>
+                <TableHead className="text-xs">Email</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Loading…</TableCell></TableRow>
+              ) : filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">No invoices found</TableCell></TableRow>
+              ) : (
+                filtered.map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="font-mono text-xs">{inv.invoice_number}</TableCell>
+                    <TableCell className="text-xs">
+                      <div className="font-medium">{inv.clubs?.name || "—"}</div>
+                      {inv.clubs?.subdomain && <div className="text-[10px] text-muted-foreground">{inv.clubs.subdomain}</div>}
+                    </TableCell>
+                    <TableCell className="text-xs">{inv.plan_name}</TableCell>
+                    <TableCell className="text-xs text-right">{inv.member_count}</TableCell>
+                    <TableCell className="text-xs text-right font-semibold">{fmt(Number(inv.total))}</TableCell>
+                    <TableCell className="text-xs">{fmtDate(inv.issued_at)}</TableCell>
+                    <TableCell className="text-xs">{fmtDate(inv.due_date)}</TableCell>
+                    <TableCell className="text-xs">{fmtDate(inv.paid_at)}</TableCell>
+                    <TableCell><Badge className={statusBadge(inv.status)} variant="secondary">{inv.status}</Badge></TableCell>
+                    <TableCell className="text-[11px]">
+                      {inv.email_sent_at ? (
+                        <span className="text-emerald-600">sent {fmtDate(inv.email_sent_at)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">{inv.email_status || "—"}</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+

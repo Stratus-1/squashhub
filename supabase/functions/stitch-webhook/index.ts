@@ -1,10 +1,14 @@
 // Public webhook endpoint for Stitch settlement events.
 // Stitch sends events server-side as JSON with HMAC-SHA256 signature.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  getStitchSignature,
+  verifyStitchSignature,
+} from "../_shared/stitch-signature.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type, x-stitch-signature",
+  "Access-Control-Allow-Headers": "content-type, x-stitch-signature, stitch-signature",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -16,11 +20,11 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const rawBody = await req.text();
-    const signature = req.headers.get("x-stitch-signature") || "";
+    const signature = getStitchSignature(req);
     let payload: any;
     try { payload = JSON.parse(rawBody); } catch { return new Response("bad json", { status: 400 }); }
 
-    // Stitch event shape varies; common fields: data.node.id, data.eventType
+    // Stitch event shape varies; common fields: data.node.id, data.id
     const requestId: string | undefined = payload?.data?.node?.id || payload?.data?.id;
     if (!requestId) return new Response("no request id", { status: 400 });
 
@@ -31,16 +35,20 @@ Deno.serve(async (req) => {
       return new Response("ok", { status: 200 });
     }
 
-    // Verify HMAC using this club's client_secret
+    // Verify HMAC using the dedicated webhook signing secret, falling back to
+    // the client_secret for clubs that haven't saved a webhook_secret yet.
     const { data: secrets } = await admin.from("club_secrets")
       .select("payment_gateway_credentials").eq("club_id", session.club_id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
-    if (creds.client_secret && signature) {
-      const valid = await verifyHmac(rawBody, signature, creds.client_secret);
+    const signingSecret = creds.webhook_secret || creds.client_secret || "";
+    if (signingSecret && signature) {
+      const valid = await verifyStitchSignature(rawBody, signature, signingSecret);
       if (!valid) {
         console.error("stitch-webhook: invalid signature for", requestId);
         return new Response("invalid signature", { status: 401 });
       }
+    } else if (signature) {
+      console.warn("stitch-webhook: signature present but no signing secret configured for club", session.club_id);
     }
 
     const eventType: string = payload?.data?.eventType || payload?.type || "";
@@ -65,18 +73,6 @@ Deno.serve(async (req) => {
     return new Response("err", { status: 500 });
   }
 });
-
-async function verifyHmac(body: string, signature: string, secret: string): Promise<boolean> {
-  try {
-    const key = await crypto.subtle.importKey(
-      "raw", new TextEncoder().encode(secret),
-      { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-    );
-    const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
-    const computed = Array.from(new Uint8Array(mac)).map(b => b.toString(16).padStart(2, "0")).join("");
-    return signature.toLowerCase().includes(computed.toLowerCase());
-  } catch { return false; }
-}
 
 async function finalisePayment(admin: any, session: any) {
   const amount = Number(session.amount);

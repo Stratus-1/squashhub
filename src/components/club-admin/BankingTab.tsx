@@ -116,7 +116,9 @@ const GATEWAYS: GatewayDef[] = [
       { key: "test_mode", label: "Test mode (sandbox credentials)", placeholder: "", type: "checkbox", helperText: "Enable while using a Stitch Express test client (Client ID starts with 'test-'). Disable before going live." },
       { key: "client_id", label: "Client ID", placeholder: "test-958fd377-...", helperText: "Stitch Express Dashboard → Settings → API credentials → copy the Client ID." },
       { key: "client_secret", label: "Client Secret", placeholder: "Your Stitch Express secret", sensitive: true, helperText: "Same screen → reveal & copy the Client Secret. WARNING: viewing the secret in Stitch regenerates it — paste it here immediately and Save. The previous secret stops working the moment you view a new one." },
+      { key: "webhook_secret", label: "Webhook Signing Secret", placeholder: "whsec_...", sensitive: true, helperText: "Stitch Express Dashboard → Settings → Webhooks → copy the Signing Secret. Used to verify webhook events are genuinely from Stitch." },
       { key: "merchant_payer_reference", label: "Statement Reference (optional)", placeholder: "e.g. NSQ", helperText: "Up to 12 chars used as the merchantReference prefix. Defaults to the club name." },
+
     ],
   },
 ];
@@ -389,8 +391,9 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
                   <li>Open <strong>Settings → API credentials</strong> and copy the <strong>Client ID</strong>.</li>
                   <li>Click <strong>View Client Secret</strong> — Stitch regenerates the secret each time you view it, so paste it into the field below and Save immediately.</li>
                   <li>Register the exact tenant account URL, for example <code className="text-[10px]">https://gb.squashhub.co.za/my-account</code>, under <strong>Settings → Redirect URLs</strong> in the Stitch Express dashboard. Do not include <code className="text-[10px]">?stitch_session=…</code> or other payment parameters.</li>
-                  <li>For server-confirmed settlements, add the webhook URL <code className="text-[10px]">https://squashhub.co.za/functions/v1/stitch-webhook</code> under <strong>Settings → Webhooks</strong>.</li>
+                  <li>For server-confirmed settlements, add the webhook URL <code className="text-[10px]">https://squashhub.co.za/functions/v1/stitch-webhook</code> under <strong>Settings → Webhooks</strong>, then paste the webhook Signing Secret into the field below.</li>
                   <li>Use the <em>test</em> client (Client ID starts with <code>test-</code>) while trialling; switch to <em>live</em> before collecting real money.</li>
+
                 </ol>
               </div>
             )}

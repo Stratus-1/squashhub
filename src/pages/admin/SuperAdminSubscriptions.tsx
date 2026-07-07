@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { SEO } from "@/components/SEO";
-import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard, Save, FileText, Upload, X, Link2, Eye, EyeOff } from "lucide-react";
+import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard, Save, FileText, Upload, X, Link2, Eye, EyeOff, Play, Receipt } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 
 type Plan = {
@@ -199,18 +199,22 @@ export default function SuperAdminSubscriptions() {
   };
 
   const runBilling = useMutation({
-    mutationFn: async (dryRun: boolean) => {
+    mutationFn: async (opts: boolean | { dryRun: boolean; subscriptionIds?: string[]; clubLabel?: string }) => {
+      const dryRun = typeof opts === "boolean" ? opts : opts.dryRun;
+      const subscriptionIds = typeof opts === "boolean" ? undefined : opts.subscriptionIds;
+      const clubLabel = typeof opts === "boolean" ? undefined : opts.clubLabel;
       const { data, error } = await supabase.functions.invoke("run-subscription-billing", {
-        body: { dryRun },
+        body: { dryRun, subscriptionIds },
       });
       if (error) throw error;
-      return data as { dryRun: boolean; processed: number; issued: number; skipped: number; failed: number };
+      return { ...(data as { dryRun: boolean; processed: number; issued: number; skipped: number; failed: number; results?: any[] }), clubLabel };
     },
-    onSuccess: (r) => {
+    onSuccess: (r: any) => {
+      const who = r.clubLabel ? ` for ${r.clubLabel}` : "";
       if (r.dryRun) {
-        toast.success(`Dry-run: ${r.processed} subscription(s) would be billed`);
+        toast.success(`Dry-run${who}: ${r.processed} subscription(s) would be billed`);
       } else {
-        toast.success(`Billing complete — ${r.issued} issued, ${r.skipped} skipped, ${r.failed} failed`);
+        toast.success(`Billing${who} complete — ${r.issued} issued, ${r.skipped} skipped, ${r.failed} failed`);
       }
       qc.invalidateQueries({ queryKey: ["sa-club-subscriptions"] });
     },
@@ -591,6 +595,30 @@ export default function SuperAdminSubscriptions() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-blue-600 hover:text-blue-700"
+                            title="Dry-run invoice for this club (no invoice created)"
+                            disabled={runBilling.isPending || !sub.plan_id}
+                            onClick={() => runBilling.mutate({ dryRun: true, subscriptionIds: [sub.id], clubLabel: sub.clubs?.name })}
+                          >
+                            <Play className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-emerald-600 hover:text-emerald-700"
+                            title="Generate & email invoice for this club now"
+                            disabled={runBilling.isPending || !sub.plan_id}
+                            onClick={() => {
+                              if (confirm(`Generate and email an invoice to ${sub.clubs?.name || "this club"} now?`)) {
+                                runBilling.mutate({ dryRun: false, subscriptionIds: [sub.id], clubLabel: sub.clubs?.name });
+                              }
+                            }}
+                          >
+                            <Receipt className="h-3 w-3" />
+                          </Button>
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditSub(sub)} title="Edit">
                             <Pencil className="h-3 w-3" />
                           </Button>

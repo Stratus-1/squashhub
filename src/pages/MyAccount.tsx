@@ -178,21 +178,11 @@ export default function MyAccount() {
       txChargeKeys.add(`${desc}|${amt.toFixed(2)}`);
     }
 
-    // Inject fee records as opening balance entries (the original charge that was raised).
-    // We include unpaid fees always, and paid fees ONLY when there is a matching payment
-    // transaction to offset them. Paid fees without a matching payment are treated as
-    // administratively cleared (e.g. waived for pre-existing members) and skipped to avoid
-    // showing a phantom balance.
-    // Skip when a matching credit transaction already represents the charge (avoid double-counting).
+    // Fee raised → DEBIT column (member owes it). Mirrors admin Member Statement + GL.
     for (const fee of (fees || [])) {
-      // For paid fees, the original amount may have been zeroed out by partial payments.
-      // We need the ORIGINAL charge amount — fall back to the payment amount if available.
       const feeAmt = Number((fee as any).amount) || 0;
       const isPaid = !!(fee as any).paid;
       const label = String((fee as any).fee_label || "").trim().toLowerCase();
-      // If fee was fully paid, amount is still the unpaid remainder (0 for full pay).
-      // We still want to show the original charge — use amount if > 0, otherwise look for
-      // a matching debit tx to infer the original amount.
       let chargeAmt = Math.abs(feeAmt);
       const matchingPaymentTx = (transactions || []).find((tx: any) => {
         if (tx.type !== "debit") return false;
@@ -203,15 +193,14 @@ export default function MyAccount() {
         if (matchingPaymentTx) chargeAmt = Math.abs(Number((matchingPaymentTx as any).amount));
       }
       if (chargeAmt <= 0) continue;
-      // Suppress paid fees that have no matching payment (administratively cleared)
       if (isPaid && !matchingPaymentTx) continue;
       if (txChargeKeys.has(`${label}|${chargeAmt.toFixed(2)}`)) continue;
       lines.push({
         id: `fee-${(fee as any).id}`,
         date: (fee as any).created_at,
-        description: `Fee charge: ${(fee as any).fee_label || "Outstanding fee"}`,
-        debit: 0,
-        credit: chargeAmt,
+        description: `Fee raised: ${(fee as any).fee_label || "Outstanding fee"}`,
+        debit: chargeAmt,
+        credit: 0,
         status: "confirmed",
       });
     }
@@ -220,28 +209,26 @@ export default function MyAccount() {
       const txType = (tx as any).type;
       const amt = Math.abs(Number((tx as any).amount));
       const txStatus = String((tx as any).status || "").toLowerCase();
-      // Hide rejected/cancelled/failed entries from the member's wallet history —
-      // they were never actually applied and only confuse the member.
       if (["rejected", "cancelled", "failed", "expired"].includes(txStatus)) continue;
 
       if (txType === "credit") {
-        // Fee charged to member → Credit column
+        // Additional charge (rare — most flow via `fees` above) → DEBIT column
         lines.push({
           id: `tx-${(tx as any).id}`,
           date: (tx as any).created_at,
           description: (tx as any).description || "Fee charged",
-          debit: 0,
-          credit: amt,
+          debit: amt,
+          credit: 0,
           status: (tx as any).status,
         });
       } else if (txType === "debit" || txType === "refund") {
-        // Payment, top-up, or refund → Debit column
+        // Payment, top-up, or refund → CREDIT column (reduces amount owed)
         lines.push({
           id: `tx-${(tx as any).id}`,
           date: (tx as any).created_at,
           description: (tx as any).description || (txType === "refund" ? "Reversal" : "Payment"),
-          debit: amt,
-          credit: 0,
+          debit: 0,
+          credit: amt,
           status: (tx as any).status,
         });
       }
@@ -250,7 +237,7 @@ export default function MyAccount() {
     // Sort oldest first
     lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Compute running balance (debits - credits; positive = in credit, negative = owes money)
+    // Running balance: debits − credits. Positive = owes money, negative = in credit.
     let balance = 0;
     return lines.map((line) => {
       if (line.status === "confirmed" || line.status === "outstanding") {
@@ -260,11 +247,13 @@ export default function MyAccount() {
     });
   })();
 
-  // Balance is now debits - credits: positive = in credit, negative = owes money
-  const creditBalance = (() => {
+  // `creditBalance` name kept for downstream code. Semantics: positive = in credit,
+  // negative = owes money — the inverse of the debit/credit running balance above.
+  const netOwing = (() => {
     if (statementLines.length === 0) return 0;
     return statementLines[statementLines.length - 1]?.balance || 0;
   })();
+  const creditBalance = -netOwing;
 
   // Available "cash" in wallet (top-ups minus confirmed account charges),
   // i.e. how much can still be spent paying outstanding fees via credit.
@@ -749,15 +738,15 @@ export default function MyAccount() {
                       )}
                     </p>
                   </div>
-                  <span className={cn("text-right tabular-nums", line.debit > 0 && "text-green-600")}>
+                  <span className={cn("text-right tabular-nums", line.debit > 0 && "text-destructive")}>
                     {line.debit > 0 ? `R${line.debit.toFixed(2)}` : ""}
                   </span>
-                  <span className={cn("text-right tabular-nums", line.credit > 0 && "text-destructive")}>
-                    {line.credit > 0 ? `-R${line.credit.toFixed(2)}` : ""}
+                  <span className={cn("text-right tabular-nums", line.credit > 0 && "text-green-600")}>
+                    {line.credit > 0 ? `R${line.credit.toFixed(2)}` : ""}
                   </span>
                   <span className={cn(
                     "text-right font-semibold tabular-nums",
-                    line.balance > 0 ? "text-green-600" : line.balance < 0 ? "text-destructive" : ""
+                    line.balance > 0 ? "text-destructive" : line.balance < 0 ? "text-green-600" : ""
                   )}>
                     {line.balance < 0 ? "-" : ""}R{Math.abs(line.balance).toFixed(2)}
                   </span>

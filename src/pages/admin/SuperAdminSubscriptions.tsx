@@ -595,6 +595,30 @@ export default function SuperAdminSubscriptions() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-blue-600 hover:text-blue-700"
+                            title="Dry-run invoice for this club (no invoice created)"
+                            disabled={runBilling.isPending || !sub.plan_id}
+                            onClick={() => runBilling.mutate({ dryRun: true, subscriptionIds: [sub.id], clubLabel: sub.clubs?.name })}
+                          >
+                            <Play className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-emerald-600 hover:text-emerald-700"
+                            title="Generate & email invoice for this club now"
+                            disabled={runBilling.isPending || !sub.plan_id}
+                            onClick={() => {
+                              if (confirm(`Generate and email an invoice to ${sub.clubs?.name || "this club"} now?`)) {
+                                runBilling.mutate({ dryRun: false, subscriptionIds: [sub.id], clubLabel: sub.clubs?.name });
+                              }
+                            }}
+                          >
+                            <Receipt className="h-3 w-3" />
+                          </Button>
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditSub(sub)} title="Edit">
                             <Pencil className="h-3 w-3" />
                           </Button>

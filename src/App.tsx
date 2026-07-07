@@ -250,9 +250,12 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { subdomain, club } = useClubContext();
   const { data: myClubMember, isLoading } = useMyClubMember();
+  const isSuperAdmin = useIsSuperAdmin();
 
   // Only gate on club subdomains, once the club context and user are known.
   if (!user || !subdomain || !club?.id) return <>{children}</>;
+  // Platform super-admins can access any club subdomain without a membership row.
+  if (isSuperAdmin) return <>{children}</>;
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

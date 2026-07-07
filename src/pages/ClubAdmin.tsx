@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle, CreditCard } from "lucide-react";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 
@@ -24,6 +24,7 @@ import { UsersTab } from "@/components/club-admin/UsersTab";
 import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
+import { SubscriptionTab } from "@/components/club-admin/SubscriptionTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
@@ -52,6 +53,7 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
+  { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
 ];
 
 const ADMIN_TABS: AdminTab[] = [...SETUP_TABS, ...OPERATIONS_TABS];
@@ -128,6 +130,7 @@ export default function ClubAdmin() {
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
       case "comms": return <CommunicationsTab clubId={club.id} />;
+      case "subscription": return <SubscriptionTab clubId={club.id} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
       default: return null;
     }

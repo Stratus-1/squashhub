@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,9 @@ const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString() : "
 export function SubscriptionTab({ clubId }: { clubId: string }) {
   const { data: myClub } = useMyClub();
   const club = myClub?.club;
+  const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const verifiedRef = useRef<string | null>(null);
 
   const { data: invoices = [], isLoading: invLoading } = useQuery({
     queryKey: ["club-platform-invoices", clubId],
@@ -120,6 +124,62 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
       toast.error(e?.message || "Failed to start Stitch payment", { id: t });
     }
   };
+
+  // On return from Stitch (URL has reference=INV-... or payment_id=...), poll to confirm payment
+  useEffect(() => {
+    const reference = searchParams.get("reference");
+    const payment_id = searchParams.get("payment_id");
+    if (!reference && !payment_id) return;
+    const key = `${reference || ""}|${payment_id || ""}`;
+    if (verifiedRef.current === key) return;
+    verifiedRef.current = key;
+
+    let cancelled = false;
+    const toastId = toast.loading("Confirming your payment with Stitch…");
+
+    (async () => {
+      const maxAttempts = 12;
+      for (let attempt = 1; attempt <= maxAttempts && !cancelled; attempt++) {
+        try {
+          const { data, error } = await supabase.functions.invoke("stitch-verify-platform-invoice", {
+            body: { invoice_number: reference, payment_id },
+          });
+          if (error) throw error;
+          if ((data as any)?.error) throw new Error((data as any).error);
+          const status = (data as any)?.status;
+          const stitchState = (data as any)?.stitch_state;
+          if (status === "paid") {
+            toast.success(
+              (data as any)?.already ? "Payment already recorded." : "Payment received — thank you!",
+              { id: toastId }
+            );
+            qc.invalidateQueries({ queryKey: ["club-platform-invoices", clubId] });
+            // Clean the query string so refreshes don't re-poll
+            const next = new URLSearchParams(searchParams);
+            next.delete("reference");
+            next.delete("payment_id");
+            setSearchParams(next, { replace: true });
+            return;
+          }
+          if (stitchState === "EXPIRED" || stitchState === "CANCELLED") {
+            toast.error(`Payment ${stitchState.toLowerCase()}. Please try again.`, { id: toastId });
+            return;
+          }
+        } catch (e: any) {
+          if (attempt === maxAttempts) {
+            toast.error(e?.message || "Could not confirm payment.", { id: toastId });
+            return;
+          }
+        }
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+      if (!cancelled) {
+        toast.message("Still waiting on Stitch. Refresh in a moment to see the updated status.", { id: toastId });
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [searchParams, clubId, qc, setSearchParams]);
 
   return (
     <div className="space-y-6 mt-4">

@@ -5811,6 +5811,8 @@ export type Database = {
           price_per_member: number
           snapshot: Json | null
           status: string
+          stitch_payment_id: string | null
+          stitch_payment_link: string | null
           subscription_id: string | null
           subtotal: number
           total: number
@@ -5838,6 +5840,8 @@ export type Database = {
           price_per_member?: number
           snapshot?: Json | null
           status?: string
+          stitch_payment_id?: string | null
+          stitch_payment_link?: string | null
           subscription_id?: string | null
           subtotal?: number
           total?: number
@@ -5865,6 +5869,8 @@ export type Database = {
           price_per_member?: number
           snapshot?: Json | null
           status?: string
+          stitch_payment_id?: string | null
+          stitch_payment_link?: string | null
           subscription_id?: string | null
           subtotal?: number
           total?: number

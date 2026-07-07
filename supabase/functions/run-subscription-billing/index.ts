@@ -191,7 +191,7 @@ Deno.serve(async (req) => {
       if (invErr) throw invErr
 
       // Email admin
-      const recipient = adminEmails.get(sub.club_id)
+      const recipient = recipientFor(sub.club_id)
       let emailStatus: string | null = null
       if (recipient) {
         const { error: sendErr } = await supabase.functions.invoke('send-transactional-email', {
@@ -233,7 +233,7 @@ Deno.serve(async (req) => {
         })
         emailStatus = sendErr ? `failed: ${sendErr.message}` : 'queued'
       } else {
-        emailStatus = 'no-admin-email'
+        emailStatus = 'no-recipient-email'
       }
 
       await supabase

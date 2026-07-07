@@ -18,7 +18,8 @@ import { toast } from "sonner";
 
 type Mandate = {
   id: string;
-  rail: "debicheck" | "eft_debit";
+  rail: string;
+  mandate_type: "card_consent" | "subscription";
   max_amount_cents: number;
   debit_day: number | null;
   status: "pending" | "active" | "cancelled" | "failed";

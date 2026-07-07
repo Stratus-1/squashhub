@@ -657,21 +657,20 @@ export default function SuperAdminSubscriptions() {
                 These details appear as the "From" party on monthly/annual invoices auto-generated for each active club subscription.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 size="sm"
-                variant="outline"
-                className="h-7 text-xs"
+                variant="secondary"
+                className="h-8 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/30"
                 onClick={() => runBilling.mutate(true)}
                 disabled={runBilling.isPending}
                 title="Preview what would be billed (no invoices created)"
               >
-                Dry-Run
+                <Eye className="w-3.5 h-3.5 mr-1" /> Dry-Run
               </Button>
               <Button
                 size="sm"
-                variant="outline"
-                className="h-7 text-xs"
+                className="h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white"
                 onClick={() => {
                   if (confirm("Generate and email invoices for every active subscription now?")) {
                     runBilling.mutate(false);
@@ -679,11 +678,12 @@ export default function SuperAdminSubscriptions() {
                 }}
                 disabled={runBilling.isPending}
               >
+                <Play className="w-3.5 h-3.5 mr-1" />
                 {runBilling.isPending ? "Running..." : "Run Billing Now"}
               </Button>
               <Button
                 size="sm"
-                className="h-7 text-xs"
+                className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={() => saveInvoiceSettings.mutate(invoiceForm)}
                 disabled={!invoiceDirty || saveInvoiceSettings.isPending}
               >

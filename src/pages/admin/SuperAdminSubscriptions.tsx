@@ -391,6 +391,7 @@ export default function SuperAdminSubscriptions() {
         <TabsList className="h-8">
           <TabsTrigger value="plans" className="text-xs h-7 px-3"><Settings2 className="w-3.5 h-3.5 mr-1" />Fee Structure</TabsTrigger>
           <TabsTrigger value="clubs" className="text-xs h-7 px-3"><Building2 className="w-3.5 h-3.5 mr-1" />Club Subscriptions</TabsTrigger>
+          <TabsTrigger value="invoices-list" className="text-xs h-7 px-3"><Receipt className="w-3.5 h-3.5 mr-1" />Invoices</TabsTrigger>
           <TabsTrigger value="invoice" className="text-xs h-7 px-3"><FileText className="w-3.5 h-3.5 mr-1" />Invoice Details</TabsTrigger>
         </TabsList>
 

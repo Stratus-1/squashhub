@@ -85,7 +85,12 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         setIsAdmin(adminRole);
 
         let linked: LinkedMember[] = [];
-        if (user.email) {
+        // Only aggregate email-matched (family) accounts when the current user
+        // actually has their OWN membership row at this club. Otherwise (e.g.
+        // a platform super-admin visiting a tenant they don't belong to) we
+        // must NOT adopt some other member's identity just because the email
+        // happens to match a row here.
+        if (myMembership && user.email) {
           const { data: emailMembers, error: emailErr } = await fromExt("club_members")
             .select("id, name, email, club_member_number, gender, user_id")
             .eq("club_id", club.id)

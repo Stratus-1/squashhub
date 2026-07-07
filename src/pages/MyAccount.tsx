@@ -136,6 +136,24 @@ export default function MyAccount() {
     enabled: !!clubMemberId && !!clubId,
   });
 
+  // Member-facing account ledger from the GL. This is the accounting truth used
+  // by admin Finance → All GL Entries / Member Balances, limited to member
+  // control accounts so income/bank double-entry legs are not double-counted.
+  const { data: journalEntries, isLoading: journalLoading } = useQuery({
+    queryKey: ["member-journal-entries", clubMemberId, clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_journal_entries")
+        .select("*")
+        .eq("club_member_id", clubMemberId!)
+        .eq("club_id", clubId!)
+        .in("account", ["debtors", "member_credits"])
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clubMemberId && !!clubId,
+  });
+
   const { data: fees, isLoading: feesLoading } = useQuery({
     queryKey: ["club-member-fee-payments", clubMemberId],
     queryFn: async () => {

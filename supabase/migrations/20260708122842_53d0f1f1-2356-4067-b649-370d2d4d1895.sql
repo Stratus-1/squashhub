@@ -1,0 +1,2 @@
+ALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS min_booking_balance numeric;
+COMMENT ON COLUMN public.clubs.min_booking_balance IS 'Minimum credit buffer (in Rand) a member must hold to make a court booking. NULL = disabled (any active member may book). When set, member statement balance in credit must be at least this amount, or, if the member has an active monthly payment arrangement (authorised stitch mandate), current owing minus plan-allowed debt plus this buffer must be ≤ 0.';

@@ -338,7 +338,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
               Cancel
             </Button>
             <Button onClick={submitSetup} disabled={submitting}>
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue to card setup"}
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue to Stitch"}
             </Button>
           </DialogFooter>
         </DialogContent>

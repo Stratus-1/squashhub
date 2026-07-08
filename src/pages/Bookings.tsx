@@ -795,6 +795,31 @@ export default function Bookings() {
       }
     }
 
+    // 3. Minimum-balance gate (skips admins / delegates / super-admins via bookingLimitsBypassed)
+    const minBookingBalance = (myClub as any)?.min_booking_balance ?? null;
+    if (minBookingBalance !== null && !bookingLimitsBypassed && activeMember?.id && myClub?.id) {
+      try {
+        const check = await checkBookingBalance({
+          clubMemberId: activeMember.id,
+          clubId: myClub.id,
+          minBookingBalance,
+        });
+        if (!check.allowed) {
+          setTopUpPrompt({
+            open: true,
+            shortfall: check.shortfall,
+            currentOwing: check.currentOwing,
+            planAllowedDebt: check.planAllowedDebt,
+            requiredBuffer: check.requiredBuffer,
+          });
+          return;
+        }
+      } catch (e) {
+        console.error("[booking-balance] check failed, allowing booking:", e);
+      }
+    }
+
+
     setSubmittingBooking(true);
     const usingGobook =
       !!(myClub as any)?.uses_gobook &&

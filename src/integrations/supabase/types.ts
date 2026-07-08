@@ -2773,6 +2773,7 @@ export type Database = {
           member_number_length: number | null
           member_number_prefix: string | null
           member_number_start: number | null
+          min_booking_balance: number | null
           mixed_ladder_enabled: boolean
           name: string
           next_invoice_seq: number
@@ -2850,6 +2851,7 @@ export type Database = {
           member_number_length?: number | null
           member_number_prefix?: string | null
           member_number_start?: number | null
+          min_booking_balance?: number | null
           mixed_ladder_enabled?: boolean
           name: string
           next_invoice_seq?: number
@@ -2927,6 +2929,7 @@ export type Database = {
           member_number_length?: number | null
           member_number_prefix?: string | null
           member_number_start?: number | null
+          min_booking_balance?: number | null
           mixed_ladder_enabled?: boolean
           name?: string
           next_invoice_seq?: number

@@ -62,6 +62,7 @@ import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
 import { useHasPermission } from "@/hooks/use-club-permissions";
 import { fromExt } from "@/lib/supabase-ext";
 import { enqueueOutbox } from "@/lib/outbox";
+import { checkBookingBalance } from "@/lib/booking-balance-gate";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
@@ -331,6 +332,13 @@ export default function Bookings() {
     opponentName: null,
     opponentEmail: null,
   });
+  const [topUpPrompt, setTopUpPrompt] = useState<{
+    open: boolean;
+    shortfall: number;
+    currentOwing: number;
+    planAllowedDebt: number;
+    requiredBuffer: number;
+  }>({ open: false, shortfall: 0, currentOwing: 0, planAllowedDebt: 0, requiredBuffer: 0 });
   const [shareDialog, setShareDialog] = useState<{
     open: boolean;
     bookingId: string;
@@ -786,6 +794,31 @@ export default function Bookings() {
         }
       }
     }
+
+    // 3. Minimum-balance gate (skips admins / delegates / super-admins via bookingLimitsBypassed)
+    const minBookingBalance = (myClub as any)?.min_booking_balance ?? null;
+    if (minBookingBalance !== null && !bookingLimitsBypassed && activeMember?.id && myClub?.id) {
+      try {
+        const check = await checkBookingBalance({
+          clubMemberId: activeMember.id,
+          clubId: myClub.id,
+          minBookingBalance,
+        });
+        if (!check.allowed) {
+          setTopUpPrompt({
+            open: true,
+            shortfall: check.shortfall,
+            currentOwing: check.currentOwing,
+            planAllowedDebt: check.planAllowedDebt,
+            requiredBuffer: check.requiredBuffer,
+          });
+          return;
+        }
+      } catch (e) {
+        console.error("[booking-balance] check failed, allowing booking:", e);
+      }
+    }
+
 
     setSubmittingBooking(true);
     const usingGobook =
@@ -2227,6 +2260,69 @@ export default function Bookings() {
               {submittingBooking || createBooking.isPending || createChallenge.isPending
                 ? ((myClub as any)?.uses_gobook ? "Submitting to GoBook…" : "Booking…")
                 : "Confirm Booking"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Insufficient balance prompt */}
+      <Dialog
+        open={topUpPrompt.open}
+        onOpenChange={(open) => setTopUpPrompt((s) => ({ ...s, open }))}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Top up needed to book</DialogTitle>
+            <DialogDescription>
+              Your club requires at least{" "}
+              <strong>R{topUpPrompt.requiredBuffer.toFixed(2)}</strong> credit on your
+              account to book a court.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-1 text-sm">
+            <div className="rounded-lg border p-3 bg-muted/40 space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Currently owing</span>
+                <span className="font-medium">
+                  {topUpPrompt.currentOwing >= 0
+                    ? `R${topUpPrompt.currentOwing.toFixed(2)}`
+                    : `-R${Math.abs(topUpPrompt.currentOwing).toFixed(2)} (credit)`}
+                </span>
+              </div>
+              {topUpPrompt.planAllowedDebt > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Allowed on payment plan</span>
+                  <span className="font-medium">R{topUpPrompt.planAllowedDebt.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Booking buffer required</span>
+                <span className="font-medium">R{topUpPrompt.requiredBuffer.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t">
+                <span className="font-semibold">Please top up</span>
+                <span className="font-bold text-destructive">
+                  R{topUpPrompt.shortfall.toFixed(2)}
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Once your top-up reflects on your account you can come back and book.
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setTopUpPrompt((s) => ({ ...s, open: false }))}>
+              Not now
+            </Button>
+            <Button
+              onClick={() => {
+                setTopUpPrompt((s) => ({ ...s, open: false }));
+                navigate("/my-account");
+              }}
+            >
+              Top up now
             </Button>
           </DialogFooter>
         </DialogContent>

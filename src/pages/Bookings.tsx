@@ -332,6 +332,13 @@ export default function Bookings() {
     opponentName: null,
     opponentEmail: null,
   });
+  const [topUpPrompt, setTopUpPrompt] = useState<{
+    open: boolean;
+    shortfall: number;
+    currentOwing: number;
+    planAllowedDebt: number;
+    requiredBuffer: number;
+  }>({ open: false, shortfall: 0, currentOwing: 0, planAllowedDebt: 0, requiredBuffer: 0 });
   const [shareDialog, setShareDialog] = useState<{
     open: boolean;
     bookingId: string;

@@ -193,7 +193,31 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
   }
 
+  function nextDebitDate(day: number): Date {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+
+    function makeDate(year: number, month: number, dayOfMonth: number): Date {
+      const d = new Date(year, month, dayOfMonth);
+      if (d.getMonth() !== month) {
+        return new Date(year, month + 1, 0);
+      }
+      return d;
+    }
+
+    const candidate = makeDate(currentYear, currentMonth, day);
+    const startOfToday = new Date(currentYear, currentMonth, today.getDate());
+    if (candidate >= startOfToday) return candidate;
+    return makeDate(currentYear, currentMonth + 1, day);
+  }
+
+  function formatDate(d: Date): string {
+    return d.toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
+  }
+
   const railLabel = (_r: string) => "Monthly debit order";
+
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
       active: "bg-green-500/10 text-green-700 border-green-500/20",
@@ -234,8 +258,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     Up to R{(m.max_amount_cents / 100).toFixed(2)} per month
-                    {m.debit_day ? ` · debited on day ${m.debit_day}` : ""}
+                    {m.debit_day ? ` · monthly collection day ${m.debit_day}` : ""}
                   </p>
+
                   {m.status === "pending" && m.auth_url && (
                     <a href={normalizeAuthUrl(m.auth_url)} className="text-[11px] text-primary underline">
                       Complete authorisation →
@@ -288,22 +313,23 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
           <DialogHeader>
             <DialogTitle>Set up monthly debit order</DialogTitle>
             <DialogDescription>
-              {selectedCategory?.name} — you'll be redirected to Stitch to authorise the
-              debit from your bank. Once authorised, the amount below is pulled automatically
-              on your chosen day each month.
+              {selectedCategory?.name} — authorise a monthly debit from your bank.
+              The amount below will be collected automatically on your chosen day each month.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="rounded-md border bg-muted/40 p-2 text-[11px] leading-snug">
-              <p>
-                You'll be redirected to <strong>Stitch</strong> to authorise the debit order
-                from your bank in one tap. Stitch then debits the fixed amount from your
-                account on your chosen day each month. Cancel any time from this screen.
+            <div className="rounded-md border bg-amber-500/10 p-2 text-[11px] leading-snug">
+              <p className="font-medium text-amber-900">One-time authorisation charge</p>
+              <p className="mt-0.5 text-amber-800">
+                Stitch will request a small, once-off authorisation charge now to verify your
+                account and confirm consent. This is <strong>not</strong> your monthly fee.
+                Your first regular monthly debit will run on the collection day you choose below.
               </p>
             </div>
 
             <div>
               <Label className="text-xs">Split annual fee over (months)</Label>
+
               <Select value={months} onValueChange={(v) => { setMonths(v); setAmountTouched(false); }}>
                 <SelectTrigger className="h-9">
                   <SelectValue />
@@ -331,7 +357,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                 />
               </div>
               <div>
-                <Label className="text-xs">Debit day</Label>
+                <Label className="text-xs">Monthly collection day</Label>
                 <Input
                   type="number"
                   min="1"
@@ -340,15 +366,24 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   onChange={(e) => setDebitDay(e.target.value)}
                   className="h-9"
                 />
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Your monthly debit will run on this day each month, starting next cycle.
+                </p>
               </div>
             </div>
             {selectedCategory && (
-              <p className="text-[11px] text-muted-foreground">
-                Annual fee R{Number(selectedCategory.annual_fee || 0).toFixed(2)} ÷ {months} ={" "}
-                R{(Number(selectedCategory.annual_fee || 0) / Math.max(Number(months) || 1, 1)).toFixed(2)} per month.
-                You can override the monthly amount above. Cancel any time from this screen.
-              </p>
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">
+                  Annual fee R{Number(selectedCategory.annual_fee || 0).toFixed(2)} ÷ {months} ={" "}
+                  R{(Number(selectedCategory.annual_fee || 0) / Math.max(Number(months) || 1, 1)).toFixed(2)} per month.
+                  You can override the monthly amount above. Cancel any time from this screen.
+                </p>
+                <p className="text-[11px] font-medium text-primary">
+                  First monthly debit: {formatDate(nextDebitDate(Number(debitDay) || 1))}
+                </p>
+              </div>
             )}
+
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setSetupOpen(false)} disabled={submitting}>

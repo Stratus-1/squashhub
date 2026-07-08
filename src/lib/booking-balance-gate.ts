@@ -102,9 +102,11 @@ export async function checkBookingBalance(opts: {
     planAllowedDebt = (fees || []).reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
   } else {
     // No mandate yet — allow the outstanding membership portion only.
+    // Note: fee_type values used across the app include 'membership' and 'club_membership'.
     planAllowedDebt = (fees || [])
-      .filter((f: any) => f.fee_type === "club_membership")
+      .filter((f: any) => f.fee_type === "membership" || f.fee_type === "club_membership")
       .reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
+
   }
 
 

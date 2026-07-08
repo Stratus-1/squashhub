@@ -1435,6 +1435,107 @@ export default function ClubChampsView() {
       </Card>
     ) : null;
 
+    // Wooden spoons table — bottom of each league plus the overall tournament loser.
+    const leagueLosers = groupNumbers
+      .map((gn: number) => {
+        const s = getGroupStandings(gn);
+        const l = s.slice().reverse().find((r: any) => (r.played || 0) > 0) || s[s.length - 1] || null;
+        return { gn, loser: l };
+      })
+      .filter((l) => l.loser);
+    const overallLoser =
+      overallRows.slice().reverse().find((s: any) => (s.played || 0) > 0) ||
+      overallRows[overallRows.length - 1] ||
+      null;
+    const woodenSpoonsCard = leagueLosers.length > 0 ? (
+      <Card key="wooden-spoons" className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <span className="text-amber-700 dark:text-amber-300">🥄</span>
+            <span className="text-amber-800 dark:text-amber-300">Wooden Spoons</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs text-muted-foreground">
+                  <th className="pb-1.5 font-medium">League</th>
+                  <th className="pb-1.5 font-medium">{isDoubles ? "Team" : "Player"}</th>
+                  {isBells ? (
+                    <>
+                      <th className="pb-1.5 font-medium text-center">PF</th>
+                      <th className="pb-1.5 font-medium text-center">PA</th>
+                      <th className="pb-1.5 font-medium text-center">W-L</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="pb-1.5 font-medium text-center">W-L</th>
+                      {standingsColumns.map((col) => (
+                        <th key={col.key} className="pb-1.5 font-medium text-center" title={col.title}>{col.label}</th>
+                      ))}
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {leagueLosers.map(({ gn, loser: l }) => (
+                  <tr key={gn} className="border-b border-border/30">
+                    <td className="py-1.5 font-medium">{getGroupLabel(champ, gn)}</td>
+                    <td className="py-1.5">{l.name}</td>
+                    {isBells ? (
+                      <>
+                        <td className="py-1.5 text-center font-semibold tabular-nums">{l.pointsFor}</td>
+                        <td className="py-1.5 text-center tabular-nums">{l.pointsAgainst}</td>
+                        <td className="py-1.5 text-center tabular-nums">{l.won}-{l.lost}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-1.5 text-center tabular-nums">{l.won}-{l.lost}</td>
+                        {standingsColumns.map((col) => (
+                          <td key={col.key} className={cn("py-1.5 text-center", col.cellClassName)}>{col.render(l)}</td>
+                        ))}
+                      </>
+                    )}
+                  </tr>
+                ))}
+                {overallLoser && (
+                  <tr className="bg-amber-900/10 dark:bg-amber-900/20 font-semibold">
+                    <td className="py-2">
+                      <span className="inline-flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                        <span>🥄</span>
+                        Overall
+                      </span>
+                    </td>
+                    <td className="py-2">
+                      {overallLoser.name}
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                        ({getGroupLabel(champ, overallLoser._groupNumber)})
+                      </span>
+                    </td>
+                    {isBells ? (
+                      <>
+                        <td className="py-2 text-center tabular-nums">{overallLoser.pointsFor}</td>
+                        <td className="py-2 text-center tabular-nums">{overallLoser.pointsAgainst}</td>
+                        <td className="py-2 text-center tabular-nums">{overallLoser.won}-{overallLoser.lost}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-2 text-center tabular-nums">{overallLoser.won}-{overallLoser.lost}</td>
+                        {standingsColumns.map((col) => (
+                          <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(overallLoser)}</td>
+                        ))}
+                      </>
+                    )}
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    ) : null;
+
 
     const multipleGroups = orderedGroups.length > 1;
     const standingsCards: JSX.Element[] = [];

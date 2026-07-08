@@ -258,8 +258,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     Up to R{(m.max_amount_cents / 100).toFixed(2)} per month
-                    {m.debit_day ? ` · debited on day ${m.debit_day}` : ""}
+                    {m.debit_day ? ` · monthly collection day ${m.debit_day}` : ""}
                   </p>
+
                   {m.status === "pending" && m.auth_url && (
                     <a href={normalizeAuthUrl(m.auth_url)} className="text-[11px] text-primary underline">
                       Complete authorisation →

@@ -798,6 +798,12 @@ export default function Bookings() {
     // 3. Minimum-balance gate (skips admins / delegates / super-admins via bookingLimitsBypassed).
     //    Always call the gate — it re-reads the club's current min_booking_balance from the DB,
     //    so a stale cached club value can't silently bypass the check.
+    console.log("[booking-balance] gate entry", {
+      bookingLimitsBypassed,
+      activeMemberId: activeMember?.id,
+      clubId: myClub?.id,
+      cachedMinBalance: (myClub as any)?.min_booking_balance,
+    });
     if (!bookingLimitsBypassed && activeMember?.id && myClub?.id) {
       try {
         const check = await checkBookingBalance({
@@ -805,6 +811,7 @@ export default function Bookings() {
           clubId: myClub.id,
           minBookingBalance: (myClub as any)?.min_booking_balance ?? null,
         });
+        console.log("[booking-balance] gate result", check);
         if (!check.allowed) {
           setTopUpPrompt({
             open: true,
@@ -819,6 +826,7 @@ export default function Bookings() {
         console.error("[booking-balance] check failed, allowing booking:", e);
       }
     }
+
 
 
 

@@ -86,6 +86,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     light_fee_per_hour: club.light_fee_per_hour ?? 0,
     shelly_auth_key: "",
     relay_device_type: "shelly" as RelayDevice,
+    min_booking_balance: ((club as any).min_booking_balance ?? null) as number | null,
   });
 
   useEffect(() => {
@@ -93,8 +94,9 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       ...p,
       lights_integration_enabled: club.lights_integration_enabled ?? false,
       light_fee_per_hour: club.light_fee_per_hour ?? 0,
+      min_booking_balance: ((club as any).min_booking_balance ?? null) as number | null,
     }));
-  }, [club.id, club.lights_integration_enabled, club.light_fee_per_hour]);
+  }, [club.id, club.lights_integration_enabled, club.light_fee_per_hour, (club as any).min_booking_balance]);
 
   useEffect(() => {
     if (secrets) {

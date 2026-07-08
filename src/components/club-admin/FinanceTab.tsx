@@ -1045,29 +1045,41 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
             <div>
               <Label className="text-xs">{txDirection === "income" ? "Income Account" : "Expense Account"}</Label>
-              <Select value={txAccount} onValueChange={setTxAccount}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select account..." /></SelectTrigger>
-                <SelectContent>
-                  {txDirection === "income" && (
-                    <SelectItem value="debtors">
-                      Member Paying Outstanding Account (settles their bill)
-                    </SelectItem>
-                  )}
-                  {(txDirection === "income" ? CREDIT_ACCOUNTS : DEBIT_ACCOUNTS)
-                    .filter(a => !["bank", "bank_current", "cash", "debtors"].includes(a))
-                    .map(a => (
-                      <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
-                    ))}
-                </SelectContent>
-
-              </Select>
-              {txAccount && txAmount && parseFloat(txAmount) > 0 && (
+              {txDirection === "income" && txMemberId && txMemberId !== "__none__" ? (
+                <>
+                  <div className="h-9 px-3 flex items-center rounded-md border bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                    Accounts Receivable — settles this member's outstanding bill
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    A member is linked, so this payment is automatically posted against their outstanding balance
+                    (Dr {txMethod === "cash" ? "Cash" : "Current Account"} / Cr Accounts Receivable). Do NOT credit an income
+                    account here — the income was already recognised when the fee was raised.
+                  </p>
+                </>
+              ) : (
+                <Select value={txAccount} onValueChange={setTxAccount}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select account..." /></SelectTrigger>
+                  <SelectContent>
+                    {txDirection === "income" && (
+                      <SelectItem value="debtors">
+                        Member Paying Outstanding Account (settles their bill)
+                      </SelectItem>
+                    )}
+                    {(txDirection === "income" ? CREDIT_ACCOUNTS : DEBIT_ACCOUNTS)
+                      .filter(a => !["bank", "bank_current", "cash", "debtors"].includes(a))
+                      .map(a => (
+                        <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {txAmount && parseFloat(txAmount) > 0 && (txAccount || (txDirection === "income" && txMemberId && txMemberId !== "__none__")) && (
                 <div className="mt-2 p-2 rounded bg-muted/60 text-[10px] text-muted-foreground space-y-0.5">
                   <p className="font-semibold text-foreground text-xs">GL Preview:</p>
                   {txDirection === "income" ? (
                     <>
                       <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} R{parseFloat(txAmount).toFixed(2)}</p>
-                      <p>• Credit {getLabel(txAccount)} R{parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getLabel(txAccount)} R{parseFloat(txAmount).toFixed(2)}</p>
                     </>
                   ) : (
                     <>

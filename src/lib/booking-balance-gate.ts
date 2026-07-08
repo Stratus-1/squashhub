@@ -27,7 +27,21 @@ export async function checkBookingBalance(opts: {
   clubId: string;
   minBookingBalance: number | null | undefined;
 }): Promise<BookingBalanceResult> {
-  const buffer = opts.minBookingBalance;
+  // Always fetch the club's current min_booking_balance fresh — the cached
+  // `myClub` in React Query can lag behind admin changes and cause the gate
+  // to silently skip.
+  let buffer: number | null | undefined = opts.minBookingBalance;
+  try {
+    const { data: clubRow } = await (supabase as any)
+      .from("clubs")
+      .select("min_booking_balance")
+      .eq("id", opts.clubId)
+      .maybeSingle();
+    if (clubRow) buffer = clubRow.min_booking_balance;
+  } catch (e) {
+    console.warn("[booking-balance] club fetch failed, falling back to prop:", e);
+  }
+
   if (buffer === null || buffer === undefined) {
     return {
       allowed: true,
@@ -37,6 +51,7 @@ export async function checkBookingBalance(opts: {
       requiredBuffer: 0,
     };
   }
+
 
   // 1. Current owing from GL
   const { data: journalRows, error: journalErr } = await (supabase as any)

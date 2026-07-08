@@ -16,7 +16,7 @@ type Slot = {
 };
 
 const SLOTS: Slot[] = [
-  { key: "constitution", label: "Grondwet van club (signed)" },
+  { key: "constitution", label: "Grondwet van Klub/Club Constitution (signed)" },
   { key: "board_ids", label: "ID of all Board Members", multi: true },
   { key: "bank_proof", label: "Proof of Bank Account" },
   { key: "address_proof", label: "Proof of Address of Main Member" },

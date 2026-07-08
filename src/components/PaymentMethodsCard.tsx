@@ -269,10 +269,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Set up recurring card payment</DialogTitle>
+            <DialogTitle>Set up monthly debit order</DialogTitle>
             <DialogDescription>
-              {selectedCategory?.name} — you'll be redirected to save a card that will be
-              charged automatically each month.
+              {selectedCategory?.name} — you'll be redirected to Stitch to authorise the
+              debit from your bank. Once authorised, the amount below is pulled automatically
+              on your chosen day each month.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

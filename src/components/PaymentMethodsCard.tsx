@@ -176,7 +176,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
   }
 
-  const railLabel = (_r: string) => "Recurring card";
+  const railLabel = (_r: string) => "Monthly debit order";
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
       active: "bg-green-500/10 text-green-700 border-green-500/20",

@@ -1708,6 +1708,7 @@ export default function ClubChampsView() {
       <>
         {summary}
         {winnersCard}
+        {woodenSpoonsCard}
         {standingsCards}
         {fixtureCards}
         {combinedFixtures}

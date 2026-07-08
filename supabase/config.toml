@@ -40,3 +40,6 @@ verify_jwt = false
 
 [functions.register-visitor-user]
 verify_jwt = false
+
+[functions.stitch-onboarding-submit]
+verify_jwt = true

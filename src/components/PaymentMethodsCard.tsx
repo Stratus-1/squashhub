@@ -327,9 +327,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
               </p>
             </div>
 
-
             <div>
               <Label className="text-xs">Split annual fee over (months)</Label>
+
               <Select value={months} onValueChange={(v) => { setMonths(v); setAmountTouched(false); }}>
                 <SelectTrigger className="h-9">
                   <SelectValue />

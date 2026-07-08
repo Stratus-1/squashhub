@@ -176,7 +176,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
   }
 
-  const railLabel = (_r: string) => "Recurring card";
+  const railLabel = (_r: string) => "Monthly debit order";
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
       active: "bg-green-500/10 text-green-700 border-green-500/20",
@@ -269,18 +269,19 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Set up recurring card payment</DialogTitle>
+            <DialogTitle>Set up monthly debit order</DialogTitle>
             <DialogDescription>
-              {selectedCategory?.name} — you'll be redirected to save a card that will be
-              charged automatically each month.
+              {selectedCategory?.name} — you'll be redirected to Stitch to authorise the
+              debit from your bank. Once authorised, the amount below is pulled automatically
+              on your chosen day each month.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-md border bg-muted/40 p-2 text-[11px] leading-snug">
               <p>
-                <strong>Recurring card</strong> — enter your card once; it's securely stored
-                by our payment provider and charged on your chosen day each month. Cancel any
-                time from this screen. (True DebiCheck / EFT debit orders coming soon.)
+                You'll be redirected to <strong>Stitch</strong> to authorise the debit order
+                from your bank in one tap. Stitch then debits the fixed amount from your
+                account on your chosen day each month. Cancel any time from this screen.
               </p>
             </div>
 
@@ -337,7 +338,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
               Cancel
             </Button>
             <Button onClick={submitSetup} disabled={submitting}>
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue to card setup"}
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue to Stitch"}
             </Button>
           </DialogFooter>
         </DialogContent>

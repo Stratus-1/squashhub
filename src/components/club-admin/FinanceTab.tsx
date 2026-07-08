@@ -335,7 +335,12 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const handleRecordTransaction = async () => {
     const amount = parseFloat(txAmount);
     if (!amount || amount <= 0) { toast.error("Enter a valid amount"); return; }
-    if (!txAccount) { toast.error("Select an account"); return; }
+    const memberLinked = !!(txMemberId && txMemberId !== "__none__");
+    // When a member is linked on an income transaction, force Accounts Receivable
+    // (debtors) so the payment settles their outstanding bill instead of double-
+    // counting income.
+    const effectiveTxAccount = (txDirection === "income" && memberLinked) ? "debtors" : txAccount;
+    if (!effectiveTxAccount) { toast.error("Select an account"); return; }
     if (!txDescription.trim()) { toast.error("Enter a description"); return; }
 
     // Determine the money account based on payment method
@@ -343,8 +348,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
     // Income: Debit money account, Credit the selected income account
     // Expense: Debit the selected expense account, Credit money account
-    const debitAccount = txDirection === "income" ? moneyAccount : txAccount;
-    const creditAccount = txDirection === "income" ? txAccount : moneyAccount;
+    const debitAccount = txDirection === "income" ? moneyAccount : effectiveTxAccount;
+    const creditAccount = txDirection === "income" ? effectiveTxAccount : moneyAccount;
 
     setTxSubmitting(true);
     try {

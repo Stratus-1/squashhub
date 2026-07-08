@@ -16,12 +16,14 @@ export type BookingBalanceResult = {
  *   - If `minBookingBalance` is null/undefined → always allowed.
  *   - Compute current owing from GL: sum(debit - credit) on `debtors` + `member_credits`
  *     for the member. Positive = owes, negative = in credit.
- *   - If the member has an active (authorised) monthly Stitch mandate we treat their
- *     current outstanding fees as "on an arranged monthly plan" — so their allowed
- *     debt equals that outstanding. Otherwise allowed debt is 0.
+ *   - Allowed debt:
+ *       • Active authorised monthly Stitch mandate → allowed debt = ALL outstanding fees.
+ *       • No mandate yet → allowed debt = outstanding CLUB MEMBERSHIP fees only.
+ *         (Members can carry their membership balance, but must still keep the court-fee
+ *         buffer on top for a booking.)
  *   - Member passes if:   currentOwing - planAllowedDebt + requiredBuffer  ≤  0
- *     (i.e. they still have at least `requiredBuffer` credit above their allowed debt line)
  */
+
 export async function checkBookingBalance(opts: {
   clubMemberId: string;
   clubId: string;

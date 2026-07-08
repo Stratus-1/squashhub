@@ -135,7 +135,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
     setSubmitting(true);
     try {
-      const returnUrl = `${window.location.origin}/account?mandate=pending`;
+      const returnUrl = `${window.location.origin}/my-account?mandate=pending`;
       const { data, error } = await supabase.functions.invoke("stitch-create-mandate", {
         body: {
           club_id: clubId,

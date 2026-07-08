@@ -2265,6 +2265,69 @@ export default function Bookings() {
         </DialogContent>
       </Dialog>
 
+      {/* Insufficient balance prompt */}
+      <Dialog
+        open={topUpPrompt.open}
+        onOpenChange={(open) => setTopUpPrompt((s) => ({ ...s, open }))}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Top up needed to book</DialogTitle>
+            <DialogDescription>
+              Your club requires at least{" "}
+              <strong>R{topUpPrompt.requiredBuffer.toFixed(2)}</strong> credit on your
+              account to book a court.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-1 text-sm">
+            <div className="rounded-lg border p-3 bg-muted/40 space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Currently owing</span>
+                <span className="font-medium">
+                  {topUpPrompt.currentOwing >= 0
+                    ? `R${topUpPrompt.currentOwing.toFixed(2)}`
+                    : `-R${Math.abs(topUpPrompt.currentOwing).toFixed(2)} (credit)`}
+                </span>
+              </div>
+              {topUpPrompt.planAllowedDebt > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Allowed on payment plan</span>
+                  <span className="font-medium">R{topUpPrompt.planAllowedDebt.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Booking buffer required</span>
+                <span className="font-medium">R{topUpPrompt.requiredBuffer.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t">
+                <span className="font-semibold">Please top up</span>
+                <span className="font-bold text-destructive">
+                  R{topUpPrompt.shortfall.toFixed(2)}
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Once your top-up reflects on your account you can come back and book.
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setTopUpPrompt((s) => ({ ...s, open: false }))}>
+              Not now
+            </Button>
+            <Button
+              onClick={() => {
+                setTopUpPrompt((s) => ({ ...s, open: false }));
+                navigate("/my-account");
+              }}
+            >
+              Top up now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Add to Google Calendar Prompt */}
       <Dialog
         open={calendarPrompt.open}

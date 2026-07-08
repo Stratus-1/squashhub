@@ -114,6 +114,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
         id: club.id,
         lights_integration_enabled: lightsForm.lights_integration_enabled,
         light_fee_per_hour: lightsForm.lights_integration_enabled ? lightsForm.light_fee_per_hour : 0,
+        min_booking_balance: lightsForm.min_booking_balance,
       } as any);
       if (lightsForm.lights_integration_enabled) {
         await updateSecrets.mutateAsync({

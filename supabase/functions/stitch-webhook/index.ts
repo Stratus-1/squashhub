@@ -31,6 +31,28 @@ Deno.serve(async (req) => {
     const { data: session } = await admin.from("stitch_payment_sessions")
       .select("*").eq("stitch_request_id", requestId).maybeSingle();
     if (!session) {
+      // Not a one-off payment — could be a mandate (authorisation) or a
+      // recurring collection event. Forward to the specialised handler so
+      // clubs only need one webhook URL configured in Stitch.
+      const isMandate = !!(await admin.from("stitch_mandates")
+        .select("id").eq("stitch_mandate_id", requestId).maybeSingle()).data;
+      const isCollection = !isMandate && !!(await admin.from("stitch_collections")
+        .select("id").or(`stitch_collection_id.eq.${requestId},id.eq.${requestId}`).maybeSingle()).data;
+
+      if (isMandate || isCollection) {
+        const target = isMandate ? "stitch-mandate-webhook" : "stitch-collection-webhook";
+        const fwd = await fetch(`${SUPABASE_URL}/functions/v1/${target}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SERVICE_KEY}`,
+            "x-stitch-signature": signature,
+          },
+          body: rawBody,
+        });
+        return new Response(await fwd.text(), { status: fwd.status });
+      }
+
       console.log("stitch-webhook: no session for", requestId);
       return new Response("ok", { status: 200 });
     }

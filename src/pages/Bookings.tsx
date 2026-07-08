@@ -2284,9 +2284,7 @@ export default function Bookings() {
           <DialogHeader>
             <DialogTitle className="font-heading">Top up needed to book</DialogTitle>
             <DialogDescription>
-              Your club requires at least{" "}
-              <strong>R{topUpPrompt.requiredBuffer.toFixed(2)}</strong> credit on your
-              account to book a court.
+              Your account balance is below the minimum required to book a court.
             </DialogDescription>
           </DialogHeader>
 
@@ -2302,13 +2300,19 @@ export default function Bookings() {
               </div>
               {topUpPrompt.planAllowedDebt > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Allowed on payment plan</span>
+                  <span className="text-muted-foreground">Outstanding membership allowed</span>
                   <span className="font-medium">R{topUpPrompt.planAllowedDebt.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Booking buffer required</span>
                 <span className="font-medium">R{topUpPrompt.requiredBuffer.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t">
+                <span className="text-muted-foreground">Minimum balance</span>
+                <span className="font-medium">
+                  -R{Math.max(0, topUpPrompt.planAllowedDebt - topUpPrompt.requiredBuffer).toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between pt-1 border-t">
                 <span className="font-semibold">Please top up</span>
@@ -2321,6 +2325,7 @@ export default function Bookings() {
               Once your top-up reflects on your account you can come back and book.
             </p>
           </div>
+
 
           <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setTopUpPrompt((s) => ({ ...s, open: false }))}>

@@ -193,6 +193,30 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
   }
 
+  function nextDebitDate(day: number): Date {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+
+    function makeDate(year: number, month: number, dayOfMonth: number): Date {
+      const d = new Date(year, month, dayOfMonth);
+      if (d.getMonth() !== month) {
+        return new Date(year, month + 1, 0);
+      }
+      return d;
+    }
+
+    const candidate = makeDate(currentYear, currentMonth, day);
+    const startOfToday = new Date(currentYear, currentMonth, today.getDate());
+    if (candidate >= startOfToday) return candidate;
+    return makeDate(currentYear, currentMonth + 1, day);
+  }
+
+  function formatDate(d: Date): string {
+    return d.toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
+  }
+
+
   const railLabel = (_r: string) => "Monthly debit order";
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {

@@ -176,6 +176,23 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
   }
 
+  function normalizeAuthUrl(raw: string) {
+    try {
+      const url = new URL(raw);
+      const redirect = url.searchParams.get("redirect_url");
+      if (redirect) {
+        const returnUrl = new URL(redirect);
+        if (returnUrl.pathname === "/account") {
+          returnUrl.pathname = "/my-account";
+          url.searchParams.set("redirect_url", returnUrl.toString());
+        }
+      }
+      return url.toString();
+    } catch {
+      return raw;
+    }
+  }
+
   const railLabel = (_r: string) => "Monthly debit order";
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
@@ -220,7 +237,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                     {m.debit_day ? ` · debited on day ${m.debit_day}` : ""}
                   </p>
                   {m.status === "pending" && m.auth_url && (
-                    <a href={m.auth_url} className="text-[11px] text-primary underline">
+                    <a href={normalizeAuthUrl(m.auth_url)} className="text-[11px] text-primary underline">
                       Complete authorisation →
                     </a>
                   )}

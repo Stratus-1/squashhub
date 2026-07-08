@@ -795,14 +795,15 @@ export default function Bookings() {
       }
     }
 
-    // 3. Minimum-balance gate (skips admins / delegates / super-admins via bookingLimitsBypassed)
-    const minBookingBalance = (myClub as any)?.min_booking_balance ?? null;
-    if (minBookingBalance !== null && !bookingLimitsBypassed && activeMember?.id && myClub?.id) {
+    // 3. Minimum-balance gate (skips admins / delegates / super-admins via bookingLimitsBypassed).
+    //    Always call the gate — it re-reads the club's current min_booking_balance from the DB,
+    //    so a stale cached club value can't silently bypass the check.
+    if (!bookingLimitsBypassed && activeMember?.id && myClub?.id) {
       try {
         const check = await checkBookingBalance({
           clubMemberId: activeMember.id,
           clubId: myClub.id,
-          minBookingBalance,
+          minBookingBalance: (myClub as any)?.min_booking_balance ?? null,
         });
         if (!check.allowed) {
           setTopUpPrompt({
@@ -818,6 +819,7 @@ export default function Bookings() {
         console.error("[booking-balance] check failed, allowing booking:", e);
       }
     }
+
 
 
     setSubmittingBooking(true);

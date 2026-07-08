@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
         club_id,
         club_member_id,
         user_id: userId,
-        rail: "card",
+        rail: "debicheck",
         mandate_type,
         max_amount_cents: amountCents,
         frequency: "monthly",

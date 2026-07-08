@@ -357,7 +357,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                 />
               </div>
               <div>
-                <Label className="text-xs">Debit day</Label>
+                <Label className="text-xs">Monthly collection day</Label>
                 <Input
                   type="number"
                   min="1"
@@ -366,15 +366,24 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   onChange={(e) => setDebitDay(e.target.value)}
                   className="h-9"
                 />
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Your monthly debit will run on this day each month, starting next cycle.
+                </p>
               </div>
             </div>
             {selectedCategory && (
-              <p className="text-[11px] text-muted-foreground">
-                Annual fee R{Number(selectedCategory.annual_fee || 0).toFixed(2)} ÷ {months} ={" "}
-                R{(Number(selectedCategory.annual_fee || 0) / Math.max(Number(months) || 1, 1)).toFixed(2)} per month.
-                You can override the monthly amount above. Cancel any time from this screen.
-              </p>
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">
+                  Annual fee R{Number(selectedCategory.annual_fee || 0).toFixed(2)} ÷ {months} ={" "}
+                  R{(Number(selectedCategory.annual_fee || 0) / Math.max(Number(months) || 1, 1)).toFixed(2)} per month.
+                  You can override the monthly amount above. Cancel any time from this screen.
+                </p>
+                <p className="text-[11px] font-medium text-primary">
+                  First monthly debit: {formatDate(nextDebitDate(Number(debitDay) || 1))}
+                </p>
+              </div>
             )}
+
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setSetupOpen(false)} disabled={submitting}>

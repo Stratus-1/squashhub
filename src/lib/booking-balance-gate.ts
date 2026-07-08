@@ -16,12 +16,14 @@ export type BookingBalanceResult = {
  *   - If `minBookingBalance` is null/undefined → always allowed.
  *   - Compute current owing from GL: sum(debit - credit) on `debtors` + `member_credits`
  *     for the member. Positive = owes, negative = in credit.
- *   - If the member has an active (authorised) monthly Stitch mandate we treat their
- *     current outstanding fees as "on an arranged monthly plan" — so their allowed
- *     debt equals that outstanding. Otherwise allowed debt is 0.
+ *   - Allowed debt:
+ *       • Active authorised monthly Stitch mandate → allowed debt = ALL outstanding fees.
+ *       • No mandate yet → allowed debt = outstanding CLUB MEMBERSHIP fees only.
+ *         (Members can carry their membership balance, but must still keep the court-fee
+ *         buffer on top for a booking.)
  *   - Member passes if:   currentOwing - planAllowedDebt + requiredBuffer  ≤  0
- *     (i.e. they still have at least `requiredBuffer` credit above their allowed debt line)
  */
+
 export async function checkBookingBalance(opts: {
   clubMemberId: string;
   clubId: string;
@@ -77,7 +79,10 @@ export async function checkBookingBalance(opts: {
     0,
   );
 
-  // 2. Active monthly payment arrangement?
+  // 2. Allowed debt = outstanding membership fees (always) + all outstanding fees if an
+  //    authorised monthly Stitch mandate exists. This means until debit-order arrangements
+  //    are set up, a member is allowed to sit at "minus their outstanding membership fee"
+  //    on their account and still book — they just need the minimum court-fee buffer on top.
   const { data: mandate } = await (supabase as any)
     .from("stitch_mandates")
     .select("id")
@@ -86,15 +91,22 @@ export async function checkBookingBalance(opts: {
     .eq("frequency", "monthly")
     .maybeSingle();
 
+  const { data: fees } = await (supabase as any)
+    .from("club_member_fee_payments")
+    .select("amount, fee_type")
+    .eq("club_member_id", opts.clubMemberId)
+    .eq("paid", false);
+
   let planAllowedDebt = 0;
   if (mandate) {
-    const { data: fees } = await (supabase as any)
-      .from("club_member_fee_payments")
-      .select("amount")
-      .eq("club_member_id", opts.clubMemberId)
-      .eq("paid", false);
     planAllowedDebt = (fees || []).reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
+  } else {
+    // No mandate yet — allow the outstanding membership portion only.
+    planAllowedDebt = (fees || [])
+      .filter((f: any) => f.fee_type === "club_membership")
+      .reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
   }
+
 
   const shortfall = currentOwing - planAllowedDebt + buffer;
   return {

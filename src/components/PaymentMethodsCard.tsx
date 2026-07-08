@@ -278,9 +278,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
           <div className="space-y-3">
             <div className="rounded-md border bg-muted/40 p-2 text-[11px] leading-snug">
               <p>
-                <strong>Recurring card</strong> — enter your card once; it's securely stored
-                by our payment provider and charged on your chosen day each month. Cancel any
-                time from this screen. (True DebiCheck / EFT debit orders coming soon.)
+                You'll be redirected to <strong>Stitch</strong> to authorise the debit order
+                from your bank in one tap. Stitch then debits the fixed amount from your
+                account on your chosen day each month. Cancel any time from this screen.
               </p>
             </div>
 

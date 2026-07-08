@@ -14,6 +14,7 @@ import { buildYocoReturnUrl, openYocoCheckout, rememberPendingYocoSession } from
 import { buildStitchReturnUrl, openStitchCheckout, rememberPendingStitchSession } from "@/lib/stitch-checkout";
 import { useMemberContext } from "@/contexts/MemberContext";
 import DebitOrdersPanel from "./DebitOrdersPanel";
+import StitchOnboardingCard from "./StitchOnboardingCard";
 
 // ─── Gateway Registry ───────────────────────────────────────
 type FieldDef = {

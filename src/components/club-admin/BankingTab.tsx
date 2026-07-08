@@ -516,6 +516,15 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       </div>
 
       {gateway === "stitch" && <DebitOrdersPanel clubId={clubId} />}
+
+      <StitchOnboardingCard
+        clubId={clubId}
+        clubName={club.name}
+        clubSubdomain={(club as any).subdomain ?? null}
+        defaultEmail={(club as any).contact_email || (secrets as any)?.sender_email || null}
+        defaultCell={(club as any).contact_phone || null}
+        defaultContactName={(club as any).contact_name || null}
+      />
     </div>
   );
 }

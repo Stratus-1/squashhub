@@ -62,6 +62,7 @@ import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
 import { useHasPermission } from "@/hooks/use-club-permissions";
 import { fromExt } from "@/lib/supabase-ext";
 import { enqueueOutbox } from "@/lib/outbox";
+import { checkBookingBalance } from "@/lib/booking-balance-gate";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";

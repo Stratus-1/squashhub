@@ -244,8 +244,8 @@ function sanitizeReturnUrl(raw: string): string {
     if (u.origin === PUBLIC_APP_ORIGIN || u.hostname.endsWith("squashhub.co.za") || u.hostname.endsWith("lovable.app") || u.hostname === "localhost") {
       return u.toString();
     }
-    return `${PUBLIC_APP_ORIGIN}/account`;
+    return `${PUBLIC_APP_ORIGIN}/my-account`;
   } catch {
-    return `${PUBLIC_APP_ORIGIN}/account`;
+    return `${PUBLIC_APP_ORIGIN}/my-account`;
   }
 }

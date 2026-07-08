@@ -114,8 +114,8 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
         id: club.id,
         lights_integration_enabled: lightsForm.lights_integration_enabled,
         light_fee_per_hour: lightsForm.lights_integration_enabled ? lightsForm.light_fee_per_hour : 0,
-        min_booking_balance: lightsForm.min_booking_balance,
       } as any);
+
       if (lightsForm.lights_integration_enabled) {
         await updateSecrets.mutateAsync({
           club_id: clubId,
@@ -262,8 +262,83 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
           </Button>
         </Card>
 
+        {/* Minimum booking balance — independent of lights */}
+        <Card className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-sm">Minimum balance required to book a court</h3>
+              <p className="text-xs text-muted-foreground">
+                {lightsForm.min_booking_balance !== null
+                  ? "Members need at least this credit on their account before booking."
+                  : "Disabled — any active member can book regardless of account balance."}
+              </p>
+            </div>
+            <Switch
+              checked={lightsForm.min_booking_balance !== null}
+              onCheckedChange={(checked) =>
+                setLightsForm(p => ({
+                  ...p,
+                  min_booking_balance: checked ? (p.light_fee_per_hour || 20) : null,
+                }))
+              }
+            />
+          </div>
+
+          {lightsForm.min_booking_balance !== null && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">R</span>
+                <Input
+                  type="number" min={0} step={1}
+                  className="h-8 text-xs w-28"
+                  value={lightsForm.min_booking_balance}
+                  onChange={e => setLightsForm(p => ({ ...p, min_booking_balance: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                />
+                <span className="text-[11px] text-muted-foreground">credit required</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                Members on an arranged monthly payment plan are allowed to carry their plan's outstanding
+                balance as debt (plus this buffer). If short, they're prompted to top up before the booking
+                is confirmed.
+              </p>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await updateClub.mutateAsync({ id: club.id, min_booking_balance: lightsForm.min_booking_balance } as any);
+                    toast.success("Minimum balance saved");
+                  } catch (err: any) {
+                    toast.error(err.message || "Failed to save");
+                  }
+                }}
+                disabled={updateClub.isPending}
+              >
+                Save Minimum Balance
+              </Button>
+            </>
+          )}
+          {lightsForm.min_booking_balance === null && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                try {
+                  await updateClub.mutateAsync({ id: club.id, min_booking_balance: null } as any);
+                  toast.success("Minimum balance disabled");
+                } catch (err: any) {
+                  toast.error(err.message || "Failed to save");
+                }
+              }}
+              disabled={updateClub.isPending}
+            >
+              Save
+            </Button>
+          )}
+        </Card>
+
         {/* Court Lights */}
         <Card className="p-4 space-y-3">
+
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="font-semibold text-sm">Court Lights</h3>
@@ -326,46 +401,8 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
                 </div>
               </div>
 
-              {/* Minimum booking balance gate */}
-              <div className="space-y-1 rounded-lg border p-3 bg-muted/30">
-                <div className="flex items-center justify-between gap-2">
-                  <Label className="text-xs font-semibold">Minimum balance required to book a court</Label>
-                  <Switch
-                    checked={lightsForm.min_booking_balance !== null}
-                    onCheckedChange={(checked) =>
-                      setLightsForm(p => ({
-                        ...p,
-                        min_booking_balance: checked ? (p.light_fee_per_hour || 30) : null,
-                      }))
-                    }
-                  />
-                </div>
-                {lightsForm.min_booking_balance !== null ? (
-                  <>
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="text-xs text-muted-foreground">R</span>
-                      <Input
-                        type="number" min={0} step={1}
-                        className="h-8 text-xs w-28"
-                        value={lightsForm.min_booking_balance}
-                        onChange={e => setLightsForm(p => ({ ...p, min_booking_balance: Math.max(0, parseFloat(e.target.value) || 0) }))}
-                      />
-                      <span className="text-[11px] text-muted-foreground">credit required</span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground leading-snug">
-                      Members need at least this much credit on their account to book. Members on an
-                      arranged monthly payment plan are allowed to carry their plan's outstanding
-                      balance as debt (plus this buffer for the upcoming light fee). If short, they're
-                      prompted to top up before the booking is confirmed. Default matches the hourly
-                      light fee.
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-[10px] text-muted-foreground leading-snug">
-                    Disabled — any active member can book regardless of account balance.
-                  </p>
-                )}
-              </div>
+
+
 
 
               {isSupported && (

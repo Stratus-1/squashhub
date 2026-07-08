@@ -313,19 +313,20 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
           <DialogHeader>
             <DialogTitle>Set up monthly debit order</DialogTitle>
             <DialogDescription>
-              {selectedCategory?.name} — you'll be redirected to Stitch to authorise the
-              debit from your bank. Once authorised, the amount below is pulled automatically
-              on your chosen day each month.
+              {selectedCategory?.name} — authorise a monthly debit from your bank.
+              The amount below will be collected automatically on your chosen day each month.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="rounded-md border bg-muted/40 p-2 text-[11px] leading-snug">
-              <p>
-                You'll be redirected to <strong>Stitch</strong> to authorise the debit order
-                from your bank in one tap. Stitch then debits the fixed amount from your
-                account on your chosen day each month. Cancel any time from this screen.
+            <div className="rounded-md border bg-amber-500/10 p-2 text-[11px] leading-snug">
+              <p className="font-medium text-amber-900">One-time authorisation charge</p>
+              <p className="mt-0.5 text-amber-800">
+                Stitch will request a small, once-off authorisation charge now to verify your
+                account and confirm consent. This is <strong>not</strong> your monthly fee.
+                Your first regular monthly debit will run on the collection day you choose below.
               </p>
             </div>
+
 
             <div>
               <Label className="text-xs">Split annual fee over (months)</Label>

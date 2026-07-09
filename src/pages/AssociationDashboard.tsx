@@ -204,7 +204,7 @@ export default function AssociationDashboard() {
 
   return (
     <div className="bottom-nav-safe relative text-[13px]">
-      <SEO title="Home" description="Your association hub." path="/" noIndex />
+      <SEO title="Association Dashboard" description="Your association hub." path="/" noIndex />
 
       <PageHeader
         title={association?.name || "Association"}

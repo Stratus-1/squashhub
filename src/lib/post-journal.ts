@@ -32,12 +32,15 @@ export async function postJournal(
     payment_id: l.payment_id ?? null,
   }));
 
-  const { data, error } = await (supabase as any).rpc("post_journal", {
+  const rpcArgs: Record<string, unknown> = {
     p_club_id: clubId,
     p_lines: payload,
-    p_ref: opts.ref ?? null,
     p_description: opts.description ?? null,
-  });
+  };
+  // Only pass p_ref when supplied — otherwise let the DB default (gen_random_uuid())
+  // apply. Passing null would violate the NOT NULL journal_ref column.
+  if (opts.ref) rpcArgs.p_ref = opts.ref;
+  const { data, error } = await (supabase as any).rpc("post_journal", rpcArgs);
   if (error) throw error;
   return data as string;
 }

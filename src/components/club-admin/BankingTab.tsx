@@ -122,6 +122,28 @@ const GATEWAYS: GatewayDef[] = [
 
     ],
   },
+  {
+    id: "paynow",
+    name: "Paynow (Zimbabwe)",
+    description: "Zimbabwe payment aggregator. One integration for EcoCash, OneMoney, Zimswitch, Visa/Mastercard. Checkout wiring coming soon — credentials are stored securely now.",
+    website: "https://paynow.co.zw",
+    fields: [
+      { key: "integration_id", label: "Integration ID", placeholder: "12345", helperText: "Paynow Dashboard → Sellers → Integrations → copy the Integration ID." },
+      { key: "integration_key", label: "Integration Key", placeholder: "Your Paynow integration key", sensitive: true, helperText: "Same screen → reveal & copy the Integration Key. Treat it like a password." },
+    ],
+  },
+  {
+    id: "ecocash",
+    name: "EcoCash (Zimbabwe)",
+    description: "Direct Econet EcoCash merchant C2B API. Requires a merchant account onboarded with Econet. Checkout wiring coming soon — credentials are stored securely now.",
+    website: "https://developers.ecocash.co.zw",
+    fields: [
+      { key: "merchant_code", label: "Merchant Code", placeholder: "Your EcoCash merchant code", helperText: "Provided by Econet when your merchant account is approved." },
+      { key: "merchant_number", label: "Merchant Number", placeholder: "e.g. 263771234567", helperText: "The MSISDN linked to the merchant account (international format)." },
+      { key: "api_key", label: "API Key", placeholder: "Your EcoCash API key", sensitive: true, helperText: "Econet developer portal → your app → API credentials." },
+      { key: "api_secret", label: "API Secret", placeholder: "Your EcoCash API secret", sensitive: true },
+    ],
+  },
 ];
 
 // ─── Component ──────────────────────────────────────────────

@@ -87,8 +87,9 @@ export async function checkBookingBalance(opts: {
     .from("stitch_mandates")
     .select("id")
     .eq("club_member_id", opts.clubMemberId)
-    .eq("status", "authorised")
+    .eq("status", "active")
     .eq("frequency", "monthly")
+    .is("suspended_at", null)
     .maybeSingle();
 
   const { data: fees } = await (supabase as any)

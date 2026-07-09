@@ -85,6 +85,29 @@ export default function SuperAdminDashboard() {
     },
   });
 
+  const { data: ledgerIntegrity } = useQuery({
+    queryKey: ["sa-ledger-integrity"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("check_ledger_integrity", { p_club_id: null });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        club_id: string;
+        club_name: string;
+        total_debit: number;
+        total_credit: number;
+        imbalance: number;
+        debtors_balance: number;
+        debtors_is_credit: boolean;
+        bank_balance: number;
+        total_income: number;
+      }>;
+    },
+  });
+
+  const problemClubs = (ledgerIntegrity ?? []).filter(
+    (c) => Math.abs(Number(c.imbalance)) > 0.01 || c.debtors_is_credit,
+  );
+
   const founderMap = new Map((founders ?? []).map((f) => [f.id, f]));
 
   const stats = [

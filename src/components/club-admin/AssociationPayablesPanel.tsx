@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { postJournal } from "@/lib/post-journal";
 import { Building2, Plus, CheckCircle2, Clock, Wallet, XCircle, Users } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -400,11 +401,10 @@ function GenerateDialog({
 
       const unitWord = basisUnit(fee.basis) + (units === 1 ? "" : "s");
       const desc = `Affiliation: ${fee.payee_name} – ${seasonLabel} (${units} ${unitWord})`;
-      const { error: jErr } = await fromExt("club_journal_entries").insert([
-        { club_id: clubId, journal_ref: journalRef, account: "national_body_expense", debit: total, credit: 0, description: desc },
-        { club_id: clubId, journal_ref: journalRef, account: "association_payable", debit: 0, credit: total, description: desc },
-      ]);
-      if (jErr) throw jErr;
+      await postJournal(clubId, [
+        { account: "national_body_expense", debit: total, description: desc },
+        { account: "association_payable", credit: total, description: desc },
+      ], { ref: journalRef });
 
       toast.success(`Payable raised: R${total.toFixed(2)} (${units} ${unitWord})`);
       onCreated();
@@ -549,11 +549,10 @@ function SettleDialog({
       const moneyAccount = method === "cash" ? "cash" : "bank_current";
       const desc = `Affiliation payment: ${fee?.payee_name || "Payable"} – ${batch.season_label}${paymentRef ? ` (${paymentRef})` : ""}`;
 
-      const { error: jErr } = await fromExt("club_journal_entries").insert([
-        { club_id: clubId, journal_ref: journalRef, account: "association_payable", debit: amt, credit: 0, description: desc },
-        { club_id: clubId, journal_ref: journalRef, account: moneyAccount, debit: 0, credit: amt, description: desc },
-      ]);
-      if (jErr) throw jErr;
+      await postJournal(clubId, [
+        { account: "association_payable", debit: amt, description: desc },
+        { account: moneyAccount, credit: amt, description: desc },
+      ], { ref: journalRef });
 
       const { error: bErr } = await fromExt("club_association_payable_batches" as any)
         .update({

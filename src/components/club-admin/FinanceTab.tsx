@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
+import { postJournal } from "@/lib/post-journal";
 import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote } from "lucide-react";
 import { format } from "date-fns";
 import { useState, useRef, useEffect, type ReactNode, type ComponentType } from "react";
@@ -302,12 +303,12 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       // Fallback: if no fee rows could be matched (e.g. ad-hoc top-ups, light fees),
       // still record the cash receipt directly so the bank balance reflects it.
       if (!postedFromFees) {
-        const journalRef = crypto.randomUUID();
         const memberName = getMemberName(tx.club_member_id);
         const desc = `Payment received: ${tx.description || "EFT"} — ${memberName}`;
-        await fromExt("club_journal_entries").insert([
-          { club_id: clubId, journal_ref: journalRef, account: "bank_current", debit: Math.abs(Number(tx.amount)), credit: 0, description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
-          { club_id: clubId, journal_ref: journalRef, account: "member_credits", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
+        const amt = Math.abs(Number(tx.amount));
+        await postJournal(clubId, [
+          { account: "bank_current", debit: amt, description: desc, member_id: tx.club_member_id },
+          { account: "member_credits", credit: amt, description: desc, member_id: tx.club_member_id },
         ]);
       }
 
@@ -355,24 +356,21 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     setTxSubmitting(true);
     try {
       const memberId = (txMemberId && txMemberId !== "__none__") ? txMemberId : null;
-      const journalRef = crypto.randomUUID();
-      const entries: any[] = [
-        { club_id: clubId, journal_ref: journalRef, account: debitAccount, debit: amount, credit: 0, description: txDescription.trim(), club_member_id: memberId, created_at: new Date(txDate).toISOString() },
-        { club_id: clubId, journal_ref: journalRef, account: creditAccount, debit: 0, credit: amount, description: txDescription.trim(), club_member_id: memberId, created_at: new Date(txDate).toISOString() },
+      const desc = txDescription.trim();
+      const lines: any[] = [
+        { account: debitAccount, debit: amount, description: desc, member_id: memberId },
+        { account: creditAccount, credit: amount, description: desc, member_id: memberId },
       ];
+      await postJournal(clubId, lines, { description: desc });
 
       // Auto-charge 3.5% gateway fee for card payments
       if (txMethod === "card" && amount > 0) {
         const gatewayFee = Math.round(amount * GATEWAY_FEE_RATE * 100) / 100;
-        const feeRef = crypto.randomUUID();
-        entries.push(
-          { club_id: clubId, journal_ref: feeRef, account: "gateway_fees", debit: gatewayFee, credit: 0, description: `Gateway fee (3.5%) on card payment: ${txDescription.trim()}`, created_at: new Date(txDate).toISOString() },
-          { club_id: clubId, journal_ref: feeRef, account: "bank_current", debit: 0, credit: gatewayFee, description: `Gateway fee (3.5%) on card payment: ${txDescription.trim()}`, created_at: new Date(txDate).toISOString() },
-        );
+        await postJournal(clubId, [
+          { account: "gateway_fees", debit: gatewayFee, description: `Gateway fee (3.5%) on card payment: ${desc}` },
+          { account: "bank_current", credit: gatewayFee, description: `Gateway fee (3.5%) on card payment: ${desc}` },
+        ]);
       }
-
-      const { error } = await fromExt("club_journal_entries").insert(entries);
-      if (error) throw error;
 
       toast.success("Transaction recorded");
       setTxOpen(false);
@@ -531,30 +529,29 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         return m?.name || m?.profiles?.name || "Member";
       };
 
-      const rows: any[] = [];
+      let posted = 0;
       for (const f of fees || []) {
         if (!f.amount || f.amount <= 0) continue;
         const acct = accountsForFee(f.fee_type);
         const desc = `${f.paid ? "Fee paid" : "Fee accrued"}: ${f.fee_label} — ${memberName(f.club_member_id)}`;
-        const journal_ref = crypto.randomUUID();
-        const base = { club_id: clubId, journal_ref, description: desc, club_member_id: f.club_member_id, fee_payment_id: f.id };
+        const meta = { description: desc, member_id: f.club_member_id, payment_id: f.id };
         if (acct.side === "receivable") {
           const debit = f.paid ? "bank_current" : "debtors";
-          rows.push({ ...base, account: debit, debit: f.amount, credit: 0 });
-          rows.push({ ...base, account: acct.income, debit: 0, credit: f.amount });
+          await postJournal(clubId, [
+            { account: debit, debit: f.amount, ...meta },
+            { account: acct.income!, credit: f.amount, ...meta },
+          ]);
         } else {
           const credit = f.paid ? "bank_current" : "creditors";
-          rows.push({ ...base, account: acct.expense, debit: f.amount, credit: 0 });
-          rows.push({ ...base, account: credit, debit: 0, credit: f.amount });
+          await postJournal(clubId, [
+            { account: acct.expense!, debit: f.amount, ...meta },
+            { account: credit, credit: f.amount, ...meta },
+          ]);
         }
+        posted += 2;
       }
 
-      for (let i = 0; i < rows.length; i += 500) {
-        const { error: insErr } = await fromExt("club_journal_entries").insert(rows.slice(i, i + 500));
-        if (insErr) throw insErr;
-      }
-
-      toast.success(`Resynced ${(fees || []).length} fees → ${rows.length} ledger entries`);
+      toast.success(`Resynced ${(fees || []).length} fees → ${posted} ledger entries`);
       queryClient.invalidateQueries({ queryKey: ["club-journal-entries", clubId] });
     } catch (e: any) {
       toast.error(e.message || "Resync failed");

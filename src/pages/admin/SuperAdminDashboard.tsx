@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Building2, Users, CreditCard, Activity, Sparkles } from "lucide-react";
+import { Building2, Users, CreditCard, Activity, Sparkles, ShieldAlert } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
@@ -85,6 +85,29 @@ export default function SuperAdminDashboard() {
     },
   });
 
+  const { data: ledgerIntegrity } = useQuery({
+    queryKey: ["sa-ledger-integrity"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("check_ledger_integrity", { p_club_id: null });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        club_id: string;
+        club_name: string;
+        total_debit: number;
+        total_credit: number;
+        imbalance: number;
+        debtors_balance: number;
+        debtors_is_credit: boolean;
+        bank_balance: number;
+        total_income: number;
+      }>;
+    },
+  });
+
+  const problemClubs = (ledgerIntegrity ?? []).filter(
+    (c) => Math.abs(Number(c.imbalance)) > 0.01 || c.debtors_is_credit,
+  );
+
   const founderMap = new Map((founders ?? []).map((f) => [f.id, f]));
 
   const stats = [
@@ -158,6 +181,51 @@ export default function SuperAdminDashboard() {
           </div>
         ) : (
           <p className="text-sm text-white/50">No new clubs in the last 30 days.</p>
+        )}
+      </Card>
+
+      <Card className="bg-[hsl(220_45%_8%/0.85)] border border-white/10 backdrop-blur-md rounded-2xl p-5 text-white">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className={`h-4 w-4 ${problemClubs.length > 0 ? "text-red-400" : "text-emerald-400"}`} />
+            <h3 className="text-base font-semibold">
+              Ledger integrity
+              <span className="ml-2 text-xs text-white/50 font-normal">
+                {ledgerIntegrity?.length ?? 0} clubs scanned
+              </span>
+            </h3>
+          </div>
+          <span className={`text-xs ${problemClubs.length > 0 ? "text-red-400" : "text-emerald-400"}`}>
+            {problemClubs.length > 0 ? `${problemClubs.length} needs attention` : "All balanced"}
+          </span>
+        </div>
+        {problemClubs.length > 0 ? (
+          <div className="divide-y divide-white/10">
+            {problemClubs.map((c) => (
+              <div key={c.club_id} className="py-2.5 grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 text-[13px]">
+                <div className="font-medium truncate">{c.club_name}</div>
+                <div className="text-white/60 tabular-nums text-xs">
+                  Bank R{Number(c.bank_balance).toLocaleString()}
+                </div>
+                <div className="text-white/60 tabular-nums text-xs">
+                  Income R{Number(c.total_income).toLocaleString()}
+                </div>
+                <div className={`tabular-nums text-xs ${c.debtors_is_credit ? "text-amber-400" : "text-white/60"}`}>
+                  Debtors R{Number(c.debtors_balance).toLocaleString()}
+                  {c.debtors_is_credit && <span className="ml-1">(Cr)</span>}
+                  {Math.abs(Number(c.imbalance)) > 0.01 && (
+                    <span className="ml-2 text-red-400">
+                      · unbalanced R{Number(c.imbalance).toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-white/50">
+            Every club's books balance and no accounts show an inverted sign.
+          </p>
         )}
       </Card>
     </div>

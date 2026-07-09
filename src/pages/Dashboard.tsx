@@ -578,7 +578,7 @@ export default function Dashboard() {
 
     return (
       <div className="relative">
-        <SEO title="Home" description="Your squash hub — stats and bookings." path="/" noIndex />
+        <SEO title="Member Dashboard" description="Your squash hub — stats and bookings." path="/" noIndex />
         <MembershipIntroModal
           open={showIntro}
           clubName={effectiveClub?.name}
@@ -654,7 +654,7 @@ export default function Dashboard() {
 
   return (
     <div className="bottom-nav-safe relative">
-      <SEO title="Home" description="Your squash hub — stats and bookings." path="/" noIndex />
+      <SEO title="Member Dashboard" description="Your squash hub — stats and bookings." path="/" noIndex />
 
       <MembershipIntroModal
         open={showIntro}

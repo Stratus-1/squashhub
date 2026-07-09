@@ -23,4 +23,4 @@ Disallow: /integrations
 Disallow: /admin
 Disallow: /support
 
-Sitemap: https://gordon-s-bay-squash-hub.vercel.app/sitemap.xml
+Sitemap: https://www.squashhub.co.za/sitemap.xml

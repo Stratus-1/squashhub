@@ -152,9 +152,21 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="SquashHub — Squash Club Management Software"
+        title="Squash Club Management Software"
         description="All-in-one squash club management software for clubs and associations. Bookings, leagues, members, and payments, all in one simple platform."
         path="/"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": FAQS.map((faq) => ({
+            "@type": "Question",
+            "name": faq.q,
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": faq.a,
+            },
+          })),
+        }}
       />
 
       {/* ─── Hero with Top Bar ─── */}

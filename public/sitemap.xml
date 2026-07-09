@@ -1,22 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://gordon-s-bay-squash-hub.vercel.app/</loc>
+    <loc>https://www.squashhub.co.za/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://gordon-s-bay-squash-hub.vercel.app/events</loc>
+    <loc>https://www.squashhub.co.za/welcome</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.squashhub.co.za/clubs</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://gordon-s-bay-squash-hub.vercel.app/privacy</loc>
+    <loc>https://www.squashhub.co.za/events</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.squashhub.co.za/tournaments</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.squashhub.co.za/lights</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.squashhub.co.za/league</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.squashhub.co.za/terms</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://gordon-s-bay-squash-hub.vercel.app/terms</loc>
+    <loc>https://www.squashhub.co.za/privacy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://www.squashhub.co.za/sla</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

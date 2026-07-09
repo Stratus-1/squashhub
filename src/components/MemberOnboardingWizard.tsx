@@ -527,10 +527,15 @@ export function MemberOnboardingWizard({
     const items: { label: string; amount: number; type: string }[] = [];
     
     if (selectedCategory) {
-      const proRated = proRateFee(selectedCategory.annual_fee, dueMonth);
+      // Only pro-rate when the category explicitly opts in (club setting).
+      // Default is true if the column is missing to preserve prior behaviour.
+      const catProRate = (selectedCategory as any).pro_rate ?? true;
+      const amount = catProRate
+        ? proRateFee(selectedCategory.annual_fee, dueMonth)
+        : selectedCategory.annual_fee;
       items.push({
-        label: `Club Membership (${selectedCategory.name})${proRated < selectedCategory.annual_fee ? " — Pro-rated" : ""}`,
-        amount: proRated,
+        label: `Club Membership (${selectedCategory.name})${catProRate && amount < selectedCategory.annual_fee ? " — Pro-rated" : ""}`,
+        amount,
         type: "club",
       });
     }

@@ -1213,7 +1213,11 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       </Dialog>
 
       {/* Member Statement Dialog */}
-      <Dialog open={statementOpen} onOpenChange={setStatementOpen}>
+      <Dialog open={statementOpen} onOpenChange={(o) => {
+        setStatementOpen(o);
+        if (o) queryClient.invalidateQueries({ queryKey: ["club-journal-entries", clubId] });
+      }}>
+
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">

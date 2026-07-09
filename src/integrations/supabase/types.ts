@@ -7019,6 +7019,20 @@ export type Database = {
           phone: string
         }[]
       }
+      check_ledger_integrity: {
+        Args: { p_club_id?: string }
+        Returns: {
+          bank_balance: number
+          club_id: string
+          club_name: string
+          debtors_balance: number
+          debtors_is_credit: boolean
+          imbalance: number
+          total_credit: number
+          total_debit: number
+          total_income: number
+        }[]
+      }
       claim_member_by_league_number: {
         Args: {
           _club_id?: string
@@ -7290,6 +7304,15 @@ export type Database = {
       }
       next_league_week_start: {
         Args: { _dow: number; _from: string }
+        Returns: string
+      }
+      post_journal: {
+        Args: {
+          p_club_id: string
+          p_description?: string
+          p_lines: Json
+          p_ref?: string
+        }
         Returns: string
       }
       read_email_batch: {

@@ -2557,7 +2557,7 @@ function LinkedNationalBodiesSection({ associationId, clubId }: { associationId:
               <div key={b.id} className="flex items-center justify-between gap-2 text-sm">
                 <div className="min-w-0">
                   <span className="font-medium">{b.abbreviation || b.body_name}</span>
-                  <span className="text-muted-foreground"> — R{Number(b.fee_annual || 0).toFixed(2)}/yr</span>
+                  <span className="text-muted-foreground"> — {Number(b.fee_annual || 0).toFixed(2)}/yr</span>
                 </div>
                 <Switch checked={checked} onCheckedChange={(c) => handleToggle(b.id, c)} />
               </div>

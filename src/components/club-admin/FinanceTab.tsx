@@ -612,28 +612,28 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Income</p>
           <p className="text-xl font-bold tabular-nums text-green-600">
-            R{totalIncome.toFixed(2)}
+            {totalIncome.toFixed(2)}
           </p>
           <p className="text-[10px] text-muted-foreground">Revenue received</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Expenses</p>
           <p className={cn("text-xl font-bold tabular-nums", totalExpenses > 0 ? "text-destructive" : "text-muted-foreground")}>
-            R{totalExpenses.toFixed(2)}
+            {totalExpenses.toFixed(2)}
           </p>
           <p className="text-[10px] text-muted-foreground">Costs paid</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Bank</p>
           <p className={cn("text-xl font-bold tabular-nums", bankBalance >= 0 ? "text-green-600" : "text-destructive")}>
-            R{bankBalance.toFixed(2)}
+            {bankBalance.toFixed(2)}
           </p>
           <p className="text-[10px] text-muted-foreground">Current account</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Cash</p>
           <p className={cn("text-xl font-bold tabular-nums", cashBalance >= 0 ? "text-green-600" : "text-destructive")}>
-            R{cashBalance.toFixed(2)}
+            {cashBalance.toFixed(2)}
           </p>
           <p className="text-[10px] text-muted-foreground">Petty cash</p>
         </Card>
@@ -821,8 +821,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <>
                   <div className="grid grid-cols-3 gap-2">
                     <Card className="p-2"><p className="text-[10px] text-muted-foreground">Account</p><p className="text-sm font-semibold">{getLabel(accountFilter)}</p></Card>
-                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Debit</p><p className="text-sm font-semibold text-destructive tabular-nums">R{totalDebit.toFixed(2)}</p></Card>
-                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Credit</p><p className="text-sm font-semibold text-green-600 tabular-nums">R{totalCredit.toFixed(2)}</p></Card>
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Debit</p><p className="text-sm font-semibold text-destructive tabular-nums">{totalDebit.toFixed(2)}</p></Card>
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Credit</p><p className="text-sm font-semibold text-green-600 tabular-nums">{totalCredit.toFixed(2)}</p></Card>
                   </div>
                   <div className="overflow-hidden border rounded-lg">
                     <div className="grid grid-cols-[1fr_80px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -876,7 +876,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <div className="space-y-0.5">
                       <div className="font-medium text-sm">{getMemberName(tx.club_member_id)}</div>
                       <div className="text-xs text-muted-foreground">
-                        R{Number(tx.amount).toFixed(2)} via {tx.method?.toUpperCase() || "EFT"}
+                        {Number(tx.amount).toFixed(2)} via {tx.method?.toUpperCase() || "EFT"}
                         {tx.reference && <> · Ref: {tx.reference}</>}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -925,8 +925,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <Badge variant="outline" className={cn("text-[10px] w-fit", categoryColor[meta.category])}>
                       {meta.category}
                     </Badge>
-                    <span className="text-right tabular-nums font-medium text-xs">R{bal.debit.toFixed(2)}</span>
-                    <span className="text-right tabular-nums font-medium text-xs">R{bal.credit.toFixed(2)}</span>
+                    <span className="text-right tabular-nums font-medium text-xs">{bal.debit.toFixed(2)}</span>
+                    <span className="text-right tabular-nums font-medium text-xs">{bal.credit.toFixed(2)}</span>
                   </div>
                 );
               })}
@@ -937,8 +937,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <div className="grid grid-cols-[1fr_80px_90px_90px] gap-1 px-3 py-2.5 text-sm items-center bg-muted/40 font-bold border-t-2">
                     <span>Total</span>
                     <span />
-                    <span className="text-right tabular-nums">R{totalDebit.toFixed(2)}</span>
-                    <span className="text-right tabular-nums">R{totalCredit.toFixed(2)}</span>
+                    <span className="text-right tabular-nums">{totalDebit.toFixed(2)}</span>
+                    <span className="text-right tabular-nums">{totalCredit.toFixed(2)}</span>
                   </div>
                 );
               })()}
@@ -986,7 +986,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                           balance > 0 ? (meta.category === "Expense" ? "text-destructive" : "text-green-600") :
                           balance < 0 ? "text-destructive" : "text-muted-foreground"
                         )}>
-                          R{Math.abs(balance).toFixed(2)}
+                          {Math.abs(balance).toFixed(2)}
                           {balance < 0 ? " Cr" : balance > 0 ? " Dr" : ""}
                         </span>
                       </div>
@@ -1060,7 +1060,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <Input type="number" step="0.01" min="0" placeholder="0.00" value={txAmount} onChange={e => setTxAmount(e.target.value)} className="h-9 text-xs" />
               {txMethod === "card" && txAmount && parseFloat(txAmount) > 0 && (
                 <p className="text-[10px] text-amber-600 mt-1">
-                  + R{(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)} gateway fee (3.5%) will be auto-charged
+                  + {(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)} gateway fee (3.5%) will be auto-charged
                 </p>
               )}
             </div>
@@ -1100,19 +1100,19 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <p className="font-semibold text-foreground text-xs">GL Preview:</p>
                   {txDirection === "income" ? (
                     <>
-                      <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} R{parseFloat(txAmount).toFixed(2)}</p>
-                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getLabel(txAccount)} R{parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} {parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getLabel(txAccount)} {parseFloat(txAmount).toFixed(2)}</p>
                     </>
                   ) : (
                     <>
-                      <p>• Debit {getLabel(txAccount)} R{parseFloat(txAmount).toFixed(2)}</p>
-                      <p>• Credit {txMethod === "cash" ? "Cash" : "Current Account"} R{parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Debit {getLabel(txAccount)} {parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Credit {txMethod === "cash" ? "Cash" : "Current Account"} {parseFloat(txAmount).toFixed(2)}</p>
                     </>
                   )}
                   {txMethod === "card" && (
                     <>
-                      <p>• Debit Gateway Fees R{(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
-                      <p>• Credit Current Account R{(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
+                      <p>• Debit Gateway Fees {(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
+                      <p>• Credit Current Account {(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
                     </>
                   )}
                 </div>
@@ -1124,7 +1124,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <div className="mt-2 p-2 rounded border border-amber-500/40 bg-amber-500/10 text-[11px] text-amber-900 dark:text-amber-200 flex gap-2">
                     <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <div>
-                      <p className="font-semibold">This member has R{outstanding.toFixed(2)} in unpaid fees.</p>
+                      <p className="font-semibold">This member has {outstanding.toFixed(2)} in unpaid fees.</p>
                       <p className="mt-0.5">
                         Rather mark the specific fee paid in <strong>Members → Fees</strong> so it links to the invoice.
                         A free-form payment here posts a second Cr Debtors leg that will double-count when the fee row is later toggled paid.
@@ -1330,16 +1330,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <div className="grid grid-cols-3 gap-2">
                     <Card className="p-2">
                       <p className="text-[10px] text-muted-foreground">Total Billed</p>
-                      <p className="text-sm font-bold text-destructive tabular-nums">R{billed.toFixed(2)}</p>
+                      <p className="text-sm font-bold text-destructive tabular-nums">{billed.toFixed(2)}</p>
                     </Card>
                     <Card className="p-2">
                       <p className="text-[10px] text-muted-foreground">Total Paid</p>
-                      <p className="text-sm font-bold text-green-600 tabular-nums">R{paid.toFixed(2)}</p>
+                      <p className="text-sm font-bold text-green-600 tabular-nums">{paid.toFixed(2)}</p>
                     </Card>
                     <Card className="p-2">
                       <p className="text-[10px] text-muted-foreground">Outstanding Balance</p>
                       <p className={cn("text-sm font-bold tabular-nums", outstanding > 0.01 ? "text-destructive" : outstanding < -0.01 ? "text-green-600" : "text-muted-foreground")}>
-                        R{outstanding.toFixed(2)} {outstanding < -0.01 ? "Cr" : ""}
+                        {outstanding.toFixed(2)} {outstanding < -0.01 ? "Cr" : ""}
                       </p>
                     </Card>
                   </div>
@@ -1376,7 +1376,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                             <span className={cn("text-right tabular-nums font-medium",
                               entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"
                             )}>
-                              R{entry.running.toFixed(2)}
+                              {entry.running.toFixed(2)}
                             </span>
                             <RowActionMenu entry={entry} />
                           </div>
@@ -1465,7 +1465,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <Card className="p-2">
                       <p className="text-[10px] text-muted-foreground">Total {balancesFilter === "credit" ? "Credit" : "Outstanding"}</p>
                       <p className={cn("text-sm font-bold tabular-nums", total > 0.01 ? "text-destructive" : total < -0.01 ? "text-green-600" : "text-muted-foreground")}>
-                        R{Math.abs(total).toFixed(2)} {total < -0.01 ? "Cr" : ""}
+                        {Math.abs(total).toFixed(2)} {total < -0.01 ? "Cr" : ""}
                       </p>
                     </Card>
                     <Card className="p-2">
@@ -1500,7 +1500,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                             <span className={cn("text-right tabular-nums font-bold",
                               r.net > 0.01 ? "text-destructive" : r.net < -0.01 ? "text-green-600" : "text-muted-foreground"
                             )}>
-                              R{Math.abs(r.net).toFixed(2)} {r.net < -0.01 ? "Cr" : ""}
+                              {Math.abs(r.net).toFixed(2)} {r.net < -0.01 ? "Cr" : ""}
                             </span>
                           </button>
                         ))}
@@ -1599,7 +1599,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                         <SelectLabel className="text-[10px]">{group}</SelectLabel>
                         {items.map(o => (
                           <SelectItem key={o.key} value={o.key} className="text-xs">
-                            {o.label} <span className="text-muted-foreground">— R{o.amount.toFixed(2)}</span>
+                            {o.label} <span className="text-muted-foreground">— {o.amount.toFixed(2)}</span>
                           </SelectItem>
                         ))}
                       </SelectGroup>
@@ -1684,8 +1684,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             {billAmount && parseFloat(billAmount) > 0 && (
               <div className="p-2 rounded bg-muted/60 text-[10px] space-y-0.5">
                 <p className="font-semibold text-foreground text-xs">GL Preview:</p>
-                <p>• Debit Accounts Receivable R{parseFloat(billAmount).toFixed(2)}</p>
-                <p>• Credit {getLabel(billIncome)} R{parseFloat(billAmount).toFixed(2)}</p>
+                <p>• Debit Accounts Receivable {parseFloat(billAmount).toFixed(2)}</p>
+                <p>• Credit {getLabel(billIncome)} {parseFloat(billAmount).toFixed(2)}</p>
               </div>
             )}
           </div>

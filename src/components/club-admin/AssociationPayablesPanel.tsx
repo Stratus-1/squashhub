@@ -129,14 +129,14 @@ export function AssociationPayablesPanel({ clubId }: Props) {
                   <Badge variant="secondary" className="text-[10px] mt-1">{basisLabel(f.basis)}</Badge>
                 </div>
                 <Badge variant="outline" className="text-[10px] whitespace-nowrap">
-                  R{f.amount.toFixed(2)} / {basisUnit(f.basis)}
+                  {f.amount.toFixed(2)} / {basisUnit(f.basis)}
                 </Badge>
               </div>
               <div className="flex items-center gap-2 text-[11px]">
                 <Wallet className="w-3 h-3 text-muted-foreground" />
                 <span className="text-muted-foreground">Outstanding:</span>
                 <span className={outstandingByFee[f.id] ? "text-destructive font-semibold tabular-nums" : "tabular-nums"}>
-                  R{(outstandingByFee[f.id] || 0).toFixed(2)}
+                  {(outstandingByFee[f.id] || 0).toFixed(2)}
                 </span>
               </div>
               <Button size="sm" className="w-full gap-1.5 h-8" onClick={() => setGenerateFee(f)}>
@@ -179,7 +179,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
                       <TableCell className="text-xs">{b.basis ? basisLabel(b.basis as Basis) : "—"}</TableCell>
                       <TableCell className="text-xs">{b.season_label}</TableCell>
                       <TableCell className="text-xs text-right tabular-nums">{b.member_count}</TableCell>
-                      <TableCell className="text-xs text-right tabular-nums">R{Number(b.total_amount).toFixed(2)}</TableCell>
+                      <TableCell className="text-xs text-right tabular-nums">{Number(b.total_amount).toFixed(2)}</TableCell>
                       <TableCell>
                         {b.status === "pending" && <Badge variant="outline" className="text-[10px] gap-1"><Clock className="w-3 h-3" /> Pending</Badge>}
                         {b.status === "paid" && <Badge className="text-[10px] gap-1 bg-green-600"><CheckCircle2 className="w-3 h-3" /> Paid</Badge>}
@@ -440,7 +440,7 @@ function GenerateDialog({
               </span>{" "}
               <span className="font-semibold tabular-nums">{units}</span>
             </div>
-            <div><span className="text-muted-foreground text-xs">Total:</span> <span className="font-bold tabular-nums">R{total.toFixed(2)}</span></div>
+            <div><span className="text-muted-foreground text-xs">Total:</span> <span className="font-bold tabular-nums">{total.toFixed(2)}</span></div>
           </div>
         </div>
 
@@ -457,14 +457,14 @@ function GenerateDialog({
             <p className="text-[11px] text-muted-foreground">
               Auto-detected <span className="font-semibold">{autoTeamCount}</span> team{autoTeamCount === 1 ? "" : "s"} entered into linked leagues — edit if different.
               <br />
-              R{fee.amount.toFixed(2)} × {teams} = R{total.toFixed(2)}.
+              {fee.amount.toFixed(2)} × {teams} = {total.toFixed(2)}.
             </p>
           </div>
         )}
 
         {isPerClub && (
           <div className="border rounded-md p-4 text-xs text-muted-foreground">
-            This is a flat per-club fee. Total: <span className="font-semibold text-foreground">R{total.toFixed(2)}</span>.
+            This is a flat per-club fee. Total: <span className="font-semibold text-foreground">{total.toFixed(2)}</span>.
           </div>
         )}
 
@@ -505,7 +505,7 @@ function GenerateDialog({
                       <TableCell className="text-xs">{m.member_number || "—"}</TableCell>
                       <TableCell className="text-xs">{m.name}</TableCell>
                       <TableCell className="text-xs">{m.league_number || "—"}</TableCell>
-                      <TableCell className="text-xs text-right tabular-nums">R{fee.amount.toFixed(2)}</TableCell>
+                      <TableCell className="text-xs text-right tabular-nums">{fee.amount.toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -587,7 +587,7 @@ function SettleDialog({
         <DialogHeader>
           <DialogTitle>Settle batch — {fee?.payee_name}</DialogTitle>
           <DialogDescription>
-            {batch.member_count} {batch.basis ? basisUnit(batch.basis as Basis) + (batch.member_count === 1 ? "" : "s") : "units"} · {batch.season_label} · Total R{Number(batch.total_amount).toFixed(2)}
+            {batch.member_count} {batch.basis ? basisUnit(batch.basis as Basis) + (batch.member_count === 1 ? "" : "s") : "units"} · {batch.season_label} · Total {Number(batch.total_amount).toFixed(2)}
           </DialogDescription>
         </DialogHeader>
 

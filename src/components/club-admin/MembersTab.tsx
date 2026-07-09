@@ -959,12 +959,12 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     member={m}
                     fees={getFeesForMember(m)}
                     payableFees={computeClubPayableFees(m, feePayments)}
+                    glBilled={glByMember.get(m.id)?.billed}
+                    glPaid={glByMember.get(m.id)?.paid}
                     delegateTitle={getDelegateTitle(m.id)}
                     affiliations={affiliationsByMember.get(m.id) || []}
                     onEdit={() => setEditMember(m)}
                     onDelete={() => handleDelete(m.id)}
-                    onTogglePaid={handleTogglePaid}
-                    onCreateFee={handleCreateFee}
                     onToggleAdmin={() => handleToggleAdmin(m)}
                     onAssignNumber={handleAssignNumber}
                     numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}

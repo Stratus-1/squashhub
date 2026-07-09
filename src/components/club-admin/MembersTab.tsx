@@ -431,6 +431,30 @@ export function MembersTab({ clubId }: { clubId: string }) {
   }
 
 
+  // Aggregate debtors GL activity per member so the card totals match the
+  // Member Statement exactly (billed = Dr on debtors, paid = Cr on debtors).
+  const { data: glByMember = new Map<string, { billed: number; paid: number }>() } = useQuery({
+    queryKey: ["club-member-debtors-gl", clubId, memberIds.join(",")],
+    enabled: memberIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_journal_entries")
+        .select("club_member_id, debit, credit, account")
+        .eq("club_id", clubId)
+        .eq("account", "debtors")
+        .in("club_member_id", memberIds);
+      if (error) throw error;
+      const map = new Map<string, { billed: number; paid: number }>();
+      for (const r of (data || []) as any[]) {
+        if (!r.club_member_id) continue;
+        const cur = map.get(r.club_member_id) || { billed: 0, paid: 0 };
+        cur.billed += Number(r.debit || 0);
+        cur.paid += Number(r.credit || 0);
+        map.set(r.club_member_id, cur);
+      }
+      return map;
+    },
+  });
+
   const getFeesForMember = (member: ClubMember) => {
     return computeExpectedFees(member, feeCategories, associations, nationalFees, feeDueMonth, feePayments);
   };

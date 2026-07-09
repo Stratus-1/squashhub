@@ -51,6 +51,7 @@ export default function StitchOnboardingCard({
   }, [clubSubdomain, clubId]);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState<{ cc: string } | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const allRequiredUploaded = SLOTS.every((s) => (uploads[s.key]?.length || 0) > 0);
   const canSubmit = allRequiredUploaded && contactEmail.includes("@") && contactCell.trim().length >= 6;

@@ -996,6 +996,105 @@ export default function SuperAdminSubscriptions() {
             </p>
           </Card>
         </TabsContent>
+
+        {/* ─── INTL PRICING TAB ─── */}
+        <TabsContent value="intl" className="space-y-4 mt-4">
+          <Card className="p-4 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4" /> SaaS Pricing & FX Rates</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xl">
+                  ZAR clubs bill at the base rate. Non-ZAR clubs (currency set in club admin) bill at <strong>ZAR rate × (1 + uplift%) ÷ FX rate</strong>. Changes apply from the next billing run.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => saveIntlSettings.mutate(intlForm)}
+                disabled={!intlDirty || saveIntlSettings.isPending}
+              >
+                <Save className="w-3.5 h-3.5 mr-1" />
+                {saveIntlSettings.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Base ZAR rates (per member)</p>
+                <div>
+                  <Label className="text-xs">Monthly (R)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_monthly} onChange={e => updateIntlField("saas_rate_zar_monthly", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Annual prepaid (R / month)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_annual} onChange={e => updateIntlField("saas_rate_zar_annual", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">International uplift (%)</Label>
+                  <Input className="h-8 text-xs" type="number" step="1" value={intlForm.saas_intl_uplift_pct} onChange={e => updateIntlField("saas_intl_uplift_pct", e.target.value)} />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Applied to ZAR before converting to USD/EUR.</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Fixed FX rates (ZAR per unit)</p>
+                <div>
+                  <Label className="text-xs">USD → ZAR</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_fx_usd_per_zar} onChange={e => updateIntlField("saas_fx_usd_per_zar", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">EUR → ZAR</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_fx_eur_per_zar} onChange={e => updateIntlField("saas_fx_eur_per_zar", e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Locked on</Label>
+                    <Input className="h-8 text-xs" type="date" value={intlForm.saas_fx_locked_at} onChange={e => updateIntlField("saas_fx_locked_at", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Review due</Label>
+                    <Input className="h-8 text-xs" type="date" value={intlForm.saas_fx_review_due} onChange={e => updateIntlField("saas_fx_review_due", e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Live preview */}
+            {(() => {
+              const m = Number(intlForm.saas_rate_zar_monthly) || 0;
+              const a = Number(intlForm.saas_rate_zar_annual) || 0;
+              const mult = 1 + (Number(intlForm.saas_intl_uplift_pct) || 0) / 100;
+              const usd = Number(intlForm.saas_fx_usd_per_zar) || 1;
+              const eur = Number(intlForm.saas_fx_eur_per_zar) || 1;
+              const row = (label: string, zar: number) => ({
+                label,
+                zar: `R${zar.toFixed(2)}`,
+                usd: `$${((zar * mult) / usd).toFixed(2)}`,
+                eur: `€${((zar * mult) / eur).toFixed(2)}`,
+              });
+              const rows = [row("Monthly", m), row("Annual (per month)", a)];
+              return (
+                <div className="rounded-md border border-border overflow-hidden">
+                  <div className="grid grid-cols-4 bg-muted/60 px-3 py-1.5 text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
+                    <span>Plan</span><span>ZAR</span><span>USD</span><span>EUR</span>
+                  </div>
+                  {rows.map(r => (
+                    <div key={r.label} className="grid grid-cols-4 px-3 py-2 text-xs border-t">
+                      <span>{r.label}</span>
+                      <span className="font-mono">{r.zar}</span>
+                      <span className="font-mono text-primary">{r.usd}</span>
+                      <span className="font-mono text-primary">{r.eur}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            <p className="text-[11px] text-muted-foreground">
+              <strong className="text-foreground">How it works:</strong> Each club has a <code>currency_code</code> set in Club Admin → Settings. During <code>run-subscription-billing</code>, ZAR clubs bill unchanged; USD/EUR clubs bill at the converted rate above. Unsupported currencies fall back to the ZAR value — add a new FX row here and extend the edge function if you onboard a new region.
+            </p>
+          </Card>
+        </TabsContent>
       </Tabs>
 
 

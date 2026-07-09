@@ -38,6 +38,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
+  const { symbol: currencySymbol } = useClubCurrency();
 
   const [rulesForm, setRulesForm] = useState({
     booking_slot_minutes: club.booking_slot_minutes ?? 30,

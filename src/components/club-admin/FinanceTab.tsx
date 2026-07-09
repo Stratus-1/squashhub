@@ -529,30 +529,29 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         return m?.name || m?.profiles?.name || "Member";
       };
 
-      const rows: any[] = [];
+      let posted = 0;
       for (const f of fees || []) {
         if (!f.amount || f.amount <= 0) continue;
         const acct = accountsForFee(f.fee_type);
         const desc = `${f.paid ? "Fee paid" : "Fee accrued"}: ${f.fee_label} — ${memberName(f.club_member_id)}`;
-        const journal_ref = crypto.randomUUID();
-        const base = { club_id: clubId, journal_ref, description: desc, club_member_id: f.club_member_id, fee_payment_id: f.id };
+        const meta = { description: desc, member_id: f.club_member_id, payment_id: f.id };
         if (acct.side === "receivable") {
           const debit = f.paid ? "bank_current" : "debtors";
-          rows.push({ ...base, account: debit, debit: f.amount, credit: 0 });
-          rows.push({ ...base, account: acct.income, debit: 0, credit: f.amount });
+          await postJournal(clubId, [
+            { account: debit, debit: f.amount, ...meta },
+            { account: acct.income!, credit: f.amount, ...meta },
+          ]);
         } else {
           const credit = f.paid ? "bank_current" : "creditors";
-          rows.push({ ...base, account: acct.expense, debit: f.amount, credit: 0 });
-          rows.push({ ...base, account: credit, debit: 0, credit: f.amount });
+          await postJournal(clubId, [
+            { account: acct.expense!, debit: f.amount, ...meta },
+            { account: credit, credit: f.amount, ...meta },
+          ]);
         }
+        posted += 2;
       }
 
-      for (let i = 0; i < rows.length; i += 500) {
-        const { error: insErr } = await fromExt("club_journal_entries").insert(rows.slice(i, i + 500));
-        if (insErr) throw insErr;
-      }
-
-      toast.success(`Resynced ${(fees || []).length} fees → ${rows.length} ledger entries`);
+      toast.success(`Resynced ${(fees || []).length} fees → ${posted} ledger entries`);
       queryClient.invalidateQueries({ queryKey: ["club-journal-entries", clubId] });
     } catch (e: any) {
       toast.error(e.message || "Resync failed");

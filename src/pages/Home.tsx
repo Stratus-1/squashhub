@@ -152,8 +152,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="SquashHub — Squash Club Management Software for South Africa"
-        description="All-in-one squash club management software for South African clubs and associations. Bookings, leagues, members, and payments, all in one simple platform."
+        title="SquashHub — Squash Club Management Software"
+        description="All-in-one squash club management software for clubs and associations. Bookings, leagues, members, and payments, all in one simple platform."
         path="/"
       />
 
@@ -266,7 +266,7 @@ export default function Home() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="text-base sm:text-lg text-gray-200 max-w-2xl [text-shadow:_0_2px_8px_rgb(0_0_0_/_70%)]"
             >
-              All-in-one squash club management software for South African clubs and associations.
+              All-in-one squash club management software for clubs and associations.
               Bookings, leagues, members, and payments, all in one simple platform.
             </motion.p>
 

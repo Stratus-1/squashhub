@@ -51,6 +51,7 @@ export default function StitchOnboardingCard({
   }, [clubSubdomain, clubId]);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState<{ cc: string } | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const allRequiredUploaded = SLOTS.every((s) => (uploads[s.key]?.length || 0) > 0);
   const canSubmit = allRequiredUploaded && contactEmail.includes("@") && contactCell.trim().length >= 6;
@@ -127,21 +128,30 @@ export default function StitchOnboardingCard({
   return (
     <Card className="p-4 space-y-3 border-sky-500/30">
       <div className="flex items-start gap-2">
-        <Landmark className="h-4 w-4 mt-0.5 text-sky-600" />
-        <div className="flex-1">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            Open a Stitch bank account for {clubName}
+        <Landmark className="h-4 w-4 mt-0.5 text-sky-600 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold flex items-center gap-2 flex-wrap">
+            Need a dedicated bank account for {clubName}?
             <Badge variant="secondary" className="text-[10px] h-5">Partner offer</Badge>
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            SquashHub is partnered with <strong>Stitch Express</strong> to help clubs get a
-            dedicated bank account for member fees and online payments. Upload the documents
-            below and submit — we'll email everything to Stitch and CC your club contact.
+            SquashHub is partnered with <strong>Stitch Express</strong> to help clubs open a
+            dedicated bank account for member fees and online payments.
           </p>
         </div>
+        {!sent && (
+          <Button
+            size="sm"
+            variant={expanded ? "outline" : "default"}
+            className="h-8 text-xs shrink-0"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? "Hide" : "Yes, open account"}
+          </Button>
+        )}
       </div>
 
-      {sent ? (
+      {(sent || expanded) && (sent ? (
         <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 flex items-start gap-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5" />
           <div className="text-xs">
@@ -270,7 +280,7 @@ export default function StitchOnboardingCard({
             )}
           </div>
         </>
-      )}
+      ))}
     </Card>
   );
 }

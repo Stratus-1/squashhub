@@ -498,24 +498,21 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const member = members.find(m => m.id === memberId);
     const memberName = member?.profiles?.name || member?.name || "Member";
     const desc = `${paid ? "Fee paid" : "Fee accrued"}: ${feeLabel} — ${memberName}`;
-    const journalRef = crypto.randomUUID();
-    const base = { club_id: clubId, journal_ref: journalRef, description: desc, club_member_id: memberId, fee_payment_id: feeId };
+    const meta = { description: desc, member_id: memberId, payment_id: feeId };
 
-    let entries: any[] = [];
     if (acct.side === "receivable") {
       const debit = paid ? "bank_current" : "debtors";
-      entries = [
-        { ...base, account: debit, debit: amount, credit: 0 },
-        { ...base, account: acct.income!, debit: 0, credit: amount },
-      ];
+      await postJournal(clubId, [
+        { account: debit, debit: amount, ...meta },
+        { account: acct.income!, credit: amount, ...meta },
+      ]);
     } else {
       const credit = paid ? "bank_current" : "creditors";
-      entries = [
-        { ...base, account: acct.expense!, debit: amount, credit: 0 },
-        { ...base, account: credit, debit: 0, credit: amount },
-      ];
+      await postJournal(clubId, [
+        { account: acct.expense!, debit: amount, ...meta },
+        { account: credit, credit: amount, ...meta },
+      ]);
     }
-    await fromExt("club_journal_entries").insert(entries);
   };
 
   const handleTogglePaid = async (feeId: string, paid: boolean) => {

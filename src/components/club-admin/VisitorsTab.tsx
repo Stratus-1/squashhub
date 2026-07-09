@@ -38,6 +38,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
   const { data: clubData } = useMyClub();
   const club = clubData?.club as any;
+  const { symbol: currencySymbol } = useClubCurrency();
   const [search, setSearch] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editing, setEditing] = useState<Visitor | null>(null);

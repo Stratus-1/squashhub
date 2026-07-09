@@ -27,6 +27,8 @@ import { LiveSessionBanner } from "@/components/LiveSessionBanner";
 
 import { ClubBrandedBackground } from "@/components/ClubBrandedBackground";
 import Home from "./pages/Home";
+import Clubs from "./pages/Clubs";
+
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
 import Ladder from "./pages/Ladder";
@@ -332,6 +334,8 @@ function AppRoutes() {
       p === "/auth/callback" ||
       p === "/reset-password" ||
       p === "/league" ||
+      p === "/clubs" ||
+
       p === "/terms" ||
       p === "/privacy" ||
       p === "/sla" ||
@@ -395,6 +399,8 @@ function AppRoutes() {
         } />
         <Route path="/welcome" element={<Home />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
+        <Route path="/clubs" element={<Clubs />} />
+
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />

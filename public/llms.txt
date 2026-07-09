@@ -1,0 +1,20 @@
+# SquashHub
+
+> The all-in-one club management platform for squash — court bookings, ladders, championships, member management, automated court lighting and access control.
+
+SquashHub helps squash clubs, leagues and associations run their operations from a single affordable platform. Clubs get their own branded subdomain, members book courts and join ladders from any device, and admins manage fixtures, fees and communications without spreadsheets.
+
+## Pages
+
+- [Home](/): Squash club management software overview and key features.
+- [Clubs](/clubs): Find and explore squash clubs using SquashHub.
+- [Events](/events): Upcoming club events and tournaments.
+- [Tournaments](/tournaments): Club championships and tournament listings.
+- [Lights & Access](/lights): Automated court lighting and access control solutions for clubs.
+- [League Signup](/league): League player self-registration for association-run leagues.
+- [Terms](/terms): Platform terms and conditions.
+- [Service Level Agreement](/sla): Support and uptime commitments.
+
+## Optional
+
+- [Club Landing](/c/example): Example branded landing page for an individual club.

@@ -713,13 +713,17 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <Badge variant="outline" className="text-[10px]">{(journalEntries || []).length} entries</Badge>
               </div>
               <div className="flex items-center gap-2">
+                {false && (
                 <Button size="sm" variant="outline" onClick={() => setLedgerReconOpen(true)} className="gap-1.5 h-8">
                   <Wallet className="w-3.5 h-3.5" /> GL vs Member a/c
                 </Button>
+                )}
                 <LedgerReconciliationDialog clubId={clubId} open={ledgerReconOpen} onOpenChange={setLedgerReconOpen} />
+                {false && (
                 <Button size="sm" variant="outline" onClick={handleResyncFeesGL} className="gap-1.5 h-8">
                   <ListTree className="w-3.5 h-3.5" /> Resync Fees
                 </Button>
+                )}
                 <Button size="sm" variant="outline" onClick={() => setOpeningBalancesOpen(true)} className="gap-1.5 h-8">
                   <BookOpen className="w-3.5 h-3.5" /> Opening Balances
                 </Button>
@@ -729,9 +733,12 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   clubId={clubId}
                   accounts={CHART_OF_ACCOUNTS as any}
                 />
+                {false && (
                 <Button size="sm" variant="outline" onClick={() => setResetOpen(true)} className="gap-1.5 h-8 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
                   <AlertTriangle className="w-3.5 h-3.5" /> Reset Finances
                 </Button>
+                )}
+
                 <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
                 </Button>

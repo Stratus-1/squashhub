@@ -356,7 +356,7 @@ export default function HonestyBar() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-sm font-medium">R{Number(sale.total).toFixed(2)}</span>
+                        <span className="text-sm font-medium">{money(Number(sale.total))}</span>
                         <Badge
                           variant="secondary"
                           className={`text-[10px] capitalize ${

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { postJournal } from "@/lib/post-journal";
 import { Building2, Plus, CheckCircle2, Clock, Wallet, XCircle, Users } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";

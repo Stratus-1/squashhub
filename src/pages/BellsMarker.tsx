@@ -358,15 +358,17 @@ export default function BellsMarker() {
 
   const handleDecrement = (side: "a" | "b") => {
     if (finished) return;
+    const floorA = Number(match?.handicap_a) || 0;
+    const floorB = Number(match?.handicap_b) || 0;
     if (side === "a") {
       setPointsA((v) => {
-        const next = Math.max(0, v - 1);
+        const next = Math.max(floorA, v - 1);
         scoreStateRef.current = { ...scoreStateRef.current, pointsA: next };
         return next;
       });
     } else {
       setPointsB((v) => {
-        const next = Math.max(0, v - 1);
+        const next = Math.max(floorB, v - 1);
         scoreStateRef.current = { ...scoreStateRef.current, pointsB: next };
         return next;
       });

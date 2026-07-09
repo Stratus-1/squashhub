@@ -33,6 +33,8 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     club_captain_member_id: club.club_captain_member_id || "",
     logo_url: club.logo_url || "",
     show_delegates_on_landing: club.show_delegates_on_landing ?? true,
+    currency_code: ((club as any).currency_code || "ZAR") as string,
+    currency_symbol: ((club as any).currency_symbol || "R") as string,
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>

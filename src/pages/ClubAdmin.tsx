@@ -89,12 +89,14 @@ export default function ClubAdmin() {
     if (t) setActiveTab(t);
   }, [searchParams]);
 
+  const club = data?.club;
+  // Hooks must run on every render — call before any early returns.
+  const setupStatus = useSetupStatus(club?.id ?? "", club as any);
+
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
-  if (!data?.club) return <Navigate to="/register-club" replace />;
+  if (!data?.club || !club) return <Navigate to="/register-club" replace />;
   if (!isAdmin && myPermissions.size === 0) return <Navigate to="/dashboard" replace />;
-
-  const club = data.club;
 
   // Associations have a unified dashboard at "/" — there's no separate admin page.
   if ((club as any).tenant_type === "association") {
@@ -111,12 +113,11 @@ export default function ClubAdmin() {
   const visibleOps = OPERATIONS_TABS.filter(permFilter);
   const visibleTabs = [...visibleSetup, ...visibleOps];
 
-  const setupStatus = useSetupStatus(club.id, club);
-
-  // If active tab isn't visible, switch to first visible
+  // If active tab isn't visible, switch to first visible (safe: setState in render triggers rerender, doesn't change hook order)
   if (visibleTabs.length > 0 && !visibleTabs.find(t => t.value === activeTab)) {
     setActiveTab(visibleTabs[0].value);
   }
+
 
   const renderContent = () => {
     switch (activeTab) {

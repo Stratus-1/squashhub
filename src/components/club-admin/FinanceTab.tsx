@@ -738,47 +738,83 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               </div>
             </div>
 
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search description, member, account, amount, date…"
+                value={journalSearch}
+                onChange={e => setJournalSearch(e.target.value)}
+                className="h-8 text-xs pl-8"
+              />
+            </div>
+
             {isLoading ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
             ) : (journalEntries || []).length === 0 ? (
               <p className="text-sm text-muted-foreground">No journal entries yet.</p>
-            ) : (
-              <div className="overflow-hidden border rounded-lg">
-                <div className="grid grid-cols-[1fr_120px_80px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <span>Description</span>
-                  <span>Account</span>
-                  <span className="text-right">Debit</span>
-                  <span className="text-right">Credit</span>
-                  <span />
-                </div>
-                <div className="divide-y max-h-[500px] overflow-y-auto">
-                  {(journalEntries || []).map((entry: any) => (
-                    <div key={entry.id} className="grid grid-cols-[1fr_120px_80px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{entry.description}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {format(new Date(entry.created_at), "dd MMM yyyy HH:mm")}
-                          {entry.club_member_id && ` · ${getMemberName(entry.club_member_id)}`}
-                        </p>
+            ) : (() => {
+              const q = journalSearch.trim().toLowerCase();
+              const shown = q
+                ? (journalEntries || []).filter((e: any) => {
+                    const memberName = e.club_member_id ? getMemberName(e.club_member_id) : "";
+                    const dateStr = format(new Date(e.created_at), "dd MMM yyyy HH:mm");
+                    const parts = [
+                      e.description,
+                      getLabel(e.account),
+                      e.account,
+                      memberName,
+                      dateStr,
+                      Number(e.debit || 0) > 0 ? Number(e.debit).toFixed(2) : "",
+                      Number(e.credit || 0) > 0 ? Number(e.credit).toFixed(2) : "",
+                    ];
+                    return parts.some(p => String(p || "").toLowerCase().includes(q));
+                  })
+                : (journalEntries || []);
+              return (
+                <div className="overflow-hidden border rounded-lg">
+                  <div className="grid grid-cols-[110px_1fr_120px_80px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <span>Date</span>
+                    <span>Description</span>
+                    <span>Account</span>
+                    <span className="text-right">Debit</span>
+                    <span className="text-right">Credit</span>
+                    <span />
+                  </div>
+                  <div className="divide-y max-h-[500px] overflow-y-auto">
+                    {shown.length === 0 ? (
+                      <p className="text-xs text-muted-foreground p-3">No entries match "{journalSearch}".</p>
+                    ) : shown.map((entry: any) => (
+                      <div key={entry.id} className="grid grid-cols-[110px_1fr_120px_80px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
+                        <div className="text-[11px] tabular-nums text-muted-foreground">
+                          <div>{format(new Date(entry.created_at), "dd MMM yyyy")}</div>
+                          <div className="text-[10px]">{format(new Date(entry.created_at), "HH:mm")}</div>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{entry.description}</p>
+                          {entry.club_member_id && (
+                            <p className="text-[10px] text-muted-foreground truncate">{getMemberName(entry.club_member_id)}</p>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="text-[10px] w-fit">
+                          {getLabel(entry.account)}
+                        </Badge>
+                        <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-destructive font-medium")}>
+                          {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
+                        </span>
+                        <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
+                          {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
+                        </span>
+                        <RowActionMenu entry={entry} />
                       </div>
-                      <Badge variant="outline" className="text-[10px] w-fit">
-                        {getLabel(entry.account)}
-                      </Badge>
-                      <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-destructive font-medium")}>
-                        {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
-                      </span>
-                      <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
-                        {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
-                      </span>
-                      <RowActionMenu entry={entry} />
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
 
-              </div>
-            )}
+                </div>
+              );
+            })()}
           </Card>
         </TabsContent>
+
 
         {/* By Account Tab — filter dropdown */}
         <TabsContent value="by-account">

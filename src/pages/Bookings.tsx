@@ -2262,7 +2262,7 @@ export default function Bookings() {
               {bookingDialog.lightsOn && lightFeePerHour > 0 && (
                 <div className="rounded-xl bg-accent/10 border border-accent/30 p-3 text-xs">
                   <span className="font-semibold">💡 Light fee:</span>{" "}
-                  R{lightFeePerHour}/hr — charged based on actual usage when lights turn off
+                  {money(lightFeePerHour)}/hr — charged based on actual usage when lights turn off
                 </div>
               )}
             </div>

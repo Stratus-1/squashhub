@@ -156,7 +156,7 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   onToggle: (feeId: string, paid: boolean) => void;
   onCreateFee: (fee: ExpectedFee) => void;
 }) {
-  const { symbol: cur } = useClubCurrency();
+  
   if (fees.length === 0) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
   const total = fees.reduce((s, f) => s + f.amount, 0);
   const totalPaid = fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);

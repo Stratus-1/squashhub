@@ -356,24 +356,21 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     setTxSubmitting(true);
     try {
       const memberId = (txMemberId && txMemberId !== "__none__") ? txMemberId : null;
-      const journalRef = crypto.randomUUID();
-      const entries: any[] = [
-        { club_id: clubId, journal_ref: journalRef, account: debitAccount, debit: amount, credit: 0, description: txDescription.trim(), club_member_id: memberId, created_at: new Date(txDate).toISOString() },
-        { club_id: clubId, journal_ref: journalRef, account: creditAccount, debit: 0, credit: amount, description: txDescription.trim(), club_member_id: memberId, created_at: new Date(txDate).toISOString() },
+      const desc = txDescription.trim();
+      const lines: any[] = [
+        { account: debitAccount, debit: amount, description: desc, member_id: memberId },
+        { account: creditAccount, credit: amount, description: desc, member_id: memberId },
       ];
+      await postJournal(clubId, lines, { description: desc });
 
       // Auto-charge 3.5% gateway fee for card payments
       if (txMethod === "card" && amount > 0) {
         const gatewayFee = Math.round(amount * GATEWAY_FEE_RATE * 100) / 100;
-        const feeRef = crypto.randomUUID();
-        entries.push(
-          { club_id: clubId, journal_ref: feeRef, account: "gateway_fees", debit: gatewayFee, credit: 0, description: `Gateway fee (3.5%) on card payment: ${txDescription.trim()}`, created_at: new Date(txDate).toISOString() },
-          { club_id: clubId, journal_ref: feeRef, account: "bank_current", debit: 0, credit: gatewayFee, description: `Gateway fee (3.5%) on card payment: ${txDescription.trim()}`, created_at: new Date(txDate).toISOString() },
-        );
+        await postJournal(clubId, [
+          { account: "gateway_fees", debit: gatewayFee, description: `Gateway fee (3.5%) on card payment: ${desc}` },
+          { account: "bank_current", credit: gatewayFee, description: `Gateway fee (3.5%) on card payment: ${desc}` },
+        ]);
       }
-
-      const { error } = await fromExt("club_journal_entries").insert(entries);
-      if (error) throw error;
 
       toast.success("Transaction recorded");
       setTxOpen(false);

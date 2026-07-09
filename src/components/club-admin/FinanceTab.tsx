@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
+import { postJournal } from "@/lib/post-journal";
 import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote } from "lucide-react";
 import { format } from "date-fns";
 import { useState, useRef, useEffect, type ReactNode, type ComponentType } from "react";

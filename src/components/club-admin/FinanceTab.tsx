@@ -798,10 +798,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                         <Badge variant="outline" className="text-[10px] w-fit">
                           {getLabel(entry.account)}
                         </Badge>
-                        <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-destructive font-medium")}>
+                        <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-green-600 font-medium")}>
                           {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
                         </span>
-                        <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
+                        <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-destructive font-medium")}>
                           {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
                         </span>
                         <RowActionMenu entry={entry} />
@@ -858,8 +858,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <>
                   <div className="grid grid-cols-3 gap-2">
                     <Card className="p-2"><p className="text-[10px] text-muted-foreground">Account</p><p className="text-sm font-semibold">{getLabel(accountFilter)}</p></Card>
-                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Debit</p><p className="text-sm font-semibold text-destructive tabular-nums">{totalDebit.toFixed(2)}</p></Card>
-                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Credit</p><p className="text-sm font-semibold text-green-600 tabular-nums">{totalCredit.toFixed(2)}</p></Card>
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Debit</p><p className="text-sm font-semibold text-green-600 tabular-nums">{totalDebit.toFixed(2)}</p></Card>
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Credit</p><p className="text-sm font-semibold text-destructive tabular-nums">{totalCredit.toFixed(2)}</p></Card>
                   </div>
                   <div className="overflow-hidden border rounded-lg">
                     <div className="grid grid-cols-[1fr_80px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -877,10 +877,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                               {entry.club_member_id && ` · ${getMemberName(entry.club_member_id)}`}
                             </p>
                           </div>
-                          <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-destructive font-medium")}>
+                          <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-green-600 font-medium")}>
                             {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
                           </span>
-                          <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
+                          <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-destructive font-medium")}>
                             {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
                           </span>
                         </div>
@@ -1410,10 +1410,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                                 <Badge variant="outline" className="text-[10px] w-fit">
                                   {getLabel(entry.account)}
                                 </Badge>
-                                <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-destructive font-medium")}>
+                                <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-green-600 font-medium")}>
                                   {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
                                 </span>
-                                <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
+                                <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-destructive font-medium")}>
                                   {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
                                 </span>
                                 <span className={cn("text-right tabular-nums font-medium",

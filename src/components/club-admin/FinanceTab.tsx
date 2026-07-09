@@ -96,6 +96,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const queryClient = useQueryClient();
   const { data: members } = useClubMembers(clubId);
   const [accountFilter, setAccountFilter] = useState<string>("all");
+  const [journalSearch, setJournalSearch] = useState("");
   const [txOpen, setTxOpen] = useState(false);
 
   // Manual transaction form state

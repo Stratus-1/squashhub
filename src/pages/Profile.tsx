@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useProfile } from "@/hooks/use-data";
 import { useMyClubMember, useMyClub, useFeeCategories, SKILL_LEVELS } from "@/hooks/use-club";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { toast } from "sonner";
@@ -82,6 +83,7 @@ export default function Profile() {
     : defaultClubMember;
 
   const { data: feeCategories = [] } = useFeeCategories(clubId);
+  const { format: fmtMoney } = useClubCurrency();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // League associations available at this member's home club, with the
@@ -607,7 +609,7 @@ export default function Profile() {
                     <select className={selectClasses} value={feeCategoryId} onChange={(e) => setFeeCategoryId(e.target.value)}>
                       <option value="">— Select category —</option>
                       {feeCategories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.name} (R{cat.annual_fee}/yr)</option>
+                        <option key={cat.id} value={cat.id}>{cat.name} ({fmtMoney(cat.annual_fee)}/yr)</option>
                       ))}
                     </select>
                     {age !== null && !feeCategoryId && (
@@ -722,6 +724,7 @@ function ViewMode({
   setMode: (m: "edit") => void;
 }) {
   const { data: club } = useMyClub();
+  const { format: fmtMoney } = useClubCurrency();
   const faceRequired = !!(club as any)?.face_enrolment_required;
   const [showInactive, setShowInactive] = useState(false);
   const [showFaceEnrolment, setShowFaceEnrolment] = useState(false);
@@ -774,7 +777,7 @@ function ViewMode({
               <p className="text-xs text-muted-foreground">Member #: {clubMember.club_member_number}</p>
             )}
             {skillLabel && <p className="text-xs text-muted-foreground">Skill: {skillLabel}</p>}
-            {feeCategory && <p className="text-xs text-muted-foreground">Fee: {feeCategory.name} (R{feeCategory.annual_fee}/yr)</p>}
+            {feeCategory && <p className="text-xs text-muted-foreground">Fee: {feeCategory.name} ({fmtMoney(feeCategory.annual_fee)}/yr)</p>}
             {clubMember.address && <p className="text-xs text-muted-foreground">Address: {clubMember.address}</p>}
             {clubMember.id_number && <p className="text-xs text-muted-foreground">ID: •••••{clubMember.id_number.slice(-4)}</p>}
             <p className="text-xs text-muted-foreground">Plays league: {clubMember.plays_league ? "Yes" : "No"}</p>

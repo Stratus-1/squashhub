@@ -10,6 +10,7 @@ import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 import { SEO } from "@/components/SEO";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useEffect } from "react";
+import { formatMoney } from "@/lib/currency";
 
 
 interface ClubDelegate {
@@ -310,7 +311,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                                 )}
                               </td>
                               <td className="px-4 py-3 text-right font-bold text-primary whitespace-nowrap">
-                                R{cat.annual_fee}<span className="text-white/60 font-normal">{cat.once_off ? "" : "/yr"}</span>
+                                {formatMoney(cat.annual_fee, club as any)}<span className="text-white/60 font-normal">{cat.once_off ? "" : "/yr"}</span>
                               </td>
                             </tr>
                           ))}

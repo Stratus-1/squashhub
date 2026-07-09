@@ -57,6 +57,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
 import { useMyClub, useIsSuperAdmin, useIsClubAdmin } from "@/hooks/use-club";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
 import { useHasPermission } from "@/hooks/use-club-permissions";
@@ -361,6 +362,8 @@ export default function Bookings() {
   const canBypassNonPeak = useHasPermission("bookings_unlimited_non_peak");
   const bookingLimitsBypassed = isFullAdmin || canBypassBookingLimits;
   const myClub = myClubData?.club;
+  const { format: fmtMoney } = useClubCurrency();
+  const money = (n: number) => fmtMoney(n, 2);
   const externalProvider = ((myClub as any)?.external_booking_provider as string | null) ||
     ((myClub as any)?.uses_gobook ? "gobook" : null);
   const externalUrl = ((myClub as any)?.external_booking_url as string | undefined) ||
@@ -1804,8 +1807,8 @@ export default function Bookings() {
                       <span className="text-sm font-semibold">Lights Active</span>
                     </div>
                     <div className="text-xs text-muted-foreground space-y-0.5">
-                      <p>Running for {elapsedMin} min · R{currentCost.toFixed(2)} so far</p>
-                      <p>R{feePerHour}/hr — charged when session ends</p>
+                      <p>Running for {elapsedMin} min · {money(currentCost)} so far</p>
+                      <p>{money(feePerHour)}/hr — charged when session ends</p>
                     </div>
                     <div className="flex gap-2 pt-1">
                       <Button
@@ -2259,7 +2262,7 @@ export default function Bookings() {
               {bookingDialog.lightsOn && lightFeePerHour > 0 && (
                 <div className="rounded-xl bg-accent/10 border border-accent/30 p-3 text-xs">
                   <span className="font-semibold">💡 Light fee:</span>{" "}
-                  R{lightFeePerHour}/hr — charged based on actual usage when lights turn off
+                  {money(lightFeePerHour)}/hr — charged based on actual usage when lights turn off
                 </div>
               )}
             </div>
@@ -2294,30 +2297,30 @@ export default function Bookings() {
                 <span className="text-muted-foreground">Currently owing</span>
                 <span className="font-medium">
                   {topUpPrompt.currentOwing >= 0
-                    ? `R${topUpPrompt.currentOwing.toFixed(2)}`
-                    : `-R${Math.abs(topUpPrompt.currentOwing).toFixed(2)} (credit)`}
+                    ? money(topUpPrompt.currentOwing)
+                    : `-${money(Math.abs(topUpPrompt.currentOwing))} (credit)`}
                 </span>
               </div>
               {topUpPrompt.planAllowedDebt > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Outstanding membership allowed</span>
-                  <span className="font-medium">R{topUpPrompt.planAllowedDebt.toFixed(2)}</span>
+                  <span className="font-medium">{money(topUpPrompt.planAllowedDebt)}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Booking buffer required</span>
-                <span className="font-medium">R{topUpPrompt.requiredBuffer.toFixed(2)}</span>
+                <span className="font-medium">{money(topUpPrompt.requiredBuffer)}</span>
               </div>
               <div className="flex justify-between pt-1 border-t">
                 <span className="text-muted-foreground">Minimum balance</span>
                 <span className="font-medium">
-                  -R{Math.max(0, topUpPrompt.planAllowedDebt - topUpPrompt.requiredBuffer).toFixed(2)}
+                  -{money(Math.max(0, topUpPrompt.planAllowedDebt - topUpPrompt.requiredBuffer))}
                 </span>
               </div>
               <div className="flex justify-between pt-1 border-t">
                 <span className="font-semibold">Please top up</span>
                 <span className="font-bold text-destructive">
-                  R{topUpPrompt.shortfall.toFixed(2)}
+                  {money(topUpPrompt.shortfall)}
                 </span>
               </div>
             </div>

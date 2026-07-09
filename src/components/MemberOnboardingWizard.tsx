@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees, MemberFeeCategory, SKILL_LEVELS } from "@/hooks/use-club";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { LeagueParticipationPicker, applyLeagueSelections, LeagueSelection } from "@/components/LeagueParticipationPicker";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
@@ -107,6 +108,8 @@ export function MemberOnboardingWizard({
   const { club: ctxClub } = useClubContext();
   const { data: clubData } = useMyClub();
   const queryClient = useQueryClient();
+  const { format: fmtMoney } = useClubCurrency();
+  const money = (n: number) => fmtMoney(n, 2);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -1068,7 +1071,7 @@ export function MemberOnboardingWizard({
                         <SelectContent>
                           {feeCategories.map((cat) => (
                             <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name} — R{cat.annual_fee.toFixed(2)}/year
+                              {cat.name} — {money(cat.annual_fee)}/year
                               {cat.id === suggestedCategory && " ⭐ Suggested"}
                             </SelectItem>
                           ))}
@@ -1152,13 +1155,13 @@ export function MemberOnboardingWizard({
                             </Badge>
                             <span>{fee.label}</span>
                           </div>
-                          <span className="font-mono font-medium">R{fee.amount.toFixed(2)}</span>
+                          <span className="font-mono font-medium">{money(fee.amount)}</span>
                         </div>
                       ))}
                       <Separator />
                       <div className="flex items-center justify-between font-semibold">
                         <span>Total Billable</span>
-                        <span className="font-mono text-primary">R{totalFees.toFixed(2)}</span>
+                        <span className="font-mono text-primary">{money(totalFees)}</span>
                       </div>
                     </Card>
                     <Card className="p-3 bg-primary/5 border-primary/20 space-y-1.5">

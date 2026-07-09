@@ -12,6 +12,7 @@ import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, Ch
 import { useSearchParams } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub } from "@/hooks/use-club";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +40,8 @@ export default function MyAccount() {
   const { data: clubData, isLoading: clubLoading } = useMyClub();
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
+  const { format: fmtMoney } = useClubCurrency();
+  const money = (n: number) => fmtMoney(n, 2);
   const { data: clubSecrets } = useClubSecrets(club?.id);
 
   // SELF identity (the logged-in user's active member). Used for self-only widgets
@@ -597,7 +600,7 @@ export default function MyAccount() {
                   {creditBalance >= 0 ? "Account Balance (Available)" : "Net Amount Owing"}
                 </p>
                 <p className={cn("text-2xl font-bold font-heading", creditBalance >= 0 ? "text-foreground" : "text-destructive")}>
-                  {creditBalance < 0 ? "-" : ""}R{Math.abs(creditBalance).toFixed(2)}
+                  {creditBalance < 0 ? "-" : ""}{money(Math.abs(creditBalance))}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   Top-ups less outstanding fees & bar tab
@@ -629,7 +632,7 @@ export default function MyAccount() {
                   onClick={() => { setTopUpAmount(owing.toFixed(2)); setTopUpOpen(true); }}
                 >
                   <CreditCard className="w-3.5 h-3.5" />
-                  Pay R{owing.toFixed(2)}
+                  Pay {money(owing)}
                 </Button>
                 <p className="text-[10px] text-muted-foreground text-center">
                   Pay your account balance — fees and bar items are charged automatically.
@@ -701,16 +704,16 @@ export default function MyAccount() {
                     </p>
                   </div>
                   <span className={cn("text-right tabular-nums", line.debit > 0 && "text-destructive")}>
-                    {line.debit > 0 ? `R${line.debit.toFixed(2)}` : ""}
+                    {line.debit > 0 ? money(line.debit) : ""}
                   </span>
                   <span className={cn("text-right tabular-nums", line.credit > 0 && "text-green-600")}>
-                    {line.credit > 0 ? `R${line.credit.toFixed(2)}` : ""}
+                    {line.credit > 0 ? money(line.credit) : ""}
                   </span>
                   <span className={cn(
                     "text-right font-semibold tabular-nums",
                     line.balance > 0 ? "text-destructive" : line.balance < 0 ? "text-green-600" : ""
                   )}>
-                    {line.balance < 0 ? "-" : ""}R{Math.abs(line.balance).toFixed(2)}
+                    {line.balance < 0 ? "-" : ""}{money(Math.abs(line.balance))}
                   </span>
                 </div>
               ))}
@@ -733,7 +736,7 @@ export default function MyAccount() {
 
           <div className="space-y-4 mt-2">
             <div className="space-y-1.5">
-              <Label>Amount (R)</Label>
+              <Label>Amount</Label>
               <Input
                 type="number"
                 min="10"
@@ -797,7 +800,7 @@ export default function MyAccount() {
               {topUpMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
               ) : null}
-              {isAccountPayment ? "Pay" : "Submit"} {topUpMethod.toUpperCase()} {isAccountPayment ? "Payment" : "Top-Up"} · R{Number(topUpAmount || 0).toFixed(2)}
+              {isAccountPayment ? "Pay" : "Submit"} {topUpMethod.toUpperCase()} {isAccountPayment ? "Payment" : "Top-Up"} · {money(Number(topUpAmount || 0))}
             </Button>
           </div>
         </DialogContent>
@@ -809,7 +812,7 @@ export default function MyAccount() {
           <DialogHeader>
             <DialogTitle>Make Payment</DialogTitle>
             <DialogDescription>
-              {selectedFeeIds.length} fee{selectedFeeIds.length !== 1 ? "s" : ""} — Outstanding R{selectedFeeTotal.toFixed(2)}
+              {selectedFeeIds.length} fee{selectedFeeIds.length !== 1 ? "s" : ""} — Outstanding {money(selectedFeeTotal)}
             </DialogDescription>
           </DialogHeader>
 
@@ -818,7 +821,7 @@ export default function MyAccount() {
               {unpaidFees.filter((f: any) => selectedFeeIds.includes(f.id)).map((f: any) => (
                 <div key={f.id} className="flex justify-between text-xs">
                   <span className="truncate">{f.fee_label}</span>
-                  <span className="font-medium shrink-0 ml-2">R{Number(f.amount).toFixed(2)}</span>
+                  <span className="font-medium shrink-0 ml-2">{money(Number(f.amount))}</span>
                 </div>
               ))}
             </div>
@@ -845,22 +848,22 @@ export default function MyAccount() {
 
             {payMode === "partial" && (
               <div className="space-y-1.5">
-                <Label className="text-xs">Amount to pay (R)</Label>
+                <Label className="text-xs">Amount to pay</Label>
                 <Input
                   type="number"
                   min="1"
                   max={selectedFeeTotal}
                   step="0.01"
-                  placeholder={`Max R${selectedFeeTotal.toFixed(2)}`}
+                  placeholder={`Max ${money(selectedFeeTotal)}`}
                   value={partialAmount}
                   onChange={(e) => setPartialAmount(e.target.value)}
                 />
                 {Number(partialAmount) > selectedFeeTotal && (
-                  <p className="text-[10px] text-destructive">Amount cannot exceed R{selectedFeeTotal.toFixed(2)}</p>
+                  <p className="text-[10px] text-destructive">Amount cannot exceed {money(selectedFeeTotal)}</p>
                 )}
                 {Number(partialAmount) > 0 && Number(partialAmount) < selectedFeeTotal && (
                   <p className="text-[10px] text-muted-foreground">
-                    Remaining after payment: R{(selectedFeeTotal - Number(partialAmount)).toFixed(2)}
+                    Remaining after payment: {money(selectedFeeTotal - Number(partialAmount))}
                   </p>
                 )}
               </div>
@@ -903,7 +906,7 @@ export default function MyAccount() {
             {payMethod === "credit" && (
               <Card className="p-3 bg-green-500/5 border-green-500/20">
                 <p className="text-xs text-green-700 dark:text-green-400">
-                  Pay from your available wallet of R{availableCash.toFixed(2)}
+                  Pay from your available wallet of {money(availableCash)}
                 </p>
               </Card>
             )}
@@ -953,7 +956,7 @@ export default function MyAccount() {
               })}
             >
               {payFeeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Pay R{actualPayAmount.toFixed(2)} via {payMethod === "credit" ? "Credit" : payMethod.toUpperCase()}
+              Pay {money(actualPayAmount)} via {payMethod === "credit" ? "Credit" : payMethod.toUpperCase()}
             </Button>
           </div>
         </DialogContent>

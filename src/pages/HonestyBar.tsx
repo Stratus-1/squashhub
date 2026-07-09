@@ -17,6 +17,7 @@ import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import { useClubCurrency } from "@/hooks/use-currency";
 
 interface BarItem {
   id: string;
@@ -76,6 +77,8 @@ export default function HonestyBar() {
   const canSeeVisitors = true;
   const clubId = club?.id;
   const memberId = activeMember?.id;
+  const { format: fmtMoney } = useClubCurrency();
+  const money = (n: number) => fmtMoney(n, 2);
 
 
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -262,7 +265,7 @@ export default function HonestyBar() {
                             )}
                           </div>
                           <p className="text-[11px] font-medium leading-tight text-center truncate w-full">{item.name}</p>
-                          <p className="text-[11px] text-muted-foreground leading-none">R{item.price.toFixed(2)}</p>
+                          <p className="text-[11px] text-muted-foreground leading-none">{money(item.price)}</p>
                           {qty > 0 && (
                             <>
                               <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
@@ -301,7 +304,7 @@ export default function HonestyBar() {
                     disabled={submitting}
                   >
                     <ShoppingCart className="w-4 h-4" />
-                    Add {cartCount} item{cartCount > 1 ? "s" : ""} to Tab — R{cartTotal.toFixed(2)}
+                    Add {cartCount} item{cartCount > 1 ? "s" : ""} to Tab — {money(cartTotal)}
                   </Button>
                 </motion.div>
               )}
@@ -324,7 +327,7 @@ export default function HonestyBar() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-sm font-medium">R{entry.total.toFixed(2)}</span>
+                      <span className="text-sm font-medium">{money(entry.total)}</span>
                       <Badge variant="secondary" className="text-[10px]">On account</Badge>
                     </div>
                   </Card>
@@ -353,7 +356,7 @@ export default function HonestyBar() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-sm font-medium">R{Number(sale.total).toFixed(2)}</span>
+                        <span className="text-sm font-medium">{money(Number(sale.total))}</span>
                         <Badge
                           variant="secondary"
                           className={`text-[10px] capitalize ${

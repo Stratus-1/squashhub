@@ -233,6 +233,27 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     enabled: !!clubId,
   });
 
+  // Unpaid fee totals per member — used to warn admins against posting
+  // free-form "Members Subscription" payments that will double-count when
+  // the fee row is later toggled paid.
+  const { data: unpaidByMember } = useQuery({
+    queryKey: ["unpaid-fees-by-member", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_member_fee_payments")
+        .select("club_member_id, amount, paid")
+        .eq("paid", false);
+      if (error) throw error;
+      const memberIds = new Set((members || []).map((m: any) => m.id));
+      const totals = new Map<string, number>();
+      for (const r of data || []) {
+        if (!memberIds.has(r.club_member_id)) continue;
+        totals.set(r.club_member_id, (totals.get(r.club_member_id) || 0) + Number(r.amount || 0));
+      }
+      return totals;
+    },
+    enabled: !!clubId && !!members?.length,
+  });
+
   const getMemberName = (memberId: string) => {
     const member = (members || []).find(m => m.id === memberId);
     return member?.name || member?.profiles?.name || "Unknown";

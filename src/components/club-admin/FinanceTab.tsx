@@ -302,12 +302,12 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       // Fallback: if no fee rows could be matched (e.g. ad-hoc top-ups, light fees),
       // still record the cash receipt directly so the bank balance reflects it.
       if (!postedFromFees) {
-        const journalRef = crypto.randomUUID();
         const memberName = getMemberName(tx.club_member_id);
         const desc = `Payment received: ${tx.description || "EFT"} — ${memberName}`;
-        await fromExt("club_journal_entries").insert([
-          { club_id: clubId, journal_ref: journalRef, account: "bank_current", debit: Math.abs(Number(tx.amount)), credit: 0, description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
-          { club_id: clubId, journal_ref: journalRef, account: "member_credits", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
+        const amt = Math.abs(Number(tx.amount));
+        await postJournal(clubId, [
+          { account: "bank_current", debit: amt, description: desc, member_id: tx.club_member_id },
+          { account: "member_credits", credit: amt, description: desc, member_id: tx.club_member_id },
         ]);
       }
 

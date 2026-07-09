@@ -33,10 +33,22 @@ export default function AuthCallback() {
           // If a Google-visitor registration is pending for any club, return the
           // user to /auth on the current (tenant) origin so ClubAuth can finish it.
           try {
-            const hasPendingVisitor = Object.keys(localStorage).some((k) =>
-              k.startsWith("sh.pending_visitor_registration.")
-            );
-            if (hasPendingVisitor) {
+            const TTL = 30 * 60 * 1000;
+            let hasFreshPendingVisitor = false;
+            Object.keys(localStorage)
+              .filter((k) => k.startsWith("sh.pending_visitor_registration."))
+              .forEach((k) => {
+                try {
+                  const parsed = JSON.parse(localStorage.getItem(k) || "");
+                  const savedAt = Number(parsed?.saved_at || 0);
+                  if (savedAt && Date.now() - savedAt < TTL) {
+                    hasFreshPendingVisitor = true;
+                  } else {
+                    localStorage.removeItem(k);
+                  }
+                } catch { localStorage.removeItem(k); }
+              });
+            if (hasFreshPendingVisitor) {
               navigate("/auth", { replace: true });
               return;
             }

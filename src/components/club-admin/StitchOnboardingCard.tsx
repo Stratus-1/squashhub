@@ -280,7 +280,7 @@ export default function StitchOnboardingCard({
             )}
           </div>
         </>
-      )}
+      ))}
     </Card>
   );
 }

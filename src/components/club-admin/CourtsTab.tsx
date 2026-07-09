@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, AlertCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useClubCurrency } from "@/hooks/use-currency";
 
 const RELAY_DEVICES = [
   { value: "shelly", label: "Shelly", description: "Shelly Cloud smart relays — fully supported" },
@@ -37,6 +38,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
+  const { symbol: currencySymbol } = useClubCurrency();
 
   const [rulesForm, setRulesForm] = useState({
     booking_slot_minutes: club.booking_slot_minutes ?? 30,
@@ -287,7 +289,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
           {lightsForm.min_booking_balance !== null && (
             <>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">R</span>
+                <span className="text-xs text-muted-foreground">{currencySymbol}</span>
                 <Input
                   type="number" min={0} step={1}
                   className="h-8 text-xs w-28"
@@ -387,7 +389,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
                   </div>
                   {lightsForm.light_fee_per_hour > 0 && (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">R</span>
+                      <span className="text-xs text-muted-foreground">{currencySymbol}</span>
                       <Input
                         type="number" min={1} step={1}
                         className="h-8 text-xs"

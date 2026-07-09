@@ -12,6 +12,7 @@ import { Loader2, Trash2, Search, Pencil, UserPlus, Settings2, Plus, X, DoorOpen
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyClub } from "@/hooks/use-club";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
 
 interface Visitor {
@@ -37,6 +38,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
   const { data: clubData } = useMyClub();
   const club = clubData?.club as any;
+  const { symbol: currencySymbol } = useClubCurrency();
   const [search, setSearch] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editing, setEditing] = useState<Visitor | null>(null);
@@ -542,7 +544,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
               <p className="text-[10px] text-muted-foreground">Charged per booking made by a visitor. Set to 0 for free.</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <span className="text-xs text-muted-foreground">R</span>
+              <span className="text-xs text-muted-foreground">{currencySymbol}</span>
               <Input
                 id="visitor-fee"
                 type="number"

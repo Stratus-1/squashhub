@@ -115,6 +115,37 @@ export default function Dashboard() {
     enabled: !!(myMemberId || effectiveUserId),
   });
 
+  // My tournament W/L (club_champs_matches) — merged into My Stats alongside ladder/league stats.
+  const { data: tournamentStats } = useQuery({
+    queryKey: ["my-tournament-stats", myMemberId],
+    queryFn: async () => {
+      if (!myMemberId) return { wins: 0, losses: 0, played: 0 };
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("status, is_bye, winner_member_id, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id")
+        .eq("status", "completed")
+        .or(
+          `player_a_member_id.eq.${myMemberId},player_b_member_id.eq.${myMemberId},partner_a_member_id.eq.${myMemberId},partner_b_member_id.eq.${myMemberId}`,
+        );
+      if (error) throw error;
+      let wins = 0, losses = 0;
+      for (const m of (data || []) as any[]) {
+        if (m.is_bye) continue;
+        const onSideA = m.player_a_member_id === myMemberId || m.partner_a_member_id === myMemberId;
+        const onSideB = m.player_b_member_id === myMemberId || m.partner_b_member_id === myMemberId;
+        if (!onSideA && !onSideB) continue;
+        const winner = m.winner_member_id;
+        if (!winner) continue;
+        const winnerOnSideA = winner === m.player_a_member_id || winner === m.partner_a_member_id;
+        const iWon = (onSideA && winnerOnSideA) || (onSideB && !winnerOnSideA);
+        if (iWon) wins++; else losses++;
+      }
+      return { wins, losses, played: wins + losses };
+    },
+    enabled: !!myMemberId,
+  });
+
+
+
   // My upcoming league fixtures (next 30 days)
   // Priority 1: fixtures where I'm in the lineup (filled-up team)
   // Priority 2 (fallback): fixtures for any league I'm registered in
@@ -532,13 +563,16 @@ export default function Dashboard() {
 
   // Desktop dashboard — keeps mobile layout below untouched
   if (!isMobile) {
-    // Source W/L from ladder entry (which merges NSA league stats — single source of truth)
+    // Ladder entry merges NSA + internal league stats; add tournament W/L for a full picture.
     const myLadderEntry = (ladder || []).find((p: any) =>
       (myMemberId && p.club_member_id === myMemberId) || (user?.id && (p.user_id === user.id || p.id === user.id))
     ) as any;
-    const wins = myLadderEntry?.wins ?? 0;
-    const losses = myLadderEntry?.losses ?? 0;
-    const played = myLadderEntry?.matches_played ?? (wins + losses);
+    const ladderWins = myLadderEntry?.wins ?? 0;
+    const ladderLosses = myLadderEntry?.losses ?? 0;
+    const ladderPlayed = myLadderEntry?.matches_played ?? (ladderWins + ladderLosses);
+    const wins = ladderWins + (tournamentStats?.wins ?? 0);
+    const losses = ladderLosses + (tournamentStats?.losses ?? 0);
+    const played = ladderPlayed + (tournamentStats?.played ?? 0);
     const winRate = played > 0 ? (wins / played) * 100 : 0;
     const courtsUsed = new Set((myBookings || []).map((b: any) => b.court_id)).size;
 
@@ -712,9 +746,12 @@ export default function Dashboard() {
             (myMemberId && p.club_member_id === myMemberId) ||
             (user?.id && (p.user_id === user.id || p.id === user.id))
           ) as any;
-          const wins = myLadderEntry?.wins ?? 0;
-          const losses = myLadderEntry?.losses ?? 0;
-          const played = myLadderEntry?.matches_played ?? (wins + losses);
+          const ladderWins = myLadderEntry?.wins ?? 0;
+          const ladderLosses = myLadderEntry?.losses ?? 0;
+          const ladderPlayed = myLadderEntry?.matches_played ?? (ladderWins + ladderLosses);
+          const wins = ladderWins + (tournamentStats?.wins ?? 0);
+          const losses = ladderLosses + (tournamentStats?.losses ?? 0);
+          const played = ladderPlayed + (tournamentStats?.played ?? 0);
           const winRate = played > 0 ? (wins / played) * 100 : 0;
           const courtsUsed = new Set((myBookings || []).map((b: any) => b.court_id)).size;
           return (

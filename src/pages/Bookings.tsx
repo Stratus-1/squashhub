@@ -1807,8 +1807,8 @@ export default function Bookings() {
                       <span className="text-sm font-semibold">Lights Active</span>
                     </div>
                     <div className="text-xs text-muted-foreground space-y-0.5">
-                      <p>Running for {elapsedMin} min · R{currentCost.toFixed(2)} so far</p>
-                      <p>R{feePerHour}/hr — charged when session ends</p>
+                      <p>Running for {elapsedMin} min · {money(currentCost)} so far</p>
+                      <p>{money(feePerHour)}/hr — charged when session ends</p>
                     </div>
                     <div className="flex gap-2 pt-1">
                       <Button

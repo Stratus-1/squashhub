@@ -136,10 +136,20 @@ export default function SuperAdminSubscriptions() {
     queryFn: async () => {
       const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain").order("name").range(0, 49999);
       if (error) throw error;
-      // Get member counts
-      const { data: members } = await supabase.from("club_members").select("club_id").range(0, 99999);
+      // Get member counts — paginate to avoid PostgREST's 1000-row response cap.
       const countMap = new Map<string, number>();
-      (members || []).forEach((m: any) => countMap.set(m.club_id, (countMap.get(m.club_id) || 0) + 1));
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data: members, error: mErr } = await supabase
+          .from("club_members")
+          .select("club_id")
+          .range(from, from + PAGE - 1);
+        if (mErr) throw mErr;
+        (members || []).forEach((m: any) => countMap.set(m.club_id, (countMap.get(m.club_id) || 0) + 1));
+        if (!members || members.length < PAGE) break;
+        from += PAGE;
+      }
       return (data || []).map((c: any) => ({ ...c, member_count: countMap.get(c.id) || 0 }));
     },
   });

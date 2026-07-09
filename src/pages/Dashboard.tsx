@@ -746,9 +746,12 @@ export default function Dashboard() {
             (myMemberId && p.club_member_id === myMemberId) ||
             (user?.id && (p.user_id === user.id || p.id === user.id))
           ) as any;
-          const wins = myLadderEntry?.wins ?? 0;
-          const losses = myLadderEntry?.losses ?? 0;
-          const played = myLadderEntry?.matches_played ?? (wins + losses);
+          const ladderWins = myLadderEntry?.wins ?? 0;
+          const ladderLosses = myLadderEntry?.losses ?? 0;
+          const ladderPlayed = myLadderEntry?.matches_played ?? (ladderWins + ladderLosses);
+          const wins = ladderWins + (tournamentStats?.wins ?? 0);
+          const losses = ladderLosses + (tournamentStats?.losses ?? 0);
+          const played = ladderPlayed + (tournamentStats?.played ?? 0);
           const winRate = played > 0 ? (wins / played) * 100 : 0;
           const courtsUsed = new Set((myBookings || []).map((b: any) => b.court_id)).size;
           return (

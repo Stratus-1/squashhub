@@ -80,6 +80,7 @@ import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember, useIsSuperAdmin } from "@/hooks/use-club";
 import { NoClubAccess } from "@/components/NoClubAccess";
+import { fromExt } from "@/lib/supabase-ext";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Unsubscribe from "./pages/Unsubscribe";
@@ -251,6 +252,36 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
   const { subdomain, club } = useClubContext();
   const { data: myClubMember, isLoading } = useMyClubMember();
   const isSuperAdmin = useIsSuperAdmin();
+  const [hasMembershipElsewhere, setHasMembershipElsewhere] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id || !subdomain || !club?.id || myClubMember || isSuperAdmin) {
+      setHasMembershipElsewhere(null);
+      return;
+    }
+
+    setHasMembershipElsewhere(null);
+    fromExt("club_members")
+      .select("id, club_id")
+      .eq("user_id", user.id)
+      .neq("club_id", club.id)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.warn("[SubdomainMembershipGate] membership check failed", error);
+          setHasMembershipElsewhere(false);
+          return;
+        }
+        setHasMembershipElsewhere(!!data);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, subdomain, club?.id, myClubMember, isSuperAdmin]);
 
   // Only gate on club subdomains, once the club context and user are known.
   if (!user || !subdomain || !club?.id) return <>{children}</>;
@@ -263,7 +294,21 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!myClubMember) return <NoClubAccess />;
+  if (!myClubMember) {
+    if (hasMembershipElsewhere === null) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      );
+    }
+
+    // First-time member signups have an auth/profile record but no club member
+    // row yet. Let Dashboard open the member onboarding wizard, which creates
+    // the club_members row. Users who already belong elsewhere remain visitor-only.
+    if (!hasMembershipElsewhere) return <>{children}</>;
+    return <NoClubAccess />;
+  }
   return <>{children}</>;
 }
 

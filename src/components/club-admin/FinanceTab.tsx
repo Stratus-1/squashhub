@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
-import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2 } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote } from "lucide-react";
 import { format } from "date-fns";
 import { useState, useRef, useEffect, type ReactNode, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
 import { LedgerReconciliationDialog } from "./LedgerReconciliationDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
 import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
+import DebitOrdersPanel from "./DebitOrdersPanel";
 
 /* ─── Chart of Accounts definition ─── */
 
@@ -675,6 +676,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
         <TabsContent value="renewals">
           <RenewalInvoicesTab clubId={clubId} />
+        </TabsContent>
+
+        <TabsContent value="debit-orders">
+          <DebitOrdersPanel clubId={clubId} />
         </TabsContent>
 
         <TabsContent value="income">
@@ -1702,7 +1707,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 }
 
 /* ─── Finance Hub: tile-based navigation ─── */
-type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa";
+type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa" | "debit-orders";
 
 interface FinanceHubProps {
   pendingCount: number;
@@ -1757,6 +1762,7 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
         { key: "" as FinanceView, label: "Member Statement", desc: "Full transaction history for one member", icon: FileText, onClick: onStatement },
         { key: "" as FinanceView, label: "Member Balances", desc: "Who owes and who's in credit", icon: Wallet, onClick: () => onBalances("outstanding") },
         { key: "" as FinanceView, label: "Bill Member", desc: "Add an ad-hoc charge to a member", icon: Receipt, onClick: onBill },
+        { key: "debit-orders", label: "Debit Orders", desc: "Stitch mandates, queued collections & approvals", icon: Banknote },
       ],
     },
     {

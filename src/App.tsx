@@ -397,6 +397,8 @@ function AppRoutes() {
         } />
         <Route path="/welcome" element={<Home />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
+        <Route path="/clubs" element={<Clubs />} />
+
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />

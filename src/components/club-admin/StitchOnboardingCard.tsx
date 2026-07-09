@@ -131,12 +131,13 @@ export default function StitchOnboardingCard({
         <Landmark className="h-4 w-4 mt-0.5 text-sky-600 shrink-0" />
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold flex items-center gap-2 flex-wrap">
-            Need a dedicated bank account for {clubName}?
+            Need a payment gateway for {clubName}?
             <Badge variant="secondary" className="text-[10px] h-5">Partner offer</Badge>
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            SquashHub is partnered with <strong>Stitch Express</strong> to help clubs open a
-            dedicated bank account for member fees and online payments.
+            SquashHub has an informal partnership with <strong>Stitch Express</strong> so we can
+            help clubs quickly and easily open a Stitch payment gateway account for member fees
+            and online payments.
           </p>
         </div>
         {!sent && (
@@ -146,7 +147,7 @@ export default function StitchOnboardingCard({
             className="h-8 text-xs shrink-0"
             onClick={() => setExpanded((v) => !v)}
           >
-            {expanded ? "Hide" : "Yes, open account"}
+            {expanded ? "Hide" : "Yes, help me set it up"}
           </Button>
         )}
       </div>

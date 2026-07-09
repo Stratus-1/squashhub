@@ -93,6 +93,22 @@ export default function SuperAdminSubscriptions() {
   const [stitchDirty, setStitchDirty] = useState(false);
   const [showStitchSecret, setShowStitchSecret] = useState(false);
 
+  // Intl pricing / FX form
+  const [intlForm, setIntlForm] = useState({
+    saas_rate_zar_monthly: "6",
+    saas_rate_zar_annual: "5",
+    saas_intl_uplift_pct: "50",
+    saas_fx_usd_per_zar: "18",
+    saas_fx_eur_per_zar: "20",
+    saas_fx_locked_at: "",
+    saas_fx_review_due: "",
+  });
+  const [intlDirty, setIntlDirty] = useState(false);
+  const updateIntlField = (k: keyof typeof intlForm, v: string) => {
+    setIntlForm(prev => ({ ...prev, [k]: v }));
+    setIntlDirty(true);
+  };
+
   // --- Queries ---
   const { data: plans = [], isLoading: plansLoading } = useQuery({
     queryKey: ["sa-subscription-plans"],

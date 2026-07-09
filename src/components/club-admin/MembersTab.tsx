@@ -319,12 +319,12 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
       </div>
 
-      {/* Row 3: Fees receivable from member */}
-      {fees.length > 0 && (
+      {/* Row 3: Fees receivable from member — totals reflect the GL / member statement */}
+      {(fees.length > 0 || (glBilled ?? 0) > 0) && (
         <div className="border-t border-border pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-medium text-muted-foreground shrink-0">Fees payable by the member:</span>
-            <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
+            <MemberPaymentStatus fees={fees} glBilled={glBilled} glPaid={glPaid} />
           </div>
         </div>
       )}
@@ -334,7 +334,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
         <div className="border-t border-dashed border-border pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-medium text-muted-foreground shrink-0">Fees payable by the club:</span>
-            <MemberPaymentStatus fees={payableFees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
+            <MemberPaymentStatus fees={payableFees} />
           </div>
         </div>
       )}

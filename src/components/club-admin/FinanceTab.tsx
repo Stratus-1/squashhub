@@ -20,7 +20,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 import { AssociationPayablesPanel } from "./AssociationPayablesPanel";
 import { RenewalInvoicesTab } from "./RenewalInvoicesTab";
-import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
 import { LedgerReconciliationDialog } from "./LedgerReconciliationDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
 import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
@@ -108,7 +107,6 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [txMethod, setTxMethod] = useState<"bank" | "cash" | "card">("bank");
   const [txMemberId, setTxMemberId] = useState<string>("");
   const [txSubmitting, setTxSubmitting] = useState(false);
-  const [reconcileOpen, setReconcileOpen] = useState(false);
   const [ledgerReconOpen, setLedgerReconOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
@@ -714,9 +712,6 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <Badge variant="outline" className="text-[10px]">{(journalEntries || []).length} entries</Badge>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => setReconcileOpen(true)} className="gap-1.5 h-8">
-                  <Wallet className="w-3.5 h-3.5" /> Reconcile Fees
-                </Button>
                 <Button size="sm" variant="outline" onClick={() => setLedgerReconOpen(true)} className="gap-1.5 h-8">
                   <Wallet className="w-3.5 h-3.5" /> GL vs Member a/c
                 </Button>
@@ -739,7 +734,6 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
                 </Button>
-                <ReconcileFeesDialog clubId={clubId} open={reconcileOpen} onOpenChange={setReconcileOpen} />
               </div>
             </div>
 

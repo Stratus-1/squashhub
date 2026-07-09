@@ -362,6 +362,8 @@ export default function Bookings() {
   const canBypassNonPeak = useHasPermission("bookings_unlimited_non_peak");
   const bookingLimitsBypassed = isFullAdmin || canBypassBookingLimits;
   const myClub = myClubData?.club;
+  const { format: fmtMoney } = useClubCurrency();
+  const money = (n: number) => fmtMoney(n, 2);
   const externalProvider = ((myClub as any)?.external_booking_provider as string | null) ||
     ((myClub as any)?.uses_gobook ? "gobook" : null);
   const externalUrl = ((myClub as any)?.external_booking_url as string | undefined) ||

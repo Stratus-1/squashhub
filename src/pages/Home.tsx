@@ -826,12 +826,14 @@ function PricingCard({
   icon: Icon,
   title,
   priceLabel,
+  intlLabel,
   perks,
   onGetStarted,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   priceLabel: string;
+  intlLabel?: string;
   perks: string[];
   onGetStarted?: () => void;
 }) {
@@ -849,6 +851,9 @@ function PricingCard({
             <span className="text-3xl font-bold font-heading text-white">{priceLabel}</span>
             <span className="text-sm text-white/60">/ member per month</span>
           </div>
+          {intlLabel && (
+            <p className="text-xs text-white/70 mt-1 font-medium">{intlLabel}</p>
+          )}
           <p className="text-xs text-white/50 mt-1">
             From September 2026
           </p>

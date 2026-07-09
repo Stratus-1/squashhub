@@ -549,11 +549,10 @@ function SettleDialog({
       const moneyAccount = method === "cash" ? "cash" : "bank_current";
       const desc = `Affiliation payment: ${fee?.payee_name || "Payable"} – ${batch.season_label}${paymentRef ? ` (${paymentRef})` : ""}`;
 
-      const { error: jErr } = await fromExt("club_journal_entries").insert([
-        { club_id: clubId, journal_ref: journalRef, account: "association_payable", debit: amt, credit: 0, description: desc },
-        { club_id: clubId, journal_ref: journalRef, account: moneyAccount, debit: 0, credit: amt, description: desc },
-      ]);
-      if (jErr) throw jErr;
+      await postJournal(clubId, [
+        { account: "association_payable", debit: amt, description: desc },
+        { account: moneyAccount, credit: amt, description: desc },
+      ], { ref: journalRef });
 
       const { error: bErr } = await fromExt("club_association_payable_batches" as any)
         .update({

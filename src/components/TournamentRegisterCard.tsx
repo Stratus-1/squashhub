@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { useClubMembers } from "@/hooks/use-club";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,8 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: members = [] } = useClubMembers(clubId);
+  const { format: fmtMoney } = useClubCurrency();
+  const money = (n: number) => fmtMoney(n, 2);
   const [partnerId, setPartnerId] = useState<string>("");
   const [showEft, setShowEft] = useState(false);
 
@@ -265,7 +268,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           </p>
           <p className="text-[11px] text-muted-foreground">
             {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"}
-            {entryFee > 0 && <> · R{entryFee.toFixed(2)} entry fee</>}
+            {entryFee > 0 && <> · {money(entryFee)} entry fee</>}
             {closesAt && <> · Closes {closesAt.toLocaleDateString()}</>}
           </p>
         </div>
@@ -285,7 +288,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           ) : (
             <Button size="sm" className="text-xs h-8" onClick={() => register.mutate()} disabled={register.isPending}>
               {register.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
-              {entryFee > 0 ? `Register · Pay R${entryFee.toFixed(2)}` : "Register"}
+              {entryFee > 0 ? `Register · Pay ${money(entryFee)}` : "Register"}
             </Button>
           )}
         </div>
@@ -296,7 +299,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           <div className="flex flex-wrap items-center gap-2">
             {acceptsCard && paymentGateway === "yoco" && (
               <Button size="sm" className="text-xs h-8" onClick={() => launchPayment(myReg.id)}>
-                <CreditCard className="w-3 h-3 mr-1" /> Pay R{entryFee.toFixed(2)} by card
+                <CreditCard className="w-3 h-3 mr-1" /> Pay {money(entryFee)} by card
               </Button>
             )}
             {acceptsEft && (
@@ -309,7 +312,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
                   if (myReg.status !== "pending_eft") markPendingEft.mutate(myReg.id);
                 }}
               >
-                <Landmark className="w-3 h-3 mr-1" /> Pay R{entryFee.toFixed(2)} by EFT
+                <Landmark className="w-3 h-3 mr-1" /> Pay {money(entryFee)} by EFT
               </Button>
             )}
           </div>
@@ -335,7 +338,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
                   {bankDetails.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {bankDetails.bank_account_number}</p>}
                   {bankDetails.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {bankDetails.bank_branch_code}</p>}
                   <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {(champ?.name || "Tournament").slice(0, 20)}</p>
-                  <p className="text-xs font-semibold"><span className="text-muted-foreground">Amount:</span> R{entryFee.toFixed(2)}</p>
+                  <p className="text-xs font-semibold"><span className="text-muted-foreground">Amount:</span> {money(entryFee)}</p>
                 </>
               )}
               <p className="text-[11px] text-amber-700 dark:text-amber-400 pt-1">

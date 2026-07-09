@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
 
 type Mandate = {
@@ -45,6 +46,8 @@ interface Props {
 
 export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGateway, memberFeeCategoryId }: Props) {
   const qc = useQueryClient();
+  const { format: fmtMoney } = useClubCurrency();
+  const money = (n: number) => fmtMoney(n, 2);
   const [setupOpen, setSetupOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<FeeCategory | null>(null);
   
@@ -257,7 +260,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                     </Badge>
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Up to R{(m.max_amount_cents / 100).toFixed(2)} per month
+                    Up to {money(m.max_amount_cents / 100)} per month
                     {m.debit_day ? ` · monthly collection day ${m.debit_day}` : ""}
                   </p>
 
@@ -290,7 +293,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                 <div key={cat.id} className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs font-medium truncate">{cat.name}</p>
-                    <p className="text-[10px] text-muted-foreground">R{Number(cat.annual_fee || 0).toFixed(2)} / month</p>
+                    <p className="text-[10px] text-muted-foreground">{money(Number(cat.annual_fee || 0))} / month</p>
                   </div>
                   <Button
                     size="sm"
@@ -374,8 +377,8 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
             {selectedCategory && (
               <div className="space-y-1">
                 <p className="text-[11px] text-muted-foreground">
-                  Annual fee R{Number(selectedCategory.annual_fee || 0).toFixed(2)} ÷ {months} ={" "}
-                  R{(Number(selectedCategory.annual_fee || 0) / Math.max(Number(months) || 1, 1)).toFixed(2)} per month.
+                  Annual fee {money(Number(selectedCategory.annual_fee || 0))} ÷ {months} ={" "}
+                  {money(Number(selectedCategory.annual_fee || 0) / Math.max(Number(months) || 1, 1))} per month.
                   You can override the monthly amount above. Cancel any time from this screen.
                 </p>
                 <p className="text-[11px] font-medium text-primary">

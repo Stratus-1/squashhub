@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Minus, ShoppingCart, X } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQueryClient } from "@tanstack/react-query";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
 
 interface BarItem {
@@ -39,6 +40,8 @@ interface Props {
 
 export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, loggedByMemberId }: Props) {
   const qc = useQueryClient();
+  const { format: fmtMoney } = useClubCurrency();
+  const money = (n: number) => fmtMoney(n, 2);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [method, setMethod] = useState<PaymentMethod>("card");
   const [visitorName, setVisitorName] = useState("");
@@ -135,7 +138,7 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
                   )}
                 </div>
                 <p className="text-[11px] font-medium leading-tight text-center truncate mt-1">{item.name}</p>
-                <p className="text-[11px] text-muted-foreground text-center leading-none">R{item.price.toFixed(2)}</p>
+                <p className="text-[11px] text-muted-foreground text-center leading-none">{money(item.price)}</p>
                 {qty > 0 && (
                   <>
                     <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
@@ -163,7 +166,7 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
               <div key={l.item.id} className="flex items-center justify-between text-xs">
                 <span className="truncate">{l.qty}× {l.item.name}</span>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">R{l.line.toFixed(2)}</span>
+                  <span className="font-medium">{money(l.line)}</span>
                   <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => bump(l.item.id, -l.qty)}>
                     <X className="w-3 h-3" />
                   </Button>
@@ -197,7 +200,7 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
         {/* Submit */}
         <div className="flex items-center justify-between gap-2 pt-1">
           <Badge variant="secondary" className="text-sm py-1 px-2">
-            Total: R{total.toFixed(2)} {count > 0 && `· ${count} item${count > 1 ? "s" : ""}`}
+            Total: {money(total)} {count > 0 && `· ${count} item${count > 1 ? "s" : ""}`}
           </Badge>
           <Button onClick={submit} disabled={count === 0 || !visitorName.trim() || submitting} className="h-10">
             {submitting ? "Recording…" : `Record ${method.toUpperCase()} sale`}

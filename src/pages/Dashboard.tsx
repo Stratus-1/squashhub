@@ -441,9 +441,22 @@ export default function Dashboard() {
     // instead of forcing them through member onboarding at this club.
     if (hasClub && !myClubMember && typeof window !== "undefined") {
       const pendingKey = `sh.pending_visitor_registration.${effectiveClub?.id || ""}`;
-      if (localStorage.getItem(pendingKey)) {
-        navigate("/auth?intent=visitor", { replace: true });
-        return;
+      const raw = localStorage.getItem(pendingKey);
+      if (raw) {
+        // Only honour pending visitor payloads that were saved recently
+        // (< 30 min). Older payloads are abandoned attempts and must not
+        // keep pushing brand-new members into the visitor flow.
+        let fresh = false;
+        try {
+          const parsed = JSON.parse(raw);
+          const savedAt = Number(parsed?.saved_at || 0);
+          fresh = !!savedAt && Date.now() - savedAt < 30 * 60 * 1000;
+        } catch { /* ignore */ }
+        if (fresh) {
+          navigate("/auth?intent=visitor", { replace: true });
+          return;
+        }
+        localStorage.removeItem(pendingKey);
       }
     }
 

@@ -645,6 +645,7 @@ export default function Home() {
               icon={Building2}
               title="Clubs"
               priceLabel="From R5"
+              intlLabel="≈ $0.42 USD  •  €0.38 EUR"
               perks={["All features included", "Billed only on active members", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
@@ -652,6 +653,7 @@ export default function Home() {
               icon={Landmark}
               title="Associations"
               priceLabel="From R2"
+              intlLabel="≈ $0.17 USD  •  €0.15 EUR"
               perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />

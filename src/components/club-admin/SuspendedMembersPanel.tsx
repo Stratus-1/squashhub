@@ -135,7 +135,7 @@ export function SuspendedMembersPanel({ clubId }: { clubId: string }) {
                   <p className="text-[11px] text-muted-foreground truncate">
                     {r.suspension_reason || "—"}
                     {r.suspension_outstanding != null && Number(r.suspension_outstanding) > 0 && (
-                      <> · R{Number(r.suspension_outstanding).toFixed(0)} outstanding</>
+                      <> · {Number(r.suspension_outstanding).toFixed(0)} outstanding</>
                     )}
                   </p>
                 </div>

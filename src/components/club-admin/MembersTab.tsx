@@ -156,7 +156,7 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   onToggle: (feeId: string, paid: boolean) => void;
   onCreateFee: (fee: ExpectedFee) => void;
 }) {
-  const { symbol: cur } = useClubCurrency();
+  
   if (fees.length === 0) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
   const total = fees.reduce((s, f) => s + f.amount, 0);
   const totalPaid = fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
@@ -179,7 +179,7 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
             />
           )}
           <span className="truncate max-w-[100px]">{f.fee_label}</span>
-          <span className="text-muted-foreground">{cur}{f.amount}</span>
+          <span className="text-muted-foreground">{f.amount}</span>
           {f.existing?.paid ? (
             <CheckCircle2 className="w-2.5 h-2.5 text-green-600 shrink-0" />
           ) : (
@@ -188,7 +188,7 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
         </div>
       ))}
       <span className={`text-[10px] font-semibold ml-auto ${allPaid ? "text-green-600" : "text-destructive"}`}>
-        {cur}{totalPaid} / {cur}{total}
+        {totalPaid} / {total}
       </span>
     </div>
   );
@@ -930,8 +930,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>
-        <span className="font-medium">Fees: R{totalPaid} paid / R{totalExpected} total</span>
-        <span className="text-destructive font-medium">R{totalExpected - totalPaid} outstanding</span>
+        <span className="font-medium">Fees: {totalPaid} paid / {totalExpected} total</span>
+        <span className="text-destructive font-medium">{totalExpected - totalPaid} outstanding</span>
         <span className="text-emerald-600 dark:text-emerald-400 font-medium">💡 Set up fees in the Fees tab · Untick fees still outstanding for a member</span>
       </div>
 
@@ -1232,7 +1232,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             >
               <option value="">— Select category —</option>
               {feeCategories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name} (R{cat.annual_fee}/yr)</option>
+                <option key={cat.id} value={cat.id}>{cat.name} ({cat.annual_fee}/yr)</option>
               ))}
             </select>
             {age !== null && !feeCategoryId && (
@@ -1292,12 +1292,12 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
               {previewFees.map((f, i) => (
                 <div key={i} className="flex justify-between text-xs">
                   <span>{f.label}</span>
-                  <span className="font-medium">R{f.amount}</span>
+                  <span className="font-medium">{f.amount}</span>
                 </div>
               ))}
               <div className="flex justify-between text-xs font-bold border-t border-border mt-1 pt-1">
                 <span>Total</span>
-                <span>R{previewFees.reduce((s, f) => s + f.amount, 0)}</span>
+                <span>{previewFees.reduce((s, f) => s + f.amount, 0)}</span>
               </div>
             </Card>
           )}
@@ -1786,7 +1786,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
             >
               <option value="">— Select category —</option>
               {feeCategories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name} (R{cat.annual_fee}/yr)</option>
+                <option key={cat.id} value={cat.id}>{cat.name} ({cat.annual_fee}/yr)</option>
               ))}
             </select>
             {age !== null && !form.fee_category_id && (

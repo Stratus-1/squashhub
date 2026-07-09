@@ -176,11 +176,11 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                     <div className="min-w-0">
                       <p className="font-medium truncate">{p.supplier || "Supplier"} {p.invoice_number ? `#${p.invoice_number}` : ""}</p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {p.quantity}× {p.bar_items?.name || "Item"} @ R{Number(p.unit_cost).toFixed(2)} · {format(new Date(p.created_at), "dd MMM yyyy")}
+                        {p.quantity}× {p.bar_items?.name || "Item"} @ {Number(p.unit_cost).toFixed(2)} · {format(new Date(p.created_at), "dd MMM yyyy")}
                         {p.payment_method ? ` · ${p.payment_method}` : ""}
                       </p>
                     </div>
-                    <Badge variant="secondary" className="text-xs">R{Number(p.total_cost).toFixed(2)}</Badge>
+                    <Badge variant="secondary" className="text-xs">{Number(p.total_cost).toFixed(2)}</Badge>
                   </div>
                 ))}
               </div>
@@ -207,7 +207,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                             {e.quantity}× {(e.bar_items as any)?.name || "Item"} · {format(new Date(e.created_at), "dd MMM HH:mm")}
                           </p>
                         </div>
-                        <Badge variant="secondary" className="text-xs">R{e.total.toFixed(2)}</Badge>
+                        <Badge variant="secondary" className="text-xs">{e.total.toFixed(2)}</Badge>
                       </div>
                     ))}
                   </div>
@@ -244,7 +244,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                           {s.recorder?.name ? ` · ${s.recorder.name}` : ""}
                         </p>
                       </div>
-                      <Badge variant="secondary" className="text-xs">R{Number(s.total).toFixed(2)}</Badge>
+                      <Badge variant="secondary" className="text-xs">{Number(s.total).toFixed(2)}</Badge>
                     </div>
                   ))}
                 </div>
@@ -457,9 +457,9 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
                   {item.name}
                 </div>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                  <span className="text-xs text-muted-foreground">R{item.price.toFixed(2)}</span>
+                  <span className="text-xs text-muted-foreground">{item.price.toFixed(2)}</span>
                   {item.cost_price > 0 && (
-                    <span className="text-xs text-muted-foreground">(cost R{item.cost_price.toFixed(2)})</span>
+                    <span className="text-xs text-muted-foreground">(cost {item.cost_price.toFixed(2)})</span>
                   )}
                   {isOutOfStock ? (
                     <Badge variant="destructive" className="text-[10px] gap-0.5">
@@ -682,7 +682,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
                       </div>
                       <div className="text-xs text-right font-medium pb-1">
                         {idx === 0 && <Label className="text-[10px] text-muted-foreground block">Total</Label>}
-                        R{lineTotal.toFixed(2)}
+                        {lineTotal.toFixed(2)}
                       </div>
                       <div>
                         {lines.length > 1 && (
@@ -699,7 +699,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
 
             {/* Invoice total */}
             <div className="flex justify-end border-t pt-3">
-              <span className="text-sm font-semibold">Invoice Total: R{invoiceTotal.toFixed(2)}</span>
+              <span className="text-sm font-semibold">Invoice Total: {invoiceTotal.toFixed(2)}</span>
             </div>
 
             <Button className="w-full" onClick={handleSubmit} disabled={submitting}>
@@ -764,7 +764,7 @@ function AdminAddCharge({ clubId, items, members }: { clubId: string; items: Bar
           <SelectContent>
             {activeItems.map(i => (
               <SelectItem key={i.id} value={i.id}>
-                {i.name} — R{i.price.toFixed(2)}
+                {i.name} — {i.price.toFixed(2)}
               </SelectItem>
             ))}
           </SelectContent>

@@ -24,19 +24,41 @@ Deno.serve(async (req) => {
   const dryRun = !!body.dryRun
   const billingDate = body.billingDate ? new Date(body.billingDate) : new Date()
 
-  // 1) Load platform invoice settings
-  const { data: settingRow, error: settingErr } = await supabase
+  // 1) Load platform invoice settings + international pricing config
+  const { data: allSettings, error: settingErr } = await supabase
     .from('app_settings')
-    .select('value')
-    .eq('key', 'platform_invoice_settings')
-    .maybeSingle()
+    .select('key, value')
+    .in('key', [
+      'platform_invoice_settings',
+      'saas_rate_zar_monthly',
+      'saas_rate_zar_annual',
+      'saas_intl_uplift_pct',
+      'saas_fx_usd_per_zar',
+      'saas_fx_eur_per_zar',
+    ])
   if (settingErr && settingErr.code !== 'PGRST116') {
     return json({ error: `Failed to load invoice settings: ${settingErr.message}` }, 500)
   }
-  const settings = settingRow?.value ? JSON.parse(settingRow.value) : {}
+  const settingsMap = new Map<string, string>((allSettings || []).map((r: any) => [r.key, r.value]))
+  const settings = settingsMap.get('platform_invoice_settings')
+    ? JSON.parse(settingsMap.get('platform_invoice_settings')!)
+    : {}
   const invoicePrefix: string = settings.invoice_prefix || 'INV-'
   const vatRate: number =
     typeof body.vatRate === 'number' ? body.vatRate : settings.vat_number ? 0.15 : 0
+
+  // International pricing: uplift ZAR rate, then divide by FX rate for USD/EUR
+  const upliftPct = Number(settingsMap.get('saas_intl_uplift_pct') || '50')
+  const fxUsdPerZar = Number(settingsMap.get('saas_fx_usd_per_zar') || '18')
+  const fxEurPerZar = Number(settingsMap.get('saas_fx_eur_per_zar') || '20')
+  const upliftMult = 1 + upliftPct / 100
+  const convert = (zarAmount: number, currency: string) => {
+    const c = (currency || 'ZAR').toUpperCase()
+    if (c === 'ZAR') return zarAmount
+    const rate = c === 'USD' ? fxUsdPerZar : c === 'EUR' ? fxEurPerZar : null
+    if (!rate) return zarAmount // unsupported currency → fall back to ZAR value
+    return (zarAmount * upliftMult) / rate
+  }
 
   if (!settings.company_name && !dryRun) {
     return json(
@@ -78,14 +100,17 @@ Deno.serve(async (req) => {
 
   // 4) Determine invoice recipient per club: prefer clubs.email (tenant billing email),
   //    fall back to the first admin's email on club_members.
+  //    Also fetch each club's currency for international pricing.
   const clubEmails = new Map<string, string>()
+  const clubCurrencies = new Map<string, string>()
   if (clubIds.length) {
     const { data: clubRows } = await supabase
       .from('clubs')
-      .select('id, email')
+      .select('id, email, currency_code')
       .in('id', clubIds)
     for (const c of clubRows || []) {
       if (c.email && String(c.email).trim()) clubEmails.set(c.id, String(c.email).trim())
+      clubCurrencies.set(c.id, (c.currency_code || 'ZAR').toUpperCase())
     }
   }
   const adminEmails = new Map<string, string>()
@@ -130,8 +155,14 @@ Deno.serve(async (req) => {
       const memberCount = memberCounts.get(sub.club_id) ?? sub.member_count ?? 0
       const cap = plan.max_billable_members ? Number(plan.max_billable_members) : null
       const billableMembers = cap && cap > 0 ? Math.min(memberCount, cap) : memberCount
-      const gross = billableMembers * Number(plan.price_per_member)
-      const subtotal = Math.max(gross, Number(plan.minimum_charge || 0))
+
+      // Convert ZAR plan rates to the club's billing currency (adds intl uplift for non-ZAR).
+      const clubCurrency = clubCurrencies.get(sub.club_id) || 'ZAR'
+      const pricePerMemberLocal = +convert(Number(plan.price_per_member), clubCurrency).toFixed(2)
+      const minimumChargeLocal = +convert(Number(plan.minimum_charge || 0), clubCurrency).toFixed(2)
+
+      const gross = billableMembers * pricePerMemberLocal
+      const subtotal = +Math.max(gross, minimumChargeLocal).toFixed(2)
       const vatAmount = +(subtotal * vatRate).toFixed(2)
       const total = +(subtotal + vatAmount).toFixed(2)
 
@@ -154,6 +185,8 @@ Deno.serve(async (req) => {
           club: club?.name,
           invoice_number: invoiceNumber,
           member_count: memberCount,
+          currency: clubCurrency,
+          price_per_member: pricePerMemberLocal,
           subtotal,
           vat: vatAmount,
           total,
@@ -176,11 +209,12 @@ Deno.serve(async (req) => {
           period_start: periodStart.toISOString().slice(0, 10),
           period_end: periodEnd.toISOString().slice(0, 10),
           member_count: billableMembers,
-          price_per_member: plan.price_per_member,
-          minimum_charge: plan.minimum_charge,
+          price_per_member: pricePerMemberLocal,
+          minimum_charge: minimumChargeLocal,
           subtotal,
           vat_amount: vatAmount,
           total,
+          currency: clubCurrency,
           due_date: dueDate.toISOString().slice(0, 10),
           snapshot: settings,
           status: 'issued',
@@ -207,12 +241,12 @@ Deno.serve(async (req) => {
               periodStart: inv.period_start,
               periodEnd: inv.period_end,
               memberCount: billableMembers,
-              pricePerMember: plan.price_per_member,
-              minimumCharge: plan.minimum_charge,
+              pricePerMember: pricePerMemberLocal,
+              minimumCharge: minimumChargeLocal,
               subtotal,
               vatAmount,
               total,
-              currency: 'ZAR',
+              currency: clubCurrency,
               dueDate: inv.due_date,
               companyName: settings.company_name,
               tradingAs: settings.trading_as,

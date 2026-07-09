@@ -2744,6 +2744,8 @@ export type Database = {
           contact_person_name: string | null
           created_at: string
           created_by: string | null
+          currency_code: string
+          currency_symbol: string
           dynamic_court_reflow_enabled: boolean
           email: string | null
           email_disclaimer: string | null
@@ -2822,6 +2824,8 @@ export type Database = {
           contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
+          currency_code?: string
+          currency_symbol?: string
           dynamic_court_reflow_enabled?: boolean
           email?: string | null
           email_disclaimer?: string | null
@@ -2900,6 +2904,8 @@ export type Database = {
           contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
+          currency_code?: string
+          currency_symbol?: string
           dynamic_court_reflow_enabled?: boolean
           email?: string | null
           email_disclaimer?: string | null

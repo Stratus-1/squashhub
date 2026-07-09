@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Upload, X, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CURRENCY_OPTIONS, getCurrencyOption } from "@/lib/currency";
 
 
 
@@ -31,6 +33,8 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     club_captain_member_id: club.club_captain_member_id || "",
     logo_url: club.logo_url || "",
     show_delegates_on_landing: club.show_delegates_on_landing ?? true,
+    currency_code: ((club as any).currency_code || "ZAR") as string,
+    currency_symbol: ((club as any).currency_symbol || "R") as string,
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -163,6 +167,26 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
           <div className="space-y-1"><Label>Email</Label><Input type="email" value={form.email} onChange={set("email")} /></div>
           <div className="space-y-1"><Label>Contact Person Name</Label><Input value={form.contact_person_name} onChange={set("contact_person_name")} placeholder="e.g. John Smith" /></div>
           <div className="space-y-1"><Label>Phone</Label><Input type="tel" value={form.phone} onChange={set("phone")} /></div>
+          <div className="space-y-1">
+            <Label>Currency</Label>
+            <Select
+              value={form.currency_code}
+              onValueChange={(code) => {
+                const opt = getCurrencyOption(code);
+                setForm(p => ({ ...p, currency_code: opt.code, currency_symbol: opt.symbol }));
+              }}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CURRENCY_OPTIONS.map(o => (
+                  <SelectItem key={o.code} value={o.code}>
+                    {o.symbol} — {o.name} ({o.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">All fees, invoices, statements and bar sales will display in this currency.</p>
+          </div>
         </div>
       </Card>
 

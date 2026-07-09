@@ -334,6 +334,8 @@ function AppRoutes() {
       p === "/auth/callback" ||
       p === "/reset-password" ||
       p === "/league" ||
+      p === "/clubs" ||
+
       p === "/terms" ||
       p === "/privacy" ||
       p === "/sla" ||

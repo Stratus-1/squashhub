@@ -151,10 +151,7 @@ export default function StitchOnboardingCard({
         )}
       </div>
 
-      {!sent && !expanded ? null : sent ? (
-
-
-      {sent ? (
+      {(sent || expanded) && (sent ? (
         <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 flex items-start gap-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5" />
           <div className="text-xs">

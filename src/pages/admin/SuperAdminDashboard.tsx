@@ -183,7 +183,6 @@ export default function SuperAdminDashboard() {
           <p className="text-sm text-white/50">No new clubs in the last 30 days.</p>
         )}
       </Card>
-      </Card>
 
       <Card className="bg-[hsl(220_45%_8%/0.85)] border border-white/10 backdrop-blur-md rounded-2xl p-5 text-white">
         <div className="flex items-center justify-between mb-4">

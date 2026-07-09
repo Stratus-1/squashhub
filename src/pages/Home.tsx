@@ -340,6 +340,75 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ─── Technology Upgrade CTA ─── */}
+      <section className="relative overflow-hidden border-y border-border/40">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${featureImg})` }}
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-primary/90 backdrop-blur-sm" />
+        <div className="relative max-w-6xl mx-auto px-4 py-16">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            <div className="space-y-5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white text-xs font-semibold">
+                <Zap className="w-3.5 h-3.5" /> Now is the time to upgrade
+              </div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-white">
+                Convert your club to the latest technology
+              </h2>
+              <p className="text-sm sm:text-base text-white/85 leading-relaxed max-w-xl">
+                Simplified automated court lighting and access control — all through one
+                affordable platform. No separate systems, no complicated wiring, and no
+                massive upfront cost.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  { icon: Lightbulb, text: "Auto court lights that switch on with bookings" },
+                  { icon: ScanFace, text: "Access control that knows who is on court" },
+                  { icon: Check, text: "One simple solution for lights, bookings, and member access" },
+                  { icon: Check, text: "Very affordable compared to traditional court systems" },
+                ].map((item, i) => (
+                  <motion.li
+                    key={item.text}
+                    {...fadeUp}
+                    transition={{ duration: 0.4, delay: i * 0.05 }}
+                    className="flex items-start gap-3 text-sm sm:text-base text-white"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <item.icon className="w-3 h-3 text-white" />
+                    </div>
+                    <span className="text-white/90">{item.text}</span>
+                  </motion.li>
+                ))}
+              </ul>
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <Button size="lg" onClick={() => navigate("/lights")} className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold">
+                  <Zap className="w-4 h-4 mr-1.5" /> Explore Lights & Access
+                </Button>
+                <Button size="lg" onClick={() => navigate("/auth")} variant="outline" className="rounded-full border-white/30 text-white hover:bg-white/10 hover:text-white">
+                  Register Your Club
+                </Button>
+              </div>
+            </div>
+            <motion.div
+              {...fadeUp}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="hidden lg:flex justify-center"
+            >
+              <div className="relative">
+                <div className="absolute inset-0 bg-amber-500/30 blur-3xl rounded-full" />
+                <img
+                  src={shellyImg}
+                  alt="Shelly Pro 4PM smart relay for court lighting"
+                  className="relative w-64 h-64 sm:w-72 sm:h-72 object-contain rounded-2xl bg-white p-4 border border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
+                />
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Features / Manage Everything ─── */}
       <section id="features" className="relative overflow-hidden">
         <div

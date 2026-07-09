@@ -1273,7 +1273,14 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               const memberEntries = (journalEntries || [])
                 .filter((e: any) => e.club_member_id === statementMemberId && e.account === "debtors")
                 .slice()
-                .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                .sort((a: any, b: any) => {
+                  const t = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                  if (t !== 0) return t;
+                  // On ties, post debits (fees raised) before credits (payments) so running balance stays sensible
+                  const aIsDebit = Number(a.debit || 0) > 0 ? 0 : 1;
+                  const bIsDebit = Number(b.debit || 0) > 0 ? 0 : 1;
+                  return aIsDebit - bIsDebit;
+                });
               const billed = memberEntries.reduce((s: number, e: any) => s + Number(e.debit || 0), 0);
               const paid = memberEntries.reduce((s: number, e: any) => s + Number(e.credit || 0), 0);
               const outstanding = billed - paid;

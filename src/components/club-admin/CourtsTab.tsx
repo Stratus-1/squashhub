@@ -289,7 +289,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
           {lightsForm.min_booking_balance !== null && (
             <>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">R</span>
+                <span className="text-xs text-muted-foreground">{currencySymbol}</span>
                 <Input
                   type="number" min={0} step={1}
                   className="h-8 text-xs w-28"

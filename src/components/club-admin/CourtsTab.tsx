@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, AlertCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useClubCurrency } from "@/hooks/use-currency";
 
 const RELAY_DEVICES = [
   { value: "shelly", label: "Shelly", description: "Shelly Cloud smart relays — fully supported" },

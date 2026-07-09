@@ -2297,30 +2297,30 @@ export default function Bookings() {
                 <span className="text-muted-foreground">Currently owing</span>
                 <span className="font-medium">
                   {topUpPrompt.currentOwing >= 0
-                    ? `R${topUpPrompt.currentOwing.toFixed(2)}`
-                    : `-R${Math.abs(topUpPrompt.currentOwing).toFixed(2)} (credit)`}
+                    ? money(topUpPrompt.currentOwing)
+                    : `-${money(Math.abs(topUpPrompt.currentOwing))} (credit)`}
                 </span>
               </div>
               {topUpPrompt.planAllowedDebt > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Outstanding membership allowed</span>
-                  <span className="font-medium">R{topUpPrompt.planAllowedDebt.toFixed(2)}</span>
+                  <span className="font-medium">{money(topUpPrompt.planAllowedDebt)}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Booking buffer required</span>
-                <span className="font-medium">R{topUpPrompt.requiredBuffer.toFixed(2)}</span>
+                <span className="font-medium">{money(topUpPrompt.requiredBuffer)}</span>
               </div>
               <div className="flex justify-between pt-1 border-t">
                 <span className="text-muted-foreground">Minimum balance</span>
                 <span className="font-medium">
-                  -R{Math.max(0, topUpPrompt.planAllowedDebt - topUpPrompt.requiredBuffer).toFixed(2)}
+                  -{money(Math.max(0, topUpPrompt.planAllowedDebt - topUpPrompt.requiredBuffer))}
                 </span>
               </div>
               <div className="flex justify-between pt-1 border-t">
                 <span className="font-semibold">Please top up</span>
                 <span className="font-bold text-destructive">
-                  R{topUpPrompt.shortfall.toFixed(2)}
+                  {money(topUpPrompt.shortfall)}
                 </span>
               </div>
             </div>

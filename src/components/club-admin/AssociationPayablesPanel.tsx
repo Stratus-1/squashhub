@@ -401,11 +401,10 @@ function GenerateDialog({
 
       const unitWord = basisUnit(fee.basis) + (units === 1 ? "" : "s");
       const desc = `Affiliation: ${fee.payee_name} – ${seasonLabel} (${units} ${unitWord})`;
-      const { error: jErr } = await fromExt("club_journal_entries").insert([
-        { club_id: clubId, journal_ref: journalRef, account: "national_body_expense", debit: total, credit: 0, description: desc },
-        { club_id: clubId, journal_ref: journalRef, account: "association_payable", debit: 0, credit: total, description: desc },
-      ]);
-      if (jErr) throw jErr;
+      await postJournal(clubId, [
+        { account: "national_body_expense", debit: total, description: desc },
+        { account: "association_payable", credit: total, description: desc },
+      ], { ref: journalRef });
 
       toast.success(`Payable raised: R${total.toFixed(2)} (${units} ${unitWord})`);
       onCreated();

@@ -719,16 +719,29 @@ export default function BellsMarker() {
               <Button onClick={resetAll} variant="outline" className="gap-1">
                 <RotateCcw className="w-4 h-4" /> Reset
               </Button>
-              {!finished && (
-                <Button
-                  onClick={() => setNoShowOpen(true)}
-                  variant="outline"
-                  className="gap-1 border-amber-500 text-amber-700 hover:bg-amber-50 dark:text-amber-400"
-                >
-                  <UserX className="w-4 h-4" /> No show / Injured
-                </Button>
-              )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Player pulled out / injured — prominent, always available */}
+        <Card className="border-amber-500/60 bg-amber-50/60 dark:bg-amber-950/20">
+          <CardContent className="p-3 flex items-center justify-between gap-3">
+            <div className="flex items-start gap-2 min-w-0">
+              <UserX className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-tight">Player pulled out?</p>
+                <p className="text-[11px] text-muted-foreground leading-tight">
+                  Mark no show / injured to award the forfeit points.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setNoShowOpen(true)}
+              size="sm"
+              className="gap-1 bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+            >
+              <UserX className="w-4 h-4" /> No show
+            </Button>
           </CardContent>
         </Card>
 

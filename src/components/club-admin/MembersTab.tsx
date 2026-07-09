@@ -156,6 +156,7 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   onToggle: (feeId: string, paid: boolean) => void;
   onCreateFee: (fee: ExpectedFee) => void;
 }) {
+  const { symbol: cur } = useClubCurrency();
   if (fees.length === 0) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
   const total = fees.reduce((s, f) => s + f.amount, 0);
   const totalPaid = fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
@@ -178,7 +179,7 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
             />
           )}
           <span className="truncate max-w-[100px]">{f.fee_label}</span>
-          <span className="text-muted-foreground">R{f.amount}</span>
+          <span className="text-muted-foreground">{cur}{f.amount}</span>
           {f.existing?.paid ? (
             <CheckCircle2 className="w-2.5 h-2.5 text-green-600 shrink-0" />
           ) : (
@@ -187,7 +188,7 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
         </div>
       ))}
       <span className={`text-[10px] font-semibold ml-auto ${allPaid ? "text-green-600" : "text-destructive"}`}>
-        R{totalPaid} / R{total}
+        {cur}{totalPaid} / {cur}{total}
       </span>
     </div>
   );

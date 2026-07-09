@@ -151,44 +151,31 @@ function computeClubPayableFees(
     .map(p => ({ fee_type: p.fee_type, fee_label: p.fee_label, amount: p.amount, existing: p }));
 }
 
-function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
+function MemberPaymentStatus({ fees, glBilled, glPaid }: {
   fees: ExpectedFee[];
-  onToggle: (feeId: string, paid: boolean) => void;
-  onCreateFee: (fee: ExpectedFee) => void;
+  /** Actual debtors billed for this member (sum of debit on debtors GL). */
+  glBilled?: number;
+  /** Actual payments received against debtors (sum of credit on debtors GL). */
+  glPaid?: number;
 }) {
-  
-  if (fees.length === 0) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
-  const total = fees.reduce((s, f) => s + f.amount, 0);
-  const totalPaid = fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
-  const allPaid = totalPaid === total;
+  if (fees.length === 0 && !glBilled) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
+  const feeTotal = fees.reduce((s, f) => s + f.amount, 0);
+  // Prefer real GL numbers so this matches the Member Statement exactly.
+  // Fall back to fee-row totals if no GL activity yet.
+  const total = glBilled && glBilled > 0 ? glBilled : feeTotal;
+  const paid = typeof glPaid === "number" ? glPaid : 0;
+  const outstanding = total - paid;
+  const allPaid = outstanding <= 0.01;
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {fees.map((f, i) => (
         <div key={i} className="flex items-center gap-1 text-[10px]">
-          {f.existing ? (
-            <Checkbox
-              checked={f.existing.paid}
-              onCheckedChange={(v) => onToggle(f.existing!.id, !!v)}
-              className="h-3 w-3"
-            />
-          ) : (
-            <Checkbox
-              checked={false}
-              onCheckedChange={() => onCreateFee(f)}
-              className="h-3 w-3"
-            />
-          )}
-          <span className="truncate max-w-[100px]">{f.fee_label}</span>
+          <span className="truncate max-w-[140px]">{f.fee_label}</span>
           <span className="text-muted-foreground">{f.amount}</span>
-          {f.existing?.paid ? (
-            <CheckCircle2 className="w-2.5 h-2.5 text-green-600 shrink-0" />
-          ) : (
-            <XCircle className="w-2.5 h-2.5 text-destructive shrink-0" />
-          )}
         </div>
       ))}
-      <span className={`text-[10px] font-semibold ml-auto ${allPaid ? "text-green-600" : "text-destructive"}`}>
-        {totalPaid} / {total}
+      <span className={`text-[10px] font-semibold ml-auto tabular-nums ${allPaid ? "text-green-600" : "text-destructive"}`}>
+        {paid.toFixed(0)} / {total.toFixed(0)}
       </span>
     </div>
   );

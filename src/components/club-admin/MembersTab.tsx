@@ -151,44 +151,31 @@ function computeClubPayableFees(
     .map(p => ({ fee_type: p.fee_type, fee_label: p.fee_label, amount: p.amount, existing: p }));
 }
 
-function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
+function MemberPaymentStatus({ fees, glBilled, glPaid }: {
   fees: ExpectedFee[];
-  onToggle: (feeId: string, paid: boolean) => void;
-  onCreateFee: (fee: ExpectedFee) => void;
+  /** Actual debtors billed for this member (sum of debit on debtors GL). */
+  glBilled?: number;
+  /** Actual payments received against debtors (sum of credit on debtors GL). */
+  glPaid?: number;
 }) {
-  
-  if (fees.length === 0) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
-  const total = fees.reduce((s, f) => s + f.amount, 0);
-  const totalPaid = fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
-  const allPaid = totalPaid === total;
+  if (fees.length === 0 && !glBilled) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
+  const feeTotal = fees.reduce((s, f) => s + f.amount, 0);
+  // Prefer real GL numbers so this matches the Member Statement exactly.
+  // Fall back to fee-row totals if no GL activity yet.
+  const total = glBilled && glBilled > 0 ? glBilled : feeTotal;
+  const paid = typeof glPaid === "number" ? glPaid : 0;
+  const outstanding = total - paid;
+  const allPaid = outstanding <= 0.01;
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {fees.map((f, i) => (
         <div key={i} className="flex items-center gap-1 text-[10px]">
-          {f.existing ? (
-            <Checkbox
-              checked={f.existing.paid}
-              onCheckedChange={(v) => onToggle(f.existing!.id, !!v)}
-              className="h-3 w-3"
-            />
-          ) : (
-            <Checkbox
-              checked={false}
-              onCheckedChange={() => onCreateFee(f)}
-              className="h-3 w-3"
-            />
-          )}
-          <span className="truncate max-w-[100px]">{f.fee_label}</span>
+          <span className="truncate max-w-[140px]">{f.fee_label}</span>
           <span className="text-muted-foreground">{f.amount}</span>
-          {f.existing?.paid ? (
-            <CheckCircle2 className="w-2.5 h-2.5 text-green-600 shrink-0" />
-          ) : (
-            <XCircle className="w-2.5 h-2.5 text-destructive shrink-0" />
-          )}
         </div>
       ))}
-      <span className={`text-[10px] font-semibold ml-auto ${allPaid ? "text-green-600" : "text-destructive"}`}>
-        {totalPaid} / {total}
+      <span className={`text-[10px] font-semibold ml-auto tabular-nums ${allPaid ? "text-green-600" : "text-destructive"}`}>
+        {paid.toFixed(0)} / {total.toFixed(0)}
       </span>
     </div>
   );
@@ -205,16 +192,16 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, isSuperAdmin }: {
+function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, isSuperAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
+  glBilled?: number;
+  glPaid?: number;
   delegateTitle?: string | null;
   affiliations: AffiliationBadgeInfo[];
   onEdit: () => void;
   onDelete: () => void;
-  onTogglePaid: (feeId: string, paid: boolean) => void;
-  onCreateFee: (fee: ExpectedFee, clubMemberId: string) => void;
   onToggleAdmin: () => void;
   onAssignNumber?: (member: ClubMember) => void;
   numberLabel?: string;
@@ -332,12 +319,12 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
       </div>
 
-      {/* Row 3: Fees receivable from member */}
-      {fees.length > 0 && (
+      {/* Row 3: Fees receivable from member — totals reflect the GL / member statement */}
+      {(fees.length > 0 || (glBilled ?? 0) > 0) && (
         <div className="border-t border-border pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-medium text-muted-foreground shrink-0">Fees payable by the member:</span>
-            <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
+            <MemberPaymentStatus fees={fees} glBilled={glBilled} glPaid={glPaid} />
           </div>
         </div>
       )}
@@ -347,7 +334,7 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
         <div className="border-t border-dashed border-border pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-medium text-muted-foreground shrink-0">Fees payable by the club:</span>
-            <MemberPaymentStatus fees={payableFees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
+            <MemberPaymentStatus fees={payableFees} />
           </div>
         </div>
       )}
@@ -443,6 +430,30 @@ export function MembersTab({ clubId }: { clubId: string }) {
     affiliationsByMember.set(k, list);
   }
 
+
+  // Aggregate debtors GL activity per member so the card totals match the
+  // Member Statement exactly (billed = Dr on debtors, paid = Cr on debtors).
+  const { data: glByMember = new Map<string, { billed: number; paid: number }>() } = useQuery({
+    queryKey: ["club-member-debtors-gl", clubId, memberIds.join(",")],
+    enabled: memberIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_journal_entries")
+        .select("club_member_id, debit, credit, account")
+        .eq("club_id", clubId)
+        .eq("account", "debtors")
+        .in("club_member_id", memberIds);
+      if (error) throw error;
+      const map = new Map<string, { billed: number; paid: number }>();
+      for (const r of (data || []) as any[]) {
+        if (!r.club_member_id) continue;
+        const cur = map.get(r.club_member_id) || { billed: 0, paid: 0 };
+        cur.billed += Number(r.debit || 0);
+        cur.paid += Number(r.credit || 0);
+        map.set(r.club_member_id, cur);
+      }
+      return map;
+    },
+  });
 
   const getFeesForMember = (member: ClubMember) => {
     return computeExpectedFees(member, feeCategories, associations, nationalFees, feeDueMonth, feePayments);
@@ -972,12 +983,12 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     member={m}
                     fees={getFeesForMember(m)}
                     payableFees={computeClubPayableFees(m, feePayments)}
+                    glBilled={glByMember.get(m.id)?.billed}
+                    glPaid={glByMember.get(m.id)?.paid}
                     delegateTitle={getDelegateTitle(m.id)}
                     affiliations={affiliationsByMember.get(m.id) || []}
                     onEdit={() => setEditMember(m)}
                     onDelete={() => handleDelete(m.id)}
-                    onTogglePaid={handleTogglePaid}
-                    onCreateFee={handleCreateFee}
                     onToggleAdmin={() => handleToggleAdmin(m)}
                     onAssignNumber={handleAssignNumber}
                     numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}

@@ -428,202 +428,47 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Directory ─── */}
-      <section id="clubs" className="max-w-6xl mx-auto px-4 py-20 space-y-14">
-        {tenantsLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          </div>
-        ) : (
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Live Clubs */}
-            <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-              <CardContent className="p-6 sm:p-8 space-y-5">
-                <div>
-                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-white">
-                    Live Clubs
-                  </h3>
-                  <p className="text-sm text-white/60 mt-1">
-                    Clubs fully set up on SquashHub. Sign in via their portal.
-                  </p>
-                </div>
-                {liveClubs.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Building2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">No clubs are fully live yet.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {liveClubs.slice(0, 3).map((t) => (
-                      <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} />
-                    ))}
-                  </div>
-                )}
-                {liveClubs.length > 3 && (
-                  <Button
-                    className="w-full rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
-                    onClick={() => scrollTo("all-clubs")}
-                  >
-                    View More Clubs
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* NSA Clubs (not yet administratively live) */}
-            <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-amber-400/40 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-              <CardContent className="p-6 sm:p-8 space-y-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-white">
-                      NSA Clubs
-                    </h3>
-                    <p className="text-sm text-white/70 mt-1">
-                      NSA-affiliated clubs not yet fully set up. NSA players can register now with their NSF number.
-                    </p>
-                  </div>
-                  <Trophy className="w-6 h-6 text-amber-400 flex-shrink-0" />
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => navigate("/league")}
-                  className="w-full rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold"
-                >
-                  NSA Members Register Here
-                </Button>
-                {nsaClubs.length === 0 ? (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-white/60">No NSA clubs imported yet.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {nsaClubs.slice(0, 3).map((t) => (
-                      <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} nsaMode />
-                    ))}
-                  </div>
-                )}
-                {nsaClubs.length > 3 && (
-                  <Button
-                    className="w-full rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
-                    onClick={() => scrollTo("all-clubs")}
-                  >
-                    View All NSA Clubs
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Associations */}
-            <Card className="lg:col-span-2 bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-              <CardContent className="p-6 sm:p-8 space-y-5">
-                <div>
-                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-white">
-                    Leagues & Associations
-                  </h3>
-                  <p className="text-sm text-white/60 mt-1">
-                    Regional &amp; national squash bodies on SquashHub.
-                  </p>
-                </div>
-                {associations.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Landmark className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">No associations registered yet.</p>
-                  </div>
-                ) : (
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {associations.slice(0, 6).map((t) => (
-                      <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Landmark} />
-                    ))}
-                  </div>
-                )}
-                {associations.length > 6 && (
-                  <Button
-                    className="w-full rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
-                    onClick={() => scrollTo("all-clubs")}
-                  >
-                    View More
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Full directory expanded */}
-        {(liveClubs.length > 3 || nsaClubs.length > 3 || associations.length > 6) && (
-          <div id="all-clubs" className="space-y-10 pt-6">
-            {liveClubs.length > 3 && (
-              <div>
-                <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight mb-4 text-foreground">
-                  All Live Clubs
-                </h3>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {liveClubs.map((t) => (
-                    <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} />
-                  ))}
-                </div>
+      {/* ─── Directory CTA (full list lives on /clubs) ─── */}
+      <section id="clubs" className="max-w-6xl mx-auto px-4 py-16">
+        <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
+          <CardContent className="p-6 sm:p-10 flex flex-col md:flex-row md:items-center gap-6">
+            <div className="flex-1 space-y-3">
+              <h2 className="text-xl sm:text-2xl font-extrabold font-heading uppercase tracking-tight text-white">
+                Listed Clubs & Associations
+              </h2>
+              <p className="text-sm text-white/70 max-w-xl">
+                Browse every club, NSA-affiliated club, and league association on SquashHub. Find your club to sign in, or register as an NSA player.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs">
+                  {tenantsLoading ? "…" : liveClubs.length} Live Clubs
+                </span>
+                <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-100 text-xs">
+                  {tenantsLoading ? "…" : nsaClubs.length} NSA Clubs
+                </span>
+                <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs">
+                  {tenantsLoading ? "…" : associations.length} Associations
+                </span>
               </div>
-            )}
-            {(nsaClubs.length > 3 || nonNsaClubs.length > 3) && (
-              <div className="grid lg:grid-cols-2 gap-8">
-                {nsaClubs.length > 3 && (
-                  <div>
-                    <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-                      <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
-                        All NSA Clubs
-                      </h3>
-                      <Button
-                        size="sm"
-                        onClick={() => navigate("/league")}
-                        className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold"
-                      >
-                        <Trophy className="w-3.5 h-3.5 mr-1" /> NSA Members Register Here
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      These clubs are listed from NSA but not yet administratively live on SquashHub. Clicking a club will take you to the league self-signup page.
-                    </p>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      {nsaClubs.map((t) => (
-                        <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} nsaMode />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {nonNsaClubs.length > 3 && (
-                  <div>
-                    <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-                      <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
-                        Non-NSA Clubs
-                      </h3>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Independent clubs running on SquashHub outside the NSA roster. Sign in via their portal.
-                    </p>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      {nonNsaClubs.map((t) => (
-                        <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {associations.length > 6 && (
-              <div>
-                <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight mb-4 text-foreground">
-                  All Leagues & Associations
-                </h3>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {associations.map((t) => (
-                    <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Landmark} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+            <div className="flex flex-col gap-2 md:min-w-[220px]">
+              <Button
+                onClick={() => navigate("/clubs")}
+                className="rounded-full bg-white text-primary hover:bg-white/90 font-semibold"
+              >
+                Browse All Clubs <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+              <Button
+                onClick={() => navigate("/league")}
+                className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold"
+              >
+                <Trophy className="w-4 h-4 mr-1" /> NSA Player? Register
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </section>
+
 
       {/* ─── Pricing ─── */}
       <section id="pricing" className="bg-card/40 border-y border-border/40">

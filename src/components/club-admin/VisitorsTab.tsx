@@ -544,7 +544,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
               <p className="text-[10px] text-muted-foreground">Charged per booking made by a visitor. Set to 0 for free.</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <span className="text-xs text-muted-foreground">R</span>
+              <span className="text-xs text-muted-foreground">{currencySymbol}</span>
               <Input
                 id="visitor-fee"
                 type="number"

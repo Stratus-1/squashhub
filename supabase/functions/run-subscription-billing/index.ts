@@ -24,19 +24,41 @@ Deno.serve(async (req) => {
   const dryRun = !!body.dryRun
   const billingDate = body.billingDate ? new Date(body.billingDate) : new Date()
 
-  // 1) Load platform invoice settings
-  const { data: settingRow, error: settingErr } = await supabase
+  // 1) Load platform invoice settings + international pricing config
+  const { data: allSettings, error: settingErr } = await supabase
     .from('app_settings')
-    .select('value')
-    .eq('key', 'platform_invoice_settings')
-    .maybeSingle()
+    .select('key, value')
+    .in('key', [
+      'platform_invoice_settings',
+      'saas_rate_zar_monthly',
+      'saas_rate_zar_annual',
+      'saas_intl_uplift_pct',
+      'saas_fx_usd_per_zar',
+      'saas_fx_eur_per_zar',
+    ])
   if (settingErr && settingErr.code !== 'PGRST116') {
     return json({ error: `Failed to load invoice settings: ${settingErr.message}` }, 500)
   }
-  const settings = settingRow?.value ? JSON.parse(settingRow.value) : {}
+  const settingsMap = new Map<string, string>((allSettings || []).map((r: any) => [r.key, r.value]))
+  const settings = settingsMap.get('platform_invoice_settings')
+    ? JSON.parse(settingsMap.get('platform_invoice_settings')!)
+    : {}
   const invoicePrefix: string = settings.invoice_prefix || 'INV-'
   const vatRate: number =
     typeof body.vatRate === 'number' ? body.vatRate : settings.vat_number ? 0.15 : 0
+
+  // International pricing: uplift ZAR rate, then divide by FX rate for USD/EUR
+  const upliftPct = Number(settingsMap.get('saas_intl_uplift_pct') || '50')
+  const fxUsdPerZar = Number(settingsMap.get('saas_fx_usd_per_zar') || '18')
+  const fxEurPerZar = Number(settingsMap.get('saas_fx_eur_per_zar') || '20')
+  const upliftMult = 1 + upliftPct / 100
+  const convert = (zarAmount: number, currency: string) => {
+    const c = (currency || 'ZAR').toUpperCase()
+    if (c === 'ZAR') return zarAmount
+    const rate = c === 'USD' ? fxUsdPerZar : c === 'EUR' ? fxEurPerZar : null
+    if (!rate) return zarAmount // unsupported currency → fall back to ZAR value
+    return (zarAmount * upliftMult) / rate
+  }
 
   if (!settings.company_name && !dryRun) {
     return json(

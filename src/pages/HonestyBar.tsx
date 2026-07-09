@@ -327,7 +327,7 @@ export default function HonestyBar() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-sm font-medium">R{entry.total.toFixed(2)}</span>
+                      <span className="text-sm font-medium">{money(entry.total)}</span>
                       <Badge variant="secondary" className="text-[10px]">On account</Badge>
                     </div>
                   </Card>

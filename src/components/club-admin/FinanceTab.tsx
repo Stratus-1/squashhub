@@ -1218,15 +1218,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         if (o) queryClient.invalidateQueries({ queryKey: ["club-journal-entries", clubId] });
       }}>
 
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] max-w-5xl min-h-[80vh] max-h-[95vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-0">
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" /> Member Statement
             </DialogTitle>
             <DialogDescription>Select a member to view their account statement.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col flex-1 min-h-0 px-6 pb-6 pt-3">
+            <div className="flex items-center gap-2 shrink-0">
               <div className="relative flex-1" ref={memberSearchRef}>
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground z-10" />
                 <Input
@@ -1237,7 +1237,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   className="pl-8 h-9 text-xs"
                 />
                 {memberDropdownOpen && (
-                  <div className="absolute z-[100] left-0 right-0 top-full mt-1 bg-popover border rounded-md shadow-xl max-h-[60vh] overflow-y-auto overscroll-contain">
+                  <div className="absolute z-[100] left-0 right-0 top-full mt-1 bg-popover border rounded-md shadow-xl max-h-[50vh] overflow-y-auto overscroll-contain">
                     {(members || [])
                       .slice()
                       .filter((m: any) => {
@@ -1305,96 +1305,100 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
 
             {!statementMemberId ? (
-              <p className="text-sm text-muted-foreground">Select a member to view their statement.</p>
-            ) : (() => {
-              const memberEntries = (journalEntries || [])
-                .filter((e: any) => e.club_member_id === statementMemberId && e.account === "debtors")
-                .slice()
-                .sort((a: any, b: any) => {
-                  const t = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-                  if (t !== 0) return t;
-                  // On ties, post debits (fees raised) before credits (payments) so running balance stays sensible
-                  const aIsDebit = Number(a.debit || 0) > 0 ? 0 : 1;
-                  const bIsDebit = Number(b.debit || 0) > 0 ? 0 : 1;
-                  return aIsDebit - bIsDebit;
-                });
-              const billed = memberEntries.reduce((s: number, e: any) => s + Number(e.debit || 0), 0);
-              const paid = memberEntries.reduce((s: number, e: any) => s + Number(e.credit || 0), 0);
-              const outstanding = billed - paid;
-              let running = 0;
-              const rowsDesc = memberEntries
-                .map((e: any) => {
-                  running += Number(e.debit || 0) - Number(e.credit || 0);
-                  return { ...e, running };
-                })
-                .reverse();
+              <p className="text-sm text-muted-foreground mt-3">Select a member to view their statement.</p>
+            ) : (
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-3 mt-3 pr-1">
+                {(() => {
+                  const memberEntries = (journalEntries || [])
+                    .filter((e: any) => e.club_member_id === statementMemberId && e.account === "debtors")
+                    .slice()
+                    .sort((a: any, b: any) => {
+                      const t = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                      if (t !== 0) return t;
+                      // On ties, post debits (fees raised) before credits (payments) so running balance stays sensible
+                      const aIsDebit = Number(a.debit || 0) > 0 ? 0 : 1;
+                      const bIsDebit = Number(b.debit || 0) > 0 ? 0 : 1;
+                      return aIsDebit - bIsDebit;
+                    });
+                  const billed = memberEntries.reduce((s: number, e: any) => s + Number(e.debit || 0), 0);
+                  const paid = memberEntries.reduce((s: number, e: any) => s + Number(e.credit || 0), 0);
+                  const outstanding = billed - paid;
+                  let running = 0;
+                  const rowsDesc = memberEntries
+                    .map((e: any) => {
+                      running += Number(e.debit || 0) - Number(e.credit || 0);
+                      return { ...e, running };
+                    })
+                    .reverse();
 
-              return (
-                <>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Card className="p-2">
-                      <p className="text-[10px] text-muted-foreground">Total Billed</p>
-                      <p className="text-sm font-bold text-destructive tabular-nums">{billed.toFixed(2)}</p>
-                    </Card>
-                    <Card className="p-2">
-                      <p className="text-[10px] text-muted-foreground">Total Paid</p>
-                      <p className="text-sm font-bold text-green-600 tabular-nums">{paid.toFixed(2)}</p>
-                    </Card>
-                    <Card className="p-2">
-                      <p className="text-[10px] text-muted-foreground">Outstanding Balance</p>
-                      <p className={cn("text-sm font-bold tabular-nums", outstanding > 0.01 ? "text-destructive" : outstanding < -0.01 ? "text-green-600" : "text-muted-foreground")}>
-                        {outstanding.toFixed(2)} {outstanding < -0.01 ? "Cr" : ""}
-                      </p>
-                    </Card>
-                  </div>
-
-                  {memberEntries.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No transactions for this member.</p>
-                  ) : (
-                    <div className="overflow-hidden border rounded-lg">
-                      <div className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        <span>Date</span>
-                        <span>Description</span>
-                        <span>Account</span>
-                        <span className="text-right">Debit</span>
-                        <span className="text-right">Credit</span>
-                        <span className="text-right">Balance</span>
-                        <span />
+                  return (
+                    <>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Card className="p-2">
+                          <p className="text-[10px] text-muted-foreground">Total Billed</p>
+                          <p className="text-sm font-bold text-destructive tabular-nums">{billed.toFixed(2)}</p>
+                        </Card>
+                        <Card className="p-2">
+                          <p className="text-[10px] text-muted-foreground">Total Paid</p>
+                          <p className="text-sm font-bold text-green-600 tabular-nums">{paid.toFixed(2)}</p>
+                        </Card>
+                        <Card className="p-2">
+                          <p className="text-[10px] text-muted-foreground">Outstanding Balance</p>
+                          <p className={cn("text-sm font-bold tabular-nums", outstanding > 0.01 ? "text-destructive" : outstanding < -0.01 ? "text-green-600" : "text-muted-foreground")}>
+                            {outstanding.toFixed(2)} {outstanding < -0.01 ? "Cr" : ""}
+                          </p>
+                        </Card>
                       </div>
-                      <div className="divide-y max-h-[400px] overflow-y-auto">
-                        {rowsDesc.map((entry: any) => (
-                          <div key={entry.id} className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
-                            <span className="text-[10px] text-muted-foreground tabular-nums">
-                              {format(new Date(entry.created_at), "dd MMM yy")}
-                            </span>
-                            <p className="truncate font-medium">{entry.description}</p>
-                            <Badge variant="outline" className="text-[10px] w-fit">
-                              {getLabel(entry.account)}
-                            </Badge>
-                            <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-destructive font-medium")}>
-                              {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
-                            </span>
-                            <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
-                              {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
-                            </span>
-                            <span className={cn("text-right tabular-nums font-medium",
-                              entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"
-                            )}>
-                              {entry.running.toFixed(2)}
-                            </span>
-                            <RowActionMenu entry={entry} />
+
+                      {memberEntries.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No transactions for this member.</p>
+                      ) : (
+                        <div className="overflow-hidden border rounded-lg">
+                          <div className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            <span>Date</span>
+                            <span>Description</span>
+                            <span>Account</span>
+                            <span className="text-right">Debit</span>
+                            <span className="text-right">Credit</span>
+                            <span className="text-right">Balance</span>
+                            <span />
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <p className="text-[10px] text-muted-foreground">
-                    Use the ⋯ menu on any row to <strong>Reverse</strong> (audit-safe) or <strong>Delete</strong> the transaction. Both the debit and credit legs are updated together so the books stay balanced.
-                  </p>
+                          <div className="divide-y">
+                            {rowsDesc.map((entry: any) => (
+                              <div key={entry.id} className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
+                                <span className="text-[10px] text-muted-foreground tabular-nums">
+                                  {format(new Date(entry.created_at), "dd MMM yy")}
+                                </span>
+                                <p className="truncate font-medium">{entry.description}</p>
+                                <Badge variant="outline" className="text-[10px] w-fit">
+                                  {getLabel(entry.account)}
+                                </Badge>
+                                <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-destructive font-medium")}>
+                                  {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
+                                </span>
+                                <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-green-600 font-medium")}>
+                                  {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
+                                </span>
+                                <span className={cn("text-right tabular-nums font-medium",
+                                  entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"
+                                )}>
+                                  {entry.running.toFixed(2)}
+                                </span>
+                                <RowActionMenu entry={entry} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">
+                        Use the ⋯ menu on any row to <strong>Reverse</strong> (audit-safe) or <strong>Delete</strong> the transaction. Both the debit and credit legs are updated together so the books stay balanced.
+                      </p>
 
-                </>
-              );
-            })()}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

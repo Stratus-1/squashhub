@@ -172,6 +172,53 @@ export default function SuperAdminSubscriptions() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // --- International SaaS pricing & FX rates ---
+  useQuery({
+    queryKey: ["sa-intl-pricing-settings"],
+    queryFn: async () => {
+      const keys = [
+        "saas_rate_zar_monthly", "saas_rate_zar_annual", "saas_intl_uplift_pct",
+        "saas_fx_usd_per_zar", "saas_fx_eur_per_zar",
+        "saas_fx_locked_at", "saas_fx_review_due",
+      ];
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("key, value")
+        .in("key", keys);
+      if (error) throw error;
+      const map = new Map<string, string>((data || []).map((r: any) => [r.key, r.value]));
+      const parsed = {
+        saas_rate_zar_monthly: map.get("saas_rate_zar_monthly") || "6",
+        saas_rate_zar_annual: map.get("saas_rate_zar_annual") || "5",
+        saas_intl_uplift_pct: map.get("saas_intl_uplift_pct") || "50",
+        saas_fx_usd_per_zar: map.get("saas_fx_usd_per_zar") || "18",
+        saas_fx_eur_per_zar: map.get("saas_fx_eur_per_zar") || "20",
+        saas_fx_locked_at: map.get("saas_fx_locked_at") || "",
+        saas_fx_review_due: map.get("saas_fx_review_due") || "",
+      };
+      setIntlForm(parsed);
+      setIntlDirty(false);
+      return parsed;
+    },
+  });
+
+  const saveIntlSettings = useMutation({
+    mutationFn: async (val: typeof intlForm) => {
+      const rows = Object.entries(val).map(([key, value]) => ({ key, value: String(value ?? "") }));
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert(rows, { onConflict: "key" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("International pricing saved — takes effect on next billing run");
+      setIntlDirty(false);
+      qc.invalidateQueries({ queryKey: ["sa-intl-pricing-settings"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
   // --- Platform Stitch Express credentials (private key in app_settings) ---
   useQuery({
     queryKey: ["sa-platform-stitch"],

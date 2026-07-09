@@ -151,7 +151,7 @@ export default function StitchOnboardingCard({
         )}
       </div>
 
-      {!sent && !expanded ? null : (<>
+      {!sent && !expanded ? null : sent ? (
 
 
       {sent ? (

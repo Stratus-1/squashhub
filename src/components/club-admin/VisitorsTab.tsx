@@ -12,6 +12,7 @@ import { Loader2, Trash2, Search, Pencil, UserPlus, Settings2, Plus, X, DoorOpen
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyClub } from "@/hooks/use-club";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
 
 interface Visitor {

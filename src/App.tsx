@@ -27,6 +27,8 @@ import { LiveSessionBanner } from "@/components/LiveSessionBanner";
 
 import { ClubBrandedBackground } from "@/components/ClubBrandedBackground";
 import Home from "./pages/Home";
+import Clubs from "./pages/Clubs";
+
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
 import Ladder from "./pages/Ladder";

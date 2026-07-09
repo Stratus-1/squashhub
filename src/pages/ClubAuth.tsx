@@ -99,15 +99,45 @@ export default function ClubAuth() {
 
   // Storage key for pending Google-visitor completion (survives OAuth round-trip).
   const pendingVisitorKey = `sh.pending_visitor_registration.${club?.id || "unknown"}`;
+  // A pending visitor payload is only honoured for a short window after the
+  // Google OAuth round-trip. Anything older is a stale abandoned attempt and
+  // must NOT keep pushing the user back into the Visitor tab (that was
+  // trapping brand-new users into visitor registrations by mistake).
+  const PENDING_VISITOR_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  const readFreshPendingVisitor = (key: string): any | null => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const savedAt = Number(parsed?.saved_at || 0);
+      if (!savedAt || Date.now() - savedAt > PENDING_VISITOR_TTL_MS) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      return parsed;
+    } catch {
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
+      return null;
+    }
+  };
+
+  // Purge any stale pending-visitor payloads on mount so an abandoned attempt
+  // from a previous session doesn't silently redirect the user back into the
+  // Visitor tab (root cause of "signs me up as a visitor by accident").
+  useEffect(() => {
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("sh.pending_visitor_registration."))
+        .forEach((k) => { readFreshPendingVisitor(k); });
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // If user just returned from Google OAuth and had a pending visitor payload
   // for THIS club, prefill/complete their visitor registration now.
   useEffect(() => {
     if (!user || !club?.id) return;
-    const raw = localStorage.getItem(pendingVisitorKey);
-    if (!raw) return;
-    let payload: any = null;
-    try { payload = JSON.parse(raw); } catch { localStorage.removeItem(pendingVisitorKey); return; }
+    const payload = readFreshPendingVisitor(pendingVisitorKey);
     if (!payload || payload.club_id !== club.id) return;
 
     // Prefill visitor form from Google identity + any details captured pre-OAuth.
@@ -152,11 +182,12 @@ export default function ClubAuth() {
   // Redirect if already logged in — unless a Google-visitor completion is
   // pending, OR the caller explicitly asked us to stay so the user can
   // register as a visitor (Dashboard redirect for foreign-club members).
-  const hasPendingVisitor = !!(club?.id && typeof window !== "undefined" && localStorage.getItem(pendingVisitorKey));
+  const hasPendingVisitor = !!(club?.id && typeof window !== "undefined" && readFreshPendingVisitor(pendingVisitorKey));
   const visitorIntent =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("intent") === "visitor";
   if (user && !hasPendingVisitor && !visitorDone && !visitorIntent) return <Navigate to="/" replace />;
+
 
   const clubName = club?.name || "Club";
 

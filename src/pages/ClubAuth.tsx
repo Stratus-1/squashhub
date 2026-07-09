@@ -737,6 +737,7 @@ export default function ClubAuth() {
       home_club_name: homeClub,
       member_number: visitorMemberNumber.trim() || null,
       category: visitorCategory,
+      saved_at: Date.now(),
     };
     localStorage.setItem(pendingVisitorKey, JSON.stringify(payload));
 

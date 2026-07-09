@@ -645,6 +645,7 @@ export default function Home() {
               icon={Building2}
               title="Clubs"
               priceLabel="From R5"
+              intlLabel="≈ $0.42 USD  •  €0.38 EUR"
               perks={["All features included", "Billed only on active members", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
@@ -652,6 +653,7 @@ export default function Home() {
               icon={Landmark}
               title="Associations"
               priceLabel="From R2"
+              intlLabel="≈ $0.17 USD  •  €0.15 EUR"
               perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
@@ -824,12 +826,14 @@ function PricingCard({
   icon: Icon,
   title,
   priceLabel,
+  intlLabel,
   perks,
   onGetStarted,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   priceLabel: string;
+  intlLabel?: string;
   perks: string[];
   onGetStarted?: () => void;
 }) {
@@ -847,6 +851,9 @@ function PricingCard({
             <span className="text-3xl font-bold font-heading text-white">{priceLabel}</span>
             <span className="text-sm text-white/60">/ member per month</span>
           </div>
+          {intlLabel && (
+            <p className="text-xs text-white/70 mt-1 font-medium">{intlLabel}</p>
+          )}
           <p className="text-xs text-white/50 mt-1">
             From September 2026
           </p>

@@ -389,7 +389,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
                   </div>
                   {lightsForm.light_fee_per_hour > 0 && (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">R</span>
+                      <span className="text-xs text-muted-foreground">{currencySymbol}</span>
                       <Input
                         type="number" min={1} step={1}
                         className="h-8 text-xs"

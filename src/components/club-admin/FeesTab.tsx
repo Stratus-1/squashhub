@@ -351,6 +351,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
   const isEdit = !!existing;
   const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? (isAssociation ? "league_affiliation" : "membership"));
   const qc = useQueryClient();
+  const { symbol: currencySymbol } = useClubCurrency();
 
   const [name, setName] = useState(() => {
     if (!existing) return "";

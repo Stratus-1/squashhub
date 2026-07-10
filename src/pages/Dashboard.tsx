@@ -911,6 +911,12 @@ export default function Dashboard() {
         </motion.div>
       )}
 
+      {/* Club at-a-glance stats */}
+      <div className="px-4 mt-4 space-y-3">
+        <ClubStatsCard clubId={clubId} />
+        <ClubSetsPlayedCard clubId={clubId} />
+      </div>
+
       {/* My Upcoming Bookings */}
       <motion.div
         className="px-4 mt-4"

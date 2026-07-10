@@ -1546,15 +1546,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                           >
                             <span className="truncate font-medium">{r.name}</span>
                             <span className="text-right tabular-nums text-destructive">
-                              {r.debtors > 0.01 ? `R${r.debtors.toFixed(2)}` : ""}
+                              {r.debtors > 0.01 ? money(r.debtors) : ""}
                             </span>
                             <span className="text-right tabular-nums text-green-600">
-                              {r.credits > 0.01 ? `R${r.credits.toFixed(2)}` : ""}
+                              {r.credits > 0.01 ? money(r.credits) : ""}
                             </span>
                             <span className={cn("text-right tabular-nums font-bold",
                               r.net > 0.01 ? "text-destructive" : r.net < -0.01 ? "text-green-600" : "text-muted-foreground"
                             )}>
-                              {Math.abs(r.net).toFixed(2)} {r.net < -0.01 ? "Cr" : ""}
+                              {money(Math.abs(r.net))} {r.net < -0.01 ? "Cr" : ""}
                             </span>
                           </button>
                         ))}

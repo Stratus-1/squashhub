@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
+import { useClubCurrency } from "@/hooks/use-currency";
 
 interface BarItem {
   id: string;
@@ -58,6 +59,7 @@ const CATEGORIES = [
 ];
 
 export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) {
+  const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const updateClub = useUpdateClub();
   const { data: members = [] } = useClubMembers(clubId);
@@ -176,11 +178,11 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                     <div className="min-w-0">
                       <p className="font-medium truncate">{p.supplier || "Supplier"} {p.invoice_number ? `#${p.invoice_number}` : ""}</p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {p.quantity}× {p.bar_items?.name || "Item"} @ {Number(p.unit_cost).toFixed(2)} · {format(new Date(p.created_at), "dd MMM yyyy")}
+                        {p.quantity}× {p.bar_items?.name || "Item"} @ {money(Number(p.unit_cost))} · {format(new Date(p.created_at), "dd MMM yyyy")}
                         {p.payment_method ? ` · ${p.payment_method}` : ""}
                       </p>
                     </div>
-                    <Badge variant="secondary" className="text-xs">{Number(p.total_cost).toFixed(2)}</Badge>
+                    <Badge variant="secondary" className="text-xs">{money(Number(p.total_cost))}</Badge>
                   </div>
                 ))}
               </div>
@@ -207,7 +209,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                             {e.quantity}× {(e.bar_items as any)?.name || "Item"} · {format(new Date(e.created_at), "dd MMM HH:mm")}
                           </p>
                         </div>
-                        <Badge variant="secondary" className="text-xs">{e.total.toFixed(2)}</Badge>
+                        <Badge variant="secondary" className="text-xs">{money(e.total)}</Badge>
                       </div>
                     ))}
                   </div>
@@ -244,7 +246,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                           {s.recorder?.name ? ` · ${s.recorder.name}` : ""}
                         </p>
                       </div>
-                      <Badge variant="secondary" className="text-xs">{Number(s.total).toFixed(2)}</Badge>
+                      <Badge variant="secondary" className="text-xs">{money(Number(s.total))}</Badge>
                     </div>
                   ))}
                 </div>
@@ -266,6 +268,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
 /* ─── Item Manager with edit support ─── */
 function ItemManager({ clubId, items, loading }: { clubId: string; items: BarItem[]; loading: boolean }) {
+  const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
@@ -457,9 +460,9 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
                   {item.name}
                 </div>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                  <span className="text-xs text-muted-foreground">{item.price.toFixed(2)}</span>
+                  <span className="text-xs text-muted-foreground">{money(item.price)}</span>
                   {item.cost_price > 0 && (
-                    <span className="text-xs text-muted-foreground">(cost {item.cost_price.toFixed(2)})</span>
+                    <span className="text-xs text-muted-foreground">(cost {money(item.cost_price)})</span>
                   )}
                   {isOutOfStock ? (
                     <Badge variant="destructive" className="text-[10px] gap-0.5">
@@ -507,6 +510,7 @@ interface InvoiceLine {
 }
 
 function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }) {
+  const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -556,7 +560,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
       const { error } = await fromExt("bar_stock_purchases").insert(purchases);
       if (error) throw error;
 
-      toast.success(`Invoice recorded — R${invoiceTotal.toFixed(2)} across ${validLines.length} item(s)`);
+      toast.success(`Invoice recorded — ${money(invoiceTotal)} across ${validLines.length} item(s)`);
       setOpen(false);
       setInvoiceNumber("");
       setSupplier("");
@@ -682,7 +686,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
                       </div>
                       <div className="text-xs text-right font-medium pb-1">
                         {idx === 0 && <Label className="text-[10px] text-muted-foreground block">Total</Label>}
-                        {lineTotal.toFixed(2)}
+                        {money(lineTotal)}
                       </div>
                       <div>
                         {lines.length > 1 && (
@@ -699,7 +703,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
 
             {/* Invoice total */}
             <div className="flex justify-end border-t pt-3">
-              <span className="text-sm font-semibold">Invoice Total: {invoiceTotal.toFixed(2)}</span>
+              <span className="text-sm font-semibold">Invoice Total: {money(invoiceTotal)}</span>
             </div>
 
             <Button className="w-full" onClick={handleSubmit} disabled={submitting}>
@@ -715,6 +719,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
 
 /* ─── Admin Add Charge ─── */
 function AdminAddCharge({ clubId, items, members }: { clubId: string; items: BarItem[]; members: any[] }) {
+  const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const [memberId, setMemberId] = useState("");
   const [itemId, setItemId] = useState("");
@@ -764,7 +769,7 @@ function AdminAddCharge({ clubId, items, members }: { clubId: string; items: Bar
           <SelectContent>
             {activeItems.map(i => (
               <SelectItem key={i.id} value={i.id}>
-                {i.name} — {i.price.toFixed(2)}
+                {i.name} — {money(i.price)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -777,7 +782,7 @@ function AdminAddCharge({ clubId, items, members }: { clubId: string; items: Bar
           placeholder="Qty"
         />
         <Button onClick={handleAdd} disabled={!memberId || !itemId}>
-          Add Charge{selectedItem ? ` (R${(selectedItem.price * quantity).toFixed(2)})` : ""}
+          Add Charge{selectedItem ? ` (${money(selectedItem.price * quantity)})` : ""}
         </Button>
       </div>
     </Card>

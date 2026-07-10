@@ -14,6 +14,7 @@ import { Building2, Plus, CheckCircle2, Clock, Wallet, XCircle, Users } from "lu
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/friendly-error";
+import { useClubCurrency } from "@/hooks/use-currency";
 
 interface Props { clubId: string }
 
@@ -53,6 +54,7 @@ const basisLabel = (b: Basis) => b === "per_member" ? "Per member" : b === "per_
 const basisUnit = (b: Basis) => b === "per_member" ? "member" : b === "per_team" ? "team" : "club";
 
 export function AssociationPayablesPanel({ clubId }: Props) {
+  const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const [generateFee, setGenerateFee] = useState<PayableFee | null>(null);
   const [settleBatch, setSettleBatch] = useState<BatchRow | null>(null);
@@ -129,14 +131,14 @@ export function AssociationPayablesPanel({ clubId }: Props) {
                   <Badge variant="secondary" className="text-[10px] mt-1">{basisLabel(f.basis)}</Badge>
                 </div>
                 <Badge variant="outline" className="text-[10px] whitespace-nowrap">
-                  {f.amount.toFixed(2)} / {basisUnit(f.basis)}
+                  {money(f.amount)} / {basisUnit(f.basis)}
                 </Badge>
               </div>
               <div className="flex items-center gap-2 text-[11px]">
                 <Wallet className="w-3 h-3 text-muted-foreground" />
                 <span className="text-muted-foreground">Outstanding:</span>
                 <span className={outstandingByFee[f.id] ? "text-destructive font-semibold tabular-nums" : "tabular-nums"}>
-                  {(outstandingByFee[f.id] || 0).toFixed(2)}
+                  {money(outstandingByFee[f.id] || 0)}
                 </span>
               </div>
               <Button size="sm" className="w-full gap-1.5 h-8" onClick={() => setGenerateFee(f)}>
@@ -179,7 +181,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
                       <TableCell className="text-xs">{b.basis ? basisLabel(b.basis as Basis) : "—"}</TableCell>
                       <TableCell className="text-xs">{b.season_label}</TableCell>
                       <TableCell className="text-xs text-right tabular-nums">{b.member_count}</TableCell>
-                      <TableCell className="text-xs text-right tabular-nums">{Number(b.total_amount).toFixed(2)}</TableCell>
+                      <TableCell className="text-xs text-right tabular-nums">{money(Number(b.total_amount))}</TableCell>
                       <TableCell>
                         {b.status === "pending" && <Badge variant="outline" className="text-[10px] gap-1"><Clock className="w-3 h-3" /> Pending</Badge>}
                         {b.status === "paid" && <Badge className="text-[10px] gap-1 bg-green-600"><CheckCircle2 className="w-3 h-3" /> Paid</Badge>}
@@ -257,6 +259,7 @@ function GenerateDialog({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { format: money } = useClubCurrency();
   const defaultSeason = String(new Date().getFullYear());
   const [seasonLabel, setSeasonLabel] = useState(defaultSeason);
   const [submitting, setSubmitting] = useState(false);
@@ -406,7 +409,7 @@ function GenerateDialog({
         { account: "association_payable", credit: total, description: desc },
       ], { ref: journalRef });
 
-      toast.success(`Payable raised: R${total.toFixed(2)} (${units} ${unitWord})`);
+      toast.success(`Payable raised: ${money(total)} (${units} ${unitWord})`);
       onCreated();
     } catch (err: any) {
       const f = friendlyError(err);
@@ -422,9 +425,9 @@ function GenerateDialog({
         <DialogHeader>
           <DialogTitle>Generate payable — {fee.payee_name}</DialogTitle>
           <DialogDescription>
-            {isPerMember && `R${fee.amount.toFixed(2)} per member. Select members covered by this payable.`}
-            {isPerTeam && `R${fee.amount.toFixed(2)} per team entered into the league.`}
-            {isPerClub && `Flat club-level fee of R${fee.amount.toFixed(2)}.`}
+            {isPerMember && `${money(fee.amount)} per member. Select members covered by this payable.`}
+            {isPerTeam && `${money(fee.amount)} per team entered into the league.`}
+            {isPerClub && `Flat club-level fee of ${money(fee.amount)}.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -440,7 +443,7 @@ function GenerateDialog({
               </span>{" "}
               <span className="font-semibold tabular-nums">{units}</span>
             </div>
-            <div><span className="text-muted-foreground text-xs">Total:</span> <span className="font-bold tabular-nums">{total.toFixed(2)}</span></div>
+            <div><span className="text-muted-foreground text-xs">Total:</span> <span className="font-bold tabular-nums">{money(total)}</span></div>
           </div>
         </div>
 
@@ -457,14 +460,14 @@ function GenerateDialog({
             <p className="text-[11px] text-muted-foreground">
               Auto-detected <span className="font-semibold">{autoTeamCount}</span> team{autoTeamCount === 1 ? "" : "s"} entered into linked leagues — edit if different.
               <br />
-              {fee.amount.toFixed(2)} × {teams} = {total.toFixed(2)}.
+              {money(fee.amount)} × {teams} = {money(total)}.
             </p>
           </div>
         )}
 
         {isPerClub && (
           <div className="border rounded-md p-4 text-xs text-muted-foreground">
-            This is a flat per-club fee. Total: <span className="font-semibold text-foreground">{total.toFixed(2)}</span>.
+            This is a flat per-club fee. Total: <span className="font-semibold text-foreground">{money(total)}</span>.
           </div>
         )}
 
@@ -505,7 +508,7 @@ function GenerateDialog({
                       <TableCell className="text-xs">{m.member_number || "—"}</TableCell>
                       <TableCell className="text-xs">{m.name}</TableCell>
                       <TableCell className="text-xs">{m.league_number || "—"}</TableCell>
-                      <TableCell className="text-xs text-right tabular-nums">{fee.amount.toFixed(2)}</TableCell>
+                      <TableCell className="text-xs text-right tabular-nums">{money(fee.amount)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -517,7 +520,7 @@ function GenerateDialog({
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button onClick={create} disabled={submitting || units === 0}>
-            {submitting ? "Creating…" : `Create payable batch — R${total.toFixed(2)}`}
+            {submitting ? "Creating…" : `Create payable batch — ${money(total)}`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -535,6 +538,7 @@ function SettleDialog({
   onClose: () => void;
   onSettled: () => void;
 }) {
+  const { format: money } = useClubCurrency();
   const [paidAmount, setPaidAmount] = useState(String(Number(batch.total_amount).toFixed(2)));
   const [paymentRef, setPaymentRef] = useState("");
   const [method, setMethod] = useState<"bank" | "cash">("bank");
@@ -587,7 +591,7 @@ function SettleDialog({
         <DialogHeader>
           <DialogTitle>Settle batch — {fee?.payee_name}</DialogTitle>
           <DialogDescription>
-            {batch.member_count} {batch.basis ? basisUnit(batch.basis as Basis) + (batch.member_count === 1 ? "" : "s") : "units"} · {batch.season_label} · Total {Number(batch.total_amount).toFixed(2)}
+            {batch.member_count} {batch.basis ? basisUnit(batch.basis as Basis) + (batch.member_count === 1 ? "" : "s") : "units"} · {batch.season_label} · Total {money(Number(batch.total_amount))}
           </DialogDescription>
         </DialogHeader>
 

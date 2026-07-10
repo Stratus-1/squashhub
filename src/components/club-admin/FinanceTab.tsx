@@ -11,6 +11,7 @@ import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { postJournal } from "@/lib/post-journal";
 import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote } from "lucide-react";
 import { format } from "date-fns";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { useState, useRef, useEffect, type ReactNode, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
@@ -93,6 +94,7 @@ const getLabel = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount]?.l
 const getMeta = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount];
 
 export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
+  const { format: money } = useClubCurrency();
   const queryClient = useQueryClient();
   const { data: members } = useClubMembers(clubId);
   const [accountFilter, setAccountFilter] = useState<string>("all");
@@ -440,7 +442,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     const legs = (journalEntries || []).filter((e: any) => e.journal_ref === ref);
     if (legs.length === 0) return "";
     return legs.map((l: any) =>
-      `${Number(l.debit) > 0 ? "Dr" : "Cr"} ${getLabel(l.account)} R${(Number(l.debit) || Number(l.credit)).toFixed(2)}`
+      `${Number(l.debit) > 0 ? "Dr" : "Cr"} ${getLabel(l.account)} ${money(Number(l.debit) || Number(l.credit))}`
     ).join("  ·  ");
   };
 
@@ -613,28 +615,28 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Income</p>
           <p className="text-xl font-bold tabular-nums text-green-600">
-            {totalIncome.toFixed(2)}
+            {money(totalIncome)}
           </p>
           <p className="text-[10px] text-muted-foreground">Revenue received</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Expenses</p>
           <p className={cn("text-xl font-bold tabular-nums", totalExpenses > 0 ? "text-destructive" : "text-muted-foreground")}>
-            {totalExpenses.toFixed(2)}
+            {money(totalExpenses)}
           </p>
           <p className="text-[10px] text-muted-foreground">Costs paid</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Bank</p>
           <p className={cn("text-xl font-bold tabular-nums", bankBalance >= 0 ? "text-green-600" : "text-destructive")}>
-            {bankBalance.toFixed(2)}
+            {money(bankBalance)}
           </p>
           <p className="text-[10px] text-muted-foreground">Current account</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Cash</p>
           <p className={cn("text-xl font-bold tabular-nums", cashBalance >= 0 ? "text-green-600" : "text-destructive")}>
-            {cashBalance.toFixed(2)}
+            {money(cashBalance)}
           </p>
           <p className="text-[10px] text-muted-foreground">Petty cash</p>
         </Card>
@@ -806,10 +808,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                           {getLabel(entry.account)}
                         </Badge>
                         <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-green-600 font-medium")}>
-                          {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
+                          {Number(entry.debit) > 0 ? money(Number(entry.debit)) : ""}
                         </span>
                         <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-destructive font-medium")}>
-                          {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
+                          {Number(entry.credit) > 0 ? money(Number(entry.credit)) : ""}
                         </span>
                         <RowActionMenu entry={entry} />
                       </div>
@@ -865,8 +867,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <>
                   <div className="grid grid-cols-3 gap-2">
                     <Card className="p-2"><p className="text-[10px] text-muted-foreground">Account</p><p className="text-sm font-semibold">{getLabel(accountFilter)}</p></Card>
-                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Debit</p><p className="text-sm font-semibold text-green-600 tabular-nums">{totalDebit.toFixed(2)}</p></Card>
-                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Credit</p><p className="text-sm font-semibold text-destructive tabular-nums">{totalCredit.toFixed(2)}</p></Card>
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Debit</p><p className="text-sm font-semibold text-green-600 tabular-nums">{money(totalDebit)}</p></Card>
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Credit</p><p className="text-sm font-semibold text-destructive tabular-nums">{money(totalCredit)}</p></Card>
                   </div>
                   <div className="overflow-hidden border rounded-lg">
                     <div className="grid grid-cols-[1fr_80px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -885,10 +887,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                             </p>
                           </div>
                           <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-green-600 font-medium")}>
-                            {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
+                            {Number(entry.debit) > 0 ? money(Number(entry.debit)) : ""}
                           </span>
                           <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-destructive font-medium")}>
-                            {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
+                            {Number(entry.credit) > 0 ? money(Number(entry.credit)) : ""}
                           </span>
                         </div>
                       ))}
@@ -920,7 +922,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <div className="space-y-0.5">
                       <div className="font-medium text-sm">{getMemberName(tx.club_member_id)}</div>
                       <div className="text-xs text-muted-foreground">
-                        {Number(tx.amount).toFixed(2)} via {tx.method?.toUpperCase() || "EFT"}
+                        {money(Number(tx.amount))} via {tx.method?.toUpperCase() || "EFT"}
                         {tx.reference && <> · Ref: {tx.reference}</>}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -969,8 +971,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <Badge variant="outline" className={cn("text-[10px] w-fit", categoryColor[meta.category])}>
                       {meta.category}
                     </Badge>
-                    <span className="text-right tabular-nums font-medium text-xs">{bal.debit.toFixed(2)}</span>
-                    <span className="text-right tabular-nums font-medium text-xs">{bal.credit.toFixed(2)}</span>
+                    <span className="text-right tabular-nums font-medium text-xs">{money(bal.debit)}</span>
+                    <span className="text-right tabular-nums font-medium text-xs">{money(bal.credit)}</span>
                   </div>
                 );
               })}
@@ -981,8 +983,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <div className="grid grid-cols-[1fr_80px_90px_90px] gap-1 px-3 py-2.5 text-sm items-center bg-muted/40 font-bold border-t-2">
                     <span>Total</span>
                     <span />
-                    <span className="text-right tabular-nums">{totalDebit.toFixed(2)}</span>
-                    <span className="text-right tabular-nums">{totalCredit.toFixed(2)}</span>
+                    <span className="text-right tabular-nums">{money(totalDebit)}</span>
+                    <span className="text-right tabular-nums">{money(totalCredit)}</span>
                   </div>
                 );
               })()}
@@ -1030,7 +1032,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                           balance > 0 ? (meta.category === "Expense" ? "text-destructive" : "text-green-600") :
                           balance < 0 ? "text-destructive" : "text-muted-foreground"
                         )}>
-                          {Math.abs(balance).toFixed(2)}
+                          {money(Math.abs(balance))}
                           {balance < 0 ? " Cr" : balance > 0 ? " Dr" : ""}
                         </span>
                       </div>
@@ -1104,7 +1106,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <Input type="number" step="0.01" min="0" placeholder="0.00" value={txAmount} onChange={e => setTxAmount(e.target.value)} className="h-9 text-xs" />
               {txMethod === "card" && txAmount && parseFloat(txAmount) > 0 && (
                 <p className="text-[10px] text-amber-600 mt-1">
-                  + {(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)} gateway fee (3.5%) will be auto-charged
+                  + {money(parseFloat(txAmount) * GATEWAY_FEE_RATE)} gateway fee (3.5%) will be auto-charged
                 </p>
               )}
             </div>
@@ -1144,19 +1146,19 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <p className="font-semibold text-foreground text-xs">GL Preview:</p>
                   {txDirection === "income" ? (
                     <>
-                      <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} {parseFloat(txAmount).toFixed(2)}</p>
-                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getLabel(txAccount)} {parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} {money(parseFloat(txAmount))}</p>
+                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getLabel(txAccount)} {money(parseFloat(txAmount))}</p>
                     </>
                   ) : (
                     <>
-                      <p>• Debit {getLabel(txAccount)} {parseFloat(txAmount).toFixed(2)}</p>
-                      <p>• Credit {txMethod === "cash" ? "Cash" : "Current Account"} {parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Debit {getLabel(txAccount)} {money(parseFloat(txAmount))}</p>
+                      <p>• Credit {txMethod === "cash" ? "Cash" : "Current Account"} {money(parseFloat(txAmount))}</p>
                     </>
                   )}
                   {txMethod === "card" && (
                     <>
-                      <p>• Debit Gateway Fees {(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
-                      <p>• Credit Current Account {(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
+                      <p>• Debit Gateway Fees {money(parseFloat(txAmount) * GATEWAY_FEE_RATE)}</p>
+                      <p>• Credit Current Account {money(parseFloat(txAmount) * GATEWAY_FEE_RATE)}</p>
                     </>
                   )}
                 </div>
@@ -1168,7 +1170,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <div className="mt-2 p-2 rounded border border-amber-500/40 bg-amber-500/10 text-[11px] text-amber-900 dark:text-amber-200 flex gap-2">
                     <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <div>
-                      <p className="font-semibold">This member has {outstanding.toFixed(2)} in unpaid fees.</p>
+                      <p className="font-semibold">This member has {money(outstanding)} in unpaid fees.</p>
                       <p className="mt-0.5">
                         Rather mark the specific fee paid in <strong>Members → Fees</strong> so it links to the invoice.
                         A free-form payment here posts a second Cr Debtors leg that will double-count when the fee row is later toggled paid.
@@ -1380,16 +1382,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                       <div className="grid grid-cols-3 gap-2">
                         <Card className="p-2">
                           <p className="text-[10px] text-muted-foreground">Total Billed</p>
-                          <p className="text-sm font-bold text-destructive tabular-nums">{billed.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-destructive tabular-nums">{money(billed)}</p>
                         </Card>
                         <Card className="p-2">
                           <p className="text-[10px] text-muted-foreground">Total Paid</p>
-                          <p className="text-sm font-bold text-green-600 tabular-nums">{paid.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-green-600 tabular-nums">{money(paid)}</p>
                         </Card>
                         <Card className="p-2">
                           <p className="text-[10px] text-muted-foreground">Outstanding Balance</p>
                           <p className={cn("text-sm font-bold tabular-nums", outstanding > 0.01 ? "text-destructive" : outstanding < -0.01 ? "text-green-600" : "text-muted-foreground")}>
-                            {outstanding.toFixed(2)} {outstanding < -0.01 ? "Cr" : ""}
+                            {money(outstanding)} {outstanding < -0.01 ? "Cr" : ""}
                           </p>
                         </Card>
                       </div>
@@ -1418,15 +1420,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                                   {getLabel(entry.account)}
                                 </Badge>
                                 <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-green-600 font-medium")}>
-                                  {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
+                                  {Number(entry.debit) > 0 ? money(Number(entry.debit)) : ""}
                                 </span>
                                 <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-destructive font-medium")}>
-                                  {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
+                                  {Number(entry.credit) > 0 ? money(Number(entry.credit)) : ""}
                                 </span>
                                 <span className={cn("text-right tabular-nums font-medium",
                                   entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"
                                 )}>
-                                  {entry.running.toFixed(2)}
+                                  {money(entry.running)}
                                 </span>
                                 <RowActionMenu entry={entry} />
                               </div>
@@ -1517,7 +1519,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <Card className="p-2">
                       <p className="text-[10px] text-muted-foreground">Total {balancesFilter === "credit" ? "Credit" : "Outstanding"}</p>
                       <p className={cn("text-sm font-bold tabular-nums", total > 0.01 ? "text-destructive" : total < -0.01 ? "text-green-600" : "text-muted-foreground")}>
-                        {Math.abs(total).toFixed(2)} {total < -0.01 ? "Cr" : ""}
+                        {money(Math.abs(total))} {total < -0.01 ? "Cr" : ""}
                       </p>
                     </Card>
                     <Card className="p-2">
@@ -1544,15 +1546,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                           >
                             <span className="truncate font-medium">{r.name}</span>
                             <span className="text-right tabular-nums text-destructive">
-                              {r.debtors > 0.01 ? `R${r.debtors.toFixed(2)}` : ""}
+                              {r.debtors > 0.01 ? money(r.debtors) : ""}
                             </span>
                             <span className="text-right tabular-nums text-green-600">
-                              {r.credits > 0.01 ? `R${r.credits.toFixed(2)}` : ""}
+                              {r.credits > 0.01 ? money(r.credits) : ""}
                             </span>
                             <span className={cn("text-right tabular-nums font-bold",
                               r.net > 0.01 ? "text-destructive" : r.net < -0.01 ? "text-green-600" : "text-muted-foreground"
                             )}>
-                              {Math.abs(r.net).toFixed(2)} {r.net < -0.01 ? "Cr" : ""}
+                              {money(Math.abs(r.net))} {r.net < -0.01 ? "Cr" : ""}
                             </span>
                           </button>
                         ))}
@@ -1651,7 +1653,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                         <SelectLabel className="text-[10px]">{group}</SelectLabel>
                         {items.map(o => (
                           <SelectItem key={o.key} value={o.key} className="text-xs">
-                            {o.label} <span className="text-muted-foreground">— {o.amount.toFixed(2)}</span>
+                            {o.label} <span className="text-muted-foreground">— {money(o.amount)}</span>
                           </SelectItem>
                         ))}
                       </SelectGroup>
@@ -1736,8 +1738,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             {billAmount && parseFloat(billAmount) > 0 && (
               <div className="p-2 rounded bg-muted/60 text-[10px] space-y-0.5">
                 <p className="font-semibold text-foreground text-xs">GL Preview:</p>
-                <p>• Debit Accounts Receivable {parseFloat(billAmount).toFixed(2)}</p>
-                <p>• Credit {getLabel(billIncome)} {parseFloat(billAmount).toFixed(2)}</p>
+                <p>• Debit Accounts Receivable {money(parseFloat(billAmount))}</p>
+                <p>• Credit {getLabel(billIncome)} {money(parseFloat(billAmount))}</p>
               </div>
             )}
           </div>

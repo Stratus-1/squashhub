@@ -32,7 +32,10 @@ interface Props {
   champ: any;
   allMatches: any[];
   getName: (memberId: string | null | undefined) => string;
+  /** Called after the forfeit has been persisted (and any cascade prompt closed). */
+  onApplied?: () => void;
 }
+
 
 /**
  * Mark a tournament match as a No Show / Injured forfeit.

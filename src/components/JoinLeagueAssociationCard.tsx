@@ -43,7 +43,7 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
   const [selections, setSelections] = useState<Record<string, LeagueSelection>>({});
   const [dismissed, setDismissed] = useState<boolean>(false);
   // Re-read dismissal when active member changes
-  useMemo(() => {
+  useEffect(() => {
     if (typeof window === "undefined" || !activeMember?.id) { setDismissed(false); return; }
     try { setDismissed(localStorage.getItem(dismissKey(activeMember.id)) === "1"); } catch { /* ignore */ }
   }, [activeMember?.id]);

@@ -3366,7 +3366,151 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               )}
             </div>
 
+            {scoringMode !== "time_capped_points" && (
+              <div className="max-w-xs">
+                <Label className="text-sm">Match Duration (slot per game)</Label>
+                <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
+                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
+                    <SelectItem value="20">20 min</SelectItem>
+                    <SelectItem value="30">30 min</SelectItem>
+                    <SelectItem value="45">45 min</SelectItem>
+                    <SelectItem value="60">60 min</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  How long one game occupies a court — drives the capacity calculator below.
+                </p>
+              </div>
+            )}
+
+            {/* Capacity calculator — moved here so admins can size the tournament before picking players. */}
+            <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setShowCapacity((v) => !v)}
+                >
+                  {showCapacity ? "Hide capacity" : "Calculate capacity"}
+                </Button>
+                <span className="text-[11px] text-muted-foreground">
+                  How many games &amp; {isDoubles ? "pairs" : "players"} fit in the selected dates, times &amp; courts.
+                </span>
+              </div>
+
+              {showCapacity && (() => {
+                const parseHM = (s: string) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+                type CapSession = { date: string; minutes: number; courts: number };
+                let capSessions: CapSession[] = [];
+                if (customizeDailySchedule && daySchedules.length > 0) {
+                  capSessions = daySchedules
+                    .map((d) => {
+                      const cs = (d.court_ids && d.court_ids.length > 0
+                        ? d.court_ids.filter((id) => selectedCourtIds.has(id))
+                        : Array.from(selectedCourtIds));
+                      return { date: d.date, minutes: parseHM(d.end_time) - parseHM(d.start_time), courts: cs.length };
+                    })
+                    .filter((s) => s.minutes > 0 && s.courts > 0);
+                } else if (startDate && endDate && playDays.size > 0 && selectedCourtIds.size > 0) {
+                  const dates = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) })
+                    .filter((d) => playDays.has(getDay(d)));
+                  const mins = parseHM(endTime) - parseHM(startTime);
+                  capSessions = dates.map((d) => ({ date: format(d, "yyyy-MM-dd"), minutes: mins, courts: selectedCourtIds.size }));
+                }
+                const totalCourtMin = capSessions.reduce((a, s) => a + Math.max(0, s.minutes) * s.courts, 0);
+                const tH = Math.floor(totalCourtMin / 60);
+                const tM = totalCourtMin % 60;
+                const maxEntitiesFor = (G: number) => Math.max(0, Math.floor((1 + Math.sqrt(1 + 8 * G)) / 2));
+                const courtsUsed = capSessions.reduce((a, s) => Math.max(a, s.courts), 0);
+                const groupCount = Math.max(1, numGroups || 1);
+                const leagues = Array.from({ length: groupCount }, (_, i) => i + 1);
+                const sharedSlot = Number(groupDurations["1"]) || matchDuration || 20;
+                const canParallel = groupCount > 1 && courtsUsed >= groupCount && roundFormat !== "cross_league";
+                const effectiveParallel = parallelLeagues && canParallel;
+                const perLeague = leagues.map((gn) => {
+                  const slot = roundFormat === "cross_league"
+                    ? sharedSlot
+                    : (Number(groupDurations[String(gn)]) || matchDuration || 20);
+                  const games = capSessions.reduce((a, s) => {
+                    const leagueCourts = effectiveParallel
+                      ? Math.floor(s.courts / groupCount) + (gn <= (s.courts % groupCount) ? 1 : 0)
+                      : s.courts;
+                    return a + Math.floor(s.minutes / slot) * leagueCourts;
+                  }, 0);
+                  const maxEntities = maxEntitiesFor(games);
+                  const maxPlayers = isDoubles ? maxEntities * 2 : maxEntities;
+                  const groupItems = (groups as any[])[gn - 1] || [];
+                  const actualEntities = groupItems.length;
+                  const actualPlayers = isDoubles ? actualEntities * 2 : actualEntities;
+                  const gamesNeeded = actualEntities > 1 ? (actualEntities * (actualEntities - 1)) / 2 : 0;
+                  const fits = gamesNeeded <= games;
+                  return { gn, slot, games, maxEntities, maxPlayers, actualEntities, actualPlayers, gamesNeeded, fits };
+                });
+                const sessionsCount = capSessions.length;
+                const needsSlot = (!matchDuration || matchDuration <= 0) && scoringMode !== "time_capped_points";
+                return (
+                  <div className="mt-1 rounded-lg border p-3 bg-background text-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="font-medium text-sm">Capacity ({isDoubles ? "doubles" : "singles"}, round-robin)</div>
+                      {canParallel && (
+                        <label className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={parallelLeagues}
+                            onChange={(e) => setParallelLeagues(e.target.checked)}
+                            className="h-3 w-3"
+                          />
+                          Run leagues in parallel (split courts)
+                        </label>
+                      )}
+                    </div>
+                    {needsSlot && (
+                      <div className="text-amber-700 dark:text-amber-400">Pick a Match Duration above to see capacity.</div>
+                    )}
+                    <div className="text-muted-foreground">
+                      {sessionsCount} session{sessionsCount === 1 ? "" : "s"} · up to {courtsUsed} court{courtsUsed === 1 ? "" : "s"} · {tH}h {tM}m total court-time
+                      {effectiveParallel && <> · courts split across {groupCount} leagues</>}
+                    </div>
+                    {!needsSlot && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {perLeague.map(({ gn, slot, games, maxPlayers, maxEntities, actualPlayers, actualEntities, gamesNeeded, fits }) => (
+                          <div key={gn} className={`flex flex-col gap-0.5 p-1.5 rounded border ${actualEntities > 0 && !fits ? "bg-destructive/10 border-destructive/40" : "bg-muted/30"}`}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium w-16">League {gn}</span>
+                              <span className="text-muted-foreground">{slot} min/slot</span>
+                              <span className="ml-auto">
+                                {actualEntities > 0 ? (
+                                  <><strong>{actualPlayers}</strong> player{actualPlayers === 1 ? "" : "s"}{isDoubles && <> (<strong>{actualEntities}</strong> pairs)</>}</>
+                                ) : (
+                                  <>up to <strong>{maxPlayers}</strong> players{isDoubles && <> (<strong>{maxEntities}</strong> pairs)</>}</>
+                                )}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-muted-foreground pl-[4.5rem]">
+                              {actualEntities > 0 ? (
+                                <>needs {gamesNeeded} game{gamesNeeded === 1 ? "" : "s"} · {games} available {fits ? "✓" : `· short by ${gamesNeeded - games}`}</>
+                              ) : (
+                                <>fits {games} game{games === 1 ? "" : "s"} · capacity for full round-robin</>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="text-[11px] text-muted-foreground">
+                      Round-robin: each {isDoubles ? "pair" : "player"} plays every other once ({isDoubles ? "P·(P−1)/2" : "N·(N−1)/2"} games). {effectiveParallel ? "Parallel mode divides available courts across leagues (remainder assigned to earlier leagues)." : "Per-league figures assume that league has access to all selected courts for the full duration."}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
             <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="space-y-0.5">
                   <p className="text-sm font-medium">Book the courts now</p>

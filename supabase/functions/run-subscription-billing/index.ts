@@ -106,16 +106,19 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 4) Determine invoice recipient per club: prefer clubs.email (tenant billing email),
-  //    fall back to the first admin's email on club_members.
+  // 4) Determine invoice recipient + billing currency per club: prefer clubs.email
+  //    (tenant billing email), fall back to the first admin's email. Currency comes
+  //    from clubs.currency_code (default ZAR).
   const clubEmails = new Map<string, string>()
+  const clubCurrencies = new Map<string, string>()
   if (clubIds.length) {
     const { data: clubRows } = await supabase
       .from('clubs')
-      .select('id, email')
+      .select('id, email, currency_code')
       .in('id', clubIds)
     for (const c of clubRows || []) {
       if (c.email && String(c.email).trim()) clubEmails.set(c.id, String(c.email).trim())
+      clubCurrencies.set(c.id, String((c as any).currency_code || 'ZAR').toUpperCase())
     }
   }
   const adminEmails = new Map<string, string>()

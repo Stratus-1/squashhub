@@ -3475,6 +3475,38 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       {sessionsCount} session{sessionsCount === 1 ? "" : "s"} · up to {courtsUsed} court{courtsUsed === 1 ? "" : "s"} · {tH}h {tM}m total court-time
                       {effectiveParallel && <> · courts split across {groupCount} leagues</>}
                     </div>
+                    {!needsSlot && (() => {
+                      const totalMaxEntities = perLeague.reduce((a, l) => a + l.maxEntities, 0);
+                      const totalMaxPlayers = perLeague.reduce((a, l) => a + l.maxPlayers, 0);
+                      const totalActualEntities = perLeague.reduce((a, l) => a + l.actualEntities, 0);
+                      const totalActualPlayers = perLeague.reduce((a, l) => a + l.actualPlayers, 0);
+                      const anyOverflow = perLeague.some((l) => l.actualEntities > 0 && !l.fits);
+                      return (
+                        <div className={`rounded-md border p-2.5 ${anyOverflow ? "bg-destructive/10 border-destructive/40" : "bg-primary/5 border-primary/30"}`}>
+                          <div className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground mb-0.5">
+                            Maximum allowed by capacity{groupCount > 1 && <> (across {groupCount} leagues)</>}
+                          </div>
+                          {isDoubles ? (
+                            <div className="text-sm font-semibold text-foreground">
+                              Up to <span className="text-primary text-base">{totalMaxEntities}</span> pair{totalMaxEntities === 1 ? "" : "s"} —
+                              i.e. <span className="text-primary text-base">{totalMaxPlayers}</span> player{totalMaxPlayers === 1 ? "" : "s"} total
+                            </div>
+                          ) : (
+                            <div className="text-sm font-semibold text-foreground">
+                              Up to <span className="text-primary text-base">{totalMaxPlayers}</span> player{totalMaxPlayers === 1 ? "" : "s"} total
+                            </div>
+                          )}
+                          {totalActualEntities > 0 && (
+                            <div className={`text-[11px] mt-1 ${anyOverflow ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                              Currently entered: {isDoubles
+                                ? <>{totalActualEntities} pair{totalActualEntities === 1 ? "" : "s"} ({totalActualPlayers} players)</>
+                                : <>{totalActualPlayers} player{totalActualPlayers === 1 ? "" : "s"}</>}
+                              {anyOverflow ? " — exceeds capacity in one or more leagues" : " — fits ✓"}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {!needsSlot && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {perLeague.map(({ gn, slot, games, maxPlayers, maxEntities, actualPlayers, actualEntities, gamesNeeded, fits }) => (

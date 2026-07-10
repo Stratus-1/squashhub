@@ -164,8 +164,13 @@ Deno.serve(async (req) => {
       const cap = plan.max_billable_members ? Number(plan.max_billable_members) : null
       const billableMembers = cap && cap > 0 ? Math.min(memberCount, cap) : memberCount
 
-      const pricePerMemberLocal = +Number(plan.price_per_member).toFixed(2)
-      const minimumChargeLocal = +Number(plan.minimum_charge || 0).toFixed(2)
+      // Per-club billing currency + rate
+      const billingCurrency = clubCurrencies.get(sub.club_id) || 'ZAR'
+      const cycle = (plan.billing_cycle === 'annual' ? 'annual' : 'monthly') as 'monthly' | 'annual'
+      const planPriceZar = +Number(plan.price_per_member).toFixed(2)
+      const planMinZar = +Number(plan.minimum_charge || 0).toFixed(2)
+      const pricePerMemberLocal = +rateFor(billingCurrency, cycle, planPriceZar).toFixed(2)
+      const minimumChargeLocal = +minChargeFor(cycle, planMinZar).toFixed(2)
 
       const gross = billableMembers * pricePerMemberLocal
       const subtotal = +Math.max(gross, minimumChargeLocal).toFixed(2)

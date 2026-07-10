@@ -2,6 +2,7 @@ import * as React from 'npm:react@18.3.1'
 import {
   Body,
   Button,
+  Column,
   Container,
   Head,
   Heading,
@@ -9,6 +10,7 @@ import {
   Html,
   Img,
   Preview,
+  Row,
   Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
@@ -100,53 +102,56 @@ const Email = (p: Props) => {
               <Img
                 src={logoUrl}
                 alt={senderName}
-                width="140"
-                style={{ height: 'auto', maxHeight: '48px', maxWidth: '140px', margin: '0 auto', display: 'block' }}
+                height="48"
+                style={{ height: '48px', width: 'auto', maxWidth: '160px', margin: '0 auto', display: 'block', objectFit: 'contain' as const }}
               />
             </Section>
           )}
           <Heading style={h1}>Tax Invoice</Heading>
 
-          <Section style={metaRow}>
-            <div style={{ flex: 1 }}>
-              <Text style={muted}>From</Text>
-              <Text style={strong}>{companyName}</Text>
-              {tradingAs && <Text style={text}>t/a {tradingAs}</Text>}
-              {address && <Text style={text}>{address}</Text>}
-              {vatNumber && <Text style={muted}>VAT: {vatNumber}</Text>}
-              {registrationNumber && <Text style={muted}>Reg: {registrationNumber}</Text>}
-              {billingEmail && <Text style={muted}>{billingEmail}</Text>}
-              {billingPhone && <Text style={muted}>{billingPhone}</Text>}
-            </div>
-            <div style={{ flex: 1, textAlign: 'right' as const }}>
-              <Text style={muted}>Invoice #</Text>
-              <Text style={strong}>{invoiceNumber}</Text>
-              <Text style={muted}>Billed To</Text>
-              <Text style={strong}>{clubName}</Text>
-              {dueDate && (
-                <>
-                  <Text style={muted}>Due Date</Text>
-                  <Text style={text}>{dueDate}</Text>
-                </>
-              )}
-            </div>
+          <Section style={{ marginBottom: '16px' }}>
+            <Row>
+              <Column style={{ verticalAlign: 'top', width: '55%' }}>
+                <Text style={muted}>From</Text>
+                <Text style={strong}>{companyName}</Text>
+                {tradingAs && <Text style={text}>t/a {tradingAs}</Text>}
+                {address && <Text style={text}>{address}</Text>}
+                {vatNumber && <Text style={muted}>VAT: {vatNumber}</Text>}
+                {registrationNumber && <Text style={muted}>Reg: {registrationNumber}</Text>}
+                {billingEmail && <Text style={muted}>{billingEmail}</Text>}
+                {billingPhone && <Text style={muted}>{billingPhone}</Text>}
+              </Column>
+              <Column style={{ verticalAlign: 'top', width: '45%', textAlign: 'right' as const }}>
+                <Text style={muted}>Invoice #</Text>
+                <Text style={strong}>{invoiceNumber}</Text>
+                <Text style={muted}>Billed To</Text>
+                <Text style={strong}>{clubName}</Text>
+                {dueDate && (
+                  <>
+                    <Text style={muted}>Due Date</Text>
+                    <Text style={text}>{dueDate}</Text>
+                  </>
+                )}
+              </Column>
+            </Row>
           </Section>
 
+
           <Section style={card}>
-            <Row label="Plan" value={planName} />
-            <Row label="Billing Cycle" value={billingCycle} />
-            <Row label="Billing Period" value={`${periodStart} → ${periodEnd}`} />
-            <Row label="Members" value={String(memberCount)} />
-            <Row label="Price / Member" value={money(pricePerMember, currency)} />
+            <LineRow label="Plan" value={planName} />
+            <LineRow label="Billing Cycle" value={billingCycle} />
+            <LineRow label="Billing Period" value={`${periodStart} → ${periodEnd}`} />
+            <LineRow label="Members" value={String(memberCount)} />
+            <LineRow label="Price / Member" value={money(pricePerMember, currency)} />
             {Number(minimumCharge) > 0 && (
-              <Row label="Minimum Charge" value={money(minimumCharge, currency)} />
+              <LineRow label="Minimum Charge" value={money(minimumCharge, currency)} />
             )}
             <Hr style={hr} />
-            <Row label="Subtotal" value={money(subtotal, currency)} />
+            <LineRow label="Subtotal" value={money(subtotal, currency)} />
             {Number(vatAmount) > 0 && (
-              <Row label="VAT" value={money(vatAmount, currency)} />
+              <LineRow label="VAT" value={money(vatAmount, currency)} />
             )}
-            <Row label="Total Due" value={money(total, currency)} bold />
+            <LineRow label="Total Due" value={money(total, currency)} bold />
           </Section>
 
           {(payLink || manageUrl) && (
@@ -169,12 +174,12 @@ const Email = (p: Props) => {
             <>
               <Heading as="h2" style={h2}>Or Pay by EFT</Heading>
               <Section style={card}>
-                {bankName && <Row label="Bank" value={bankName} />}
-                {bankAccountName && <Row label="Account Name" value={bankAccountName} />}
-                <Row label="Account #" value={bankAccountNumber} />
-                {bankBranchCode && <Row label="Branch Code" value={bankBranchCode} />}
-                {bankSwift && <Row label="SWIFT" value={bankSwift} />}
-                <Row label="Reference" value={invoiceNumber} />
+                {bankName && <LineRow label="Bank" value={bankName} />}
+                {bankAccountName && <LineRow label="Account Name" value={bankAccountName} />}
+                <LineRow label="Account #" value={bankAccountNumber} />
+                {bankBranchCode && <LineRow label="Branch Code" value={bankBranchCode} />}
+                {bankSwift && <LineRow label="SWIFT" value={bankSwift} />}
+                <LineRow label="Reference" value={invoiceNumber} />
               </Section>
             </>
           )}
@@ -194,12 +199,17 @@ const Email = (p: Props) => {
   )
 }
 
-const Row = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
-    <Text style={{ ...muted, margin: 0 }}>{label}</Text>
-    <Text style={{ ...text, margin: 0, fontWeight: bold ? 700 : 600, fontSize: bold ? '15px' : '14px' }}>{value}</Text>
-  </div>
+const LineRow = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => (
+  <Row style={{ padding: '6px 0' }}>
+    <Column style={{ textAlign: 'left' as const }}>
+      <Text style={{ ...muted, margin: 0 }}>{label}</Text>
+    </Column>
+    <Column style={{ textAlign: 'right' as const }}>
+      <Text style={{ ...text, margin: 0, fontWeight: bold ? 700 : 600, fontSize: bold ? '15px' : '14px' }}>{value}</Text>
+    </Column>
+  </Row>
 )
+
 
 export const template = {
   component: Email,

@@ -867,8 +867,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <>
                   <div className="grid grid-cols-3 gap-2">
                     <Card className="p-2"><p className="text-[10px] text-muted-foreground">Account</p><p className="text-sm font-semibold">{getLabel(accountFilter)}</p></Card>
-                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Debit</p><p className="text-sm font-semibold text-green-600 tabular-nums">{totalDebit.toFixed(2)}</p></Card>
-                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Credit</p><p className="text-sm font-semibold text-destructive tabular-nums">{totalCredit.toFixed(2)}</p></Card>
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Debit</p><p className="text-sm font-semibold text-green-600 tabular-nums">{money(totalDebit)}</p></Card>
+                    <Card className="p-2"><p className="text-[10px] text-muted-foreground">Total Credit</p><p className="text-sm font-semibold text-destructive tabular-nums">{money(totalCredit)}</p></Card>
                   </div>
                   <div className="overflow-hidden border rounded-lg">
                     <div className="grid grid-cols-[1fr_80px_80px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

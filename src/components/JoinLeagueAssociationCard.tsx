@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,12 +33,27 @@ interface JoinLeagueAssociationCardProps {
  *  - The member has already been provisioned at every tenant association
  *    AND there are no remaining internal/external rows.
  */
+const dismissKey = (memberId: string) => `sh.leaguePrompt.dismissed.${memberId}`;
+
 export function JoinLeagueAssociationCard({ clubId, variant = "card", className }: JoinLeagueAssociationCardProps) {
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [selections, setSelections] = useState<Record<string, LeagueSelection>>({});
+  const [dismissed, setDismissed] = useState<boolean>(false);
+  // Re-read dismissal when active member changes
+  useEffect(() => {
+    if (typeof window === "undefined" || !activeMember?.id) { setDismissed(false); return; }
+    try { setDismissed(localStorage.getItem(dismissKey(activeMember.id)) === "1"); } catch { /* ignore */ }
+  }, [activeMember?.id]);
+  const handleNoThanks = () => {
+    if (activeMember?.id) {
+      try { localStorage.setItem(dismissKey(activeMember.id), "1"); } catch { /* ignore */ }
+    }
+    setDismissed(true);
+    setOpen(false);
+  };
 
   const { data: leagueAssocs = [] } = useLeagueAssociations(clubId);
 
@@ -107,7 +122,7 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
   }, [tenantsByLeagueAssoc, existingTenantAssocIds]);
 
   const remainingCount = leagueAssocs.length - excludeIds.length;
-  const hideEntirely = !activeMember || myMemberFlag || remainingCount <= 0;
+  const hideEntirely = !activeMember || myMemberFlag || remainingCount <= 0 || dismissed;
 
   const join = useMutation({
     mutationFn: async () => {
@@ -191,6 +206,9 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
                     <Button size="sm" className="h-7 text-xs" onClick={() => setOpen(true)}>
                       Choose leagues
                     </Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleNoThanks}>
+                      No thanks
+                    </Button>
                   </div>
                 </>
               ) : (
@@ -214,9 +232,14 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
           <p className="text-xs text-muted-foreground mb-3">
             Are you playing league? Your club is affiliated to {remainingCount} {remainingCount === 1 ? "league" : "leagues"}.
           </p>
-          <Button size="sm" onClick={() => setOpen(true)}>
-            Choose leagues
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setOpen(true)}>
+              Choose leagues
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleNoThanks}>
+              No thanks
+            </Button>
+          </div>
         </>
       ) : (
         Body

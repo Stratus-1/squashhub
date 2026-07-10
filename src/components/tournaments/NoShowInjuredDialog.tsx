@@ -220,7 +220,7 @@ export function NoShowInjuredDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={cascade.isPending}>No, just this one</AlertDialogCancel>
+            <AlertDialogCancel disabled={cascade.isPending} onClick={() => { setPendingForfeitMemberId(null); onApplied?.(); }}>No, just this one</AlertDialogCancel>
             <AlertDialogAction onClick={(e) => { e.preventDefault(); cascade.mutate(); }} disabled={cascade.isPending}>
               {cascade.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Yes, apply to all remaining

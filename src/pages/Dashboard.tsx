@@ -776,7 +776,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           <Button className="flex-col h-auto py-3 gap-1.5 bg-primary text-primary-foreground border border-border bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => navigate("/bookings")}>
             <Calendar className="w-5 h-5" />
-            <span className="text-xs font-medium">Book</span>
+            <span className="text-xs font-medium">Court Bookings</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20" onClick={() => navigate("/ladder")}>
             <Trophy className="w-5 h-5" />

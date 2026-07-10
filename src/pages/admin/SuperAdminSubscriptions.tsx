@@ -1406,7 +1406,7 @@ function AllInvoicesList() {
                     </TableCell>
                     <TableCell className="text-xs">{inv.plan_name}</TableCell>
                     <TableCell className="text-xs text-right">{inv.member_count}</TableCell>
-                    <TableCell className="text-xs text-right font-semibold">{fmt(Number(inv.total))}</TableCell>
+                    <TableCell className="text-xs text-right font-semibold">{fmtCcy(Number(inv.total), inv.currency)}</TableCell>
                     <TableCell className="text-xs">{fmtDate(inv.issued_at)}</TableCell>
                     <TableCell className="text-xs">{fmtDate(inv.due_date)}</TableCell>
                     <TableCell className="text-xs">{fmtDate(inv.paid_at)}</TableCell>

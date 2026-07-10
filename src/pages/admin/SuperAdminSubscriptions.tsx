@@ -46,13 +46,20 @@ type ClubSub = {
   subscription_plans?: { name: string } | null;
 };
 
-const SUBSCRIPTION_CURRENCY = "USD";
-const SUBSCRIPTION_SYMBOL = "$";
+// Platform subscription base currency is ZAR.
+// Only clubs whose currency_code = 'USD' (or 'EUR') are invoiced in that currency
+// using the alternate rate rows below. All other clubs bill in ZAR.
+const SUBSCRIPTION_CURRENCY = "ZAR";
+const SUBSCRIPTION_SYMBOL = "R";
+const MONTHLY_RATE_ZAR = "6.00";
+const ANNUAL_RATE_ZAR = "5.00";
 const MONTHLY_RATE_USD = "0.35";
-const ANNUAL_RATE_USD = "3.60";
-const MIN_CHARGE_USD = "0";
-const fmtSubscriptionMoney = (amount: number | string | null | undefined) =>
-  `${SUBSCRIPTION_SYMBOL}${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const ANNUAL_RATE_USD = "0.30";
+const MONTHLY_RATE_EUR = "0.32";
+const ANNUAL_RATE_EUR = "0.27";
+const MIN_CHARGE = "0";
+const fmtSubscriptionMoney = (amount: number | string | null | undefined, symbol = SUBSCRIPTION_SYMBOL) =>
+  `${symbol}${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const STATUS_COLORS: Record<string, string> = {
   trial: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",

@@ -48,6 +48,7 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
         .from("courts")
         .select("id, name")
         .eq("club_id", clubId)
+        .eq("is_external", false)
         .order("name");
       if (error) throw error;
       return data ?? [];

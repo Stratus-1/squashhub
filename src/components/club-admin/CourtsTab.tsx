@@ -789,7 +789,7 @@ function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
                       variant="ghost"
                       size="icon"
                       className="h-5 w-5 text-destructive"
-                      onClick={() => handleDelete(c.id, `${venue} — ${c.name}`)}
+                      onClick={() => requestDelete(c)}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>

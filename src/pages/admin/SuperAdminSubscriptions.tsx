@@ -99,7 +99,7 @@ type StitchSettings = typeof EMPTY_STITCH_SETTINGS;
 export default function SuperAdminSubscriptions() {
   const qc = useQueryClient();
   const [planDialog, setPlanDialog] = useState<Plan | "new" | null>(null);
-  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: MONTHLY_RATE_USD, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "30", is_default: false, active: true });
+  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: MONTHLY_RATE_ZAR, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "30", is_default: false, active: true });
   const [editSub, setEditSub] = useState<ClubSub | null>(null);
   const [subForm, setSubForm] = useState({ plan_id: "", status: "", trial_ends_at: "", member_count: "0", amount_due: "0" });
   const [invoiceForm, setInvoiceForm] = useState<InvoiceSettings>(EMPTY_INVOICE_SETTINGS);
@@ -108,12 +108,18 @@ export default function SuperAdminSubscriptions() {
   const [stitchDirty, setStitchDirty] = useState(false);
   const [showStitchSecret, setShowStitchSecret] = useState(false);
 
-  // Unified pricing form: platform subscription rates are billed in USD.
+  // Unified pricing form: ZAR is the base billing currency; USD & EUR are used
+  // only for clubs whose currency_code matches. Rates for each are stored explicitly
+  // (no FX conversion) so admin has full control.
   const [intlForm, setIntlForm] = useState({
+    saas_rate_zar_monthly: MONTHLY_RATE_ZAR,
+    saas_rate_zar_annual: ANNUAL_RATE_ZAR,
     saas_rate_usd_monthly: MONTHLY_RATE_USD,
     saas_rate_usd_annual: ANNUAL_RATE_USD,
-    saas_min_charge_usd_monthly: MIN_CHARGE,
-    saas_min_charge_usd_annual: MIN_CHARGE,
+    saas_rate_eur_monthly: MONTHLY_RATE_EUR,
+    saas_rate_eur_annual: ANNUAL_RATE_EUR,
+    saas_min_charge_monthly: MIN_CHARGE,
+    saas_min_charge_annual: MIN_CHARGE,
     saas_billing_cap: "150",
     saas_trial_days: "30",
   });

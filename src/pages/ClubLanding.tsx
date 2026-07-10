@@ -185,7 +185,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     );
   }
 
-  if (user) {
+  if (!authLoading && user) {
     return <Navigate to={displaySubdomain ? `/?club=${encodeURIComponent(displaySubdomain)}` : "/"} replace />;
   }
 

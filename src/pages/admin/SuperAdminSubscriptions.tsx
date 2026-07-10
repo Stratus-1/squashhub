@@ -99,7 +99,7 @@ type StitchSettings = typeof EMPTY_STITCH_SETTINGS;
 export default function SuperAdminSubscriptions() {
   const qc = useQueryClient();
   const [planDialog, setPlanDialog] = useState<Plan | "new" | null>(null);
-  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: MONTHLY_RATE_USD, billing_cycle: "monthly", minimum_charge: MIN_CHARGE_USD, max_billable_members: "", trial_days: "30", is_default: false, active: true });
+  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: MONTHLY_RATE_USD, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "30", is_default: false, active: true });
   const [editSub, setEditSub] = useState<ClubSub | null>(null);
   const [subForm, setSubForm] = useState({ plan_id: "", status: "", trial_ends_at: "", member_count: "0", amount_due: "0" });
   const [invoiceForm, setInvoiceForm] = useState<InvoiceSettings>(EMPTY_INVOICE_SETTINGS);
@@ -112,8 +112,8 @@ export default function SuperAdminSubscriptions() {
   const [intlForm, setIntlForm] = useState({
     saas_rate_usd_monthly: MONTHLY_RATE_USD,
     saas_rate_usd_annual: ANNUAL_RATE_USD,
-    saas_min_charge_usd_monthly: MIN_CHARGE_USD,
-    saas_min_charge_usd_annual: MIN_CHARGE_USD,
+    saas_min_charge_usd_monthly: MIN_CHARGE,
+    saas_min_charge_usd_annual: MIN_CHARGE,
     saas_billing_cap: "150",
     saas_trial_days: "30",
   });
@@ -221,8 +221,8 @@ export default function SuperAdminSubscriptions() {
       const parsed = {
         saas_rate_usd_monthly: map.get("saas_rate_usd_monthly") || (monthlyPlan ? String(monthlyPlan.price_per_member) : MONTHLY_RATE_USD),
         saas_rate_usd_annual: map.get("saas_rate_usd_annual") || (annualPlan ? String(annualPlan.price_per_member) : ANNUAL_RATE_USD),
-        saas_min_charge_usd_monthly: map.get("saas_min_charge_usd_monthly") || (monthlyPlan ? String(monthlyPlan.minimum_charge) : MIN_CHARGE_USD),
-        saas_min_charge_usd_annual: map.get("saas_min_charge_usd_annual") || (annualPlan ? String(annualPlan.minimum_charge) : MIN_CHARGE_USD),
+        saas_min_charge_usd_monthly: map.get("saas_min_charge_usd_monthly") || (monthlyPlan ? String(monthlyPlan.minimum_charge) : MIN_CHARGE),
+        saas_min_charge_usd_annual: map.get("saas_min_charge_usd_annual") || (annualPlan ? String(annualPlan.minimum_charge) : MIN_CHARGE),
         saas_billing_cap: map.get("saas_billing_cap") || (anyPlan?.max_billable_members != null ? String(anyPlan.max_billable_members) : "150"),
         saas_trial_days: map.get("saas_trial_days") || (anyPlan ? String(anyPlan.trial_days) : "30"),
       };
@@ -486,7 +486,7 @@ export default function SuperAdminSubscriptions() {
 
   const openPlanDialog = (plan: Plan | "new") => {
     if (plan === "new") {
-      setPlanForm({ name: "", description: "", price_per_member: MONTHLY_RATE_USD, billing_cycle: "monthly", minimum_charge: MIN_CHARGE_USD, max_billable_members: "", trial_days: "30", is_default: false, active: true });
+      setPlanForm({ name: "", description: "", price_per_member: MONTHLY_RATE_USD, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "30", is_default: false, active: true });
     } else {
       setPlanForm({
         name: plan.name,

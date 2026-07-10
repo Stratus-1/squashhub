@@ -1727,7 +1727,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <Input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="h-9 text-xs" />
               </div>
               <div>
-                <Label className="text-xs">Amount (R)</Label>
+                <Label className="text-xs">Amount ({currencySymbol})</Label>
                 <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={e => setBillAmount(e.target.value)} className="h-9 text-xs" />
               </div>
             </div>

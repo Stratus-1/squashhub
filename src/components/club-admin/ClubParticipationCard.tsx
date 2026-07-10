@@ -31,6 +31,8 @@ export function ClubParticipationCard({ club }: { club: Club }) {
   const [saving, setSaving] = useState(false);
 
   const memberCount = (c as any).active_member_count;
+  const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
+  const isZar = clubCurrencyCode === "ZAR";
 
   const handleAccept = async () => {
     if (!agreed || !name.trim() || !role.trim()) {

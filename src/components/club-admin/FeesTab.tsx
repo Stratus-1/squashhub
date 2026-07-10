@@ -581,20 +581,11 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             <Card className="p-3 bg-muted/30 space-y-2">
               <div className="flex items-center gap-2">
                 <Switch checked={debitOrderEligible} onCheckedChange={setDebitOrderEligible} id="debit-order" />
-                <Label htmlFor="debit-order" className="cursor-pointer text-sm font-medium">Eligible for Stitch Debit Order</Label>
+                <Label htmlFor="debit-order" className="cursor-pointer text-sm font-medium">Eligible for recurring card payment (Stitch)</Label>
               </div>
               {debitOrderEligible && (
                 <div className="space-y-1">
-                  <Label className="text-xs">Collection Rail</Label>
-                  <Select value={debitOrderRail} onValueChange={v => setDebitOrderRail(v as any)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="either">Either (member chooses)</SelectItem>
-                      <SelectItem value="debicheck">DebiCheck only (authenticated)</SelectItem>
-                      <SelectItem value="eft">EFT debit only (lower cost)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[10px] text-muted-foreground">Members with an active mandate will be auto-collected (subject to admin approval window).</p>
+                  <p className="text-[10px] text-muted-foreground">Members with an active Stitch card authorisation will be auto-charged each month (subject to admin approval window).</p>
                 </div>
               )}
             </Card>

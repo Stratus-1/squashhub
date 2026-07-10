@@ -30,6 +30,7 @@ Deno.serve(async (req) => {
     .select('key, value')
     .in('key', [
       'platform_invoice_settings',
+      'platform_stitch_private_settings',
       'saas_rate_zar_monthly',
       'saas_rate_zar_annual',
       'saas_intl_uplift_pct',
@@ -43,6 +44,11 @@ Deno.serve(async (req) => {
   const settings = settingsMap.get('platform_invoice_settings')
     ? JSON.parse(settingsMap.get('platform_invoice_settings')!)
     : {}
+  let stitchCreds: any = null
+  try {
+    const raw = settingsMap.get('platform_stitch_private_settings')
+    if (raw) stitchCreds = JSON.parse(raw)
+  } catch (_) { stitchCreds = null }
   const invoicePrefix: string = settings.invoice_prefix || 'INV-'
   const vatRate: number =
     typeof body.vatRate === 'number' ? body.vatRate : settings.vat_number ? 0.15 : 0
@@ -224,6 +230,34 @@ Deno.serve(async (req) => {
 
       if (invErr) throw invErr
 
+      // Build the club's subscription management URL (for the email fallback link
+      // and Stitch redirect after payment).
+      const subdomain = (club as any)?.subdomain as string | undefined
+      const manageUrl = subdomain
+        ? `https://${subdomain}.squashhub.co.za/club-admin?tab=subscription`
+        : `https://squashhub.co.za/club-admin?tab=subscription`
+
+      // Try to create a Stitch payment link so the invoice email has a "Pay" button.
+      // Best-effort — if it fails (creds missing / API down), we fall back to manageUrl.
+      let payLink: string | null = null
+      try {
+        payLink = await createStitchPayLink({
+          stitchCreds,
+          amountZar: total,
+          currency: clubCurrency,
+          invoiceNumber,
+          returnUrl: manageUrl,
+        })
+        if (payLink) {
+          await supabase
+            .from('platform_subscription_invoices')
+            .update({ stitch_payment_link: payLink })
+            .eq('id', inv.id)
+        }
+      } catch (e) {
+        console.warn('Stitch pay link failed for', invoiceNumber, (e as any)?.message)
+      }
+
       // Email admin
       const recipient = recipientFor(sub.club_id)
       let emailStatus: string | null = null
@@ -262,6 +296,8 @@ Deno.serve(async (req) => {
               bankSwift: settings.bank_swift,
               logoUrl: settings.logo_url,
               invoiceFooter: settings.invoice_footer,
+              payLink: payLink || undefined,
+              manageUrl,
             },
           },
         })
@@ -318,4 +354,50 @@ function json(data: unknown, status = 200) {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     status,
   })
+}
+
+const STITCH_BASE = 'https://express.stitch.money/api/v1'
+
+async function createStitchPayLink(opts: {
+  stitchCreds: any
+  amountZar: number
+  currency: string
+  invoiceNumber: string
+  returnUrl: string
+}): Promise<string | null> {
+  const { stitchCreds, amountZar, currency, invoiceNumber, returnUrl } = opts
+  if (!stitchCreds) return null
+  const clientId = String(stitchCreds.client_id || '').trim()
+  const clientSecret = String(stitchCreds.client_secret || '').trim()
+  const enabled = Boolean(stitchCreds.enabled)
+  if (!enabled || !clientId || !clientSecret) return null
+
+  const amountCents = Math.round(Number(amountZar || 0) * 100)
+  if (amountCents < 100) return null
+
+  const tokenResp = await fetch(`${STITCH_BASE}/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientId, clientSecret, scope: 'client_paymentrequest' }),
+  })
+  const tokenJson: any = await tokenResp.json().catch(() => ({}))
+  if (!tokenResp.ok || !tokenJson?.data?.accessToken) return null
+  const accessToken: string = tokenJson.data.accessToken
+
+  const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      amount: amountCents,
+      payerName: 'Club Subscription',
+      merchantReference: String(invoiceNumber).slice(0, 50),
+      merchantRedirectUrl: returnUrl,
+      redirectUrl: returnUrl,
+      currency: currency || 'ZAR',
+    }),
+  })
+  const plJson: any = await plResp.json().catch(() => ({}))
+  if (!plResp.ok || !plJson?.success || !plJson?.data?.payment?.link) return null
+  const link: string = plJson.data.payment.link
+  return `${link}${link.includes('?') ? '&' : '?'}redirect_url=${encodeURIComponent(returnUrl)}`
 }

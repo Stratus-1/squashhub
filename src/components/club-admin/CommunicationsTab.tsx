@@ -240,6 +240,7 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
   const [showPreview, setShowPreview] = useState(false);
   const [activeField, setActiveField] = useState<"subject" | "body">("subject");
   const [bodyEditor, setBodyEditor] = useState<any>(null);
+  const [whatsAppRecipients, setWhatsAppRecipients] = useState<Array<{ id: string; name: string; phone: string | null; email: string; club_member_number: string | null; id_number: string | null }> | null>(null);
   const subjectRef = useRef<HTMLInputElement>(null);
 
   const insertToken = (token: string) => {

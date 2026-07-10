@@ -231,15 +231,15 @@ export function ClubParticipationCard({ club }: { club: Club }) {
                   <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "monthly" ? "border-primary bg-primary/5" : ""}`}>
                     <RadioGroupItem value="monthly" id="bill-monthly" />
                     <div className="text-sm">
-                      <div className="font-medium">Monthly — $0.35 / member / month</div>
-                      <div className="text-xs text-muted-foreground">Billed monthly in arrears</div>
+                      <div className="font-medium">Monthly</div>
+                      <div className="text-xs text-muted-foreground">Billed monthly in arrears in your club currency</div>
                     </div>
                   </label>
                   <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}>
                     <RadioGroupItem value="annual_upfront" id="bill-annual" />
                     <div className="text-sm">
-                      <div className="font-medium">Annual upfront — $0.30 / member / month</div>
-                      <div className="text-xs text-muted-foreground">Paid yearly in advance · save $0.60/member/year</div>
+                      <div className="font-medium">Annual upfront</div>
+                      <div className="text-xs text-muted-foreground">Paid yearly in advance — save one month's fee per member</div>
                     </div>
                   </label>
                 </RadioGroup>

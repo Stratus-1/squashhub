@@ -821,6 +821,15 @@ function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
         <Button size="sm" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" />Add</Button>
       </div>
       <p className="text-[10px] text-muted-foreground">Tip: add each court at that venue as its own row (e.g. Court 1, Court 2, Court 3).</p>
+      <DeleteConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}
+        title="Delete external court?"
+        description={deleteDialog.court ? `Remove "${deleteDialog.court.name}" from "${deleteDialog.court.venue}"? Past tournaments already scheduled on this court will not be affected.` : ""}
+        onConfirm={handleDelete}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+      />
     </Card>
   );
 }

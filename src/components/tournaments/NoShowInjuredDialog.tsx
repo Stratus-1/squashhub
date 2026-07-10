@@ -32,7 +32,10 @@ interface Props {
   champ: any;
   allMatches: any[];
   getName: (memberId: string | null | undefined) => string;
+  /** Called after the forfeit has been persisted (and any cascade prompt closed). */
+  onApplied?: () => void;
 }
+
 
 /**
  * Mark a tournament match as a No Show / Injured forfeit.
@@ -47,7 +50,9 @@ export function NoShowInjuredDialog({
   champ,
   allMatches,
   getName,
+  onApplied,
 }: Props) {
+
   const qc = useQueryClient();
   const [absentSide, setAbsentSide] = useState<"a" | "b">("a");
   const [cascadePromptOpen, setCascadePromptOpen] = useState(false);
@@ -105,7 +110,10 @@ export function NoShowInjuredDialog({
       if (remaining.length > 0) {
         setPendingForfeitMemberId(absentMemberId);
         setCascadePromptOpen(true);
+      } else {
+        onApplied?.();
       }
+
     },
     onError: (e: any) => toast.error(e?.message || "Failed to mark No Show"),
   });
@@ -134,6 +142,7 @@ export function NoShowInjuredDialog({
       toast.success(`Applied to ${n} remaining match${n === 1 ? "" : "es"}`);
       setCascadePromptOpen(false);
       setPendingForfeitMemberId(null);
+      onApplied?.();
     },
     onError: (e: any) => toast.error(e?.message || "Failed to cascade"),
   });
@@ -211,7 +220,7 @@ export function NoShowInjuredDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={cascade.isPending}>No, just this one</AlertDialogCancel>
+            <AlertDialogCancel disabled={cascade.isPending} onClick={() => { setPendingForfeitMemberId(null); onApplied?.(); }}>No, just this one</AlertDialogCancel>
             <AlertDialogAction onClick={(e) => { e.preventDefault(); cascade.mutate(); }} disabled={cascade.isPending}>
               {cascade.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Yes, apply to all remaining

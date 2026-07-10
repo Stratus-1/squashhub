@@ -829,6 +829,8 @@ export default function BellsMarker() {
 
 
       <NoShowInjuredDialog
+        onApplied={() => navigate("/tournaments", { replace: true })}
+
         open={noShowOpen}
         onOpenChange={setNoShowOpen}
         champId={match.champ_id}

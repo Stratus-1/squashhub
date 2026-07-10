@@ -111,6 +111,7 @@ export default function MyAccount() {
 
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("100");
+  const [topUpFromGate, setTopUpFromGate] = useState(false);
   const [topUpMethod, setTopUpMethod] = useState<"eft" | "card">("eft");
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);

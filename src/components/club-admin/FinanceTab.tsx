@@ -1102,7 +1102,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             </div>
 
             <div>
-              <Label className="text-xs">Amount (R)</Label>
+              <Label className="text-xs">Amount ({currencySymbol})</Label>
               <Input type="number" step="0.01" min="0" placeholder="0.00" value={txAmount} onChange={e => setTxAmount(e.target.value)} className="h-9 text-xs" />
               {txMethod === "card" && txAmount && parseFloat(txAmount) > 0 && (
                 <p className="text-[10px] text-amber-600 mt-1">

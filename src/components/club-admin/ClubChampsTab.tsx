@@ -2941,7 +2941,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                  {listTournamentFormats().map((fmt) => (
+                  {listTournamentFormats().filter((fmt) => fmt.key !== "swiss").map((fmt) => (
                     <SelectItem key={fmt.key} value={fmt.key}>{fmt.label}</SelectItem>
                   ))}
                 </SelectContent>

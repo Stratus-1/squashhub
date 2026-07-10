@@ -139,13 +139,121 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <div className="space-y-4 mt-4">
-      <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} lightsEnabled={lightsEnabled} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} lightsEnabled={lightsEnabled} />
+
+        {/* Court Lights */}
+        <Card className="p-4 space-y-3">
+
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-sm">Court Lights</h3>
+              <p className="text-xs text-muted-foreground">
+                {lightsEnabled ? "Smart relay integration enabled." : "No light integration — booking dialog will not show light controls."}
+              </p>
+            </div>
+            <Switch
+              checked={lightsEnabled}
+              onCheckedChange={(checked) => setLightsForm(p => ({ ...p, lights_integration_enabled: checked }))}
+            />
+          </div>
+
+          {lightsEnabled && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Relay Device Type</Label>
+                  <Select
+                    value={lightsForm.relay_device_type}
+                    onValueChange={(v: RelayDevice) => setLightsForm(p => ({ ...p, relay_device_type: v }))}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {RELAY_DEVICES.map(d => (
+                        <SelectItem key={d.value} value={d.value}>
+                          <span className="flex items-center gap-2">
+                            {d.label}
+                            {d.value === "shelly" && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Supported</span>}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Charge light fees</Label>
+                    <Switch
+                      checked={lightsForm.light_fee_per_hour > 0}
+                      onCheckedChange={(checked) =>
+                        setLightsForm(p => ({ ...p, light_fee_per_hour: checked ? 30 : 0 }))
+                      }
+                    />
+                  </div>
+                  {lightsForm.light_fee_per_hour > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{currencySymbol}</span>
+                      <Input
+                        type="number" min={1} step={1}
+                        className="h-8 text-xs"
+                        value={lightsForm.light_fee_per_hour}
+                        onChange={e => setLightsForm(p => ({ ...p, light_fee_per_hour: parseInt(e.target.value) || 0 }))}
+                        placeholder="Fee"
+                      />
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">per hour</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {isSupported && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Shelly Cloud Auth Key</Label>
+                  <Input
+                    type="password"
+                    className="h-8 text-xs"
+                    value={lightsForm.shelly_auth_key}
+                    onChange={e => setLightsForm(p => ({ ...p, shelly_auth_key: e.target.value }))}
+                    placeholder="Paste your Shelly Cloud auth key"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Find in <a href="https://control.shelly.cloud" target="_blank" rel="noopener noreferrer" className="underline text-primary">Shelly Cloud</a> → Settings → Authorization Cloud Key.
+                  </p>
+                </div>
+              )}
+
+              {isUnsupported && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 flex gap-2">
+                  <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-muted-foreground">
+                    {selectedDevice?.label} integration coming soon. Contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support</a>.
+                  </p>
+                </div>
+              )}
+
+              {isOther && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-2 flex gap-2">
+                  <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-muted-foreground">
+                    Custom integration — contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support</a>.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          <Button size="sm" onClick={handleSaveLights} disabled={updateClub.isPending}>
+            {updateClub.isPending ? "Saving..." : "Save Light Settings"}
+          </Button>
+        </Card>
+      </div>
 
       <ExternalTournamentCourtsSection clubId={clubId} />
 
       <ExternalBookingSection club={club} clubId={clubId} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Booking Rules */}
         <Card className="p-4 space-y-4">
           <div>
@@ -338,116 +446,6 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
               Save
             </Button>
           )}
-        </Card>
-
-        {/* Court Lights */}
-        <Card className="p-4 space-y-3">
-
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h3 className="font-semibold text-sm">Court Lights</h3>
-              <p className="text-xs text-muted-foreground">
-                {lightsEnabled ? "Smart relay integration enabled." : "No light integration — booking dialog will not show light controls."}
-              </p>
-            </div>
-            <Switch
-              checked={lightsEnabled}
-              onCheckedChange={(checked) => setLightsForm(p => ({ ...p, lights_integration_enabled: checked }))}
-            />
-          </div>
-
-          {lightsEnabled && (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Relay Device Type</Label>
-                  <Select
-                    value={lightsForm.relay_device_type}
-                    onValueChange={(v: RelayDevice) => setLightsForm(p => ({ ...p, relay_device_type: v }))}
-                  >
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {RELAY_DEVICES.map(d => (
-                        <SelectItem key={d.value} value={d.value}>
-                          <span className="flex items-center gap-2">
-                            {d.label}
-                            {d.value === "shelly" && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Supported</span>}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Charge light fees</Label>
-                    <Switch
-                      checked={lightsForm.light_fee_per_hour > 0}
-                      onCheckedChange={(checked) =>
-                        setLightsForm(p => ({ ...p, light_fee_per_hour: checked ? 30 : 0 }))
-                      }
-                    />
-                  </div>
-                  {lightsForm.light_fee_per_hour > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{currencySymbol}</span>
-                      <Input
-                        type="number" min={1} step={1}
-                        className="h-8 text-xs"
-                        value={lightsForm.light_fee_per_hour}
-                        onChange={e => setLightsForm(p => ({ ...p, light_fee_per_hour: parseInt(e.target.value) || 0 }))}
-                        placeholder="Fee"
-                      />
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">per hour</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-
-
-
-
-              {isSupported && (
-                <div className="space-y-1">
-                  <Label className="text-xs">Shelly Cloud Auth Key</Label>
-                  <Input
-                    type="password"
-                    className="h-8 text-xs"
-                    value={lightsForm.shelly_auth_key}
-                    onChange={e => setLightsForm(p => ({ ...p, shelly_auth_key: e.target.value }))}
-                    placeholder="Paste your Shelly Cloud auth key"
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Find in <a href="https://control.shelly.cloud" target="_blank" rel="noopener noreferrer" className="underline text-primary">Shelly Cloud</a> → Settings → Authorization Cloud Key.
-                  </p>
-                </div>
-              )}
-
-              {isUnsupported && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 flex gap-2">
-                  <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-muted-foreground">
-                    {selectedDevice?.label} integration coming soon. Contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support</a>.
-                  </p>
-                </div>
-              )}
-
-              {isOther && (
-                <div className="rounded-lg border border-primary/30 bg-primary/5 p-2 flex gap-2">
-                  <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-muted-foreground">
-                    Custom integration — contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support</a>.
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-
-          <Button size="sm" onClick={handleSaveLights} disabled={updateClub.isPending}>
-            {updateClub.isPending ? "Saving..." : "Save Light Settings"}
-          </Button>
         </Card>
       </div>
     </div>

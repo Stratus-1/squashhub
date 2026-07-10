@@ -21,7 +21,7 @@ import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { DashboardMyStatsCard } from "@/components/DashboardMyStatsCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
-import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play } from "lucide-react";
+import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -819,6 +819,10 @@ export default function Dashboard() {
           <Button variant="outline" className="hidden sm:flex flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-500/20" onClick={() => openProfile("/profile?edit=1")}>
             <Settings className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Profile</span>
+          </Button>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-400 hover:bg-sky-500/20" onClick={() => navigate("/help")}>
+            <GraduationCap className="w-5 h-5" />
+            <span className="text-xs font-medium leading-tight text-center">Help &amp; Tutorials</span>
           </Button>
           {hasAnyAdminAccess && (
             <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-500/20" onClick={() => navigate("/club-admin")}>

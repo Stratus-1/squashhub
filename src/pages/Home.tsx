@@ -574,16 +574,16 @@ export default function Home() {
             <PricingCard
               icon={Building2}
               title="Clubs"
-              priceLabel="From $0.30"
-              intlLabel="USD per active member"
+              priceLabel="From R5"
+              intlLabel="per active member · $0.30 USD / €0.27 EUR for international clubs"
               perks={["All features included", "Billed only on active members", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
             <PricingCard
               icon={Landmark}
               title="Associations"
-              priceLabel="From $0.30"
-              intlLabel="USD per active member"
+              priceLabel="From R5"
+              intlLabel="per active member · $0.30 USD / €0.27 EUR for international clubs"
               perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />

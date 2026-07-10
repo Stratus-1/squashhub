@@ -1,14 +1,12 @@
-// Public webhook endpoint for Stitch settlement events.
-// Stitch sends events server-side as JSON with HMAC-SHA256 signature.
+// Public webhook endpoint for Stitch Express payment events.
+// Docs: events are delivered via Svix with headers svix-id / svix-timestamp / svix-signature.
+// Payload is flat: { id, amount, status, type: "LINK"|"CONSENT"|"SUBSCRIPTION", linkId, consentId, subscriptionId, terminalSessionId }
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import {
-  getStitchSignature,
-  verifyStitchSignature,
-} from "../_shared/stitch-signature.ts";
+import { Webhook } from "npm:svix@1.42.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type, x-stitch-signature, stitch-signature",
+  "Access-Control-Allow-Headers": "content-type, svix-id, svix-timestamp, svix-signature",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -20,63 +18,64 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const rawBody = await req.text();
-    const signature = getStitchSignature(req);
+    const svixId = req.headers.get("svix-id") || "";
+    const svixTs = req.headers.get("svix-timestamp") || "";
+    const svixSig = req.headers.get("svix-signature") || "";
+
     let payload: any;
     try { payload = JSON.parse(rawBody); } catch { return new Response("bad json", { status: 400 }); }
 
-    // Stitch event shape varies; common fields: data.node.id, data.id
-    const requestId: string | undefined = payload?.data?.node?.id || payload?.data?.id;
-    if (!requestId) return new Response("no request id", { status: 400 });
+    // Match our stored stitch_request_id (payment id from create response) against
+    // either the flat `id` or `linkId` on the webhook payload.
+    const paymentId: string | undefined = payload?.id;
+    const linkId: string | undefined = payload?.linkId;
+    const type: string = String(payload?.type || "").toUpperCase();
+    const status: string = String(payload?.status || "").toUpperCase();
+
+    // Forward CONSENT/SUBSCRIPTION events (recurring card) to the mandate handler.
+    if (type === "CONSENT" || type === "SUBSCRIPTION") {
+      const fwd = await fetch(`${SUPABASE_URL}/functions/v1/stitch-mandate-webhook`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SERVICE_KEY}`,
+          "svix-id": svixId, "svix-timestamp": svixTs, "svix-signature": svixSig,
+        },
+        body: rawBody,
+      });
+      return new Response(await fwd.text(), { status: fwd.status });
+    }
+
+    const candidates = [paymentId, linkId].filter(Boolean) as string[];
+    if (candidates.length === 0) return new Response("no ids", { status: 400 });
 
     const { data: session } = await admin.from("stitch_payment_sessions")
-      .select("*").eq("stitch_request_id", requestId).maybeSingle();
+      .select("*").in("stitch_request_id", candidates).maybeSingle();
     if (!session) {
-      // Not a one-off payment — could be a mandate (authorisation) or a
-      // recurring collection event. Forward to the specialised handler so
-      // clubs only need one webhook URL configured in Stitch.
-      const isMandate = !!(await admin.from("stitch_mandates")
-        .select("id").eq("stitch_mandate_id", requestId).maybeSingle()).data;
-      const isCollection = !isMandate && !!(await admin.from("stitch_collections")
-        .select("id").or(`stitch_collection_id.eq.${requestId},id.eq.${requestId}`).maybeSingle()).data;
-
-      if (isMandate || isCollection) {
-        const target = isMandate ? "stitch-mandate-webhook" : "stitch-collection-webhook";
-        const fwd = await fetch(`${SUPABASE_URL}/functions/v1/${target}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${SERVICE_KEY}`,
-            "x-stitch-signature": signature,
-          },
-          body: rawBody,
-        });
-        return new Response(await fwd.text(), { status: fwd.status });
-      }
-
-      console.log("stitch-webhook: no session for", requestId);
+      console.log("stitch-webhook: no session for", candidates.join(","));
       return new Response("ok", { status: 200 });
     }
 
-    // Verify HMAC using the dedicated webhook signing secret, falling back to
-    // the client_secret for clubs that haven't saved a webhook_secret yet.
+    // Verify Svix signature using the webhook signing secret saved on the club.
     const { data: secrets } = await admin.from("club_secrets")
       .select("payment_gateway_credentials").eq("club_id", session.club_id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
-    const signingSecret = creds.webhook_secret || creds.client_secret || "";
-    if (signingSecret && signature) {
-      const valid = await verifyStitchSignature(rawBody, signature, signingSecret);
-      if (!valid) {
-        console.error("stitch-webhook: invalid signature for", requestId);
+    const signingSecret = (creds.webhook_secret || "").trim();
+
+    if (signingSecret && svixId && svixTs && svixSig) {
+      try {
+        const wh = new Webhook(signingSecret);
+        wh.verify(rawBody, { "svix-id": svixId, "svix-timestamp": svixTs, "svix-signature": svixSig });
+      } catch (err) {
+        console.error("stitch-webhook: Svix verify failed", (err as Error).message);
         return new Response("invalid signature", { status: 401 });
       }
-    } else if (signature) {
-      console.warn("stitch-webhook: signature present but no signing secret configured for club", session.club_id);
+    } else if (svixSig) {
+      console.warn("stitch-webhook: signature present but no webhook_secret configured for club", session.club_id);
     }
 
-    const eventType: string = payload?.data?.eventType || payload?.type || "";
-    const isComplete = /Complete|Settled|Successful|Paid/i.test(eventType) ||
-                       /Complete|Settled|Successful/i.test(payload?.data?.node?.status?.__typename || "");
-    const isFailed = /Fail|Cancel|Expired|Reject/i.test(eventType);
+    const isComplete = status === "PAID";
+    const isFailed = status === "FAILED" || status === "EXPIRED" || status === "CANCELLED";
 
     if (isComplete && session.status !== "completed") {
       const { data: claimed } = await admin.from("stitch_payment_sessions")

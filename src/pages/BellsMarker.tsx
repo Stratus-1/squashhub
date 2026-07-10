@@ -592,18 +592,18 @@ export default function BellsMarker() {
   }) => (
     <div
       className={cn(
-        "flex flex-col items-center justify-between rounded-2xl border p-4 sm:p-6",
+        "flex flex-col items-center justify-between rounded-2xl border p-2 sm:p-3",
         side === "a" ? "bg-primary/5 border-primary/30" : "bg-amber-500/5 border-amber-500/30",
       )}
     >
       <div className="flex items-center gap-1.5 max-w-full">
-        <p className="text-sm font-medium text-center line-clamp-2 min-h-[2.5rem]">{label}</p>
+        <p className="text-xs font-medium text-center line-clamp-2">{label}</p>
         <button
           type="button"
           onClick={onBadgeClick}
           disabled={finished}
           className={cn(
-            "text-base font-bold px-2 py-0.5 rounded transition active:scale-95 min-w-[2rem]",
+            "text-xs font-bold px-1.5 py-0.5 rounded transition active:scale-95 min-w-[1.5rem]",
             isServer
               ? "bg-accent text-accent-foreground"
               : "bg-muted text-muted-foreground border border-dashed",
@@ -618,7 +618,7 @@ export default function BellsMarker() {
         onClick={onPlus}
         disabled={finished}
         className={cn(
-          "my-3 w-full rounded-xl text-7xl sm:text-8xl font-bold tabular-nums py-6 active:scale-95 transition disabled:opacity-60",
+          "my-2 w-full rounded-xl text-5xl sm:text-6xl font-bold tabular-nums py-3 active:scale-95 transition disabled:opacity-60",
           side === "a" ? "bg-primary text-primary-foreground" : "bg-amber-500 text-white",
         )}
         aria-label={`Add point to ${label}`}
@@ -629,20 +629,20 @@ export default function BellsMarker() {
         <Button
           variant="outline"
           size="sm"
-          className="flex-1"
+          className="flex-1 h-7"
           onClick={onMinus}
           disabled={finished || value === 0}
         >
-          <Minus className="w-4 h-4" />
+          <Minus className="w-3.5 h-3.5" />
         </Button>
         <Button
           variant="outline"
           size="sm"
-          className="flex-1"
+          className="flex-1 h-7"
           onClick={onPlus}
           disabled={finished}
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
         </Button>
       </div>
     </div>
@@ -656,42 +656,46 @@ export default function BellsMarker() {
         subtitle={`${champ?.name} · ${getGroupLabel(champ, match.group_number)} · ${capMinutes} min cap`}
       />
 
-      <div className="px-4 mt-3 mb-20 max-w-2xl mx-auto space-y-4">
+      <div className="px-3 mt-2 mb-16 max-w-2xl mx-auto space-y-2">
         <button
           onClick={() => handleLeave("/tournaments")}
-          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to tournaments
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to tournaments
         </button>
 
 
+
         {/* How-to */}
-        <div className="rounded-lg border border-primary/30 bg-card shadow-sm p-3 text-xs text-foreground flex gap-2">
-          <Info className="w-4 h-4 mt-0.5 text-primary shrink-0" />
-          <div className="space-y-0.5">
+        <details className="rounded-lg border border-primary/30 bg-card shadow-sm p-2 text-[11px] text-foreground">
+          <summary className="flex gap-2 items-center cursor-pointer">
+            <Info className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="font-medium">How to use the Bells scorer</span>
+          </summary>
+          <div className="space-y-0.5 mt-1 pl-5">
             <p><b>Start</b> — begin the {capMinutes}-minute countdown.</p>
             <p>Tap each pair's big number (or <b>+</b>) to add a point during play.</p>
             <p>Tap the <b>S</b> badge on the non-server pair to switch server, or tap the server's <b>L / R</b> badge to toggle the serve side.</p>
-            <p>The <b>bell</b> rings automatically when time is up. Use <b>Ring bell now</b> to end early (e.g. to test or stop a match), then <b>Save result</b> to post the score and move on to the next match.</p>
+            <p>The <b>bell</b> rings automatically when time is up. Use <b>Ring bell now</b> to end early, then <b>Save result</b> to post the score.</p>
           </div>
-        </div>
+        </details>
 
 
 
         {/* Timer */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center justify-between">
+          <CardHeader className="pb-1 pt-2 px-3">
+            <CardTitle className="text-xs flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Bell className="w-4 h-4" /> Bell timer
+                <Bell className="w-3.5 h-3.5" /> Bell timer
               </span>
-              {finished && <Badge variant="secondary">Bell rung</Badge>}
+              {finished && <Badge variant="secondary" className="text-[10px]">Bell rung</Badge>}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2 px-3 pb-3">
             <div
               className={cn(
-                "text-center font-bold tabular-nums text-6xl sm:text-7xl",
+                "text-center font-bold tabular-nums text-4xl sm:text-5xl",
                 remaining <= 60 && !finished && "text-destructive animate-pulse",
                 finished && "text-muted-foreground line-through",
               )}
@@ -703,19 +707,20 @@ export default function BellsMarker() {
                 <Button
                   onClick={toggleStart}
                   variant={running ? "outline" : "default"}
-                  className="gap-1"
+                  size="sm"
+                  className="gap-1 h-8"
                 >
-                  {running ? <><Pause className="w-4 h-4" /> Pause</> : <><Play className="w-4 h-4" /> Start</>}
+                  {running ? <><Pause className="w-3.5 h-3.5" /> Pause</> : <><Play className="w-3.5 h-3.5" /> Start</>}
                 </Button>
 
               )}
               {!finished && (
-                <Button onClick={ringBellNow} variant="destructive" className="gap-1">
-                  <Bell className="w-4 h-4" /> Ring bell now
+                <Button onClick={ringBellNow} variant="destructive" size="sm" className="gap-1 h-8">
+                  <Bell className="w-3.5 h-3.5" /> Ring bell now
                 </Button>
               )}
-              <Button onClick={resetAll} variant="outline" className="gap-1">
-                <RotateCcw className="w-4 h-4" /> Reset
+              <Button onClick={resetAll} variant="outline" size="sm" className="gap-1 h-8">
+                <RotateCcw className="w-3.5 h-3.5" /> Reset
               </Button>
             </div>
           </CardContent>
@@ -723,12 +728,12 @@ export default function BellsMarker() {
 
         {/* Player pulled out / injured — prominent, always available */}
         <Card className="border-amber-500/60 bg-amber-50/60 dark:bg-amber-950/20">
-          <CardContent className="p-3 flex items-center justify-between gap-3">
+          <CardContent className="p-2 flex items-center justify-between gap-2">
             <div className="flex items-start gap-2 min-w-0">
-              <UserX className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <UserX className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <p className="text-sm font-semibold leading-tight">Player pulled out?</p>
-                <p className="text-[11px] text-muted-foreground leading-tight">
+                <p className="text-xs font-semibold leading-tight">Player pulled out?</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">
                   Mark no show / injured to award the forfeit points.
                 </p>
               </div>
@@ -736,12 +741,13 @@ export default function BellsMarker() {
             <Button
               onClick={() => setNoShowOpen(true)}
               size="sm"
-              className="gap-1 bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+              className="gap-1 h-8 bg-amber-600 hover:bg-amber-700 text-white shrink-0"
             >
-              <UserX className="w-4 h-4" /> No show
+              <UserX className="w-3.5 h-3.5" /> No show
             </Button>
           </CardContent>
         </Card>
+
 
         {/* Hand-out / serve indicator */}
         {!finished && (
@@ -802,7 +808,7 @@ export default function BellsMarker() {
 
         {/* Save */}
         <Button
-          className="w-full h-12 gap-2 text-base"
+          className="w-full h-10 gap-2 text-sm"
           disabled={saving || !finished || (pointsA === 0 && pointsB === 0)}
           onClick={saveResult}
         >
@@ -810,16 +816,17 @@ export default function BellsMarker() {
           Save result · {pointsA}-{pointsB}
         </Button>
 
-        <p className="text-[11px] text-muted-foreground text-center">
+        <p className="text-[10px] text-muted-foreground text-center">
           Tap each pair's number (or +) to add a point. Ring the bell, then confirm the score to save.
         </p>
       </div>
-      <div className="px-4 py-4 mt-4">
-        <Button variant="outline" className="w-full h-10 text-sm" onClick={() => handleLeave("/dashboard")}>
-          <ArrowLeft className="w-4 h-4 mr-1.5" />
+      <div className="px-3 py-2 mt-2">
+        <Button variant="outline" className="w-full h-9 text-xs" onClick={() => handleLeave("/dashboard")}>
+          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
           Back to Dashboard
         </Button>
       </div>
+
 
       <NoShowInjuredDialog
         open={noShowOpen}

@@ -808,7 +808,7 @@ export default function BellsMarker() {
 
         {/* Save */}
         <Button
-          className="w-full h-12 gap-2 text-base"
+          className="w-full h-10 gap-2 text-sm"
           disabled={saving || !finished || (pointsA === 0 && pointsB === 0)}
           onClick={saveResult}
         >
@@ -816,16 +816,17 @@ export default function BellsMarker() {
           Save result · {pointsA}-{pointsB}
         </Button>
 
-        <p className="text-[11px] text-muted-foreground text-center">
+        <p className="text-[10px] text-muted-foreground text-center">
           Tap each pair's number (or +) to add a point. Ring the bell, then confirm the score to save.
         </p>
       </div>
-      <div className="px-4 py-4 mt-4">
-        <Button variant="outline" className="w-full h-10 text-sm" onClick={() => handleLeave("/dashboard")}>
-          <ArrowLeft className="w-4 h-4 mr-1.5" />
+      <div className="px-3 py-2 mt-2">
+        <Button variant="outline" className="w-full h-9 text-xs" onClick={() => handleLeave("/dashboard")}>
+          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
           Back to Dashboard
         </Button>
       </div>
+
 
       <NoShowInjuredDialog
         open={noShowOpen}

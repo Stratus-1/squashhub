@@ -17,9 +17,9 @@ if (isStandalone()) markInstalled();
 // Marketing/landing routes force dark via AppRoutes below.
 // One-time migration: clear any previously-saved "light" preference so all
 // existing users start on the new dark default. They can still toggle back.
-if (!localStorage.getItem("theme-dark-default-v1")) {
+if (!localStorage.getItem("theme-dark-default-v2")) {
   localStorage.removeItem("theme");
-  localStorage.setItem("theme-dark-default-v1", "1");
+  localStorage.setItem("theme-dark-default-v2", "1");
 }
 const savedTheme = localStorage.getItem("theme");
 if (savedTheme !== "light") {

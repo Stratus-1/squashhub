@@ -11,6 +11,7 @@ import { Users } from "lucide-react";
 import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { MembershipIntroModal } from "@/components/MembershipIntroModal";
 import { MyChampionships } from "@/components/MyChampionships";
+import { MyChallenges } from "@/components/MyChallenges";
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
@@ -682,7 +683,7 @@ export default function Dashboard() {
 
       <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={((myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor") ? `Welcome back to visiting our club, ${firstName}` : `Welcome back, ${firstName}`} showNotifications showProfile />
 
-      <WelcomeBanner />
+      
 
       {/* Prompt members to join an affiliated league association */}
       <JoinLeagueAssociationCard clubId={clubId} variant="banner" />
@@ -1121,6 +1122,11 @@ export default function Dashboard() {
         </motion.div>
       )}
 
+
+      {/* My Challenges */}
+      <div className="px-4 mt-4">
+        <MyChallenges />
+      </div>
 
       {/* My Tournaments */}
       <div className="px-4 mt-4">

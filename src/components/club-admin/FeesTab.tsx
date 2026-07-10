@@ -270,7 +270,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   <TableCell>
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">R {fee.amount.toFixed(2)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{money(fee.amount)}</TableCell>
                   <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-center">

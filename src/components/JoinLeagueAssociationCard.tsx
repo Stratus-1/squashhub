@@ -122,7 +122,7 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
   }, [tenantsByLeagueAssoc, existingTenantAssocIds]);
 
   const remainingCount = leagueAssocs.length - excludeIds.length;
-  const hideEntirely = !activeMember || myMemberFlag || remainingCount <= 0;
+  const hideEntirely = !activeMember || myMemberFlag || remainingCount <= 0 || dismissed;
 
   const join = useMutation({
     mutationFn: async () => {

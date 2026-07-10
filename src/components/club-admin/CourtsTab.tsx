@@ -462,7 +462,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-courts", clubId],
     queryFn: async () => {
-      const { data, error } = await fromExt("courts").select("*").eq("club_id", clubId).order("name");
+      const { data, error } = await fromExt("courts").select("*").eq("club_id", clubId).eq("is_external", false).order("name");
       if (error) throw error;
       return data as { id: number; name: string; club_id: string; relay_device_id: string | null; relay_server: string | null; relay_channel?: number | null }[];
     },

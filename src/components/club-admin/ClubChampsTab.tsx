@@ -3444,6 +3444,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 const sharedSlot = Number(groupDurations["1"]) || matchDuration || 20;
                 const canParallel = groupCount > 1 && courtsUsed >= groupCount && roundFormat !== "cross_league";
                 const effectiveParallel = parallelLeagues && canParallel;
+                const isSwiss = scoringMode === "swiss";
                 const perLeague = leagues.map((gn) => {
                   const slot = roundFormat === "cross_league"
                     ? sharedSlot
@@ -3454,21 +3455,50 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       : s.courts;
                     return a + Math.floor(s.minutes / slot) * leagueCourts;
                   }, 0);
-                  const maxEntities = maxEntitiesFor(games);
-                  const maxPlayers = isDoubles ? maxEntities * 2 : maxEntities;
+                  // Round-robin sizing (used when not Swiss)
+                  const rrMaxEntities = maxEntitiesFor(games);
+                  const rrMaxPlayers = isDoubles ? rrMaxEntities * 2 : rrMaxEntities;
                   const groupItems = (groups as any[])[gn - 1] || [];
                   const actualEntities = groupItems.length;
                   const actualPlayers = isDoubles ? actualEntities * 2 : actualEntities;
-                  const gamesNeeded = actualEntities > 1 ? (actualEntities * (actualEntities - 1)) / 2 : 0;
+
+                  // Swiss sizing: split league into K pools, each plays R rounds; games needed per pool = ceil(N/2)*R
+                  const pools = isSwiss ? Math.max(1, Number(swissPools[String(gn)]) || 1) : 1;
+                  const gamesPerPool = Math.floor(games / pools);
+                  // Suggested rounds default when admin hasn't set one: aim for entities/pool if known, else 5
+                  const perPoolActual = isSwiss ? Math.ceil(actualEntities / pools) : 0;
+                  const suggestedRounds = isSwiss
+                    ? Math.max(1, perPoolActual > 1
+                        ? Math.min(perPoolActual - 1, Math.floor(gamesPerPool / Math.max(1, Math.ceil(perPoolActual / 2))))
+                        : Math.min(5, Math.floor(gamesPerPool / 2)))
+                    : 0;
+                  const roundsRaw = Number(swissRounds[String(gn)]);
+                  const rounds = isSwiss ? (roundsRaw > 0 ? roundsRaw : suggestedRounds) : 0;
+                  const gamesPerRoundPerPool = isSwiss ? Math.max(1, Math.ceil(Math.max(2, perPoolActual || 2) / 2)) : 0;
+                  // Max entities per pool given R rounds = floor(gamesPerPool / R) * 2
+                  const swissMaxPerPool = isSwiss && rounds > 0 ? Math.floor(gamesPerPool / rounds) * 2 : 0;
+                  const swissMaxEntities = isSwiss ? swissMaxPerPool * pools : 0;
+                  const swissMaxPlayers = isDoubles ? swissMaxEntities * 2 : swissMaxEntities;
+
+                  const maxEntities = isSwiss ? swissMaxEntities : rrMaxEntities;
+                  const maxPlayers = isSwiss ? swissMaxPlayers : rrMaxPlayers;
+                  const gamesNeeded = isSwiss
+                    ? (rounds > 0 ? Math.ceil((actualEntities || 0) / pools / 2) * rounds * pools : 0)
+                    : (actualEntities > 1 ? (actualEntities * (actualEntities - 1)) / 2 : 0);
                   const fits = gamesNeeded <= games;
-                  return { gn, slot, games, maxEntities, maxPlayers, actualEntities, actualPlayers, gamesNeeded, fits };
+                  return {
+                    gn, slot, games, maxEntities, maxPlayers, actualEntities, actualPlayers, gamesNeeded, fits,
+                    pools, rounds, suggestedRounds, gamesPerPool, swissMaxPerPool, perPoolActual,
+                  };
                 });
                 const sessionsCount = capSessions.length;
                 const needsSlot = (!matchDuration || matchDuration <= 0) && scoringMode !== "time_capped_points";
                 return (
                   <div className="mt-1 rounded-lg border p-3 bg-background text-xs space-y-2">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="font-medium text-sm">Capacity ({isDoubles ? "doubles" : "singles"}, round-robin)</div>
+                      <div className="font-medium text-sm">
+                        Capacity ({isDoubles ? "doubles" : "singles"}, {isSwiss ? "Swiss pairing" : "round-robin"})
+                      </div>
                       {canParallel && (
                         <label className="flex items-center gap-1.5 text-[11px] cursor-pointer">
                           <input
@@ -3493,11 +3523,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       const totalMaxPlayers = perLeague.reduce((a, l) => a + l.maxPlayers, 0);
                       const totalActualEntities = perLeague.reduce((a, l) => a + l.actualEntities, 0);
                       const totalActualPlayers = perLeague.reduce((a, l) => a + l.actualPlayers, 0);
+                      const totalPools = isSwiss ? perLeague.reduce((a, l) => a + l.pools, 0) : 0;
                       const anyOverflow = perLeague.some((l) => l.actualEntities > 0 && !l.fits);
                       return (
                         <div className={`rounded-md border p-2.5 ${anyOverflow ? "bg-destructive/10 border-destructive/40" : "bg-primary/5 border-primary/30"}`}>
                           <div className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground mb-0.5">
-                            Maximum allowed by capacity{groupCount > 1 && <> (across {groupCount} leagues)</>}
+                            Maximum allowed by capacity
+                            {isSwiss ? <> (across {groupCount} league{groupCount === 1 ? "" : "s"} · {totalPools} pool{totalPools === 1 ? "" : "s"})</> :
+                              (groupCount > 1 && <> (across {groupCount} leagues)</>)}
                           </div>
                           {isDoubles ? (
                             <div className="text-sm font-semibold text-foreground">
@@ -3522,37 +3555,87 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     })()}
                     {!needsSlot && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        {perLeague.map(({ gn, slot, games, maxPlayers, maxEntities, actualPlayers, actualEntities, gamesNeeded, fits }) => (
-                          <div key={gn} className={`flex flex-col gap-0.5 p-1.5 rounded border ${actualEntities > 0 && !fits ? "bg-destructive/10 border-destructive/40" : "bg-muted/30"}`}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium w-16">League {gn}</span>
-                              <span className="text-muted-foreground">{slot} min/slot</span>
-                              <span className="ml-auto">
-                                {actualEntities > 0 ? (
-                                  <><strong>{actualPlayers}</strong> player{actualPlayers === 1 ? "" : "s"}{isDoubles && <> (<strong>{actualEntities}</strong> pairs)</>}</>
-                                ) : (
-                                  <>up to <strong>{maxPlayers}</strong> players{isDoubles && <> (<strong>{maxEntities}</strong> pairs)</>}</>
-                                )}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-muted-foreground pl-[4.5rem]">
-                              {actualEntities > 0 ? (
-                                <>needs {gamesNeeded} game{gamesNeeded === 1 ? "" : "s"} · {games} available {fits ? "✓" : `· short by ${gamesNeeded - games}`}</>
-                              ) : (
-                                <>fits {games} game{games === 1 ? "" : "s"} · capacity for full round-robin</>
+                        {perLeague.map((L) => {
+                          const { gn, slot, games, maxPlayers, maxEntities, actualPlayers, actualEntities, gamesNeeded, fits, pools, rounds, suggestedRounds, swissMaxPerPool } = L;
+                          return (
+                            <div key={gn} className={`flex flex-col gap-1 p-1.5 rounded border ${actualEntities > 0 && !fits ? "bg-destructive/10 border-destructive/40" : "bg-muted/30"}`}>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium w-16">League {gn}</span>
+                                <span className="text-muted-foreground">{slot} min/slot</span>
+                                <span className="ml-auto">
+                                  {actualEntities > 0 ? (
+                                    <><strong>{actualPlayers}</strong> player{actualPlayers === 1 ? "" : "s"}{isDoubles && <> (<strong>{actualEntities}</strong> pairs)</>}</>
+                                  ) : (
+                                    <>up to <strong>{maxPlayers}</strong> players{isDoubles && <> (<strong>{maxEntities}</strong> pairs)</>}</>
+                                  )}
+                                </span>
+                              </div>
+                              {isSwiss && (
+                                <div className="flex items-center gap-2 pl-[4.5rem]">
+                                  <label className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                    Pools
+                                    <input
+                                      type="number" min={1} max={8}
+                                      value={pools}
+                                      onChange={(e) => setSwissPools((p) => ({ ...p, [String(gn)]: Math.max(1, Number(e.target.value) || 1) }))}
+                                      className="w-12 h-6 px-1 border rounded text-xs bg-background"
+                                    />
+                                  </label>
+                                  <label className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                    Rounds
+                                    <input
+                                      type="number" min={1} max={20}
+                                      placeholder={String(suggestedRounds || "")}
+                                      value={swissRounds[String(gn)] ? String(swissRounds[String(gn)]) : ""}
+                                      onChange={(e) => {
+                                        const v = Number(e.target.value);
+                                        setSwissRounds((r) => {
+                                          const next = { ...r };
+                                          if (v > 0) next[String(gn)] = v; else delete next[String(gn)];
+                                          return next;
+                                        });
+                                      }}
+                                      className="w-14 h-6 px-1 border rounded text-xs bg-background"
+                                    />
+                                  </label>
+                                  {rounds > 0 && (
+                                    <span className="text-[11px] text-muted-foreground">
+                                      → up to <strong>{swissMaxPerPool}</strong> {isDoubles ? "pairs" : "players"}/pool
+                                    </span>
+                                  )}
+                                </div>
                               )}
+                              <div className="text-[11px] text-muted-foreground pl-[4.5rem]">
+                                {isSwiss ? (
+                                  actualEntities > 0 ? (
+                                    <>needs {gamesNeeded} game{gamesNeeded === 1 ? "" : "s"} ({rounds} rounds × {pools} pool{pools === 1 ? "" : "s"}) · {games} available {fits ? "✓" : `· short by ${gamesNeeded - games}`}</>
+                                  ) : (
+                                    <>fits {games} game{games === 1 ? "" : "s"} · {rounds || suggestedRounds} rounds × {pools} pool{pools === 1 ? "" : "s"}</>
+                                  )
+                                ) : (
+                                  actualEntities > 0 ? (
+                                    <>needs {gamesNeeded} game{gamesNeeded === 1 ? "" : "s"} · {games} available {fits ? "✓" : `· short by ${gamesNeeded - games}`}</>
+                                  ) : (
+                                    <>fits {games} game{games === 1 ? "" : "s"} · capacity for full round-robin</>
+                                  )
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                     <div className="text-[11px] text-muted-foreground">
-                      Round-robin: each {isDoubles ? "pair" : "player"} plays every other once ({isDoubles ? "P·(P−1)/2" : "N·(N−1)/2"} games). {effectiveParallel ? "Parallel mode divides available courts across leagues (remainder assigned to earlier leagues)." : "Per-league figures assume that league has access to all selected courts for the full duration."}
+                      {isSwiss
+                        ? <>Swiss: each {isDoubles ? "pair" : "player"} plays R rounds; games per pool ≈ ⌈N/2⌉ × R. Pools within a league play in parallel using split courts.</>
+                        : <>Round-robin: each {isDoubles ? "pair" : "player"} plays every other once ({isDoubles ? "P·(P−1)/2" : "N·(N−1)/2"} games).</>}
+                      {" "}{effectiveParallel ? "Parallel mode divides available courts across leagues (remainder assigned to earlier leagues)." : "Per-league figures assume that league has access to all selected courts for the full duration."}
                     </div>
                   </div>
                 );
               })()}
             </div>
+
 
             <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
 

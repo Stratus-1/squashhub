@@ -703,6 +703,8 @@ function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const [venueName, setVenueName] = useState("");
   const [courtName, setCourtName] = useState("");
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; court: { id: number; name: string; venue: string } | null }>({ open: false, court: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-external-courts", clubId],
@@ -740,9 +742,16 @@ function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
     }
   };
 
-  const handleDelete = async (id: number, label: string) => {
-    if (!confirm(`Remove ${label}? This will not affect past tournaments already scheduled on it.`)) return;
-    const { error } = await fromExt("courts").delete().eq("id", id);
+  const requestDelete = (court: { id: number; name: string; venue_name: string | null }) => {
+    setDeleteDialog({ open: true, court: { id: court.id, name: court.name, venue: court.venue_name || "Unnamed venue" } });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteDialog.court) return;
+    setIsDeleting(true);
+    const { error } = await fromExt("courts").delete().eq("id", deleteDialog.court.id);
+    setIsDeleting(false);
+    setDeleteDialog({ open: false, court: null });
     if (error) toast.error(error.message);
     else {
       toast.success("External court removed");

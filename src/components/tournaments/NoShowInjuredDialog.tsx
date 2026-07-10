@@ -129,6 +129,8 @@ export function NoShowInjuredDialog({
     },
     onSuccess: (n) => {
       qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+      qc.invalidateQueries({ queryKey: ["bells-match", match?.id] });
+      qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
       toast.success(`Applied to ${n} remaining match${n === 1 ? "" : "es"}`);
       setCascadePromptOpen(false);
       setPendingForfeitMemberId(null);

@@ -30,6 +30,7 @@ Deno.serve(async (req) => {
     .select('key, value')
     .in('key', [
       'platform_invoice_settings',
+      'platform_stitch_private_settings',
       'saas_rate_zar_monthly',
       'saas_rate_zar_annual',
       'saas_intl_uplift_pct',
@@ -43,6 +44,11 @@ Deno.serve(async (req) => {
   const settings = settingsMap.get('platform_invoice_settings')
     ? JSON.parse(settingsMap.get('platform_invoice_settings')!)
     : {}
+  let stitchCreds: any = null
+  try {
+    const raw = settingsMap.get('platform_stitch_private_settings')
+    if (raw) stitchCreds = JSON.parse(raw)
+  } catch (_) { stitchCreds = null }
   const invoicePrefix: string = settings.invoice_prefix || 'INV-'
   const vatRate: number =
     typeof body.vatRate === 'number' ? body.vatRate : settings.vat_number ? 0.15 : 0
@@ -224,6 +230,34 @@ Deno.serve(async (req) => {
 
       if (invErr) throw invErr
 
+      // Build the club's subscription management URL (for the email fallback link
+      // and Stitch redirect after payment).
+      const subdomain = (club as any)?.subdomain as string | undefined
+      const manageUrl = subdomain
+        ? `https://${subdomain}.squashhub.co.za/club-admin?tab=subscription`
+        : `https://squashhub.co.za/club-admin?tab=subscription`
+
+      // Try to create a Stitch payment link so the invoice email has a "Pay" button.
+      // Best-effort — if it fails (creds missing / API down), we fall back to manageUrl.
+      let payLink: string | null = null
+      try {
+        payLink = await createStitchPayLink({
+          stitchCreds,
+          amountZar: total,
+          currency: clubCurrency,
+          invoiceNumber,
+          returnUrl: manageUrl,
+        })
+        if (payLink) {
+          await supabase
+            .from('platform_subscription_invoices')
+            .update({ stitch_payment_link: payLink })
+            .eq('id', inv.id)
+        }
+      } catch (e) {
+        console.warn('Stitch pay link failed for', invoiceNumber, (e as any)?.message)
+      }
+
       // Email admin
       const recipient = recipientFor(sub.club_id)
       let emailStatus: string | null = null
@@ -262,6 +296,8 @@ Deno.serve(async (req) => {
               bankSwift: settings.bank_swift,
               logoUrl: settings.logo_url,
               invoiceFooter: settings.invoice_footer,
+              payLink: payLink || undefined,
+              manageUrl,
             },
           },
         })

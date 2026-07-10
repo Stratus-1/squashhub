@@ -12,6 +12,7 @@ import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useNavigate } from "react-router-dom";
+import { HelpFaq } from "@/components/help/HelpFaq";
 
 type HelpVideo = {
   id: string;

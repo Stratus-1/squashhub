@@ -686,6 +686,15 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
         <Input value={newCourt} onChange={e => setNewCourt(e.target.value)} placeholder="e.g. Court 1" className="flex-1 h-8 text-xs" onKeyDown={e => e.key === "Enter" && handleAdd()} />
         <Button size="sm" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" />Add</Button>
       </div>
+      <DeleteConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}
+        title="Delete court?"
+        description={deleteDialog.court ? `Are you sure you want to remove "${deleteDialog.court.name}"? This cannot be undone.` : ""}
+        onConfirm={handleDelete}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+      />
     </Card>
   );
 }

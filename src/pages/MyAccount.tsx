@@ -111,6 +111,7 @@ export default function MyAccount() {
 
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("100");
+  const [topUpFromGate, setTopUpFromGate] = useState(false);
   const [topUpMethod, setTopUpMethod] = useState<"eft" | "card">("eft");
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
@@ -134,6 +135,7 @@ export default function MyAccount() {
     if (Number.isFinite(n) && n > 0) {
       setTopUpAmount(n.toFixed(2));
       setTopUpMethod("card");
+      setTopUpFromGate(true);
       setTopUpOpen(true);
     }
     const next = new URLSearchParams(searchParams);
@@ -745,7 +747,7 @@ export default function MyAccount() {
       </motion.div>
 
       {/* Top Up Dialog */}
-      <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
+      <Dialog open={topUpOpen} onOpenChange={(o) => { setTopUpOpen(o); if (!o) setTopUpFromGate(false); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{isAccountPayment ? "Pay Account" : "Top Up Credit"}</DialogTitle>
@@ -761,6 +763,15 @@ export default function MyAccount() {
                 value={topUpAmount}
                 onChange={(e) => setTopUpAmount(e.target.value)}
               />
+              {topUpFromGate ? (
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  This is the minimum needed to cover your booking. Tip: top up more (e.g. R100 or R200) to save time — you won't have to top up again for a while.
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Top up any amount from R10. Larger top-ups mean fewer payments later.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">

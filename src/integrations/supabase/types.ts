@@ -7135,6 +7135,15 @@ export type Database = {
         }
         Returns: Json
       }
+      get_bells_participant_min: {
+        Args: { _member_ids: string[] }
+        Returns: {
+          club_id: string
+          id: string
+          name: string
+          user_id: string
+        }[]
+      }
       get_champ_host: {
         Args: { _champ_id: string }
         Returns: {

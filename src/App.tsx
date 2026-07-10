@@ -64,6 +64,8 @@ import Analytics from "./pages/Analytics";
 import Seasons from "./pages/Seasons";
 import AdminEventEditor from "./pages/AdminEventEditor";
 import Support from "./pages/Support";
+import Help from "./pages/Help";
+import SuperAdminHelpVideos from "./pages/admin/SuperAdminHelpVideos";
 import LeagueGames from "./pages/LeagueGames";
 import LeagueGameDetail from "./pages/LeagueGameDetail";
 import AdminSupport from "./pages/AdminSupport";
@@ -460,12 +462,14 @@ function AppRoutes() {
           <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
           <Route path="settings" element={<SuperAdminSettings />} />
           <Route path="support" element={<AdminSupport />} />
+          <Route path="help" element={<SuperAdminHelpVideos />} />
           <Route path="events/new" element={<AdminEventEditor />} />
           <Route path="events/:id" element={<AdminEventEditor />} />
         </Route>
         <Route path="/booking-response" element={<BookingResponse />} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+        <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       {backgroundLocation && (

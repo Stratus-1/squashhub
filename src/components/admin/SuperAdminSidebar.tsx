@@ -1,4 +1,4 @@
-import { Building2, LayoutDashboard, Users, CreditCard, Settings, LogOut, ChevronLeft, Trophy, Download, LifeBuoy } from "lucide-react";
+import { Building2, LayoutDashboard, Users, CreditCard, Settings, LogOut, ChevronLeft, Trophy, Download, LifeBuoy, GraduationCap } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +23,7 @@ const navItems = [
   { title: "Leagues", url: "/admin/leagues", icon: Trophy },
   { title: "NSA Import", url: "/admin/nsa-import", icon: Download },
   { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard },
+  { title: "Help Videos", url: "/admin/help", icon: GraduationCap },
   { title: "Support", url: "/admin/support", icon: LifeBuoy },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];

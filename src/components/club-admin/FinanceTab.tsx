@@ -1146,19 +1146,19 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <p className="font-semibold text-foreground text-xs">GL Preview:</p>
                   {txDirection === "income" ? (
                     <>
-                      <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} {parseFloat(txAmount).toFixed(2)}</p>
-                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getLabel(txAccount)} {parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} {money(parseFloat(txAmount))}</p>
+                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getLabel(txAccount)} {money(parseFloat(txAmount))}</p>
                     </>
                   ) : (
                     <>
-                      <p>• Debit {getLabel(txAccount)} {parseFloat(txAmount).toFixed(2)}</p>
-                      <p>• Credit {txMethod === "cash" ? "Cash" : "Current Account"} {parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Debit {getLabel(txAccount)} {money(parseFloat(txAmount))}</p>
+                      <p>• Credit {txMethod === "cash" ? "Cash" : "Current Account"} {money(parseFloat(txAmount))}</p>
                     </>
                   )}
                   {txMethod === "card" && (
                     <>
-                      <p>• Debit Gateway Fees {(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
-                      <p>• Credit Current Account {(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
+                      <p>• Debit Gateway Fees {money(parseFloat(txAmount) * GATEWAY_FEE_RATE)}</p>
+                      <p>• Credit Current Account {money(parseFloat(txAmount) * GATEWAY_FEE_RATE)}</p>
                     </>
                   )}
                 </div>

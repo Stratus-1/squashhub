@@ -50,7 +50,9 @@ export function NoShowInjuredDialog({
   champ,
   allMatches,
   getName,
+  onApplied,
 }: Props) {
+
   const qc = useQueryClient();
   const [absentSide, setAbsentSide] = useState<"a" | "b">("a");
   const [cascadePromptOpen, setCascadePromptOpen] = useState(false);

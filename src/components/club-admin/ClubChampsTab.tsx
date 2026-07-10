@@ -3017,6 +3017,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <SelectItem value="cross_league">
                       League vs League (cross-league only — players only play opponents from the other league, not their own) — set 2+ leagues on the Groups step
                     </SelectItem>
+                    <SelectItem value="swiss">Swiss pairing (fixed rounds, admin pairs each round by score — set pools & rounds per league)</SelectItem>
                   </SelectContent>
                 </Select>
                 {roundFormat ? (
@@ -3025,6 +3026,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       ? "All teams play one another twice — first round home, second round away."
                       : roundFormat === "cross_league"
                       ? "No intra-league games. Every player in league 1 plays every player in league 2 (and so on across leagues). Pick at least 2 leagues."
+                      : roundFormat === "swiss"
+                      ? "Players re-paired each round against opponents on similar scores. Configure Pools & Rounds per league in the capacity calculator."
                       : "All teams play one another once."}
                   </p>
                 ) : (

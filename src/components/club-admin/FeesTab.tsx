@@ -523,7 +523,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
           {/* Amount + Due Month (hide date for registration — it's once-off on join) */}
           {feeType === "registration" ? (
             <div className="space-y-1">
-              <Label>Registration Fee (R)</Label>
+              <Label>Registration Fee ({currencySymbol})</Label>
               <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
               <p className="text-[10px] text-muted-foreground">Once-off fee charged when a new member joins the club</p>
             </div>

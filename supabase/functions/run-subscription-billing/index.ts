@@ -176,7 +176,8 @@ Deno.serve(async (req) => {
       const billableMembers = cap && cap > 0 ? Math.min(memberCount, cap) : memberCount
 
       // Convert ZAR plan rates to the club's billing currency (adds intl uplift for non-ZAR).
-      const clubCurrency = clubCurrencies.get(sub.club_id) || 'ZAR'
+      // If we have no FX rate for the club's currency, bill in ZAR to avoid mis-stating the amount.
+      const clubCurrency = resolveBillingCurrency(clubCurrencies.get(sub.club_id) || 'ZAR')
       const pricePerMemberLocal = +convert(Number(plan.price_per_member), clubCurrency).toFixed(2)
       const minimumChargeLocal = +convert(Number(plan.minimum_charge || 0), clubCurrency).toFixed(2)
 

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileText, Download } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useClubCurrency } from "@/hooks/use-currency";
 
 interface AccountMeta {
   label: string;

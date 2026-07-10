@@ -2665,6 +2665,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
       case "registration": {
         if (!registrationMode) m.push("Choose who can register");
+        if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
         if (registrationRequired) {
           if (!registrationOpensAt) m.push("Registration opens (date & time)");
           if (!registrationClosesAt) m.push("Registration closes (date & time)");

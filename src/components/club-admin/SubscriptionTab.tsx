@@ -89,7 +89,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
     [invoices]
   );
   const totalOutstanding = outstanding.reduce((s, i) => s + Number(i.total || 0), 0);
-  const outstandingCurrency = (outstanding[0] as any)?.currency || "USD";
+  const outstandingCurrency = (outstanding[0] as any)?.currency || (club as any)?.currency_code || "ZAR";
 
   const copy = (text: string, label = "Copied") => {
     navigator.clipboard.writeText(text).then(

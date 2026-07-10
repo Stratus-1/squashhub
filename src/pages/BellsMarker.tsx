@@ -592,18 +592,18 @@ export default function BellsMarker() {
   }) => (
     <div
       className={cn(
-        "flex flex-col items-center justify-between rounded-2xl border p-4 sm:p-6",
+        "flex flex-col items-center justify-between rounded-2xl border p-2 sm:p-3",
         side === "a" ? "bg-primary/5 border-primary/30" : "bg-amber-500/5 border-amber-500/30",
       )}
     >
       <div className="flex items-center gap-1.5 max-w-full">
-        <p className="text-sm font-medium text-center line-clamp-2 min-h-[2.5rem]">{label}</p>
+        <p className="text-xs font-medium text-center line-clamp-2">{label}</p>
         <button
           type="button"
           onClick={onBadgeClick}
           disabled={finished}
           className={cn(
-            "text-base font-bold px-2 py-0.5 rounded transition active:scale-95 min-w-[2rem]",
+            "text-xs font-bold px-1.5 py-0.5 rounded transition active:scale-95 min-w-[1.5rem]",
             isServer
               ? "bg-accent text-accent-foreground"
               : "bg-muted text-muted-foreground border border-dashed",
@@ -618,7 +618,7 @@ export default function BellsMarker() {
         onClick={onPlus}
         disabled={finished}
         className={cn(
-          "my-3 w-full rounded-xl text-7xl sm:text-8xl font-bold tabular-nums py-6 active:scale-95 transition disabled:opacity-60",
+          "my-2 w-full rounded-xl text-5xl sm:text-6xl font-bold tabular-nums py-3 active:scale-95 transition disabled:opacity-60",
           side === "a" ? "bg-primary text-primary-foreground" : "bg-amber-500 text-white",
         )}
         aria-label={`Add point to ${label}`}
@@ -629,20 +629,20 @@ export default function BellsMarker() {
         <Button
           variant="outline"
           size="sm"
-          className="flex-1"
+          className="flex-1 h-7"
           onClick={onMinus}
           disabled={finished || value === 0}
         >
-          <Minus className="w-4 h-4" />
+          <Minus className="w-3.5 h-3.5" />
         </Button>
         <Button
           variant="outline"
           size="sm"
-          className="flex-1"
+          className="flex-1 h-7"
           onClick={onPlus}
           disabled={finished}
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
         </Button>
       </div>
     </div>

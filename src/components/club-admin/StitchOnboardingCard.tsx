@@ -73,7 +73,7 @@ export default function StitchOnboardingCard({
           if (data.contact_name) setContactName(data.contact_name);
           if (data.contact_email) setContactEmail(data.contact_email);
           if (data.contact_cell) setContactCell(data.contact_cell);
-          if (Array.isArray(data.board_members)) setBoardMembers((data.board_members as string[]).join("\n"));
+          if (Array.isArray(data.board_members) && data.board_members.length) setBoardMembers((data.board_members as string[]).join("\n"));
           if (Array.isArray(data.files) && data.files.length) {
             const grouped: Record<string, Uploaded[]> = {};
             for (const f of data.files as Uploaded[]) {

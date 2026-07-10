@@ -28,6 +28,8 @@ import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { SubscriptionTab } from "@/components/club-admin/SubscriptionTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
+import { fromExt } from "@/lib/supabase-ext";
+import { useQuery } from "@tanstack/react-query";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 
@@ -89,11 +91,25 @@ export default function ClubAdmin() {
     if (t) setActiveTab(t);
   }, [searchParams]);
 
-  const club = data?.club;
+  const baseClub = data?.club;
+  const { data: adminClub, isFetching: isFetchingAdminClub } = useQuery({
+    queryKey: ["admin-club", baseClub?.id],
+    queryFn: async () => {
+      const { data: row, error } = await fromExt("clubs")
+        .select("*")
+        .eq("id", baseClub!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return row;
+    },
+    enabled: !!user && !!baseClub?.id,
+    staleTime: 30_000,
+  });
+  const club = (adminClub || baseClub) as typeof baseClub;
   // Hooks must run on every render — call before any early returns.
   const setupStatus = useSetupStatus(club?.id ?? "", club as any);
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (isLoading || (baseClub?.id && isFetchingAdminClub && !adminClub)) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   if (!data?.club || !club) return <Navigate to="/register-club" replace />;
   if (!isAdmin && myPermissions.size === 0) return <Navigate to="/dashboard" replace />;

@@ -28,12 +28,25 @@ export function DashboardOpenDoorCard() {
   const { data: clubData } = useMyClub();
   const club = clubData?.club as { id?: string; visitors_access_control?: boolean } | undefined;
   const { data: clubSecrets } = useClubSecrets(club?.id);
+  const { data: accessPublic } = useQuery({
+    enabled: !!club?.id,
+    queryKey: ["club-access-public", club?.id],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await fromExt("club_access_public")
+        .select("*")
+        .eq("club_id", club!.id!)
+        .maybeSingle();
+      return data as any;
+    },
+  });
   const { activeMember } = useMemberContext();
   const { data: myBookings } = useMyBookings();
   const gate = useMemberAccessGate();
   const [loading, setLoading] = useState(false);
 
-  const accessType = (clubSecrets as any)?.access_control_type;
+  const merged: any = { ...(accessPublic || {}), ...(clubSecrets || {}) };
+  const accessType = merged.access_control_type;
   const flussEnabled = accessType === "remote_trigger";
   const shellyEnabled = accessType === "shelly_relay";
   const doorEnabled = flussEnabled || shellyEnabled;

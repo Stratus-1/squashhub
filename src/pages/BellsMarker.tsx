@@ -656,13 +656,14 @@ export default function BellsMarker() {
         subtitle={`${champ?.name} · ${getGroupLabel(champ, match.group_number)} · ${capMinutes} min cap`}
       />
 
-      <div className="px-4 mt-3 mb-20 max-w-2xl mx-auto space-y-4">
+      <div className="px-3 mt-2 mb-16 max-w-2xl mx-auto space-y-2">
         <button
           onClick={() => handleLeave("/tournaments")}
-          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to tournaments
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to tournaments
         </button>
+
 
 
         {/* How-to */}

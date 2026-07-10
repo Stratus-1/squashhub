@@ -90,11 +90,19 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         </div>
       </div>
 
+      {(() => {
+        const BILLING_CAP = 150;
+        const billableCount = typeof memberCount === "number" ? Math.min(memberCount, BILLING_CAP) : null;
+        const monthlyEst = billableCount !== null ? billableCount * 0.35 : null;
+        const annualEst = billableCount !== null ? billableCount * 0.30 * 12 : null;
+        const fmt = (n: number) => `$${n.toFixed(2)}`;
+        return (
       <div className="rounded-md border bg-muted/30 p-4 text-sm space-y-2">
         <div className="font-medium text-foreground">Fee structure</div>
         <ul className="list-disc pl-5 text-muted-foreground space-y-1">
           <li><strong className="text-foreground">$0.35</strong> per active member per month (billed monthly), or</li>
           <li><strong className="text-foreground">$0.30</strong> per active member per month if paid <strong className="text-foreground">annually in advance</strong> (save $0.60 / member / year)</li>
+          <li>Billing is <strong className="text-foreground">capped at {BILLING_CAP} active members</strong> per club — additional members are free.</li>
         </ul>
         <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
           Fees are first invoiced from <strong>September 2026</strong> for the current financial year, and annually thereafter.
@@ -104,8 +112,25 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             Rates shown in US Dollars (USD). Your invoices are issued in your club currency ({clubCurrencyName} · {clubCurrencyCode}), converted at the prevailing platform rate.
           </p>
         )}
-        {typeof memberCount === "number" && (
-          <p className="text-xs text-muted-foreground">Your club currently has {memberCount} active member{memberCount === 1 ? "" : "s"}.</p>
+        {typeof memberCount === "number" && billableCount !== null && (
+          <div className="rounded border bg-background/60 p-2.5 text-xs space-y-1">
+            <div className="text-muted-foreground">
+              Your club currently has <strong className="text-foreground">{memberCount}</strong> active member{memberCount === 1 ? "" : "s"}
+              {memberCount > BILLING_CAP && (
+                <> — billed on <strong className="text-foreground">{BILLING_CAP}</strong> (cap)</>
+              )}.
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <div className="text-muted-foreground">Estimated monthly</div>
+                <div className="font-semibold text-foreground">{fmt(monthlyEst!)} <span className="text-[10px] font-normal text-muted-foreground">/ month</span></div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Estimated annual (upfront)</div>
+                <div className="font-semibold text-foreground">{fmt(annualEst!)} <span className="text-[10px] font-normal text-muted-foreground">/ year</span></div>
+              </div>
+            </div>
+          </div>
         )}
         <div className="flex flex-wrap gap-2 pt-1">
           <Button type="button" variant="outline" size="sm" asChild>
@@ -124,6 +149,10 @@ export function ClubParticipationCard({ club }: { club: Club }) {
           </Button>
         </div>
       </div>
+        );
+      })()}
+
+
 
       {isActive ? (
         <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm space-y-1">

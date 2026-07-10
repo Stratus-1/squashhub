@@ -498,7 +498,7 @@ export default function SuperAdminSubscriptions() {
 
   const openPlanDialog = (plan: Plan | "new") => {
     if (plan === "new") {
-      setPlanForm({ name: "", description: "", price_per_member: MONTHLY_RATE_USD, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "30", is_default: false, active: true });
+      setPlanForm({ name: "", description: "", price_per_member: MONTHLY_RATE_ZAR, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "30", is_default: false, active: true });
     } else {
       setPlanForm({
         name: plan.name,

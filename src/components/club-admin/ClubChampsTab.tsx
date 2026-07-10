@@ -3214,8 +3214,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
             <div>
               <Label className="text-sm">Courts used by the tournament</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {courts.map((c) => (
+              {(() => {
+                const homeCourts = courts.filter((c) => !c.is_external);
+                const externalCourts = courts.filter((c) => c.is_external);
+                const externalByVenue = externalCourts.reduce<Record<string, typeof externalCourts>>((acc, c) => {
+                  const key = c.venue_name || "External venue";
+                  (acc[key] ||= []).push(c);
+                  return acc;
+                }, {});
+                const renderCheckbox = (c: typeof courts[number]) => (
                   <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
                     <Checkbox
                       checked={selectedCourtIds.has(c.id)}
@@ -3227,11 +3234,29 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     />
                     <span className="text-sm">{c.name}</span>
                   </label>
-                ))}
-                {courts.length === 0 && (
-                  <span className="text-xs text-muted-foreground">No courts configured for this club yet.</span>
-                )}
-              </div>
+                );
+                return (
+                  <div className="space-y-2 mt-1">
+                    {homeCourts.length > 0 && (
+                      <div className="flex flex-wrap gap-2">{homeCourts.map(renderCheckbox)}</div>
+                    )}
+                    {Object.entries(externalByVenue).map(([venue, list]) => (
+                      <div key={venue} className="rounded-md border border-dashed p-2">
+                        <div className="text-[11px] font-semibold text-muted-foreground mb-1">📍 {venue}</div>
+                        <div className="flex flex-wrap gap-2">{list.map(renderCheckbox)}</div>
+                      </div>
+                    ))}
+                    {courts.length === 0 && (
+                      <span className="text-xs text-muted-foreground">No courts configured for this club yet.</span>
+                    )}
+                    {externalCourts.length === 0 && homeCourts.length > 0 && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Need more courts? Add external venues in <strong>Admin → Courts → External / Tournament Venues</strong>.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Per-day schedule overrides — supports multiple time windows per date

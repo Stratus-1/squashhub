@@ -66,6 +66,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
         .from("courts")
         .select("id, name")
         .eq("club_id", clubId)
+        .eq("is_external", false)
         .order("id");
       if (error) throw error;
       return (data || []) as Court[];

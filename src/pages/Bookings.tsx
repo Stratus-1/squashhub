@@ -623,7 +623,7 @@ export default function Bookings() {
   const { data: courtsData } = useQuery({
     queryKey: ["courts-list", bookingClubId],
     queryFn: async () => {
-      let q = supabase.from("courts").select("id, name").order("id");
+      let q = supabase.from("courts").select("id, name").eq("is_external", false).order("id");
       if (bookingClubId) q = q.eq("club_id", bookingClubId);
       const { data, error } = await q;
       if (error) throw error;

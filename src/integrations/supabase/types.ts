@@ -3080,31 +3080,37 @@ export type Database = {
           club_id: string | null
           fluss_device_id: string | null
           id: number
+          is_external: boolean
           name: string
           relay_ble_mac: string | null
           relay_channel: number
           relay_device_id: string | null
           relay_server: string | null
+          venue_name: string | null
         }
         Insert: {
           club_id?: string | null
           fluss_device_id?: string | null
           id?: number
+          is_external?: boolean
           name: string
           relay_ble_mac?: string | null
           relay_channel?: number
           relay_device_id?: string | null
           relay_server?: string | null
+          venue_name?: string | null
         }
         Update: {
           club_id?: string | null
           fluss_device_id?: string | null
           id?: number
+          is_external?: boolean
           name?: string
           relay_ble_mac?: string | null
           relay_channel?: number
           relay_device_id?: string | null
           relay_server?: string | null
+          venue_name?: string | null
         }
         Relationships: [
           {

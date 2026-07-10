@@ -106,7 +106,7 @@ export function LiveSessionBanner() {
   const { data: courtsData } = useQuery({
     queryKey: ["courts-list", clubId],
     queryFn: async () => {
-      let q = supabase.from("courts").select("id, name, relay_device_id, relay_ble_mac").order("id");
+      let q = supabase.from("courts").select("id, name, relay_device_id, relay_ble_mac").eq("is_external", false).order("id");
       if (clubId) q = q.eq("club_id", clubId);
       const { data, error } = await q;
       if (error) throw error;

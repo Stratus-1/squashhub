@@ -153,7 +153,7 @@ export default function Challenges() {
   const [courts, setCourts] = useState<{ id: number; name: string }[]>([]);
   useMemo(() => {
     if (!clubId) return;
-    supabase.from("courts").select("id, name").eq("club_id", clubId).then(({ data }) => {
+    supabase.from("courts").select("id, name").eq("club_id", clubId).eq("is_external", false).then(({ data }) => {
       setCourts(data || []);
     });
   }, [clubId]);

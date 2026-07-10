@@ -108,7 +108,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { data: courts } = useQuery({
     queryKey: ["courts-list", clubId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("courts").select("id, name").eq("club_id", clubId!).order("id");
+      const { data, error } = await supabase.from("courts").select("id, name").eq("club_id", clubId!).eq("is_external", false).order("id");
       if (error) throw error;
       return (data || []) as { id: number; name: string }[];
     },

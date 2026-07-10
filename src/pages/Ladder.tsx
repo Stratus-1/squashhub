@@ -177,7 +177,7 @@ export default function Ladder() {
   const [courts, setCourts] = useState<{ id: number; name: string }[]>([]);
   useEffect(() => {
     if (!clubId) return;
-    supabase.from("courts").select("id, name").eq("club_id", clubId).then(({ data }) => {
+    supabase.from("courts").select("id, name").eq("club_id", clubId).eq("is_external", false).then(({ data }) => {
       setCourts(data || []);
       if (data && data.length > 0 && !courtId) setCourtId(String(data[0].id));
     });

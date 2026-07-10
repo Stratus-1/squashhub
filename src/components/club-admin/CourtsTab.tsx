@@ -141,6 +141,8 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     <div className="space-y-4 mt-4">
       <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} lightsEnabled={lightsEnabled} />
 
+      <ExternalTournamentCourtsSection clubId={clubId} />
+
       <ExternalBookingSection club={club} clubId={clubId} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -462,7 +464,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-courts", clubId],
     queryFn: async () => {
-      const { data, error } = await fromExt("courts").select("*").eq("club_id", clubId).order("name");
+      const { data, error } = await fromExt("courts").select("*").eq("club_id", clubId).eq("is_external", false).order("name");
       if (error) throw error;
       return data as { id: number; name: string; club_id: string; relay_device_id: string | null; relay_server: string | null; relay_channel?: number | null }[];
     },
@@ -625,6 +627,123 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
         <Input value={newCourt} onChange={e => setNewCourt(e.target.value)} placeholder="e.g. Court 1" className="flex-1 h-8 text-xs" onKeyDown={e => e.key === "Enter" && handleAdd()} />
         <Button size="sm" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" />Add</Button>
       </div>
+    </Card>
+  );
+}
+
+function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
+  const qc = useQueryClient();
+  const [venueName, setVenueName] = useState("");
+  const [courtName, setCourtName] = useState("");
+
+  const { data: courts = [], isLoading } = useQuery({
+    queryKey: ["club-external-courts", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("courts")
+        .select("id, name, venue_name")
+        .eq("club_id", clubId)
+        .eq("is_external", true)
+        .order("venue_name")
+        .order("name");
+      if (error) throw error;
+      return data as { id: number; name: string; venue_name: string | null }[];
+    },
+  });
+
+  const handleAdd = async () => {
+    const v = venueName.trim();
+    const n = courtName.trim();
+    if (!v || !n) {
+      toast.error("Enter both a venue name and a court name");
+      return;
+    }
+    const { error } = await fromExt("courts").insert({
+      club_id: clubId,
+      name: n,
+      venue_name: v,
+      is_external: true,
+    });
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Added ${v} — ${n}`);
+      setCourtName("");
+      qc.invalidateQueries({ queryKey: ["club-external-courts"] });
+      qc.invalidateQueries({ queryKey: ["club-courts"] });
+    }
+  };
+
+  const handleDelete = async (id: number, label: string) => {
+    if (!confirm(`Remove ${label}? This will not affect past tournaments already scheduled on it.`)) return;
+    const { error } = await fromExt("courts").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("External court removed");
+      qc.invalidateQueries({ queryKey: ["club-external-courts"] });
+      qc.invalidateQueries({ queryKey: ["club-courts"] });
+    }
+  };
+
+  // Group by venue for display
+  const grouped = courts.reduce<Record<string, typeof courts>>((acc, c) => {
+    const key = c.venue_name || "Unnamed venue";
+    (acc[key] ||= []).push(c);
+    return acc;
+  }, {});
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div>
+        <h3 className="font-semibold text-sm">External / Tournament Venues ({courts.length})</h3>
+        <p className="text-[11px] text-muted-foreground">
+          Extra courts at other venues that your tournaments can use (e.g. a partner club). They appear only in tournament court pickers — never in normal bookings, ladder or challenges.
+        </p>
+      </div>
+
+      {Object.keys(grouped).length > 0 && (
+        <div className="space-y-2">
+          {Object.entries(grouped).map(([venue, list]) => (
+            <div key={venue} className="rounded-lg border p-2">
+              <div className="text-xs font-semibold text-foreground mb-1.5">{venue}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {list.map((c) => (
+                  <div key={c.id} className="flex items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5">
+                    <span className="text-xs">{c.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 text-destructive"
+                      onClick={() => handleDelete(c.id, `${venue} — ${c.name}`)}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {courts.length === 0 && !isLoading && (
+        <p className="text-xs text-muted-foreground">No external courts yet. Add a venue and court below to make it selectable in your tournament wizard.</p>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+        <Input
+          value={venueName}
+          onChange={e => setVenueName(e.target.value)}
+          placeholder="Venue name (e.g. White River Country Club)"
+          className="h-8 text-xs"
+        />
+        <Input
+          value={courtName}
+          onChange={e => setCourtName(e.target.value)}
+          placeholder="Court name (e.g. Court 1)"
+          className="h-8 text-xs"
+          onKeyDown={e => e.key === "Enter" && handleAdd()}
+        />
+        <Button size="sm" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" />Add</Button>
+      </div>
+      <p className="text-[10px] text-muted-foreground">Tip: add each court at that venue as its own row (e.g. Court 1, Court 2, Court 3).</p>
     </Card>
   );
 }

@@ -82,7 +82,7 @@ export function FeesPayableSchedule({ clubId }: { clubId: string }) {
               <TableHead>Payable To</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Basis</TableHead>
-              <TableHead className="text-right">Amount (R)</TableHead>
+              <TableHead className="text-right">Amount ({currencySymbol})</TableHead>
               <TableHead>Due</TableHead>
               <TableHead className="text-center">Active</TableHead>
               <TableHead className="w-[80px]"></TableHead>

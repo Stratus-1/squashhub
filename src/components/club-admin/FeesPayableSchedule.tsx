@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit2 } from "lucide-react";
+import { useClubCurrency } from "@/hooks/use-currency";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -33,6 +34,7 @@ interface PayableFee {
 
 export function FeesPayableSchedule({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
+  const { format: money, symbol: currencySymbol } = useClubCurrency();
   const [editFee, setEditFee] = useState<PayableFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
@@ -80,7 +82,7 @@ export function FeesPayableSchedule({ clubId }: { clubId: string }) {
               <TableHead>Payable To</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Basis</TableHead>
-              <TableHead className="text-right">Amount (R)</TableHead>
+              <TableHead className="text-right">Amount ({currencySymbol})</TableHead>
               <TableHead>Due</TableHead>
               <TableHead className="text-center">Active</TableHead>
               <TableHead className="w-[80px]"></TableHead>
@@ -107,7 +109,7 @@ export function FeesPayableSchedule({ clubId }: { clubId: string }) {
                     {fee.basis === "per_member" ? "Per member" : fee.basis === "per_team" ? "Per team" : "Per club"}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right tabular-nums">R {Number(fee.amount).toFixed(2)}</TableCell>
+                <TableCell className="text-right tabular-nums">{money(Number(fee.amount))}</TableCell>
                 <TableCell className="text-sm">{fee.due_day} {SHORT_MONTHS[fee.due_month - 1]}</TableCell>
                 <TableCell className="text-center">
                   <Switch checked={fee.active} onCheckedChange={() => handleToggle(fee)} className="mx-auto" />
@@ -138,6 +140,7 @@ export function FeesPayableSchedule({ clubId }: { clubId: string }) {
 
 function PayableFeeDialog({ clubId, existing, open, onOpenChange }: { clubId: string; existing?: PayableFee; open: boolean; onOpenChange: (o: boolean) => void; }) {
   const qc = useQueryClient();
+  const { symbol: currencySymbol } = useClubCurrency();
   const isEdit = !!existing;
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);
@@ -235,7 +238,7 @@ function PayableFeeDialog({ clubId, existing, open, onOpenChange }: { clubId: st
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label>Amount (R)</Label>
+              <Label>Amount ({currencySymbol})</Label>
               <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
             </div>
             <div className="space-y-1">

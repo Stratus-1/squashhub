@@ -14,6 +14,7 @@ import { Plus, Trash2, Edit2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { FeesPayableSchedule } from "./FeesPayableSchedule";
+import { useClubCurrency } from "@/hooks/use-currency";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -47,6 +48,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   const { data: clubData } = useMyClub();
   const qc = useQueryClient();
   const club = clubData?.club;
+  const { format: money, symbol: currencySymbol } = useClubCurrency();
   const stitchEnabled = club?.payment_gateway === "stitch";
   const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);
@@ -237,7 +239,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
               <TableRow>
                 <TableHead>Fee Name</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead className="text-right">Amount (R)</TableHead>
+                <TableHead className="text-right">Amount ({currencySymbol})</TableHead>
                 <TableHead>Due</TableHead>
                 <TableHead className="text-center">Pro-rate</TableHead>
                 <TableHead className="text-center">Active</TableHead>
@@ -268,7 +270,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   <TableCell>
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">R {fee.amount.toFixed(2)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{money(fee.amount)}</TableCell>
                   <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-center">
@@ -349,6 +351,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
   const isEdit = !!existing;
   const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? (isAssociation ? "league_affiliation" : "membership"));
   const qc = useQueryClient();
+  const { symbol: currencySymbol } = useClubCurrency();
 
   const [name, setName] = useState(() => {
     if (!existing) return "";
@@ -520,14 +523,14 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
           {/* Amount + Due Month (hide date for registration — it's once-off on join) */}
           {feeType === "registration" ? (
             <div className="space-y-1">
-              <Label>Registration Fee (R)</Label>
+              <Label>Registration Fee ({currencySymbol})</Label>
               <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
               <p className="text-[10px] text-muted-foreground">Once-off fee charged when a new member joins the club</p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label>Annual Fee (R)</Label>
+                <Label>Annual Fee ({currencySymbol})</Label>
                 <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
               </div>
               <div className="space-y-1">

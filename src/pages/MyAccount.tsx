@@ -747,7 +747,7 @@ export default function MyAccount() {
       </motion.div>
 
       {/* Top Up Dialog */}
-      <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
+      <Dialog open={topUpOpen} onOpenChange={(o) => { setTopUpOpen(o); if (!o) setTopUpFromGate(false); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{isAccountPayment ? "Pay Account" : "Top Up Credit"}</DialogTitle>

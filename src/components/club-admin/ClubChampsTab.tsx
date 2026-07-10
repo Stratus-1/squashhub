@@ -3449,7 +3449,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 const sharedSlot = Number(groupDurations["1"]) || matchDuration || 20;
                 const canParallel = groupCount > 1 && courtsUsed >= groupCount && roundFormat !== "cross_league";
                 const effectiveParallel = parallelLeagues && canParallel;
-                const isSwiss = scoringMode === "swiss";
+                const isSwiss = roundFormat === "swiss";
                 const perLeague = leagues.map((gn) => {
                   const slot = roundFormat === "cross_league"
                     ? sharedSlot

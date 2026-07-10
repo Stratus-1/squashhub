@@ -13,11 +13,10 @@ if (isStandalone()) markInstalled();
 
 
 // Initialize theme from localStorage before render.
-// Default to LIGHT mode for the in-app experience (white background, dark text
-// — easier to read). Marketing/landing routes force dark via AppRoutes below.
-// Users can still flip to dark globally via the theme toggle in Settings.
+// Default to DARK mode; users can opt into light via the theme toggle.
+// Marketing/landing routes force dark via AppRoutes below.
 const savedTheme = localStorage.getItem("theme");
-if (savedTheme === "dark") {
+if (savedTheme !== "light") {
   document.documentElement.classList.add("dark");
 }
 

@@ -509,9 +509,7 @@ export default function BellsMarker() {
             match.partner_b_member_id,
           ].filter(Boolean) as string[];
           const { data: members } = await supabase
-            .from("club_members")
-            .select("id, user_id, club_id")
-            .in("id", memberIds);
+            .rpc("get_bells_participant_min", { _member_ids: memberIds });
           const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
           const aUser = (memberMap.get(match.player_a_member_id) as any)?.user_id || null;
           const bUser = (memberMap.get(match.player_b_member_id) as any)?.user_id || null;

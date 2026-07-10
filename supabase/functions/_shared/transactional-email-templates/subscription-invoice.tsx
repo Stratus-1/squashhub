@@ -138,20 +138,20 @@ const Email = (p: Props) => {
 
 
           <Section style={card}>
-            <Row label="Plan" value={planName} />
-            <Row label="Billing Cycle" value={billingCycle} />
-            <Row label="Billing Period" value={`${periodStart} → ${periodEnd}`} />
-            <Row label="Members" value={String(memberCount)} />
-            <Row label="Price / Member" value={money(pricePerMember, currency)} />
+            <LineRow label="Plan" value={planName} />
+            <LineRow label="Billing Cycle" value={billingCycle} />
+            <LineRow label="Billing Period" value={`${periodStart} → ${periodEnd}`} />
+            <LineRow label="Members" value={String(memberCount)} />
+            <LineRow label="Price / Member" value={money(pricePerMember, currency)} />
             {Number(minimumCharge) > 0 && (
-              <Row label="Minimum Charge" value={money(minimumCharge, currency)} />
+              <LineRow label="Minimum Charge" value={money(minimumCharge, currency)} />
             )}
             <Hr style={hr} />
-            <Row label="Subtotal" value={money(subtotal, currency)} />
+            <LineRow label="Subtotal" value={money(subtotal, currency)} />
             {Number(vatAmount) > 0 && (
-              <Row label="VAT" value={money(vatAmount, currency)} />
+              <LineRow label="VAT" value={money(vatAmount, currency)} />
             )}
-            <Row label="Total Due" value={money(total, currency)} bold />
+            <LineRow label="Total Due" value={money(total, currency)} bold />
           </Section>
 
           {(payLink || manageUrl) && (
@@ -174,12 +174,12 @@ const Email = (p: Props) => {
             <>
               <Heading as="h2" style={h2}>Or Pay by EFT</Heading>
               <Section style={card}>
-                {bankName && <Row label="Bank" value={bankName} />}
-                {bankAccountName && <Row label="Account Name" value={bankAccountName} />}
-                <Row label="Account #" value={bankAccountNumber} />
-                {bankBranchCode && <Row label="Branch Code" value={bankBranchCode} />}
-                {bankSwift && <Row label="SWIFT" value={bankSwift} />}
-                <Row label="Reference" value={invoiceNumber} />
+                {bankName && <LineRow label="Bank" value={bankName} />}
+                {bankAccountName && <LineRow label="Account Name" value={bankAccountName} />}
+                <LineRow label="Account #" value={bankAccountNumber} />
+                {bankBranchCode && <LineRow label="Branch Code" value={bankBranchCode} />}
+                {bankSwift && <LineRow label="SWIFT" value={bankSwift} />}
+                <LineRow label="Reference" value={invoiceNumber} />
               </Section>
             </>
           )}

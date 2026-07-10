@@ -154,6 +154,29 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const { activeMember } = useMemberContext();
   const [testing, setTesting] = useState(false);
 
+  // Prefill board members for the Stitch onboarding card from the club's key office bearers
+  const [boardMemberNames, setBoardMemberNames] = useState<string[]>([]);
+  useEffect(() => {
+    const ids: Array<[string, string | null | undefined]> = [
+      ["Chairman", (club as any).chairman_member_id],
+      ["Secretary", (club as any).secretary_member_id],
+      ["Club Captain", (club as any).club_captain_member_id],
+    ];
+    const memberIds = ids.map(([, id]) => id).filter(Boolean) as string[];
+    if (!memberIds.length) { setBoardMemberNames([]); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("club_members")
+        .select("id, first_name, last_name")
+        .in("id", memberIds);
+      const byId = new Map((data || []).map((m: any) => [m.id, `${m.first_name || ""} ${m.last_name || ""}`.trim()]));
+      const names = ids
+        .map(([role, id]) => id ? `${byId.get(id) || ""} - ${role}` : null)
+        .filter((s): s is string => !!s && !s.startsWith(" -"));
+      setBoardMemberNames(names);
+    })();
+  }, [club, clubId]);
+
   const handleTestPayment = async () => {
     if (gateway !== "yoco" && gateway !== "stitch") {
       toast.error("Test payment is only wired up for Yoco and Stitch.");
@@ -543,9 +566,10 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         clubId={clubId}
         clubName={club.name}
         clubSubdomain={(club as any).subdomain ?? null}
-        defaultEmail={(club as any).contact_email || (secrets as any)?.sender_email || null}
-        defaultCell={(club as any).contact_phone || null}
-        defaultContactName={(club as any).contact_name || null}
+        defaultEmail={(club as any).email || (secrets as any)?.sender_email || null}
+        defaultCell={(club as any).phone || null}
+        defaultContactName={(club as any).contact_person_name || null}
+        defaultBoardMembers={boardMemberNames}
       />
     </div>
   );

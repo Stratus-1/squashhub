@@ -32,6 +32,7 @@ export default function StitchOnboardingCard({
   defaultEmail,
   defaultCell,
   defaultContactName,
+  defaultBoardMembers,
 }: {
   clubId: string;
   clubName: string;
@@ -39,13 +40,16 @@ export default function StitchOnboardingCard({
   defaultEmail?: string | null;
   defaultCell?: string | null;
   defaultContactName?: string | null;
+  defaultBoardMembers?: string[];
 }) {
   const [uploads, setUploads] = useState<Record<string, Uploaded[]>>({});
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [contactName, setContactName] = useState(defaultContactName || "");
   const [contactEmail, setContactEmail] = useState(defaultEmail || "");
   const [contactCell, setContactCell] = useState(defaultCell || "");
-  const [boardMembers, setBoardMembers] = useState<string>("");
+  const [boardMembers, setBoardMembers] = useState<string>(
+    Array.isArray(defaultBoardMembers) ? defaultBoardMembers.join("\n") : "",
+  );
   const clubUrl = useMemo(() => {
     if (clubSubdomain) return `https://${clubSubdomain}.squashhub.co.za`;
     return `https://squashhub.co.za/c/${clubId}`;
@@ -69,7 +73,7 @@ export default function StitchOnboardingCard({
           if (data.contact_name) setContactName(data.contact_name);
           if (data.contact_email) setContactEmail(data.contact_email);
           if (data.contact_cell) setContactCell(data.contact_cell);
-          if (Array.isArray(data.board_members)) setBoardMembers((data.board_members as string[]).join("\n"));
+          if (Array.isArray(data.board_members) && data.board_members.length) setBoardMembers((data.board_members as string[]).join("\n"));
           if (Array.isArray(data.files) && data.files.length) {
             const grouped: Record<string, Uploaded[]> = {};
             for (const f of data.files as Uploaded[]) {

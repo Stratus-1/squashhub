@@ -485,13 +485,40 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            variant="outline"
+            className="gap-1 text-emerald-700 border-emerald-600/40 hover:bg-emerald-500/10"
+            onClick={() => {
+              const recipients =
+                audienceType === "all"
+                  ? members
+                  : audienceType === "selected"
+                  ? members.filter((m) => selectedMemberIds.includes(m.id))
+                  : leagueMemberIds
+                      .map((lm) => members.find((m) => m.id === lm.club_member_id))
+                      .filter(Boolean) as typeof members;
+              setWhatsAppRecipients(recipients);
+            }}
+            disabled={audienceType === "league" && !leagueId}
+          >
+            <MessageCircle className="w-3.5 h-3.5" />Send via WhatsApp instead
+          </Button>
           <Button onClick={() => { if (confirm("Send this campaign now? Emails will be delivered immediately.")) send.mutate(); }} disabled={send.isPending} className="gap-1">
             <Send className="w-3.5 h-3.5" />{send.isPending ? "Sending…" : "Send campaign"}
           </Button>
         </DialogFooter>
       </DialogContent>
+      {whatsAppRecipients && (
+        <WhatsAppBlastDialog
+          recipients={whatsAppRecipients}
+          subject={renderPreview(subject)}
+          body={body}
+          previewVars={previewVars}
+          onClose={() => setWhatsAppRecipients(null)}
+        />
+      )}
     </Dialog>
   );
 }

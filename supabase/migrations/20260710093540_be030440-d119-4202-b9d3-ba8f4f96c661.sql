@@ -1,0 +1,2 @@
+ALTER TABLE public.club_champs DROP CONSTRAINT IF EXISTS club_champs_scoring_mode_check;
+ALTER TABLE public.club_champs ADD CONSTRAINT club_champs_scoring_mode_check CHECK (scoring_mode = ANY (ARRAY['standard'::text, 'time_capped_points'::text, 'swiss'::text]));

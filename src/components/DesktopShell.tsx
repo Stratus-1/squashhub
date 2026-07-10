@@ -7,6 +7,7 @@ import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 /**
  * Wraps authenticated app routes with a left sidebar on desktop (>= md).
@@ -88,6 +89,7 @@ export function DesktopShell({
                 </Button>
               )}
               <div className="ml-auto mr-2 flex items-center gap-1">
+                <ThemeToggle />
                 <SuperAdminMenu />
               </div>
             </header>

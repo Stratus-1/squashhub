@@ -12,6 +12,7 @@ import { useProfile } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { TenantSwitcher } from "@/components/TenantSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface PageHeaderProps {
   title: string;
@@ -123,6 +124,7 @@ export function PageHeader({
         {user && (
           <div className="ml-auto flex items-center gap-1.5">
             <TenantSwitcher />
+            <ThemeToggle />
             {showNotifications && <NotificationsDropdown />}
             <button
               type="button"

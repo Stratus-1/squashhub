@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Club, useUpdateClub } from "@/hooks/use-club";
+import { Club, useClubMembers, useUpdateClub } from "@/hooks/use-club";
 import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -153,29 +153,25 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateSecrets = useUpdateClubSecrets();
   const { activeMember } = useMemberContext();
   const [testing, setTesting] = useState(false);
+  const { data: members = [] } = useClubMembers(clubId);
 
   // Prefill board members for the Stitch onboarding card from the club's key office bearers
-  const [boardMemberNames, setBoardMemberNames] = useState<string[]>([]);
-  useEffect(() => {
-    const ids: Array<[string, string | null | undefined]> = [
+  const boardMemberNames = useMemo(() => {
+    const officials: Array<[string, string | null | undefined]> = [
       ["Chairman", (club as any).chairman_member_id],
       ["Secretary", (club as any).secretary_member_id],
       ["Club Captain", (club as any).club_captain_member_id],
     ];
-    const memberIds = ids.map(([, id]) => id).filter(Boolean) as string[];
-    if (!memberIds.length) { setBoardMemberNames([]); return; }
-    (async () => {
-      const { data } = await supabase
-        .from("club_members")
-        .select("id, first_name, last_name")
-        .in("id", memberIds);
-      const byId = new Map((data || []).map((m: any) => [m.id, `${m.first_name || ""} ${m.last_name || ""}`.trim()]));
-      const names = ids
-        .map(([role, id]) => id ? `${byId.get(id) || ""} - ${role}` : null)
-        .filter((s): s is string => !!s && !s.startsWith(" -"));
-      setBoardMemberNames(names);
-    })();
-  }, [club, clubId]);
+    const byId = new Map(
+      members.map((m: any) => [m.id, (m.name || m.profiles?.name || "").trim()])
+    );
+    return officials
+      .map(([role, id]) => {
+        const name = id ? byId.get(id) : "";
+        return name ? `${name} - ${role}` : null;
+      })
+      .filter((name): name is string => Boolean(name));
+  }, [club, members]);
 
   const handleTestPayment = async () => {
     if (gateway !== "yoco" && gateway !== "stitch") {

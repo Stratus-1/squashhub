@@ -386,6 +386,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [parallelLeagues, setParallelLeagues] = useState(false);
   const [pointsPerGame, setPointsPerGame] = useState<0 | 11 | 15>(0);
   const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
+  const [winCondition, setWinCondition] = useState<"win_by_2" | "sudden_death">("win_by_2");
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});

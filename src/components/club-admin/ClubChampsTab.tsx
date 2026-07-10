@@ -2959,7 +2959,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </p>
               )}
               {scoringMode === "standard" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
                   <div>
                     <Label className="text-xs font-medium">Game length</Label>
                     <Select
@@ -2969,8 +2969,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                        <SelectItem value="11">Par 11 (win by 2) — WSF standard</SelectItem>
-                        <SelectItem value="15">Par 15 (win by 2)</SelectItem>
+                        <SelectItem value="11">Par 11 — WSF standard</SelectItem>
+                        <SelectItem value="15">Par 15</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Win condition</Label>
+                    <Select
+                      value={winCondition}
+                      onValueChange={(v) => setWinCondition(v as "win_by_2" | "sudden_death")}
+                    >
+                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="win_by_2">Win by 2 (traditional)</SelectItem>
+                        <SelectItem value="sudden_death">Sudden death (first to par point wins)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

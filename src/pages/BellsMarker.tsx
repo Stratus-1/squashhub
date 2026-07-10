@@ -829,7 +829,7 @@ export default function BellsMarker() {
 
 
       <NoShowInjuredDialog
-        onApplied={() => navigate("/tournaments", { replace: true })}
+        onApplied={() => navigate("/dashboard", { replace: true })}
 
         open={noShowOpen}
         onOpenChange={setNoShowOpen}

@@ -1731,6 +1731,8 @@ export default function ClubAuth() {
                   {loading ? "Registering..." : "Register & Sign In"}
                 </Button>
               </form>
+              </>
+              )}
             </Card>
             <div className="mt-3 text-center">
               <button type="button" onClick={() => setActiveTab("login")} className="text-xs text-muted-foreground hover:text-primary hover:underline">

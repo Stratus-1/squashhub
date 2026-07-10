@@ -33,12 +33,27 @@ interface JoinLeagueAssociationCardProps {
  *  - The member has already been provisioned at every tenant association
  *    AND there are no remaining internal/external rows.
  */
+const dismissKey = (memberId: string) => `sh.leaguePrompt.dismissed.${memberId}`;
+
 export function JoinLeagueAssociationCard({ clubId, variant = "card", className }: JoinLeagueAssociationCardProps) {
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [selections, setSelections] = useState<Record<string, LeagueSelection>>({});
+  const [dismissed, setDismissed] = useState<boolean>(false);
+  // Re-read dismissal when active member changes
+  useMemo(() => {
+    if (typeof window === "undefined" || !activeMember?.id) { setDismissed(false); return; }
+    try { setDismissed(localStorage.getItem(dismissKey(activeMember.id)) === "1"); } catch { /* ignore */ }
+  }, [activeMember?.id]);
+  const handleNoThanks = () => {
+    if (activeMember?.id) {
+      try { localStorage.setItem(dismissKey(activeMember.id), "1"); } catch { /* ignore */ }
+    }
+    setDismissed(true);
+    setOpen(false);
+  };
 
   const { data: leagueAssocs = [] } = useLeagueAssociations(clubId);
 

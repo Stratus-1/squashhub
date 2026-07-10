@@ -442,7 +442,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     const legs = (journalEntries || []).filter((e: any) => e.journal_ref === ref);
     if (legs.length === 0) return "";
     return legs.map((l: any) =>
-      `${Number(l.debit) > 0 ? "Dr" : "Cr"} ${getLabel(l.account)} R${(Number(l.debit) || Number(l.credit)).toFixed(2)}`
+      `${Number(l.debit) > 0 ? "Dr" : "Cr"} ${getLabel(l.account)} ${money(Number(l.debit) || Number(l.credit))}`
     ).join("  ·  ");
   };
 

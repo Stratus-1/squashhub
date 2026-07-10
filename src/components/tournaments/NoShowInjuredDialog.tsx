@@ -142,6 +142,7 @@ export function NoShowInjuredDialog({
       toast.success(`Applied to ${n} remaining match${n === 1 ? "" : "es"}`);
       setCascadePromptOpen(false);
       setPendingForfeitMemberId(null);
+      onApplied?.();
     },
     onError: (e: any) => toast.error(e?.message || "Failed to cascade"),
   });

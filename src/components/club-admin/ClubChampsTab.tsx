@@ -380,6 +380,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [matchDuration, setMatchDuration] = useState(0);
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points">("");
   const [showCapacity, setShowCapacity] = useState(false);
+  const [parallelLeagues, setParallelLeagues] = useState(false);
   const [pointsPerGame, setPointsPerGame] = useState<0 | 11 | 15>(0);
   const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});

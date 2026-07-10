@@ -1519,7 +1519,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <Card className="p-2">
                       <p className="text-[10px] text-muted-foreground">Total {balancesFilter === "credit" ? "Credit" : "Outstanding"}</p>
                       <p className={cn("text-sm font-bold tabular-nums", total > 0.01 ? "text-destructive" : total < -0.01 ? "text-green-600" : "text-muted-foreground")}>
-                        {Math.abs(total).toFixed(2)} {total < -0.01 ? "Cr" : ""}
+                        {money(Math.abs(total))} {total < -0.01 ? "Cr" : ""}
                       </p>
                     </Card>
                     <Card className="p-2">

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { CheckCircle2, ShieldCheck, FileSignature, FileText, Printer, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { SquashHubSlaContent, SLA_VERSION } from "@/components/SquashHubSlaContent";
 
 type BillingOption = "monthly" | "annual_upfront";
@@ -30,6 +31,8 @@ export function ClubParticipationCard({ club }: { club: Club }) {
   const [saving, setSaving] = useState(false);
 
   const memberCount = (c as any).active_member_count;
+  const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
+  const isZar = clubCurrencyCode === "ZAR";
 
   const handleAccept = async () => {
     if (!agreed || !name.trim() || !role.trim()) {
@@ -96,6 +99,11 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
           Fees are first invoiced from <strong>September 2026</strong> for the current financial year, and annually thereafter.
         </p>
+        {!isZar && (
+          <p className="text-xs text-muted-foreground italic">
+            Rates shown in South African Rand (ZAR). Your invoices are issued in your club currency ({clubCurrencyName} · {clubCurrencyCode}), converted at the prevailing platform rate.
+          </p>
+        )}
         {typeof memberCount === "number" && (
           <p className="text-xs text-muted-foreground">Your club currently has {memberCount} active member{memberCount === 1 ? "" : "s"}.</p>
         )}

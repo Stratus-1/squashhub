@@ -87,6 +87,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
     [invoices]
   );
   const totalOutstanding = outstanding.reduce((s, i) => s + Number(i.total || 0), 0);
+  const outstandingCurrency = (outstanding[0] as any)?.currency || "ZAR";
 
   const copy = (text: string, label = "Copied") => {
     navigator.clipboard.writeText(text).then(
@@ -198,7 +199,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
             <div className="text-right">
               <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total due</div>
               <div className="text-lg font-bold text-amber-800 dark:text-amber-300">
-                {fmtMoney(totalOutstanding)}
+                {fmtMoney(totalOutstanding, outstandingCurrency)}
               </div>
             </div>
           </div>

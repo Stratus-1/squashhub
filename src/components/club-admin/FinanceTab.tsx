@@ -983,8 +983,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <div className="grid grid-cols-[1fr_80px_90px_90px] gap-1 px-3 py-2.5 text-sm items-center bg-muted/40 font-bold border-t-2">
                     <span>Total</span>
                     <span />
-                    <span className="text-right tabular-nums">{totalDebit.toFixed(2)}</span>
-                    <span className="text-right tabular-nums">{totalCredit.toFixed(2)}</span>
+                    <span className="text-right tabular-nums">{money(totalDebit)}</span>
+                    <span className="text-right tabular-nums">{money(totalCredit)}</span>
                   </div>
                 );
               })()}

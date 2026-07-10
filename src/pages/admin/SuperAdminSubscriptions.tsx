@@ -190,7 +190,7 @@ export default function SuperAdminSubscriptions() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // --- International SaaS pricing & FX rates ---
+  // --- Platform SaaS pricing ---
   useQuery({
     queryKey: ["sa-intl-pricing-settings", plans.length],
     queryFn: async () => {
@@ -570,7 +570,7 @@ export default function SuperAdminSubscriptions() {
                 </div>
               </div>
 
-              {/* Cap / trial / uplift */}
+              {/* Cap / trial */}
               <div className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Limits & trial</p>
                 <div>

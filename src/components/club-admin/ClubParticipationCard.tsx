@@ -149,6 +149,10 @@ export function ClubParticipationCard({ club }: { club: Club }) {
           </Button>
         </div>
       </div>
+        );
+      })()}
+
+
 
       {isActive ? (
         <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm space-y-1">

@@ -1,13 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Landmark, Upload, FileText, X, Loader2, CheckCircle2, Plus } from "lucide-react";
+import { Landmark, Upload, FileText, X, Loader2, CheckCircle2, Plus, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { fromExt } from "@/lib/supabase-ext";
 
 type Slot = {
   key: string;
@@ -22,7 +23,7 @@ const SLOTS: Slot[] = [
   { key: "address_proof", label: "Proof of Address of Main Member" },
 ];
 
-type Uploaded = { path: string; filename: string; label: string };
+type Uploaded = { path: string; filename: string; label: string; slotKey?: string };
 
 export default function StitchOnboardingCard({
   clubId,
@@ -50,11 +51,93 @@ export default function StitchOnboardingCard({
     return `https://squashhub.co.za/c/${clubId}`;
   }, [clubSubdomain, clubId]);
   const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent] = useState<{ cc: string } | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [loadingDraft, setLoadingDraft] = useState(true);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [sent, setSent] = useState<{ cc: string[] } | null>(null);
   const [expanded, setExpanded] = useState(false);
+
+  // Load any existing draft for this club
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await fromExt("stitch_onboarding_drafts")
+          .select("*")
+          .eq("club_id", clubId)
+          .maybeSingle();
+        if (data) {
+          if (data.contact_name) setContactName(data.contact_name);
+          if (data.contact_email) setContactEmail(data.contact_email);
+          if (data.contact_cell) setContactCell(data.contact_cell);
+          if (Array.isArray(data.board_members)) setBoardMembers((data.board_members as string[]).join("\n"));
+          if (Array.isArray(data.files) && data.files.length) {
+            const grouped: Record<string, Uploaded[]> = {};
+            for (const f of data.files as Uploaded[]) {
+              const key = f.slotKey || SLOTS.find((s) => s.label === f.label)?.key || "constitution";
+              (grouped[key] ||= []).push({ ...f, slotKey: key });
+            }
+            setUploads(grouped);
+          }
+          if (data.submitted_at) setSent({ cc: [data.contact_email, "admin@stratsol.co.za"].filter(Boolean) as string[] });
+          if (data.updated_at) setDraftSavedAt(data.updated_at);
+          if (data.contact_email || (Array.isArray(data.files) && data.files.length)) setExpanded(true);
+        }
+      } catch (e) {
+        console.warn("load draft", e);
+      } finally {
+        setLoadingDraft(false);
+      }
+    })();
+  }, [clubId]);
 
   const allRequiredUploaded = SLOTS.every((s) => (uploads[s.key]?.length || 0) > 0);
   const canSubmit = allRequiredUploaded && contactEmail.includes("@") && contactCell.trim().length >= 6;
+
+  const collectPayload = () => {
+    const files = SLOTS.flatMap((s) =>
+      (uploads[s.key] || []).map((f) => ({ ...f, slotKey: s.key, label: s.label }))
+    );
+    const board = boardMembers
+      .split(/\r?\n|,/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return {
+      club_id: clubId,
+      contact_name: contactName.trim() || null,
+      contact_email: contactEmail.trim(),
+      contact_cell: contactCell.trim(),
+      club_url: clubUrl,
+      board_members: board,
+      files,
+    };
+  };
+
+  const handleSaveDraft = async () => {
+    setSavingDraft(true);
+    try {
+      const p = collectPayload();
+      const { error } = await fromExt("stitch_onboarding_drafts").upsert(
+        {
+          club_id: p.club_id,
+          contact_name: p.contact_name,
+          contact_email: p.contact_email || null,
+          contact_cell: p.contact_cell || null,
+          club_url: p.club_url,
+          board_members: p.board_members,
+          files: p.files,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "club_id" },
+      );
+      if (error) throw error;
+      setDraftSavedAt(new Date().toISOString());
+      toast.success("Draft saved. Come back any time to finish and send.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save draft");
+    } finally {
+      setSavingDraft(false);
+    }
+  };
 
   const handleUpload = async (slot: Slot, files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -75,7 +158,7 @@ export default function StitchOnboardingCard({
           toast.error(`Upload failed: ${error.message}`);
           continue;
         }
-        results.push({ path, filename: file.name, label: slot.label });
+        results.push({ path, filename: file.name, label: slot.label, slotKey: slot.key });
       }
       setUploads((prev) => ({
         ...prev,
@@ -98,26 +181,30 @@ export default function StitchOnboardingCard({
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      const files = SLOTS.flatMap((s) => uploads[s.key] || []);
-      const board = boardMembers
-        .split(/\r?\n|,/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const { data, error } = await supabase.functions.invoke("stitch-onboarding-submit", {
-        body: {
-          club_id: clubId,
-          contact_name: contactName.trim() || null,
-          contact_email: contactEmail.trim(),
-          contact_cell: contactCell.trim(),
-          club_url: clubUrl,
-          board_members: board,
-          files,
+      const payload = collectPayload();
+      // Persist as draft first so nothing is lost if the send fails.
+      await fromExt("stitch_onboarding_drafts").upsert(
+        {
+          club_id: payload.club_id,
+          contact_name: payload.contact_name,
+          contact_email: payload.contact_email,
+          contact_cell: payload.contact_cell,
+          club_url: payload.club_url,
+          board_members: payload.board_members,
+          files: payload.files,
+          updated_at: new Date().toISOString(),
         },
+        { onConflict: "club_id" },
+      );
+
+      const { data, error } = await supabase.functions.invoke("stitch-onboarding-submit", {
+        body: payload,
       });
       if (error) throw new Error(error.message);
       if ((data as any)?.error) throw new Error((data as any).error);
-      setSent({ cc: contactEmail.trim() });
-      toast.success("Application sent to Stitch. Check your inbox for a CC.");
+      const cc = ((data as any)?.cc as string[]) || [contactEmail.trim(), "admin@stratsol.co.za"];
+      setSent({ cc });
+      toast.success("Application sent to Stitch. Copies sent to you and admin@stratsol.co.za.");
     } catch (err: any) {
       toast.error(err.message || "Failed to send application");
     } finally {
@@ -133,6 +220,9 @@ export default function StitchOnboardingCard({
           <h3 className="text-sm font-semibold flex items-center gap-2 flex-wrap">
             Need a payment gateway for {clubName}?
             <Badge variant="secondary" className="text-[10px] h-5">Partner offer</Badge>
+            {draftSavedAt && !sent && (
+              <Badge variant="outline" className="text-[10px] h-5">Draft saved</Badge>
+            )}
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             SquashHub has an informal partnership with <strong>Stitch Express</strong> so we can
@@ -147,7 +237,7 @@ export default function StitchOnboardingCard({
             className="h-8 text-xs shrink-0"
             onClick={() => setExpanded((v) => !v)}
           >
-            {expanded ? "Hide" : "Yes, help me set it up"}
+            {expanded ? "Hide" : draftSavedAt ? "Resume application" : "Yes, help me set it up"}
           </Button>
         )}
       </div>
@@ -159,10 +249,19 @@ export default function StitchOnboardingCard({
             <div className="font-semibold text-emerald-700 dark:text-emerald-400">Application sent</div>
             <div className="text-muted-foreground mt-0.5">
               Your application was emailed to Beon Pienaar at Stitch Express and CC'd to{" "}
-              <span className="font-mono">{sent.cc}</span>. Stitch will reach out directly to
-              progress the account opening.
+              {sent.cc.map((c, i) => (
+                <span key={c}>
+                  <span className="font-mono">{c}</span>
+                  {i < sent.cc.length - 1 ? ", " : ""}
+                </span>
+              ))}
+              . Stitch will reach out directly to progress the account opening.
             </div>
           </div>
+        </div>
+      ) : loadingDraft ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
+          <Loader2 className="h-3 w-3 animate-spin" /> Loading draft…
         </div>
       ) : (
         <>
@@ -172,6 +271,10 @@ export default function StitchOnboardingCard({
               Beon Pienaar · Stitch Express ·{" "}
               <a href="tel:+27689214245" className="text-primary underline">+27 68 921 4245</a> ·{" "}
               <a href="mailto:beon.pienaar@stitch.money" className="text-primary underline">beon.pienaar@stitch.money</a>
+            </div>
+            <div className="mt-1">
+              When you submit, a copy of the application is sent to your contact email
+              and to <span className="font-mono">admin@stratsol.co.za</span>.
             </div>
           </div>
 
@@ -268,7 +371,7 @@ export default function StitchOnboardingCard({
             })}
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
             <Button size="sm" className="text-xs" onClick={handleSubmit} disabled={!canSubmit || submitting}>
               {submitting ? (
                 <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Sending to Stitch…</>
@@ -276,8 +379,20 @@ export default function StitchOnboardingCard({
                 "Submit application to Stitch"
               )}
             </Button>
+            <Button size="sm" variant="outline" className="text-xs" onClick={handleSaveDraft} disabled={savingDraft || submitting}>
+              {savingDraft ? (
+                <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving…</>
+              ) : (
+                <><Save className="h-3.5 w-3.5 mr-1" /> Save draft</>
+              )}
+            </Button>
             {!allRequiredUploaded && (
-              <span className="text-[10px] text-muted-foreground">Upload all required documents to enable submit.</span>
+              <span className="text-[10px] text-muted-foreground">Upload all required documents to enable submit — or save as a draft and finish later.</span>
+            )}
+            {draftSavedAt && (
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                Draft last saved {new Date(draftSavedAt).toLocaleString()}
+              </span>
             )}
           </div>
         </>

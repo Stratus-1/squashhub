@@ -738,10 +738,7 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Club at-a-glance stats */}
       <div className="px-4 mt-3 space-y-3">
-        <ClubStatsCard clubId={clubId} />
-        <ClubSetsPlayedCard clubId={clubId} />
         {(() => {
           const myLadderEntry = (ladder || []).find((p: any) =>
             (myMemberId && p.club_member_id === myMemberId) ||
@@ -913,6 +910,12 @@ export default function Dashboard() {
           </div>
         </motion.div>
       )}
+
+      {/* Club at-a-glance stats */}
+      <div className="px-4 mt-4 space-y-3">
+        <ClubStatsCard clubId={clubId} />
+        <ClubSetsPlayedCard clubId={clubId} />
+      </div>
 
       {/* My Upcoming Bookings */}
       <motion.div

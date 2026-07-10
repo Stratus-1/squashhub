@@ -80,7 +80,7 @@ const BENEFITS = [
 const FAQS = [
   { q: "What is SquashHub?", a: "A squash club management platform for bookings, leagues, members, and payments." },
   { q: "Who is it for?", a: "Clubs and associations across South Africa." },
-  { q: "Is it free?", a: "Yes, completely free until September 2026. Subscription pricing is billed in United States Dollars, from $0.30 per active member, with a sliding scale to reduce the per-member rate as your club's membership grows." },
+  { q: "Is it free?", a: "Yes, completely free until September 2026. After that, subscription pricing starts from R5 per active member per month (R6 monthly / R5 annual upfront). International clubs are billed in USD (from $0.30) or EUR (from €0.27) per active member." },
   { q: "How long does setup take?", a: "Setting up your club on the platform is quick and easy — usually under 2 minutes. Onboarding your existing members is the more involved part, but our team will assist you to migrate them across seamlessly. Depending on the size of your club, this may take a bit of time." },
   { q: "Do members need accounts?", a: "Members don't sign up to SquashHub directly — the club creates its own platform on SquashHub, and its members join under the club. Every member has an account with their club, where bookings, participation, and any outstanding fees or payments are reflected." },
   { q: "Can associations use it?", a: "Yes. League associations in smaller or rural areas often don't have a dedicated administrative platform. SquashHub can provide a full association management platform at a small fee, and members affiliated to that league are automatically linked through to the clubs where they play." },

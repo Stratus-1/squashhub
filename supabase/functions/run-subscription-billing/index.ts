@@ -24,13 +24,18 @@ Deno.serve(async (req) => {
   const dryRun = !!body.dryRun
   const billingDate = body.billingDate ? new Date(body.billingDate) : new Date()
 
-  // 1) Load platform invoice settings. Platform subscription invoices are billed in USD.
+  // 1) Load platform invoice settings + per-currency SaaS rates. Base is ZAR;
+  //    USD/EUR clubs are billed at their configured rate.
   const { data: allSettings, error: settingErr } = await supabase
     .from('app_settings')
     .select('key, value')
     .in('key', [
       'platform_invoice_settings',
       'platform_stitch_private_settings',
+      'saas_rate_zar_monthly', 'saas_rate_zar_annual',
+      'saas_rate_usd_monthly', 'saas_rate_usd_annual',
+      'saas_rate_eur_monthly', 'saas_rate_eur_annual',
+      'saas_min_charge_monthly', 'saas_min_charge_annual',
     ])
   if (settingErr && settingErr.code !== 'PGRST116') {
     return json({ error: `Failed to load invoice settings: ${settingErr.message}` }, 500)
@@ -48,7 +53,20 @@ Deno.serve(async (req) => {
   const vatRate: number =
     typeof body.vatRate === 'number' ? body.vatRate : settings.vat_number ? 0.15 : 0
 
-  const billingCurrency = 'USD'
+  // Per-currency rate resolver. Falls back to plan.price_per_member (ZAR base) if unset.
+  const num = (k: string, d: number) => {
+    const v = settingsMap.get(k)
+    const n = v == null ? NaN : Number(v)
+    return isFinite(n) && n > 0 ? n : d
+  }
+  const rateFor = (ccy: string, cycle: 'monthly' | 'annual', fallback: number): number => {
+    const c = (ccy || 'ZAR').toUpperCase()
+    if (c === 'USD') return num(`saas_rate_usd_${cycle}`, cycle === 'monthly' ? 0.35 : 0.30)
+    if (c === 'EUR') return num(`saas_rate_eur_${cycle}`, cycle === 'monthly' ? 0.32 : 0.27)
+    return num(`saas_rate_zar_${cycle}`, fallback)
+  }
+  const minChargeFor = (cycle: 'monthly' | 'annual', fallback: number): number =>
+    num(`saas_min_charge_${cycle}`, fallback)
 
   if (!settings.company_name && !dryRun) {
     return json(

@@ -207,7 +207,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
           <div className="border rounded-lg overflow-hidden">
             <div className="px-3 py-2 bg-destructive/10 border-b flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-destructive">Expenses</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Amount (R)</span>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Amount ({currencySymbol})</span>
             </div>
             {expenseRows.length === 0 ? (
               <p className="text-xs text-muted-foreground p-3">No expenses in this period.</p>
@@ -215,13 +215,13 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
               expenseRows.map(r => (
                 <div key={r.account} className="grid grid-cols-[1fr_140px] px-3 py-2 text-xs items-center border-b last:border-b-0">
                   <span className="font-medium">{r.label}</span>
-                  <span className="text-right tabular-nums text-destructive font-medium">R{r.amount.toFixed(2)}</span>
+                  <span className="text-right tabular-nums text-destructive font-medium">{money(r.amount)}</span>
                 </div>
               ))
             )}
             <div className="grid grid-cols-[1fr_140px] px-3 py-2.5 text-sm items-center bg-muted/40 font-bold border-t-2">
               <span>Total Expenses</span>
-              <span className="text-right tabular-nums text-destructive">R{totalExpense.toFixed(2)}</span>
+              <span className="text-right tabular-nums text-destructive">{money(totalExpense)}</span>
             </div>
           </div>
 
@@ -237,7 +237,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
               "text-2xl font-bold tabular-nums",
               netProfit >= 0 ? "text-green-600" : "text-destructive"
             )}>
-              R{Math.abs(netProfit).toFixed(2)}
+              {money(Math.abs(netProfit))}
             </span>
           </div>
         </div>

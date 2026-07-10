@@ -922,7 +922,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <div className="space-y-0.5">
                       <div className="font-medium text-sm">{getMemberName(tx.club_member_id)}</div>
                       <div className="text-xs text-muted-foreground">
-                        {Number(tx.amount).toFixed(2)} via {tx.method?.toUpperCase() || "EFT"}
+                        {money(Number(tx.amount))} via {tx.method?.toUpperCase() || "EFT"}
                         {tx.reference && <> · Ref: {tx.reference}</>}
                       </div>
                       <div className="text-xs text-muted-foreground">

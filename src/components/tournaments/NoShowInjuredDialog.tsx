@@ -110,7 +110,10 @@ export function NoShowInjuredDialog({
       if (remaining.length > 0) {
         setPendingForfeitMemberId(absentMemberId);
         setCascadePromptOpen(true);
+      } else {
+        onApplied?.();
       }
+
     },
     onError: (e: any) => toast.error(e?.message || "Failed to mark No Show"),
   });

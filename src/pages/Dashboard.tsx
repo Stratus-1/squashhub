@@ -11,6 +11,7 @@ import { Users } from "lucide-react";
 import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { MembershipIntroModal } from "@/components/MembershipIntroModal";
 import { MyChampionships } from "@/components/MyChampionships";
+import { MyChallenges } from "@/components/MyChallenges";
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";

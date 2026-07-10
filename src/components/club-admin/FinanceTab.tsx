@@ -1106,7 +1106,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <Input type="number" step="0.01" min="0" placeholder="0.00" value={txAmount} onChange={e => setTxAmount(e.target.value)} className="h-9 text-xs" />
               {txMethod === "card" && txAmount && parseFloat(txAmount) > 0 && (
                 <p className="text-[10px] text-amber-600 mt-1">
-                  + {(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)} gateway fee (3.5%) will be auto-charged
+                  + {money(parseFloat(txAmount) * GATEWAY_FEE_RATE)} gateway fee (3.5%) will be auto-charged
                 </p>
               )}
             </div>

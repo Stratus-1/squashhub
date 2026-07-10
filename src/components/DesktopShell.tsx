@@ -89,6 +89,7 @@ export function DesktopShell({
                 </Button>
               )}
               <div className="ml-auto mr-2 flex items-center gap-1">
+                <ThemeToggle />
                 <SuperAdminMenu />
               </div>
             </header>

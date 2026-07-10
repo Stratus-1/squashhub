@@ -114,12 +114,12 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     lines.push(`Period,${from} to ${to}`);
     lines.push("");
     lines.push("INCOME");
-    lines.push("Account,Amount (R)");
+    lines.push(`Account,Amount (${currencyCode})`);
     incomeRows.forEach(r => lines.push(`"${r.label}",${r.amount.toFixed(2)}`));
     lines.push(`Total Income,${totalIncome.toFixed(2)}`);
     lines.push("");
     lines.push("EXPENSES");
-    lines.push("Account,Amount (R)");
+    lines.push(`Account,Amount (${currencyCode})`);
     expenseRows.forEach(r => lines.push(`"${r.label}",${r.amount.toFixed(2)}`));
     lines.push(`Total Expenses,${totalExpense.toFixed(2)}`);
     lines.push("");

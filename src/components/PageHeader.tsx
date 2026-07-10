@@ -12,6 +12,7 @@ import { useProfile } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { TenantSwitcher } from "@/components/TenantSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface PageHeaderProps {
   title: string;

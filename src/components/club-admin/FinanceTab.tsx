@@ -1653,7 +1653,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                         <SelectLabel className="text-[10px]">{group}</SelectLabel>
                         {items.map(o => (
                           <SelectItem key={o.key} value={o.key} className="text-xs">
-                            {o.label} <span className="text-muted-foreground">— {o.amount.toFixed(2)}</span>
+                            {o.label} <span className="text-muted-foreground">— {money(o.amount)}</span>
                           </SelectItem>
                         ))}
                       </SelectGroup>

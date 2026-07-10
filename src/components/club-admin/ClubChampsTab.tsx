@@ -380,6 +380,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [matchDuration, setMatchDuration] = useState(0);
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points">("");
   const [showCapacity, setShowCapacity] = useState(false);
+  const [parallelLeagues, setParallelLeagues] = useState(false);
   const [pointsPerGame, setPointsPerGame] = useState<0 | 11 | 15>(0);
   const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
@@ -4737,13 +4738,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     // Round-robin: G games for N entities = N*(N-1)/2
                     // → max N such that N*(N-1)/2 ≤ G  ⇒  N = floor((1+√(1+8G))/2)
                     const maxEntitiesFor = (G: number) => Math.max(0, Math.floor((1 + Math.sqrt(1 + 8 * G)) / 2));
+                    const courtsUsed = capSessions.reduce((a, s) => Math.max(a, s.courts), 0);
                     const leagues = Array.from({ length: numGroups }, (_, i) => i + 1);
                     const sharedSlot = Number(groupDurations["1"]) || matchDuration || 20;
+                    const canParallel = numGroups > 1 && courtsUsed >= numGroups && roundFormat !== "cross_league";
+                    const effectiveParallel = parallelLeagues && canParallel;
                     const perLeague = leagues.map((gn) => {
                       const slot = roundFormat === "cross_league"
                         ? sharedSlot
                         : (Number(groupDurations[String(gn)]) || matchDuration || 20);
-                      const games = capSessions.reduce((a, s) => a + Math.floor(s.minutes / slot) * s.courts, 0);
+                      // In parallel mode: split courts across leagues (rounded down; remainder goes to earlier leagues)
+                      const games = capSessions.reduce((a, s) => {
+                        const leagueCourts = effectiveParallel
+                          ? Math.floor(s.courts / numGroups) + (gn <= (s.courts % numGroups) ? 1 : 0)
+                          : s.courts;
+                        return a + Math.floor(s.minutes / slot) * leagueCourts;
+                      }, 0);
                       const maxEntities = maxEntitiesFor(games); // capacity in entities
                       const maxGamesUsed = (maxEntities * (maxEntities - 1)) / 2;
                       const maxPlayers = isDoubles ? maxEntities * 2 : maxEntities;
@@ -4756,12 +4766,25 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       return { gn, slot, games, maxEntities, maxGamesUsed, maxPlayers, actualEntities, actualPlayers, gamesNeeded, fits };
                     });
                     const sessionsCount = capSessions.length;
-                    const courtsUsed = capSessions.reduce((a, s) => Math.max(a, s.courts), 0);
                     return (
                       <div className="mt-2 rounded-lg border p-3 bg-muted/40 text-xs space-y-2">
-                        <div className="font-medium text-sm">Capacity ({isDoubles ? "doubles" : "singles"}, round-robin)</div>
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="font-medium text-sm">Capacity ({isDoubles ? "doubles" : "singles"}, round-robin)</div>
+                          {canParallel && (
+                            <label className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={parallelLeagues}
+                                onChange={(e) => setParallelLeagues(e.target.checked)}
+                                className="h-3 w-3"
+                              />
+                              Run leagues in parallel (split courts)
+                            </label>
+                          )}
+                        </div>
                         <div className="text-muted-foreground">
                           {sessionsCount} session{sessionsCount === 1 ? "" : "s"} · up to {courtsUsed} court{courtsUsed === 1 ? "" : "s"} · {tH}h {tM}m total court-time
+                          {effectiveParallel && <> · courts split across {numGroups} leagues</>}
                         </div>
                         {perLeague.length === 0 ? (
                           <div className="text-muted-foreground italic">Pick a number of leagues to see per-league capacity.</div>
@@ -4792,8 +4815,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           </div>
                         )}
                         <div className="text-[11px] text-muted-foreground">
-                          Round-robin: each {isDoubles ? "pair" : "player"} plays every other once ({isDoubles ? "P·(P−1)/2" : "N·(N−1)/2"} games). Per-league figures assume that league has access to all selected courts for the full duration.
+                          Round-robin: each {isDoubles ? "pair" : "player"} plays every other once ({isDoubles ? "P·(P−1)/2" : "N·(N−1)/2"} games). {effectiveParallel ? "Parallel mode divides available courts across leagues (remainder assigned to earlier leagues)." : "Per-league figures assume that league has access to all selected courts for the full duration."}
                         </div>
+
                       </div>
                     );
                   })()}

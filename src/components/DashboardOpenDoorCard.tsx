@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyClub } from "@/hooks/use-club";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
+import { useQuery } from "@tanstack/react-query";
+import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { triggerShellyDoor } from "@/lib/shelly-door";
 import { markDoorOpened } from "@/lib/door-open-state";
@@ -26,12 +28,25 @@ export function DashboardOpenDoorCard() {
   const { data: clubData } = useMyClub();
   const club = clubData?.club as { id?: string; visitors_access_control?: boolean } | undefined;
   const { data: clubSecrets } = useClubSecrets(club?.id);
+  const { data: accessPublic } = useQuery({
+    enabled: !!club?.id,
+    queryKey: ["club-access-public", club?.id],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await fromExt("club_access_public")
+        .select("*")
+        .eq("club_id", club!.id!)
+        .maybeSingle();
+      return data as any;
+    },
+  });
   const { activeMember } = useMemberContext();
   const { data: myBookings } = useMyBookings();
   const gate = useMemberAccessGate();
   const [loading, setLoading] = useState(false);
 
-  const accessType = (clubSecrets as any)?.access_control_type;
+  const merged: any = { ...(accessPublic || {}), ...(clubSecrets || {}) };
+  const accessType = merged.access_control_type;
   const flussEnabled = accessType === "remote_trigger";
   const shellyEnabled = accessType === "shelly_relay";
   const doorEnabled = flussEnabled || shellyEnabled;
@@ -45,7 +60,7 @@ export function DashboardOpenDoorCard() {
     setLoading(true);
     try {
       if (shellyEnabled) {
-        const s: any = clubSecrets || {};
+        const s: any = merged;
         const res = await triggerShellyDoor({
           clubId: club.id!,
           doorName: "Main door",

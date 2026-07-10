@@ -681,13 +681,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const effectiveRegistrationMode = ((registrationMode || "open")) as "open" | "invite";
   const registrationUsesInviteList = effectiveRegistrationMode === "invite";
   const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationUsesInviteList;
-  // Defer pair formation until registrations are in:
-  //  - players self-pair mode: always wait for confirmed pairs
-  //  - admin-pair mode on NEW tournaments: save the shell first, form pairs later by editing
+  // Defer pair formation only when players self-pair (need registrations to
+  // arrive first). Admin-pair mode always gets the full wizard so the admin can
+  // pick players and build pairs upfront — deferring it was jumping the admin
+  // straight from Registration to Review with no Players step, which read as
+  // "you must select players first" with nowhere to do it.
   const awaitingPlayerPairs =
-    isDoubles &&
-    doublesPairs.length === 0 &&
-    (partnerMode === "players" || (partnerMode === "admin" && !editingChampId));
+    isDoubles && doublesPairs.length === 0 && partnerMode === "players";
   const activeSteps = useMemo<WizardStep[]>(() => {
     if (!awaitingPlayerPairs) return STEPS;
     return selfPairInviteSelection

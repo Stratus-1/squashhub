@@ -1,9 +1,10 @@
 import { BellsFormat } from "./bells";
 import { StandardFormat } from "./standard";
+import { SwissFormat } from "./swiss";
 import type { TournamentFormat } from "./types";
 
 export * from "./types";
-export { BellsFormat, StandardFormat };
+export { BellsFormat, StandardFormat, SwissFormat };
 
 /**
  * Registry of pluggable tournament formats. Keyed by the value persisted

@@ -154,7 +154,7 @@ function buildInviteDetailLines(opts: {
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;
-  roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league";
+  roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss";
   byeHandling: "" | "no_match" | "walkover_win" | "neutral";
   partnerMode: "" | "admin" | "players";
   startDate: string;
@@ -386,12 +386,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [parallelLeagues, setParallelLeagues] = useState(false);
   const [pointsPerGame, setPointsPerGame] = useState<0 | 11 | 15>(0);
   const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
+  const [winCondition, setWinCondition] = useState<"win_by_2" | "sudden_death">("win_by_2");
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
-  const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin" | "cross_league">("");
+  const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss">("");
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   // Per-day schedule overrides — for short tournaments (Fri eve, Sat morning, Sat afternoon).
@@ -748,10 +749,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       end_time: endTime,
       match_duration_minutes: matchDuration,
       scoring_mode: scoringMode,
-      swiss_pools: scoringMode === "swiss" ? swissPools : null,
-      swiss_rounds: scoringMode === "swiss" ? swissRounds : null,
+      swiss_pools: roundFormat === "swiss" ? swissPools : null,
+      swiss_rounds: roundFormat === "swiss" ? swissRounds : null,
       points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
       best_of: bestOf > 0 ? bestOf : null,
+      win_condition: winCondition,
       group_durations: groupDurations,
       group_break_minutes: groupBreakMinutes,
       group_labels: groupLabels,
@@ -1669,10 +1671,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             end_time: endTime,
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
-            swiss_pools: scoringMode === "swiss" ? swissPools : null,
-            swiss_rounds: scoringMode === "swiss" ? swissRounds : null,
+            swiss_pools: roundFormat === "swiss" ? swissPools : null,
+            swiss_rounds: roundFormat === "swiss" ? swissRounds : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
+            win_condition: winCondition,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
             group_labels: groupLabels,
@@ -1723,10 +1726,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             end_time: endTime,
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
-            swiss_pools: scoringMode === "swiss" ? swissPools : null,
-            swiss_rounds: scoringMode === "swiss" ? swissRounds : null,
+            swiss_pools: roundFormat === "swiss" ? swissPools : null,
+            swiss_rounds: roundFormat === "swiss" ? swissRounds : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
+            win_condition: winCondition,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
             group_labels: groupLabels,
@@ -2432,6 +2436,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setSwissRounds(((champ as any).swiss_rounds as Record<string, number>) || {});
     setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
+    setWinCondition(((champ as any).win_condition as any) === "sudden_death" ? "sudden_death" : "win_by_2");
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
     setGroupLabels(((champ as any).group_labels as Record<string, string>) || {});
@@ -2936,7 +2941,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                  {listTournamentFormats().map((fmt) => (
+                  {listTournamentFormats().filter((fmt) => fmt.key !== "swiss").map((fmt) => (
                     <SelectItem key={fmt.key} value={fmt.key}>{fmt.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -2954,7 +2959,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </p>
               )}
               {scoringMode === "standard" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
                   <div>
                     <Label className="text-xs font-medium">Game length</Label>
                     <Select
@@ -2964,8 +2969,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                        <SelectItem value="11">Par 11 (win by 2) — WSF standard</SelectItem>
-                        <SelectItem value="15">Par 15 (win by 2)</SelectItem>
+                        <SelectItem value="11">Par 11 — WSF standard</SelectItem>
+                        <SelectItem value="15">Par 15</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Win condition</Label>
+                    <Select
+                      value={winCondition}
+                      onValueChange={(v) => setWinCondition(v as "win_by_2" | "sudden_death")}
+                    >
+                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="win_by_2">Win by 2 (traditional)</SelectItem>
+                        <SelectItem value="sudden_death">Sudden death (first to par point wins)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2999,6 +3017,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <SelectItem value="cross_league">
                       League vs League (cross-league only — players only play opponents from the other league, not their own) — set 2+ leagues on the Groups step
                     </SelectItem>
+                    <SelectItem value="swiss">Swiss pairing (fixed rounds, admin pairs each round by score — set pools & rounds per league)</SelectItem>
                   </SelectContent>
                 </Select>
                 {roundFormat ? (
@@ -3007,6 +3026,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       ? "All teams play one another twice — first round home, second round away."
                       : roundFormat === "cross_league"
                       ? "No intra-league games. Every player in league 1 plays every player in league 2 (and so on across leagues). Pick at least 2 leagues."
+                      : roundFormat === "swiss"
+                      ? "Players re-paired each round against opponents on similar scores. Configure Pools & Rounds per league in the capacity calculator."
                       : "All teams play one another once."}
                   </p>
                 ) : (
@@ -3444,7 +3465,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 const sharedSlot = Number(groupDurations["1"]) || matchDuration || 20;
                 const canParallel = groupCount > 1 && courtsUsed >= groupCount && roundFormat !== "cross_league";
                 const effectiveParallel = parallelLeagues && canParallel;
-                const isSwiss = scoringMode === "swiss";
+                const isSwiss = roundFormat === "swiss";
                 const perLeague = leagues.map((gn) => {
                   const slot = roundFormat === "cross_league"
                     ? sharedSlot
@@ -5160,7 +5181,7 @@ function InvitePreviewDialog({
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;
-  roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league";
+  roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss";
   byeHandling: "" | "no_match" | "walkover_win" | "neutral";
   partnerMode: "" | "admin" | "players";
   startDate: string;

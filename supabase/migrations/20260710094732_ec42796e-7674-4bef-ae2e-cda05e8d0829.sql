@@ -1,0 +1,1 @@
+ALTER TABLE public.club_champs ADD COLUMN IF NOT EXISTS win_condition text NOT NULL DEFAULT 'win_by_2';

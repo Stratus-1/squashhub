@@ -81,6 +81,11 @@ export default function ClubAuth() {
   const [visitorPassword, setVisitorPassword] = useState("");
   const [visitorCategory, setVisitorCategory] = useState("Men");
   const [visitorDone, setVisitorDone] = useState(false);
+  // Pre-flight gate for the Visitor tab:
+  //   null   → show the two-question intro (are you a SquashHub user? / NSA member?)
+  //   "ok"   → show the visitor registration form
+  //   "nsa"  → show the "please register via /league first" message
+  const [visitorGate, setVisitorGate] = useState<null | "ok" | "nsa">(null);
 
   // Reset
   const [resetEmail, setResetEmail] = useState("");
@@ -1501,9 +1506,69 @@ export default function ClubAuth() {
           {/* ─── VISITOR ─── */}
           <TabsContent value="visitor">
             <Card className="p-6">
+              {!user && visitorGate !== "ok" && (
+                visitorGate === "nsa" ? (
+                  <div className="space-y-4">
+                    <h3 className="text-base font-bold font-heading">Register via the NSA league page first</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Since you have an NSA / NSF number and aren't on SquashHub yet, please first
+                      sign up on the league page — this links your existing NSA roster spot to your
+                      new SquashHub account. Once done, come back here and register as a visitor at{" "}
+                      <span className="font-medium text-foreground">{clubName}</span>.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Link
+                        to={`/league${subdomain ? `?club=${encodeURIComponent(subdomain)}` : ""}`}
+                        className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90"
+                      >
+                        Go to NSA league sign-up →
+                      </Link>
+                      <Button variant="outline" type="button" onClick={() => setVisitorGate(null)}>
+                        Back
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <h3 className="text-base font-bold font-heading">Before you register as a visitor</h3>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">
+                        Are you already registered on SquashHub with another club?
+                      </p>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => setVisitorGate("ok")}>
+                          Yes — continue
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            // No SquashHub account yet — ask about NSA next.
+                            const isNsa = window.confirm(
+                              "Are you affiliated with the NSA (do you have an NSF number)?\n\nOK = Yes, I have an NSF number\nCancel = No, I don't"
+                            );
+                            setVisitorGate(isNsa ? "nsa" : "ok");
+                          }}
+                        >
+                          No — I'm new
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        If you have an NSF number, we'll link your existing NSA roster spot to your
+                        new SquashHub account before registering you as a visitor here.
+                      </p>
+                    </div>
+                  </div>
+                )
+              )}
+
+              {(user || visitorGate === "ok") && (
+              <>
               <p className="text-xs text-muted-foreground mb-4">
                 Visiting {clubName} for a tournament or league? Fill in your details below and create a visitor account with your email and a password.
               </p>
+
 
               {user && (
                 <div className="mb-4 rounded-md border border-primary/40 bg-primary/5 p-3 space-y-1">
@@ -1666,6 +1731,8 @@ export default function ClubAuth() {
                   {loading ? "Registering..." : "Register & Sign In"}
                 </Button>
               </form>
+              </>
+              )}
             </Card>
             <div className="mt-3 text-center">
               <button type="button" onClick={() => setActiveTab("login")} className="text-xs text-muted-foreground hover:text-primary hover:underline">

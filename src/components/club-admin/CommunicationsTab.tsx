@@ -14,8 +14,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { Mail, Plus, Trash2, Send, Users, Edit, Copy, Eye } from "lucide-react";
+import { Mail, Plus, Trash2, Send, Users, Edit, Copy, Eye, MessageCircle, ExternalLink } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { openWhatsApp, normalisePhoneForWhatsApp, htmlToWhatsAppText } from "@/lib/whatsapp";
 
 const MERGE_FIELDS = [
   { key: "title", label: "Title" },

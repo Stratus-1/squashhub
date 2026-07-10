@@ -208,8 +208,10 @@ export default function SuperAdminSubscriptions() {
     queryKey: ["sa-intl-pricing-settings", plans.length],
     queryFn: async () => {
       const keys = [
+        "saas_rate_zar_monthly", "saas_rate_zar_annual",
         "saas_rate_usd_monthly", "saas_rate_usd_annual",
-        "saas_min_charge_usd_monthly", "saas_min_charge_usd_annual",
+        "saas_rate_eur_monthly", "saas_rate_eur_annual",
+        "saas_min_charge_monthly", "saas_min_charge_annual",
         "saas_billing_cap", "saas_trial_days",
       ];
       const { data, error } = await supabase
@@ -225,10 +227,14 @@ export default function SuperAdminSubscriptions() {
       const anyPlan = monthlyPlan || annualPlan;
 
       const parsed = {
-        saas_rate_usd_monthly: map.get("saas_rate_usd_monthly") || (monthlyPlan ? String(monthlyPlan.price_per_member) : MONTHLY_RATE_USD),
-        saas_rate_usd_annual: map.get("saas_rate_usd_annual") || (annualPlan ? String(annualPlan.price_per_member) : ANNUAL_RATE_USD),
-        saas_min_charge_usd_monthly: map.get("saas_min_charge_usd_monthly") || (monthlyPlan ? String(monthlyPlan.minimum_charge) : MIN_CHARGE),
-        saas_min_charge_usd_annual: map.get("saas_min_charge_usd_annual") || (annualPlan ? String(annualPlan.minimum_charge) : MIN_CHARGE),
+        saas_rate_zar_monthly: map.get("saas_rate_zar_monthly") || (monthlyPlan ? String(monthlyPlan.price_per_member) : MONTHLY_RATE_ZAR),
+        saas_rate_zar_annual: map.get("saas_rate_zar_annual") || (annualPlan ? String(annualPlan.price_per_member) : ANNUAL_RATE_ZAR),
+        saas_rate_usd_monthly: map.get("saas_rate_usd_monthly") || MONTHLY_RATE_USD,
+        saas_rate_usd_annual: map.get("saas_rate_usd_annual") || ANNUAL_RATE_USD,
+        saas_rate_eur_monthly: map.get("saas_rate_eur_monthly") || MONTHLY_RATE_EUR,
+        saas_rate_eur_annual: map.get("saas_rate_eur_annual") || ANNUAL_RATE_EUR,
+        saas_min_charge_monthly: map.get("saas_min_charge_monthly") || (monthlyPlan ? String(monthlyPlan.minimum_charge) : MIN_CHARGE),
+        saas_min_charge_annual: map.get("saas_min_charge_annual") || (annualPlan ? String(annualPlan.minimum_charge) : MIN_CHARGE),
         saas_billing_cap: map.get("saas_billing_cap") || (anyPlan?.max_billable_members != null ? String(anyPlan.max_billable_members) : "150"),
         saas_trial_days: map.get("saas_trial_days") || (anyPlan ? String(anyPlan.trial_days) : "30"),
       };
@@ -247,7 +253,7 @@ export default function SuperAdminSubscriptions() {
         .upsert(rows, { onConflict: "key" });
       if (error) throw error;
 
-      // 2) Sync the two underlying plans so club_subscriptions & billing engine stay consistent.
+      // 2) Sync the two underlying plans (base ZAR) so club_subscriptions & billing engine stay consistent.
       const cap = val.saas_billing_cap === "" ? null : Number(val.saas_billing_cap);
       const trial = Number(val.saas_trial_days) || 0;
       const monthlyPlan = plans.find(p => p.billing_cycle === "monthly");
@@ -255,10 +261,10 @@ export default function SuperAdminSubscriptions() {
 
       const monthlyPayload = {
         name: "Standard Monthly",
-        description: "Per-member monthly billing",
-        price_per_member: Number(val.saas_rate_usd_monthly) || 0,
+        description: "Per-member monthly billing (base rate in ZAR; USD/EUR clubs billed in their currency)",
+        price_per_member: Number(val.saas_rate_zar_monthly) || 0,
         billing_cycle: "monthly",
-        minimum_charge: Number(val.saas_min_charge_usd_monthly) || 0,
+        minimum_charge: Number(val.saas_min_charge_monthly) || 0,
         max_billable_members: cap,
         trial_days: trial,
         is_default: true,
@@ -266,10 +272,10 @@ export default function SuperAdminSubscriptions() {
       };
       const annualPayload = {
         name: "Standard Annual",
-        description: "Per member annually in advance, billed in USD",
-        price_per_member: Number(val.saas_rate_usd_annual) || 0,
+        description: "Per member annually in advance (base rate in ZAR; USD/EUR clubs billed in their currency)",
+        price_per_member: Number(val.saas_rate_zar_annual) || 0,
         billing_cycle: "annual",
-        minimum_charge: Number(val.saas_min_charge_usd_annual) || 0,
+        minimum_charge: Number(val.saas_min_charge_annual) || 0,
         max_billable_members: cap,
         trial_days: trial,
         is_default: false,

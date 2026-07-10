@@ -335,9 +335,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const { data: courts = [] } = useQuery({
     queryKey: ["club-courts", clubId],
     queryFn: async () => {
-      const { data, error } = await fromExt("courts").select("*").eq("club_id", clubId);
+      const { data, error } = await fromExt("courts").select("id, name, is_external, venue_name").eq("club_id", clubId);
       if (error) throw error;
-      return data as { id: number; name: string }[];
+      return data as { id: number; name: string; is_external?: boolean | null; venue_name?: string | null }[];
     },
     enabled: !!clubId,
   });

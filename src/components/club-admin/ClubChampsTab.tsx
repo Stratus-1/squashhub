@@ -4738,6 +4738,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     // Round-robin: G games for N entities = N*(N-1)/2
                     // → max N such that N*(N-1)/2 ≤ G  ⇒  N = floor((1+√(1+8G))/2)
                     const maxEntitiesFor = (G: number) => Math.max(0, Math.floor((1 + Math.sqrt(1 + 8 * G)) / 2));
+                    const courtsUsed = capSessions.reduce((a, s) => Math.max(a, s.courts), 0);
                     const leagues = Array.from({ length: numGroups }, (_, i) => i + 1);
                     const sharedSlot = Number(groupDurations["1"]) || matchDuration || 20;
                     const canParallel = numGroups > 1 && courtsUsed >= numGroups && roundFormat !== "cross_league";

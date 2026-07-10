@@ -569,3 +569,107 @@ function CampaignsPanel({ clubId, onNew }: { clubId: string; onNew: () => void }
     </Card>
   );
 }
+
+function WhatsAppBlastDialog({
+  recipients,
+  subject,
+  body,
+  previewVars,
+  onClose,
+}: {
+  recipients: Array<{ id: string; name: string; phone: string | null; email: string; club_member_number: string | null; id_number: string | null }>;
+  subject: string;
+  body: string;
+  previewVars: Record<string, string>;
+  onClose: () => void;
+}) {
+  const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+
+  const renderFor = (m: (typeof recipients)[number]) => {
+    const full = String(m.name || "").trim();
+    const [first, ...rest] = full.split(/\s+/);
+    const vars = {
+      ...previewVars,
+      title: "",
+      first_name: first || "",
+      surname: rest.join(" "),
+      name: full,
+      member_number: String(m.club_member_number || ""),
+      email: String(m.email || ""),
+      phone: String(m.phone || ""),
+      id_number: String(m.id_number || ""),
+    };
+    const merged = String(body ?? "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, k) => vars[k] ?? "");
+    return `*${subject}*\n\n${htmlToWhatsAppText(merged)}`;
+  };
+
+  const withPhone = recipients.filter((m) => normalisePhoneForWhatsApp(m.phone));
+  const withoutPhone = recipients.filter((m) => !normalisePhoneForWhatsApp(m.phone));
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 text-emerald-600" />
+            Send via WhatsApp
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Card className="p-3 bg-emerald-500/5 border-emerald-600/20">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Click each recipient to open WhatsApp with the message pre-filled — tap Send in WhatsApp to deliver it. This is free (no automation, no per-message cost) and works one recipient at a time.
+              {withoutPhone.length > 0 && (
+                <> <strong>{withoutPhone.length}</strong> member{withoutPhone.length === 1 ? " has" : "s have"} no phone number saved and can't be reached this way.</>
+              )}
+            </p>
+          </Card>
+
+          <div className="border rounded divide-y">
+            {withPhone.map((m) => {
+              const sent = sentIds.has(m.id);
+              return (
+                <div key={m.id} className="flex items-center gap-2 p-2 text-sm">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{m.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{m.phone}</p>
+                  </div>
+                  {sent && <Badge variant="outline" className="text-[10px] text-emerald-700 border-emerald-600/40">Opened</Badge>}
+                  <Button
+                    size="sm"
+                    variant={sent ? "outline" : "default"}
+                    className={sent ? "" : "bg-emerald-600 hover:bg-emerald-700"}
+                    onClick={() => {
+                      openWhatsApp(m.phone, renderFor(m));
+                      setSentIds((prev) => new Set(prev).add(m.id));
+                    }}
+                  >
+                    <ExternalLink className="w-3 h-3 mr-1" />
+                    {sent ? "Reopen" : "Open WhatsApp"}
+                  </Button>
+                </div>
+              );
+            })}
+            {withPhone.length === 0 && (
+              <p className="text-xs text-muted-foreground p-4 text-center">No recipients with a phone number.</p>
+            )}
+          </div>
+
+          {withoutPhone.length > 0 && (
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground">Missing phone ({withoutPhone.length})</summary>
+              <ul className="mt-2 space-y-0.5 pl-4 list-disc text-muted-foreground">
+                {withoutPhone.map((m) => <li key={m.id}>{m.name}</li>)}
+              </ul>
+            </details>
+          )}
+        </div>
+        <DialogFooter>
+          <p className="text-[11px] text-muted-foreground mr-auto">Opened {sentIds.size}/{withPhone.length}</p>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

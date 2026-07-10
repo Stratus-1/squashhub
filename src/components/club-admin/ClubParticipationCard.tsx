@@ -32,7 +32,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
 
   const memberCount = (c as any).active_member_count;
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
-  const isZar = clubCurrencyCode === "ZAR";
+  
 
   const handleAccept = async () => {
     if (!agreed || !name.trim() || !role.trim()) {
@@ -93,15 +93,15 @@ export function ClubParticipationCard({ club }: { club: Club }) {
       <div className="rounded-md border bg-muted/30 p-4 text-sm space-y-2">
         <div className="font-medium text-foreground">Fee structure</div>
         <ul className="list-disc pl-5 text-muted-foreground space-y-1">
-          <li><strong className="text-foreground">R6</strong> per active member per month (billed monthly), or</li>
-          <li><strong className="text-foreground">R5</strong> per active member per month if paid <strong className="text-foreground">annually in advance</strong> (save R12 / member / year)</li>
+          <li><strong className="text-foreground">$0.35</strong> per active member per month (billed monthly), or</li>
+          <li><strong className="text-foreground">$0.30</strong> per active member per month if paid <strong className="text-foreground">annually in advance</strong> (save $0.60 / member / year)</li>
         </ul>
         <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
           Fees are first invoiced from <strong>September 2026</strong> for the current financial year, and annually thereafter.
         </p>
-        {!isZar && (
+        {clubCurrencyCode !== "USD" && (
           <p className="text-xs text-muted-foreground italic">
-            Rates shown in South African Rand (ZAR). Your invoices are issued in your club currency ({clubCurrencyName} · {clubCurrencyCode}), converted at the prevailing platform rate.
+            Rates shown in US Dollars (USD). Your invoices are issued in your club currency ({clubCurrencyName} · {clubCurrencyCode}), converted at the prevailing platform rate.
           </p>
         )}
         {typeof memberCount === "number" && (
@@ -134,7 +134,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             {c.sla_accepted_name && <div>Accepted by <strong className="text-foreground">{c.sla_accepted_name}</strong>{c.sla_accepted_role ? `, ${c.sla_accepted_role}` : ""}</div>}
             {c.sla_accepted_at && <div>Accepted on {new Date(c.sla_accepted_at).toLocaleString()}</div>}
             <div>
-              Billing: <strong className="text-foreground">{c.sla_billing_option === "annual_upfront" ? "Annual upfront (R5/member/month)" : "Monthly (R6/member/month)"}</strong>
+              Billing: <strong className="text-foreground">{c.sla_billing_option === "annual_upfront" ? "Annual upfront ($0.30/member/month)" : "Monthly ($0.35/member/month)"}</strong>
               {c.sla_version && <> · SLA v{c.sla_version}</>}
             </div>
           </div>
@@ -194,15 +194,15 @@ export function ClubParticipationCard({ club }: { club: Club }) {
                   <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "monthly" ? "border-primary bg-primary/5" : ""}`}>
                     <RadioGroupItem value="monthly" id="bill-monthly" />
                     <div className="text-sm">
-                      <div className="font-medium">Monthly — R6 / member / month</div>
+                      <div className="font-medium">Monthly — $0.35 / member / month</div>
                       <div className="text-xs text-muted-foreground">Billed monthly in arrears</div>
                     </div>
                   </label>
                   <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}>
                     <RadioGroupItem value="annual_upfront" id="bill-annual" />
                     <div className="text-sm">
-                      <div className="font-medium">Annual upfront — R5 / member / month</div>
-                      <div className="text-xs text-muted-foreground">Paid yearly in advance · save R12/member/year</div>
+                      <div className="font-medium">Annual upfront — $0.30 / member / month</div>
+                      <div className="text-xs text-muted-foreground">Paid yearly in advance · save $0.60/member/year</div>
                     </div>
                   </label>
                 </RadioGroup>

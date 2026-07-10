@@ -47,7 +47,9 @@ export default function StitchOnboardingCard({
   const [contactName, setContactName] = useState(defaultContactName || "");
   const [contactEmail, setContactEmail] = useState(defaultEmail || "");
   const [contactCell, setContactCell] = useState(defaultCell || "");
-  const [boardMembers, setBoardMembers] = useState<string>("");
+  const [boardMembers, setBoardMembers] = useState<string>(
+    Array.isArray(defaultBoardMembers) ? defaultBoardMembers.join("\n") : "",
+  );
   const clubUrl = useMemo(() => {
     if (clubSubdomain) return `https://${clubSubdomain}.squashhub.co.za`;
     return `https://squashhub.co.za/c/${clubId}`;

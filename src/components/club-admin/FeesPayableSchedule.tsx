@@ -140,6 +140,7 @@ export function FeesPayableSchedule({ clubId }: { clubId: string }) {
 
 function PayableFeeDialog({ clubId, existing, open, onOpenChange }: { clubId: string; existing?: PayableFee; open: boolean; onOpenChange: (o: boolean) => void; }) {
   const qc = useQueryClient();
+  const { symbol: currencySymbol } = useClubCurrency();
   const isEdit = !!existing;
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);

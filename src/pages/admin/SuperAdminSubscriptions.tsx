@@ -1333,18 +1333,18 @@ function AllInvoicesList() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Card className="p-3">
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Invoices</div>
-          <div className="text-lg font-bold">{totals.count}</div>
-          <div className="text-[11px] text-muted-foreground">{fmt(totals.value)}</div>
+          <div className="text-lg font-bold">{totalCount}</div>
+          <div className="text-[11px] text-muted-foreground">{perCcyLine(b => b.value)}</div>
         </Card>
         <Card className="p-3">
           <div className="text-[10px] uppercase tracking-wide text-emerald-600">Paid</div>
-          <div className="text-lg font-bold text-emerald-600">{totals.paidCount}</div>
-          <div className="text-[11px] text-muted-foreground">{fmt(totals.paidValue)}</div>
+          <div className="text-lg font-bold text-emerald-600">{totalPaidCount}</div>
+          <div className="text-[11px] text-muted-foreground">{perCcyLine(b => b.paidValue)}</div>
         </Card>
         <Card className="p-3">
           <div className="text-[10px] uppercase tracking-wide text-amber-600">Outstanding</div>
-          <div className="text-lg font-bold text-amber-600">{totals.dueCount}</div>
-          <div className="text-[11px] text-muted-foreground">{fmt(totals.dueValue)}</div>
+          <div className="text-lg font-bold text-amber-600">{totalDueCount}</div>
+          <div className="text-[11px] text-muted-foreground">{perCcyLine(b => b.dueValue)}</div>
         </Card>
         <Card className="p-3 flex items-center justify-center">
           <Button size="sm" variant="outline" className="h-8 text-xs w-full" onClick={() => refetch()} disabled={isFetching}>

@@ -93,10 +93,14 @@ export default function SuperAdminSubscriptions() {
   const [stitchDirty, setStitchDirty] = useState(false);
   const [showStitchSecret, setShowStitchSecret] = useState(false);
 
-  // Intl pricing / FX form
+  // Unified pricing form: base ZAR rates, cap, trial + intl uplift & FX
   const [intlForm, setIntlForm] = useState({
     saas_rate_zar_monthly: "6",
     saas_rate_zar_annual: "5",
+    saas_min_charge_monthly: "0",
+    saas_min_charge_annual: "100",
+    saas_billing_cap: "150",
+    saas_trial_days: "30",
     saas_intl_uplift_pct: "50",
     saas_fx_usd_per_zar: "18",
     saas_fx_eur_per_zar: "20",
@@ -108,6 +112,7 @@ export default function SuperAdminSubscriptions() {
     setIntlForm(prev => ({ ...prev, [k]: v }));
     setIntlDirty(true);
   };
+
 
   // --- Queries ---
   const { data: plans = [], isLoading: plansLoading } = useQuery({

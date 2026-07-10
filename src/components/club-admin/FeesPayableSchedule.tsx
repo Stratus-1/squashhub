@@ -109,7 +109,7 @@ export function FeesPayableSchedule({ clubId }: { clubId: string }) {
                     {fee.basis === "per_member" ? "Per member" : fee.basis === "per_team" ? "Per team" : "Per club"}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right tabular-nums">R {Number(fee.amount).toFixed(2)}</TableCell>
+                <TableCell className="text-right tabular-nums">{money(Number(fee.amount))}</TableCell>
                 <TableCell className="text-sm">{fee.due_day} {SHORT_MONTHS[fee.due_month - 1]}</TableCell>
                 <TableCell className="text-center">
                   <Switch checked={fee.active} onCheckedChange={() => handleToggle(fee)} className="mx-auto" />

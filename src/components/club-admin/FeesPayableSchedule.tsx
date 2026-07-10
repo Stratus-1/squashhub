@@ -238,7 +238,7 @@ function PayableFeeDialog({ clubId, existing, open, onOpenChange }: { clubId: st
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label>Amount (R)</Label>
+              <Label>Amount ({currencySymbol})</Label>
               <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
             </div>
             <div className="space-y-1">

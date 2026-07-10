@@ -99,6 +99,11 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
           Fees are first invoiced from <strong>September 2026</strong> for the current financial year, and annually thereafter.
         </p>
+        {!isZar && (
+          <p className="text-xs text-muted-foreground italic">
+            Rates shown in South African Rand (ZAR). Your invoices are issued in your club currency ({clubCurrencyName} · {clubCurrencyCode}), converted at the prevailing platform rate.
+          </p>
+        )}
         {typeof memberCount === "number" && (
           <p className="text-xs text-muted-foreground">Your club currently has {memberCount} active member{memberCount === 1 ? "" : "s"}.</p>
         )}

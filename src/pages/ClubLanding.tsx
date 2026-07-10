@@ -161,7 +161,10 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     return query ? `/auth?${query}` : "/auth";
   })();
 
-  if (loading || authLoading) {
+  // Only block on the club query itself. Auth resolution can happen in the
+  // background — the landing page renders fine for unauthenticated users, and
+  // once `user` is known we redirect below.
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -182,7 +185,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     );
   }
 
-  if (user) {
+  if (!authLoading && user) {
     return <Navigate to={displaySubdomain ? `/?club=${encodeURIComponent(displaySubdomain)}` : "/"} replace />;
   }
 
@@ -206,6 +209,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
           loop
           muted
           playsInline
+          preload="metadata"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
 
@@ -235,7 +239,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
               <div className="rounded-b-2xl bg-[#07122E]/20 backdrop-blur-md border border-white/20 shadow-2xl p-8">
                 <TabsContent value="details" className="mt-0 space-y-5 text-center">
                   {club.logo_url ? (
-                    <img src={club.logo_url} alt={`${club.name} logo`} className="w-28 h-28 sm:w-32 sm:h-32 object-contain mx-auto rounded-xl shadow-lg" />
+                    <img src={club.logo_url} alt={`${club.name} logo`} loading="eager" fetchPriority="high" decoding="async" className="w-28 h-28 sm:w-32 sm:h-32 object-contain mx-auto rounded-xl shadow-lg" />
                   ) : (
                     <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
                       <Building2 className="w-10 h-10 text-primary-foreground" />
@@ -287,7 +291,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                 <TabsContent value="fees" className="mt-0 space-y-5">
                   <div className="flex flex-col items-center space-y-3">
                     {club.logo_url ? (
-                      <img src={club.logo_url} alt={`${club.name} logo`} className="w-28 h-28 sm:w-32 sm:h-32 object-contain rounded-xl shadow-lg" />
+                      <img src={club.logo_url} alt={`${club.name} logo`} loading="eager" fetchPriority="high" decoding="async" className="w-28 h-28 sm:w-32 sm:h-32 object-contain rounded-xl shadow-lg" />
                     ) : (
                       <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
                         <Building2 className="w-10 h-10 text-primary-foreground" />

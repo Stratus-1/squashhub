@@ -1032,7 +1032,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                           balance > 0 ? (meta.category === "Expense" ? "text-destructive" : "text-green-600") :
                           balance < 0 ? "text-destructive" : "text-muted-foreground"
                         )}>
-                          {Math.abs(balance).toFixed(2)}
+                          {money(Math.abs(balance))}
                           {balance < 0 ? " Cr" : balance > 0 ? " Dr" : ""}
                         </span>
                       </div>

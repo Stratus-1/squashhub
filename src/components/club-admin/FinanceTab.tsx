@@ -1738,8 +1738,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             {billAmount && parseFloat(billAmount) > 0 && (
               <div className="p-2 rounded bg-muted/60 text-[10px] space-y-0.5">
                 <p className="font-semibold text-foreground text-xs">GL Preview:</p>
-                <p>• Debit Accounts Receivable {parseFloat(billAmount).toFixed(2)}</p>
-                <p>• Credit {getLabel(billIncome)} {parseFloat(billAmount).toFixed(2)}</p>
+                <p>• Debit Accounts Receivable {money(parseFloat(billAmount))}</p>
+                <p>• Credit {getLabel(billIncome)} {money(parseFloat(billAmount))}</p>
               </div>
             )}
           </div>

@@ -232,9 +232,14 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
           <p className="text-xs text-muted-foreground mb-3">
             Are you playing league? Your club is affiliated to {remainingCount} {remainingCount === 1 ? "league" : "leagues"}.
           </p>
-          <Button size="sm" onClick={() => setOpen(true)}>
-            Choose leagues
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setOpen(true)}>
+              Choose leagues
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleNoThanks}>
+              No thanks
+            </Button>
+          </div>
         </>
       ) : (
         Body

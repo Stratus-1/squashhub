@@ -535,76 +535,14 @@ export default function SuperAdminSubscriptions() {
           
         </TabsList>
 
-        {/* ─── FEE STRUCTURE TAB ─── */}
+        {/* ─── FEE STRUCTURE TAB (unified) ─── */}
         <TabsContent value="plans" className="space-y-4 mt-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-              Configure per-member pricing plans that clubs subscribe to
-            </p>
-            <Button size="sm" onClick={() => openPlanDialog("new")} className="h-7 text-xs">
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Plan
-            </Button>
-          </div>
-
-          {plansLoading ? (
-            <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-          ) : plans.length === 0 ? (
-            <Card className="p-8 text-center text-muted-foreground">No pricing plans configured yet</Card>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {plans.map(plan => (
-                <Card key={plan.id} className={`p-4 space-y-3 relative ${!plan.active ? "opacity-60" : ""}`}>
-                  {plan.is_default && (
-                    <Badge className="absolute top-2 right-2 text-[10px] h-5 bg-primary/10 text-primary border-primary/20">Default</Badge>
-                  )}
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">{plan.name}</h3>
-                    {plan.description && <p className="text-xs text-muted-foreground mt-0.5">{plan.description}</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 text-xs">
-                      <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="font-mono font-medium text-foreground">R{plan.price_per_member}</span>
-                      <span className="text-muted-foreground">/ member / {plan.billing_cycle === "monthly" ? "month" : "year"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <CreditCard className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-muted-foreground">Min charge:</span>
-                      <span className="font-mono font-medium text-foreground">R{plan.minimum_charge}</span>
-                    </div>
-                    {plan.max_billable_members != null && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="text-muted-foreground">Billing cap:</span>
-                        <span className="font-mono font-medium text-foreground">{plan.max_billable_members} members</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 text-xs">
-                      <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-muted-foreground">Free trial:</span>
-                      <span className="font-medium text-foreground">{plan.trial_days} days</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-1 pt-1">
-                    <Button variant="ghost" size="sm" className="h-6 text-[11px]" onClick={() => openPlanDialog(plan)}>
-                      <Pencil className="w-3 h-3 mr-1" /> Edit
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-6 text-[11px] text-destructive" onClick={() => deletePlan.mutate(plan.id)}>
-                      <Trash2 className="w-3 h-3 mr-1" /> Delete
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* ─── International pricing & FX (merged from Intl. Pricing tab) ─── */}
-          <Card className="p-4 space-y-4 mt-2">
+          <Card className="p-4 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4" /> International Pricing & FX Rates</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xl">
-                  ZAR clubs bill at the base rate. Non-ZAR clubs (currency set in club admin) bill at <strong>ZAR rate × (1 + uplift%) ÷ FX rate</strong>. Changes apply from the next billing run. The per-plan <strong>billing cap</strong> (max billable members) is set on each plan above.
+                <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4" /> SaaS Fee Structure & International Pricing</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5 max-w-2xl">
+                  Set the base ZAR rates for monthly and annual plans, plus the shared billing cap and free trial. Non-ZAR clubs bill at <strong>ZAR rate × (1 + uplift%) ÷ FX rate</strong>. Saving here also updates the underlying Standard Monthly and Standard Annual plans that clubs are assigned to. Changes apply from the next billing run.
                 </p>
               </div>
               <Button
@@ -618,16 +556,39 @@ export default function SuperAdminSubscriptions() {
               </Button>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-3">
+              {/* Base rates */}
               <div className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Base ZAR rates (per member)</p>
                 <div>
-                  <Label className="text-xs">Monthly (R)</Label>
+                  <Label className="text-xs">Monthly (R / member / month)</Label>
                   <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_monthly} onChange={e => updateIntlField("saas_rate_zar_monthly", e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Annual prepaid (R / month)</Label>
+                  <Label className="text-xs">Annual (R / member / month)</Label>
                   <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_annual} onChange={e => updateIntlField("saas_rate_zar_annual", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Min charge — Monthly (R)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_monthly} onChange={e => updateIntlField("saas_min_charge_monthly", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Min charge — Annual (R)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_annual} onChange={e => updateIntlField("saas_min_charge_annual", e.target.value)} />
+                </div>
+              </div>
+
+              {/* Cap / trial / uplift */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Limits & trial</p>
+                <div>
+                  <Label className="text-xs">Billing cap (max billable members)</Label>
+                  <Input className="h-8 text-xs" type="number" step="1" value={intlForm.saas_billing_cap} onChange={e => updateIntlField("saas_billing_cap", e.target.value)} placeholder="e.g. 150" />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Clubs are billed for at most this many members.</p>
+                </div>
+                <div>
+                  <Label className="text-xs">Free trial (days)</Label>
+                  <Input className="h-8 text-xs" type="number" step="1" value={intlForm.saas_trial_days} onChange={e => updateIntlField("saas_trial_days", e.target.value)} />
                 </div>
                 <div>
                   <Label className="text-xs">International uplift (%)</Label>
@@ -636,6 +597,7 @@ export default function SuperAdminSubscriptions() {
                 </div>
               </div>
 
+              {/* FX */}
               <div className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Fixed FX rates (ZAR per unit)</p>
                 <div>
@@ -688,12 +650,9 @@ export default function SuperAdminSubscriptions() {
                 </div>
               );
             })()}
-
-            <p className="text-[11px] text-muted-foreground">
-              <strong className="text-foreground">How it works:</strong> Each club has a <code>currency_code</code> set in Club Admin → Settings. During <code>run-subscription-billing</code>, ZAR clubs bill unchanged; USD/EUR clubs bill at the converted rate above. Unsupported currencies fall back to the ZAR value — add a new FX row here and extend the edge function if you onboard a new region.
-            </p>
           </Card>
         </TabsContent>
+
 
         {/* ─── CLUB SUBSCRIPTIONS TAB ─── */}
         <TabsContent value="clubs" className="space-y-4 mt-4">

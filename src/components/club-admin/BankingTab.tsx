@@ -566,9 +566,10 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         clubId={clubId}
         clubName={club.name}
         clubSubdomain={(club as any).subdomain ?? null}
-        defaultEmail={(club as any).contact_email || (secrets as any)?.sender_email || null}
-        defaultCell={(club as any).contact_phone || null}
-        defaultContactName={(club as any).contact_name || null}
+        defaultEmail={(club as any).email || (secrets as any)?.sender_email || null}
+        defaultCell={(club as any).phone || null}
+        defaultContactName={(club as any).contact_person_name || null}
+        defaultBoardMembers={boardMemberNames}
       />
     </div>
   );

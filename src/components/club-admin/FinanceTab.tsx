@@ -971,8 +971,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     <Badge variant="outline" className={cn("text-[10px] w-fit", categoryColor[meta.category])}>
                       {meta.category}
                     </Badge>
-                    <span className="text-right tabular-nums font-medium text-xs">{bal.debit.toFixed(2)}</span>
-                    <span className="text-right tabular-nums font-medium text-xs">{bal.credit.toFixed(2)}</span>
+                    <span className="text-right tabular-nums font-medium text-xs">{money(bal.debit)}</span>
+                    <span className="text-right tabular-nums font-medium text-xs">{money(bal.credit)}</span>
                   </div>
                 );
               })}

@@ -84,17 +84,22 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, sent: 0, notified: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // In-app notifications for everyone with a user_id
+    // In-app notifications for everyone with a user_id — embed full HTML so the detail view renders it
+    const subject = `Welcome to ${club?.name || "the club"} — quick getting-started tips`;
     const notifRows = list
       .filter((m: any) => m.user_id)
-      .map((m: any) => ({
-        user_id: m.user_id,
-        club_member_id: m.id,
-        title: `Welcome to ${club?.name || "the club"}!`,
-        message: "Getting started: Book a court, top up in My Account, pay by EFT/card. Lights come on automatically. Tap to read the tips.",
-        type: "general",
-        url: "/",
-      }));
+      .map((m: any) => {
+        const html = buildBody(m.name || "", club?.name || "");
+        return {
+          user_id: m.user_id,
+          club_member_id: m.id,
+          title: `Welcome to ${club?.name || "the club"}!`,
+          message: "Getting started: Book a court, top up in My Account, pay by EFT/card. Lights come on automatically. Tap to read the tips.",
+          type: "general",
+          url: "/notifications",
+          data: { email: { subject, html, text: stripHtml(html) } },
+        };
+      });
     let notified = 0;
     if (notifRows.length) {
       const { error: nErr } = await admin.from("notifications").insert(notifRows);

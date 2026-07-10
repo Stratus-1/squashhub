@@ -1,56 +1,61 @@
-# Dynamic Court Reuse
 
-Right now each league round and tournament group allocates fixtures onto its own fixed court list, at fixed slot times. If League A finishes on Court 1 at 20:30 but League B still has matches queued for 21:00 on Court 2, League B's fixtures don't slide over — Court 1 sits idle. Same story inside a tournament: if a Group A match ends early, Group B keeps waiting for its scheduled slot.
+# Stitch Express Rebuild
 
-This work makes the scheduler court-pool aware, at both generation time and live during play.
+Stitch confirmed our account is on **Stitch Express** (card-based recurring), not the Enterprise API. The current code uses Enterprise concepts (`PaymentAuthorization`, debit-order mandates, bank-app approval, Enterprise UUIDs) which is why mandates hang in `pending` and no webhook arrives. This plan rips out the Enterprise flow and rebuilds on Express Subscriptions, plus fixes the onboarding form.
 
-## Phase A – Generation-time court pooling
+## What Express gives us (and what we lose)
 
-Goal: when multiple leagues (or tournament groups) share a play night, the allocator treats their combined courts as one pool and packs fixtures into the earliest free (court × time) cell.
+- **Payments**: hosted card checkout on `express.stitch.money`, 3DS auth, `payment.paid` webhook.
+- **Recurring**: Express **Subscriptions API** — scheduled card charges, customisable frequency/amount, tokenised card on file.
+- **Lost**: bank-app-approved debit orders. Members will authenticate a card once (with 3DS) instead of approving in their banking app.
 
-Changes:
-- New helper `allocateAcrossPools()` in `src/components/league-games/fixtures/scheduler.ts` that takes an array of `{ id, pairings, courtIds }` pools + a shared time window, and greedily assigns each pairing to the earliest slot where any of its own courts is free — falling back to any pool court if the league admin opts into shared courts.
-- Reuses existing `buildSlotTimes` / `nextNPlayDates` / court-fairness logic — no behaviour change for leagues that don't opt in.
-- Wire an opt-in "Share courts with other leagues on the same night" toggle into the league round generator dialog (`GenerateFixturesDialog` under `src/components/league-games/`), default OFF so nothing existing shifts unexpectedly.
-- For tournaments (`ClubChampsTab` → `generate schedule` path via `src/lib/tournament-formats/*`), apply the same pooled allocator across groups that share the same date + courts. Bells format already schedules by court list; extend it to consume freed slots from sibling groups.
+## Scope
 
-## Phase B – Live court reuse when matches finish early
+### 1. Onboarding form (unblock now)
+- Fix the edge-function error on Submit in `StitchOnboardingCard.tsx` / `stitch-onboarding-submit`.
+- Add **Save Draft** button next to Submit — persists all fields to `stitch_onboarding_drafts` (table already exists) so admins can return later. Auto-loads existing draft on mount.
+- Keep both emails on Submit: club contact + `admin@stratsol.co.za` (already wired).
 
-Goal: as a fixture is marked complete (or a marker session ends), pull the next unstarted fixture on the same evening onto that freed court + time.
+### 2. Replace one-off payments (Enterprise → Express)
+- Rewrite `stitch-create-payment` to call Express `POST /payments` (card-hosted checkout) instead of Enterprise PaymentInitiation.
+- Rewrite `stitch-verify-payment` and `stitch-webhook` to consume Express `payment.paid` / `payment.failed` events and Express ID format.
+- Delete `stitch-collection-webhook`, `stitch-queue-collections`, `stitch-submit-collections` (debit-order batch collection — not supported on Express).
+- Update `src/lib/stitch-checkout.ts` and call sites (`MyAccount`, `stitch-pay-platform-invoice`, `platform-stitch-test-payment`, member fee payments, bar tab, visitor sales) to use the new Express flow.
 
-Changes:
-- New edge function `reflow-freed-court` (`supabase/functions/reflow-freed-court/index.ts`):
-  - Input: `{ fixture_id }` that just completed, or `{ tournament_match_id }`.
-  - Looks up sibling fixtures on the same `fixture_date` after `now()` on shared/adjacent courts, whose current start_time is later than the freed slot.
-  - Picks the earliest queued fixture whose teams aren't already playing right now, and updates its `court_id` + `start_time` to the freed cell.
-  - Writes an audit row so the change is visible and reversible.
-- Trigger the function from:
-  - `league_fixture_results` insert (existing result-recording path in `LeagueGameDetail`).
-  - Tournament match completion path (`club_champs_matches` update where `status → completed`).
-  - Marker session end (`live_marker_sessions` cleanup) as a safety net.
-- Frontend already subscribes to fixture / match realtime updates, so the UI re-renders automatically. Add a subtle "Moved earlier — Court X, HH:MM" toast on the affected fixture card via existing notification hooks.
+### 3. Replace mandates with Express Subscriptions
+- Rewrite `stitch-create-mandate` → `stitch-create-subscription`: creates an Express Subscription (initial card auth + schedule).
+- Rewrite `stitch-cancel-mandate` → `stitch-cancel-subscription` using Express API.
+- Delete `stitch-mandate-webhook`; extend `stitch-webhook` to handle `subscription.charged`, `subscription.failed`, `subscription.cancelled`.
+- Update `DebitOrderPromptCard`, `DebitOrdersPanel`, `SubscriptionTab`, `PaymentMethodsCard`, `run-subscription-billing`, `evaluate-member-suspensions` — user-facing copy changes from "Debit order" to **"Recurring card payment"**.
 
-Guardrails:
-- Never move a fixture whose players are actively marking (`league_marker_locks` fresh < 60s) — the existing `useFixtureLiveMarkers` check.
-- Never move within 5 minutes of the original start (players may already be on court).
-- Only reflow fixtures inside the same round / same tournament / same evening — no cross-day shifts.
-- Admin-level kill switch: `clubs.dynamic_court_reflow_enabled boolean default true` so a club can disable it.
+### 4. Database migration
+- `stitch_mandates` → rename semantically to represent card subscriptions (keep the table, add `subscription_id`, `card_last4`, `card_brand`, `card_expiry`; deprecate `mandate_reference`, `bank_account_*`).
+- `stitch_payment_sessions`: add `express_payment_id`; keep old columns nullable for historical rows.
+- No destructive drops — current mandates are all `pending` (broken), so they get marked `cancelled_reason='migrated_to_express'`.
 
-## Phase C – Visibility
+### 5. Secrets & config
+- Express uses a different client id / secret pair from Enterprise. If existing `STITCH_CLIENT_ID` / `STITCH_CLIENT_SECRET` are Enterprise creds, we'll need Express credentials from the Stitch dashboard (`express.stitch.money`) — I'll prompt via `add_secret` when we hit that step.
+- New webhook URL to register with Stitch Express: `…/functions/v1/stitch-webhook`.
 
-- Add a small "Auto-shifted" indicator on fixture rows whose start_time or court_id was moved by the reflow function (badge next to the time).
-- Log every reflow in a new `court_reflow_log` table so admins can see what moved and why.
+## Technical notes
 
-## Technical section (for reviewers)
+- Express base URL: `https://api.express.stitch.money` (per `express.stitch.money/api-docs/quickstart`).
+- Auth: client-credentials OAuth (same pattern as Enterprise but different token endpoint + audience).
+- Webhook signatures: Express uses HMAC-SHA256 with the webhook secret — update `_shared/stitch-signature.ts` accordingly.
+- ID format changes → all lookups keyed on `stitch_*_id` columns will be re-populated on new records only.
+- Member-facing copy: "Approve in your banking app" → "Enter card details" everywhere.
 
-Files touched:
-- `src/components/league-games/fixtures/scheduler.ts` – add `allocateAcrossPools`, keep existing exports untouched.
-- `src/components/league-games/GenerateFixturesDialog.tsx` – add opt-in toggle + pass sibling league court lists.
-- `src/components/club-admin/ClubChampsTab.tsx` + `src/lib/tournament-formats/bells.ts` – route through pooled allocator when groups share courts.
-- `supabase/functions/reflow-freed-court/index.ts` – new function, `verify_jwt` on, service-role writes.
-- New migration: `clubs.dynamic_court_reflow_enabled bool`, new `court_reflow_log` table with RLS (`club_id` scoped, admin read).
-- Result-recording paths add a fire-and-forget `supabase.functions.invoke('reflow-freed-court', …)`.
+## Out of scope
 
-No changes to existing ladder, results, or points logic. Rollout is opt-in per league at generation time; live reflow is on by default but killable per club.
+- Migrating already-active Enterprise mandates (none are active — all pending).
+- Multi-currency; Express is ZAR-only for us.
+- Refactoring unrelated billing tables.
 
-Approve to start with Phase A (generation-time pooling for leagues + tournaments), then Phase B, then Phase C.
+## Rollout order
+
+1. Onboarding fix + Save Draft (unblocks banking page today).
+2. Request Express credentials via `add_secret`.
+3. Rebuild payments (one-off) end-to-end + webhook.
+4. Rebuild subscriptions + billing worker.
+5. DB migration + UI copy pass.
+6. Delete dead functions (`stitch-*-collections`, `stitch-mandate-webhook`, `stitch-collection-webhook`).

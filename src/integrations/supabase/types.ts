@@ -1029,6 +1029,8 @@ export type Database = {
           start_date: string
           start_time: string
           status: string
+          swiss_pools: Json | null
+          swiss_rounds: Json | null
           updated_at: string
           visitor_clubs: string[]
         }
@@ -1083,6 +1085,8 @@ export type Database = {
           start_date: string
           start_time?: string
           status?: string
+          swiss_pools?: Json | null
+          swiss_rounds?: Json | null
           updated_at?: string
           visitor_clubs?: string[]
         }
@@ -1137,6 +1141,8 @@ export type Database = {
           start_date?: string
           start_time?: string
           status?: string
+          swiss_pools?: Json | null
+          swiss_rounds?: Json | null
           updated_at?: string
           visitor_clubs?: string[]
         }

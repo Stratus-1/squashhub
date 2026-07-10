@@ -1842,7 +1842,7 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
         { key: "" as FinanceView, label: "Member Statement", desc: "Full transaction history for one member", icon: FileText, onClick: onStatement },
         { key: "" as FinanceView, label: "Member Balances", desc: "Who owes and who's in credit", icon: Wallet, onClick: () => onBalances("outstanding") },
         { key: "" as FinanceView, label: "Bill Member", desc: "Add an ad-hoc charge to a member", icon: Receipt, onClick: onBill },
-        { key: "debit-orders", label: "Debit Orders", desc: "Stitch mandates, queued collections & approvals", icon: Banknote },
+        { key: "debit-orders", label: "Recurring Card Payments", desc: "Stitch card consents & subscriptions", icon: Banknote },
       ],
     },
     {

@@ -177,7 +177,7 @@ export function SuspensionRulesPanel({ club }: { club: Club }) {
           onCheckedChange={(v) => setRules((r) => ({ ...r, exempt_with_mandate: v }))}
         />
         <div>
-          <p className="text-sm font-medium">Exempt members with an active debit order</p>
+          <p className="text-sm font-medium">Exempt members with an active recurring card payment</p>
           <p className="text-xs text-muted-foreground">
             Skip suspension for members who have an active Stitch mandate.
           </p>

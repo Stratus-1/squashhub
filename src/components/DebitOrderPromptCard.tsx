@@ -108,9 +108,9 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
       <div className="flex items-start gap-3">
         <div className="rounded-full bg-sky-500/15 p-2"><Banknote className="h-4 w-4 text-sky-700 dark:text-sky-400" /></div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold">Switch to a monthly debit order</div>
+          <div className="text-sm font-semibold">Switch to monthly card payment</div>
           <p className="text-xs text-muted-foreground">
-            You have R{data!.outstanding.toFixed(0)} outstanding on fees eligible for Stitch debit orders. Set up an automatic debit and never miss a fee again.
+            You have R{data!.outstanding.toFixed(0)} outstanding on fees eligible for automatic monthly card charges via Stitch. Set it up once and never miss a fee again.
           </p>
           <div className="mt-2 flex gap-2">
             <Button size="sm" className="h-7 text-xs" onClick={() => navigate("/account#payment-methods")}>Set up</Button>

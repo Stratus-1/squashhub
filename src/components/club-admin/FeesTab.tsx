@@ -163,7 +163,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     qc.invalidateQueries({ queryKey: ["fee-categories"] });
     qc.invalidateQueries({ queryKey: ["league-associations"] });
     qc.invalidateQueries({ queryKey: ["national-body-fees"] });
-    toast.success(newVal ? "Eligible for debit order" : "Removed from debit order");
+    toast.success(newVal ? "Eligible for recurring card payment" : "Removed from recurring card payment");
   };
 
   const handleDelete = async (fee: UnifiedFee) => {
@@ -246,8 +246,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   <div className="text-[10px] font-normal text-muted-foreground normal-case">Show on public page</div>
                 </TableHead>
                 {stitchEnabled && (
-                  <TableHead className="text-center" title="When ON, this fee can be auto-collected from members who set up a Stitch debit order mandate. Edit the fee to choose the rail (DebiCheck / EFT / Either).">
-                    Debit Order
+                  <TableHead className="text-center" title="When ON, this fee can be auto-charged from members who set up a recurring card payment via Stitch.">
+                    Recurring Card
                     <div className="text-[10px] font-normal text-muted-foreground normal-case">Eligible for Stitch</div>
                   </TableHead>
                 )}
@@ -575,25 +575,17 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             </div>
           )}
 
-          {/* Debit order eligibility — only when Stitch gateway configured */}
+          {/* Recurring card payment eligibility — only when Stitch gateway configured */}
+
           {feeType !== "registration" && stitchEnabled && (
             <Card className="p-3 bg-muted/30 space-y-2">
               <div className="flex items-center gap-2">
                 <Switch checked={debitOrderEligible} onCheckedChange={setDebitOrderEligible} id="debit-order" />
-                <Label htmlFor="debit-order" className="cursor-pointer text-sm font-medium">Eligible for Stitch Debit Order</Label>
+                <Label htmlFor="debit-order" className="cursor-pointer text-sm font-medium">Eligible for recurring card payment (Stitch)</Label>
               </div>
               {debitOrderEligible && (
                 <div className="space-y-1">
-                  <Label className="text-xs">Collection Rail</Label>
-                  <Select value={debitOrderRail} onValueChange={v => setDebitOrderRail(v as any)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="either">Either (member chooses)</SelectItem>
-                      <SelectItem value="debicheck">DebiCheck only (authenticated)</SelectItem>
-                      <SelectItem value="eft">EFT debit only (lower cost)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[10px] text-muted-foreground">Members with an active mandate will be auto-collected (subject to admin approval window).</p>
+                  <p className="text-[10px] text-muted-foreground">Members with an active Stitch card authorisation will be auto-charged each month (subject to admin approval window).</p>
                 </div>
               )}
             </Card>

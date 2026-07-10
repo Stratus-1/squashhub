@@ -398,7 +398,7 @@ async function createStitchPayLink(opts: {
       merchantReference: String(invoiceNumber).slice(0, 50),
       merchantRedirectUrl: returnUrl,
       redirectUrl: returnUrl,
-      currency: currency || 'USD',
+      currency: currency || 'ZAR',
     }),
   })
   const plJson: any = await plResp.json().catch(() => ({}))

@@ -378,7 +378,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
   const [matchDuration, setMatchDuration] = useState(0);
-  const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points">("");
+  const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss">("");
+  // Swiss-only config: per-league pools & rounds (keyed by group_number string).
+  const [swissPools, setSwissPools] = useState<Record<string, number>>({});
+  const [swissRounds, setSwissRounds] = useState<Record<string, number>>({});
   const [showCapacity, setShowCapacity] = useState(false);
   const [parallelLeagues, setParallelLeagues] = useState(false);
   const [pointsPerGame, setPointsPerGame] = useState<0 | 11 | 15>(0);

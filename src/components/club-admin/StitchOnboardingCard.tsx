@@ -61,6 +61,26 @@ export default function StitchOnboardingCard({
   const [sent, setSent] = useState<{ cc: string[] } | null>(null);
   const [expanded, setExpanded] = useState(false);
 
+  // Prefill from club defaults when they arrive async (only if the user hasn't typed anything yet)
+  useEffect(() => {
+    if (!contactName && defaultContactName) setContactName(defaultContactName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultContactName]);
+  useEffect(() => {
+    if (!contactEmail && defaultEmail) setContactEmail(defaultEmail);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultEmail]);
+  useEffect(() => {
+    if (!contactCell && defaultCell) setContactCell(defaultCell);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultCell]);
+  useEffect(() => {
+    if (!boardMembers.trim() && Array.isArray(defaultBoardMembers) && defaultBoardMembers.length) {
+      setBoardMembers(defaultBoardMembers.join("\n"));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultBoardMembers]);
+
   // Load any existing draft for this club
   useEffect(() => {
     (async () => {

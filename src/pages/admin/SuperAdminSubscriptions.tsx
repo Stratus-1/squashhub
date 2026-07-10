@@ -46,13 +46,20 @@ type ClubSub = {
   subscription_plans?: { name: string } | null;
 };
 
-const SUBSCRIPTION_CURRENCY = "USD";
-const SUBSCRIPTION_SYMBOL = "$";
+// Platform subscription base currency is ZAR.
+// Only clubs whose currency_code = 'USD' (or 'EUR') are invoiced in that currency
+// using the alternate rate rows below. All other clubs bill in ZAR.
+const SUBSCRIPTION_CURRENCY = "ZAR";
+const SUBSCRIPTION_SYMBOL = "R";
+const MONTHLY_RATE_ZAR = "6.00";
+const ANNUAL_RATE_ZAR = "5.00";
 const MONTHLY_RATE_USD = "0.35";
-const ANNUAL_RATE_USD = "3.60";
-const MIN_CHARGE_USD = "0";
-const fmtSubscriptionMoney = (amount: number | string | null | undefined) =>
-  `${SUBSCRIPTION_SYMBOL}${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const ANNUAL_RATE_USD = "0.30";
+const MONTHLY_RATE_EUR = "0.32";
+const ANNUAL_RATE_EUR = "0.27";
+const MIN_CHARGE = "0";
+const fmtSubscriptionMoney = (amount: number | string | null | undefined, symbol = SUBSCRIPTION_SYMBOL) =>
+  `${symbol}${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const STATUS_COLORS: Record<string, string> = {
   trial: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -92,7 +99,7 @@ type StitchSettings = typeof EMPTY_STITCH_SETTINGS;
 export default function SuperAdminSubscriptions() {
   const qc = useQueryClient();
   const [planDialog, setPlanDialog] = useState<Plan | "new" | null>(null);
-  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: MONTHLY_RATE_USD, billing_cycle: "monthly", minimum_charge: MIN_CHARGE_USD, max_billable_members: "", trial_days: "30", is_default: false, active: true });
+  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: MONTHLY_RATE_ZAR, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "30", is_default: false, active: true });
   const [editSub, setEditSub] = useState<ClubSub | null>(null);
   const [subForm, setSubForm] = useState({ plan_id: "", status: "", trial_ends_at: "", member_count: "0", amount_due: "0" });
   const [invoiceForm, setInvoiceForm] = useState<InvoiceSettings>(EMPTY_INVOICE_SETTINGS);
@@ -101,12 +108,18 @@ export default function SuperAdminSubscriptions() {
   const [stitchDirty, setStitchDirty] = useState(false);
   const [showStitchSecret, setShowStitchSecret] = useState(false);
 
-  // Unified pricing form: platform subscription rates are billed in USD.
+  // Unified pricing form: ZAR is the base billing currency; USD & EUR are used
+  // only for clubs whose currency_code matches. Rates for each are stored explicitly
+  // (no FX conversion) so admin has full control.
   const [intlForm, setIntlForm] = useState({
+    saas_rate_zar_monthly: MONTHLY_RATE_ZAR,
+    saas_rate_zar_annual: ANNUAL_RATE_ZAR,
     saas_rate_usd_monthly: MONTHLY_RATE_USD,
     saas_rate_usd_annual: ANNUAL_RATE_USD,
-    saas_min_charge_usd_monthly: MIN_CHARGE_USD,
-    saas_min_charge_usd_annual: MIN_CHARGE_USD,
+    saas_rate_eur_monthly: MONTHLY_RATE_EUR,
+    saas_rate_eur_annual: ANNUAL_RATE_EUR,
+    saas_min_charge_monthly: MIN_CHARGE,
+    saas_min_charge_annual: MIN_CHARGE,
     saas_billing_cap: "150",
     saas_trial_days: "30",
   });
@@ -195,8 +208,10 @@ export default function SuperAdminSubscriptions() {
     queryKey: ["sa-intl-pricing-settings", plans.length],
     queryFn: async () => {
       const keys = [
+        "saas_rate_zar_monthly", "saas_rate_zar_annual",
         "saas_rate_usd_monthly", "saas_rate_usd_annual",
-        "saas_min_charge_usd_monthly", "saas_min_charge_usd_annual",
+        "saas_rate_eur_monthly", "saas_rate_eur_annual",
+        "saas_min_charge_monthly", "saas_min_charge_annual",
         "saas_billing_cap", "saas_trial_days",
       ];
       const { data, error } = await supabase
@@ -212,10 +227,14 @@ export default function SuperAdminSubscriptions() {
       const anyPlan = monthlyPlan || annualPlan;
 
       const parsed = {
-        saas_rate_usd_monthly: map.get("saas_rate_usd_monthly") || (monthlyPlan ? String(monthlyPlan.price_per_member) : MONTHLY_RATE_USD),
-        saas_rate_usd_annual: map.get("saas_rate_usd_annual") || (annualPlan ? String(annualPlan.price_per_member) : ANNUAL_RATE_USD),
-        saas_min_charge_usd_monthly: map.get("saas_min_charge_usd_monthly") || (monthlyPlan ? String(monthlyPlan.minimum_charge) : MIN_CHARGE_USD),
-        saas_min_charge_usd_annual: map.get("saas_min_charge_usd_annual") || (annualPlan ? String(annualPlan.minimum_charge) : MIN_CHARGE_USD),
+        saas_rate_zar_monthly: map.get("saas_rate_zar_monthly") || (monthlyPlan ? String(monthlyPlan.price_per_member) : MONTHLY_RATE_ZAR),
+        saas_rate_zar_annual: map.get("saas_rate_zar_annual") || (annualPlan ? String(annualPlan.price_per_member) : ANNUAL_RATE_ZAR),
+        saas_rate_usd_monthly: map.get("saas_rate_usd_monthly") || MONTHLY_RATE_USD,
+        saas_rate_usd_annual: map.get("saas_rate_usd_annual") || ANNUAL_RATE_USD,
+        saas_rate_eur_monthly: map.get("saas_rate_eur_monthly") || MONTHLY_RATE_EUR,
+        saas_rate_eur_annual: map.get("saas_rate_eur_annual") || ANNUAL_RATE_EUR,
+        saas_min_charge_monthly: map.get("saas_min_charge_monthly") || (monthlyPlan ? String(monthlyPlan.minimum_charge) : MIN_CHARGE),
+        saas_min_charge_annual: map.get("saas_min_charge_annual") || (annualPlan ? String(annualPlan.minimum_charge) : MIN_CHARGE),
         saas_billing_cap: map.get("saas_billing_cap") || (anyPlan?.max_billable_members != null ? String(anyPlan.max_billable_members) : "150"),
         saas_trial_days: map.get("saas_trial_days") || (anyPlan ? String(anyPlan.trial_days) : "30"),
       };
@@ -234,7 +253,7 @@ export default function SuperAdminSubscriptions() {
         .upsert(rows, { onConflict: "key" });
       if (error) throw error;
 
-      // 2) Sync the two underlying plans so club_subscriptions & billing engine stay consistent.
+      // 2) Sync the two underlying plans (base ZAR) so club_subscriptions & billing engine stay consistent.
       const cap = val.saas_billing_cap === "" ? null : Number(val.saas_billing_cap);
       const trial = Number(val.saas_trial_days) || 0;
       const monthlyPlan = plans.find(p => p.billing_cycle === "monthly");
@@ -242,10 +261,10 @@ export default function SuperAdminSubscriptions() {
 
       const monthlyPayload = {
         name: "Standard Monthly",
-        description: "Per-member monthly billing",
-        price_per_member: Number(val.saas_rate_usd_monthly) || 0,
+        description: "Per-member monthly billing (base rate in ZAR; USD/EUR clubs billed in their currency)",
+        price_per_member: Number(val.saas_rate_zar_monthly) || 0,
         billing_cycle: "monthly",
-        minimum_charge: Number(val.saas_min_charge_usd_monthly) || 0,
+        minimum_charge: Number(val.saas_min_charge_monthly) || 0,
         max_billable_members: cap,
         trial_days: trial,
         is_default: true,
@@ -253,10 +272,10 @@ export default function SuperAdminSubscriptions() {
       };
       const annualPayload = {
         name: "Standard Annual",
-        description: "Per member annually in advance, billed in USD",
-        price_per_member: Number(val.saas_rate_usd_annual) || 0,
+        description: "Per member annually in advance (base rate in ZAR; USD/EUR clubs billed in their currency)",
+        price_per_member: Number(val.saas_rate_zar_annual) || 0,
         billing_cycle: "annual",
-        minimum_charge: Number(val.saas_min_charge_usd_annual) || 0,
+        minimum_charge: Number(val.saas_min_charge_annual) || 0,
         max_billable_members: cap,
         trial_days: trial,
         is_default: false,
@@ -479,7 +498,7 @@ export default function SuperAdminSubscriptions() {
 
   const openPlanDialog = (plan: Plan | "new") => {
     if (plan === "new") {
-      setPlanForm({ name: "", description: "", price_per_member: MONTHLY_RATE_USD, billing_cycle: "monthly", minimum_charge: MIN_CHARGE_USD, max_billable_members: "", trial_days: "30", is_default: false, active: true });
+      setPlanForm({ name: "", description: "", price_per_member: MONTHLY_RATE_ZAR, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "30", is_default: false, active: true });
     } else {
       setPlanForm({
         name: plan.name,
@@ -534,7 +553,7 @@ export default function SuperAdminSubscriptions() {
               <div>
                 <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4" /> SaaS Fee Structure & International Pricing</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5 max-w-2xl">
-                  Set the USD rates for monthly and annual subscription invoices, plus the shared billing cap and free trial. Saving here also updates the underlying Standard Monthly and Standard Annual plans that clubs are assigned to. Changes apply from the next billing run.
+                  Base rates are in <strong>ZAR</strong>. USD and EUR rates are used only for clubs whose currency is set to that currency. Saving here also updates the underlying Standard Monthly and Standard Annual plans (base ZAR). Changes apply from the next billing run.
                 </p>
               </div>
               <Button
@@ -548,25 +567,51 @@ export default function SuperAdminSubscriptions() {
               </Button>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-              {/* Base rates */}
+            <div className="grid gap-4 lg:grid-cols-4">
+              {/* ZAR base */}
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">USD rates (per member)</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">ZAR rates (base)</p>
+                <div>
+                  <Label className="text-xs">Monthly (R / member / month)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_monthly} onChange={e => updateIntlField("saas_rate_zar_monthly", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Annual upfront (R / member / month)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_annual} onChange={e => updateIntlField("saas_rate_zar_annual", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Min charge — Monthly</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_monthly} onChange={e => updateIntlField("saas_min_charge_monthly", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Min charge — Annual</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_annual} onChange={e => updateIntlField("saas_min_charge_annual", e.target.value)} />
+                </div>
+              </div>
+
+              {/* USD */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">USD rates (for USD clubs)</p>
                 <div>
                   <Label className="text-xs">Monthly ($ / member / month)</Label>
                   <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_usd_monthly} onChange={e => updateIntlField("saas_rate_usd_monthly", e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Annual upfront ($ / member / year)</Label>
+                  <Label className="text-xs">Annual upfront ($ / member / month)</Label>
                   <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_usd_annual} onChange={e => updateIntlField("saas_rate_usd_annual", e.target.value)} />
                 </div>
+              </div>
+
+              {/* EUR */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">EUR rates (for EUR clubs)</p>
                 <div>
-                  <Label className="text-xs">Min charge — Monthly ($)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_usd_monthly} onChange={e => updateIntlField("saas_min_charge_usd_monthly", e.target.value)} />
+                  <Label className="text-xs">Monthly (€ / member / month)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_eur_monthly} onChange={e => updateIntlField("saas_rate_eur_monthly", e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Min charge — Annual ($)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_usd_annual} onChange={e => updateIntlField("saas_min_charge_usd_annual", e.target.value)} />
+                  <Label className="text-xs">Annual upfront (€ / member / month)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_eur_annual} onChange={e => updateIntlField("saas_rate_eur_annual", e.target.value)} />
                 </div>
               </div>
 
@@ -586,22 +631,23 @@ export default function SuperAdminSubscriptions() {
             </div>
 
             {(() => {
-              const m = Number(intlForm.saas_rate_usd_monthly) || 0;
-              const a = Number(intlForm.saas_rate_usd_annual) || 0;
-              const row = (label: string, usd: number) => ({
-                label,
-                usd: fmtSubscriptionMoney(usd),
-              });
-              const rows = [row("Monthly", m), row("Annual upfront", a)];
+              const rows = [
+                { label: "Monthly (ZAR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_zar_monthly) || 0, "R") },
+                { label: "Annual upfront (ZAR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_zar_annual) || 0, "R") },
+                { label: "Monthly (USD)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_usd_monthly) || 0, "$") },
+                { label: "Annual upfront (USD)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_usd_annual) || 0, "$") },
+                { label: "Monthly (EUR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_eur_monthly) || 0, "€") },
+                { label: "Annual upfront (EUR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_eur_annual) || 0, "€") },
+              ];
               return (
                 <div className="rounded-md border border-border overflow-hidden">
                   <div className="grid grid-cols-2 bg-muted/60 px-3 py-1.5 text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
-                    <span>Plan</span><span>Invoice amount</span>
+                    <span>Plan</span><span>Per-member rate</span>
                   </div>
                   {rows.map(r => (
                     <div key={r.label} className="grid grid-cols-2 px-3 py-2 text-xs border-t">
                       <span>{r.label}</span>
-                      <span className="font-mono text-primary">{r.usd}</span>
+                      <span className="font-mono text-primary">{r.val}</span>
                     </div>
                   ))}
                 </div>

@@ -24,13 +24,18 @@ Deno.serve(async (req) => {
   const dryRun = !!body.dryRun
   const billingDate = body.billingDate ? new Date(body.billingDate) : new Date()
 
-  // 1) Load platform invoice settings. Platform subscription invoices are billed in USD.
+  // 1) Load platform invoice settings + per-currency SaaS rates. Base is ZAR;
+  //    USD/EUR clubs are billed at their configured rate.
   const { data: allSettings, error: settingErr } = await supabase
     .from('app_settings')
     .select('key, value')
     .in('key', [
       'platform_invoice_settings',
       'platform_stitch_private_settings',
+      'saas_rate_zar_monthly', 'saas_rate_zar_annual',
+      'saas_rate_usd_monthly', 'saas_rate_usd_annual',
+      'saas_rate_eur_monthly', 'saas_rate_eur_annual',
+      'saas_min_charge_monthly', 'saas_min_charge_annual',
     ])
   if (settingErr && settingErr.code !== 'PGRST116') {
     return json({ error: `Failed to load invoice settings: ${settingErr.message}` }, 500)
@@ -48,7 +53,20 @@ Deno.serve(async (req) => {
   const vatRate: number =
     typeof body.vatRate === 'number' ? body.vatRate : settings.vat_number ? 0.15 : 0
 
-  const billingCurrency = 'USD'
+  // Per-currency rate resolver. Falls back to plan.price_per_member (ZAR base) if unset.
+  const num = (k: string, d: number) => {
+    const v = settingsMap.get(k)
+    const n = v == null ? NaN : Number(v)
+    return isFinite(n) && n > 0 ? n : d
+  }
+  const rateFor = (ccy: string, cycle: 'monthly' | 'annual', fallback: number): number => {
+    const c = (ccy || 'ZAR').toUpperCase()
+    if (c === 'USD') return num(`saas_rate_usd_${cycle}`, cycle === 'monthly' ? 0.35 : 0.30)
+    if (c === 'EUR') return num(`saas_rate_eur_${cycle}`, cycle === 'monthly' ? 0.32 : 0.27)
+    return num(`saas_rate_zar_${cycle}`, fallback)
+  }
+  const minChargeFor = (cycle: 'monthly' | 'annual', fallback: number): number =>
+    num(`saas_min_charge_${cycle}`, fallback)
 
   if (!settings.company_name && !dryRun) {
     return json(
@@ -88,16 +106,19 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 4) Determine invoice recipient per club: prefer clubs.email (tenant billing email),
-  //    fall back to the first admin's email on club_members.
+  // 4) Determine invoice recipient + billing currency per club: prefer clubs.email
+  //    (tenant billing email), fall back to the first admin's email. Currency comes
+  //    from clubs.currency_code (default ZAR).
   const clubEmails = new Map<string, string>()
+  const clubCurrencies = new Map<string, string>()
   if (clubIds.length) {
     const { data: clubRows } = await supabase
       .from('clubs')
-      .select('id, email')
+      .select('id, email, currency_code')
       .in('id', clubIds)
     for (const c of clubRows || []) {
       if (c.email && String(c.email).trim()) clubEmails.set(c.id, String(c.email).trim())
+      clubCurrencies.set(c.id, String((c as any).currency_code || 'ZAR').toUpperCase())
     }
   }
   const adminEmails = new Map<string, string>()
@@ -143,8 +164,13 @@ Deno.serve(async (req) => {
       const cap = plan.max_billable_members ? Number(plan.max_billable_members) : null
       const billableMembers = cap && cap > 0 ? Math.min(memberCount, cap) : memberCount
 
-      const pricePerMemberLocal = +Number(plan.price_per_member).toFixed(2)
-      const minimumChargeLocal = +Number(plan.minimum_charge || 0).toFixed(2)
+      // Per-club billing currency + rate
+      const billingCurrency = clubCurrencies.get(sub.club_id) || 'ZAR'
+      const cycle = (plan.billing_cycle === 'annual' ? 'annual' : 'monthly') as 'monthly' | 'annual'
+      const planPriceZar = +Number(plan.price_per_member).toFixed(2)
+      const planMinZar = +Number(plan.minimum_charge || 0).toFixed(2)
+      const pricePerMemberLocal = +rateFor(billingCurrency, cycle, planPriceZar).toFixed(2)
+      const minimumChargeLocal = +minChargeFor(cycle, planMinZar).toFixed(2)
 
       const gross = billableMembers * pricePerMemberLocal
       const subtotal = +Math.max(gross, minimumChargeLocal).toFixed(2)
@@ -372,7 +398,7 @@ async function createStitchPayLink(opts: {
       merchantReference: String(invoiceNumber).slice(0, 50),
       merchantRedirectUrl: returnUrl,
       redirectUrl: returnUrl,
-      currency: currency || 'USD',
+      currency: currency || 'ZAR',
     }),
   })
   const plJson: any = await plResp.json().catch(() => ({}))

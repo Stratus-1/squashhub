@@ -40,9 +40,9 @@ const STATUS_COLORS: Record<string, string> = {
   draft: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
 };
 
-const subscriptionSymbolFor = (ccy = "USD") =>
+const subscriptionSymbolFor = (ccy = "ZAR") =>
   ({ USD: "$", EUR: "€", GBP: "£", ZAR: "R" } as Record<string, string>)[ccy.toUpperCase()] || `${ccy.toUpperCase()} `;
-const fmtMoney = (n: number, ccy = "USD") =>
+const fmtMoney = (n: number, ccy = "ZAR") =>
   `${subscriptionSymbolFor(ccy)}${(n || 0).toFixed(2)}`;
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString() : "—");
 
@@ -89,7 +89,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
     [invoices]
   );
   const totalOutstanding = outstanding.reduce((s, i) => s + Number(i.total || 0), 0);
-  const outstandingCurrency = (outstanding[0] as any)?.currency || "USD";
+  const outstandingCurrency = (outstanding[0] as any)?.currency || (club as any)?.currency_code || "ZAR";
 
   const copy = (text: string, label = "Copied") => {
     navigator.clipboard.writeText(text).then(

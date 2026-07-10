@@ -29,18 +29,17 @@ export function SquashHubSlaContent() {
           and annually (or monthly, depending on the chosen billing option) thereafter.
         </li>
         <li>
-          <strong>Monthly billing:</strong> USD 0.35 per active member per month, billed monthly in arrears.
+          <strong>Monthly billing:</strong> R6.00 per active member per month (or USD 0.35 / EUR 0.32 for clubs invoiced in those currencies), billed monthly in arrears.
         </li>
         <li>
-          <strong>Annual upfront billing:</strong> USD 0.30 per active member per month
-          (USD 3.60 per member per year), payable annually in advance — a saving of USD 0.60 per member per year.
+          <strong>Annual upfront billing:</strong> R5.00 per active member per month (R60.00 per member per year), or USD 0.30 / EUR 0.27 for clubs invoiced in those currencies, payable annually in advance — a saving of one month's fee per member per year.
         </li>
         <li>
           An &quot;active member&quot; is any member with an active status on the platform at the
           time of invoicing. Visitors, archived members and pending sign-ups are not billable.
         </li>
         <li>
-          Fees are exclusive of VAT where applicable and are quoted in United States Dollars (USD). Invoices are issued in your club currency, converted at the prevailing platform rate.
+          Fees are exclusive of VAT where applicable. The base rate is quoted in South African Rand (ZAR); clubs whose currency is set to USD or EUR are invoiced at the platform's published rate for that currency.
         </li>
         <li>
           Fee adjustments require at least <strong>60 days&apos; written notice</strong> to the Club.

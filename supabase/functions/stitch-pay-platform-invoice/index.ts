@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     const amountCents = Math.round(Number(inv.total || 0) * 100);
-    if (amountCents < 100) return json({ error: `Invoice total below minimum (${inv.currency || "USD"} 1.00)` }, 200);
+    if (amountCents < 100) return json({ error: `Invoice total below minimum (${inv.currency || "ZAR"} 1.00)` }, 200);
 
     // Load platform Stitch credentials
     const { data: settingRow, error: settingErr } = await admin
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       merchantReference,
       merchantRedirectUrl: return_url,
       redirectUrl: return_url,
-      currency: inv.currency || "USD",
+      currency: inv.currency || "ZAR",
     };
     const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
       method: "POST",

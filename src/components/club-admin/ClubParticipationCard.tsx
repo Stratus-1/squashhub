@@ -93,25 +93,33 @@ export function ClubParticipationCard({ club }: { club: Club }) {
       {(() => {
         const BILLING_CAP = 150;
         const billableCount = typeof memberCount === "number" ? Math.min(memberCount, BILLING_CAP) : null;
-        const monthlyEst = billableCount !== null ? billableCount * 0.35 : null;
-        const annualEst = billableCount !== null ? billableCount * 0.30 * 12 : null;
-        const fmt = (n: number) => `$${n.toFixed(2)}`;
+        // Currency-driven rate table. ZAR is the default base rate; USD/EUR clubs
+        // are billed in their own currency at the platform's set rates.
+        type Ccy = "ZAR" | "USD" | "EUR";
+        const rateTable: Record<Ccy, { symbol: string; monthly: number; annual: number; savings: string }> = {
+          ZAR: { symbol: "R", monthly: 6.00, annual: 5.00, savings: "R12" },
+          USD: { symbol: "$", monthly: 0.35, annual: 0.30, savings: "$0.60" },
+          EUR: { symbol: "€", monthly: 0.32, annual: 0.27, savings: "€0.60" },
+        };
+        const ccy: Ccy = (["USD", "EUR", "ZAR"].includes(clubCurrencyCode) ? clubCurrencyCode : "ZAR") as Ccy;
+        const rates = rateTable[ccy];
+        const fmt = (n: number) => `${rates.symbol}${n.toFixed(2)}`;
+        const monthlyEst = billableCount !== null ? billableCount * rates.monthly : null;
+        const annualEst = billableCount !== null ? billableCount * rates.annual * 12 : null;
         return (
       <div className="rounded-md border bg-muted/30 p-4 text-sm space-y-2">
         <div className="font-medium text-foreground">Fee structure</div>
         <ul className="list-disc pl-5 text-muted-foreground space-y-1">
-          <li><strong className="text-foreground">$0.35</strong> per active member per month (billed monthly), or</li>
-          <li><strong className="text-foreground">$0.30</strong> per active member per month if paid <strong className="text-foreground">annually in advance</strong> (save $0.60 / member / year)</li>
+          <li><strong className="text-foreground">{rates.symbol}{rates.monthly.toFixed(2)}</strong> per active member per month (billed monthly), or</li>
+          <li><strong className="text-foreground">{rates.symbol}{rates.annual.toFixed(2)}</strong> per active member per month if paid <strong className="text-foreground">annually in advance</strong> (save {rates.savings} / member / year)</li>
           <li>Billing is <strong className="text-foreground">capped at {BILLING_CAP} active members</strong> per club — additional members are free.</li>
         </ul>
         <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
           Fees are first invoiced from <strong>September 2026</strong> for the current financial year, and annually thereafter.
         </p>
-        {clubCurrencyCode !== "USD" && (
-          <p className="text-xs text-muted-foreground italic">
-            Rates shown in US Dollars (USD). Your invoices are issued in your club currency ({clubCurrencyName} · {clubCurrencyCode}), converted at the prevailing platform rate.
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground italic">
+          Invoiced in your club currency ({clubCurrencyName} · {clubCurrencyCode}).
+        </p>
         {typeof memberCount === "number" && billableCount !== null && (
           <div className="rounded border bg-background/60 p-2.5 text-xs space-y-1">
             <div className="text-muted-foreground">
@@ -163,7 +171,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             {c.sla_accepted_name && <div>Accepted by <strong className="text-foreground">{c.sla_accepted_name}</strong>{c.sla_accepted_role ? `, ${c.sla_accepted_role}` : ""}</div>}
             {c.sla_accepted_at && <div>Accepted on {new Date(c.sla_accepted_at).toLocaleString()}</div>}
             <div>
-              Billing: <strong className="text-foreground">{c.sla_billing_option === "annual_upfront" ? "Annual upfront ($0.30/member/month)" : "Monthly ($0.35/member/month)"}</strong>
+              Billing: <strong className="text-foreground">{c.sla_billing_option === "annual_upfront" ? "Annual upfront" : "Monthly"}</strong>
               {c.sla_version && <> · SLA v{c.sla_version}</>}
             </div>
           </div>
@@ -223,15 +231,15 @@ export function ClubParticipationCard({ club }: { club: Club }) {
                   <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "monthly" ? "border-primary bg-primary/5" : ""}`}>
                     <RadioGroupItem value="monthly" id="bill-monthly" />
                     <div className="text-sm">
-                      <div className="font-medium">Monthly — $0.35 / member / month</div>
-                      <div className="text-xs text-muted-foreground">Billed monthly in arrears</div>
+                      <div className="font-medium">Monthly</div>
+                      <div className="text-xs text-muted-foreground">Billed monthly in arrears in your club currency</div>
                     </div>
                   </label>
                   <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}>
                     <RadioGroupItem value="annual_upfront" id="bill-annual" />
                     <div className="text-sm">
-                      <div className="font-medium">Annual upfront — $0.30 / member / month</div>
-                      <div className="text-xs text-muted-foreground">Paid yearly in advance · save $0.60/member/year</div>
+                      <div className="font-medium">Annual upfront</div>
+                      <div className="text-xs text-muted-foreground">Paid yearly in advance — save one month's fee per member</div>
                     </div>
                   </label>
                 </RadioGroup>

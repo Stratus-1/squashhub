@@ -6450,6 +6450,59 @@ export type Database = {
         }
         Relationships: []
       }
+      stitch_onboarding_drafts: {
+        Row: {
+          board_members: Json
+          club_id: string
+          club_url: string | null
+          contact_cell: string | null
+          contact_email: string | null
+          contact_name: string | null
+          created_at: string
+          files: Json
+          id: string
+          submitted_at: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          board_members?: Json
+          club_id: string
+          club_url?: string | null
+          contact_cell?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          files?: Json
+          id?: string
+          submitted_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          board_members?: Json
+          club_id?: string
+          club_url?: string | null
+          contact_cell?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          files?: Json
+          id?: string
+          submitted_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stitch_onboarding_drafts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stitch_payment_sessions: {
         Row: {
           amount: number

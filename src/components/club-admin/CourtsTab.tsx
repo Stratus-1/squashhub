@@ -13,6 +13,16 @@ import { Plus, Trash2, AlertCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubCurrency } from "@/hooks/use-currency";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const RELAY_DEVICES = [
   { value: "shelly", label: "Shelly", description: "Shelly Cloud smart relays — fully supported" },
@@ -32,6 +42,48 @@ function normalizeShellyServerInput(value: string) {
     .replace(/^server\s*:\s*/i, "")
     .replace(/\/+$/, "");
   return /^https?:\/\//i.test(extracted) ? extracted : "";
+}
+
+function DeleteConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  onConfirm,
+  confirmLabel = "Delete",
+  isLoading = false,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: string;
+  onConfirm: () => void;
+  confirmLabel?: string;
+  isLoading?: boolean;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
+            disabled={isLoading}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isLoading ? "Deleting..." : confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
@@ -458,6 +510,8 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   const [editingRelay, setEditingRelay] = useState<Record<number, string>>({});
   const [editingChannel, setEditingChannel] = useState<Record<number, string>>({});
   const [editingServer, setEditingServer] = useState<Record<number, string>>({});
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; court: { id: number; name: string } | null }>({ open: false, court: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-courts", clubId],
@@ -475,9 +529,16 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
     else { toast.success("Court added"); setNewCourt(""); qc.invalidateQueries({ queryKey: ["club-courts"] }); }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Remove this court?")) return;
-    const { error } = await fromExt("courts").delete().eq("id", id);
+  const requestDelete = (court: { id: number; name: string }) => {
+    setDeleteDialog({ open: true, court });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteDialog.court) return;
+    setIsDeleting(true);
+    const { error } = await fromExt("courts").delete().eq("id", deleteDialog.court.id);
+    setIsDeleting(false);
+    setDeleteDialog({ open: false, court: null });
     if (error) toast.error(error.message);
     else { toast.success("Court removed"); qc.invalidateQueries({ queryKey: ["club-courts"] }); }
   };
@@ -533,7 +594,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
             <div key={c.id} className="rounded-lg border p-2 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">{c.name}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(c.id)}>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => requestDelete(c)}>
                   <Trash2 className="w-3 h-3" />
                 </Button>
               </div>
@@ -625,6 +686,15 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
         <Input value={newCourt} onChange={e => setNewCourt(e.target.value)} placeholder="e.g. Court 1" className="flex-1 h-8 text-xs" onKeyDown={e => e.key === "Enter" && handleAdd()} />
         <Button size="sm" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" />Add</Button>
       </div>
+      <DeleteConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}
+        title="Delete court?"
+        description={deleteDialog.court ? `Are you sure you want to remove "${deleteDialog.court.name}"? This cannot be undone.` : ""}
+        onConfirm={handleDelete}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+      />
     </Card>
   );
 }
@@ -633,6 +703,8 @@ function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const [venueName, setVenueName] = useState("");
   const [courtName, setCourtName] = useState("");
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; court: { id: number; name: string; venue: string } | null }>({ open: false, court: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-external-courts", clubId],
@@ -670,9 +742,16 @@ function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
     }
   };
 
-  const handleDelete = async (id: number, label: string) => {
-    if (!confirm(`Remove ${label}? This will not affect past tournaments already scheduled on it.`)) return;
-    const { error } = await fromExt("courts").delete().eq("id", id);
+  const requestDelete = (court: { id: number; name: string; venue_name: string | null }) => {
+    setDeleteDialog({ open: true, court: { id: court.id, name: court.name, venue: court.venue_name || "Unnamed venue" } });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteDialog.court) return;
+    setIsDeleting(true);
+    const { error } = await fromExt("courts").delete().eq("id", deleteDialog.court.id);
+    setIsDeleting(false);
+    setDeleteDialog({ open: false, court: null });
     if (error) toast.error(error.message);
     else {
       toast.success("External court removed");
@@ -710,7 +789,7 @@ function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
                       variant="ghost"
                       size="icon"
                       className="h-5 w-5 text-destructive"
-                      onClick={() => handleDelete(c.id, `${venue} — ${c.name}`)}
+                      onClick={() => requestDelete(c)}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -742,6 +821,15 @@ function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
         <Button size="sm" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" />Add</Button>
       </div>
       <p className="text-[10px] text-muted-foreground">Tip: add each court at that venue as its own row (e.g. Court 1, Court 2, Court 3).</p>
+      <DeleteConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}
+        title="Delete external court?"
+        description={deleteDialog.court ? `Remove "${deleteDialog.court.name}" from "${deleteDialog.court.venue}"? Past tournaments already scheduled on this court will not be affected.` : ""}
+        onConfirm={handleDelete}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+      />
     </Card>
   );
 }

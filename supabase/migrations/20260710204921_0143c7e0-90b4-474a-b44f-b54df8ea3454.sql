@@ -1,0 +1,2 @@
+ALTER TABLE public.club_events DROP CONSTRAINT IF EXISTS club_events_status_check;
+ALTER TABLE public.club_events ADD CONSTRAINT club_events_status_check CHECK (status IN ('active','cancelled','completed'));

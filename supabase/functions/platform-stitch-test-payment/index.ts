@@ -1,4 +1,4 @@
-// Creates a small (default R10) Stitch Express test payment link using the
+// Creates a small (default $10) Stitch Express test payment link using the
 // PLATFORM (head-office / Stratus) Stitch Express credentials stored in
 // app_settings.platform_stitch_private_settings. Used from Super Admin →
 // Subscriptions to validate the platform gateway before it's wired up to
@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     const return_url = String(body?.return_url || "https://squashhub.co.za/admin/subscriptions");
     if (!(amount > 0)) return json({ error: "Invalid amount" }, 200);
     const amountCents = Math.round(amount * 100);
-    if (amountCents < 100) return json({ error: "Minimum payment is R1.00" }, 200);
+    if (amountCents < 100) return json({ error: "Minimum payment is $1.00" }, 200);
 
     // Load platform Stitch credentials from app_settings
     const { data: settingRow, error: settingErr } = await admin
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       merchantReference,
       merchantRedirectUrl: return_url,
       redirectUrl: return_url,
-      currency: "ZAR",
+      currency: "USD",
     };
     const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
       method: "POST",

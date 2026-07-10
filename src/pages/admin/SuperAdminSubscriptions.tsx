@@ -46,6 +46,14 @@ type ClubSub = {
   subscription_plans?: { name: string } | null;
 };
 
+const SUBSCRIPTION_CURRENCY = "USD";
+const SUBSCRIPTION_SYMBOL = "$";
+const MONTHLY_RATE_USD = "0.35";
+const ANNUAL_RATE_USD = "3.60";
+const MIN_CHARGE_USD = "0";
+const fmtSubscriptionMoney = (amount: number | string | null | undefined) =>
+  `${SUBSCRIPTION_SYMBOL}${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 const STATUS_COLORS: Record<string, string> = {
   trial: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   active: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
@@ -84,7 +92,7 @@ type StitchSettings = typeof EMPTY_STITCH_SETTINGS;
 export default function SuperAdminSubscriptions() {
   const qc = useQueryClient();
   const [planDialog, setPlanDialog] = useState<Plan | "new" | null>(null);
-  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", max_billable_members: "", trial_days: "30", is_default: false, active: true });
+  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: MONTHLY_RATE_USD, billing_cycle: "monthly", minimum_charge: MIN_CHARGE_USD, max_billable_members: "", trial_days: "30", is_default: false, active: true });
   const [editSub, setEditSub] = useState<ClubSub | null>(null);
   const [subForm, setSubForm] = useState({ plan_id: "", status: "", trial_ends_at: "", member_count: "0", amount_due: "0" });
   const [invoiceForm, setInvoiceForm] = useState<InvoiceSettings>(EMPTY_INVOICE_SETTINGS);
@@ -93,19 +101,14 @@ export default function SuperAdminSubscriptions() {
   const [stitchDirty, setStitchDirty] = useState(false);
   const [showStitchSecret, setShowStitchSecret] = useState(false);
 
-  // Unified pricing form: base ZAR rates, cap, trial + intl uplift & FX
+  // Unified pricing form: platform subscription rates are billed in USD.
   const [intlForm, setIntlForm] = useState({
-    saas_rate_zar_monthly: "6",
-    saas_rate_zar_annual: "5",
-    saas_min_charge_monthly: "0",
-    saas_min_charge_annual: "100",
+    saas_rate_usd_monthly: MONTHLY_RATE_USD,
+    saas_rate_usd_annual: ANNUAL_RATE_USD,
+    saas_min_charge_usd_monthly: MIN_CHARGE_USD,
+    saas_min_charge_usd_annual: MIN_CHARGE_USD,
     saas_billing_cap: "150",
     saas_trial_days: "30",
-    saas_intl_uplift_pct: "50",
-    saas_fx_usd_per_zar: "18",
-    saas_fx_eur_per_zar: "20",
-    saas_fx_locked_at: "",
-    saas_fx_review_due: "",
   });
   const [intlDirty, setIntlDirty] = useState(false);
   const updateIntlField = (k: keyof typeof intlForm, v: string) => {
@@ -187,17 +190,14 @@ export default function SuperAdminSubscriptions() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // --- International SaaS pricing & FX rates ---
+  // --- Platform SaaS pricing ---
   useQuery({
     queryKey: ["sa-intl-pricing-settings", plans.length],
     queryFn: async () => {
       const keys = [
-        "saas_rate_zar_monthly", "saas_rate_zar_annual",
-        "saas_min_charge_monthly", "saas_min_charge_annual",
+        "saas_rate_usd_monthly", "saas_rate_usd_annual",
+        "saas_min_charge_usd_monthly", "saas_min_charge_usd_annual",
         "saas_billing_cap", "saas_trial_days",
-        "saas_intl_uplift_pct",
-        "saas_fx_usd_per_zar", "saas_fx_eur_per_zar",
-        "saas_fx_locked_at", "saas_fx_review_due",
       ];
       const { data, error } = await supabase
         .from("app_settings")
@@ -212,17 +212,12 @@ export default function SuperAdminSubscriptions() {
       const anyPlan = monthlyPlan || annualPlan;
 
       const parsed = {
-        saas_rate_zar_monthly: map.get("saas_rate_zar_monthly") || (monthlyPlan ? String(monthlyPlan.price_per_member) : "6"),
-        saas_rate_zar_annual: map.get("saas_rate_zar_annual") || (annualPlan ? String(annualPlan.price_per_member) : "5"),
-        saas_min_charge_monthly: map.get("saas_min_charge_monthly") || (monthlyPlan ? String(monthlyPlan.minimum_charge) : "0"),
-        saas_min_charge_annual: map.get("saas_min_charge_annual") || (annualPlan ? String(annualPlan.minimum_charge) : "100"),
+        saas_rate_usd_monthly: map.get("saas_rate_usd_monthly") || (monthlyPlan ? String(monthlyPlan.price_per_member) : MONTHLY_RATE_USD),
+        saas_rate_usd_annual: map.get("saas_rate_usd_annual") || (annualPlan ? String(annualPlan.price_per_member) : ANNUAL_RATE_USD),
+        saas_min_charge_usd_monthly: map.get("saas_min_charge_usd_monthly") || (monthlyPlan ? String(monthlyPlan.minimum_charge) : MIN_CHARGE_USD),
+        saas_min_charge_usd_annual: map.get("saas_min_charge_usd_annual") || (annualPlan ? String(annualPlan.minimum_charge) : MIN_CHARGE_USD),
         saas_billing_cap: map.get("saas_billing_cap") || (anyPlan?.max_billable_members != null ? String(anyPlan.max_billable_members) : "150"),
         saas_trial_days: map.get("saas_trial_days") || (anyPlan ? String(anyPlan.trial_days) : "30"),
-        saas_intl_uplift_pct: map.get("saas_intl_uplift_pct") || "50",
-        saas_fx_usd_per_zar: map.get("saas_fx_usd_per_zar") || "18",
-        saas_fx_eur_per_zar: map.get("saas_fx_eur_per_zar") || "20",
-        saas_fx_locked_at: map.get("saas_fx_locked_at") || "",
-        saas_fx_review_due: map.get("saas_fx_review_due") || "",
       };
       setIntlForm(parsed);
       setIntlDirty(false);
@@ -248,9 +243,9 @@ export default function SuperAdminSubscriptions() {
       const monthlyPayload = {
         name: "Standard Monthly",
         description: "Per-member monthly billing",
-        price_per_member: Number(val.saas_rate_zar_monthly) || 0,
+        price_per_member: Number(val.saas_rate_usd_monthly) || 0,
         billing_cycle: "monthly",
-        minimum_charge: Number(val.saas_min_charge_monthly) || 0,
+        minimum_charge: Number(val.saas_min_charge_usd_monthly) || 0,
         max_billable_members: cap,
         trial_days: trial,
         is_default: true,
@@ -258,10 +253,10 @@ export default function SuperAdminSubscriptions() {
       };
       const annualPayload = {
         name: "Standard Annual",
-        description: "Per member annually in advance",
-        price_per_member: Number(val.saas_rate_zar_annual) || 0,
+        description: "Per member annually in advance, billed in USD",
+        price_per_member: Number(val.saas_rate_usd_annual) || 0,
         billing_cycle: "annual",
-        minimum_charge: Number(val.saas_min_charge_annual) || 0,
+        minimum_charge: Number(val.saas_min_charge_usd_annual) || 0,
         max_billable_members: cap,
         trial_days: trial,
         is_default: false,
@@ -428,10 +423,7 @@ export default function SuperAdminSubscriptions() {
         status: "trial",
         trial_ends_at: trialEnd.toISOString(),
         member_count: rawCount,
-        amount_due: Math.max(
-          billable * (plan?.price_per_member || 0),
-          plan?.minimum_charge || 0
-        ),
+        amount_due: Math.max(billable * (plan?.price_per_member || 0), plan?.minimum_charge || 0),
         current_period_start: new Date().toISOString(),
         current_period_end: trialEnd.toISOString(),
       }, { onConflict: "club_id" });
@@ -487,7 +479,7 @@ export default function SuperAdminSubscriptions() {
 
   const openPlanDialog = (plan: Plan | "new") => {
     if (plan === "new") {
-      setPlanForm({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", max_billable_members: "", trial_days: "30", is_default: false, active: true });
+      setPlanForm({ name: "", description: "", price_per_member: MONTHLY_RATE_USD, billing_cycle: "monthly", minimum_charge: MIN_CHARGE_USD, max_billable_members: "", trial_days: "30", is_default: false, active: true });
     } else {
       setPlanForm({
         name: plan.name,
@@ -542,7 +534,7 @@ export default function SuperAdminSubscriptions() {
               <div>
                 <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4" /> SaaS Fee Structure & International Pricing</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5 max-w-2xl">
-                  Set the base ZAR rates for monthly and annual plans, plus the shared billing cap and free trial. Non-ZAR clubs bill at <strong>ZAR rate × (1 + uplift%) ÷ FX rate</strong>. Saving here also updates the underlying Standard Monthly and Standard Annual plans that clubs are assigned to. Changes apply from the next billing run.
+                  Set the USD rates for monthly and annual subscription invoices, plus the shared billing cap and free trial. Saving here also updates the underlying Standard Monthly and Standard Annual plans that clubs are assigned to. Changes apply from the next billing run.
                 </p>
               </div>
               <Button
@@ -559,26 +551,26 @@ export default function SuperAdminSubscriptions() {
             <div className="grid gap-4 lg:grid-cols-3">
               {/* Base rates */}
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Base ZAR rates (per member)</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">USD rates (per member)</p>
                 <div>
-                  <Label className="text-xs">Monthly (R / member / month)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_monthly} onChange={e => updateIntlField("saas_rate_zar_monthly", e.target.value)} />
+                  <Label className="text-xs">Monthly ($ / member / month)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_usd_monthly} onChange={e => updateIntlField("saas_rate_usd_monthly", e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Annual (R / member / month)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_annual} onChange={e => updateIntlField("saas_rate_zar_annual", e.target.value)} />
+                  <Label className="text-xs">Annual upfront ($ / member / year)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_usd_annual} onChange={e => updateIntlField("saas_rate_usd_annual", e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Min charge — Monthly (R)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_monthly} onChange={e => updateIntlField("saas_min_charge_monthly", e.target.value)} />
+                  <Label className="text-xs">Min charge — Monthly ($)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_usd_monthly} onChange={e => updateIntlField("saas_min_charge_usd_monthly", e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Min charge — Annual (R)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_annual} onChange={e => updateIntlField("saas_min_charge_annual", e.target.value)} />
+                  <Label className="text-xs">Min charge — Annual ($)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_usd_annual} onChange={e => updateIntlField("saas_min_charge_usd_annual", e.target.value)} />
                 </div>
               </div>
 
-              {/* Cap / trial / uplift */}
+              {/* Cap / trial */}
               <div className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Limits & trial</p>
                 <div>
@@ -590,61 +582,26 @@ export default function SuperAdminSubscriptions() {
                   <Label className="text-xs">Free trial (days)</Label>
                   <Input className="h-8 text-xs" type="number" step="1" value={intlForm.saas_trial_days} onChange={e => updateIntlField("saas_trial_days", e.target.value)} />
                 </div>
-                <div>
-                  <Label className="text-xs">International uplift (%)</Label>
-                  <Input className="h-8 text-xs" type="number" step="1" value={intlForm.saas_intl_uplift_pct} onChange={e => updateIntlField("saas_intl_uplift_pct", e.target.value)} />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Applied to ZAR before converting to USD/EUR.</p>
-                </div>
-              </div>
-
-              {/* FX */}
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Fixed FX rates (ZAR per unit)</p>
-                <div>
-                  <Label className="text-xs">USD → ZAR</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_fx_usd_per_zar} onChange={e => updateIntlField("saas_fx_usd_per_zar", e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">EUR → ZAR</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_fx_eur_per_zar} onChange={e => updateIntlField("saas_fx_eur_per_zar", e.target.value)} />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Locked on</Label>
-                    <Input className="h-8 text-xs" type="date" value={intlForm.saas_fx_locked_at} onChange={e => updateIntlField("saas_fx_locked_at", e.target.value)} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Review due</Label>
-                    <Input className="h-8 text-xs" type="date" value={intlForm.saas_fx_review_due} onChange={e => updateIntlField("saas_fx_review_due", e.target.value)} />
-                  </div>
-                </div>
               </div>
             </div>
 
             {(() => {
-              const m = Number(intlForm.saas_rate_zar_monthly) || 0;
-              const a = Number(intlForm.saas_rate_zar_annual) || 0;
-              const mult = 1 + (Number(intlForm.saas_intl_uplift_pct) || 0) / 100;
-              const usd = Number(intlForm.saas_fx_usd_per_zar) || 1;
-              const eur = Number(intlForm.saas_fx_eur_per_zar) || 1;
-              const row = (label: string, zar: number) => ({
+              const m = Number(intlForm.saas_rate_usd_monthly) || 0;
+              const a = Number(intlForm.saas_rate_usd_annual) || 0;
+              const row = (label: string, usd: number) => ({
                 label,
-                zar: `R${zar.toFixed(2)}`,
-                usd: `$${((zar * mult) / usd).toFixed(2)}`,
-                eur: `€${((zar * mult) / eur).toFixed(2)}`,
+                usd: fmtSubscriptionMoney(usd),
               });
-              const rows = [row("Monthly", m), row("Annual (per month)", a)];
+              const rows = [row("Monthly", m), row("Annual upfront", a)];
               return (
                 <div className="rounded-md border border-border overflow-hidden">
-                  <div className="grid grid-cols-4 bg-muted/60 px-3 py-1.5 text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
-                    <span>Plan</span><span>ZAR</span><span>USD</span><span>EUR</span>
+                  <div className="grid grid-cols-2 bg-muted/60 px-3 py-1.5 text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
+                    <span>Plan</span><span>Invoice amount</span>
                   </div>
                   {rows.map(r => (
-                    <div key={r.label} className="grid grid-cols-4 px-3 py-2 text-xs border-t">
+                    <div key={r.label} className="grid grid-cols-2 px-3 py-2 text-xs border-t">
                       <span>{r.label}</span>
-                      <span className="font-mono">{r.zar}</span>
                       <span className="font-mono text-primary">{r.usd}</span>
-                      <span className="font-mono text-primary">{r.eur}</span>
                     </div>
                   ))}
                 </div>
@@ -774,13 +731,13 @@ export default function SuperAdminSubscriptions() {
                         {(() => {
                           const live = clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count;
                           const plan = plans.find(p => p.id === sub.plan_id);
-                          if (!plan) return `R${Number(sub.amount_due).toLocaleString()}`;
+                          if (!plan) return fmtSubscriptionMoney(sub.amount_due);
                           const billable = plan.max_billable_members ? Math.min(live, plan.max_billable_members) : live;
                           const calc = Math.max(billable * plan.price_per_member, plan.minimum_charge);
                           const stale = Math.abs(calc - Number(sub.amount_due)) > 0.001;
                           return (
-                            <span title={stale ? `Stored: R${Number(sub.amount_due).toLocaleString()}` : undefined}>
-                              R{calc.toLocaleString()}
+                            <span title={stale ? `Stored: ${fmtSubscriptionMoney(sub.amount_due)}` : undefined}>
+                              {fmtSubscriptionMoney(calc)}
                               {stale && <span className="ml-1 text-amber-600">•</span>}
                             </span>
                           );
@@ -1023,7 +980,7 @@ export default function SuperAdminSubscriptions() {
                   onClick={async () => {
                     if (stitchDirty) { toast.error("Save credentials first"); return; }
                     if (!stitchForm.enabled) { toast.error("Enable Stitch first"); return; }
-                    const t = toast.loading("Creating R10 test payment link…");
+                    const t = toast.loading("Creating $10 test payment link…");
                     try {
                       const { data, error } = await supabase.functions.invoke("platform-stitch-test-payment", {
                         body: { amount: 10, return_url: `${window.location.origin}/admin/subscriptions` },
@@ -1041,7 +998,7 @@ export default function SuperAdminSubscriptions() {
                   disabled={stitchDirty || !stitchForm.enabled}
                 >
                   <CreditCard className="w-3.5 h-3.5 mr-1" />
-                  Test R10 payment
+                  Test $10 payment
                 </Button>
                 <Button
                   size="sm"
@@ -1148,7 +1105,7 @@ export default function SuperAdminSubscriptions() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Price per Member (R)</Label>
+                <Label className="text-xs">Price per Member ({SUBSCRIPTION_CURRENCY})</Label>
                 <Input type="number" min="0" step="0.01" value={planForm.price_per_member} onChange={e => setPlanForm(f => ({ ...f, price_per_member: e.target.value }))} className="h-8 text-xs font-mono" />
               </div>
               <div>
@@ -1164,7 +1121,7 @@ export default function SuperAdminSubscriptions() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Minimum Charge (R)</Label>
+                <Label className="text-xs">Minimum Charge ({SUBSCRIPTION_CURRENCY})</Label>
                 <Input type="number" min="0" step="1" value={planForm.minimum_charge} onChange={e => setPlanForm(f => ({ ...f, minimum_charge: e.target.value }))} className="h-8 text-xs font-mono" />
               </div>
               <div>
@@ -1220,7 +1177,7 @@ export default function SuperAdminSubscriptions() {
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select plan" /></SelectTrigger>
                 <SelectContent>
                   {plans.filter(p => p.active).map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name} — R{p.price_per_member}/member</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.name} — {fmtSubscriptionMoney(p.price_per_member)}/member</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1244,7 +1201,7 @@ export default function SuperAdminSubscriptions() {
                 <Input type="number" min="0" value={subForm.member_count} onChange={e => { setSubForm(f => ({ ...f, member_count: e.target.value })); recalcAmount(subForm.plan_id, e.target.value); }} className="h-8 text-xs font-mono" />
               </div>
               <div>
-                <Label className="text-xs">Amount Due (R)</Label>
+                <Label className="text-xs">Amount Due ({SUBSCRIPTION_CURRENCY})</Label>
                 <Input type="number" min="0" step="0.01" value={subForm.amount_due} onChange={e => setSubForm(f => ({ ...f, amount_due: e.target.value }))} className="h-8 text-xs font-mono" />
               </div>
             </div>
@@ -1296,7 +1253,7 @@ function AllInvoicesList() {
   type Bucket = { count: number; value: number; paidCount: number; paidValue: number; dueCount: number; dueValue: number };
   const byCcy = new Map<string, Bucket>();
   filtered.forEach((i) => {
-    const ccy = (i.currency || "ZAR").toUpperCase();
+    const ccy = (i.currency || SUBSCRIPTION_CURRENCY).toUpperCase();
     const b = byCcy.get(ccy) || { count: 0, value: 0, paidCount: 0, paidValue: 0, dueCount: 0, dueValue: 0 };
     b.count += 1;
     b.value += Number(i.total || 0);
@@ -1309,7 +1266,7 @@ function AllInvoicesList() {
   const totalDueCount = Array.from(byCcy.values()).reduce((s, b) => s + b.dueCount, 0);
 
   const symbolFor = (code: string) => ({ ZAR: "R", USD: "$", EUR: "€", GBP: "£" } as Record<string, string>)[code.toUpperCase()] || `${code} `;
-  const fmtCcy = (n: number, code = "ZAR") => `${symbolFor(code)}${Number(n || 0).toFixed(2)}`;
+  const fmtCcy = (n: number, code = SUBSCRIPTION_CURRENCY) => `${symbolFor(code)}${Number(n || 0).toFixed(2)}`;
   const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" }) : "—");
   const perCcyLine = (pick: (b: Bucket) => number) =>
     Array.from(byCcy.entries())

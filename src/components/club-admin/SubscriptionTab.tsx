@@ -40,8 +40,10 @@ const STATUS_COLORS: Record<string, string> = {
   draft: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
 };
 
-const fmtMoney = (n: number, ccy = "ZAR") =>
-  `${ccy === "ZAR" ? "R " : ccy + " "}${(n || 0).toFixed(2)}`;
+const subscriptionSymbolFor = (ccy = "USD") =>
+  ({ USD: "$", EUR: "€", GBP: "£", ZAR: "R" } as Record<string, string>)[ccy.toUpperCase()] || `${ccy.toUpperCase()} `;
+const fmtMoney = (n: number, ccy = "USD") =>
+  `${subscriptionSymbolFor(ccy)}${(n || 0).toFixed(2)}`;
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString() : "—");
 
 export function SubscriptionTab({ clubId }: { clubId: string }) {
@@ -87,7 +89,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
     [invoices]
   );
   const totalOutstanding = outstanding.reduce((s, i) => s + Number(i.total || 0), 0);
-  const outstandingCurrency = (outstanding[0] as any)?.currency || "ZAR";
+  const outstandingCurrency = (outstanding[0] as any)?.currency || "USD";
 
   const copy = (text: string, label = "Copied") => {
     navigator.clipboard.writeText(text).then(

@@ -132,7 +132,7 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Banknote className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold">Debit Orders</h3>
+          <h3 className="text-sm font-semibold">Recurring Card Payments</h3>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={runQueue} disabled={busy !== null}>

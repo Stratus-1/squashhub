@@ -163,7 +163,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     qc.invalidateQueries({ queryKey: ["fee-categories"] });
     qc.invalidateQueries({ queryKey: ["league-associations"] });
     qc.invalidateQueries({ queryKey: ["national-body-fees"] });
-    toast.success(newVal ? "Eligible for debit order" : "Removed from debit order");
+    toast.success(newVal ? "Eligible for recurring card payment" : "Removed from recurring card payment");
   };
 
   const handleDelete = async (fee: UnifiedFee) => {
@@ -246,8 +246,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   <div className="text-[10px] font-normal text-muted-foreground normal-case">Show on public page</div>
                 </TableHead>
                 {stitchEnabled && (
-                  <TableHead className="text-center" title="When ON, this fee can be auto-collected from members who set up a Stitch debit order mandate. Edit the fee to choose the rail (DebiCheck / EFT / Either).">
-                    Debit Order
+                  <TableHead className="text-center" title="When ON, this fee can be auto-charged from members who set up a recurring card payment via Stitch.">
+                    Recurring Card
                     <div className="text-[10px] font-normal text-muted-foreground normal-case">Eligible for Stitch</div>
                   </TableHead>
                 )}
@@ -575,7 +575,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             </div>
           )}
 
-          {/* Debit order eligibility — only when Stitch gateway configured */}
+          {/* Recurring card payment eligibility — only when Stitch gateway configured */}
+
           {feeType !== "registration" && stitchEnabled && (
             <Card className="p-3 bg-muted/30 space-y-2">
               <div className="flex items-center gap-2">

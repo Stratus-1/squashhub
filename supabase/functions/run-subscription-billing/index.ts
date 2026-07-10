@@ -355,3 +355,49 @@ function json(data: unknown, status = 200) {
     status,
   })
 }
+
+const STITCH_BASE = 'https://express.stitch.money/api/v1'
+
+async function createStitchPayLink(opts: {
+  stitchCreds: any
+  amountZar: number
+  currency: string
+  invoiceNumber: string
+  returnUrl: string
+}): Promise<string | null> {
+  const { stitchCreds, amountZar, currency, invoiceNumber, returnUrl } = opts
+  if (!stitchCreds) return null
+  const clientId = String(stitchCreds.client_id || '').trim()
+  const clientSecret = String(stitchCreds.client_secret || '').trim()
+  const enabled = Boolean(stitchCreds.enabled)
+  if (!enabled || !clientId || !clientSecret) return null
+
+  const amountCents = Math.round(Number(amountZar || 0) * 100)
+  if (amountCents < 100) return null
+
+  const tokenResp = await fetch(`${STITCH_BASE}/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientId, clientSecret, scope: 'client_paymentrequest' }),
+  })
+  const tokenJson: any = await tokenResp.json().catch(() => ({}))
+  if (!tokenResp.ok || !tokenJson?.data?.accessToken) return null
+  const accessToken: string = tokenJson.data.accessToken
+
+  const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      amount: amountCents,
+      payerName: 'Club Subscription',
+      merchantReference: String(invoiceNumber).slice(0, 50),
+      merchantRedirectUrl: returnUrl,
+      redirectUrl: returnUrl,
+      currency: currency || 'ZAR',
+    }),
+  })
+  const plJson: any = await plResp.json().catch(() => ({}))
+  if (!plResp.ok || !plJson?.success || !plJson?.data?.payment?.link) return null
+  const link: string = plJson.data.payment.link
+  return `${link}${link.includes('?') ? '&' : '?'}redirect_url=${encodeURIComponent(returnUrl)}`
+}

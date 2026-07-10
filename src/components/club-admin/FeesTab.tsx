@@ -530,7 +530,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
           ) : (
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label>Annual Fee (R)</Label>
+                <Label>Annual Fee ({currencySymbol})</Label>
                 <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
               </div>
               <div className="space-y-1">

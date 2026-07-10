@@ -239,7 +239,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
               <TableRow>
                 <TableHead>Fee Name</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead className="text-right">Amount (R)</TableHead>
+                <TableHead className="text-right">Amount ({currencySymbol})</TableHead>
                 <TableHead>Due</TableHead>
                 <TableHead className="text-center">Pro-rate</TableHead>
                 <TableHead className="text-center">Active</TableHead>

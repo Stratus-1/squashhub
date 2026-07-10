@@ -1,0 +1,2 @@
+ALTER TABLE public.club_champs DROP CONSTRAINT IF EXISTS club_champs_round_format_check;
+ALTER TABLE public.club_champs ADD CONSTRAINT club_champs_round_format_check CHECK (round_format = ANY (ARRAY['single_round_robin'::text, 'double_round_robin'::text, 'cross_league'::text, 'swiss'::text]));

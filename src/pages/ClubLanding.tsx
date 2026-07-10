@@ -161,7 +161,10 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     return query ? `/auth?${query}` : "/auth";
   })();
 
-  if (loading || authLoading) {
+  // Only block on the club query itself. Auth resolution can happen in the
+  // background — the landing page renders fine for unauthenticated users, and
+  // once `user` is known we redirect below.
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

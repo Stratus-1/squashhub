@@ -1292,19 +1292,30 @@ function AllInvoicesList() {
     return true;
   });
 
-  const totals = filtered.reduce(
-    (acc, i) => {
-      acc.count += 1;
-      acc.value += Number(i.total || 0);
-      if (i.status === "paid") { acc.paidCount += 1; acc.paidValue += Number(i.total || 0); }
-      else if (i.status !== "void") { acc.dueCount += 1; acc.dueValue += Number(i.total || 0); }
-      return acc;
-    },
-    { count: 0, value: 0, paidCount: 0, paidValue: 0, dueCount: 0, dueValue: 0 }
-  );
+  // Group totals by currency — mixing ZAR/USD/EUR into one sum is meaningless.
+  type Bucket = { count: number; value: number; paidCount: number; paidValue: number; dueCount: number; dueValue: number };
+  const byCcy = new Map<string, Bucket>();
+  filtered.forEach((i) => {
+    const ccy = (i.currency || "ZAR").toUpperCase();
+    const b = byCcy.get(ccy) || { count: 0, value: 0, paidCount: 0, paidValue: 0, dueCount: 0, dueValue: 0 };
+    b.count += 1;
+    b.value += Number(i.total || 0);
+    if (i.status === "paid") { b.paidCount += 1; b.paidValue += Number(i.total || 0); }
+    else if (i.status !== "void") { b.dueCount += 1; b.dueValue += Number(i.total || 0); }
+    byCcy.set(ccy, b);
+  });
+  const totalCount = filtered.length;
+  const totalPaidCount = Array.from(byCcy.values()).reduce((s, b) => s + b.paidCount, 0);
+  const totalDueCount = Array.from(byCcy.values()).reduce((s, b) => s + b.dueCount, 0);
 
-  const fmt = (n: number) => `R ${Number(n || 0).toFixed(2)}`;
+  const symbolFor = (code: string) => ({ ZAR: "R", USD: "$", EUR: "€", GBP: "£" } as Record<string, string>)[code.toUpperCase()] || `${code} `;
+  const fmtCcy = (n: number, code = "ZAR") => `${symbolFor(code)}${Number(n || 0).toFixed(2)}`;
   const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" }) : "—");
+  const perCcyLine = (pick: (b: Bucket) => number) =>
+    Array.from(byCcy.entries())
+      .filter(([, b]) => pick(b) > 0)
+      .map(([c, b]) => fmtCcy(pick(b), c))
+      .join(" · ") || fmtCcy(0);
 
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {

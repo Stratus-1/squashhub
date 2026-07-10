@@ -18,6 +18,56 @@ type Faq = {
 };
 
 export const FAQS: Faq[] = [
+  // ── Configuration & Flexibility (every club is different) ─
+  {
+    role: "member",
+    category: "How SquashHub Fits Your Club",
+    q: "Does every club use every feature?",
+    a: "No — SquashHub is modular. Some clubs only use court bookings. Others add ladder & challenges, leagues, tournaments, an honesty bar, smart lights, access control, or the full stack. Your admin turns on only what your club needs, so your dashboard only shows what's relevant to you.",
+  },
+  {
+    role: "admin",
+    category: "How SquashHub Fits Your Club",
+    q: "We only want court bookings — nothing else. Is that OK?",
+    a: "Absolutely. Bookings work standalone. Leave lights, ladder, leagues, bar, and access control switched off under Club Admin → Modules. You can enable any of them later without losing data.",
+  },
+  {
+    role: "admin",
+    category: "How SquashHub Fits Your Club",
+    q: "We already use an external booking system (e.g. GoBook / CSIR). Can SquashHub integrate?",
+    a: "Yes. GoBook (gobook.co.za) is supported out of the box — members store their GoBook credentials once, and SquashHub pushes/syncs bookings both ways. For other systems we can add an integration on request; talk to support with the provider details.",
+  },
+  {
+    role: "admin",
+    category: "How SquashHub Fits Your Club",
+    q: "Do I have to use Shelly for lights?",
+    a: "No. Lights are optional. If you want smart control, Shelly Pro 4PM (lights) and Shelly 1 Mini / Plus 1 (doors) are the cheapest, most reliable route — but you can also just run manual lighting and only use SquashHub for bookings and billing.",
+  },
+  {
+    role: "admin",
+    category: "How SquashHub Fits Your Club",
+    q: "Can I do a full conversion — bookings, lights AND access control on Shelly?",
+    a: "Yes. Many clubs go fully unmanned: Shelly Pro 4PM drives the court lights per booking, Shelly 1 Mini opens the door/gate for the booking window, and SquashHub handles billing, member status, and the audit trail. One app, no fobs, no keys, no barman.",
+  },
+  {
+    role: "admin",
+    category: "How SquashHub Fits Your Club",
+    q: "We already have ZKTeco / Hikvision / other access hardware. Do we have to rip it out?",
+    a: "No. SquashHub runs alongside existing access hardware — ZKTeco (ZKBio / Push) and Hikvision face-rec are natively supported, and Shelly can be added as a parallel channel. Keep what works; layer SquashHub on top.",
+  },
+  {
+    role: "admin",
+    category: "How SquashHub Fits Your Club",
+    q: "Can we mix and match — some courts on smart lights, others manual?",
+    a: "Yes. Lighting is set per court. Wire the Shelly to the courts you want automated; leave the rest manual. The booking grid still works the same for everyone.",
+  },
+  {
+    role: "admin",
+    category: "How SquashHub Fits Your Club",
+    q: "Do we need to use SquashHub for payments?",
+    a: "No. You can run SquashHub with fees turned off entirely (members pay you offline), or enable one or more gateways (Stitch, Yoco, PayFast) when you're ready. Nothing forces a specific payment flow.",
+  },
+
   // ── Members ──────────────────────────────────────────────
   {
     role: "member",

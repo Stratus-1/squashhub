@@ -32,6 +32,7 @@ export default function StitchOnboardingCard({
   defaultEmail,
   defaultCell,
   defaultContactName,
+  defaultBoardMembers,
 }: {
   clubId: string;
   clubName: string;
@@ -39,6 +40,7 @@ export default function StitchOnboardingCard({
   defaultEmail?: string | null;
   defaultCell?: string | null;
   defaultContactName?: string | null;
+  defaultBoardMembers?: string[];
 }) {
   const [uploads, setUploads] = useState<Record<string, Uploaded[]>>({});
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);

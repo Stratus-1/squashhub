@@ -102,37 +102,40 @@ const Email = (p: Props) => {
               <Img
                 src={logoUrl}
                 alt={senderName}
-                width="140"
-                style={{ height: 'auto', maxHeight: '48px', maxWidth: '140px', margin: '0 auto', display: 'block' }}
+                height="48"
+                style={{ height: '48px', width: 'auto', maxWidth: '160px', margin: '0 auto', display: 'block', objectFit: 'contain' as const }}
               />
             </Section>
           )}
           <Heading style={h1}>Tax Invoice</Heading>
 
-          <Section style={metaRow}>
-            <div style={{ flex: 1 }}>
-              <Text style={muted}>From</Text>
-              <Text style={strong}>{companyName}</Text>
-              {tradingAs && <Text style={text}>t/a {tradingAs}</Text>}
-              {address && <Text style={text}>{address}</Text>}
-              {vatNumber && <Text style={muted}>VAT: {vatNumber}</Text>}
-              {registrationNumber && <Text style={muted}>Reg: {registrationNumber}</Text>}
-              {billingEmail && <Text style={muted}>{billingEmail}</Text>}
-              {billingPhone && <Text style={muted}>{billingPhone}</Text>}
-            </div>
-            <div style={{ flex: 1, textAlign: 'right' as const }}>
-              <Text style={muted}>Invoice #</Text>
-              <Text style={strong}>{invoiceNumber}</Text>
-              <Text style={muted}>Billed To</Text>
-              <Text style={strong}>{clubName}</Text>
-              {dueDate && (
-                <>
-                  <Text style={muted}>Due Date</Text>
-                  <Text style={text}>{dueDate}</Text>
-                </>
-              )}
-            </div>
+          <Section style={{ marginBottom: '16px' }}>
+            <Row>
+              <Column style={{ verticalAlign: 'top', width: '55%' }}>
+                <Text style={muted}>From</Text>
+                <Text style={strong}>{companyName}</Text>
+                {tradingAs && <Text style={text}>t/a {tradingAs}</Text>}
+                {address && <Text style={text}>{address}</Text>}
+                {vatNumber && <Text style={muted}>VAT: {vatNumber}</Text>}
+                {registrationNumber && <Text style={muted}>Reg: {registrationNumber}</Text>}
+                {billingEmail && <Text style={muted}>{billingEmail}</Text>}
+                {billingPhone && <Text style={muted}>{billingPhone}</Text>}
+              </Column>
+              <Column style={{ verticalAlign: 'top', width: '45%', textAlign: 'right' as const }}>
+                <Text style={muted}>Invoice #</Text>
+                <Text style={strong}>{invoiceNumber}</Text>
+                <Text style={muted}>Billed To</Text>
+                <Text style={strong}>{clubName}</Text>
+                {dueDate && (
+                  <>
+                    <Text style={muted}>Due Date</Text>
+                    <Text style={text}>{dueDate}</Text>
+                  </>
+                )}
+              </Column>
+            </Row>
           </Section>
+
 
           <Section style={card}>
             <Row label="Plan" value={planName} />

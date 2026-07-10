@@ -2428,6 +2428,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
     setMatchDuration(champ.match_duration_minutes || 0);
     setScoringMode(((champ as any).scoring_mode as any) || "");
+    setSwissPools(((champ as any).swiss_pools as Record<string, number>) || {});
+    setSwissRounds(((champ as any).swiss_rounds as Record<string, number>) || {});
     setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});

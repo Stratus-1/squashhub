@@ -48,6 +48,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   const { data: clubData } = useMyClub();
   const qc = useQueryClient();
   const club = clubData?.club;
+  const { format: money, symbol: currencySymbol } = useClubCurrency();
   const stitchEnabled = club?.payment_gateway === "stitch";
   const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);

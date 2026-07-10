@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileText, Download } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useClubCurrency } from "@/hooks/use-currency";
 
 interface AccountMeta {
   label: string;
@@ -26,6 +27,7 @@ type Preset = "this_month" | "last_month" | "qtd" | "ytd" | "last_12" | "custom"
 
 export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
   const [preset, setPreset] = useState<Preset>("ytd");
+  const { format: money, symbol: currencySymbol, code: currencyCode } = useClubCurrency();
   const today = new Date();
   const [from, setFrom] = useState<string>(format(startOfYear(today), "yyyy-MM-dd"));
   const [to, setTo] = useState<string>(format(today, "yyyy-MM-dd"));
@@ -112,12 +114,12 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     lines.push(`Period,${from} to ${to}`);
     lines.push("");
     lines.push("INCOME");
-    lines.push("Account,Amount (R)");
+    lines.push(`Account,Amount (${currencyCode})`);
     incomeRows.forEach(r => lines.push(`"${r.label}",${r.amount.toFixed(2)}`));
     lines.push(`Total Income,${totalIncome.toFixed(2)}`);
     lines.push("");
     lines.push("EXPENSES");
-    lines.push("Account,Amount (R)");
+    lines.push(`Account,Amount (${currencyCode})`);
     expenseRows.forEach(r => lines.push(`"${r.label}",${r.amount.toFixed(2)}`));
     lines.push(`Total Expenses,${totalExpense.toFixed(2)}`);
     lines.push("");
@@ -183,7 +185,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
           <div className="border rounded-lg overflow-hidden">
             <div className="px-3 py-2 bg-green-600/10 border-b flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-green-700 dark:text-green-400">Income</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Amount (R)</span>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Amount ({currencySymbol})</span>
             </div>
             {incomeRows.length === 0 ? (
               <p className="text-xs text-muted-foreground p-3">No income in this period.</p>
@@ -191,13 +193,13 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
               incomeRows.map(r => (
                 <div key={r.account} className="grid grid-cols-[1fr_140px] px-3 py-2 text-xs items-center border-b last:border-b-0">
                   <span className="font-medium">{r.label}</span>
-                  <span className="text-right tabular-nums text-green-600 font-medium">R{r.amount.toFixed(2)}</span>
+                  <span className="text-right tabular-nums text-green-600 font-medium">{money(r.amount)}</span>
                 </div>
               ))
             )}
             <div className="grid grid-cols-[1fr_140px] px-3 py-2.5 text-sm items-center bg-muted/40 font-bold border-t-2">
               <span>Total Income</span>
-              <span className="text-right tabular-nums text-green-700">R{totalIncome.toFixed(2)}</span>
+              <span className="text-right tabular-nums text-green-700">{money(totalIncome)}</span>
             </div>
           </div>
 
@@ -205,7 +207,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
           <div className="border rounded-lg overflow-hidden">
             <div className="px-3 py-2 bg-destructive/10 border-b flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-destructive">Expenses</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Amount (R)</span>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Amount ({currencySymbol})</span>
             </div>
             {expenseRows.length === 0 ? (
               <p className="text-xs text-muted-foreground p-3">No expenses in this period.</p>
@@ -213,13 +215,13 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
               expenseRows.map(r => (
                 <div key={r.account} className="grid grid-cols-[1fr_140px] px-3 py-2 text-xs items-center border-b last:border-b-0">
                   <span className="font-medium">{r.label}</span>
-                  <span className="text-right tabular-nums text-destructive font-medium">R{r.amount.toFixed(2)}</span>
+                  <span className="text-right tabular-nums text-destructive font-medium">{money(r.amount)}</span>
                 </div>
               ))
             )}
             <div className="grid grid-cols-[1fr_140px] px-3 py-2.5 text-sm items-center bg-muted/40 font-bold border-t-2">
               <span>Total Expenses</span>
-              <span className="text-right tabular-nums text-destructive">R{totalExpense.toFixed(2)}</span>
+              <span className="text-right tabular-nums text-destructive">{money(totalExpense)}</span>
             </div>
           </div>
 
@@ -235,7 +237,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
               "text-2xl font-bold tabular-nums",
               netProfit >= 0 ? "text-green-600" : "text-destructive"
             )}>
-              R{Math.abs(netProfit).toFixed(2)}
+              {money(Math.abs(netProfit))}
             </span>
           </div>
         </div>

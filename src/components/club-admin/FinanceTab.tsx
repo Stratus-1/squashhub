@@ -94,7 +94,7 @@ const getLabel = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount]?.l
 const getMeta = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount];
 
 export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
-  const { format: money } = useClubCurrency();
+  const { format: money, symbol: currencySymbol } = useClubCurrency();
   const queryClient = useQueryClient();
   const { data: members } = useClubMembers(clubId);
   const [accountFilter, setAccountFilter] = useState<string>("all");
@@ -1102,7 +1102,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             </div>
 
             <div>
-              <Label className="text-xs">Amount (R)</Label>
+              <Label className="text-xs">Amount ({currencySymbol})</Label>
               <Input type="number" step="0.01" min="0" placeholder="0.00" value={txAmount} onChange={e => setTxAmount(e.target.value)} className="h-9 text-xs" />
               {txMethod === "card" && txAmount && parseFloat(txAmount) > 0 && (
                 <p className="text-[10px] text-amber-600 mt-1">
@@ -1727,7 +1727,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <Input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="h-9 text-xs" />
               </div>
               <div>
-                <Label className="text-xs">Amount (R)</Label>
+                <Label className="text-xs">Amount ({currencySymbol})</Label>
                 <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={e => setBillAmount(e.target.value)} className="h-9 text-xs" />
               </div>
             </div>

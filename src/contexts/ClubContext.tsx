@@ -15,6 +15,8 @@ interface ClubContextType {
     address: string | null;
     email: string | null;
     phone: string | null;
+    payment_gateway?: string | null;
+    payment_gateway_public_key?: string | null;
     logo_url: string | null;
     chairman_member_id: string | null;
     secretary_member_id: string | null;
@@ -31,6 +33,8 @@ interface ClubContextType {
     external_booking_label?: string | null;
     uses_gobook?: boolean | null;
     gobook_url?: string | null;
+    honesty_bar_enabled?: boolean | null;
+    face_enrolment_required?: boolean | null;
     tenant_type: string;
   } | null;
   isLoading: boolean;

@@ -291,7 +291,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                 <TabsContent value="fees" className="mt-0 space-y-5">
                   <div className="flex flex-col items-center space-y-3">
                     {club.logo_url ? (
-                      <img src={club.logo_url} alt={`${club.name} logo`} className="w-28 h-28 sm:w-32 sm:h-32 object-contain rounded-xl shadow-lg" />
+                      <img src={club.logo_url} alt={`${club.name} logo`} loading="eager" fetchPriority="high" decoding="async" className="w-28 h-28 sm:w-32 sm:h-32 object-contain rounded-xl shadow-lg" />
                     ) : (
                       <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
                         <Building2 className="w-10 h-10 text-primary-foreground" />

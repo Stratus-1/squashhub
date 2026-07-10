@@ -7013,6 +7013,41 @@ export type Database = {
           },
         ]
       }
+      club_access_public: {
+        Row: {
+          access_control_type: string | null
+          ble_fallback_enabled: boolean | null
+          club_id: string | null
+          shelly_door_ble_mac: string | null
+          shelly_door_channel: number | null
+          shelly_door_pulse_ms: number | null
+        }
+        Insert: {
+          access_control_type?: string | null
+          ble_fallback_enabled?: boolean | null
+          club_id?: string | null
+          shelly_door_ble_mac?: string | null
+          shelly_door_channel?: number | null
+          shelly_door_pulse_ms?: number | null
+        }
+        Update: {
+          access_control_type?: string | null
+          ble_fallback_enabled?: boolean | null
+          club_id?: string | null
+          shelly_door_ble_mac?: string | null
+          shelly_door_channel?: number | null
+          shelly_door_pulse_ms?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_secrets_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_delegates_public: {
         Row: {
           club_id: string | null

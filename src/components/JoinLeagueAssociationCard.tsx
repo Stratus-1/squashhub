@@ -206,6 +206,9 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
                     <Button size="sm" className="h-7 text-xs" onClick={() => setOpen(true)}>
                       Choose leagues
                     </Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleNoThanks}>
+                      No thanks
+                    </Button>
                   </div>
                 </>
               ) : (

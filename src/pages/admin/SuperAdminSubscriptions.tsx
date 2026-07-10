@@ -189,10 +189,13 @@ export default function SuperAdminSubscriptions() {
 
   // --- International SaaS pricing & FX rates ---
   useQuery({
-    queryKey: ["sa-intl-pricing-settings"],
+    queryKey: ["sa-intl-pricing-settings", plans.length],
     queryFn: async () => {
       const keys = [
-        "saas_rate_zar_monthly", "saas_rate_zar_annual", "saas_intl_uplift_pct",
+        "saas_rate_zar_monthly", "saas_rate_zar_annual",
+        "saas_min_charge_monthly", "saas_min_charge_annual",
+        "saas_billing_cap", "saas_trial_days",
+        "saas_intl_uplift_pct",
         "saas_fx_usd_per_zar", "saas_fx_eur_per_zar",
         "saas_fx_locked_at", "saas_fx_review_due",
       ];
@@ -202,9 +205,19 @@ export default function SuperAdminSubscriptions() {
         .in("key", keys);
       if (error) throw error;
       const map = new Map<string, string>((data || []).map((r: any) => [r.key, r.value]));
+
+      // Seed defaults from existing subscription_plans rows when app_settings are empty
+      const monthlyPlan = plans.find(p => p.billing_cycle === "monthly");
+      const annualPlan = plans.find(p => p.billing_cycle === "annual");
+      const anyPlan = monthlyPlan || annualPlan;
+
       const parsed = {
-        saas_rate_zar_monthly: map.get("saas_rate_zar_monthly") || "6",
-        saas_rate_zar_annual: map.get("saas_rate_zar_annual") || "5",
+        saas_rate_zar_monthly: map.get("saas_rate_zar_monthly") || (monthlyPlan ? String(monthlyPlan.price_per_member) : "6"),
+        saas_rate_zar_annual: map.get("saas_rate_zar_annual") || (annualPlan ? String(annualPlan.price_per_member) : "5"),
+        saas_min_charge_monthly: map.get("saas_min_charge_monthly") || (monthlyPlan ? String(monthlyPlan.minimum_charge) : "0"),
+        saas_min_charge_annual: map.get("saas_min_charge_annual") || (annualPlan ? String(annualPlan.minimum_charge) : "100"),
+        saas_billing_cap: map.get("saas_billing_cap") || (anyPlan?.max_billable_members != null ? String(anyPlan.max_billable_members) : "150"),
+        saas_trial_days: map.get("saas_trial_days") || (anyPlan ? String(anyPlan.trial_days) : "30"),
         saas_intl_uplift_pct: map.get("saas_intl_uplift_pct") || "50",
         saas_fx_usd_per_zar: map.get("saas_fx_usd_per_zar") || "18",
         saas_fx_eur_per_zar: map.get("saas_fx_eur_per_zar") || "20",
@@ -219,19 +232,67 @@ export default function SuperAdminSubscriptions() {
 
   const saveIntlSettings = useMutation({
     mutationFn: async (val: typeof intlForm) => {
+      // 1) Persist all settings
       const rows = Object.entries(val).map(([key, value]) => ({ key, value: String(value ?? "") }));
       const { error } = await supabase
         .from("app_settings")
         .upsert(rows, { onConflict: "key" });
       if (error) throw error;
+
+      // 2) Sync the two underlying plans so club_subscriptions & billing engine stay consistent.
+      const cap = val.saas_billing_cap === "" ? null : Number(val.saas_billing_cap);
+      const trial = Number(val.saas_trial_days) || 0;
+      const monthlyPlan = plans.find(p => p.billing_cycle === "monthly");
+      const annualPlan = plans.find(p => p.billing_cycle === "annual");
+
+      const monthlyPayload = {
+        name: "Standard Monthly",
+        description: "Per-member monthly billing",
+        price_per_member: Number(val.saas_rate_zar_monthly) || 0,
+        billing_cycle: "monthly",
+        minimum_charge: Number(val.saas_min_charge_monthly) || 0,
+        max_billable_members: cap,
+        trial_days: trial,
+        is_default: true,
+        active: true,
+      };
+      const annualPayload = {
+        name: "Standard Annual",
+        description: "Per member annually in advance",
+        price_per_member: Number(val.saas_rate_zar_annual) || 0,
+        billing_cycle: "annual",
+        minimum_charge: Number(val.saas_min_charge_annual) || 0,
+        max_billable_members: cap,
+        trial_days: trial,
+        is_default: false,
+        active: true,
+      };
+
+      if (monthlyPlan) {
+        const { error: e1 } = await fromExt("subscription_plans").update(monthlyPayload).eq("id", monthlyPlan.id);
+        if (e1) throw e1;
+      } else {
+        const { error: e1 } = await fromExt("subscription_plans").insert(monthlyPayload);
+        if (e1) throw e1;
+      }
+      if (annualPlan) {
+        const { error: e2 } = await fromExt("subscription_plans").update(annualPayload).eq("id", annualPlan.id);
+        if (e2) throw e2;
+      } else {
+        const { error: e2 } = await fromExt("subscription_plans").insert(annualPayload);
+        if (e2) throw e2;
+      }
     },
     onSuccess: () => {
-      toast.success("International pricing saved — takes effect on next billing run");
+      toast.success("Pricing saved — takes effect on next billing run");
       setIntlDirty(false);
       qc.invalidateQueries({ queryKey: ["sa-intl-pricing-settings"] });
+      qc.invalidateQueries({ queryKey: ["sa-subscription-plans"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+
 
 
   // --- Platform Stitch Express credentials (private key in app_settings) ---

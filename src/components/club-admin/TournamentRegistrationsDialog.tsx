@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, X, Check, UserPlus, Lock, Unlock } from "lucide-react";
+import { Loader2, Plus, X, Check, UserPlus, Lock, Unlock, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { openWhatsApp, normalisePhoneForWhatsApp } from "@/lib/whatsapp";
 
 interface Props {
   open: boolean;
@@ -50,7 +51,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     queryKey: ["champ-registrations", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("*, member:club_member_id(id, name, gender, profiles:user_id(name)), partner:partner_member_id(id, name, profiles:user_id(name))")
+        .select("*, member:club_member_id(id, name, phone, gender, profiles:user_id(name)), partner:partner_member_id(id, name, phone, profiles:user_id(name))")
         .eq("champ_id", champId)
         .order("created_at");
       if (error) throw error;
@@ -235,6 +236,26 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                       {STATUS_LABEL[r.status] || r.status}
                     </Badge>
                     <div className="flex gap-1">
+                      {r.invited_by_admin && normalisePhoneForWhatsApp(r.member?.phone) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs text-emerald-600 hover:text-emerald-700"
+                          title="Send WhatsApp invitation"
+                          onClick={() => {
+                            const name = getName(r.member);
+                            const first = String(name).split(/\s+/)[0] || name;
+                            const feeLine = entryFee > 0 ? `\nEntry fee: R${entryFee.toFixed(2)}` : "";
+                            const msg =
+                              `🏆 ${champ?.name}\n\n` +
+                              `Hi ${first}, you're invited to play in *${champ?.name}*.${feeLine}\n\n` +
+                              `Open the app to accept: ${window.location.origin}/tournaments`;
+                            openWhatsApp(r.member?.phone, msg);
+                          }}
+                        >
+                          <MessageCircle className="w-3 h-3 mr-1" />WhatsApp
+                        </Button>
+                      )}
                       {(r.status === "pending_payment" || r.status === "pending_eft") && (
                         <>
                           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => markPaid.mutate(r)} disabled={markPaid.isPending}>

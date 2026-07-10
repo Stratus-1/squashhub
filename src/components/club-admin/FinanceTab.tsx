@@ -615,28 +615,28 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Income</p>
           <p className="text-xl font-bold tabular-nums text-green-600">
-            {totalIncome.toFixed(2)}
+            {money(totalIncome)}
           </p>
           <p className="text-[10px] text-muted-foreground">Revenue received</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Expenses</p>
           <p className={cn("text-xl font-bold tabular-nums", totalExpenses > 0 ? "text-destructive" : "text-muted-foreground")}>
-            {totalExpenses.toFixed(2)}
+            {money(totalExpenses)}
           </p>
           <p className="text-[10px] text-muted-foreground">Costs paid</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Bank</p>
           <p className={cn("text-xl font-bold tabular-nums", bankBalance >= 0 ? "text-green-600" : "text-destructive")}>
-            {bankBalance.toFixed(2)}
+            {money(bankBalance)}
           </p>
           <p className="text-[10px] text-muted-foreground">Current account</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Cash</p>
           <p className={cn("text-xl font-bold tabular-nums", cashBalance >= 0 ? "text-green-600" : "text-destructive")}>
-            {cashBalance.toFixed(2)}
+            {money(cashBalance)}
           </p>
           <p className="text-[10px] text-muted-foreground">Petty cash</p>
         </Card>

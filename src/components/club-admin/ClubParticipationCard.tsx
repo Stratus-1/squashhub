@@ -171,7 +171,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             {c.sla_accepted_name && <div>Accepted by <strong className="text-foreground">{c.sla_accepted_name}</strong>{c.sla_accepted_role ? `, ${c.sla_accepted_role}` : ""}</div>}
             {c.sla_accepted_at && <div>Accepted on {new Date(c.sla_accepted_at).toLocaleString()}</div>}
             <div>
-              Billing: <strong className="text-foreground">{c.sla_billing_option === "annual_upfront" ? "Annual upfront ($0.30/member/month)" : "Monthly ($0.35/member/month)"}</strong>
+              Billing: <strong className="text-foreground">{c.sla_billing_option === "annual_upfront" ? "Annual upfront" : "Monthly"}</strong>
               {c.sla_version && <> · SLA v{c.sla_version}</>}
             </div>
           </div>

@@ -209,7 +209,11 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
           loop
           muted
           playsInline
+          preload="metadata"
         />
+        {club.logo_url && (
+          <link rel="preload" as="image" href={club.logo_url} fetchPriority="high" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
 
         <div className="relative flex flex-col items-center justify-center min-h-screen px-4 py-16">

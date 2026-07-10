@@ -124,6 +124,24 @@ export default function MyAccount() {
   // URL params (used for Yoco return verification)
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // If arrived from the booking gate with a required top-up amount, open the
+  // top-up dialog pre-filled with that amount so the user pays enough to
+  // clear their owing PLUS the booking buffer — not just the current owing.
+  useEffect(() => {
+    const raw = searchParams.get("topup");
+    if (!raw) return;
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) {
+      setTopUpAmount(n.toFixed(2));
+      setTopUpMethod("card");
+      setTopUpOpen(true);
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete("topup");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Credit transactions scoped by club_member_id (primary identity for all transactions)
   const { data: transactions, isLoading: txLoading } = useQuery({
     queryKey: ["credit-transactions", clubMemberId, clubId],

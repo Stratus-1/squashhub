@@ -27,6 +27,7 @@ type Preset = "this_month" | "last_month" | "qtd" | "ytd" | "last_12" | "custom"
 
 export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
   const [preset, setPreset] = useState<Preset>("ytd");
+  const { format: money, symbol: currencySymbol, code: currencyCode } = useClubCurrency();
   const today = new Date();
   const [from, setFrom] = useState<string>(format(startOfYear(today), "yyyy-MM-dd"));
   const [to, setTo] = useState<string>(format(today, "yyyy-MM-dd"));

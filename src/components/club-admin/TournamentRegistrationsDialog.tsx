@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, X, Check, UserPlus, Lock, Unlock } from "lucide-react";
+import { Loader2, Plus, X, Check, UserPlus, Lock, Unlock, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { openWhatsApp, normalisePhoneForWhatsApp } from "@/lib/whatsapp";
 
 interface Props {
   open: boolean;

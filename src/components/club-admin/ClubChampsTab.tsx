@@ -2433,6 +2433,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setSwissRounds(((champ as any).swiss_rounds as Record<string, number>) || {});
     setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
+    setWinCondition(((champ as any).win_condition as any) === "sudden_death" ? "sudden_death" : "win_by_2");
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
     setGroupLabels(((champ as any).group_labels as Record<string, string>) || {});

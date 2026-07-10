@@ -14,6 +14,7 @@ export { BellsFormat, StandardFormat, SwissFormat };
 const REGISTRY: Record<string, TournamentFormat> = {
   [StandardFormat.key]: StandardFormat,
   [BellsFormat.key]: BellsFormat,
+  [SwissFormat.key]: SwissFormat,
 };
 
 /**

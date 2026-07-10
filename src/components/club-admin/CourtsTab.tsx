@@ -594,7 +594,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
             <div key={c.id} className="rounded-lg border p-2 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">{c.name}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(c.id)}>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => requestDelete(c)}>
                   <Trash2 className="w-3 h-3" />
                 </Button>
               </div>

@@ -59,17 +59,19 @@ Deno.serve(async (req) => {
     }
     const accessToken: string = tokenJson.data.accessToken;
 
-    const plResp = await fetch(`${STITCH_BASE}/payment-links/${encodeURIComponent(session.stitch_request_id)}`, {
+    // Docs: GET /api/v1/payment/{id} — poll by payment id (what we stored as stitch_request_id).
+    const plResp = await fetch(`${STITCH_BASE}/payment/${encodeURIComponent(session.stitch_request_id)}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const plJson = await plResp.json().catch(() => ({}));
     if (!plResp.ok) {
-      console.error("Stitch Express status error", plJson);
+      console.error("Stitch Express status error", plResp.status, plJson);
       return json({ error: "Stitch verify failed" }, 502);
     }
-    const status: string = plJson?.data?.payment?.status || "PENDING";
+    const payment = plJson?.data?.payment || plJson?.data || {};
+    const status: string = String(payment.status || "PENDING").toUpperCase();
     const completed = status === "PAID";
-    const failed = status === "EXPIRED" || status === "CANCELLED";
+    const failed = status === "EXPIRED" || status === "CANCELLED" || status === "FAILED";
 
     if (!completed) {
       const next = failed ? "failed" : "processing";

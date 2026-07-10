@@ -53,16 +53,29 @@ Deno.serve(async (req) => {
   const vatRate: number =
     typeof body.vatRate === 'number' ? body.vatRate : settings.vat_number ? 0.15 : 0
 
-  // International pricing: uplift ZAR rate, then divide by FX rate for USD/EUR
+  // International pricing: uplift ZAR rate, then divide by FX rate for supported currencies.
+  // Only currencies with a known FX rate are billed in that currency; anything else falls
+  // back to ZAR (both amount AND stamped currency) so we never mis-state the amount owed.
   const upliftPct = Number(settingsMap.get('saas_intl_uplift_pct') || '50')
   const fxUsdPerZar = Number(settingsMap.get('saas_fx_usd_per_zar') || '18')
   const fxEurPerZar = Number(settingsMap.get('saas_fx_eur_per_zar') || '20')
   const upliftMult = 1 + upliftPct / 100
+  const fxRateFor = (currency: string): number | null => {
+    const c = (currency || 'ZAR').toUpperCase()
+    if (c === 'USD') return fxUsdPerZar
+    if (c === 'EUR') return fxEurPerZar
+    return null
+  }
+  const resolveBillingCurrency = (currency: string): string => {
+    const c = (currency || 'ZAR').toUpperCase()
+    if (c === 'ZAR') return 'ZAR'
+    return fxRateFor(c) ? c : 'ZAR'
+  }
   const convert = (zarAmount: number, currency: string) => {
     const c = (currency || 'ZAR').toUpperCase()
     if (c === 'ZAR') return zarAmount
-    const rate = c === 'USD' ? fxUsdPerZar : c === 'EUR' ? fxEurPerZar : null
-    if (!rate) return zarAmount // unsupported currency → fall back to ZAR value
+    const rate = fxRateFor(c)
+    if (!rate) return zarAmount // unsupported currency → billed in ZAR (see resolveBillingCurrency)
     return (zarAmount * upliftMult) / rate
   }
 
@@ -163,7 +176,8 @@ Deno.serve(async (req) => {
       const billableMembers = cap && cap > 0 ? Math.min(memberCount, cap) : memberCount
 
       // Convert ZAR plan rates to the club's billing currency (adds intl uplift for non-ZAR).
-      const clubCurrency = clubCurrencies.get(sub.club_id) || 'ZAR'
+      // If we have no FX rate for the club's currency, bill in ZAR to avoid mis-stating the amount.
+      const clubCurrency = resolveBillingCurrency(clubCurrencies.get(sub.club_id) || 'ZAR')
       const pricePerMemberLocal = +convert(Number(plan.price_per_member), clubCurrency).toFixed(2)
       const minimumChargeLocal = +convert(Number(plan.minimum_charge || 0), clubCurrency).toFixed(2)
 

@@ -1420,15 +1420,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                                   {getLabel(entry.account)}
                                 </Badge>
                                 <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-green-600 font-medium")}>
-                                  {Number(entry.debit) > 0 ? `R${Number(entry.debit).toFixed(2)}` : ""}
+                                  {Number(entry.debit) > 0 ? money(Number(entry.debit)) : ""}
                                 </span>
                                 <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-destructive font-medium")}>
-                                  {Number(entry.credit) > 0 ? `R${Number(entry.credit).toFixed(2)}` : ""}
+                                  {Number(entry.credit) > 0 ? money(Number(entry.credit)) : ""}
                                 </span>
                                 <span className={cn("text-right tabular-nums font-medium",
                                   entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"
                                 )}>
-                                  {entry.running.toFixed(2)}
+                                  {money(entry.running)}
                                 </span>
                                 <RowActionMenu entry={entry} />
                               </div>

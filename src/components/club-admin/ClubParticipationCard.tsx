@@ -93,15 +93,15 @@ export function ClubParticipationCard({ club }: { club: Club }) {
       <div className="rounded-md border bg-muted/30 p-4 text-sm space-y-2">
         <div className="font-medium text-foreground">Fee structure</div>
         <ul className="list-disc pl-5 text-muted-foreground space-y-1">
-          <li><strong className="text-foreground">R6</strong> per active member per month (billed monthly), or</li>
-          <li><strong className="text-foreground">R5</strong> per active member per month if paid <strong className="text-foreground">annually in advance</strong> (save R12 / member / year)</li>
+          <li><strong className="text-foreground">$0.35</strong> per active member per month (billed monthly), or</li>
+          <li><strong className="text-foreground">$0.30</strong> per active member per month if paid <strong className="text-foreground">annually in advance</strong> (save $0.60 / member / year)</li>
         </ul>
         <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
           Fees are first invoiced from <strong>September 2026</strong> for the current financial year, and annually thereafter.
         </p>
-        {!isZar && (
+        {clubCurrencyCode !== "USD" && (
           <p className="text-xs text-muted-foreground italic">
-            Rates shown in South African Rand (ZAR). Your invoices are issued in your club currency ({clubCurrencyName} · {clubCurrencyCode}), converted at the prevailing platform rate.
+            Rates shown in US Dollars (USD). Your invoices are issued in your club currency ({clubCurrencyName} · {clubCurrencyCode}), converted at the prevailing platform rate.
           </p>
         )}
         {typeof memberCount === "number" && (

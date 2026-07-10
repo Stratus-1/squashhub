@@ -1,6 +1,7 @@
 import * as React from 'npm:react@18.3.1'
 import {
   Body,
+  Button,
   Container,
   Head,
   Heading,
@@ -42,6 +43,8 @@ interface Props {
   bankSwift?: string
   logoUrl?: string
   invoiceFooter?: string
+  payLink?: string
+  manageUrl?: string
 }
 
 const money = (v: number | string | undefined, ccy = 'ZAR') => {
@@ -80,6 +83,8 @@ const Email = (p: Props) => {
     bankSwift,
     logoUrl,
     invoiceFooter,
+    payLink,
+    manageUrl,
   } = p
 
   const senderName = tradingAs || companyName
@@ -92,7 +97,12 @@ const Email = (p: Props) => {
         <Container style={container}>
           {logoUrl && (
             <Section style={{ textAlign: 'center', marginBottom: '12px' }}>
-              <Img src={logoUrl} alt={senderName} style={{ maxHeight: '64px', margin: '0 auto' }} />
+              <Img
+                src={logoUrl}
+                alt={senderName}
+                width="140"
+                style={{ height: 'auto', maxHeight: '48px', maxWidth: '140px', margin: '0 auto', display: 'block' }}
+              />
             </Section>
           )}
           <Heading style={h1}>Tax Invoice</Heading>
@@ -139,9 +149,25 @@ const Email = (p: Props) => {
             <Row label="Total Due" value={money(total, currency)} bold />
           </Section>
 
+          {(payLink || manageUrl) && (
+            <Section style={{ textAlign: 'center', margin: '20px 0 8px' }}>
+              {payLink && (
+                <Button href={payLink} style={payBtn}>
+                  Pay with Card via Stitch
+                </Button>
+              )}
+              {manageUrl && (
+                <Text style={{ ...muted, marginTop: '10px' }}>
+                  Or view/manage this invoice in your club admin:{' '}
+                  <a href={manageUrl} style={{ color: '#1E3A5F' }}>{manageUrl}</a>
+                </Text>
+              )}
+            </Section>
+          )}
+
           {bankAccountNumber && (
             <>
-              <Heading as="h2" style={h2}>Payment Details</Heading>
+              <Heading as="h2" style={h2}>Or Pay by EFT</Heading>
               <Section style={card}>
                 {bankName && <Row label="Bank" value={bankName} />}
                 {bankAccountName && <Row label="Account Name" value={bankAccountName} />}
@@ -221,3 +247,13 @@ const card = {
   padding: '12px 16px',
 }
 const hr = { borderColor: '#e3e8f0', margin: '16px 0' }
+const payBtn = {
+  backgroundColor: '#1E3A5F',
+  color: '#ffffff',
+  padding: '12px 24px',
+  borderRadius: '6px',
+  fontSize: '15px',
+  fontWeight: 600,
+  textDecoration: 'none',
+  display: 'inline-block',
+}

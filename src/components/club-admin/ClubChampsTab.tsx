@@ -1669,6 +1669,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             end_time: endTime,
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
+            swiss_pools: scoringMode === "swiss" ? swissPools : null,
+            swiss_rounds: scoringMode === "swiss" ? swissRounds : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
             group_durations: groupDurations,

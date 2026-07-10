@@ -225,7 +225,10 @@ export default function Help() {
             ))}
           </div>
         )}
+
+        <HelpFaq roleFilter={roleFilter} />
       </div>
+
 
       <BackToDashboard />
 

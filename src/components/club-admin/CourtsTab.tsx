@@ -510,6 +510,8 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   const [editingRelay, setEditingRelay] = useState<Record<number, string>>({});
   const [editingChannel, setEditingChannel] = useState<Record<number, string>>({});
   const [editingServer, setEditingServer] = useState<Record<number, string>>({});
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; court: { id: number; name: string } | null }>({ open: false, court: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-courts", clubId],
@@ -527,9 +529,16 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
     else { toast.success("Court added"); setNewCourt(""); qc.invalidateQueries({ queryKey: ["club-courts"] }); }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Remove this court?")) return;
-    const { error } = await fromExt("courts").delete().eq("id", id);
+  const requestDelete = (court: { id: number; name: string }) => {
+    setDeleteDialog({ open: true, court });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteDialog.court) return;
+    setIsDeleting(true);
+    const { error } = await fromExt("courts").delete().eq("id", deleteDialog.court.id);
+    setIsDeleting(false);
+    setDeleteDialog({ open: false, court: null });
     if (error) toast.error(error.message);
     else { toast.success("Court removed"); qc.invalidateQueries({ queryKey: ["club-courts"] }); }
   };

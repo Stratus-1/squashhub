@@ -81,6 +81,11 @@ export default function ClubAuth() {
   const [visitorPassword, setVisitorPassword] = useState("");
   const [visitorCategory, setVisitorCategory] = useState("Men");
   const [visitorDone, setVisitorDone] = useState(false);
+  // Pre-flight gate for the Visitor tab:
+  //   null   → show the two-question intro (are you a SquashHub user? / NSA member?)
+  //   "ok"   → show the visitor registration form
+  //   "nsa"  → show the "please register via /league first" message
+  const [visitorGate, setVisitorGate] = useState<null | "ok" | "nsa">(null);
 
   // Reset
   const [resetEmail, setResetEmail] = useState("");

@@ -124,6 +124,7 @@ export function PageHeader({
         {user && (
           <div className="ml-auto flex items-center gap-1.5">
             <TenantSwitcher />
+            <ThemeToggle />
             {showNotifications && <NotificationsDropdown />}
             <button
               type="button"

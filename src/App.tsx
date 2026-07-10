@@ -326,8 +326,8 @@ function AppRoutes() {
   const isTvRoute = (routeLocation.pathname || "/").startsWith("/tv");
 
   // Marketing / public-facing routes keep the dark navy+amber brand theme.
-  // The in-app (authenticated) experience defaults to LIGHT for readability.
-  // Users can still flip globally via the theme toggle in Settings.
+  // The in-app experience now defaults to DARK; users can opt into light
+  // via the theme toggle in the header / Settings.
   useEffect(() => {
     const p = routeLocation.pathname || "/";
     const isMarketingRoute =
@@ -349,12 +349,31 @@ function AppRoutes() {
     const userPref = localStorage.getItem("theme"); // "dark" | "light" | null
     if (isMarketingRoute) {
       root.classList.add("dark");
-    } else if (userPref === "dark") {
-      root.classList.add("dark");
-    } else {
+    } else if (userPref === "light") {
       root.classList.remove("dark");
+    } else {
+      root.classList.add("dark");
     }
   }, [routeLocation.pathname, user]);
+
+  // One-time hint after login letting users know they can switch to light mode.
+  useEffect(() => {
+    if (!user) return;
+    const userPref = localStorage.getItem("theme");
+    const hintShown = localStorage.getItem("theme-hint-shown");
+    if (hintShown || userPref === "light") return;
+    const t = setTimeout(() => {
+      import("sonner").then(({ toast }) => {
+        toast("Dark mode is on by default", {
+          description: "Prefer light? Tap the sun/moon icon in the header any time.",
+          duration: 6000,
+        });
+      });
+      localStorage.setItem("theme-hint-shown", "1");
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [user]);
+
 
   if (loading || clubLoading) {
     return (

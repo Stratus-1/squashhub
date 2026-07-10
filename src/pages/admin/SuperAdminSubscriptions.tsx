@@ -553,7 +553,7 @@ export default function SuperAdminSubscriptions() {
               <div>
                 <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4" /> SaaS Fee Structure & International Pricing</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5 max-w-2xl">
-                  Set the USD rates for monthly and annual subscription invoices, plus the shared billing cap and free trial. Saving here also updates the underlying Standard Monthly and Standard Annual plans that clubs are assigned to. Changes apply from the next billing run.
+                  Base rates are in <strong>ZAR</strong>. USD and EUR rates are used only for clubs whose currency is set to that currency. Saving here also updates the underlying Standard Monthly and Standard Annual plans (base ZAR). Changes apply from the next billing run.
                 </p>
               </div>
               <Button
@@ -567,25 +567,51 @@ export default function SuperAdminSubscriptions() {
               </Button>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-              {/* Base rates */}
+            <div className="grid gap-4 lg:grid-cols-4">
+              {/* ZAR base */}
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">USD rates (per member)</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">ZAR rates (base)</p>
+                <div>
+                  <Label className="text-xs">Monthly (R / member / month)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_monthly} onChange={e => updateIntlField("saas_rate_zar_monthly", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Annual upfront (R / member / month)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_annual} onChange={e => updateIntlField("saas_rate_zar_annual", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Min charge — Monthly</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_monthly} onChange={e => updateIntlField("saas_min_charge_monthly", e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Min charge — Annual</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_annual} onChange={e => updateIntlField("saas_min_charge_annual", e.target.value)} />
+                </div>
+              </div>
+
+              {/* USD */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">USD rates (for USD clubs)</p>
                 <div>
                   <Label className="text-xs">Monthly ($ / member / month)</Label>
                   <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_usd_monthly} onChange={e => updateIntlField("saas_rate_usd_monthly", e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Annual upfront ($ / member / year)</Label>
+                  <Label className="text-xs">Annual upfront ($ / member / month)</Label>
                   <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_usd_annual} onChange={e => updateIntlField("saas_rate_usd_annual", e.target.value)} />
                 </div>
+              </div>
+
+              {/* EUR */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">EUR rates (for EUR clubs)</p>
                 <div>
-                  <Label className="text-xs">Min charge — Monthly ($)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_usd_monthly} onChange={e => updateIntlField("saas_min_charge_usd_monthly", e.target.value)} />
+                  <Label className="text-xs">Monthly (€ / member / month)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_eur_monthly} onChange={e => updateIntlField("saas_rate_eur_monthly", e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Min charge — Annual ($)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_usd_annual} onChange={e => updateIntlField("saas_min_charge_usd_annual", e.target.value)} />
+                  <Label className="text-xs">Annual upfront (€ / member / month)</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_eur_annual} onChange={e => updateIntlField("saas_rate_eur_annual", e.target.value)} />
                 </div>
               </div>
 
@@ -605,22 +631,23 @@ export default function SuperAdminSubscriptions() {
             </div>
 
             {(() => {
-              const m = Number(intlForm.saas_rate_usd_monthly) || 0;
-              const a = Number(intlForm.saas_rate_usd_annual) || 0;
-              const row = (label: string, usd: number) => ({
-                label,
-                usd: fmtSubscriptionMoney(usd),
-              });
-              const rows = [row("Monthly", m), row("Annual upfront", a)];
+              const rows = [
+                { label: "Monthly (ZAR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_zar_monthly) || 0, "R") },
+                { label: "Annual upfront (ZAR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_zar_annual) || 0, "R") },
+                { label: "Monthly (USD)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_usd_monthly) || 0, "$") },
+                { label: "Annual upfront (USD)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_usd_annual) || 0, "$") },
+                { label: "Monthly (EUR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_eur_monthly) || 0, "€") },
+                { label: "Annual upfront (EUR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_eur_annual) || 0, "€") },
+              ];
               return (
                 <div className="rounded-md border border-border overflow-hidden">
                   <div className="grid grid-cols-2 bg-muted/60 px-3 py-1.5 text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
-                    <span>Plan</span><span>Invoice amount</span>
+                    <span>Plan</span><span>Per-member rate</span>
                   </div>
                   {rows.map(r => (
                     <div key={r.label} className="grid grid-cols-2 px-3 py-2 text-xs border-t">
                       <span>{r.label}</span>
-                      <span className="font-mono text-primary">{r.usd}</span>
+                      <span className="font-mono text-primary">{r.val}</span>
                     </div>
                   ))}
                 </div>

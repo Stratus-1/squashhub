@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { CheckCircle2, ShieldCheck, FileSignature, FileText, Printer, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { SquashHubSlaContent, SLA_VERSION } from "@/components/SquashHubSlaContent";
 
 type BillingOption = "monthly" | "annual_upfront";

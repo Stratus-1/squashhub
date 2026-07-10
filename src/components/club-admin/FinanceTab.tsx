@@ -94,7 +94,7 @@ const getLabel = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount]?.l
 const getMeta = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount];
 
 export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
-  const { format: money } = useClubCurrency();
+  const { format: money, symbol: currencySymbol } = useClubCurrency();
   const queryClient = useQueryClient();
   const { data: members } = useClubMembers(clubId);
   const [accountFilter, setAccountFilter] = useState<string>("all");

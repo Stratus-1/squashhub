@@ -763,6 +763,15 @@ export default function MyAccount() {
                 value={topUpAmount}
                 onChange={(e) => setTopUpAmount(e.target.value)}
               />
+              {topUpFromGate ? (
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  This is the minimum needed to cover your booking. Tip: top up more (e.g. R100 or R200) to save time — you won't have to top up again for a while.
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Top up any amount from R10. Larger top-ups mean fewer payments later.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">

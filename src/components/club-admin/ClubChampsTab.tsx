@@ -3511,6 +3511,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                         </label>
                       )}
                     </div>
+                    <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                      <label className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">Leagues (divisions)</span>
+                        <input
+                          type="number" min={1} max={12}
+                          value={numGroups > 0 ? numGroups : 1}
+                          onChange={(e) => setNumGroups(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
+                          className="w-14 h-6 px-1 border rounded bg-background"
+                        />
+                      </label>
+                      <span className="text-muted-foreground">— carries through to the Groups step; set Pools/Rounds per league below.</span>
+                    </div>
                     {needsSlot && (
                       <div className="text-amber-700 dark:text-amber-400">Pick a Match Duration above to see capacity.</div>
                     )}

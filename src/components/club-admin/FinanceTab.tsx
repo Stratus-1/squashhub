@@ -11,6 +11,7 @@ import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { postJournal } from "@/lib/post-journal";
 import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote } from "lucide-react";
 import { format } from "date-fns";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { useState, useRef, useEffect, type ReactNode, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
@@ -93,6 +94,7 @@ const getLabel = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount]?.l
 const getMeta = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount];
 
 export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
+  const { format: money } = useClubCurrency();
   const queryClient = useQueryClient();
   const { data: members } = useClubMembers(clubId);
   const [accountFilter, setAccountFilter] = useState<string>("all");

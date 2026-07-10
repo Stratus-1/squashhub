@@ -1,61 +1,27 @@
+# Restore currency symbols on club-admin money displays
 
-# Stitch Express Rebuild
+## Problem (confirmed)
+The recent currency migration removed hardcoded "R" prefixes from many money-display sites in 4 club-admin files, but did NOT wire in `useClubCurrency().format()`. Admins now see bare numbers like `1500.00` on Finance, Members, Association Payables, and Honesty Bar screens.
 
-Stitch confirmed our account is on **Stitch Express** (card-based recurring), not the Enterprise API. The current code uses Enterprise concepts (`PaymentAuthorization`, debit-order mandates, bank-app approval, Enterprise UUIDs) which is why mandates hang in `pending` and no webhook arrives. This plan rips out the Enterprise flow and rebuilds on Express Subscriptions, plus fixes the onboarding form.
-
-## What Express gives us (and what we lose)
-
-- **Payments**: hosted card checkout on `express.stitch.money`, 3DS auth, `payment.paid` webhook.
-- **Recurring**: Express **Subscriptions API** — scheduled card charges, customisable frequency/amount, tokenised card on file.
-- **Lost**: bank-app-approved debit orders. Members will authenticate a card once (with 3DS) instead of approving in their banking app.
+Verified: `rg formatMoney|useClubCurrency` returns 0 hits in `FinanceTab.tsx`, `AssociationPayablesPanel.tsx`, `HonestyBarTab.tsx`; MembersTab imports the hook but doesn't use it consistently.
 
 ## Scope
+~67 money-display sites across 4 files (~5,300 lines total):
+- `src/components/club-admin/FinanceTab.tsx` — summary cards (Income/Expenses/Bank/Cash), by-account debit/credit, trial-balance, GL preview strings, gateway-fee helper, member statement Billed/Paid/Outstanding
+- `src/components/club-admin/MembersTab.tsx` — `MemberPaymentStatus` fee lines and totals, header `{totalPaid} paid / {totalExpected} total / {outstanding} outstanding`, add/edit fee-category dropdowns, preview totals
+- `src/components/club-admin/AssociationPayablesPanel.tsx` — fee badges, outstanding column, generate/settle dialog totals, per-member table
+- `src/components/club-admin/HonestyBarTab.tsx` — supplier invoices, admin sale entries, ItemManager prices, PurchaseInvoice line totals, admin-add-charge item picker
 
-### 1. Onboarding form (unblock now)
-- Fix the edge-function error on Submit in `StitchOnboardingCard.tsx` / `stitch-onboarding-submit`.
-- Add **Save Draft** button next to Submit — persists all fields to `stitch_onboarding_drafts` (table already exists) so admins can return later. Auto-loads existing draft on mount.
-- Keep both emails on Submit: club contact + `admin@stratsol.co.za` (already wired).
+## Approach
+1. In each file, `import { useClubCurrency } from "@/hooks/use-currency"` and call `const { format } = useClubCurrency()` at the top of the component (already done in MembersTab).
+2. Replace every bare `{amount.toFixed(2)}` / `{amount}` money render with `{format(amount)}`.
+3. For inputs (fee-category dropdowns, price inputs), keep the raw number but show `{format(value)}` alongside labels only.
+4. For dialogs rendered outside the component tree, pass `format` down as a prop (or call the hook inside the subcomponent).
+5. Skip anywhere the number is not currency (percentages, member counts, ordinal ranks).
 
-### 2. Replace one-off payments (Enterprise → Express)
-- Rewrite `stitch-create-payment` to call Express `POST /payments` (card-hosted checkout) instead of Enterprise PaymentInitiation.
-- Rewrite `stitch-verify-payment` and `stitch-webhook` to consume Express `payment.paid` / `payment.failed` events and Express ID format.
-- Delete `stitch-collection-webhook`, `stitch-queue-collections`, `stitch-submit-collections` (debit-order batch collection — not supported on Express).
-- Update `src/lib/stitch-checkout.ts` and call sites (`MyAccount`, `stitch-pay-platform-invoice`, `platform-stitch-test-payment`, member fee payments, bar tab, visitor sales) to use the new Express flow.
+## Risk
+Low behavioural risk — pure presentation. Must be careful in `MemberPaymentStatus` and nested dialogs that already receive props (may need to lift the hook into each subcomponent). Testing by loading each of the 4 tabs and confirming symbols appear.
 
-### 3. Replace mandates with Express Subscriptions
-- Rewrite `stitch-create-mandate` → `stitch-create-subscription`: creates an Express Subscription (initial card auth + schedule).
-- Rewrite `stitch-cancel-mandate` → `stitch-cancel-subscription` using Express API.
-- Delete `stitch-mandate-webhook`; extend `stitch-webhook` to handle `subscription.charged`, `subscription.failed`, `subscription.cancelled`.
-- Update `DebitOrderPromptCard`, `DebitOrdersPanel`, `SubscriptionTab`, `PaymentMethodsCard`, `run-subscription-billing`, `evaluate-member-suspensions` — user-facing copy changes from "Debit order" to **"Recurring card payment"**.
-
-### 4. Database migration
-- `stitch_mandates` → rename semantically to represent card subscriptions (keep the table, add `subscription_id`, `card_last4`, `card_brand`, `card_expiry`; deprecate `mandate_reference`, `bank_account_*`).
-- `stitch_payment_sessions`: add `express_payment_id`; keep old columns nullable for historical rows.
-- No destructive drops — current mandates are all `pending` (broken), so they get marked `cancelled_reason='migrated_to_express'`.
-
-### 5. Secrets & config
-- Express uses a different client id / secret pair from Enterprise. If existing `STITCH_CLIENT_ID` / `STITCH_CLIENT_SECRET` are Enterprise creds, we'll need Express credentials from the Stitch dashboard (`express.stitch.money`) — I'll prompt via `add_secret` when we hit that step.
-- New webhook URL to register with Stitch Express: `…/functions/v1/stitch-webhook`.
-
-## Technical notes
-
-- Express base URL: `https://api.express.stitch.money` (per `express.stitch.money/api-docs/quickstart`).
-- Auth: client-credentials OAuth (same pattern as Enterprise but different token endpoint + audience).
-- Webhook signatures: Express uses HMAC-SHA256 with the webhook secret — update `_shared/stitch-signature.ts` accordingly.
-- ID format changes → all lookups keyed on `stitch_*_id` columns will be re-populated on new records only.
-- Member-facing copy: "Approve in your banking app" → "Enter card details" everywhere.
-
-## Out of scope
-
-- Migrating already-active Enterprise mandates (none are active — all pending).
-- Multi-currency; Express is ZAR-only for us.
-- Refactoring unrelated billing tables.
-
-## Rollout order
-
-1. Onboarding fix + Save Draft (unblocks banking page today).
-2. Request Express credentials via `add_secret`.
-3. Rebuild payments (one-off) end-to-end + webhook.
-4. Rebuild subscriptions + billing worker.
-5. DB migration + UI copy pass.
-6. Delete dead functions (`stitch-*-collections`, `stitch-mandate-webhook`, `stitch-collection-webhook`).
+## Verification
+- `rg "toFixed\(2\)" src/components/club-admin/{FinanceTab,MembersTab,AssociationPayablesPanel,HonestyBarTab}.tsx` — remaining hits should only be non-currency numerics.
+- Manual check of each tab in the preview.

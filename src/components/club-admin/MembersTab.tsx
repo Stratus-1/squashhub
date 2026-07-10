@@ -158,6 +158,7 @@ function MemberPaymentStatus({ fees, glBilled, glPaid }: {
   /** Actual payments received against debtors (sum of credit on debtors GL). */
   glPaid?: number;
 }) {
+  const { format } = useClubCurrency();
   if (fees.length === 0 && !glBilled) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
   const feeTotal = fees.reduce((s, f) => s + f.amount, 0);
   // Prefer real GL numbers so this matches the Member Statement exactly.
@@ -171,11 +172,11 @@ function MemberPaymentStatus({ fees, glBilled, glPaid }: {
       {fees.map((f, i) => (
         <div key={i} className="flex items-center gap-1 text-[10px]">
           <span className="truncate max-w-[140px]">{f.fee_label}</span>
-          <span className="text-muted-foreground">{f.amount}</span>
+          <span className="text-muted-foreground">{format(f.amount)}</span>
         </div>
       ))}
       <span className={`text-[10px] font-semibold ml-auto tabular-nums ${allPaid ? "text-green-600" : "text-destructive"}`}>
-        {paid.toFixed(0)} / {total.toFixed(0)}
+        {format(paid, 0)} / {format(total, 0)}
       </span>
     </div>
   );
@@ -343,6 +344,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
 }
 
 export function MembersTab({ clubId }: { clubId: string }) {
+  const { format } = useClubCurrency();
   const { data: allMembersRaw = [], isLoading } = useClubMembers(clubId);
   // Exclude visitor-role entries — they live in the Visitors tab to avoid mixing them with real members.
   const members = allMembersRaw.filter((m: any) => String(m.role || "").toLowerCase() !== "visitor");
@@ -941,8 +943,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>
-        <span className="font-medium">Fees: {totalPaid} paid / {totalExpected} total</span>
-        <span className="text-destructive font-medium">{totalExpected - totalPaid} outstanding</span>
+        <span className="font-medium">Fees: {format(totalPaid)} paid / {format(totalExpected)} total</span>
+        <span className="text-destructive font-medium">{format(totalExpected - totalPaid)} outstanding</span>
         <span className="text-emerald-600 dark:text-emerald-400 font-medium">💡 Set up fees in the Fees tab · Untick fees still outstanding for a member</span>
       </div>
 
@@ -1014,6 +1016,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
 }
 
 function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const { format } = useClubCurrency();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
@@ -1243,7 +1246,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             >
               <option value="">— Select category —</option>
               {feeCategories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name} ({cat.annual_fee}/yr)</option>
+                <option key={cat.id} value={cat.id}>{cat.name} ({format(cat.annual_fee)}/yr)</option>
               ))}
             </select>
             {age !== null && !feeCategoryId && (
@@ -1286,7 +1289,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
                       <span>
                         {a.name}
                         {a.abbreviation ? ` (${a.abbreviation})` : ""}
-                        {a.fee_annual > 0 ? ` — R${a.fee_annual}` : ""}
+                        {a.fee_annual > 0 ? ` — ${format(a.fee_annual)}` : ""}
                       </span>
                     </label>
                   );
@@ -1303,12 +1306,12 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
               {previewFees.map((f, i) => (
                 <div key={i} className="flex justify-between text-xs">
                   <span>{f.label}</span>
-                  <span className="font-medium">{f.amount}</span>
+                  <span className="font-medium">{format(f.amount)}</span>
                 </div>
               ))}
               <div className="flex justify-between text-xs font-bold border-t border-border mt-1 pt-1">
                 <span>Total</span>
-                <span>{previewFees.reduce((s, f) => s + f.amount, 0)}</span>
+                <span>{format(previewFees.reduce((s, f) => s + f.amount, 0))}</span>
               </div>
             </Card>
           )}
@@ -1321,6 +1324,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 }
 
 function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: ClubMember; feeCategories: MemberFeeCategory[]; clubId: string; onClose: () => void }) {
+  const { format } = useClubCurrency();
   const { data: associations = [] } = useLeagueAssociations(clubId);
 
   // Classified associations (kind, tenant subdomain, permanent affiliation row).
@@ -1797,7 +1801,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
             >
               <option value="">— Select category —</option>
               {feeCategories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name} ({cat.annual_fee}/yr)</option>
+                <option key={cat.id} value={cat.id}>{cat.name} ({format(cat.annual_fee)}/yr)</option>
               ))}
             </select>
             {age !== null && !form.fee_category_id && (

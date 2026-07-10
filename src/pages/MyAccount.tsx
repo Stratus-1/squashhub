@@ -135,6 +135,7 @@ export default function MyAccount() {
     if (Number.isFinite(n) && n > 0) {
       setTopUpAmount(n.toFixed(2));
       setTopUpMethod("card");
+      setTopUpFromGate(true);
       setTopUpOpen(true);
     }
     const next = new URLSearchParams(searchParams);

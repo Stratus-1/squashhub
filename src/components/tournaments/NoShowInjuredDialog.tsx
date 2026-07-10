@@ -90,6 +90,8 @@ export function NoShowInjuredDialog({
     },
     onSuccess: (absentMemberId) => {
       qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+      qc.invalidateQueries({ queryKey: ["bells-match", match?.id] });
+      qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
       toast.success("Match marked as No Show / Injured");
       onOpenChange(false);
       // Find any remaining not-yet-completed games for this player.

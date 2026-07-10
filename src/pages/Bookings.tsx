@@ -2336,8 +2336,9 @@ export default function Bookings() {
             </Button>
             <Button
               onClick={() => {
+                const amt = Math.max(topUpPrompt.shortfall, 0).toFixed(2);
                 setTopUpPrompt((s) => ({ ...s, open: false }));
-                navigate("/my-account");
+                navigate(`/my-account?topup=${amt}`);
               }}
             >
               Top up now

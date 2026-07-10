@@ -199,7 +199,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
             <div className="text-right">
               <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total due</div>
               <div className="text-lg font-bold text-amber-800 dark:text-amber-300">
-                {fmtMoney(totalOutstanding)}
+                {fmtMoney(totalOutstanding, outstandingCurrency)}
               </div>
             </div>
           </div>

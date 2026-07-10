@@ -60,7 +60,7 @@ export function DashboardOpenDoorCard() {
     setLoading(true);
     try {
       if (shellyEnabled) {
-        const s: any = clubSecrets || {};
+        const s: any = merged;
         const res = await triggerShellyDoor({
           clubId: club.id!,
           doorName: "Main door",

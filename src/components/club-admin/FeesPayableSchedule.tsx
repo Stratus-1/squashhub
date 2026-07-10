@@ -34,6 +34,7 @@ interface PayableFee {
 
 export function FeesPayableSchedule({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
+  const { format: money, symbol: currencySymbol } = useClubCurrency();
   const [editFee, setEditFee] = useState<PayableFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 

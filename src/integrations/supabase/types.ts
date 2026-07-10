@@ -1033,6 +1033,7 @@ export type Database = {
           swiss_rounds: Json | null
           updated_at: string
           visitor_clubs: string[]
+          win_condition: string
         }
         Insert: {
           affects_ranking_points?: boolean
@@ -1089,6 +1090,7 @@ export type Database = {
           swiss_rounds?: Json | null
           updated_at?: string
           visitor_clubs?: string[]
+          win_condition?: string
         }
         Update: {
           affects_ranking_points?: boolean
@@ -1145,6 +1147,7 @@ export type Database = {
           swiss_rounds?: Json | null
           updated_at?: string
           visitor_clubs?: string[]
+          win_condition?: string
         }
         Relationships: [
           {

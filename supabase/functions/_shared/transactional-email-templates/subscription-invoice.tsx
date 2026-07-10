@@ -199,12 +199,17 @@ const Email = (p: Props) => {
   )
 }
 
-const Row = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
-    <Text style={{ ...muted, margin: 0 }}>{label}</Text>
-    <Text style={{ ...text, margin: 0, fontWeight: bold ? 700 : 600, fontSize: bold ? '15px' : '14px' }}>{value}</Text>
-  </div>
+const LineRow = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => (
+  <Row style={{ padding: '6px 0' }}>
+    <Column style={{ textAlign: 'left' as const }}>
+      <Text style={{ ...muted, margin: 0 }}>{label}</Text>
+    </Column>
+    <Column style={{ textAlign: 'right' as const }}>
+      <Text style={{ ...text, margin: 0, fontWeight: bold ? 700 : 600, fontSize: bold ? '15px' : '14px' }}>{value}</Text>
+    </Column>
+  </Row>
 )
+
 
 export const template = {
   component: Email,

@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyClub } from "@/hooks/use-club";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
+import { useQuery } from "@tanstack/react-query";
+import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { triggerShellyDoor } from "@/lib/shelly-door";
 import { markDoorOpened } from "@/lib/door-open-state";

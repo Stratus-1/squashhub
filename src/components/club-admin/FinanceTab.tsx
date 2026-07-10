@@ -1170,7 +1170,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <div className="mt-2 p-2 rounded border border-amber-500/40 bg-amber-500/10 text-[11px] text-amber-900 dark:text-amber-200 flex gap-2">
                     <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <div>
-                      <p className="font-semibold">This member has {outstanding.toFixed(2)} in unpaid fees.</p>
+                      <p className="font-semibold">This member has {money(outstanding)} in unpaid fees.</p>
                       <p className="mt-0.5">
                         Rather mark the specific fee paid in <strong>Members → Fees</strong> so it links to the invoice.
                         A free-form payment here posts a second Cr Debtors leg that will double-count when the fee row is later toggled paid.

@@ -1382,16 +1382,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                       <div className="grid grid-cols-3 gap-2">
                         <Card className="p-2">
                           <p className="text-[10px] text-muted-foreground">Total Billed</p>
-                          <p className="text-sm font-bold text-destructive tabular-nums">{billed.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-destructive tabular-nums">{money(billed)}</p>
                         </Card>
                         <Card className="p-2">
                           <p className="text-[10px] text-muted-foreground">Total Paid</p>
-                          <p className="text-sm font-bold text-green-600 tabular-nums">{paid.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-green-600 tabular-nums">{money(paid)}</p>
                         </Card>
                         <Card className="p-2">
                           <p className="text-[10px] text-muted-foreground">Outstanding Balance</p>
                           <p className={cn("text-sm font-bold tabular-nums", outstanding > 0.01 ? "text-destructive" : outstanding < -0.01 ? "text-green-600" : "text-muted-foreground")}>
-                            {outstanding.toFixed(2)} {outstanding < -0.01 ? "Cr" : ""}
+                            {money(outstanding)} {outstanding < -0.01 ? "Cr" : ""}
                           </p>
                         </Card>
                       </div>

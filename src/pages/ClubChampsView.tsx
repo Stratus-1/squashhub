@@ -19,7 +19,8 @@ import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
-import { UserX, Trophy } from "lucide-react";
+import { UserX, Trophy, Shuffle } from "lucide-react";
+import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };

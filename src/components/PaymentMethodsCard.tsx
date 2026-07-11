@@ -291,10 +291,21 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                     {m.debit_day ? ` · monthly charge day ${m.debit_day}` : ""}
                   </p>
 
-                  {m.status === "pending" && m.auth_url && (
-                    <a href={normalizeAuthUrl(m.auth_url)} className="text-[11px] text-primary underline">
-                      Complete authorisation →
-                    </a>
+                  {m.status === "pending" && (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {m.auth_url && (
+                        <a href={normalizeAuthUrl(m.auth_url)} className="text-[11px] text-primary underline">
+                          Complete authorisation →
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => refreshMandate(m.id)}
+                        className="text-[11px] text-muted-foreground underline"
+                      >
+                        Check status
+                      </button>
+                    </div>
                   )}
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => cancelMandate(m.id)} className="h-7 px-2">

@@ -53,10 +53,10 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data } = await supabase
         .from("club_members")
-        .select("id, full_name, club_member_number")
+        .select("id, name, club_member_number")
         .eq("club_id", clubId);
       const map = new Map<string, { full_name: string | null; club_member_number: string | null }>();
-      (data || []).forEach((m: any) => map.set(m.id, { full_name: m.full_name, club_member_number: m.club_member_number }));
+      (data || []).forEach((m: any) => map.set(m.id, { full_name: m.name, club_member_number: m.club_member_number }));
       return map;
     },
   });
@@ -73,7 +73,9 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
       return (data || []) as unknown as Mandate[];
     },
   });
-  const mandates = mandatesRaw ? attachMember(mandatesRaw) as Mandate[] : undefined;
+  const mandates = mandatesRaw
+    ? (attachMember(mandatesRaw) as Mandate[]).filter(m => m.status !== "failed" && m.status !== "cancelled")
+    : undefined;
 
   const { data: collectionsRaw } = useQuery({
     queryKey: ["stitch_collections", clubId],

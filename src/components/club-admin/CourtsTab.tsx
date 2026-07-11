@@ -705,9 +705,23 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                   className="h-7 text-[11px] font-mono"
                 />
               )}
+              {lightsEnabled && (c as any).relay_ble_mac && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px] px-2 gap-1"
+                  disabled={!!testingBle[courtId]}
+                  onClick={() => handleTestBle(c as any)}
+                  title="Send a 3-second Bluetooth pulse directly to this court's Shelly relay (bypasses cloud, no billing)"
+                >
+                  <Bluetooth className="w-3 h-3" />
+                  {testingBle[courtId] ? "Pulsing…" : "Test BLE (3s)"}
+                </Button>
+              )}
               {lightsEnabled && c.relay_device_id && editingRelay[courtId] === undefined && (
                 <p className="text-[10px] text-muted-foreground">✅ Relay configured</p>
               )}
+
             </div>
           );
         })}

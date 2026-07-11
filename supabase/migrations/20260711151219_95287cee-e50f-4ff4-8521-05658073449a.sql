@@ -1,0 +1,1 @@
+CREATE POLICY "Platform admins view all mandates" ON public.stitch_mandates FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));

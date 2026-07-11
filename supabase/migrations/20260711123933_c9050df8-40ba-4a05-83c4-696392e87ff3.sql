@@ -1,0 +1,2 @@
+ALTER TABLE public.club_champs_matches ADD COLUMN IF NOT EXISTS pool_number integer;
+CREATE INDEX IF NOT EXISTS idx_ccm_champ_group_pool_round ON public.club_champs_matches (champ_id, group_number, pool_number, round_number);

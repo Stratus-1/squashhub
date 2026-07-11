@@ -1253,6 +1253,7 @@ export type Database = {
           partner_b_member_id: string | null
           player_a_member_id: string
           player_b_member_id: string
+          pool_number: number | null
           round_number: number
           scheduled_date: string | null
           scheduled_time: string | null
@@ -1283,6 +1284,7 @@ export type Database = {
           partner_b_member_id?: string | null
           player_a_member_id: string
           player_b_member_id: string
+          pool_number?: number | null
           round_number?: number
           scheduled_date?: string | null
           scheduled_time?: string | null
@@ -1313,6 +1315,7 @@ export type Database = {
           partner_b_member_id?: string | null
           player_a_member_id?: string
           player_b_member_id?: string
+          pool_number?: number | null
           round_number?: number
           scheduled_date?: string | null
           scheduled_time?: string | null
@@ -7550,6 +7553,7 @@ export type Database = {
           partner_b_member_id: string | null
           player_a_member_id: string
           player_b_member_id: string
+          pool_number: number | null
           round_number: number
           scheduled_date: string | null
           scheduled_time: string | null
@@ -7625,6 +7629,7 @@ export type Database = {
           partner_b_member_id: string | null
           player_a_member_id: string
           player_b_member_id: string
+          pool_number: number | null
           round_number: number
           scheduled_date: string | null
           scheduled_time: string | null

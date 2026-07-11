@@ -61,6 +61,8 @@ import { useClubCurrency } from "@/hooks/use-currency";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
 import { useHasPermission } from "@/hooks/use-club-permissions";
+import { OpsBookingDialog } from "@/components/OpsBookingDialog";
+import { Wrench } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { enqueueOutbox } from "@/lib/outbox";
 import { checkBookingBalance } from "@/lib/booking-balance-gate";

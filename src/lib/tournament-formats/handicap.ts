@@ -726,10 +726,25 @@ export async function applyHandicapsToChamp(
   // global index (offset + player_rank); for club_ladder we use the
   // ladder_position directly. Both let us compute gap = |a - b|.
   let scoreByMember = new Map<string, number>();
+
+  // For history mode we need the match roster up front so the loader
+  // can scope its history query and residual math to actual participants.
+  const { data: matches } = await fromExt("club_champs_matches")
+    .select("id, player_a_member_id, player_b_member_id, status, handicap_a, handicap_b, handicap_locked, is_bye")
+    .eq("champ_id", champId);
+  if (!matches || matches.length === 0) return 0;
+
   if (opts.scoreByMember && opts.scoreByMember.size > 0) {
     scoreByMember = opts.scoreByMember;
   } else if (mode === "club_ladder") {
     scoreByMember = await loadClubLadderPositions(clubId);
+  } else if (mode === "ladder_history") {
+    const roster = new Set<string>();
+    (matches as any[]).forEach((m) => {
+      if (m.player_a_member_id) roster.add(m.player_a_member_id);
+      if (m.player_b_member_id) roster.add(m.player_b_member_id);
+    });
+    scoreByMember = await loadHistoryAdjustedLadderScores(clubId, Array.from(roster));
   } else {
     const ctx = await loadClubLadderContext(clubId);
     if (!ctx) return 0;
@@ -740,10 +755,6 @@ export async function applyHandicapsToChamp(
     });
   }
 
-  const { data: matches } = await fromExt("club_champs_matches")
-    .select("id, player_a_member_id, player_b_member_id, status, handicap_a, handicap_b, handicap_locked, is_bye")
-    .eq("champ_id", champId);
-  if (!matches || matches.length === 0) return 0;
 
   let updated = 0;
   for (const m of matches as any[]) {

@@ -557,6 +557,139 @@ export default function ClubChampsView() {
     onError: (err: any) => toast.error(err.message || "Failed to reschedule"),
   });
 
+  // ── Swiss pairing ────────────────────────────────────────────────────────
+  const isSwiss = (champ as any)?.scoring_mode === "swiss";
+  const swissPools: Record<string, number> = ((champ as any)?.swiss_pools as Record<string, number>) || {};
+  const swissRounds: Record<string, number> = ((champ as any)?.swiss_rounds as Record<string, number>) || {};
+
+  const swissPairMutation = useMutation({
+    mutationFn: async ({ groupNumber, poolNumber, roundNumber }: { groupNumber: number; poolNumber: number; roundNumber: number }) => {
+      if (!champ) throw new Error("Tournament not loaded");
+      const poolCount = Math.max(1, Number(swissPools[String(groupNumber)]) || 1);
+      const isDoubles = (champ as any).match_type === "doubles";
+      const pools = assignPools(entries as SwissEntry[], groupNumber, poolCount, isDoubles);
+
+      // Entities in this specific pool (with lead + partner member ids for insert)
+      const entityRows = (entries as any[])
+        .filter((e) => e.group_number === groupNumber)
+        .filter((e) => pools.get(entityIdForEntry(e as SwissEntry, isDoubles)) === poolNumber)
+        .map((e) => ({
+          entityId: entityIdForEntry(e as SwissEntry, isDoubles),
+          memberId: e.club_member_id as string,
+          partnerId: (e.partner_member_id as string | null) ?? null,
+        }));
+
+      if (entityRows.length < 2) throw new Error("Pool needs at least 2 players.");
+
+      const standings = poolStandings(entityRows, matches as SwissMatch[], groupNumber, poolNumber, isDoubles);
+      const proposals = pairNextRound(standings);
+
+      const byMember = new Map(entityRows.map((r) => [r.entityId, r]));
+      const rows = proposals.map((p) => {
+        const a = byMember.get(p.entityA)!;
+        const b = byMember.get(p.entityB)!;
+        if (p.bye) {
+          return {
+            champ_id: champId,
+            group_number: groupNumber,
+            pool_number: poolNumber,
+            round_number: roundNumber,
+            player_a_member_id: a.memberId,
+            partner_a_member_id: isDoubles ? a.partnerId : null,
+            player_b_member_id: null,
+            partner_b_member_id: null,
+            status: "scheduled",
+            is_bye: true,
+            bye_member_id: a.memberId,
+          };
+        }
+        return {
+          champ_id: champId,
+          group_number: groupNumber,
+          pool_number: poolNumber,
+          round_number: roundNumber,
+          player_a_member_id: a.memberId,
+          partner_a_member_id: isDoubles ? a.partnerId : null,
+          player_b_member_id: b.memberId,
+          partner_b_member_id: isDoubles ? b.partnerId : null,
+          status: "scheduled",
+          is_bye: false,
+        };
+      });
+
+      const { error } = await fromExt("club_champs_matches").insert(rows as any);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (n, vars) => {
+      toast.success(`Paired round ${vars.roundNumber} — ${n} match${n === 1 ? "" : "es"} created (TBD slots).`);
+      qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to pair round"),
+  });
+
+  const swissControlsFor = (groupNumber: number) => {
+    if (!isSwiss || !canManage) return null;
+    const poolCount = Math.max(1, Number(swissPools[String(groupNumber)]) || 1);
+    const targetRounds = Math.max(1, Number(swissRounds[String(groupNumber)]) || 0);
+    const isDoubles = (champ as any).match_type === "doubles";
+    const pools = assignPools(entries as SwissEntry[], groupNumber, poolCount, isDoubles);
+
+    return (
+      <div className="flex flex-col gap-2 mb-3 p-2 rounded-md border bg-muted/30">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+          <Shuffle className="w-3 h-3" /> Swiss pairing · {poolCount} pool{poolCount === 1 ? "" : "s"} · {targetRounds || "?"} rounds
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: poolCount }).map((_, pi) => {
+            const poolNumber = pi + 1;
+            const poolMemberIds = new Set(
+              (entries as any[])
+                .filter((e) => e.group_number === groupNumber)
+                .filter((e) => pools.get(entityIdForEntry(e as SwissEntry, isDoubles)) === poolNumber)
+                .map((e) => e.club_member_id as string),
+            );
+            const poolMatches = (matches as any[]).filter(
+              (m) => m.group_number === groupNumber && (m.pool_number ?? null) === poolNumber,
+            );
+            const roundsDone = new Set(poolMatches.map((m: any) => m.round_number).filter(Boolean));
+            const anyIncomplete = poolMatches.some((m: any) => m.status !== "completed" && !m.is_bye);
+            const nextRound = (Math.max(0, ...Array.from(roundsDone))) + 1;
+            const disabled =
+              !poolMemberIds.size ||
+              anyIncomplete ||
+              (targetRounds > 0 && nextRound > targetRounds) ||
+              swissPairMutation.isPending;
+            const label = String.fromCharCode(64 + poolNumber);
+            return (
+              <Button
+                key={poolNumber}
+                size="sm"
+                variant="outline"
+                disabled={disabled}
+                onClick={() => swissPairMutation.mutate({ groupNumber, poolNumber, roundNumber: nextRound })}
+                title={
+                  anyIncomplete
+                    ? "Finish all current-round matches before pairing next round"
+                    : targetRounds > 0 && nextRound > targetRounds
+                    ? "All configured rounds have been paired"
+                    : `Auto-pair pool ${label}, round ${nextRound}`
+                }
+              >
+                Pool {label} · Pair round {Math.min(nextRound, targetRounds || nextRound)}
+                <Badge variant="secondary" className="ml-2 text-[10px]">{poolMemberIds.size} {isDoubles ? "pairs" : "players"}</Badge>
+              </Button>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Pairs by current score, avoids rematches. Slots created as TBD — use “Reschedule TBD” above to place courts and times.
+        </p>
+      </div>
+    );
+  };
+
+
   // Safety-net: if the tournament is not visible on the current host (typically
   // because the user opened the invite link on www.squashhub.co.za but the
   // tournament belongs to a club subdomain like nsc.squashhub.co.za), look up

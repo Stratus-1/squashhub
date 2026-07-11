@@ -4073,6 +4073,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     />
                     By club ladder
                   </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="handicap-mode"
+                      checked={handicapMode === "ladder_history"}
+                      onChange={() => setHandicapMode("ladder_history")}
+                    />
+                    By ladder + recent form (90d)
+                  </label>
                 </div>
                 {handicapMode === "group_order" && Array.isArray(groups) && groups.length > 1 && (
                   <div className="rounded-md border border-border/60 bg-background p-2 space-y-1.5">

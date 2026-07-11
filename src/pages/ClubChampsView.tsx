@@ -1787,7 +1787,7 @@ export default function ClubChampsView() {
         standingsCards.push(
           <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
             <CardHeader>{titleNode}</CardHeader>
-            <CardContent>{standingsTable}</CardContent>
+            <CardContent>{swissControlsFor(gn)}{standingsTable}</CardContent>
           </Card>
         );
         fixtureCards.push(
@@ -1808,6 +1808,7 @@ export default function ClubChampsView() {
           <Card key={gn} className={cn(isLeading && "border-primary/40")}>
             <CardHeader>{titleNode}</CardHeader>
             <CardContent className="space-y-4">
+              {swissControlsFor(gn)}
               {standingsTable}
               {!isCrossLeague && (
                 <>

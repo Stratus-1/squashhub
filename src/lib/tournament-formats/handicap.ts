@@ -569,6 +569,18 @@ export async function computeChampLadderSuggestions(
   clubId: string,
   champId: string,
 ): Promise<LadderSuggestion[]> {
+  // Load the champ to know its gender scope — a men's tournament must not
+  // suggest moving ladies (they live on a separate ladder) and vice versa.
+  const { data: champ } = await fromExt("club_champs")
+    .select("gender")
+    .eq("id", champId)
+    .maybeSingle();
+  const champGender = String((champ as any)?.gender || "").toLowerCase();
+  const genderScope: "men" | "ladies" | null =
+    champGender === "men" ? "men"
+    : champGender === "ladies" ? "ladies"
+    : null; // mixed / open / unknown → no filter
+
   const { data: matches } = await fromExt("club_champs_matches")
     .select("player_a_member_id, player_b_member_id, side_a_points, side_b_points, status, is_bye")
     .eq("champ_id", champId)
@@ -597,8 +609,35 @@ export async function computeChampLadderSuggestions(
   }
 
   const positions = await loadClubLadderPositions(clubId);
+
+  // Pull member gender for the residual roster so we can drop players
+  // whose gender doesn't match this tournament's scope. Ladies and men
+  // sit on separate ladders — mixing them in the same suggestion list
+  // makes no sense (e.g. moving a ladies-ladder player based on a men's
+  // tournament result).
+  const rosterIds = Array.from(memberIds);
+  const genderById = new Map<string, string>();
+  if (genderScope && rosterIds.length > 0) {
+    const { data: mem } = await fromExt("club_members")
+      .select("id, gender")
+      .in("id", rosterIds);
+    (mem || []).forEach((m: any) => {
+      genderById.set(m.id, String(m.gender || "").toLowerCase());
+    });
+  }
+  const matchesScope = (id: string) => {
+    if (!genderScope) return true;
+    const g = genderById.get(id);
+    // Only exclude when we know the gender AND it disagrees. Unknown
+    // gender is kept (better a stray suggestion than a silent drop).
+    if (!g) return true;
+    if (genderScope === "men") return g === "male" || g === "m" || g === "men";
+    return g === "female" || g === "f" || g === "ladies" || g === "women";
+  };
+
   const involved: Array<{ id: string; pos: number; avg: number; n: number; adj: number }> = [];
   memberIds.forEach((id) => {
+    if (!matchesScope(id)) return;
     const pos = positions.get(id);
     if (typeof pos !== "number") return;
     const r = residuals.get(id)!;

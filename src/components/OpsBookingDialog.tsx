@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -70,9 +70,20 @@ export function OpsBookingDialog({
     setRecurring(false);
   };
 
+  // Ensure a court is selected once courts arrive (or when they change)
+  useEffect(() => {
+    if (courts.length > 0 && (courtId == null || !courts.some((c) => c.id === courtId))) {
+      setCourtId(courts[0].id);
+    }
+  }, [courts, courtId]);
+
   const submit = async () => {
-    if (!user?.id || !activeMember?.id || !courtId) {
-      toast.error("Missing court or user info");
+    if (!user?.id) {
+      toast.error("You must be signed in");
+      return;
+    }
+    if (!courtId) {
+      toast.error("Please pick a court");
       return;
     }
     setSubmitting(true);
@@ -98,7 +109,7 @@ export function OpsBookingDialog({
         start_time: `${startTime}:00`,
         end_time: `${endTime}:00`,
         user_id: user.id,
-        club_member_id: activeMember.id,
+        club_member_id: activeMember?.id ?? null,
         booking_type: "ops",
         ops_purpose: purpose,
         ops_note: note || null,

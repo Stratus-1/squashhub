@@ -875,15 +875,22 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
 
 
-  // Compute fee summary
-  const totalExpected = members.reduce((sum, m) => {
-    const fees = getFeesForMember(m);
-    return sum + fees.reduce((s, f) => s + f.amount, 0);
-  }, 0);
-  const totalPaid = members.reduce((sum, m) => {
-    const fees = getFeesForMember(m);
-    return sum + fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
-  }, 0);
+  // Compute fee summary from the GL (debtors billed vs paid) so this matches
+  // the Member Statement and Member Balances dialog exactly. Falls back to
+  // fee-row amounts for members with no GL activity yet.
+  let totalExpected = 0;
+  let totalPaid = 0;
+  for (const m of members) {
+    const gl = glByMember.get(m.id);
+    if (gl && gl.billed > 0) {
+      totalExpected += gl.billed;
+      totalPaid += gl.paid;
+    } else {
+      const fees = getFeesForMember(m);
+      totalExpected += fees.reduce((s, f) => s + f.amount, 0);
+      totalPaid += fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
+    }
+  }
 
   return (
     <div className="space-y-4 mt-4">

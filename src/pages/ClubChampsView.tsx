@@ -18,6 +18,7 @@ import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
+import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { UserX, Trophy } from "lucide-react";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -1704,12 +1705,20 @@ export default function ClubChampsView() {
         </CardContent>
       </Card>
     ) : null;
+    const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";
     return (
       <>
         {summary}
         {winnersCard}
         {woodenSpoonsCard}
         {standingsCards}
+        {isHandicapChamp && champ?.club_id && (
+          <ChampLadderSuggestions
+            champId={champId!}
+            clubId={champ.club_id}
+            isAdmin={canManage}
+          />
+        )}
         {fixtureCards}
         {combinedFixtures}
       </>

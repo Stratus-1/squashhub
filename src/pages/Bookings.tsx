@@ -1488,20 +1488,6 @@ export default function Bookings() {
         </div>
       )}
       <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} isAdmin={isMemberAdmin} isSuperAdmin={isSuperAdmin} />
-          {canOpsBook && myClub?.id && (courtsData?.length ?? 0) > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs"
-              onClick={() => setOpsDialogOpen(true)}
-            >
-              <Wrench className="w-3.5 h-3.5 mr-1" />
-              Maintenance / Cleaning
-            </Button>
-          )}
-        </div>
-      )}
-      <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} isAdmin={isMemberAdmin} isSuperAdmin={isSuperAdmin} />
       {isFullAdmin && myClub?.id && (
         <BulkLeagueBookingsDialog open={bulkLeagueOpen} onOpenChange={setBulkLeagueOpen} clubId={myClub.id} />
       )}

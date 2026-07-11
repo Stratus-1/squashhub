@@ -562,6 +562,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          booking_type: string
           challenge_id: string | null
           club_id: string | null
           club_member_id: string | null
@@ -578,6 +579,9 @@ export type Database = {
           lights_requested: boolean
           opponent_id: string | null
           opponent_member_id: string | null
+          ops_note: string | null
+          ops_photo_url: string | null
+          ops_purpose: string | null
           shelly_schedule_off_id: string | null
           shelly_schedule_on_id: string | null
           source: string
@@ -586,6 +590,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          booking_type?: string
           challenge_id?: string | null
           club_id?: string | null
           club_member_id?: string | null
@@ -602,6 +607,9 @@ export type Database = {
           lights_requested?: boolean
           opponent_id?: string | null
           opponent_member_id?: string | null
+          ops_note?: string | null
+          ops_photo_url?: string | null
+          ops_purpose?: string | null
           shelly_schedule_off_id?: string | null
           shelly_schedule_on_id?: string | null
           source?: string
@@ -610,6 +618,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          booking_type?: string
           challenge_id?: string | null
           club_id?: string | null
           club_member_id?: string | null
@@ -626,6 +635,9 @@ export type Database = {
           lights_requested?: boolean
           opponent_id?: string | null
           opponent_member_id?: string | null
+          ops_note?: string | null
+          ops_photo_url?: string | null
+          ops_purpose?: string | null
           shelly_schedule_off_id?: string | null
           shelly_schedule_on_id?: string | null
           source?: string
@@ -4586,6 +4598,7 @@ export type Database = {
           fee_charged: number | null
           fee_per_hour: number | null
           id: string
+          purpose: string
           started_at: string
           status: string
           user_id: string
@@ -4600,6 +4613,7 @@ export type Database = {
           fee_charged?: number | null
           fee_per_hour?: number | null
           id?: string
+          purpose?: string
           started_at?: string
           status?: string
           user_id: string
@@ -4614,6 +4628,7 @@ export type Database = {
           fee_charged?: number | null
           fee_per_hour?: number | null
           id?: string
+          purpose?: string
           started_at?: string
           status?: string
           user_id?: string
@@ -6242,34 +6257,43 @@ export type Database = {
       recurring_bookings: {
         Row: {
           active: boolean
+          booking_type: string
           club_id: string | null
           court_id: number
           created_at: string
           day_of_week: number
           end_time: string
           id: string
+          ops_note: string | null
+          ops_purpose: string | null
           start_time: string
           user_id: string
         }
         Insert: {
           active?: boolean
+          booking_type?: string
           club_id?: string | null
           court_id: number
           created_at?: string
           day_of_week: number
           end_time: string
           id?: string
+          ops_note?: string | null
+          ops_purpose?: string | null
           start_time: string
           user_id: string
         }
         Update: {
           active?: boolean
+          booking_type?: string
           club_id?: string | null
           court_id?: number
           created_at?: string
           day_of_week?: number
           end_time?: string
           id?: string
+          ops_note?: string | null
+          ops_purpose?: string | null
           start_time?: string
           user_id?: string
         }

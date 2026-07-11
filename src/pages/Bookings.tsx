@@ -61,6 +61,8 @@ import { useClubCurrency } from "@/hooks/use-currency";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
 import { useHasPermission } from "@/hooks/use-club-permissions";
+import { OpsBookingDialog } from "@/components/OpsBookingDialog";
+import { Wrench } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { enqueueOutbox } from "@/lib/outbox";
 import { checkBookingBalance } from "@/lib/booking-balance-gate";
@@ -360,6 +362,8 @@ export default function Bookings() {
   const isFullAdmin = useIsClubAdmin();
   const canBypassBookingLimits = useHasPermission("bookings_unlimited");
   const canBypassNonPeak = useHasPermission("bookings_unlimited_non_peak");
+  const canOpsBook = useHasPermission("ops_booking");
+  const [opsDialogOpen, setOpsDialogOpen] = useState(false);
   const bookingLimitsBypassed = isFullAdmin || canBypassBookingLimits;
   const myClub = myClubData?.club;
   const { format: fmtMoney } = useClubCurrency();
@@ -1481,11 +1485,31 @@ export default function Bookings() {
               Bulk book league fixtures
             </Button>
           )}
+          {canOpsBook && myClub?.id && (courtsData?.length ?? 0) > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() => setOpsDialogOpen(true)}
+            >
+              <Wrench className="w-3.5 h-3.5 mr-1" />
+              Maintenance / Cleaning
+            </Button>
+          )}
         </div>
       )}
       <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} isAdmin={isMemberAdmin} isSuperAdmin={isSuperAdmin} />
       {isFullAdmin && myClub?.id && (
         <BulkLeagueBookingsDialog open={bulkLeagueOpen} onOpenChange={setBulkLeagueOpen} clubId={myClub.id} />
+      )}
+      {canOpsBook && myClub?.id && (
+        <OpsBookingDialog
+          open={opsDialogOpen}
+          onOpenChange={setOpsDialogOpen}
+          clubId={myClub.id}
+          courts={(courtsData || []) as any}
+          defaultDate={selectedDate}
+        />
       )}
 
       {/* Court availability stats */}

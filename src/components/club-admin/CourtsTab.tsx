@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Club, useUpdateClub } from "@/hooks/use-club";
 import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
+import { pulseShellyBleAuto, isBleFallbackAvailable } from "@/lib/shelly-ble-auto";
+import { Bluetooth } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

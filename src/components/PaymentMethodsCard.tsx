@@ -96,6 +96,26 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     [mandates],
   );
 
+  // Refresh a single pending mandate against Stitch (webhook may have missed it)
+  async function refreshMandate(mandateId: string, silent = false) {
+    try {
+      const { data, error } = await supabase.functions.invoke("stitch-refresh-mandate", {
+        body: { mandate_id: mandateId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      qc.invalidateQueries({ queryKey: ["stitch-mandates", clubMemberId] });
+      if (!silent) {
+        const s = (data as any)?.status;
+        if (s === "active") toast.success("Card payment is now active");
+        else if (s === "pending") toast.info("Still awaiting authorisation on Stitch");
+        else toast.info(`Status: ${s}`);
+      }
+    } catch (e: any) {
+      if (!silent) toast.error(e?.message || "Could not refresh status");
+    }
+  }
+
   // On return from Stitch, refresh
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -105,6 +125,13 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       window.history.replaceState({}, "", url.toString());
     }
   }, [clubMemberId, qc]);
+
+  // Auto-sync any pending mandates on mount (covers missed webhooks)
+  useEffect(() => {
+    const pending = mandates.filter((m) => m.status === "pending");
+    pending.forEach((m) => refreshMandate(m.id, true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mandates.length]);
 
   // Auto-recalculate monthly amount when months changes (unless user typed an override)
   // MUST be declared before any conditional early-return to satisfy Rules of Hooks.
@@ -264,10 +291,21 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                     {m.debit_day ? ` · monthly charge day ${m.debit_day}` : ""}
                   </p>
 
-                  {m.status === "pending" && m.auth_url && (
-                    <a href={normalizeAuthUrl(m.auth_url)} className="text-[11px] text-primary underline">
-                      Complete authorisation →
-                    </a>
+                  {m.status === "pending" && (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {m.auth_url && (
+                        <a href={normalizeAuthUrl(m.auth_url)} className="text-[11px] text-primary underline">
+                          Complete authorisation →
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => refreshMandate(m.id)}
+                        className="text-[11px] text-muted-foreground underline"
+                      >
+                        Check status
+                      </button>
+                    </div>
                   )}
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => cancelMandate(m.id)} className="h-7 px-2">

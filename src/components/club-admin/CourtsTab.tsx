@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Club, useUpdateClub } from "@/hooks/use-club";
 import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
+import { pulseShellyBleAuto, isBleFallbackAvailable } from "@/lib/shelly-ble-auto";
+import { Bluetooth } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -512,6 +514,35 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   const [editingServer, setEditingServer] = useState<Record<number, string>>({});
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; court: { id: number; name: string } | null }>({ open: false, court: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [testingBle, setTestingBle] = useState<Record<number, boolean>>({});
+  const { data: secrets } = useClubSecrets(clubId);
+
+  const handleTestBle = async (court: { id: number; name: string } & Record<string, any>) => {
+    const mac = court.relay_ble_mac as string | null;
+    if (!mac) { toast.error("Save a BLE MAC for this court first"); return; }
+    if (!isBleFallbackAvailable()) {
+      toast.error("This device can't use Bluetooth — install the SquashHub app (iOS/Android) or open in Chrome on Android/desktop");
+      return;
+    }
+    const s: any = secrets || {};
+    setTestingBle(prev => ({ ...prev, [court.id]: true }));
+    try {
+      await pulseShellyBleAuto({
+        mac,
+        password: s.shelly_ble_control_password ?? undefined,
+        channel: Number(court.relay_channel ?? 0),
+        pulseMs: 3000, // short test pulse — do NOT bill or start a light session
+        turn: "on",
+      });
+      toast.success(`${court.name} lights pulsed via Bluetooth (3s test)`);
+    } catch (e: any) {
+      toast.error(e?.message || "Bluetooth test failed");
+    } finally {
+      setTestingBle(prev => ({ ...prev, [court.id]: false }));
+    }
+  };
+
+
 
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-courts", clubId],
@@ -674,9 +705,23 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                   className="h-7 text-[11px] font-mono"
                 />
               )}
+              {lightsEnabled && (c as any).relay_ble_mac && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px] px-2 gap-1"
+                  disabled={!!testingBle[courtId]}
+                  onClick={() => handleTestBle(c as any)}
+                  title="Send a 3-second Bluetooth pulse directly to this court's Shelly relay (bypasses cloud, no billing)"
+                >
+                  <Bluetooth className="w-3 h-3" />
+                  {testingBle[courtId] ? "Pulsing…" : "Test BLE (3s)"}
+                </Button>
+              )}
               {lightsEnabled && c.relay_device_id && editingRelay[courtId] === undefined && (
                 <p className="text-[10px] text-muted-foreground">✅ Relay configured</p>
               )}
+
             </div>
           );
         })}

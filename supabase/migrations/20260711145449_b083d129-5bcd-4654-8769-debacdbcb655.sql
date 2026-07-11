@@ -1,0 +1,1 @@
+UPDATE public.stitch_mandates SET status='active', authorised_at=COALESCE(authorised_at, now()), updated_at=now() WHERE id='9d71a7a4-0621-4256-b93a-75922719f0f6';

@@ -109,7 +109,7 @@ export function OpsBookingDialog({
         start_time: `${startTime}:00`,
         end_time: `${endTime}:00`,
         user_id: user.id,
-        club_member_id: activeMember.id,
+        club_member_id: activeMember?.id ?? null,
         booking_type: "ops",
         ops_purpose: purpose,
         ops_note: note || null,

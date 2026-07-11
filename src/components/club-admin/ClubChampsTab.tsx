@@ -4626,93 +4626,163 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </p>
             <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCrossLeagueDragEnd}>
               <div className="space-y-4">
-                {isDoubles ? (
-                  (groups as DoublePair[][]).map((g, gi) => (
-                    <DroppableLeague key={gi} id={`league-${gi}`} className="border rounded-lg p-3 min-h-[60px] transition-colors">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm font-medium">League</span>
-                        <Input
-                          value={groupLabels[String(gi + 1)] ?? ""}
-                          placeholder={String(gi + 1)}
-                          onChange={(e) => setGroupLabels((p) => ({ ...p, [String(gi + 1)]: e.target.value }))}
-                          className="h-7 w-20 text-sm"
-                        />
-                        <span className="text-muted-foreground text-xs">({g.length} pairs)</span>
-                      </div>
-                      <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-                        <div className="space-y-1">
-                          {g.length === 0 && (
-                            <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
-                          )}
-                          {g.map((pair) => (
-                            <SortableRow key={pair.id} id={pair.id}>
-                              <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                              <span className="flex-1 text-sm font-medium">{getPairLabel(pair)}</span>
-                              <Select
-                                value={String(pairGroupAssignments.get(pair.id) ?? 0)}
-                                onValueChange={(v) => {
-                                  const newMap = new Map(pairGroupAssignments);
-                                  newMap.set(pair.id, Number(v));
-                                  setPairGroupAssignments(newMap);
-                                }}
-                              >
-                                <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: numGroups }, (_, i) => (
-                                    <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </SortableRow>
-                          ))}
-                        </div>
-                      </SortableContext>
-                    </DroppableLeague>
-                  ))
-                ) : (
-                  (groups as ClubMember[][]).map((g, gi) => (
-                    <DroppableLeague key={gi} id={`league-${gi}`} className="border rounded-lg p-3 min-h-[60px] transition-colors">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm font-medium">League</span>
-                        <Input
-                          value={groupLabels[String(gi + 1)] ?? ""}
-                          placeholder={String(gi + 1)}
-                          onChange={(e) => setGroupLabels((p) => ({ ...p, [String(gi + 1)]: e.target.value }))}
-                          className="h-7 w-20 text-sm"
-                        />
-                        <span className="text-muted-foreground text-xs">({g.length} players)</span>
-                      </div>
-                      <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-                        <div className="space-y-1">
-                          {g.length === 0 && (
-                            <p className="text-[11px] text-muted-foreground italic py-2">Drop players here</p>
-                          )}
-                          {g.map((p) => (
-                            <SortableRow key={p.id} id={p.id}>
-                              <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
-                              {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
-                              <Select
-                                value={String(groupAssignments.get(p.id) ?? 0)}
-                                onValueChange={(v) => {
-                                  const newMap = new Map(groupAssignments);
-                                  newMap.set(p.id, Number(v));
-                                  setGroupAssignments(newMap);
-                                }}
-                              >
-                                <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: numGroups }, (_, i) => (
-                                    <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </SortableRow>
-                          ))}
-                        </div>
-                      </SortableContext>
-                    </DroppableLeague>
-                  ))
-                )}
+                {(() => {
+                  const isSwissPools = roundFormat === "swiss";
+                  const poolsFor = (gi: number) =>
+                    isSwissPools ? Math.max(1, Number(swissPools[String(gi + 1)]) || 1) : 1;
+                  // Snake distribution so strength balances across pools within a league.
+                  const poolIdx = (i: number, pools: number) => {
+                    if (pools <= 1) return 0;
+                    const cycle = Math.floor(i / pools);
+                    return cycle % 2 === 0 ? i % pools : pools - 1 - (i % pools);
+                  };
+                  const poolLetter = (p: number) => String.fromCharCode(65 + p);
+                  const poolTint = [
+                    "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30",
+                    "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30",
+                    "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+                    "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30",
+                    "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30",
+                  ];
+
+                  return isDoubles ? (
+                    (groups as DoublePair[][]).map((g, gi) => {
+                      const pools = poolsFor(gi);
+                      return (
+                        <DroppableLeague key={gi} id={`league-${gi}`} className="border rounded-lg p-3 min-h-[60px] transition-colors">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="text-sm font-medium">League</span>
+                            <Input
+                              value={groupLabels[String(gi + 1)] ?? ""}
+                              placeholder={String(gi + 1)}
+                              onChange={(e) => setGroupLabels((p) => ({ ...p, [String(gi + 1)]: e.target.value }))}
+                              className="h-7 w-20 text-sm"
+                            />
+                            <span className="text-muted-foreground text-xs">({g.length} pairs)</span>
+                            {isSwissPools && pools > 1 && (
+                              <Badge variant="outline" className="text-[10px]">
+                                {pools} pools · snake-balanced
+                              </Badge>
+                            )}
+                          </div>
+                          <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                            <div className="space-y-1">
+                              {g.length === 0 && (
+                                <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
+                              )}
+                              {g.map((pair, i) => {
+                                const p = poolIdx(i, pools);
+                                const prevP = i > 0 ? poolIdx(i - 1, pools) : -1;
+                                const showHeader = isSwissPools && pools > 1 && p !== prevP;
+                                return (
+                                  <div key={pair.id}>
+                                    {showHeader && (
+                                      <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[p % poolTint.length]}`}>
+                                        Pool {poolLetter(p)}
+                                      </div>
+                                    )}
+                                    <SortableRow id={pair.id}>
+                                      <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                      <span className="flex-1 text-sm font-medium">{getPairLabel(pair)}</span>
+                                      {isSwissPools && pools > 1 && (
+                                        <Badge variant="outline" className={`text-[10px] ${poolTint[p % poolTint.length]}`}>
+                                          {poolLetter(p)}
+                                        </Badge>
+                                      )}
+                                      <Select
+                                        value={String(pairGroupAssignments.get(pair.id) ?? 0)}
+                                        onValueChange={(v) => {
+                                          const newMap = new Map(pairGroupAssignments);
+                                          newMap.set(pair.id, Number(v));
+                                          setPairGroupAssignments(newMap);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {Array.from({ length: numGroups }, (_, i) => (
+                                            <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </SortableRow>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </SortableContext>
+                        </DroppableLeague>
+                      );
+                    })
+                  ) : (
+                    (groups as ClubMember[][]).map((g, gi) => {
+                      const pools = poolsFor(gi);
+                      return (
+                        <DroppableLeague key={gi} id={`league-${gi}`} className="border rounded-lg p-3 min-h-[60px] transition-colors">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="text-sm font-medium">League</span>
+                            <Input
+                              value={groupLabels[String(gi + 1)] ?? ""}
+                              placeholder={String(gi + 1)}
+                              onChange={(e) => setGroupLabels((p) => ({ ...p, [String(gi + 1)]: e.target.value }))}
+                              className="h-7 w-20 text-sm"
+                            />
+                            <span className="text-muted-foreground text-xs">({g.length} players)</span>
+                            {isSwissPools && pools > 1 && (
+                              <Badge variant="outline" className="text-[10px]">
+                                {pools} pools · snake-balanced
+                              </Badge>
+                            )}
+                          </div>
+                          <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                            <div className="space-y-1">
+                              {g.length === 0 && (
+                                <p className="text-[11px] text-muted-foreground italic py-2">Drop players here</p>
+                              )}
+                              {g.map((p, i) => {
+                                const pl = poolIdx(i, pools);
+                                const prevPl = i > 0 ? poolIdx(i - 1, pools) : -1;
+                                const showHeader = isSwissPools && pools > 1 && pl !== prevPl;
+                                return (
+                                  <div key={p.id}>
+                                    {showHeader && (
+                                      <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[pl % poolTint.length]}`}>
+                                        Pool {poolLetter(pl)}
+                                      </div>
+                                    )}
+                                    <SortableRow id={p.id}>
+                                      <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
+                                      {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
+                                      {isSwissPools && pools > 1 && (
+                                        <Badge variant="outline" className={`text-[10px] ${poolTint[pl % poolTint.length]}`}>
+                                          {poolLetter(pl)}
+                                        </Badge>
+                                      )}
+                                      <Select
+                                        value={String(groupAssignments.get(p.id) ?? 0)}
+                                        onValueChange={(v) => {
+                                          const newMap = new Map(groupAssignments);
+                                          newMap.set(p.id, Number(v));
+                                          setGroupAssignments(newMap);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {Array.from({ length: numGroups }, (_, i) => (
+                                            <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </SortableRow>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </SortableContext>
+                        </DroppableLeague>
+                      );
+                    })
+                  );
+                })()}
               </div>
             </DndContext>
           </CardContent>

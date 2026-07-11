@@ -116,7 +116,7 @@ export function OpsBookingDialog({
         ops_photo_url: photoUrl,
         guest_name: `🔧 ${purpose.charAt(0).toUpperCase() + purpose.slice(1)}`,
         is_friendly: true,
-        lights_requested: lightsOn ? `${dateStr} ${startTime}` : null,
+        lights_requested: lightsOn,
         light_fee_split: "none",
         status: "active",
         source: "squashhub",

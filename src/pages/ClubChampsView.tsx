@@ -1705,12 +1705,20 @@ export default function ClubChampsView() {
         </CardContent>
       </Card>
     ) : null;
+    const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";
     return (
       <>
         {summary}
         {winnersCard}
         {woodenSpoonsCard}
         {standingsCards}
+        {isHandicapChamp && champ?.club_id && (
+          <ChampLadderSuggestions
+            champId={champId!}
+            clubId={champ.club_id}
+            isAdmin={canManage}
+          />
+        )}
         {fixtureCards}
         {combinedFixtures}
       </>

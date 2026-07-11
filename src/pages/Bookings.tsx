@@ -362,6 +362,8 @@ export default function Bookings() {
   const isFullAdmin = useIsClubAdmin();
   const canBypassBookingLimits = useHasPermission("bookings_unlimited");
   const canBypassNonPeak = useHasPermission("bookings_unlimited_non_peak");
+  const canOpsBook = useHasPermission("ops_booking");
+  const [opsDialogOpen, setOpsDialogOpen] = useState(false);
   const bookingLimitsBypassed = isFullAdmin || canBypassBookingLimits;
   const myClub = myClubData?.club;
   const { format: fmtMoney } = useClubCurrency();

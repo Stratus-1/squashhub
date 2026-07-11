@@ -13,7 +13,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { triggerShellyDoor } from "@/lib/shelly-door";
-import { isBleFallbackAvailable } from "@/lib/shelly-ble-auto";
+import { isBleFallbackAvailable, pulseShellyBleAuto } from "@/lib/shelly-ble-auto";
 
 const ACCESS_METHODS = [
   { value: "none", label: "No Access Control", icon: Lock, description: "Courts are open — no electronic access system" },
@@ -591,6 +591,34 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                       This device can't use Bluetooth fallback — members need the SquashHub app (iOS or Android) or Chrome on Android/desktop for the fallback to work. iPhone browsers don't support Web Bluetooth.
                     </p>
                   )}
+                  <div className="md:col-span-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!form.shelly_door_ble_mac || !isBleFallbackAvailable()}
+                      onClick={async () => {
+                        try {
+                          await pulseShellyBleAuto({
+                            mac: form.shelly_door_ble_mac,
+                            password: form.shelly_ble_control_password || undefined,
+                            channel: Number(form.shelly_door_channel || 0),
+                            pulseMs: Number(form.shelly_door_pulse_ms || 3000),
+                            turn: "on",
+                          });
+                          toast.success("BLE pulse sent — door should have clicked");
+                        } catch (err: any) {
+                          toast.error(err?.message || "BLE test failed");
+                        }
+                      }}
+                    >
+                      <Bluetooth className="w-3.5 h-3.5 mr-1" />
+                      Test BLE only (bypass cloud)
+                    </Button>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Forces a direct Bluetooth pulse — use to verify the fallback works before you actually lose WiFi. Your phone must be within ~10 m of the Shelly.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

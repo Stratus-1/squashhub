@@ -569,6 +569,18 @@ export async function computeChampLadderSuggestions(
   clubId: string,
   champId: string,
 ): Promise<LadderSuggestion[]> {
+  // Load the champ to know its gender scope — a men's tournament must not
+  // suggest moving ladies (they live on a separate ladder) and vice versa.
+  const { data: champ } = await fromExt("club_champs")
+    .select("gender")
+    .eq("id", champId)
+    .maybeSingle();
+  const champGender = String((champ as any)?.gender || "").toLowerCase();
+  const genderScope: "men" | "ladies" | null =
+    champGender === "men" ? "men"
+    : champGender === "ladies" ? "ladies"
+    : null; // mixed / open / unknown → no filter
+
   const { data: matches } = await fromExt("club_champs_matches")
     .select("player_a_member_id, player_b_member_id, side_a_points, side_b_points, status, is_bye")
     .eq("champ_id", champId)

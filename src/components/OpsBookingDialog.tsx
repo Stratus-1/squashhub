@@ -70,9 +70,20 @@ export function OpsBookingDialog({
     setRecurring(false);
   };
 
+  // Ensure a court is selected once courts arrive (or when they change)
+  useEffect(() => {
+    if (courts.length > 0 && (courtId == null || !courts.some((c) => c.id === courtId))) {
+      setCourtId(courts[0].id);
+    }
+  }, [courts, courtId]);
+
   const submit = async () => {
-    if (!user?.id || !activeMember?.id || !courtId) {
-      toast.error("Missing court or user info");
+    if (!user?.id) {
+      toast.error("You must be signed in");
+      return;
+    }
+    if (!courtId) {
+      toast.error("Please pick a court");
       return;
     }
     setSubmitting(true);

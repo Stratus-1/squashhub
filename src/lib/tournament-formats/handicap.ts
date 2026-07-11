@@ -454,7 +454,175 @@ export async function loadClubLadderPositions(
   return out;
 }
 
-export type HandicapMode = "none" | "league_rank" | "club_ladder";
+export type HandicapMode = "none" | "league_rank" | "club_ladder" | "ladder_history";
+
+/**
+ * Ladder + recent history override.
+ *
+ * Uses `club_members.ladder_position` as the baseline strength score, then
+ * adjusts each player up or down based on how much they over- or under-
+ * performed the expected margin (post-handicap) in recent completed
+ * handicap tournament matches.
+ *
+ * Target: average post-handicap margin ≤ 3 points. Aggressive — no cap on
+ * the shift, so a player who won every match by +15 despite giving 10
+ * handicap will move sharply up the ladder.
+ *
+ * Returned scores are floats — smaller = stronger. Feed the map into
+ * `applyHandicapsToChamp` via `opts.scoreByMember`.
+ */
+export async function loadHistoryAdjustedLadderScores(
+  clubId: string,
+  memberIds: string[],
+  windowDays = 90,
+): Promise<Map<string, number>> {
+  const base = await loadClubLadderPositions(clubId);
+  if (memberIds.length === 0) return base;
+
+  // Recent completed handicap matches involving any of these members.
+  const sinceIso = new Date(Date.now() - windowDays * 86400_000).toISOString();
+  const { data: champs } = await fromExt("club_champs")
+    .select("id, handicap_mode, updated_at")
+    .eq("club_id", clubId)
+    .neq("handicap_mode", "none")
+    .gte("updated_at", sinceIso);
+  const champIds = (champs || []).map((c: any) => c.id);
+  if (champIds.length === 0) {
+    const out = new Map<string, number>();
+    memberIds.forEach((id) => {
+      const p = base.get(id);
+      if (typeof p === "number") out.set(id, p);
+    });
+    return out;
+  }
+
+  const { data: matches } = await fromExt("club_champs_matches")
+    .select("player_a_member_id, player_b_member_id, side_a_points, side_b_points, handicap_a, handicap_b, status, is_bye")
+    .in("champ_id", champIds)
+    .eq("status", "completed");
+
+  // Signed residual per member: positive = they overperformed the handicap
+  // (i.e. ladder underrates them, they should move up = lower position).
+  const residuals = new Map<string, { sum: number; n: number }>();
+  const bump = (mid: string, r: number) => {
+    if (!mid) return;
+    const cur = residuals.get(mid) ?? { sum: 0, n: 0 };
+    cur.sum += r;
+    cur.n += 1;
+    residuals.set(mid, cur);
+  };
+  for (const m of (matches || []) as any[]) {
+    if (m.is_bye) continue;
+    const spa = Number(m.side_a_points);
+    const spb = Number(m.side_b_points);
+    if (!Number.isFinite(spa) || !Number.isFinite(spb)) continue;
+    // Post-handicap margin. Handicaps are stored as starting scores (usually
+    // negative for the stronger player) — final margin = raw points diff.
+    // Residual for A = (A - B). Positive → A overperformed.
+    const margin = spa - spb;
+    bump(m.player_a_member_id, margin);
+    bump(m.player_b_member_id, -margin);
+  }
+
+  // Aggressive scaling: target avg margin ≤ 3, so shift ≈ avgResidual / 3.
+  // Positive shift → they should move UP (lower ladder position number).
+  const out = new Map<string, number>();
+  const allIds = new Set<string>([...memberIds, ...residuals.keys()]);
+  allIds.forEach((id) => {
+    const basePos = base.get(id);
+    if (typeof basePos !== "number") return;
+    const r = residuals.get(id);
+    let adjusted = basePos;
+    if (r && r.n > 0) {
+      const avg = r.sum / r.n;
+      adjusted = basePos - avg / 3; // subtract → move up when overperforming
+    }
+    out.set(id, adjusted);
+  });
+  // Restrict returned map to requested members (keeps applyHandicapsToChamp
+  // scoped to this tournament's roster).
+  const scoped = new Map<string, number>();
+  memberIds.forEach((id) => {
+    if (out.has(id)) scoped.set(id, out.get(id)!);
+  });
+  return scoped;
+}
+
+/**
+ * Suggest ladder-position moves for members of a single champ based on
+ * their post-handicap residuals in that champ's completed matches.
+ *
+ * Uses the same "avg residual / 3" aggressive shift, then re-ranks the
+ * involved members to derive integer new ladder positions while leaving
+ * everyone NOT in the tournament untouched.
+ */
+export type LadderSuggestion = {
+  member_id: string;
+  current_position: number;
+  suggested_position: number;
+  delta: number;
+  avg_residual: number;
+  sample_size: number;
+};
+
+export async function computeChampLadderSuggestions(
+  clubId: string,
+  champId: string,
+): Promise<LadderSuggestion[]> {
+  const { data: matches } = await fromExt("club_champs_matches")
+    .select("player_a_member_id, player_b_member_id, side_a_points, side_b_points, status, is_bye")
+    .eq("champ_id", champId)
+    .eq("status", "completed");
+  const rows = (matches || []) as any[];
+  if (rows.length === 0) return [];
+
+  const memberIds = new Set<string>();
+  const residuals = new Map<string, { sum: number; n: number }>();
+  const bump = (mid: string, r: number) => {
+    if (!mid) return;
+    memberIds.add(mid);
+    const cur = residuals.get(mid) ?? { sum: 0, n: 0 };
+    cur.sum += r;
+    cur.n += 1;
+    residuals.set(mid, cur);
+  };
+  for (const m of rows) {
+    if (m.is_bye) continue;
+    const spa = Number(m.side_a_points);
+    const spb = Number(m.side_b_points);
+    if (!Number.isFinite(spa) || !Number.isFinite(spb)) continue;
+    const margin = spa - spb;
+    bump(m.player_a_member_id, margin);
+    bump(m.player_b_member_id, -margin);
+  }
+
+  const positions = await loadClubLadderPositions(clubId);
+  const involved: Array<{ id: string; pos: number; avg: number; n: number; adj: number }> = [];
+  memberIds.forEach((id) => {
+    const pos = positions.get(id);
+    if (typeof pos !== "number") return;
+    const r = residuals.get(id)!;
+    const avg = r.sum / r.n;
+    involved.push({ id, pos, avg, n: r.n, adj: pos - avg / 3 });
+  });
+  if (involved.length === 0) return [];
+
+  // Re-rank involved members by adjusted score, then map back into the
+  // set of ladder slots they currently occupy (preserves everyone else).
+  const originalSlots = involved.map((x) => x.pos).sort((a, b) => a - b);
+  const rankedByAdj = [...involved].sort((a, b) => a.adj - b.adj || a.pos - b.pos);
+  const suggestions: LadderSuggestion[] = rankedByAdj.map((p, i) => ({
+    member_id: p.id,
+    current_position: p.pos,
+    suggested_position: originalSlots[i],
+    delta: originalSlots[i] - p.pos,
+    avg_residual: p.avg,
+    sample_size: p.n,
+  }));
+  return suggestions
+    .filter((s) => s.delta !== 0)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
 
 /**
  * Build a rank-score map from the tournament's own group ordering.

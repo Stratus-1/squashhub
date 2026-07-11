@@ -609,8 +609,35 @@ export async function computeChampLadderSuggestions(
   }
 
   const positions = await loadClubLadderPositions(clubId);
+
+  // Pull member gender for the residual roster so we can drop players
+  // whose gender doesn't match this tournament's scope. Ladies and men
+  // sit on separate ladders — mixing them in the same suggestion list
+  // makes no sense (e.g. moving a ladies-ladder player based on a men's
+  // tournament result).
+  const rosterIds = Array.from(memberIds);
+  const genderById = new Map<string, string>();
+  if (genderScope && rosterIds.length > 0) {
+    const { data: mem } = await fromExt("club_members")
+      .select("id, gender")
+      .in("id", rosterIds);
+    (mem || []).forEach((m: any) => {
+      genderById.set(m.id, String(m.gender || "").toLowerCase());
+    });
+  }
+  const matchesScope = (id: string) => {
+    if (!genderScope) return true;
+    const g = genderById.get(id);
+    // Only exclude when we know the gender AND it disagrees. Unknown
+    // gender is kept (better a stray suggestion than a silent drop).
+    if (!g) return true;
+    if (genderScope === "men") return g === "male" || g === "m" || g === "men";
+    return g === "female" || g === "f" || g === "ladies" || g === "women";
+  };
+
   const involved: Array<{ id: string; pos: number; avg: number; n: number; adj: number }> = [];
   memberIds.forEach((id) => {
+    if (!matchesScope(id)) return;
     const pos = positions.get(id);
     if (typeof pos !== "number") return;
     const r = residuals.get(id)!;

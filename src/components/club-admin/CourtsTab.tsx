@@ -514,6 +514,35 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   const [editingServer, setEditingServer] = useState<Record<number, string>>({});
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; court: { id: number; name: string } | null }>({ open: false, court: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [testingBle, setTestingBle] = useState<Record<number, boolean>>({});
+  const { data: secrets } = useClubSecrets(clubId);
+
+  const handleTestBle = async (court: { id: number; name: string } & Record<string, any>) => {
+    const mac = court.relay_ble_mac as string | null;
+    if (!mac) { toast.error("Save a BLE MAC for this court first"); return; }
+    if (!isBleFallbackAvailable()) {
+      toast.error("This device can't use Bluetooth — install the SquashHub app (iOS/Android) or open in Chrome on Android/desktop");
+      return;
+    }
+    const s: any = secrets || {};
+    setTestingBle(prev => ({ ...prev, [court.id]: true }));
+    try {
+      await pulseShellyBleAuto({
+        mac,
+        password: s.shelly_ble_control_password ?? undefined,
+        channel: Number(court.relay_channel ?? 0),
+        pulseMs: 3000, // short test pulse — do NOT bill or start a light session
+        turn: "on",
+      });
+      toast.success(`${court.name} lights pulsed via Bluetooth (3s test)`);
+    } catch (e: any) {
+      toast.error(e?.message || "Bluetooth test failed");
+    } finally {
+      setTestingBle(prev => ({ ...prev, [court.id]: false }));
+    }
+  };
+
+
 
   const { data: courts = [], isLoading } = useQuery({
     queryKey: ["club-courts", clubId],

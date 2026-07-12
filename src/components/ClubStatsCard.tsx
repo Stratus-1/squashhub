@@ -58,20 +58,20 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
   ];
 
   return (
-    <Card className="p-3 bg-white border-slate-200 text-slate-900 shadow-sm">
+    <Card className="p-3">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Club at a glance</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Club at a glance</h3>
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {stats.map((s) => (
-          <div key={s.label} className="flex flex-col items-center gap-1 rounded-md border border-slate-200 bg-white p-2">
+          <div key={s.label} className="flex flex-col items-center gap-1 rounded-md border border-border/60 bg-card p-2">
             <div className={cn("w-7 h-7 rounded-md flex items-center justify-center", s.color)}>
               <s.icon className="w-4 h-4" />
             </div>
-            <div className="text-base font-bold leading-none tabular-nums text-slate-900">
+            <div className="text-base font-bold leading-none tabular-nums">
               {isLoading ? "—" : s.value}
             </div>
-            <div className="text-[10px] text-slate-500 leading-tight text-center">{s.label}</div>
+            <div className="text-[10px] text-muted-foreground leading-tight text-center">{s.label}</div>
           </div>
         ))}
       </div>

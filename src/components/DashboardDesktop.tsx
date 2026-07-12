@@ -85,8 +85,8 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
   return (
     <div className="min-h-[calc(100vh-2.5rem)] relative font-sans">
-      {/* Soft tinted canvas — masks the global court photo and gives white tiles real contrast. */}
-      <div className="absolute inset-0 -z-10 bg-slate-100" aria-hidden="true" />
+      {/* Soft tinted canvas — masks the global court photo and gives tiles real contrast. */}
+      <div className="absolute inset-0 -z-10 bg-background" aria-hidden="true" />
 
       <div>
         <div className="px-8 pt-5 pb-4 flex items-end justify-between gap-4">
@@ -95,11 +95,11 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
               {props.clubLogoUrl && (
                 <img src={props.clubLogoUrl} alt="Club logo" className="h-5 w-5 object-contain rounded-sm shrink-0" />
               )}
-              <p className="text-[12px] font-sans font-medium text-slate-500 truncate">
+              <p className="text-[12px] font-sans font-medium text-muted-foreground truncate">
                 {props.clubName || "My Club"}
               </p>
             </div>
-            <h1 className="text-3xl font-sans font-bold text-slate-900 tracking-tight truncate">
+            <h1 className="text-3xl font-sans font-bold text-foreground tracking-tight truncate">
               {props.isVisitor ? `Welcome back to visiting our club, ${props.firstName}` : `Welcome back, ${props.firstName}`}
             </h1>
           </div>
@@ -472,9 +472,9 @@ function TileGroup({
   if (tiles.length === 0) return null;
   return (
     <section>
-      <div className="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-slate-200">
-        <Icon className="w-3.5 h-3.5 text-slate-500" />
-        <span className="uppercase tracking-[0.14em] text-[11px] font-semibold text-slate-500 font-sans">
+      <div className="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-border">
+        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="uppercase tracking-[0.14em] text-[11px] font-semibold text-muted-foreground font-sans">
           {label}
         </span>
       </div>
@@ -486,14 +486,14 @@ function TileGroup({
               key={t.title + t.url}
               onClick={() => navigate(t.url)}
               className={cn(
-                "group relative rounded-xl border border-slate-200 bg-white",
+                "group relative rounded-xl border border-border bg-card",
                 "px-4 py-4 text-left transition-all duration-150 shadow-sm",
-                "hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5",
+                "hover:border-border/80 hover:shadow-md hover:-translate-y-0.5",
               )}
             >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-sans font-semibold text-slate-900 truncate">
+                  <p className="text-[14px] font-sans font-semibold text-foreground truncate">
                     {t.title}
                   </p>
                 </div>

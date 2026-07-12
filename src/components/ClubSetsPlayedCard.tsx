@@ -134,9 +134,9 @@ export function ClubSetsPlayedCard({ clubId }: Props) {
   ];
 
   return (
-    <Card className="p-3">
+    <Card className="p-3 bg-white border-slate-200 text-slate-900 shadow-sm">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Sets played by the club
         </h3>
       </div>
@@ -144,15 +144,15 @@ export function ClubSetsPlayedCard({ clubId }: Props) {
         {stats.map((s) => (
           <div
             key={s.label}
-            className="flex flex-col items-center gap-1 rounded-md border border-border/60 bg-card p-2"
+            className="flex flex-col items-center gap-1 rounded-md border border-slate-200 bg-white p-2"
           >
             <div className={cn("w-7 h-7 rounded-md flex items-center justify-center", s.color)}>
               <s.icon className="w-4 h-4" />
             </div>
-            <div className="text-base font-bold leading-none tabular-nums">
+            <div className="text-base font-bold leading-none tabular-nums text-slate-900">
               {isLoading ? "—" : s.value.toLocaleString()}
             </div>
-            <div className="text-[10px] text-muted-foreground leading-tight text-center">
+            <div className="text-[10px] text-slate-500 leading-tight text-center">
               {s.label}
             </div>
           </div>

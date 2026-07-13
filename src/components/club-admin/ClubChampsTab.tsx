@@ -1465,6 +1465,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           // constraint) so the schedule still completes.
           const minCap = Math.min(...caps);
           const minBreakMin = Math.max(minCap, rotateMin); // ≥ one match or rotation slot rest
+          const initialCounts = new Map<number, number>();
+          for (const gn of leagues) initialCounts.set(gn, byLeague.get(gn)!.length);
 
           // Prefer to rotate the court a player uses across rotation blocks
           // (visible "rotate every X min" behaviour) — track last court used

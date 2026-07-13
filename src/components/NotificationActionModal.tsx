@@ -263,6 +263,11 @@ export function NotificationActionModal() {
       }}
     >
       <DialogContent className="max-w-sm p-0 overflow-hidden gap-0 max-h-[85vh] flex flex-col">
+        <VisuallyHidden>
+          <DialogTitle>
+            {total === 1 ? "New Notification" : `${total} New Notifications`}
+          </DialogTitle>
+        </VisuallyHidden>
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 min-w-0">

@@ -66,13 +66,52 @@ Deno.serve(async (req) => {
     }
     const accessToken = tokenJson.data.accessToken;
 
-    const path = mandate.mandate_type === "subscription" ? "subscriptions" : "card-consents";
-    const resp = await fetch(`${STITCH_BASE}/${path}/${mandate.stitch_mandate_id}`, {
+    // Some legacy rows have mandate_type mis-recorded (e.g. a card-consent
+    // saved as "subscription"). If the primary path 404s, transparently retry
+    // the alternate endpoint before failing — Stitch returns 404 with an empty
+    // body when the id is not found at that path.
+    const primaryPath = mandate.mandate_type === "subscription" ? "subscriptions" : "card-consents";
+    const altPath = primaryPath === "subscriptions" ? "card-consents" : "subscriptions";
+
+    let resp = await fetch(`${STITCH_BASE}/${primaryPath}/${mandate.stitch_mandate_id}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const j = await resp.json().catch(() => ({}));
+    let j = await resp.json().catch(() => ({}));
+    let usedPath = primaryPath;
+
+    if (resp.status === 404) {
+      const altResp = await fetch(`${STITCH_BASE}/${altPath}/${mandate.stitch_mandate_id}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const altJson = await altResp.json().catch(() => ({}));
+      if (altResp.ok) {
+        // Type was wrong locally — correct it going forward.
+        resp = altResp;
+        j = altJson;
+        usedPath = altPath;
+        const correctedType = altPath === "subscriptions" ? "subscription" : "card-consent";
+        await admin
+          .from("stitch_mandates")
+          .update({ mandate_type: correctedType })
+          .eq("id", mandate.id);
+      }
+    }
+
     if (!resp.ok) {
-      console.error("stitch get failed", resp.status, JSON.stringify(j));
+      console.error("stitch get failed", resp.status, usedPath, JSON.stringify(j));
+      if (resp.status === 404) {
+        // Mandate id is unknown to Stitch at either endpoint (stale row, wrong
+        // club credentials, or deleted upstream). Return a structured
+        // "not found" response so the client can surface a friendly message
+        // and prompt the member to restart the mandate setup, instead of
+        // treating it as a generic 502 gateway error.
+        return json({
+          ok: false,
+          error: "MANDATE_NOT_FOUND",
+          status: mandate.status,
+          fallback: true,
+        });
+      }
       return json({ error: `Stitch lookup failed [${resp.status}]` }, 502);
     }
 

@@ -1421,14 +1421,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         // Across leagues, a global slot map prevents two matches from landing
         // on the same court at the same time — when a slot is taken the league
         // tries the next court, then the next time step.
-        if (rotateMin > 0) {
-          // Interval-based parallel scheduler:
+        {
+          // Interval-based parallel scheduler (used whether court rotation is on
+          // or off):
           // - Walk each session on a shared timeline (step = gcd of all caps).
           // - Track court and player busy intervals with real overlap detection.
           // - At every step, place as many matches as possible in parallel across
           //   all free courts, choosing from ANY league's remaining pool.
-          // - Court preference rotates every `rotateMin` minutes so courts share
-          //   load fairly (the classic "rotate courts every hour" behaviour).
+          // - When rotateMin > 0, court ownership shifts every `rotateMin`
+          //   minutes so courts share load fairly (classic "rotate every hour").
+          // - When rotateMin === 0, ownership recomputes every tick from the
+          //   remaining workload — so as one league nears the finish, freed
+          //   courts naturally flip to the busier league (e.g. 2 vs 1 near the
+          //   end) and both leagues finish at roughly the same time.
           const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
           const caps = leagues.map(capFor);
           const step = Math.max(1, caps.reduce((a, b) => gcd(a, b), caps[0] || 1));
@@ -1564,7 +1569,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           // visible: League 1 owns e.g. courts 1-2 for the first block, then
           // 2-3 next block, etc. Fallbacks below keep courts busy if the
           // owner has nothing eligible.
-          const ownershipForBlock = (block: number, sessionCourts: number[]): Map<number, number> => {
+          const ownershipForBlock = (
+            block: number,
+            sessionCourts: number[],
+            applyShift: boolean,
+          ): Map<number, number> => {
             const totalCourts = sessionCourts.length;
             const remWeights = leagues.map((gn) => {
               const pool = remainingByLeague.get(gn);
@@ -1575,16 +1584,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             if (totalW <= 0) {
               allocs = leagues.map(() => 0);
             } else {
+              // Give every league with remaining work at least one court, so
+              // one league can never fully starve the other early on.
               allocs = remWeights.map((w) =>
-                Math.max(0, Math.round((w / totalW) * totalCourts)),
+                w > 0 ? Math.max(1, Math.round((w / totalW) * totalCourts)) : 0,
               );
-              // Normalise to exactly totalCourts.
               let sum = allocs.reduce((a, b) => a + b, 0);
+              // Trim from the largest owner first when over-allocated.
               while (sum > totalCourts) {
-                let idx = 0;
-                for (let i = 1; i < allocs.length; i++) if (allocs[i] > allocs[idx]) idx = i;
+                let idx = -1;
+                for (let i = 0; i < allocs.length; i++) {
+                  if (allocs[i] > 1 && (idx === -1 || allocs[i] > allocs[idx])) idx = i;
+                }
+                if (idx === -1) break;
                 allocs[idx]--; sum--;
               }
+              // Give leftover courts to whichever league is furthest behind
+              // (highest work-per-court ratio) — this is what produces the
+              // "2 vs 1" spread near the end when one league has less to do.
               while (sum < totalCourts) {
                 let idx = 0;
                 for (let i = 1; i < allocs.length; i++) {
@@ -1593,9 +1610,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 allocs[idx]++; sum++;
               }
             }
-            // Build contiguous court→league map, then shift by block to rotate.
             const own = new Map<number, number>();
-            const shift = ((block % totalCourts) + totalCourts) % totalCourts;
+            const shift = applyShift ? ((block % totalCourts) + totalCourts) % totalCourts : 0;
             let cursor = 0;
             leagues.forEach((gn, i) => {
               for (let k = 0; k < allocs[i]; k++) {
@@ -1613,11 +1629,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             let blockOwnership = new Map<number, number>();
             for (let t = s.startMin; t < s.endMin && totalRemaining() > 0; t += step) {
               const nowAbs = absMin(s.date, t);
-              const block = Math.floor((t - s.startMin) / Math.max(1, rotateMin));
-              if (block !== currentBlock) {
+              // When rotation is ON, blocks are fixed windows and ownership
+              // shifts each block. When it's OFF, we still recompute ownership
+              // every tick from remaining workload — so freed courts flip to
+              // whichever league is furthest behind (2-vs-1 near the finish).
+              const rotateOn = rotateMin > 0;
+              const block = rotateOn ? Math.floor((t - s.startMin) / rotateMin) : 0;
+              if (!rotateOn || block !== currentBlock) {
                 currentBlock = block;
                 assignedInBlock = new Map<number, number>();
-                blockOwnership = ownershipForBlock(block, sessionCourts);
+                blockOwnership = ownershipForBlock(block, sessionCourts, rotateOn);
               }
               // Iterate courts in original order; ownership already encodes rotation.
               for (const cid of sessionCourts) {
@@ -1668,99 +1689,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               }
             }
             if (totalRemaining() === 0) break;
-          }
-        } else {
-          const caps = leagues.map(capFor);
-          // ─── Static allocation (no rotation, or mixed caps) ───────────────
-          const weights = leagues.map((gn) => byLeague.get(gn)!.length * capFor(gn));
-          const totalW = weights.reduce((a, b) => a + b, 0) || 1;
-          let allocs = leagues.map((_, i) =>
-            Math.max(1, Math.floor((weights[i] / totalW) * courtIds.length))
-          );
-          let sum = allocs.reduce((a, b) => a + b, 0);
-          while (sum > courtIds.length) {
-            let idx = 0;
-            for (let i = 1; i < allocs.length; i++) if (allocs[i] > allocs[idx]) idx = i;
-            if (allocs[idx] <= 1) break;
-            allocs[idx]--; sum--;
-          }
-          while (sum < courtIds.length) {
-            let best = 0; let bestVal = -Infinity;
-            for (let i = 0; i < leagues.length; i++) {
-              const v = weights[i] / allocs[i];
-              if (v > bestVal) { bestVal = v; best = i; }
-            }
-            allocs[best]++; sum++;
-          }
-          let cursor = 0;
-          const leagueCourts = new Map<number, number[]>();
-          leagues.forEach((gn, i) => {
-            if (cursor >= courtIds.length) {
-              leagueCourts.set(gn, [courtIds[i % courtIds.length]]);
-            } else {
-              leagueCourts.set(gn, courtIds.slice(cursor, cursor + allocs[i]));
-              cursor += allocs[i];
-            }
-          });
-
-          const usedPlayers = new Set<string>(); // `${date}|${t}|${playerId}`
-          const lastPlayedEnd = new Map<string, number>();
-          const playCount = new Map<string, number>();
-          const absMin = (date: string, min: number) => {
-            const d = new Date(date + "T00:00:00Z").getTime() / 60000;
-            return d + min;
-          };
-          for (const gn of leagues) {
-            const cap = capFor(gn);
-            const lCourts = leagueCourts.get(gn)!;
-            const remaining = [...byLeague.get(gn)!];
-            for (const s of sessions) {
-              if (remaining.length === 0) break;
-              const sessionLCourts = lCourts.filter((c) => s.courtIds.includes(c));
-              if (sessionLCourts.length === 0) continue;
-              const roundsPossible = Math.max(0, Math.floor((s.endMin - s.startMin) / cap));
-              for (let r = 0; r < roundsPossible && remaining.length > 0; r++) {
-                const t = s.startMin + r * cap;
-                const nowAbs = absMin(s.date, t);
-                for (let ci = 0; ci < sessionLCourts.length && remaining.length > 0; ci++) {
-                  // Pick best-rested conflict-free match
-                  let pickIdx = -1;
-                  let bestScore: [number, number] | null = null;
-                  for (let i = 0; i < remaining.length; i++) {
-                    const m = remaining[i];
-                    const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
-                    if (!players.every((pid) => !usedPlayers.has(`${s.date}|${t}|${pid}`))) continue;
-                    let minRest = Infinity;
-                    let maxPlays = 0;
-                    for (const pid of players) {
-                      const last = lastPlayedEnd.get(pid);
-                      const rest = last == null ? Number.MAX_SAFE_INTEGER : nowAbs - last;
-                      if (rest < minRest) minRest = rest;
-                      const pc = playCount.get(pid) || 0;
-                      if (pc > maxPlays) maxPlays = pc;
-                    }
-                    const score: [number, number] = [minRest, -maxPlays];
-                    if (!bestScore || score[0] > bestScore[0] || (score[0] === bestScore[0] && score[1] > bestScore[1])) {
-                      bestScore = score;
-                      pickIdx = i;
-                    }
-                  }
-                  if (pickIdx === -1) break;
-                  const [m] = remaining.splice(pickIdx, 1);
-                  const h = Math.floor(t / 60);
-                  const mm = t % 60;
-                  m.date = s.date;
-                  m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-                  m.courtId = sessionLCourts[ci];
-                  const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
-                  players.forEach((pid) => {
-                    usedPlayers.add(`${s.date}|${t}|${pid}`);
-                    lastPlayedEnd.set(pid, nowAbs + cap);
-                    playCount.set(pid, (playCount.get(pid) || 0) + 1);
-                  });
-                }
-              }
-            }
           }
         }
       }

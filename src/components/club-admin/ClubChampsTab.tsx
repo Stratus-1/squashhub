@@ -1453,73 +1453,134 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             return n;
           };
 
+          // Per-rotation-block court ownership. Each block of `rotateMin`
+          // minutes, each court is "primarily owned" by a league proportional
+          // to its remaining workload. Leagues stick to their courts within a
+          // block; only when the owner has no eligible match do we fall back
+          // to another league so courts never sit idle.
+          const initialCounts = new Map<number, number>();
+          for (const gn of leagues) initialCounts.set(gn, byLeague.get(gn)!.length);
+
+          const courtOwnershipForBlock = (
+            block: number,
+            sessionCourts: number[],
+          ): Map<number, number> => {
+            const map = new Map<number, number>();
+            const n = sessionCourts.length;
+            if (n === 0 || leagues.length === 0) return map;
+            // Proportional share of courts per league (min 1 if that league
+            // still has matches left).
+            const totalLeft = leagues.reduce((a, gn) => a + (initialCounts.get(gn) || 0), 0) || 1;
+            const shares = leagues.map((gn) =>
+              Math.max(1, Math.round(((initialCounts.get(gn) || 0) / totalLeft) * n)),
+            );
+            let sum = shares.reduce((a, b) => a + b, 0);
+            while (sum > n) {
+              // shrink the league with the most allocated courts (but not below 1)
+              let idx = 0;
+              for (let i = 1; i < shares.length; i++) if (shares[i] > shares[idx]) idx = i;
+              if (shares[idx] <= 1) break;
+              shares[idx]--; sum--;
+            }
+            while (sum < n) {
+              // give leftover courts to the league with the most work
+              let idx = 0;
+              for (let i = 1; i < leagues.length; i++) {
+                if ((initialCounts.get(leagues[i]) || 0) > (initialCounts.get(leagues[idx]) || 0)) idx = i;
+              }
+              shares[idx]++; sum++;
+            }
+            // Build ordered list of court owners for this block, then rotate.
+            const owners: number[] = [];
+            leagues.forEach((gn, li) => {
+              for (let k = 0; k < shares[li]; k++) owners.push(gn);
+            });
+            // Rotate by block so a different league starts on court 1 each hour.
+            const rot = ((block % owners.length) + owners.length) % owners.length;
+            const rotated = [...owners.slice(rot), ...owners.slice(0, rot)];
+            sessionCourts.forEach((cid, i) => map.set(cid, rotated[i]));
+            return map;
+          };
+
+          const tryPickForLeague = (
+            gn: number,
+            nowAbs: number,
+            endMinAbs: number,
+            tRel: number,
+            sessionEndMin: number,
+          ): { idx: number; cap: number } | null => {
+            const cap = capFor(gn);
+            if (tRel + cap > sessionEndMin) return null;
+            const pool = remainingByLeague.get(gn);
+            if (!pool || !pool.length) return null;
+            let bestIdx = -1;
+            let bestScore: [number, number] | null = null;
+            for (let i = 0; i < pool.length; i++) {
+              const m = pool[i];
+              const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
+              if (!players.every((pid) => (playerBusyUntil.get(pid) ?? 0) <= nowAbs)) continue;
+              let minRest = Infinity;
+              let maxPlays = 0;
+              for (const pid of players) {
+                const last = lastPlayedEnd.get(pid);
+                const rest = last == null ? Number.MAX_SAFE_INTEGER : nowAbs - last;
+                if (rest < minRest) minRest = rest;
+                const pc = playCount.get(pid) || 0;
+                if (pc > maxPlays) maxPlays = pc;
+              }
+              const score: [number, number] = [minRest, -maxPlays];
+              if (!bestScore || score[0] > bestScore[0] || (score[0] === bestScore[0] && score[1] > bestScore[1])) {
+                bestScore = score;
+                bestIdx = i;
+              }
+            }
+            return bestIdx === -1 ? null : { idx: bestIdx, cap };
+          };
+
           for (const s of sessions) {
             const sessionCourts = courtIds.filter((c) => s.courtIds.includes(c));
             if (sessionCourts.length === 0) continue;
             for (let t = s.startMin; t < s.endMin && totalRemaining() > 0; t += step) {
               const nowAbs = absMin(s.date, t);
-              // Rotate the preferred court order every `rotateMin` minutes.
-              const rot = Math.floor((t - s.startMin) / rotateMin);
-              const orderedCourts = sessionCourts.map((_, i) => sessionCourts[(i + rot) % sessionCourts.length]);
+              const block = Math.floor((t - s.startMin) / rotateMin);
+              const ownership = courtOwnershipForBlock(block, sessionCourts);
 
-              for (const cid of orderedCourts) {
+              for (const cid of sessionCourts) {
                 const freeAt = courtBusyUntil.get(cid) ?? 0;
                 if (freeAt > nowAbs) continue;
 
-                // Score every eligible candidate across all leagues.
-                let pickLeague = -1;
-                let pickIdx = -1;
-                let pickCap = 0;
-                let bestScore: [number, number, number] | null = null;
-                for (const gn of leagues) {
-                  const cap = capFor(gn);
-                  if (t + cap > s.endMin) continue;
-                  const pool = remainingByLeague.get(gn)!;
-                  for (let i = 0; i < pool.length; i++) {
-                    const m = pool[i];
-                    const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
-                    if (!players.every((pid) => (playerBusyUntil.get(pid) ?? 0) <= nowAbs)) continue;
-                    let minRest = Infinity;
-                    let maxPlays = 0;
-                    for (const pid of players) {
-                      const last = lastPlayedEnd.get(pid);
-                      const rest = last == null ? Number.MAX_SAFE_INTEGER : nowAbs - last;
-                      if (rest < minRest) minRest = rest;
-                      const pc = playCount.get(pid) || 0;
-                      if (pc > maxPlays) maxPlays = pc;
-                    }
-                    // Prefer leagues that still have the most work left (keeps
-                    // both leagues finishing around the same time) and among
-                    // those the least-rested / least-played candidate.
-                    const workLeft = pool.length;
-                    const score: [number, number, number] = [workLeft, minRest, -maxPlays];
-                    if (
-                      !bestScore ||
-                      score[0] > bestScore[0] ||
-                      (score[0] === bestScore[0] && score[1] > bestScore[1]) ||
-                      (score[0] === bestScore[0] && score[1] === bestScore[1] && score[2] > bestScore[2])
-                    ) {
-                      bestScore = score;
-                      pickLeague = gn;
-                      pickIdx = i;
-                      pickCap = cap;
-                    }
+                // 1) Try the league that owns this court in this block.
+                const owner = ownership.get(cid);
+                let picked: { league: number; idx: number; cap: number } | null = null;
+                if (owner != null) {
+                  const p = tryPickForLeague(owner, nowAbs, s.endMin, t, s.endMin);
+                  if (p) picked = { league: owner, ...p };
+                }
+                // 2) Fallback — any league with an eligible match, biggest pool first.
+                if (!picked) {
+                  const ordered = [...leagues].sort(
+                    (a, b) => (remainingByLeague.get(b)!.length) - (remainingByLeague.get(a)!.length),
+                  );
+                  for (const gn of ordered) {
+                    if (gn === owner) continue;
+                    const p = tryPickForLeague(gn, nowAbs, s.endMin, t, s.endMin);
+                    if (p) { picked = { league: gn, ...p }; break; }
                   }
                 }
+                if (!picked) continue;
 
-                if (pickLeague === -1) continue;
-                const pool = remainingByLeague.get(pickLeague)!;
-                const [m] = pool.splice(pickIdx, 1);
+                const pool = remainingByLeague.get(picked.league)!;
+                const [m] = pool.splice(picked.idx, 1);
                 const h = Math.floor(t / 60);
                 const mm = t % 60;
                 m.date = s.date;
                 m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
                 m.courtId = cid;
-                courtBusyUntil.set(cid, nowAbs + pickCap);
+                courtBusyUntil.set(cid, nowAbs + picked.cap);
                 const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
                 players.forEach((pid) => {
-                  playerBusyUntil.set(pid, nowAbs + pickCap);
-                  lastPlayedEnd.set(pid, nowAbs + pickCap);
+                  playerBusyUntil.set(pid, nowAbs + picked!.cap);
+                  lastPlayedEnd.set(pid, nowAbs + picked!.cap);
                   playCount.set(pid, (playCount.get(pid) || 0) + 1);
                 });
                 if (totalRemaining() === 0) break;

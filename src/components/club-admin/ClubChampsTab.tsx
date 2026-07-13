@@ -1563,8 +1563,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             cid: number,
             enforceBreak: boolean,
           ): { league: number; idx: number; cap: number } | null => {
+            const primary = primaryLeagueByCourt.get(cid);
+            const primaryHasWork = primary != null && (remainingByLeague.get(primary)?.length ?? 0) > 0;
             let best: { league: number; idx: number; cap: number; score: number[] } | null = null;
             for (const gn of leagues) {
+              // Enforce primary court ownership: only the primary league may
+              // use this court while it still has matches to schedule. Once
+              // the primary league is done, the court frees up for others.
+              if (primaryHasWork && gn !== primary) continue;
               const cap = capFor(gn);
               if (tRel + cap > sessionEndMin) continue;
               const pool = remainingByLeague.get(gn);
@@ -1577,6 +1583,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 }
               }
             }
+
             return best ? { league: best.league, idx: best.idx, cap: best.cap } : null;
           };
 

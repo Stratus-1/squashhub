@@ -1617,7 +1617,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               if (block !== currentBlock) {
                 currentBlock = block;
                 assignedInBlock = new Map<number, number>();
-                blockOwnership = ownershipForBlock(block);
+                blockOwnership = ownershipForBlock(block, sessionCourts);
               }
               // Iterate courts in original order; ownership already encodes rotation.
               for (const cid of sessionCourts) {

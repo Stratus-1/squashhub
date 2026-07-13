@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
@@ -111,6 +112,13 @@ export function ShadowRankPromptDialog({
           {missing.map((m) => {
             const p = picks[m.registration_id || m.member_id] || { division: 1, slot: 1 };
             const sizeForDiv = sizes[p.division] || 5;
+            const divOptions = Array.from(
+              new Set([...divisions, p.division, m.current_reserve_division || maxDiv, maxDiv].filter(Boolean))
+            ).sort((a, b) => a - b);
+            const ord = (n: number) => {
+              const s = ["th","st","nd","rd"], v = n % 100;
+              return n + (s[(v - 20) % 10] || s[v] || s[0]);
+            };
             return (
               <div key={m.registration_id || m.member_id} className="rounded border p-2 space-y-1.5 bg-muted/30">
                 <div className="text-xs font-medium">
@@ -121,22 +129,29 @@ export function ShadowRankPromptDialog({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">Division</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={Math.max(maxDiv, 10)}
-                      value={p.division}
-                      onChange={(e) => {
-                        const v = Math.max(1, parseInt(e.target.value) || 1);
-                        setPicks((prev) => ({ ...prev, [m.registration_id || m.member_id]: { ...p, division: v } }));
+                    <Label className="text-[10px] text-muted-foreground">
+                      League tier <span className="opacity-60">(1 = strongest)</span>
+                    </Label>
+                    <Select
+                      value={String(p.division)}
+                      onValueChange={(v) => {
+                        const n = Math.max(1, parseInt(v) || 1);
+                        setPicks((prev) => ({ ...prev, [m.registration_id || m.member_id]: { ...p, division: n } }));
                       }}
-                      className="h-8 text-sm"
-                    />
+                    >
+                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {divOptions.map((d) => (
+                          <SelectItem key={d} value={String(d)}>
+                            {ord(d)} League{d === (m.current_reserve_division || maxDiv) ? " (their reserve tier)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label className="text-[10px] text-muted-foreground">
-                      Slot <span className="opacity-60">(team size {sizeForDiv}; use {sizeForDiv + 1}+ if weaker)</span>
+                      Position in tier <span className="opacity-60">(team size {sizeForDiv}; use {sizeForDiv + 1}+ if weaker than a main)</span>
                     </Label>
                     <Input
                       type="number"
@@ -149,6 +164,9 @@ export function ShadowRankPromptDialog({
                       className="h-8 text-sm"
                     />
                   </div>
+                </div>
+                <div className="text-[10px] text-muted-foreground pl-0.5">
+                  → Handicapped as a <strong>{ord(p.division)} League #{p.slot}</strong> player.
                 </div>
               </div>
             );

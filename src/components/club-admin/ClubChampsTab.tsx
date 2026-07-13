@@ -1629,11 +1629,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             let blockOwnership = new Map<number, number>();
             for (let t = s.startMin; t < s.endMin && totalRemaining() > 0; t += step) {
               const nowAbs = absMin(s.date, t);
-              const block = Math.floor((t - s.startMin) / Math.max(1, rotateMin));
-              if (block !== currentBlock) {
+              // When rotation is ON, blocks are fixed windows and ownership
+              // shifts each block. When it's OFF, we still recompute ownership
+              // every tick from remaining workload — so freed courts flip to
+              // whichever league is furthest behind (2-vs-1 near the finish).
+              const rotateOn = rotateMin > 0;
+              const block = rotateOn ? Math.floor((t - s.startMin) / rotateMin) : 0;
+              if (!rotateOn || block !== currentBlock) {
                 currentBlock = block;
                 assignedInBlock = new Map<number, number>();
-                blockOwnership = ownershipForBlock(block, sessionCourts);
+                blockOwnership = ownershipForBlock(block, sessionCourts, rotateOn);
               }
               // Iterate courts in original order; ownership already encodes rotation.
               for (const cid of sessionCourts) {

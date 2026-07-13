@@ -1564,7 +1564,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           // visible: League 1 owns e.g. courts 1-2 for the first block, then
           // 2-3 next block, etc. Fallbacks below keep courts busy if the
           // owner has nothing eligible.
-          const ownershipForBlock = (block: number): Map<number, number> => {
+          const ownershipForBlock = (block: number, sessionCourts: number[]): Map<number, number> => {
             const totalCourts = sessionCourts.length;
             const remWeights = leagues.map((gn) => {
               const pool = remainingByLeague.get(gn);

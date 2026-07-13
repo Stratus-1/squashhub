@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

@@ -1569,7 +1569,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           // visible: League 1 owns e.g. courts 1-2 for the first block, then
           // 2-3 next block, etc. Fallbacks below keep courts busy if the
           // owner has nothing eligible.
-          const ownershipForBlock = (block: number, sessionCourts: number[]): Map<number, number> => {
+          const ownershipForBlock = (
+            block: number,
+            sessionCourts: number[],
+            applyShift: boolean,
+          ): Map<number, number> => {
             const totalCourts = sessionCourts.length;
             const remWeights = leagues.map((gn) => {
               const pool = remainingByLeague.get(gn);
@@ -1580,16 +1584,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             if (totalW <= 0) {
               allocs = leagues.map(() => 0);
             } else {
+              // Give every league with remaining work at least one court, so
+              // one league can never fully starve the other early on.
               allocs = remWeights.map((w) =>
-                Math.max(0, Math.round((w / totalW) * totalCourts)),
+                w > 0 ? Math.max(1, Math.round((w / totalW) * totalCourts)) : 0,
               );
-              // Normalise to exactly totalCourts.
               let sum = allocs.reduce((a, b) => a + b, 0);
+              // Trim from the largest owner first when over-allocated.
               while (sum > totalCourts) {
-                let idx = 0;
-                for (let i = 1; i < allocs.length; i++) if (allocs[i] > allocs[idx]) idx = i;
+                let idx = -1;
+                for (let i = 0; i < allocs.length; i++) {
+                  if (allocs[i] > 1 && (idx === -1 || allocs[i] > allocs[idx])) idx = i;
+                }
+                if (idx === -1) break;
                 allocs[idx]--; sum--;
               }
+              // Give leftover courts to whichever league is furthest behind
+              // (highest work-per-court ratio) — this is what produces the
+              // "2 vs 1" spread near the end when one league has less to do.
               while (sum < totalCourts) {
                 let idx = 0;
                 for (let i = 1; i < allocs.length; i++) {
@@ -1598,9 +1610,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 allocs[idx]++; sum++;
               }
             }
-            // Build contiguous court→league map, then shift by block to rotate.
             const own = new Map<number, number>();
-            const shift = ((block % totalCourts) + totalCourts) % totalCourts;
+            const shift = applyShift ? ((block % totalCourts) + totalCourts) % totalCourts : 0;
             let cursor = 0;
             leagues.forEach((gn, i) => {
               for (let k = 0; k < allocs[i]; k++) {

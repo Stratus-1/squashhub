@@ -1422,83 +1422,110 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         // on the same court at the same time — when a slot is taken the league
         // tries the next court, then the next time step.
         if (rotateMin > 0) {
-          const usedSlots = new Set<string>(); // `${date}|${startMin}|${courtId}`
-          const usedPlayers = new Set<string>(); // `${date}|${startMin}|${playerId}`
-          // Global last-played end time per player (absolute minutes since epoch-day),
-          // used to space matches so the same player gets a break between games.
+          // Interval-based parallel scheduler:
+          // - Walk each session on a shared timeline (step = gcd of all caps).
+          // - Track court and player busy intervals with real overlap detection.
+          // - At every step, place as many matches as possible in parallel across
+          //   all free courts, choosing from ANY league's remaining pool.
+          // - Court preference rotates every `rotateMin` minutes so courts share
+          //   load fairly (the classic "rotate courts every hour" behaviour).
+          const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+          const caps = leagues.map(capFor);
+          const step = Math.max(1, caps.reduce((a, b) => gcd(a, b), caps[0] || 1));
+
+          const remainingByLeague = new Map<number, MatchDef[]>();
+          for (const gn of leagues) remainingByLeague.set(gn, [...byLeague.get(gn)!]);
+
+          // busyUntil[courtId] and playerBusyUntil[playerId] = absolute minute the
+          // resource frees up. Compared against nowAbs on each tick.
+          const courtBusyUntil = new Map<number, number>();
+          const playerBusyUntil = new Map<string, number>();
           const lastPlayedEnd = new Map<string, number>();
           const playCount = new Map<string, number>();
           const absMin = (date: string, min: number) => {
-            // turn `${date}|${min}` into a monotonically increasing number across days
             const d = new Date(date + "T00:00:00Z").getTime() / 60000;
             return d + min;
           };
-          for (const gn of leagues) {
-            const cap = capFor(gn);
-            const lMatches = byLeague.get(gn)!;
-            const remaining = [...lMatches];
-            let leagueElapsed = 0;
-            outer: for (const s of sessions) {
-              const sessionCourts = courtIds.filter((c) => s.courtIds.includes(c));
-              if (sessionCourts.length === 0) continue;
-              let t = s.startMin;
-              while (remaining.length > 0 && t + cap <= s.endMin) {
-                const baseIdx = Math.floor(leagueElapsed / rotateMin);
-                const nowAbs = absMin(s.date, t);
-                // Score every conflict-free candidate by the LEAST-rested player:
-                // pick the match whose busiest player has rested the longest
-                // (and as tiebreak, fewest games played so far).
+
+          const totalRemaining = () => {
+            let n = 0;
+            for (const arr of remainingByLeague.values()) n += arr.length;
+            return n;
+          };
+
+          for (const s of sessions) {
+            const sessionCourts = courtIds.filter((c) => s.courtIds.includes(c));
+            if (sessionCourts.length === 0) continue;
+            for (let t = s.startMin; t < s.endMin && totalRemaining() > 0; t += step) {
+              const nowAbs = absMin(s.date, t);
+              // Rotate the preferred court order every `rotateMin` minutes.
+              const rot = Math.floor((t - s.startMin) / rotateMin);
+              const orderedCourts = sessionCourts.map((_, i) => sessionCourts[(i + rot) % sessionCourts.length]);
+
+              for (const cid of orderedCourts) {
+                const freeAt = courtBusyUntil.get(cid) ?? 0;
+                if (freeAt > nowAbs) continue;
+
+                // Score every eligible candidate across all leagues.
+                let pickLeague = -1;
                 let pickIdx = -1;
-                let bestScore: [number, number] | null = null;
-                for (let i = 0; i < remaining.length; i++) {
-                  const m = remaining[i];
-                  const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
-                  if (!players.every((pid) => !usedPlayers.has(`${s.date}|${t}|${pid}`))) continue;
-                  let minRest = Infinity;
-                  let maxPlays = 0;
-                  for (const pid of players) {
-                    const last = lastPlayedEnd.get(pid);
-                    const rest = last == null ? Number.MAX_SAFE_INTEGER : nowAbs - last;
-                    if (rest < minRest) minRest = rest;
-                    const pc = playCount.get(pid) || 0;
-                    if (pc > maxPlays) maxPlays = pc;
+                let pickCap = 0;
+                let bestScore: [number, number, number] | null = null;
+                for (const gn of leagues) {
+                  const cap = capFor(gn);
+                  if (t + cap > s.endMin) continue;
+                  const pool = remainingByLeague.get(gn)!;
+                  for (let i = 0; i < pool.length; i++) {
+                    const m = pool[i];
+                    const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
+                    if (!players.every((pid) => (playerBusyUntil.get(pid) ?? 0) <= nowAbs)) continue;
+                    let minRest = Infinity;
+                    let maxPlays = 0;
+                    for (const pid of players) {
+                      const last = lastPlayedEnd.get(pid);
+                      const rest = last == null ? Number.MAX_SAFE_INTEGER : nowAbs - last;
+                      if (rest < minRest) minRest = rest;
+                      const pc = playCount.get(pid) || 0;
+                      if (pc > maxPlays) maxPlays = pc;
+                    }
+                    // Prefer leagues that still have the most work left (keeps
+                    // both leagues finishing around the same time) and among
+                    // those the least-rested / least-played candidate.
+                    const workLeft = pool.length;
+                    const score: [number, number, number] = [workLeft, minRest, -maxPlays];
+                    if (
+                      !bestScore ||
+                      score[0] > bestScore[0] ||
+                      (score[0] === bestScore[0] && score[1] > bestScore[1]) ||
+                      (score[0] === bestScore[0] && score[1] === bestScore[1] && score[2] > bestScore[2])
+                    ) {
+                      bestScore = score;
+                      pickLeague = gn;
+                      pickIdx = i;
+                      pickCap = cap;
+                    }
                   }
-                  const score: [number, number] = [minRest, -maxPlays];
-                  if (!bestScore || score[0] > bestScore[0] || (score[0] === bestScore[0] && score[1] > bestScore[1])) {
-                    bestScore = score;
-                    pickIdx = i;
-                  }
                 }
-                if (pickIdx === -1) {
-                  t += cap;
-                  continue;
-                }
-                let assigned = false;
-                for (let off = 0; off < sessionCourts.length; off++) {
-                  const cid = sessionCourts[(baseIdx + off) % sessionCourts.length];
-                  const key = `${s.date}|${t}|${cid}`;
-                  if (usedSlots.has(key)) continue;
-                  const [m] = remaining.splice(pickIdx, 1);
-                  const h = Math.floor(t / 60);
-                  const mm = t % 60;
-                  m.date = s.date;
-                  m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-                  m.courtId = cid;
-                  usedSlots.add(key);
-                  const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
-                  players.forEach((pid) => {
-                    usedPlayers.add(`${s.date}|${t}|${pid}`);
-                    lastPlayedEnd.set(pid, nowAbs + cap);
-                    playCount.set(pid, (playCount.get(pid) || 0) + 1);
-                  });
-                  assigned = true;
-                  break;
-                }
-                if (assigned) leagueElapsed += cap;
-                t += cap;
-                if (remaining.length === 0) break outer;
+
+                if (pickLeague === -1) continue;
+                const pool = remainingByLeague.get(pickLeague)!;
+                const [m] = pool.splice(pickIdx, 1);
+                const h = Math.floor(t / 60);
+                const mm = t % 60;
+                m.date = s.date;
+                m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+                m.courtId = cid;
+                courtBusyUntil.set(cid, nowAbs + pickCap);
+                const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
+                players.forEach((pid) => {
+                  playerBusyUntil.set(pid, nowAbs + pickCap);
+                  lastPlayedEnd.set(pid, nowAbs + pickCap);
+                  playCount.set(pid, (playCount.get(pid) || 0) + 1);
+                });
+                if (totalRemaining() === 0) break;
               }
             }
+            if (totalRemaining() === 0) break;
           }
         } else {
           const caps = leagues.map(capFor);

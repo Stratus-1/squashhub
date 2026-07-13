@@ -110,6 +110,12 @@ export async function checkBookingBalance(opts: {
 
   }
 
+  // Any existing owing is grandfathered — the buffer is the only NEW amount required
+  // before a booking. This means "Please top up" reflects the booking buffer only,
+  // not the member's total carried balance.
+  if (currentOwing > planAllowedDebt) {
+    planAllowedDebt = currentOwing;
+  }
 
   const shortfall = currentOwing - planAllowedDebt + buffer;
   return {
@@ -120,3 +126,4 @@ export async function checkBookingBalance(opts: {
     requiredBuffer: buffer,
   };
 }
+

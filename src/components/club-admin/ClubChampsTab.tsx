@@ -1562,15 +1562,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             sessionEndMin: number,
             cid: number,
             enforceBreak: boolean,
+            allowBorrow: boolean,
           ): { league: number; idx: number; cap: number } | null => {
             const primary = primaryLeagueByCourt.get(cid);
             const primaryHasWork = primary != null && (remainingByLeague.get(primary)?.length ?? 0) > 0;
             let best: { league: number; idx: number; cap: number; score: number[] } | null = null;
             for (const gn of leagues) {
-              // Enforce primary court ownership: only the primary league may
-              // use this court while it still has matches to schedule. Once
-              // the primary league is done, the court frees up for others.
-              if (primaryHasWork && gn !== primary) continue;
+              // Primary court ownership: only the primary league may use this
+              // court while it still has matches to schedule — unless
+              // `allowBorrow` is on (used when the primary can't fill the slot
+              // right now because its players are all in cooldown/busy), so an
+              // otherwise-idle court gets lent to the other league.
+              if (!allowBorrow && primaryHasWork && gn !== primary) continue;
               const cap = capFor(gn);
               if (tRel + cap > sessionEndMin) continue;
               const pool = remainingByLeague.get(gn);
@@ -1602,10 +1605,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 const freeAt = courtBusyUntil.get(cid) ?? 0;
                 if (freeAt > nowAbs) continue;
 
-                // Try with break enforced first; fall back to relaxed if
-                // nothing fits (keeps the schedule completing).
-                let picked = pickBest(nowAbs, t, s.endMin, cid, true)
-                          ?? pickBest(nowAbs, t, s.endMin, cid, false);
+                // 1) Primary league only, break enforced.
+                // 2) Primary league only, break relaxed.
+                // 3) Any league (borrow this tick), break enforced — keeps
+                //    courts busy when the primary's players are all cooling.
+                // 4) Any league (borrow), break relaxed — last resort so the
+                //    schedule still completes.
+                let picked = pickBest(nowAbs, t, s.endMin, cid, true,  false)
+                          ?? pickBest(nowAbs, t, s.endMin, cid, false, false)
+                          ?? pickBest(nowAbs, t, s.endMin, cid, true,  true)
+                          ?? pickBest(nowAbs, t, s.endMin, cid, false, true);
                 if (!picked) continue;
 
                 const pool = remainingByLeague.get(picked.league)!;

@@ -1558,30 +1558,94 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             return best ? { league: best.league, idx: best.idx, cap: best.cap } : null;
           };
 
+          // Compute per-block court→league ownership. Courts are divided by
+          // remaining workload (matches × cap), producing contiguous ranges.
+          // Ownership shifts by one court every block, so the "rotation" is
+          // visible: League 1 owns e.g. courts 1-2 for the first block, then
+          // 2-3 next block, etc. Fallbacks below keep courts busy if the
+          // owner has nothing eligible.
+          const ownershipForBlock = (block: number, sessionCourts: number[]): Map<number, number> => {
+            const totalCourts = sessionCourts.length;
+            const remWeights = leagues.map((gn) => {
+              const pool = remainingByLeague.get(gn);
+              return (pool?.length || 0) * capFor(gn);
+            });
+            const totalW = remWeights.reduce((a, b) => a + b, 0);
+            let allocs: number[];
+            if (totalW <= 0) {
+              allocs = leagues.map(() => 0);
+            } else {
+              allocs = remWeights.map((w) =>
+                Math.max(0, Math.round((w / totalW) * totalCourts)),
+              );
+              // Normalise to exactly totalCourts.
+              let sum = allocs.reduce((a, b) => a + b, 0);
+              while (sum > totalCourts) {
+                let idx = 0;
+                for (let i = 1; i < allocs.length; i++) if (allocs[i] > allocs[idx]) idx = i;
+                allocs[idx]--; sum--;
+              }
+              while (sum < totalCourts) {
+                let idx = 0;
+                for (let i = 1; i < allocs.length; i++) {
+                  if (remWeights[i] / Math.max(1, allocs[i]) > remWeights[idx] / Math.max(1, allocs[idx])) idx = i;
+                }
+                allocs[idx]++; sum++;
+              }
+            }
+            // Build contiguous court→league map, then shift by block to rotate.
+            const own = new Map<number, number>();
+            const shift = ((block % totalCourts) + totalCourts) % totalCourts;
+            let cursor = 0;
+            leagues.forEach((gn, i) => {
+              for (let k = 0; k < allocs[i]; k++) {
+                const courtIdx = (cursor + shift) % totalCourts;
+                own.set(sessionCourts[courtIdx], gn);
+                cursor++;
+              }
+            });
+            return own;
+          };
+
           for (const s of sessions) {
             const sessionCourts = courtIds.filter((c) => s.courtIds.includes(c));
             if (sessionCourts.length === 0) continue;
+            let blockOwnership = new Map<number, number>();
             for (let t = s.startMin; t < s.endMin && totalRemaining() > 0; t += step) {
               const nowAbs = absMin(s.date, t);
               const block = Math.floor((t - s.startMin) / Math.max(1, rotateMin));
-              // Reset per-block league-court counters at each new rotation window.
               if (block !== currentBlock) {
                 currentBlock = block;
                 assignedInBlock = new Map<number, number>();
+                blockOwnership = ownershipForBlock(block, sessionCourts);
               }
-              // Rotate the court iteration order by block so the "first pick"
-              // court shifts every rotation window — visible court rotation.
-              const rot = ((block % sessionCourts.length) + sessionCourts.length) % sessionCourts.length;
-              const rotatedCourts = [...sessionCourts.slice(rot), ...sessionCourts.slice(0, rot)];
-
-              for (const cid of rotatedCourts) {
+              // Iterate courts in original order; ownership already encodes rotation.
+              for (const cid of sessionCourts) {
                 const freeAt = courtBusyUntil.get(cid) ?? 0;
                 if (freeAt > nowAbs) continue;
 
-                // Try with break enforced first; fall back to relaxed if
-                // nothing fits (keeps the schedule completing).
-                let picked = pickBest(nowAbs, t, s.endMin, cid, true)
-                          ?? pickBest(nowAbs, t, s.endMin, cid, false);
+                const owner = blockOwnership.get(cid);
+                // 1) Try owner league first (strict), 2) fall back to any league
+                //    so a court never sits idle when the owner has nothing to play.
+                const pickForLeague = (gn: number, enforceBreak: boolean) => {
+                  const cap = capFor(gn);
+                  if (t + cap > s.endMin) return null;
+                  const pool = remainingByLeague.get(gn);
+                  if (!pool || !pool.length) return null;
+                  let bestIdx = -1; let bestScore: number[] | null = null;
+                  for (let i = 0; i < pool.length; i++) {
+                    const score = scoreMatch(pool[i], gn, nowAbs, cid, enforceBreak);
+                    if (!score) continue;
+                    if (!bestScore || cmpScore(score, bestScore) < 0) { bestIdx = i; bestScore = score; }
+                  }
+                  return bestIdx === -1 ? null : { league: gn, idx: bestIdx, cap };
+                };
+
+                let picked =
+                  (owner != null ? pickForLeague(owner, true) : null) ??
+                  (owner != null ? pickForLeague(owner, false) : null) ??
+                  pickBest(nowAbs, t, s.endMin, cid, true) ??
+                  pickBest(nowAbs, t, s.endMin, cid, false);
                 if (!picked) continue;
 
                 const pool = remainingByLeague.get(picked.league)!;

@@ -1473,6 +1473,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           // per player and penalise the same court in consecutive blocks.
           const lastCourtByPlayer = new Map<string, number>();
 
+          // Within a single rotation block, track how many courts each league
+          // has already grabbed so we can force interleaving across courts.
+          // Without this, at t=0 every score component is tied and the first
+          // league in the array wins every court → looks "hardcoded" to
+          // courts 1 & 2.
+          let currentBlock = -1;
+          let assignedInBlock = new Map<number, number>();
+
           const scoreMatch = (
             m: MatchDef,
             gn: number,
@@ -1505,13 +1513,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             // Backlog ratio: leagues further from done get scheduled first
             // so both leagues finish together. Multiply by 1000 for ranking.
             const backlogRatio = Math.round((pool.length / initial) * 1000);
+            // How many courts this league has already taken in the current
+            // rotation block (lower = should get next court within block).
+            const inBlock = assignedInBlock.get(gn) || 0;
             // Higher is better across the tuple.
             return [
               backlogRatio,     // 1. keep leagues balanced by % done
-              minRest,          // 2. most-rested players first
-              -maxPlays,        // 3. players who've played less first
-              -sameCourt,       // 4. avoid same court back-to-back for a player
-              -cap,             // 5. slightly prefer shorter matches when tied
+              -inBlock,         // 2. spread leagues across courts within block
+              minRest,          // 3. most-rested players first
+              -maxPlays,        // 4. players who've played less first
+              -sameCourt,       // 5. avoid same court back-to-back for a player
+              -cap,             // 6. slightly prefer shorter matches when tied
             ];
           };
 
@@ -1552,6 +1564,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             for (let t = s.startMin; t < s.endMin && totalRemaining() > 0; t += step) {
               const nowAbs = absMin(s.date, t);
               const block = Math.floor((t - s.startMin) / Math.max(1, rotateMin));
+              // Reset per-block league-court counters at each new rotation window.
+              if (block !== currentBlock) {
+                currentBlock = block;
+                assignedInBlock = new Map<number, number>();
+              }
               // Rotate the court iteration order by block so the "first pick"
               // court shifts every rotation window — visible court rotation.
               const rot = ((block % sessionCourts.length) + sessionCourts.length) % sessionCourts.length;
@@ -1575,6 +1592,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
                 m.courtId = cid;
                 courtBusyUntil.set(cid, nowAbs + picked.cap);
+                assignedInBlock.set(picked.league, (assignedInBlock.get(picked.league) || 0) + 1);
                 const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
                 players.forEach((pid) => {
                   playerBusyUntil.set(pid, nowAbs + picked!.cap);

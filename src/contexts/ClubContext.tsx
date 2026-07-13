@@ -61,7 +61,7 @@ export function ClubProvider({ children }: { children: ReactNode }) {
       // settings too, which makes logged-out subdomain auth pages fall back to
       // the generic "Club" header instead of the tenant name/logo.
       const { data, error } = await fromExt("clubs")
-        .select("id, name, subdomain, logo_url, address, phone, email, tenant_type, nsa_club_id, chairman_member_id, secretary_member_id, club_captain_member_id, contact_person_name, show_delegates_on_landing, currency_code, currency_symbol, participation_active, visitors_can_book, visitor_booking_fee, external_booking_provider, external_booking_url, external_booking_label, uses_gobook, gobook_url, created_at")
+        .select("id, name, subdomain, logo_url, address, phone, email, tenant_type, nsa_club_id, chairman_member_id, secretary_member_id, club_captain_member_id, contact_person_name, show_delegates_on_landing, currency_code, currency_symbol, participation_active, visitors_can_book, visitor_booking_fee, external_booking_provider, external_booking_url, external_booking_label, uses_gobook, gobook_url, honesty_bar_enabled, face_enrolment_required, payment_gateway, payment_gateway_public_key, created_at")
         .eq("subdomain", subdomain!)
         .maybeSingle();
       if (error) throw error;

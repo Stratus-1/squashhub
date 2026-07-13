@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -262,6 +262,9 @@ export function NotificationActionModal() {
       }}
     >
       <DialogContent className="max-w-sm p-0 overflow-hidden gap-0 max-h-[85vh] flex flex-col">
+        <DialogTitle className="sr-only">
+          {total === 1 ? "New Notification" : `${total} New Notifications`}
+        </DialogTitle>
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 min-w-0">

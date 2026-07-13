@@ -1468,44 +1468,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           const initialCounts = new Map<number, number>();
           for (const gn of leagues) initialCounts.set(gn, byLeague.get(gn)!.length);
 
-          // Primary court ownership per league. Distribute selected courts
-          // proportional to each league's workload (matches × cap). Each court
-          // "belongs" to one league; other leagues can only borrow it once the
-          // primary league has no matches left to schedule.
-          const weights = leagues.map((gn) => byLeague.get(gn)!.length * capFor(gn));
-          const totalW = weights.reduce((a, b) => a + b, 0) || 1;
-          let allocs = leagues.map((_, i) =>
-            Math.max(1, Math.floor((weights[i] / totalW) * courtIds.length)),
-          );
-          let sumA = allocs.reduce((a, b) => a + b, 0);
-          while (sumA > courtIds.length) {
-            let idx = 0;
-            for (let i = 1; i < allocs.length; i++) if (allocs[i] > allocs[idx]) idx = i;
-            if (allocs[idx] <= 1) break;
-            allocs[idx]--; sumA--;
-          }
-          while (sumA < courtIds.length) {
-            let best = 0; let bestVal = -Infinity;
-            for (let i = 0; i < leagues.length; i++) {
-              const v = weights[i] / allocs[i];
-              if (v > bestVal) { bestVal = v; best = i; }
-            }
-            allocs[best]++; sumA++;
-          }
-          const primaryLeagueByCourt = new Map<number, number>();
-          {
-            let cur = 0;
-            leagues.forEach((gn, i) => {
-              const n = allocs[i];
-              for (let k = 0; k < n && cur < courtIds.length; k++) {
-                primaryLeagueByCourt.set(courtIds[cur], gn);
-                cur++;
-              }
-            });
-          }
-
+          // Prefer to rotate the court a player uses across rotation blocks
+          // (visible "rotate every X min" behaviour) — track last court used
+          // per player and penalise the same court in consecutive blocks.
           const lastCourtByPlayer = new Map<string, number>();
-
 
           const scoreMatch = (
             m: MatchDef,
@@ -1563,14 +1529,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             cid: number,
             enforceBreak: boolean,
           ): { league: number; idx: number; cap: number } | null => {
-            const primary = primaryLeagueByCourt.get(cid);
-            const primaryHasWork = primary != null && (remainingByLeague.get(primary)?.length ?? 0) > 0;
             let best: { league: number; idx: number; cap: number; score: number[] } | null = null;
             for (const gn of leagues) {
-              // Enforce primary court ownership: only the primary league may
-              // use this court while it still has matches to schedule. Once
-              // the primary league is done, the court frees up for others.
-              if (primaryHasWork && gn !== primary) continue;
               const cap = capFor(gn);
               if (tRel + cap > sessionEndMin) continue;
               const pool = remainingByLeague.get(gn);
@@ -1583,7 +1543,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 }
               }
             }
-
             return best ? { league: best.league, idx: best.idx, cap: best.cap } : null;
           };
 

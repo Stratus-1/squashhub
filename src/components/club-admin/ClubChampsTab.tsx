@@ -1421,14 +1421,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         // Across leagues, a global slot map prevents two matches from landing
         // on the same court at the same time — when a slot is taken the league
         // tries the next court, then the next time step.
-        if (rotateMin > 0) {
-          // Interval-based parallel scheduler:
+        {
+          // Interval-based parallel scheduler (used whether court rotation is on
+          // or off):
           // - Walk each session on a shared timeline (step = gcd of all caps).
           // - Track court and player busy intervals with real overlap detection.
           // - At every step, place as many matches as possible in parallel across
           //   all free courts, choosing from ANY league's remaining pool.
-          // - Court preference rotates every `rotateMin` minutes so courts share
-          //   load fairly (the classic "rotate courts every hour" behaviour).
+          // - When rotateMin > 0, court ownership shifts every `rotateMin`
+          //   minutes so courts share load fairly (classic "rotate every hour").
+          // - When rotateMin === 0, ownership recomputes every tick from the
+          //   remaining workload — so as one league nears the finish, freed
+          //   courts naturally flip to the busier league (e.g. 2 vs 1 near the
+          //   end) and both leagues finish at roughly the same time.
           const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
           const caps = leagues.map(capFor);
           const step = Math.max(1, caps.reduce((a, b) => gcd(a, b), caps[0] || 1));

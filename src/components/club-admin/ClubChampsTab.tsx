@@ -1564,6 +1564,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             for (let t = s.startMin; t < s.endMin && totalRemaining() > 0; t += step) {
               const nowAbs = absMin(s.date, t);
               const block = Math.floor((t - s.startMin) / Math.max(1, rotateMin));
+              // Reset per-block league-court counters at each new rotation window.
+              if (block !== currentBlock) {
+                currentBlock = block;
+                assignedInBlock = new Map<number, number>();
+              }
               // Rotate the court iteration order by block so the "first pick"
               // court shifts every rotation window — visible court rotation.
               const rot = ((block % sessionCourts.length) + sessionCourts.length) % sessionCourts.length;
@@ -1587,6 +1592,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
                 m.courtId = cid;
                 courtBusyUntil.set(cid, nowAbs + picked.cap);
+                assignedInBlock.set(picked.league, (assignedInBlock.get(picked.league) || 0) + 1);
                 const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
                 players.forEach((pid) => {
                   playerBusyUntil.set(pid, nowAbs + picked!.cap);

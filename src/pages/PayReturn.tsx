@@ -1,20 +1,24 @@
 import { useEffect } from "react";
+import { readPayReturnCookie, clearPayReturnCookie } from "@/lib/stitch-checkout";
 
 /**
- * Canonical Stitch return URL. Stitch's redirect whitelist only allows exact
- * matches and has a 5-URL cap, so instead of registering every club subdomain
- * we always send payers back to https://squashhub.co.za/pay/return?to=<target>
- * and this page forwards them to their club subdomain (validated same-suffix).
+ * Canonical Stitch return URL. Stitch's redirect whitelist requires an exact
+ * string match and caps at 5 entries, so instead of registering every club
+ * subdomain we always send payers to https://squashhub.co.za/pay/return and
+ * this page forwards them to their club subdomain. The real destination is
+ * stashed in an apex-scoped cookie (`.squashhub.co.za`) before opening Stitch.
  *
- * Any Stitch query params (payment ref, status, etc.) are preserved and merged
- * onto the target URL.
+ * Any Stitch query params (payment ref, status, etc.) on the current URL are
+ * preserved and merged onto the target.
  */
 export default function PayReturn() {
   useEffect(() => {
     const here = new URL(window.location.href);
-    const to = here.searchParams.get("to");
+    const fallback = "/my-account";
 
-    const fallback = "/";
+    const to = readPayReturnCookie();
+    clearPayReturnCookie();
+
     if (!to) {
       window.location.replace(fallback);
       return;
@@ -28,7 +32,7 @@ export default function PayReturn() {
       return;
     }
 
-    // Only allow same-brand hosts. Everything else falls back to root.
+    // Only allow same-brand hosts.
     const host = target.hostname.toLowerCase();
     const allowed =
       host === "squashhub.co.za" ||
@@ -41,9 +45,8 @@ export default function PayReturn() {
       return;
     }
 
-    // Forward every Stitch-added query param onto the target, except our own `to`.
+    // Forward Stitch-added query params onto the target.
     here.searchParams.forEach((v, k) => {
-      if (k === "to") return;
       if (!target.searchParams.has(k)) target.searchParams.set(k, v);
     });
 

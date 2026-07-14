@@ -10,6 +10,45 @@ type PendingStitchSession = {
   createdAt: number;
 };
 
+const PAY_RETURN_COOKIE = "sh_pay_to";
+
+function setPayReturnCookie(target: string) {
+  if (typeof document === "undefined") return;
+  const host = window.location.hostname;
+  // Cookie must be readable by the /pay/return page on the apex domain, so
+  // scope it to `.squashhub.co.za`. On the lovable.app preview host cookies
+  // are same-origin only (no shared apex), which is fine because the payer
+  // returns to the same preview host.
+  let domainAttr = "";
+  if (host === "squashhub.co.za" || host.endsWith(".squashhub.co.za")) {
+    domainAttr = "; domain=.squashhub.co.za";
+  }
+  const secure = window.location.protocol === "https:" ? "; secure" : "";
+  document.cookie =
+    `${PAY_RETURN_COOKIE}=${encodeURIComponent(target)}; path=/${domainAttr}; max-age=3600; samesite=lax${secure}`;
+}
+
+export function readPayReturnCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.split("; ").find((c) => c.startsWith(`${PAY_RETURN_COOKIE}=`));
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match.split("=").slice(1).join("="));
+  } catch {
+    return null;
+  }
+}
+
+export function clearPayReturnCookie() {
+  if (typeof document === "undefined") return;
+  const host = window.location.hostname;
+  const domainAttr =
+    host === "squashhub.co.za" || host.endsWith(".squashhub.co.za")
+      ? "; domain=.squashhub.co.za"
+      : "";
+  document.cookie = `${PAY_RETURN_COOKIE}=; path=/${domainAttr}; max-age=0; samesite=lax`;
+}
+
 export function buildStitchReturnUrl(pathAndSearch: string) {
   if (Capacitor.isNativePlatform()) {
     const nativePath = pathAndSearch.replace(/^\/+/, "");
@@ -20,7 +59,7 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
     ? pathAndSearch
     : `/${pathAndSearch.replace(/^\/+/, "")}`;
 
-  // Figure out where the payer should ultimately land (their current subdomain).
+  // Resolve the payer's real destination (their current subdomain).
   let originHere = PUBLIC_APP_ORIGIN;
   if (typeof window !== "undefined" && window.location?.origin) {
     const host = window.location.hostname;
@@ -35,18 +74,20 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
   }
   const finalTarget = `${originHere}${safePath}`;
 
-  // Stitch's redirect whitelist only allows exact URL matches and caps at 5
-  // entries — so we always hand Stitch the same canonical forwarder URL and
-  // pass the real destination in `?to=`. /pay/return validates the host and
-  // bounces the payer (plus any Stitch query params) to their subdomain.
-  // On the lovable.app preview host we forward through the preview origin so
-  // testing works without touching production redirects.
+  // Stitch's whitelist requires an EXACT string match on merchantRedirectUrl,
+  // and caps at 5 entries. Instead of one whitelist entry per club subdomain
+  // we always send Stitch the same bare canonical URL and stash the real
+  // destination in a `.squashhub.co.za` cookie that /pay/return reads.
+  // Preview (lovable.app) is single-host so the cookie is same-origin.
+  setPayReturnCookie(finalTarget);
+
   let forwarderOrigin = PUBLIC_APP_ORIGIN;
   if (typeof window !== "undefined" && window.location?.hostname?.endsWith(".lovable.app")) {
     forwarderOrigin = "https://squashhub.lovable.app";
   }
-  return `${forwarderOrigin}/pay/return?to=${encodeURIComponent(finalTarget)}`;
+  return `${forwarderOrigin}/pay/return`;
 }
+
 
 
 export async function openStitchCheckout(url: string) {

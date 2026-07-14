@@ -360,9 +360,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-md border bg-amber-500/10 p-2 text-[11px] leading-snug">
-              <p className="font-medium text-amber-900">One-time authorisation charge</p>
+              <p className="font-medium text-amber-900">R20 authorisation charge</p>
               <p className="mt-0.5 text-amber-800">
-                Stitch will make a small, once-off authorisation charge on your card now to verify it
+                Stitch will make a once-off R20 authorisation charge on your card now to verify it
                 and confirm consent. This is <strong>not</strong> your monthly fee.
                 Your first regular monthly card charge will run on the day you choose below.
               </p>

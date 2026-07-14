@@ -20,7 +20,9 @@ export default function PayReturn() {
     clearPayReturnCookie();
 
     if (!to) {
-      window.location.replace(fallback);
+      const fallbackUrl = new URL(fallback, window.location.origin);
+      here.searchParams.forEach((v, k) => fallbackUrl.searchParams.set(k, v));
+      window.location.replace(fallbackUrl.toString());
       return;
     }
 

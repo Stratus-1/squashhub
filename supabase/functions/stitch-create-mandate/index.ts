@@ -216,10 +216,8 @@ Deno.serve(async (req) => {
       return json({ error: "Stitch did not return an authorisation URL" }, 502);
     }
 
-    // Stitch Express card-consents/subscriptions success pages do NOT auto-redirect
-    // using merchantRedirectUrl from the create body alone — the payer just sees
-    // "You have successfully saved your card". Appending `?redirect_url=` to the
-    // hosted URL is what triggers the browser redirect back to us after completion.
+    // Stitch Express success pages do NOT auto-redirect using the create-body
+    // redirect alone. The hosted-flow callback parameter is `redirect_uri`.
     const authUrl = appendRedirectParam(stitchUrl, safeReturn);
 
 
@@ -250,11 +248,11 @@ function sanitizeReturnUrl(raw: string): string {
 function appendRedirectParam(hostedUrl: string, returnUrl: string): string {
   try {
     const u = new URL(hostedUrl);
-    u.searchParams.set("redirect_url", returnUrl);
+    u.searchParams.set("redirect_uri", returnUrl);
     return u.toString();
   } catch {
     const sep = hostedUrl.includes("?") ? "&" : "?";
-    return `${hostedUrl}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
+    return `${hostedUrl}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
   }
 }
 

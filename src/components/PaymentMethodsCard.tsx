@@ -103,10 +103,20 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
         body: { mandate_id: mandateId },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      const payload = (data as any) || {};
+      // MANDATE_NOT_FOUND is a soft error — the edge function has already
+      // marked the local row as failed, so just refresh the list.
+      if (payload.error === "MANDATE_NOT_FOUND") {
+        qc.invalidateQueries({ queryKey: ["stitch-mandates", clubMemberId] });
+        if (!silent) {
+          toast.error("Authorisation was not completed at Stitch. Please start again.");
+        }
+        return;
+      }
+      if (payload.error) throw new Error(payload.error);
       qc.invalidateQueries({ queryKey: ["stitch-mandates", clubMemberId] });
       if (!silent) {
-        const s = (data as any)?.status;
+        const s = payload.status;
         if (s === "active") toast.success("Card payment is now active");
         else if (s === "pending") toast.info("Still awaiting authorisation on Stitch");
         else toast.info(`Status: ${s}`);
@@ -115,6 +125,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       if (!silent) toast.error(e?.message || "Could not refresh status");
     }
   }
+
 
   // On return from Stitch, refresh
   useEffect(() => {

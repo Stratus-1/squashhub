@@ -100,20 +100,30 @@ Deno.serve(async (req) => {
     if (!resp.ok) {
       console.error("stitch get failed", resp.status, usedPath, JSON.stringify(j));
       if (resp.status === 404) {
-        // Mandate id is unknown to Stitch at either endpoint (stale row, wrong
-        // club credentials, or deleted upstream). Return a structured
-        // "not found" response so the client can surface a friendly message
-        // and prompt the member to restart the mandate setup, instead of
-        // treating it as a generic 502 gateway error.
+        // Mandate id is unknown to Stitch at either endpoint. This happens
+        // when the payer never completed the authorisation flow on Stitch's
+        // hosted page (e.g. an earlier redirect_url whitelist mismatch), so
+        // Stitch never activated the subscription/consent even though we
+        // stored a local "pending" row. Mark the local mandate as failed
+        // so the client stops re-polling on every page load and can offer
+        // the member a clean "start again" affordance.
+        if (mandate.status === "pending") {
+          await admin
+            .from("stitch_mandates")
+            .update({ status: "failed" })
+            .eq("id", mandate.id)
+            .eq("status", "pending");
+        }
         return json({
           ok: false,
           error: "MANDATE_NOT_FOUND",
-          status: mandate.status,
+          status: "failed",
           fallback: true,
         });
       }
       return json({ error: `Stitch lookup failed [${resp.status}]` }, 502);
     }
+
 
     const node = j?.data || j;
     const rawStatus = String(

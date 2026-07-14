@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     }
     const payment = (plJson as any).data.payment;
     const link = payment.link as string;
-    const redirect_url = `${link}${link.includes("?") ? "&" : "?"}redirect_url=${encodeURIComponent(return_url)}`;
+    const redirect_url = link;
 
     // Record the payment attempt on the invoice (best-effort)
     await admin.from("platform_subscription_invoices")

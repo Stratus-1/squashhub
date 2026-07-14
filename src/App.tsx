@@ -43,6 +43,7 @@ import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
 import OAuthConsent from "./pages/OAuthConsent";
 import PayReturn from "./pages/PayReturn";
+import StitchPaymentBridge from "./pages/StitchPaymentBridge";
 
 import StravaCallback from "./pages/StravaCallback";
 import MatchTracker from "./pages/MatchTracker";
@@ -437,6 +438,7 @@ function AppRoutes() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+        <Route path="/pay/stitch" element={<ProtectedRoute><StitchPaymentBridge /></ProtectedRoute>} />
         <Route path="/pay/return" element={<PayReturn />} />
         <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
         <Route path="/ladder" element={<ProtectedRoute><Ladder /></ProtectedRoute>} />

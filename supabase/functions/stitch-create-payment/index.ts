@@ -11,6 +11,8 @@ const corsHeaders = {
 };
 
 const STITCH_BASE = "https://express.stitch.money/api/v1";
+const STITCH_TOKEN_URL = "https://secure.stitch.money/connect/token";
+const STITCH_API_BASE = "https://api.stitch.money/v2";
 const PUBLIC_APP_ORIGIN = "https://squashhub.co.za";
 
 Deno.serve(async (req) => {
@@ -81,21 +83,7 @@ Deno.serve(async (req) => {
     }
     console.log(`[stitch-create-payment] mode=${testMode ? "TEST" : "LIVE"} club=${club.id}`);
 
-    // 1. Get Express bearer token
-    const tokenResp = await fetch(`${STITCH_BASE}/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId, clientSecret, scope: "client_paymentrequest" }),
-    });
-    const tokenJson = await tokenResp.json().catch(() => ({}));
-    if (!tokenResp.ok || !tokenJson?.data?.accessToken) {
-      console.error("Stitch Express token error", tokenResp.status, JSON.stringify(tokenJson));
-      const msg = tokenJson?.error?.message || tokenJson?.message || tokenJson?.error || "check Client ID / Client Secret";
-      return json({ error: `Stitch Express auth failed [${tokenResp.status}]: ${msg}` }, 200);
-    }
-    const accessToken: string = tokenJson.data.accessToken;
-
-    // 2. Insert local session
+    // 1. Insert local session
     const defaultDesc =
       purpose === "topup" ? "Wallet top-up" :
       purpose === "tournament" ? "Tournament entry fee" : "Fee payment";
@@ -118,17 +106,60 @@ Deno.serve(async (req) => {
 
     const safeReturnUrl = sanitizeReturnUrl(return_url, String((club as any).subdomain || "").trim());
 
-    // 3. Create payment link. Stitch Express stores the redirect in the link
-    // body; adding extra redirect query params to /pay/<id> is ignored by some
-    // Express flows and leaves payers on the Stitch completion page.
+    // 2. Prefer Stitch's documented Payment Request flow. Unlike Express
+    // payment-links, this hosted URL honours `redirect_uri` after success.
     const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
+    const safeReturnWithSession = appendSessionParams(safeReturnUrl, session.id);
+    try {
+      const request = await createPaymentRequestV2({
+        clientId,
+        clientSecret,
+        amount: amt,
+        method,
+        merchantReference,
+        payerName,
+        payerEmail: member.email || undefined,
+        payerPhone: member.phone || undefined,
+        payerId: member.id,
+        redirectUri: safeReturnWithSession,
+      });
+      await admin.from("stitch_payment_sessions").update({
+        stitch_request_id: request.id,
+        stitch_redirect_url: request.redirect_url,
+      }).eq("id", session.id);
+
+      return json({
+        session_id: session.id,
+        redirect_url: request.redirect_url,
+        request_id: request.id,
+        redirect_mode: "direct",
+      });
+    } catch (err) {
+      console.warn("Stitch payment-request fallback to Express link:", (err as Error)?.message || err);
+    }
+
+    // 3. Fallback for older Stitch Express tenants. This may still land on
+    // /pay/complete, so the frontend wraps it in a SquashHub bridge page.
+    const tokenResp = await fetch(`${STITCH_BASE}/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, clientSecret, scope: "client_paymentrequest" }),
+    });
+    const tokenJson = await tokenResp.json().catch(() => ({}));
+    if (!tokenResp.ok || !tokenJson?.data?.accessToken) {
+      console.error("Stitch Express token error", tokenResp.status, JSON.stringify(tokenJson));
+      const msg = tokenJson?.error?.message || tokenJson?.message || tokenJson?.error || "check Client ID / Client Secret";
+      return json({ error: `Stitch Express auth failed [${tokenResp.status}]: ${msg}` }, 200);
+    }
+    const accessToken: string = tokenJson.data.accessToken;
+
     const plBody: Record<string, unknown> = {
       amount: amountCents,
       currency: "ZAR",
       payerName,
       merchantReference,
-      merchantRedirectUrl: safeReturnUrl,
-      redirectUrl: safeReturnUrl,
+      merchantRedirectUrl: safeReturnWithSession,
+      redirectUrl: safeReturnWithSession,
     };
 
     const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
@@ -145,7 +176,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = appendRedirectUri(payment.link as string, safeReturnUrl);
+    const redirectUrl = appendRedirectUri(payment.link as string, safeReturnWithSession);
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -201,4 +232,92 @@ function appendRedirectUri(link: string, returnUrl: string) {
     const sep = link.includes("?") ? "&" : "?";
     return `${link}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
   }
+}
+
+function appendSessionParams(returnUrl: string, sessionId: string) {
+  try {
+    const url = new URL(returnUrl);
+    url.searchParams.set("stitch_session", sessionId);
+    url.searchParams.set("stitch_status", "pending");
+    return url.toString();
+  } catch {
+    const sep = returnUrl.includes("?") ? "&" : "?";
+    return `${returnUrl}${sep}stitch_session=${encodeURIComponent(sessionId)}&stitch_status=pending`;
+  }
+}
+
+async function getPaymentRequestToken(clientId: string, clientSecret: string) {
+  const body = new URLSearchParams();
+  body.set("grant_type", "client_credentials");
+  body.set("client_id", clientId);
+  body.set("audience", STITCH_TOKEN_URL);
+  body.set("scope", "client_paymentrequest");
+  body.set("client_secret", clientSecret);
+
+  const resp = await fetch(STITCH_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const data = await resp.json().catch(() => ({}));
+  const token = data?.access_token || data?.accessToken || data?.token;
+  if (!resp.ok || !token) {
+    const msg = data?.detail || data?.message || data?.error_description || data?.error || `HTTP ${resp.status}`;
+    throw new Error(`token failed: ${msg}`);
+  }
+  return String(token);
+}
+
+async function createPaymentRequestV2(opts: {
+  clientId: string;
+  clientSecret: string;
+  amount: number;
+  method: string;
+  merchantReference: string;
+  payerName: string;
+  payerEmail?: string;
+  payerPhone?: string;
+  payerId: string;
+  redirectUri: string;
+}) {
+  const accessToken = await getPaymentRequestToken(opts.clientId, opts.clientSecret);
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const isCardOnly = opts.method === "card";
+  const body: Record<string, unknown> = {
+    amount: { currency: "ZAR", quantity: Number(opts.amount.toFixed(2)) },
+    externalReference: opts.merchantReference,
+    expireAt: expires,
+    payer: {
+      identifier: opts.payerId,
+      email: opts.payerEmail,
+      mobileNumber: opts.payerPhone,
+      fullName: opts.payerName.trim(),
+    },
+    metadata: { squashhubSession: opts.merchantReference },
+    paymentMethods: {
+      eft: isCardOnly ? { enabled: false } : {
+        enabled: true,
+        payerReference: opts.merchantReference.slice(0, 20),
+        beneficiaryReference: opts.merchantReference.slice(0, 20),
+      },
+      card: { enabled: isCardOnly },
+      crypto: { enabled: false },
+    },
+  };
+
+  const resp = await fetch(`${STITCH_API_BASE}/payment-requests`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json().catch(() => ({}));
+  const redirectBase = data?.interaction?.url;
+  if (!resp.ok || !data?.id || !redirectBase) {
+    const msg = data?.detail || data?.message || data?.error_description || data?.error || `HTTP ${resp.status}`;
+    throw new Error(`payment request failed: ${msg}`);
+  }
+  return {
+    id: String(data.id),
+    redirect_url: appendRedirectUri(String(redirectBase), opts.redirectUri),
+  };
 }

@@ -218,7 +218,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         if (!redirect) throw new Error("Stitch did not return a redirect URL");
         rememberPendingStitchSession((data as any).session_id, "/my-account");
         toast.success("Opening Stitch test checkout…");
-        await openStitchCheckout(redirect);
+        await openStitchCheckout(redirect, (data as any).session_id, "/my-account");
       }
     } catch (err: any) {
       toast.error(err.message || "Test payment failed");

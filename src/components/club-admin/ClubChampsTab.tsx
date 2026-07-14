@@ -764,6 +764,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       group_labels: groupLabels,
       default_break_minutes: defaultBreakMinutes,
       court_rotation_minutes: courtRotationMinutes,
+      avoid_back_to_back: avoidBackToBack,
       round_format: roundFormat,
       bye_handling: byeHandling,
       source_league_id: Array.from(sourceLeagueIds)[0] || null,
@@ -2550,6 +2551,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setGroupLabels(((champ as any).group_labels as Record<string, string>) || {});
     setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
+    setAvoidBackToBack((champ as any).avoid_back_to_back !== false);
     setRoundFormat((champ.round_format as any) || "");
     setByeHandling((champ.bye_handling as any) || "");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0

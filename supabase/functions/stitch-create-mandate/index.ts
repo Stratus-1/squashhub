@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: club } = await admin
-      .from("clubs").select("id, name, payment_gateway")
+      .from("clubs").select("id, name, subdomain, payment_gateway")
       .eq("id", club_id).maybeSingle();
     if (!club || club.payment_gateway !== "stitch") {
       return json({ error: "Stitch is not configured for this club" }, 400);
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
     const payerFullName = (member.name || "Member").slice(0, 20);
     const payerEmail = member.email || `${member.id}@noemail.local`;
 
-    const safeReturn = sanitizeReturnUrl(return_url);
+    const safeReturn = sanitizeReturnUrl(return_url, String((club as any).subdomain || "").trim());
     let stitchId: string | null = null;
     let stitchUrl: string | null = null;
 
@@ -234,14 +234,23 @@ Deno.serve(async (req) => {
   }
 });
 
-function sanitizeReturnUrl(raw: string): string {
+function sanitizeReturnUrl(raw: string, clubSubdomain = ""): string {
+  const clubAccountUrl = clubSubdomain
+    ? `https://${clubSubdomain}.squashhub.co.za/my-account`
+    : `${PUBLIC_APP_ORIGIN}/my-account`;
   try {
     const u = new URL(raw);
+    if (u.hostname.endsWith(".supabase.co") || u.pathname === "/pay/return") {
+      return clubAccountUrl;
+    }
     if (u.origin === PUBLIC_APP_ORIGIN || u.hostname.endsWith("squashhub.co.za") || u.hostname.endsWith("lovable.app") || u.hostname === "localhost") {
+      u.search = "";
+      u.hash = "";
+      if (u.pathname === "/" || u.pathname === "") u.pathname = "/my-account";
       return u.toString();
     }
-    return `${PUBLIC_APP_ORIGIN}/my-account`;
+    return clubAccountUrl;
   } catch {
-    return `${PUBLIC_APP_ORIGIN}/my-account`;
+    return clubAccountUrl;
   }
 }

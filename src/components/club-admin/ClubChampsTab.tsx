@@ -5051,6 +5051,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
 
 
+                  <div className="mt-3 flex items-start gap-2">
+                    <input
+                      id="avoid-b2b"
+                      type="checkbox"
+                      className="mt-1"
+                      checked={avoidBackToBack}
+                      onChange={(e) => setAvoidBackToBack(e.target.checked)}
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor="avoid-b2b" className="text-sm font-medium cursor-pointer">
+                        Avoid back-to-back matches
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Never place a player in two matches in a row. A court will sit idle for a slot rather than pair a just-finished player. If a match can't fit within the session end, it stays unscheduled and you'll be warned — add time or a spare court.
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="mt-3">
                     <Label className="text-sm font-medium">Rotate courts every (minutes)</Label>
                     <div className="flex items-center gap-2 mt-1">

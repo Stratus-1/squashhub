@@ -118,9 +118,9 @@ Deno.serve(async (req) => {
 
     const safeReturnUrl = sanitizeReturnUrl(return_url);
 
-    // 3. Create payment link. Stitch's hosted UI does not leave `/pay/complete`
-    // from the create-body redirect fields alone. The documented hosted-flow
-    // callback parameter is `redirect_uri` on the URL we send to the payer.
+    // 3. Create payment link. Stitch Express stores the redirect in the link
+    // body; adding extra redirect query params to /pay/<id> is ignored by some
+    // Express flows and leaves payers on the Stitch completion page.
     const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
     const plBody: Record<string, unknown> = {
       amount: amountCents,
@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = appendRedirectUri(payment.link as string, safeReturnUrl);
+    const redirectUrl = payment.link as string;
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -175,16 +175,3 @@ function sanitizeReturnUrl(raw: string) {
     return `${PUBLIC_APP_ORIGIN}${path}`;
   }
 }
-
-function appendRedirectUri(hostedUrl: string, returnUrl: string): string {
-  try {
-    const u = new URL(hostedUrl);
-    u.searchParams.set("redirect_uri", returnUrl);
-    return u.toString();
-  } catch {
-    const sep = hostedUrl.includes("?") ? "&" : "?";
-    return `${hostedUrl}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
-  }
-}
-
-

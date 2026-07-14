@@ -212,7 +212,8 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
     parsed.search = "";
     parsed.hash = "";
     if (host === "squashhub.co.za" || host.endsWith(".squashhub.co.za")) {
-      return canonicalReturnUrl;
+      if (parsed.pathname === "/" || parsed.pathname === "") parsed.pathname = "/my-account";
+      return parsed.toString();
     }
     if (parsed.pathname === "/" || parsed.pathname === "") {
       parsed.pathname = "/pay/return";

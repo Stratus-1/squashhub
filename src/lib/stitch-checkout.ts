@@ -1,7 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 
 const APP_SCHEME = "gbsquash";
-const PUBLIC_APP_ORIGIN = "https://squashhub.co.za";
 const PENDING_STITCH_SESSION_KEY = "gbsquash.pendingStitchSession";
 
 type PendingStitchSession = {
@@ -59,11 +58,10 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
     ? pathAndSearch
     : `/${pathAndSearch.replace(/^\/+/, "")}`;
 
-  // Resolve the payer's real destination (their current subdomain) and stash it
-  // before Stitch opens. Stitch itself should only receive the canonical
-  // whitelisted return URL; /pay/return forwards back to this saved target.
-  let originHere = PUBLIC_APP_ORIGIN;
-  let hostHere = "";
+  // Stitch Express validates the exact redirect URL configured for the tenant.
+  // Send the current tenant URL directly instead of routing through the apex
+  // /pay/return bridge, which Stitch can treat as a different unapproved URL.
+  let originHere = "https://squashhub.co.za";
   if (typeof window !== "undefined" && window.location?.origin) {
     const host = window.location.hostname;
     if (
@@ -72,7 +70,6 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
       host.endsWith(".lovable.app") ||
       host === "localhost"
     ) {
-      hostHere = host;
       originHere = window.location.origin.replace(/\/+$/, "");
     }
   }
@@ -80,19 +77,10 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
   try {
     const target = new URL(safePath, originHere);
     setPayReturnCookie(target.toString());
-
-    const returnOrigin =
-      hostHere === "squashhub.co.za" || hostHere.endsWith(".squashhub.co.za")
-        ? PUBLIC_APP_ORIGIN
-        : originHere;
-    return `${returnOrigin}/pay/return`;
+    return target.toString();
   } catch {
     setPayReturnCookie(`${originHere}/my-account`);
-    const returnOrigin =
-      hostHere === "squashhub.co.za" || hostHere.endsWith(".squashhub.co.za")
-        ? PUBLIC_APP_ORIGIN
-        : originHere;
-    return `${returnOrigin}/pay/return`;
+    return `${originHere}/my-account`;
   }
 }
 

@@ -59,8 +59,9 @@ Deno.serve(async (req) => {
     }
     const accessToken: string = tokenJson.data.accessToken;
 
-    // Docs: GET /api/v1/payment/{id} — poll by payment id (what we stored as stitch_request_id).
-    const plResp = await fetch(`${STITCH_BASE}/payment/${encodeURIComponent(session.stitch_request_id)}`, {
+    // Stitch Express: poll the payment LINK we created (id returned from POST /payment-links).
+    // The bare /payment/{id} route does not exist and returns 404.
+    const plResp = await fetch(`${STITCH_BASE}/payment-links/${encodeURIComponent(session.stitch_request_id)}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const plJson = await plResp.json().catch(() => ({}));

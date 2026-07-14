@@ -144,7 +144,11 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = payment.link as string;
+    // Stitch Express hosted pages only auto-redirect back when `redirect_url` is
+    // in the URL query — merchantRedirectUrl in the create body alone leaves the
+    // payer stuck on the Stitch success page.
+    const redirectUrl = appendRedirectParam(payment.link as string, safeReturnUrl);
+
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
@@ -173,3 +177,15 @@ function sanitizeReturnUrl(raw: string) {
     return `${PUBLIC_APP_ORIGIN}${path}`;
   }
 }
+
+function appendRedirectParam(hostedUrl: string, returnUrl: string): string {
+  try {
+    const u = new URL(hostedUrl);
+    u.searchParams.set("redirect_url", returnUrl);
+    return u.toString();
+  } catch {
+    const sep = hostedUrl.includes("?") ? "&" : "?";
+    return `${hostedUrl}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
+  }
+}
+

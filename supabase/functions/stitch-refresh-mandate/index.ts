@@ -100,29 +100,22 @@ Deno.serve(async (req) => {
     if (!resp.ok) {
       console.error("stitch get failed", resp.status, usedPath, JSON.stringify(j));
       if (resp.status === 404) {
-        // Mandate id is unknown to Stitch at either endpoint. This happens
-        // when the payer never completed the authorisation flow on Stitch's
-        // hosted page (e.g. an earlier redirect_url whitelist mismatch), so
-        // Stitch never activated the subscription/consent even though we
-        // stored a local "pending" row. Mark the local mandate as failed
-        // so the client stops re-polling on every page load and can offer
-        // the member a clean "start again" affordance.
-        if (mandate.status === "pending") {
-          await admin
-            .from("stitch_mandates")
-            .update({ status: "failed" })
-            .eq("id", mandate.id)
-            .eq("status", "pending");
-        }
+        // Stitch Express doesn't reliably expose GET on subscriptions/consents
+        // even when the authorisation IS active on their side (the R20
+        // verification charge succeeded). Do NOT auto-mark as failed on 404;
+        // leave the row as pending and let the webhook or a manual admin
+        // action reconcile it. Marking it failed here breaks legitimate
+        // recurring mandates that the payer completed successfully.
         return json({
           ok: false,
           error: "MANDATE_NOT_FOUND",
-          status: "failed",
+          status: mandate.status,
           fallback: true,
         });
       }
       return json({ error: `Stitch lookup failed [${resp.status}]` }, 502);
     }
+
 
 
     const node = j?.data || j;

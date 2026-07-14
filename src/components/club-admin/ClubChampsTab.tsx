@@ -392,6 +392,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
+  // When on, Bells scheduler will not place a player in a back-to-back match:
+  // a court sits idle for a slot rather than assigning the only-available
+  // (recently-played) pairing. Any matches that don't fit within the session
+  // end stay unscheduled — admin gets the standard shortage warning.
+  const [avoidBackToBack, setAvoidBackToBack] = useState<boolean>(true);
   const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss">("");
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
@@ -1662,11 +1667,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   return bestIdx === -1 ? null : { league: gn, idx: bestIdx, cap };
                 };
 
+                // Strict pass: only place matches that respect the break.
                 let picked =
                   (owner != null ? pickForLeague(owner, true) : null) ??
-                  (owner != null ? pickForLeague(owner, false) : null) ??
-                  pickBest(nowAbs, t, s.endMin, cid, true) ??
-                  pickBest(nowAbs, t, s.endMin, cid, false);
+                  pickBest(nowAbs, t, s.endMin, cid, true);
+                // Only relax the break (allow back-to-back) when the admin
+                // has opted out of the strict rule.
+                if (!picked && !avoidBackToBack) {
+                  picked =
+                    (owner != null ? pickForLeague(owner, false) : null) ??
+                    pickBest(nowAbs, t, s.endMin, cid, false);
+                }
                 if (!picked) continue;
 
                 const pool = remainingByLeague.get(picked.league)!;

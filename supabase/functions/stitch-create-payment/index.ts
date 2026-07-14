@@ -118,9 +118,8 @@ Deno.serve(async (req) => {
 
     const safeReturnUrl = sanitizeReturnUrl(return_url);
 
-    // 3. Create payment link — Express API only requires amount, payerName, merchantReference.
-    // Redirect after payment is applied via `?redirect_url=` on the returned link (see below);
-    // the URL must first be registered under Settings → Redirect URLs in the Stitch dashboard.
+    // 3. Create payment link. The return URL belongs in the create body only;
+    // appending it to the hosted link makes Stitch treat some links as invalid.
     const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
     const plBody: Record<string, unknown> = {
       amount: amountCents,
@@ -145,9 +144,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // Stitch Express expects the merchant return URL as `redirect_url` on the
-    // hosted link itself. It must match the dashboard allow-list exactly.
-    const redirectUrl = appendParam(payment.link as string, "redirect_url", safeReturnUrl);
+    const redirectUrl = payment.link as string;
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
@@ -162,10 +159,6 @@ Deno.serve(async (req) => {
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-function appendParam(url: string, key: string, value: string) {
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }
 function sanitizeReturnUrl(raw: string) {
   try {

@@ -96,8 +96,7 @@ Deno.serve(async (req) => {
       return json({ error: `Stitch Express API error: ${msg}` }, 200);
     }
     const payment = (plJson as any).data.payment;
-    const link = payment.link as string;
-    const redirect_url = `${link}${link.includes("?") ? "&" : "?"}redirect_url=${encodeURIComponent(return_url)}`;
+    const redirect_url = payment.link as string;
 
     return json({
       redirect_url,

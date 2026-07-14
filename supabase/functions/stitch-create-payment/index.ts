@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = appendRedirectUri(payment.link as string, safeReturnWithSession);
+    const redirectUrl = payment.link as string;
 
 
     await admin.from("stitch_payment_sessions").update({

@@ -100,6 +100,12 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
 
 function buildStitchBridgeUrl(url: string, sessionId?: string, returnPath?: string) {
   if (typeof window === "undefined" || !sessionId) return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "express.stitch.money") return url;
+  } catch {
+    return url;
+  }
   const bridge = new URL("/pay/stitch", window.location.origin);
   bridge.searchParams.set("url", url);
   bridge.searchParams.set("session", sessionId);

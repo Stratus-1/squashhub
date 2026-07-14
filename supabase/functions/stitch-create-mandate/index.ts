@@ -151,6 +151,7 @@ Deno.serve(async (req) => {
     const payerFullName = (member.name || "Member").slice(0, 20);
     const payerEmail = member.email || `${member.id}@noemail.local`;
 
+    const safeReturn = sanitizeReturnUrl(return_url);
     let stitchId: string | null = null;
     let stitchUrl: string | null = null;
 
@@ -163,7 +164,7 @@ Deno.serve(async (req) => {
         payerFullName,
         email: payerEmail,
         payerId: member.id,
-        merchantRedirectUrl: return_url,
+        merchantRedirectUrl: safeReturn,
       };
       const resp = await fetch(`${STITCH_BASE}/card-consents`, {
         method: "POST",
@@ -191,7 +192,7 @@ Deno.serve(async (req) => {
         payerFullName,
         email: payerEmail,
         payerId: member.id,
-        merchantRedirectUrl: return_url,
+        merchantRedirectUrl: safeReturn,
         recurrence: { frequency: "MONTHLY", interval: 1, byMonthDay: day },
       };
       const resp = await fetch(`${STITCH_BASE}/subscriptions`, {
@@ -215,8 +216,10 @@ Deno.serve(async (req) => {
       return json({ error: "Stitch did not return an authorisation URL" }, 502);
     }
 
-    const safeReturn = sanitizeReturnUrl(return_url);
-    const authUrl = appendParam(stitchUrl, "redirect_url", safeReturn);
+    // The return URL is already supplied in the create body. Appending it to
+    // Stitch's hosted URL can make the final authorisation fail after the R20
+    // verification charge.
+    const authUrl = stitchUrl;
 
     await admin
       .from("stitch_mandates")
@@ -229,16 +232,6 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message || "Unexpected error" }, 500);
   }
 });
-
-function appendParam(url: string, key: string, value: string): string {
-  try {
-    const u = new URL(url);
-    u.searchParams.set(key, value);
-    return u.toString();
-  } catch {
-    return url + (url.includes("?") ? "&" : "?") + `${key}=${encodeURIComponent(value)}`;
-  }
-}
 
 function sanitizeReturnUrl(raw: string): string {
   try {

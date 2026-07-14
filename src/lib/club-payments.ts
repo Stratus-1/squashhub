@@ -64,7 +64,7 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
     const redirect = (data as any)?.redirect_url;
     if (!redirect) throw new Error("Stitch did not return a redirect URL");
     rememberPendingStitchSession((data as any).session_id, opts.returnPath);
-    await openStitchCheckout(redirect);
+    await openStitchCheckout(redirect, (data as any).session_id, opts.returnPath);
     return { session_id: (data as any).session_id as string };
   }
   throw new Error(`Unsupported gateway: ${gateway}`);

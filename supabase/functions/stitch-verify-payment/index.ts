@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       session = data;
     } else {
       const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-      const { data } = await admin.from("stitch_payment_sessions").select("*")
+    const { data } = await admin.from("stitch_payment_sessions").select("*")
         .eq("user_id", userId).in("status", ["created", "processing"]).gte("created_at", since)
         .not("stitch_request_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
       session = data;
@@ -50,8 +50,8 @@ Deno.serve(async (req) => {
     if (!clientId || !clientSecret) return json({ error: "Stitch Express keys missing" }, 400);
 
     const status = await lookupStitchStatus(clientId, clientSecret, session.stitch_request_id, session.stitch_redirect_url);
-    const completed = status === "PAID" || status === "COMPLETED" || status === "COMPLETE";
-    const failed = status === "EXPIRED" || status === "CANCELLED" || status === "CANCELED" || status === "FAILED";
+    const completed = status === "PAID" || status === "COMPLETED" || status === "COMPLETE" || status === "PAYMENTINITIATIONREQUESTCOMPLETED";
+    const failed = status === "EXPIRED" || status === "CANCELLED" || status === "CANCELED" || status === "FAILED" || status === "PAYMENTINITIATIONREQUESTCANCELLED" || status === "PAYMENTINITIATIONREQUESTEXPIRED";
 
     if (!completed) {
       const next = failed ? "failed" : "processing";
@@ -165,7 +165,7 @@ async function lookupStitchStatus(clientId: string, clientSecret: string, reques
   }
   const accessToken: string = tokenJson.data.accessToken;
 
-  const plResp = await fetch(`${STITCH_BASE}/payment-links/${encodeURIComponent(requestId)}`, {
+  const plResp = await fetch(`${STITCH_BASE}/payments/${encodeURIComponent(requestId)}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const plJson = await plResp.json().catch(() => ({}));

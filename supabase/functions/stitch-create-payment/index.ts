@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = appendRedirectUri(payment.link as string, safeReturnWithSession);
+    const redirectUrl = payment.link as string;
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -234,21 +234,13 @@ function appendRedirectUri(link: string, returnUrl: string) {
   }
 }
 
-function appendSessionParams(returnUrl: string, sessionId: string, _clubSubdomain = "") {
-  // NOTE: Do NOT append extra query params (like stitch_club) beyond what Stitch
-  // expects. Stitch Express validates merchantRedirectUrl against the whitelist
-  // registered in the merchant portal. Adding unknown params silently breaks the
-  // match and Stitch keeps the user on their own /pay/complete page.
-  // Club resolution is handled server-side via stitch-return-target using the session id.
-  try {
-    const url = new URL(returnUrl);
-    url.searchParams.set("stitch_session", sessionId);
-    url.searchParams.set("stitch_status", "pending");
-    return url.toString();
-  } catch {
-    const sep = returnUrl.includes("?") ? "&" : "?";
-    return `${returnUrl}${sep}stitch_session=${encodeURIComponent(sessionId)}&stitch_status=pending`;
-  }
+function appendSessionParams(returnUrl: string, _sessionId: string, _clubSubdomain = "") {
+  // Stitch Express appears to validate the return URL as an exact whitelist
+  // match. Any appended query params, even our own stitch_session/status, can
+  // make Stitch keep the payer on /pay/complete instead of redirecting. The
+  // browser already stores the pending session before checkout, and /pay/return
+  // uses the apex cookie to route the payer back to their club subdomain.
+  return returnUrl;
 }
 
 async function getPaymentRequestToken(clientId: string, clientSecret: string) {

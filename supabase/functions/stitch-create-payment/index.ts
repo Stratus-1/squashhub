@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     // 2. Prefer Stitch's documented Payment Request flow. Unlike Express
     // payment-links, this hosted URL honours `redirect_uri` after success.
     const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
-    const safeReturnWithSession = appendSessionParams(safeReturnUrl, session.id);
+    const safeReturnWithSession = appendSessionParams(safeReturnUrl, session.id, String((club as any).subdomain || "").trim());
     try {
       const request = await createPaymentRequestV2({
         clientId,
@@ -234,15 +234,19 @@ function appendRedirectUri(link: string, returnUrl: string) {
   }
 }
 
-function appendSessionParams(returnUrl: string, sessionId: string) {
+function appendSessionParams(returnUrl: string, sessionId: string, clubSubdomain = "") {
   try {
     const url = new URL(returnUrl);
     url.searchParams.set("stitch_session", sessionId);
     url.searchParams.set("stitch_status", "pending");
+    const safeClub = clubSubdomain.toLowerCase();
+    if (/^[a-z0-9-]{2,32}$/.test(safeClub)) url.searchParams.set("stitch_club", safeClub);
     return url.toString();
   } catch {
     const sep = returnUrl.includes("?") ? "&" : "?";
-    return `${returnUrl}${sep}stitch_session=${encodeURIComponent(sessionId)}&stitch_status=pending`;
+    const safeClub = clubSubdomain.toLowerCase();
+    const clubParam = /^[a-z0-9-]{2,32}$/.test(safeClub) ? `&stitch_club=${encodeURIComponent(safeClub)}` : "";
+    return `${returnUrl}${sep}stitch_session=${encodeURIComponent(sessionId)}&stitch_status=pending${clubParam}`;
   }
 }
 

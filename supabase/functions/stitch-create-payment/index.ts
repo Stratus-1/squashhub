@@ -124,8 +124,11 @@ Deno.serve(async (req) => {
     const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
     const plBody: Record<string, unknown> = {
       amount: amountCents,
+      currency: "ZAR",
       payerName,
       merchantReference,
+      merchantRedirectUrl: safeReturnUrl,
+      redirectUrl: safeReturnUrl,
     };
 
     const plResp = await fetch(`${STITCH_BASE}/payment-links`, {

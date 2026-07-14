@@ -53,20 +53,22 @@ function AnimatedCount({ value }: { value: number }) {
 
 interface ClubLandingProps {
   hostClub?: ClubData | null;
+  hostSubdomain?: string | null;
 }
 
-export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
+export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const { user, loading: authLoading } = useAuth();
 
-  const needsQuery = !hostClub && !!subdomain;
+  const effectiveSubdomain = subdomain ?? hostSubdomain ?? null;
+  const needsQuery = !hostClub && !!effectiveSubdomain;
 
   const { data: queriedClub, isLoading } = useQuery({
-    queryKey: ["club-by-subdomain", subdomain],
+    queryKey: ["club-by-subdomain", effectiveSubdomain],
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
         .select("id, name, subdomain, address, email, phone, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id, show_delegates_on_landing")
-        .eq("subdomain", subdomain!)
+        .eq("subdomain", effectiveSubdomain!)
         .maybeSingle();
       if (error) throw error;
       return data as ClubData | null;
@@ -76,7 +78,8 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
 
   const club = hostClub ?? queriedClub;
   const loading = needsQuery && isLoading;
-  const displaySubdomain = club?.subdomain ?? subdomain;
+  const displaySubdomain = club?.subdomain ?? effectiveSubdomain;
+
 
   // Fetch delegate details via safe public view (no PII exposed)
   const delegateIds = [club?.chairman_member_id, club?.secretary_member_id, club?.club_captain_member_id].filter(Boolean) as string[];

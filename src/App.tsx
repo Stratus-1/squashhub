@@ -413,7 +413,7 @@ function AppRoutes() {
       <Routes location={routeLocation}>
         <Route path="/" element={
           isClubSubdomain && !user
-            ? <ClubLanding hostClub={clubFromHost} />
+            ? <ClubLanding hostClub={clubFromHost} hostSubdomain={clubSubdomain} />
             : user
               ? <SubdomainMembershipGate><Dashboard /></SubdomainMembershipGate>
               : <Home />

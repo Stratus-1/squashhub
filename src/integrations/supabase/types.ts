@@ -992,6 +992,7 @@ export type Database = {
       club_champs: {
         Row: {
           affects_ranking_points: boolean
+          avoid_back_to_back: boolean
           best_of: number | null
           bye_handling: string
           club_id: string
@@ -1049,6 +1050,7 @@ export type Database = {
         }
         Insert: {
           affects_ranking_points?: boolean
+          avoid_back_to_back?: boolean
           best_of?: number | null
           bye_handling?: string
           club_id: string
@@ -1106,6 +1108,7 @@ export type Database = {
         }
         Update: {
           affects_ranking_points?: boolean
+          avoid_back_to_back?: boolean
           best_of?: number | null
           bye_handling?: string
           club_id?: string

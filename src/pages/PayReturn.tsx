@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { readPayReturnCookie, clearPayReturnCookie } from "@/lib/stitch-checkout";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Canonical Stitch return URL. Stitch's redirect whitelist requires an exact
@@ -13,46 +14,40 @@ import { readPayReturnCookie, clearPayReturnCookie } from "@/lib/stitch-checkout
  */
 export default function PayReturn() {
   useEffect(() => {
-    const here = new URL(window.location.href);
-    const fallback = "/my-account";
-    const fallbackTarget = buildFallbackTarget(here) || new URL(fallback, window.location.origin);
+    void (async () => {
+      const here = new URL(window.location.href);
+      const fallback = "/my-account";
+      const fallbackTarget = await buildFallbackTarget(here) || new URL(fallback, window.location.origin);
 
-    const to = readPayReturnCookie();
-    clearPayReturnCookie();
+      const to = readPayReturnCookie();
+      clearPayReturnCookie();
 
-    if (!to) {
-      here.searchParams.forEach((v, k) => fallbackTarget.searchParams.set(k, v));
-      window.location.replace(fallbackTarget.toString());
-      return;
-    }
+      if (!to) {
+        here.searchParams.forEach((v, k) => fallbackTarget.searchParams.set(k, v));
+        window.location.replace(fallbackTarget.toString());
+        return;
+      }
 
-    let target: URL;
-    try {
-      target = new URL(to);
-    } catch {
-      window.location.replace(fallback);
-      return;
-    }
+      let target: URL;
+      try {
+        target = new URL(to);
+      } catch {
+        window.location.replace(fallback);
+        return;
+      }
 
-    // Only allow same-brand hosts.
-    const host = target.hostname.toLowerCase();
-    const allowed =
-      host === "squashhub.co.za" ||
-      host.endsWith(".squashhub.co.za") ||
-      host === "squashhub.lovable.app" ||
-      host.endsWith(".lovable.app") ||
-      host === "localhost";
-    if (!allowed) {
-      window.location.replace(fallback);
-      return;
-    }
+      if (!isAllowedTarget(target)) {
+        window.location.replace(fallback);
+        return;
+      }
 
-    // Forward Stitch-added query params onto the target.
-    here.searchParams.forEach((v, k) => {
-      if (!target.searchParams.has(k)) target.searchParams.set(k, v);
-    });
+      // Forward Stitch-added query params onto the target.
+      here.searchParams.forEach((v, k) => {
+        if (!target.searchParams.has(k)) target.searchParams.set(k, v);
+      });
 
-    window.location.replace(target.toString());
+      window.location.replace(target.toString());
+    })();
   }, []);
 
   return (
@@ -65,10 +60,37 @@ export default function PayReturn() {
   );
 }
 
-function buildFallbackTarget(here: URL) {
+async function buildFallbackTarget(here: URL) {
   const club = (here.searchParams.get("stitch_club") || "").trim().toLowerCase();
-  if (!club) return null;
-  if (!/^[a-z0-9-]{2,32}$/.test(club)) return null;
-  if (club === "www" || club === "app" || club === "admin") return null;
-  return new URL(`/my-account`, `https://${club}.squashhub.co.za`);
+  if (isSafeClubSubdomain(club)) return new URL(`/my-account`, `https://${club}.squashhub.co.za`);
+
+  const sessionId = (here.searchParams.get("stitch_session") || "").trim();
+  if (!sessionId) return null;
+
+  try {
+    const { data } = await supabase.functions.invoke("stitch-return-target", {
+      body: { session_id: sessionId },
+    });
+    const redirectUrl = String((data as any)?.redirect_url || "");
+    if (!redirectUrl) return null;
+    const target = new URL(redirectUrl);
+    return isAllowedTarget(target) ? target : null;
+  } catch {
+    return null;
+  }
+}
+
+function isSafeClubSubdomain(club: string) {
+  return /^[a-z0-9-]{2,32}$/.test(club) && !["www", "app", "admin"].includes(club);
+}
+
+function isAllowedTarget(target: URL) {
+  const host = target.hostname.toLowerCase();
+  return (
+    host === "squashhub.co.za" ||
+    host.endsWith(".squashhub.co.za") ||
+    host === "squashhub.lovable.app" ||
+    host.endsWith(".lovable.app") ||
+    host === "localhost"
+  );
 }

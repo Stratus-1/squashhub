@@ -1009,7 +1009,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [
     showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs,
     startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode, pointsPerGame, bestOf,
-    groupDurations, courtRotationMinutes, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
+    groupDurations, courtRotationMinutes, avoidBackToBack, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
     paymentMethods, paymentRequired, registrationRequired, inviteMethods, includeVisitors,
     selectedVisitorClubs, description,
@@ -1737,7 +1737,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       allDates,
       timeSlots,
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, customizeDailySchedule, daySchedules]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules]);
 
   // Create/update champ
   const createChamp = useMutation({
@@ -1790,6 +1790,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             group_labels: groupLabels,
             default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
+            avoid_back_to_back: avoidBackToBack,
             round_format: roundFormat,
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
@@ -1845,6 +1846,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             group_labels: groupLabels,
             default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
+            avoid_back_to_back: avoidBackToBack,
             round_format: roundFormat,
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,

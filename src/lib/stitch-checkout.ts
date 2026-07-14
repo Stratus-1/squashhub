@@ -98,19 +98,29 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
 
 
 
-export async function openStitchCheckout(url: string) {
+function buildStitchBridgeUrl(url: string, sessionId?: string, returnPath?: string) {
+  if (typeof window === "undefined" || !sessionId) return url;
+  const bridge = new URL("/pay/stitch", window.location.origin);
+  bridge.searchParams.set("url", url);
+  bridge.searchParams.set("session", sessionId);
+  if (returnPath) bridge.searchParams.set("return", returnPath);
+  return bridge.toString();
+}
+
+export async function openStitchCheckout(url: string, sessionId?: string, returnPath?: string) {
+  const targetUrl = buildStitchBridgeUrl(url, sessionId, returnPath);
   if (Capacitor.isNativePlatform()) {
     const { Browser } = await import("@capacitor/browser");
-    await Browser.open({ url });
+    await Browser.open({ url: targetUrl });
     return;
   }
   try {
     if (window.top && window.top !== window.self) {
-      window.top.location.href = url;
+      window.top.location.href = targetUrl;
       return;
     }
   } catch { /* cross-origin frame */ }
-  window.location.assign(url);
+  window.location.assign(targetUrl);
 }
 
 export function rememberPendingStitchSession(sessionId: string, returnPath: string) {

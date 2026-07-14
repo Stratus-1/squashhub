@@ -1,0 +1,1 @@
+ALTER TABLE public.club_champs ADD COLUMN IF NOT EXISTS avoid_back_to_back boolean NOT NULL DEFAULT true;

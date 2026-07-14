@@ -392,6 +392,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
+  // When on, Bells scheduler will not place a player in a back-to-back match:
+  // a court sits idle for a slot rather than assigning the only-available
+  // (recently-played) pairing. Any matches that don't fit within the session
+  // end stay unscheduled — admin gets the standard shortage warning.
+  const [avoidBackToBack, setAvoidBackToBack] = useState<boolean>(true);
   const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss">("");
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
@@ -759,6 +764,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       group_labels: groupLabels,
       default_break_minutes: defaultBreakMinutes,
       court_rotation_minutes: courtRotationMinutes,
+      avoid_back_to_back: avoidBackToBack,
       round_format: roundFormat,
       bye_handling: byeHandling,
       source_league_id: Array.from(sourceLeagueIds)[0] || null,
@@ -1003,7 +1009,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [
     showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs,
     startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode, pointsPerGame, bestOf,
-    groupDurations, courtRotationMinutes, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
+    groupDurations, courtRotationMinutes, avoidBackToBack, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
     paymentMethods, paymentRequired, registrationRequired, inviteMethods, includeVisitors,
     selectedVisitorClubs, description,
@@ -1662,11 +1668,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   return bestIdx === -1 ? null : { league: gn, idx: bestIdx, cap };
                 };
 
+                // Strict pass: only place matches that respect the break.
                 let picked =
                   (owner != null ? pickForLeague(owner, true) : null) ??
-                  (owner != null ? pickForLeague(owner, false) : null) ??
-                  pickBest(nowAbs, t, s.endMin, cid, true) ??
-                  pickBest(nowAbs, t, s.endMin, cid, false);
+                  pickBest(nowAbs, t, s.endMin, cid, true);
+                // Only relax the break (allow back-to-back) when the admin
+                // has opted out of the strict rule.
+                if (!picked && !avoidBackToBack) {
+                  picked =
+                    (owner != null ? pickForLeague(owner, false) : null) ??
+                    pickBest(nowAbs, t, s.endMin, cid, false);
+                }
                 if (!picked) continue;
 
                 const pool = remainingByLeague.get(picked.league)!;
@@ -1725,7 +1737,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       allDates,
       timeSlots,
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, customizeDailySchedule, daySchedules]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules]);
 
   // Create/update champ
   const createChamp = useMutation({
@@ -1778,6 +1790,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             group_labels: groupLabels,
             default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
+            avoid_back_to_back: avoidBackToBack,
             round_format: roundFormat,
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
@@ -1833,6 +1846,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             group_labels: groupLabels,
             default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
+            avoid_back_to_back: avoidBackToBack,
             round_format: roundFormat,
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
@@ -2539,6 +2553,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setGroupLabels(((champ as any).group_labels as Record<string, string>) || {});
     setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
+    setAvoidBackToBack((champ as any).avoid_back_to_back !== false);
     setRoundFormat((champ.round_format as any) || "");
     setByeHandling((champ.bye_handling as any) || "");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
@@ -5035,6 +5050,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
 
 
+
+                  <div className="mt-3 flex items-start gap-2">
+                    <input
+                      id="avoid-b2b"
+                      type="checkbox"
+                      className="mt-1"
+                      checked={avoidBackToBack}
+                      onChange={(e) => setAvoidBackToBack(e.target.checked)}
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor="avoid-b2b" className="text-sm font-medium cursor-pointer">
+                        Avoid back-to-back matches
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Never place a player in two matches in a row. A court will sit idle for a slot rather than pair a just-finished player. If a match can't fit within the session end, it stays unscheduled and you'll be warned — add time or a spare court.
+                      </p>
+                    </div>
+                  </div>
 
                   <div className="mt-3">
                     <Label className="text-sm font-medium">Rotate courts every (minutes)</Label>

@@ -118,9 +118,9 @@ Deno.serve(async (req) => {
 
     const safeReturnUrl = sanitizeReturnUrl(return_url);
 
-    // 3. Create payment link. For normal once-off/card top-ups, Stitch Express
-    // payment links treat extra query params on `/pay/...` as an invalid link.
-    // Keep the return URL in the create body only.
+    // 3. Create payment link. Stitch's hosted UI does not leave `/pay/complete`
+    // from the create-body redirect fields alone. The documented hosted-flow
+    // callback parameter is `redirect_uri` on the URL we send to the payer.
     const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
     const plBody: Record<string, unknown> = {
       amount: amountCents,
@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = payment.link as string;
+    const redirectUrl = appendRedirectUri(payment.link as string, safeReturnUrl);
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -173,6 +173,17 @@ function sanitizeReturnUrl(raw: string) {
   } catch {
     const path = String(raw || "/my-account").startsWith("/") ? String(raw) : `/${String(raw || "my-account")}`;
     return `${PUBLIC_APP_ORIGIN}${path}`;
+  }
+}
+
+function appendRedirectUri(hostedUrl: string, returnUrl: string): string {
+  try {
+    const u = new URL(hostedUrl);
+    u.searchParams.set("redirect_uri", returnUrl);
+    return u.toString();
+  } catch {
+    const sep = hostedUrl.includes("?") ? "&" : "?";
+    return `${hostedUrl}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
   }
 }
 

@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { buildStitchReturnUrl, openStitchCheckout } from "@/lib/stitch-checkout";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
 
@@ -176,7 +177,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
     setSubmitting(true);
     try {
-      const returnUrl = `${window.location.origin}/my-account?mandate=pending`;
+      const returnUrl = buildStitchReturnUrl("/my-account?mandate=pending");
       const { data, error } = await supabase.functions.invoke("stitch-create-mandate", {
         body: {
           club_id: clubId,
@@ -190,7 +191,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       });
       if (error) throw error;
       if (data?.auth_url) {
-        window.location.href = data.auth_url;
+        await openStitchCheckout(data.auth_url);
         return;
       }
       toast.success("Mandate created — awaiting authorisation");
@@ -220,12 +221,12 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   function normalizeAuthUrl(raw: string) {
     try {
       const url = new URL(raw);
-      const redirect = url.searchParams.get("redirect_url");
+      const redirect = url.searchParams.get("redirect_uri") || url.searchParams.get("redirect_url");
       if (redirect) {
         const returnUrl = new URL(redirect);
         if (returnUrl.pathname === "/account") {
           returnUrl.pathname = "/my-account";
-          url.searchParams.set("redirect_url", returnUrl.toString());
+          url.searchParams.set(url.searchParams.has("redirect_uri") ? "redirect_uri" : "redirect_url", returnUrl.toString());
         }
       }
       return url.toString();

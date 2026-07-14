@@ -11,29 +11,43 @@ type PendingStitchSession = {
 };
 
 export function buildStitchReturnUrl(pathAndSearch: string) {
-  if (!Capacitor.isNativePlatform()) {
-    const safePath = pathAndSearch.startsWith("/") && !pathAndSearch.startsWith("//")
-      ? pathAndSearch
-      : `/${pathAndSearch.replace(/^\/+/, "")}`;
-    // Prefer the current tenant origin (e.g. https://gb.squashhub.co.za) so
-    // the payer is returned to the same club subdomain they paid from.
-    let origin = PUBLIC_APP_ORIGIN;
-    if (typeof window !== "undefined" && window.location?.origin) {
-      const host = window.location.hostname;
-      if (
-        host === "squashhub.co.za" ||
-        host.endsWith(".squashhub.co.za") ||
-        host.endsWith(".lovable.app") ||
-        host === "localhost"
-      ) {
-        origin = window.location.origin.replace(/\/+$/, "");
-      }
-    }
-    return `${origin}${safePath}`;
+  if (Capacitor.isNativePlatform()) {
+    const nativePath = pathAndSearch.replace(/^\/+/, "");
+    return `${APP_SCHEME}://${nativePath}`;
   }
-  const nativePath = pathAndSearch.replace(/^\/+/, "");
-  return `${APP_SCHEME}://${nativePath}`;
+
+  const safePath = pathAndSearch.startsWith("/") && !pathAndSearch.startsWith("//")
+    ? pathAndSearch
+    : `/${pathAndSearch.replace(/^\/+/, "")}`;
+
+  // Figure out where the payer should ultimately land (their current subdomain).
+  let originHere = PUBLIC_APP_ORIGIN;
+  if (typeof window !== "undefined" && window.location?.origin) {
+    const host = window.location.hostname;
+    if (
+      host === "squashhub.co.za" ||
+      host.endsWith(".squashhub.co.za") ||
+      host.endsWith(".lovable.app") ||
+      host === "localhost"
+    ) {
+      originHere = window.location.origin.replace(/\/+$/, "");
+    }
+  }
+  const finalTarget = `${originHere}${safePath}`;
+
+  // Stitch's redirect whitelist only allows exact URL matches and caps at 5
+  // entries — so we always hand Stitch the same canonical forwarder URL and
+  // pass the real destination in `?to=`. /pay/return validates the host and
+  // bounces the payer (plus any Stitch query params) to their subdomain.
+  // On the lovable.app preview host we forward through the preview origin so
+  // testing works without touching production redirects.
+  let forwarderOrigin = PUBLIC_APP_ORIGIN;
+  if (typeof window !== "undefined" && window.location?.hostname?.endsWith(".lovable.app")) {
+    forwarderOrigin = "https://squashhub.lovable.app";
+  }
+  return `${forwarderOrigin}/pay/return?to=${encodeURIComponent(finalTarget)}`;
 }
+
 
 export async function openStitchCheckout(url: string) {
   if (Capacitor.isNativePlatform()) {

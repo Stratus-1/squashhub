@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = payment.link as string;
+    const redirectUrl = appendRedirectUri(payment.link as string, safeReturnUrl);
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -163,14 +163,12 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
-  const clubAccountUrl = clubSubdomain
-    ? `https://${clubSubdomain}.squashhub.co.za/my-account`
-    : `${PUBLIC_APP_ORIGIN}/my-account`;
+  const canonicalReturnUrl = `${PUBLIC_APP_ORIGIN}/pay/return`;
   try {
     const parsed = new URL(raw);
     if (parsed.protocol === "gbsquash:") return raw;
-    if (parsed.hostname.endsWith(".supabase.co") || parsed.pathname === "/pay/return") {
-      return clubAccountUrl;
+    if (parsed.hostname.endsWith(".supabase.co")) {
+      return canonicalReturnUrl;
     }
     const host = parsed.hostname.toLowerCase();
     const allowed =
@@ -179,14 +177,28 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
       host === "squashhub.lovable.app" ||
       host.endsWith(".lovable.app") ||
       host === "localhost";
-    if (!allowed) return clubAccountUrl;
+    if (!allowed) return canonicalReturnUrl;
     parsed.search = "";
     parsed.hash = "";
+    if (host === "squashhub.co.za" || host.endsWith(".squashhub.co.za")) {
+      return canonicalReturnUrl;
+    }
     if (parsed.pathname === "/" || parsed.pathname === "") {
-      parsed.pathname = "/my-account";
+      parsed.pathname = "/pay/return";
     }
     return parsed.toString();
   } catch {
-    return clubAccountUrl;
+    return canonicalReturnUrl;
+  }
+}
+
+function appendRedirectUri(link: string, returnUrl: string) {
+  try {
+    const url = new URL(link);
+    url.searchParams.set("redirect_uri", returnUrl);
+    return url.toString();
+  } catch {
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
   }
 }

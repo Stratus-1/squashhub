@@ -216,10 +216,10 @@ Deno.serve(async (req) => {
       return json({ error: "Stitch did not return an authorisation URL" }, 502);
     }
 
-    // Stitch Express recurring hosted links use the redirect URL supplied in
-    // the create body. Adding an extra redirect query param is unreliable on
-    // Express subscribe/card-consent links and can leave users on Stitch.
-    const authUrl = stitchUrl;
+    // Stitch hosted URLs require a whitelisted redirect_uri on the URL itself.
+    // The create-body redirect is retained, but the query param is what returns
+    // the payer to SquashHub after the hosted flow completes.
+    const authUrl = appendRedirectUri(stitchUrl, safeReturn);
 
 
     await admin
@@ -235,22 +235,34 @@ Deno.serve(async (req) => {
 });
 
 function sanitizeReturnUrl(raw: string, clubSubdomain = ""): string {
-  const clubAccountUrl = clubSubdomain
-    ? `https://${clubSubdomain}.squashhub.co.za/my-account`
-    : `${PUBLIC_APP_ORIGIN}/my-account`;
+  const canonicalReturnUrl = `${PUBLIC_APP_ORIGIN}/pay/return`;
   try {
     const u = new URL(raw);
-    if (u.hostname.endsWith(".supabase.co") || u.pathname === "/pay/return") {
-      return clubAccountUrl;
+    if (u.hostname.endsWith(".supabase.co")) {
+      return canonicalReturnUrl;
     }
     if (u.origin === PUBLIC_APP_ORIGIN || u.hostname.endsWith("squashhub.co.za") || u.hostname.endsWith("lovable.app") || u.hostname === "localhost") {
       u.search = "";
       u.hash = "";
-      if (u.pathname === "/" || u.pathname === "") u.pathname = "/my-account";
+      if (u.hostname === "squashhub.co.za" || u.hostname.endsWith(".squashhub.co.za")) {
+        return canonicalReturnUrl;
+      }
+      if (u.pathname === "/" || u.pathname === "") u.pathname = "/pay/return";
       return u.toString();
     }
-    return clubAccountUrl;
+    return canonicalReturnUrl;
   } catch {
-    return clubAccountUrl;
+    return canonicalReturnUrl;
+  }
+}
+
+function appendRedirectUri(link: string, returnUrl: string): string {
+  try {
+    const url = new URL(link);
+    url.searchParams.set("redirect_uri", returnUrl);
+    return url.toString();
+  } catch {
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
   }
 }

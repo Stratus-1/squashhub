@@ -59,8 +59,11 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
     ? pathAndSearch
     : `/${pathAndSearch.replace(/^\/+/, "")}`;
 
-  // Resolve the payer's real destination (their current subdomain).
+  // Resolve the payer's real destination (their current subdomain) and stash it
+  // before Stitch opens. Stitch itself should only receive the canonical
+  // whitelisted return URL; /pay/return forwards back to this saved target.
   let originHere = PUBLIC_APP_ORIGIN;
+  let hostHere = "";
   if (typeof window !== "undefined" && window.location?.origin) {
     const host = window.location.hostname;
     if (
@@ -69,19 +72,27 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
       host.endsWith(".lovable.app") ||
       host === "localhost"
     ) {
+      hostHere = host;
       originHere = window.location.origin.replace(/\/+$/, "");
     }
   }
-  // Stitch Express validates redirect URLs as exact allow-list entries. Use a
-  // plain, same-origin app path with no query/hash so it matches the URL clubs
-  // register in Stitch (for example https://gb.squashhub.co.za/my-account).
+
   try {
     const target = new URL(safePath, originHere);
-    target.search = "";
-    target.hash = "";
-    return target.toString();
+    setPayReturnCookie(target.toString());
+
+    const returnOrigin =
+      hostHere === "squashhub.co.za" || hostHere.endsWith(".squashhub.co.za")
+        ? PUBLIC_APP_ORIGIN
+        : originHere;
+    return `${returnOrigin}/pay/return`;
   } catch {
-    return `${originHere}/my-account`;
+    setPayReturnCookie(`${originHere}/my-account`);
+    const returnOrigin =
+      hostHere === "squashhub.co.za" || hostHere.endsWith(".squashhub.co.za")
+        ? PUBLIC_APP_ORIGIN
+        : originHere;
+    return `${returnOrigin}/pay/return`;
   }
 }
 

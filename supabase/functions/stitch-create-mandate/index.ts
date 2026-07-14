@@ -181,9 +181,11 @@ Deno.serve(async (req) => {
       stitchUrl = j.data.url || j.data.link || null;
     } else {
       // POST /subscriptions — fixed monthly amount, Stitch auto-charges.
+      // Initial charge is a small R20 verification; recurring monthly amount
+      // begins on the selected byMonthDay.
       const subBody = {
         amount: amountCents,
-        initialAmount: amountCents,
+        initialAmount: 2000, // R20.00 verification charge
         merchantReference,
         startDate: new Date().toISOString(),
         payerFullName,

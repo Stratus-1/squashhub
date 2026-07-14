@@ -74,8 +74,8 @@ Deno.serve(async (req) => {
       console.warn("stitch-webhook: signature present but no webhook_secret configured for club", session.club_id);
     }
 
-    const isComplete = status === "PAID";
-    const isFailed = status === "FAILED" || status === "EXPIRED" || status === "CANCELLED";
+    const isComplete = status === "PAID" || status === "COMPLETED" || status === "COMPLETE";
+    const isFailed = status === "FAILED" || status === "EXPIRED" || status === "CANCELLED" || status === "CANCELED";
 
     if (isComplete && session.status !== "completed") {
       const { data: claimed } = await admin.from("stitch_payment_sessions")

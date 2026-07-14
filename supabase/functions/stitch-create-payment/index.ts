@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: club } = await admin
-      .from("clubs").select("id, name, payment_gateway")
+      .from("clubs").select("id, name, subdomain, payment_gateway")
       .eq("id", club_id).maybeSingle();
     if (!club || club.payment_gateway !== "stitch") {
       return json({ error: "Stitch is not configured for this club" }, 200);
@@ -116,11 +116,11 @@ Deno.serve(async (req) => {
     const merchantReference = `${refPrefix}-${String(session.id).slice(0, 8)}`
       .replace(/[^a-zA-Z0-9\s\-)]/g, "").slice(0, 50) || String(session.id).slice(0, 50);
 
-    const safeReturnUrl = sanitizeReturnUrl(return_url);
+    const safeReturnUrl = sanitizeReturnUrl(return_url, String((club as any).subdomain || "").trim());
 
-    // 3. Create payment link. Stitch's hosted UI does not leave `/pay/complete`
-    // from the create-body redirect fields alone. The documented hosted-flow
-    // callback parameter is `redirect_uri` on the URL we send to the payer.
+    // 3. Create payment link. Stitch Express stores the redirect in the link
+    // body; adding extra redirect query params to /pay/<id> is ignored by some
+    // Express flows and leaves payers on the Stitch completion page.
     const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
     const plBody: Record<string, unknown> = {
       amount: amountCents,
@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = appendRedirectUri(payment.link as string, safeReturnUrl);
+    const redirectUrl = payment.link as string;
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -162,29 +162,31 @@ Deno.serve(async (req) => {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
-function sanitizeReturnUrl(raw: string) {
+function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
+  const clubAccountUrl = clubSubdomain
+    ? `https://${clubSubdomain}.squashhub.co.za/my-account`
+    : `${PUBLIC_APP_ORIGIN}/my-account`;
   try {
     const parsed = new URL(raw);
     if (parsed.protocol === "gbsquash:") return raw;
-    if (parsed.hostname.endsWith(".supabase.co")) {
-      return `${PUBLIC_APP_ORIGIN}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    if (parsed.hostname.endsWith(".supabase.co") || parsed.pathname === "/pay/return") {
+      return clubAccountUrl;
+    }
+    const host = parsed.hostname.toLowerCase();
+    const allowed =
+      host === "squashhub.co.za" ||
+      host.endsWith(".squashhub.co.za") ||
+      host === "squashhub.lovable.app" ||
+      host.endsWith(".lovable.app") ||
+      host === "localhost";
+    if (!allowed) return clubAccountUrl;
+    parsed.search = "";
+    parsed.hash = "";
+    if (parsed.pathname === "/" || parsed.pathname === "") {
+      parsed.pathname = "/my-account";
     }
     return parsed.toString();
   } catch {
-    const path = String(raw || "/my-account").startsWith("/") ? String(raw) : `/${String(raw || "my-account")}`;
-    return `${PUBLIC_APP_ORIGIN}${path}`;
+    return clubAccountUrl;
   }
 }
-
-function appendRedirectUri(hostedUrl: string, returnUrl: string): string {
-  try {
-    const u = new URL(hostedUrl);
-    u.searchParams.set("redirect_uri", returnUrl);
-    return u.toString();
-  } catch {
-    const sep = hostedUrl.includes("?") ? "&" : "?";
-    return `${hostedUrl}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
-  }
-}
-
-

@@ -72,20 +72,17 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
       originHere = window.location.origin.replace(/\/+$/, "");
     }
   }
-  const finalTarget = `${originHere}${safePath}`;
-
-  // Stitch's whitelist requires an EXACT string match on merchantRedirectUrl,
-  // and caps at 5 entries. Instead of one whitelist entry per club subdomain
-  // we always send Stitch the same bare canonical URL and stash the real
-  // destination in a `.squashhub.co.za` cookie that /pay/return reads.
-  // Preview (lovable.app) is single-host so the cookie is same-origin.
-  setPayReturnCookie(finalTarget);
-
-  let forwarderOrigin = PUBLIC_APP_ORIGIN;
-  if (typeof window !== "undefined" && window.location?.hostname?.endsWith(".lovable.app")) {
-    forwarderOrigin = "https://squashhub.lovable.app";
+  // Stitch Express validates redirect URLs as exact allow-list entries. Use a
+  // plain, same-origin app path with no query/hash so it matches the URL clubs
+  // register in Stitch (for example https://gb.squashhub.co.za/my-account).
+  try {
+    const target = new URL(safePath, originHere);
+    target.search = "";
+    target.hash = "";
+    return target.toString();
+  } catch {
+    return `${originHere}/my-account`;
   }
-  return `${forwarderOrigin}/pay/return`;
 }
 
 

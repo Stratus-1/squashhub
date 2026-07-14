@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     // the signature against that club's stored signing secret.
     const { data: mandate } = await admin
       .from("stitch_mandates")
-      .select("id, status, club_id")
+      .select("id, status, club_id, user_id, club_member_id, mandate_type, stitch_mandate_id")
       .eq("stitch_mandate_id", stitchId)
       .maybeSingle();
     if (!mandate) return json({ ok: true, unmatched: true });
@@ -80,7 +80,34 @@ Deno.serve(async (req) => {
       if (newStatus === "active") patch.authorised_at = new Date().toISOString();
       if (newStatus === "cancelled") patch.cancelled_at = new Date().toISOString();
       await admin.from("stitch_mandates").update(patch).eq("id", mandate.id);
+
+      // When a `subscription` mandate first activates, Stitch has just captured
+      // an R20 verification charge from the payer's card. Record that as a
+      // confirmed wallet top-up so the member sees the R20 in their balance.
+      if (newStatus === "active" && mandate.mandate_type === "subscription") {
+        const { data: existing } = await admin
+          .from("member_credit_transactions")
+          .select("id")
+          .eq("reference", mandate.stitch_mandate_id)
+          .eq("method", "card")
+          .maybeSingle();
+        if (!existing) {
+          await admin.from("member_credit_transactions").insert({
+            user_id: mandate.user_id,
+            club_id: mandate.club_id,
+            club_member_id: mandate.club_member_id,
+            amount: 20,
+            type: "debit",
+            method: "card",
+            status: "confirmed",
+            description: "Recurring card setup verification (R20.00) [Stitch]",
+            reference: mandate.stitch_mandate_id,
+            confirmed_at: new Date().toISOString(),
+          });
+        }
+      }
     }
+
 
     return json({ ok: true, mandate_id: mandate.id, status: newStatus || mandate.status });
   } catch (e) {

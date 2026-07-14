@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
         resp = altResp;
         j = altJson;
         usedPath = altPath;
-        const correctedType = altPath === "subscriptions" ? "subscription" : "card-consent";
+        const correctedType = altPath === "subscriptions" ? "subscription" : "card_consent";
         await admin
           .from("stitch_mandates")
           .update({ mandate_type: correctedType })

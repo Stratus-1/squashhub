@@ -15,14 +15,14 @@ export default function PayReturn() {
   useEffect(() => {
     const here = new URL(window.location.href);
     const fallback = "/my-account";
+    const fallbackTarget = buildFallbackTarget(here) || new URL(fallback, window.location.origin);
 
     const to = readPayReturnCookie();
     clearPayReturnCookie();
 
     if (!to) {
-      const fallbackUrl = new URL(fallback, window.location.origin);
-      here.searchParams.forEach((v, k) => fallbackUrl.searchParams.set(k, v));
-      window.location.replace(fallbackUrl.toString());
+      here.searchParams.forEach((v, k) => fallbackTarget.searchParams.set(k, v));
+      window.location.replace(fallbackTarget.toString());
       return;
     }
 
@@ -63,4 +63,12 @@ export default function PayReturn() {
       </div>
     </main>
   );
+}
+
+function buildFallbackTarget(here: URL) {
+  const club = (here.searchParams.get("stitch_club") || "").trim().toLowerCase();
+  if (!club) return null;
+  if (!/^[a-z0-9-]{2,32}$/.test(club)) return null;
+  if (club === "www" || club === "app" || club === "admin") return null;
+  return new URL(`/my-account`, `https://${club}.squashhub.co.za`);
 }

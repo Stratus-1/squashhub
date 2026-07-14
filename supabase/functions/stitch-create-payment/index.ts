@@ -138,12 +138,13 @@ Deno.serve(async (req) => {
       console.warn("Stitch payment-request fallback to Express link:", (err as Error)?.message || err);
     }
 
-    // 3. Fallback for older Stitch Express tenants. This may still land on
-    // /pay/complete, so the frontend wraps it in a SquashHub bridge page.
+    // 3. Fallback for Stitch Express tenants. Express expects the return URL
+    // on the hosted link as `redirect_url`; body-level redirect fields are not
+    // consistently honoured and can leave payers on Stitch's /pay/complete.
     const tokenResp = await fetch(`${STITCH_BASE}/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId, clientSecret, scope: "client_paymentrequest" }),
+      body: JSON.stringify({ clientId, clientSecret }),
     });
     const tokenJson = await tokenResp.json().catch(() => ({}));
     if (!tokenResp.ok || !tokenJson?.data?.accessToken) {
@@ -157,12 +158,12 @@ Deno.serve(async (req) => {
       amount: amountCents,
       currency: "ZAR",
       payerName,
+      payerPhoneNumber: member.phone || undefined,
+      payerEmailAddress: member.email || undefined,
       merchantReference,
-      merchantRedirectUrl: safeReturnWithSession,
-      redirectUrl: safeReturnWithSession,
     };
 
-    const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
+    const plResp = await fetch(`${STITCH_BASE}/payments`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify(plBody),
@@ -176,7 +177,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = payment.link as string;
+    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -232,6 +233,17 @@ function appendRedirectUri(link: string, returnUrl: string) {
   } catch {
     const sep = link.includes("?") ? "&" : "?";
     return `${link}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
+  }
+}
+
+function appendExpressRedirectUrl(link: string, returnUrl: string) {
+  try {
+    const url = new URL(link);
+    url.searchParams.set("redirect_url", returnUrl);
+    return url.toString();
+  } catch {
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
 }
 

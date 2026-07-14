@@ -7,6 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const STITCH_BASE = "https://express.stitch.money/api/v1";
+const STITCH_TOKEN_URL = "https://secure.stitch.money/connect/token";
+const STITCH_API_BASE = "https://api.stitch.money/v2";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -47,32 +49,9 @@ Deno.serve(async (req) => {
     const clientSecret = (creds.client_secret || "").trim();
     if (!clientId || !clientSecret) return json({ error: "Stitch Express keys missing" }, 400);
 
-    // Token
-    const tokenResp = await fetch(`${STITCH_BASE}/token`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId, clientSecret, scope: "client_paymentrequest" }),
-    });
-    const tokenJson = await tokenResp.json().catch(() => ({}));
-    if (!tokenResp.ok || !tokenJson?.data?.accessToken) {
-      console.error("Stitch Express token error", tokenResp.status, tokenJson);
-      return json({ error: "Stitch Express auth failed" }, 502);
-    }
-    const accessToken: string = tokenJson.data.accessToken;
-
-    // Stitch Express: poll the payment LINK we created (id returned from POST /payment-links).
-    // The bare /payment/{id} route does not exist and returns 404.
-    const plResp = await fetch(`${STITCH_BASE}/payment-links/${encodeURIComponent(session.stitch_request_id)}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const plJson = await plResp.json().catch(() => ({}));
-    if (!plResp.ok) {
-      console.error("Stitch Express status error", plResp.status, plJson);
-      return json({ error: "Stitch verify failed" }, 502);
-    }
-    const payment = plJson?.data?.payment || plJson?.data || {};
-    const status: string = String(payment.status || "PENDING").toUpperCase();
-    const completed = status === "PAID";
-    const failed = status === "EXPIRED" || status === "CANCELLED" || status === "FAILED";
+    const status = await lookupStitchStatus(clientId, clientSecret, session.stitch_request_id, session.stitch_redirect_url);
+    const completed = status === "PAID" || status === "COMPLETED" || status === "COMPLETE";
+    const failed = status === "EXPIRED" || status === "CANCELLED" || status === "CANCELED" || status === "FAILED";
 
     if (!completed) {
       const next = failed ? "failed" : "processing";
@@ -156,4 +135,62 @@ async function finalisePayment(admin: any, session: any) {
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+async function lookupStitchStatus(clientId: string, clientSecret: string, requestId: string, redirectUrl?: string | null) {
+  if (String(redirectUrl || "").includes("secure.stitch.money/connect/payment-request")) {
+    try {
+      const accessToken = await getPaymentRequestToken(clientId, clientSecret);
+      const resp = await fetch(`${STITCH_API_BASE}/payment-requests/${encodeURIComponent(requestId)}`, {
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok) return String(data?.status || "pending").toUpperCase();
+      console.error("Stitch payment-request status error", resp.status, data);
+      return "PENDING";
+    } catch (err) {
+      console.error("Stitch payment-request lookup failed", (err as Error)?.message || err);
+      return "PENDING";
+    }
+  }
+
+  const tokenResp = await fetch(`${STITCH_BASE}/token`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientId, clientSecret, scope: "client_paymentrequest" }),
+  });
+  const tokenJson = await tokenResp.json().catch(() => ({}));
+  if (!tokenResp.ok || !tokenJson?.data?.accessToken) {
+    console.error("Stitch Express token error", tokenResp.status, tokenJson);
+    return "PENDING";
+  }
+  const accessToken: string = tokenJson.data.accessToken;
+
+  const plResp = await fetch(`${STITCH_BASE}/payment-links/${encodeURIComponent(requestId)}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const plJson = await plResp.json().catch(() => ({}));
+  if (!plResp.ok) {
+    console.error("Stitch Express status error", plResp.status, plJson);
+    return "PENDING";
+  }
+  const payment = plJson?.data?.payment || plJson?.data || {};
+  return String(payment.status || "PENDING").toUpperCase();
+}
+
+async function getPaymentRequestToken(clientId: string, clientSecret: string) {
+  const body = new URLSearchParams();
+  body.set("grant_type", "client_credentials");
+  body.set("client_id", clientId);
+  body.set("audience", STITCH_TOKEN_URL);
+  body.set("scope", "client_paymentrequest");
+  body.set("client_secret", clientSecret);
+  const resp = await fetch(STITCH_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const data = await resp.json().catch(() => ({}));
+  const token = data?.access_token || data?.accessToken || data?.token;
+  if (!resp.ok || !token) throw new Error(data?.detail || data?.message || data?.error || `HTTP ${resp.status}`);
+  return String(token);
 }

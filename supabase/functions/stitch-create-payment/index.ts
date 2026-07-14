@@ -234,19 +234,20 @@ function appendRedirectUri(link: string, returnUrl: string) {
   }
 }
 
-function appendSessionParams(returnUrl: string, sessionId: string, clubSubdomain = "") {
+function appendSessionParams(returnUrl: string, sessionId: string, _clubSubdomain = "") {
+  // NOTE: Do NOT append extra query params (like stitch_club) beyond what Stitch
+  // expects. Stitch Express validates merchantRedirectUrl against the whitelist
+  // registered in the merchant portal. Adding unknown params silently breaks the
+  // match and Stitch keeps the user on their own /pay/complete page.
+  // Club resolution is handled server-side via stitch-return-target using the session id.
   try {
     const url = new URL(returnUrl);
     url.searchParams.set("stitch_session", sessionId);
     url.searchParams.set("stitch_status", "pending");
-    const safeClub = clubSubdomain.toLowerCase();
-    if (/^[a-z0-9-]{2,32}$/.test(safeClub)) url.searchParams.set("stitch_club", safeClub);
     return url.toString();
   } catch {
     const sep = returnUrl.includes("?") ? "&" : "?";
-    const safeClub = clubSubdomain.toLowerCase();
-    const clubParam = /^[a-z0-9-]{2,32}$/.test(safeClub) ? `&stitch_club=${encodeURIComponent(safeClub)}` : "";
-    return `${returnUrl}${sep}stitch_session=${encodeURIComponent(sessionId)}&stitch_status=pending${clubParam}`;
+    return `${returnUrl}${sep}stitch_session=${encodeURIComponent(sessionId)}&stitch_status=pending`;
   }
 }
 

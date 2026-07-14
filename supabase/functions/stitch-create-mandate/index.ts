@@ -246,3 +246,15 @@ function sanitizeReturnUrl(raw: string): string {
     return `${PUBLIC_APP_ORIGIN}/my-account`;
   }
 }
+
+function appendRedirectParam(hostedUrl: string, returnUrl: string): string {
+  try {
+    const u = new URL(hostedUrl);
+    u.searchParams.set("redirect_url", returnUrl);
+    return u.toString();
+  } catch {
+    const sep = hostedUrl.includes("?") ? "&" : "?";
+    return `${hostedUrl}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
+  }
+}
+

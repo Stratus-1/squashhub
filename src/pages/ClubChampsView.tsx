@@ -385,6 +385,7 @@ export default function ClubChampsView() {
 
   const canManage = useHasPermission("champs");
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
 

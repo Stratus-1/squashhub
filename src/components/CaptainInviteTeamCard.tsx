@@ -7,8 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { MessageCircle, Mail, Users, Loader2, ChevronRight, Check } from "lucide-react";
+import { MessageCircle, Mail, Users, Loader2, ChevronRight, Check, Copy, Link2 } from "lucide-react";
 import { toast } from "sonner";
+import { normalisePhoneForWhatsApp } from "@/lib/whatsapp";
+import { useClubContext } from "@/contexts/ClubContext";
 
 interface Teammate {
   member_id: string;

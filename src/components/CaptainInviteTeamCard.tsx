@@ -7,8 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { MessageCircle, Mail, Users, Loader2, ChevronRight, Check } from "lucide-react";
+import { MessageCircle, Mail, Users, Loader2, ChevronRight, Check, Copy, Link2 } from "lucide-react";
 import { toast } from "sonner";
+import { normalisePhoneForWhatsApp } from "@/lib/whatsapp";
+import { useClubContext } from "@/contexts/ClubContext";
 
 interface Teammate {
   member_id: string;
@@ -53,6 +55,11 @@ export function CaptainInviteTeamCard({ clubMemberId, clubId, mode = "captain" }
   const [queue, setQueue] = useState<Teammate[] | null>(null);
   const [queueIdx, setQueueIdx] = useState(0);
 
+  const { subdomain: clubSubdomain, club } = useClubContext();
+
+
+
+
   const { data: teammates = [], isLoading } = useQuery({
     queryKey: ["invite-unclaimed", mode, clubMemberId, clubId],
     queryFn: async () => {
@@ -73,6 +80,29 @@ export function CaptainInviteTeamCard({ clubMemberId, clubId, mode = "captain" }
     },
     enabled: mode === "admin" ? !!clubId : !!clubMemberId,
   });
+
+  const genericInviteLink = useMemo(() => {
+    const sub = clubSubdomain || (teammates[0]?.club_subdomain ?? "");
+    const base = sub ? `https://${sub}.squashhub.co.za` : "https://squashhub.co.za";
+    return `${base}/auth`;
+  }, [clubSubdomain, teammates]);
+  const genericInviteMessage = useMemo(() => {
+    const clubName = club?.name || "our squash club";
+    return `Hi! 🏸\n\nJoin ${clubName} on SquashHub — it's free. Sign up here:\n\n${genericInviteLink}`;
+  }, [club, genericInviteLink]);
+  const copyGenericLink = async () => {
+    try {
+      await navigator.clipboard.writeText(genericInviteLink);
+      toast.success("Invite link copied");
+    } catch {
+      toast.error("Couldn't copy — long-press to copy manually");
+    }
+  };
+  const shareGenericWhatsApp = () => {
+    const url = `https://wa.me/?text=${encodeURIComponent(genericInviteMessage)}`;
+    window.open(url, "_blank", "noopener");
+  };
+
 
   const filtered = useMemo(() => {
     if (!filter.trim()) return teammates;
@@ -124,7 +154,10 @@ export function CaptainInviteTeamCard({ clubMemberId, clubId, mode = "captain" }
 
   const openWhatsAppFor = (t: Teammate) => {
     const text = encodeURIComponent(buildMessage(t));
-    const phone = (t.phone || "").replace(/[^\d]/g, "");
+    // Normalise to E.164 (defaults to +27 when phone starts with 0). This
+    // ensures WhatsApp resolves the contact even if the number was stored
+    // in local SA format ("082…") without the country code.
+    const phone = normalisePhoneForWhatsApp(t.phone);
     const url = phone
       ? `https://wa.me/${phone}?text=${text}`
       : `https://wa.me/?text=${text}`;
@@ -242,6 +275,35 @@ export function CaptainInviteTeamCard({ clubMemberId, clubId, mode = "captain" }
             </div>
           ) : (
             <>
+              {/* Non-NSA invite — generic signup link with no NSA number attached. */}
+              <div className="rounded-md border bg-muted/30 p-2.5 space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-xs font-semibold">Invite non-NSA members</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Share this generic signup link with players who aren't on the NSA list yet.
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <code className="flex-1 truncate text-[11px] bg-background border rounded px-2 py-1">
+                    {genericInviteLink}
+                  </code>
+                </div>
+                <div className="flex gap-1.5">
+                  <Button size="sm" variant="outline" className="flex-1 h-7 text-[11px]" onClick={copyGenericLink}>
+                    <Copy className="w-3 h-3 mr-1" /> Copy link
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1 h-7 text-[11px] bg-[#25D366] hover:bg-[#1DA851] text-white"
+                    onClick={shareGenericWhatsApp}
+                  >
+                    <MessageCircle className="w-3 h-3 mr-1" /> WhatsApp
+                  </Button>
+                </div>
+              </div>
+
+
               {isAdmin && count > 8 && (
                 <Input
                   placeholder="Search by name or NSA #"

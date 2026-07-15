@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,7 @@ import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
-import { UserX, Trophy, Shuffle } from "lucide-react";
+import { UserX, Trophy, Shuffle, RotateCcw } from "lucide-react";
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -385,6 +385,7 @@ export default function ClubChampsView() {
 
   const canManage = useHasPermission("champs");
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
 
@@ -1442,6 +1443,23 @@ export default function ClubChampsView() {
           >
             <UserX className="h-3 w-3 mr-1" />
             No show
+          </Button>
+        )}
+
+        {canManage && completed && !isBye && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => {
+              const fmt = getTournamentFormat((champ as any)?.scoring_mode);
+              navigate(fmt.markerRoute(m.id));
+            }}
+            title="Admin: reopen and correct this final score"
+          >
+            <RotateCcw className="h-3 w-3 mr-1" />
+            Redo score
           </Button>
         )}
       </div>

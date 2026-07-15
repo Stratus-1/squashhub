@@ -16,6 +16,8 @@ import { BellsFormat, getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { setScoringActive } from "@/lib/scoring-lock";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
+import { useIsSuperAdmin } from "@/hooks/use-club";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 /**
  * Bells doubles scorer.

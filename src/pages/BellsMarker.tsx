@@ -35,6 +35,9 @@ export default function BellsMarker() {
   const { matchId } = useParams<{ matchId: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const isSuperAdmin = useIsSuperAdmin();
+  const { isAdmin } = useMemberContext();
+  const canAdminEdit = isSuperAdmin || isAdmin;
 
   const { data: match, isLoading } = useQuery({
     queryKey: ["bells-match", matchId],

@@ -818,8 +818,21 @@ export default function BellsMarker() {
           onClick={saveResult}
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-          Save result · {pointsA}-{pointsB}
+          {match.status === "completed" ? "Resubmit result" : "Save result"} · {pointsA}-{pointsB}
         </Button>
+
+        {finished && canAdminEdit && (
+          <Button
+            variant="outline"
+            className="w-full h-9 gap-2 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
+            onClick={() => {
+              setFinished(false);
+              toast.info("Score unlocked — adjust points, then Resubmit to overwrite.");
+            }}
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Redo score (admin override)
+          </Button>
+        )}
 
         <p className="text-[10px] text-muted-foreground text-center">
           Tap each pair's number (or +) to add a point. Ring the bell, then confirm the score to save.

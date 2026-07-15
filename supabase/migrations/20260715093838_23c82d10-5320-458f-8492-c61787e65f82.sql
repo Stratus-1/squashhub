@@ -1,0 +1,1 @@
+DELETE FROM public.courts WHERE id = 22 AND club_id = '061e6dd9-0ec2-4427-a939-3f18ad0884c8' AND is_external = true;

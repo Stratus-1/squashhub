@@ -194,8 +194,9 @@ type Scope = "league" | "tournament" | "total";
 function PersonalStatsSnapshot() {
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
+  const { club } = useClubContext();
   const memberId = activeMember?.id || null;
-  const { data: ladder } = useLadder();
+  const { data: ladder } = useLadder(club?.id);
   const [scope, setScope] = useState<Scope>("total");
 
   const myEntry = useMemo(() => {

@@ -10,6 +10,7 @@ import { useClubAnalytics, usePersonalAnalytics } from "@/hooks/use-analytics";
 import { useLadder, useProfile, useSquashTotals } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useClubContext } from "@/contexts/ClubContext";
 import { fromExt } from "@/lib/supabase-ext";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
@@ -193,8 +194,9 @@ type Scope = "league" | "tournament" | "total";
 function PersonalStatsSnapshot() {
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
+  const { club } = useClubContext();
   const memberId = activeMember?.id || null;
-  const { data: ladder } = useLadder();
+  const { data: ladder } = useLadder(club?.id);
   const [scope, setScope] = useState<Scope>("total");
 
   const myEntry = useMemo(() => {

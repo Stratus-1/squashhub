@@ -1,14 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, BarChart3, Users, Clock, Trophy, TrendingUp, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { useClubAnalytics, usePersonalAnalytics } from "@/hooks/use-analytics";
 import { useLadder, useProfile, useSquashTotals } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { fromExt } from "@/lib/supabase-ext";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
 import { AppleStatsCard } from "@/components/AppleStatsCard";
@@ -186,11 +188,15 @@ function PersonalTab() {
   );
 }
 
+type Scope = "league" | "tournament" | "total";
+
 function PersonalStatsSnapshot() {
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const memberId = activeMember?.id || null;
   const { data: ladder } = useLadder();
+  const [scope, setScope] = useState<Scope>("total");
+
   const myEntry = useMemo(() => {
     if (!ladder) return null as any;
     if (memberId) {
@@ -202,30 +208,104 @@ function PersonalStatsSnapshot() {
     }
     return null;
   }, [ladder, memberId, user?.id]);
-  const myLadderPosition = (myEntry as any)?.ladder_position ?? (myEntry as any)?.league_rank ?? (myEntry as any)?.rank ?? null;
-  const wins = (myEntry as any)?.wins ?? 0;
-  const losses = (myEntry as any)?.losses ?? 0;
-  const matchesPlayed = (myEntry as any)?.matches_played ?? (wins + losses);
-  const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
+
+  const myLadderPosition =
+    (myEntry as any)?.ladder_position ?? (myEntry as any)?.league_rank ?? (myEntry as any)?.rank ?? null;
+  const leagueWins = (myEntry as any)?.wins ?? 0;
+  const leagueLosses = (myEntry as any)?.losses ?? 0;
+  const leaguePlayed = (myEntry as any)?.matches_played ?? (leagueWins + leagueLosses);
+
+  // Tournament stats — same logic as Dashboard.
+  const { data: tournamentStats } = useQuery({
+    queryKey: ["my-tournament-stats-analytics", memberId],
+    enabled: !!memberId,
+    queryFn: async () => {
+      if (!memberId) return { wins: 0, losses: 0, played: 0 };
+      const { data, error } = await fromExt("club_champs_matches")
+        .select(
+          "status, is_bye, winner_member_id, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id",
+        )
+        .eq("status", "completed")
+        .or(
+          `player_a_member_id.eq.${memberId},player_b_member_id.eq.${memberId},partner_a_member_id.eq.${memberId},partner_b_member_id.eq.${memberId}`,
+        );
+      if (error) throw error;
+      let wins = 0,
+        losses = 0;
+      for (const m of (data || []) as any[]) {
+        if (m.is_bye) continue;
+        const onSideA = m.player_a_member_id === memberId || m.partner_a_member_id === memberId;
+        const onSideB = m.player_b_member_id === memberId || m.partner_b_member_id === memberId;
+        if (!onSideA && !onSideB) continue;
+        const winner = m.winner_member_id;
+        if (!winner) continue;
+        const winnerOnSideA = winner === m.player_a_member_id || winner === m.partner_a_member_id;
+        const iWon = (onSideA && winnerOnSideA) || (onSideB && !winnerOnSideA);
+        if (iWon) wins++;
+        else losses++;
+      }
+      return { wins, losses, played: wins + losses };
+    },
+  });
+
+  const tWins = tournamentStats?.wins ?? 0;
+  const tLosses = tournamentStats?.losses ?? 0;
+  const tPlayed = tournamentStats?.played ?? 0;
+
+  const view = useMemo(() => {
+    if (scope === "league") return { wins: leagueWins, losses: leagueLosses, played: leaguePlayed };
+    if (scope === "tournament") return { wins: tWins, losses: tLosses, played: tPlayed };
+    return { wins: leagueWins + tWins, losses: leagueLosses + tLosses, played: leaguePlayed + tPlayed };
+  }, [scope, leagueWins, leagueLosses, leaguePlayed, tWins, tLosses, tPlayed]);
+
+  const winRate = view.played > 0 ? Math.round((view.wins / view.played) * 100) : 0;
+  const subtitle =
+    scope === "league"
+      ? "League matches only."
+      : scope === "tournament"
+      ? "Club tournament matches only."
+      : "League + tournament combined (matches Dashboard).";
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+      <div className="grid grid-cols-3 rounded-xl overflow-hidden border border-border">
+        {(["league", "tournament", "total"] as Scope[]).map((s) => (
+          <button
+            key={s}
+            onClick={() => setScope(s)}
+            className={cn(
+              "py-2 text-[11px] font-heading uppercase tracking-[0.16em] transition-colors",
+              scope === s
+                ? "bg-primary text-primary-foreground"
+                : "bg-transparent text-foreground/70 hover:bg-muted/50",
+            )}
+          >
+            {s === "league" ? "League" : s === "tournament" ? "Tournaments" : "Total"}
+          </button>
+        ))}
+      </div>
+
       <AppleStatsCard
         title="Your stats"
-        subtitle="Snapshot of your performance."
+        subtitle={subtitle}
         badgeText={myLadderPosition ? `Rank #${myLadderPosition}` : "Unranked"}
         ringLabel="Win rate"
         ringValue={`${winRate}%`}
         progress={{
-          played: Math.min(1, matchesPlayed / 50),
-          wins: Math.min(1, wins / 25),
+          played: Math.min(1, view.played / 50),
+          wins: Math.min(1, view.wins / 25),
           winPct: Math.min(1, winRate / 100),
         }}
         tiles={[
-          { label: "Played", value: matchesPlayed, unit: "matches", dotColor: "#007aff" },
-          { label: "Wins", value: wins, unit: "wins", dotColor: "#34c759" },
-          { label: "Losses", value: losses, unit: "losses", dotColor: "#ff9500" },
-          { label: "Rank", value: myLadderPosition ? `#${myLadderPosition}` : "—", unit: "ladder", dotColor: "#ff2d55" },
+          { label: "Played", value: view.played, unit: "matches", dotColor: "#007aff" },
+          { label: "Wins", value: view.wins, unit: "wins", dotColor: "#34c759" },
+          { label: "Losses", value: view.losses, unit: "losses", dotColor: "#ff9500" },
+          {
+            label: "Rank",
+            value: myLadderPosition ? `#${myLadderPosition}` : "—",
+            unit: "ladder",
+            dotColor: "#ff2d55",
+          },
         ]}
       />
     </motion.div>

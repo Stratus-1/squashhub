@@ -55,6 +55,30 @@ export function CaptainInviteTeamCard({ clubMemberId, clubId, mode = "captain" }
   const [queue, setQueue] = useState<Teammate[] | null>(null);
   const [queueIdx, setQueueIdx] = useState(0);
 
+  const { subdomain: clubSubdomain, club } = useClubContext();
+  const genericInviteLink = useMemo(() => {
+    const sub = clubSubdomain || (teammates[0]?.club_subdomain ?? "");
+    const base = sub ? `https://${sub}.squashhub.co.za` : "https://squashhub.co.za";
+    return `${base}/auth`;
+  }, [clubSubdomain, teammates]);
+  const genericInviteMessage = useMemo(() => {
+    const clubName = club?.name || "our squash club";
+    return `Hi! 🏸\n\nJoin ${clubName} on SquashHub — it's free. Sign up here:\n\n${genericInviteLink}`;
+  }, [club, genericInviteLink]);
+  const copyGenericLink = async () => {
+    try {
+      await navigator.clipboard.writeText(genericInviteLink);
+      toast.success("Invite link copied");
+    } catch {
+      toast.error("Couldn't copy — long-press to copy manually");
+    }
+  };
+  const shareGenericWhatsApp = () => {
+    const url = `https://wa.me/?text=${encodeURIComponent(genericInviteMessage)}`;
+    window.open(url, "_blank", "noopener");
+  };
+
+
   const { data: teammates = [], isLoading } = useQuery({
     queryKey: ["invite-unclaimed", mode, clubMemberId, clubId],
     queryFn: async () => {

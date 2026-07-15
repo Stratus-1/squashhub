@@ -1445,6 +1445,23 @@ export default function ClubChampsView() {
             No show
           </Button>
         )}
+
+        {canManage && completed && !isBye && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => {
+              const fmt = getTournamentFormat((champ as any)?.scoring_mode);
+              navigate(fmt.markerRoute(m.id));
+            }}
+            title="Admin: reopen and correct this final score"
+          >
+            <RotateCcw className="h-3 w-3 mr-1" />
+            Redo score
+          </Button>
+        )}
       </div>
     );
   }

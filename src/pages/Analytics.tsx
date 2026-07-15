@@ -10,6 +10,7 @@ import { useClubAnalytics, usePersonalAnalytics } from "@/hooks/use-analytics";
 import { useLadder, useProfile, useSquashTotals } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useClubContext } from "@/contexts/ClubContext";
 import { fromExt } from "@/lib/supabase-ext";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";

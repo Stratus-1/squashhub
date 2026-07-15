@@ -1,14 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, BarChart3, Users, Clock, Trophy, TrendingUp, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { useClubAnalytics, usePersonalAnalytics } from "@/hooks/use-analytics";
 import { useLadder, useProfile, useSquashTotals } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { fromExt } from "@/lib/supabase-ext";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
 import { AppleStatsCard } from "@/components/AppleStatsCard";

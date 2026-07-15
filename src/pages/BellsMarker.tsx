@@ -814,7 +814,7 @@ export default function BellsMarker() {
         {/* Save */}
         <Button
           className="w-full h-10 gap-2 text-sm"
-          disabled={saving || !finished || (pointsA === 0 && pointsB === 0)}
+          disabled={saving || (!finished && !(canAdminEdit && match.status === "completed")) || (pointsA === 0 && pointsB === 0)}
           onClick={saveResult}
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}

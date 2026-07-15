@@ -86,36 +86,28 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
 
 
 
-function buildStitchBridgeUrl(url: string, sessionId?: string, returnPath?: string) {
-  if (typeof window === "undefined" || !sessionId) return url;
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname !== "express.stitch.money") return url;
-  } catch {
-    return url;
-  }
-  const bridge = new URL("/pay/stitch", window.location.origin);
-  bridge.searchParams.set("url", url);
-  bridge.searchParams.set("session", sessionId);
-  if (returnPath) bridge.searchParams.set("return", returnPath);
-  return bridge.toString();
-}
-
-export async function openStitchCheckout(url: string, sessionId?: string, returnPath?: string) {
-  const targetUrl = buildStitchBridgeUrl(url, sessionId, returnPath);
+export async function openStitchCheckout(url: string, _sessionId?: string, _returnPath?: string) {
+  // Redirect the current tab directly to Stitch. Previously we routed
+  // express.stitch.money URLs through an intermediate /pay/stitch bridge
+  // page that polled for completion, but the bridge only opened Stitch on
+  // an explicit second click — members saw a "Waiting for Stitch payment…"
+  // screen and thought payment was already underway. Direct redirect
+  // matches the v2 payment-request flow and the pre-regression behavior;
+  // verification runs when Stitch redirects the user back.
   if (Capacitor.isNativePlatform()) {
     const { Browser } = await import("@capacitor/browser");
-    await Browser.open({ url: targetUrl });
+    await Browser.open({ url });
     return;
   }
   try {
     if (window.top && window.top !== window.self) {
-      window.top.location.href = targetUrl;
+      window.top.location.href = url;
       return;
     }
   } catch { /* cross-origin frame */ }
-  window.location.assign(targetUrl);
+  window.location.assign(url);
 }
+
 
 export function rememberPendingStitchSession(sessionId: string, returnPath: string) {
   if (!sessionId) return;

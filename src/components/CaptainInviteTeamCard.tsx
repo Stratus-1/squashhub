@@ -126,7 +126,10 @@ export function CaptainInviteTeamCard({ clubMemberId, clubId, mode = "captain" }
 
   const openWhatsAppFor = (t: Teammate) => {
     const text = encodeURIComponent(buildMessage(t));
-    const phone = (t.phone || "").replace(/[^\d]/g, "");
+    // Normalise to E.164 (defaults to +27 when phone starts with 0). This
+    // ensures WhatsApp resolves the contact even if the number was stored
+    // in local SA format ("082…") without the country code.
+    const phone = normalisePhoneForWhatsApp(t.phone);
     const url = phone
       ? `https://wa.me/${phone}?text=${text}`
       : `https://wa.me/?text=${text}`;

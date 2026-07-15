@@ -275,6 +275,35 @@ export function CaptainInviteTeamCard({ clubMemberId, clubId, mode = "captain" }
             </div>
           ) : (
             <>
+              {/* Non-NSA invite — generic signup link with no NSA number attached. */}
+              <div className="rounded-md border bg-muted/30 p-2.5 space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-xs font-semibold">Invite non-NSA members</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Share this generic signup link with players who aren't on the NSA list yet.
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <code className="flex-1 truncate text-[11px] bg-background border rounded px-2 py-1">
+                    {genericInviteLink}
+                  </code>
+                </div>
+                <div className="flex gap-1.5">
+                  <Button size="sm" variant="outline" className="flex-1 h-7 text-[11px]" onClick={copyGenericLink}>
+                    <Copy className="w-3 h-3 mr-1" /> Copy link
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1 h-7 text-[11px] bg-[#25D366] hover:bg-[#1DA851] text-white"
+                    onClick={shareGenericWhatsApp}
+                  >
+                    <MessageCircle className="w-3 h-3 mr-1" /> WhatsApp
+                  </Button>
+                </div>
+              </div>
+
+
               {isAdmin && count > 8 && (
                 <Input
                   placeholder="Search by name or NSA #"

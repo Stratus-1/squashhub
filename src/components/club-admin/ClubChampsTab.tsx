@@ -1774,6 +1774,25 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     } else {
       const usedSlots = new Set<number>();
+
+      // Reserve the LAST N chronological slots for play-off placeholders so
+      // pool matches don't grab them. `allSlots` is built in date/time/court
+      // order, so the tail of the array is the latest end of the tournament.
+      const entriesPerLeague: number[] = isDoubles
+        ? (groups as DoublePair[][]).map((g) => g.length)
+        : (groups as ClubMember[][]).map((g) => g.length);
+      const playoffCount = enablePlayoffs
+        ? countPlayoffPlaceholders({ numLeagues: entriesPerLeague.length, entriesPerLeague })
+        : 0;
+      const reservedSlotIdx: number[] = [];
+      if (playoffCount > 0) {
+        const take = Math.min(playoffCount, allSlots.length);
+        for (let i = allSlots.length - take; i < allSlots.length; i++) {
+          reservedSlotIdx.push(i);
+          usedSlots.add(i);
+        }
+      }
+
       // First pass: honour the "no same-day repeat per entity" gap.
       for (const match of allMatches) {
         if (match.isBye) continue;
@@ -1810,19 +1829,42 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         }
       }
 
+      // Playoff placeholders occupy the reserved tail slots in stage order:
+      // QF (round 1) → SF (round 2) → Final/3rd (round 3). Chronological
+      // ordering of reservedSlotIdx already achieves earliest-first.
+      if (playoffCount > 0 && reservedSlotIdx.length > 0) {
+        const placeholderRows = buildPlayoffPlaceholders({
+          champId: "__preview__",
+          numLeagues: entriesPerLeague.length,
+          entriesPerLeague,
+          leagueLabels: entriesPerLeague.map((_, i) => groupLabels[String(i + 1)] || `League ${i + 1}`),
+        });
+        placeholderRows.sort((a, b) => a.round_number - b.round_number);
+        placeholderRows.forEach((row, i) => {
+          const si = reservedSlotIdx[i];
+          if (si == null) return;
+          const slot = allSlots[si];
+          (row as any).__date = slot.date;
+          (row as any).__time = slot.time;
+          (row as any).__courtId = slot.courtId;
+        });
+        (allMatches as any).__playoffPlaceholders = placeholderRows;
+      }
     }
 
     const playableMatches = allMatches.filter((m) => !m.isBye);
+    const placeholderCount = ((allMatches as any).__playoffPlaceholders?.length ?? 0);
     // Bells mode schedules every match by construction — treat slots as sufficient.
     const effectiveTotalSlots = isBellsMode ? playableMatches.length : totalSlots;
     return {
       allMatches,
       totalSlots: effectiveTotalSlots,
-      totalMatches: playableMatches.length,
+      totalMatches: playableMatches.length + placeholderCount,
       allDates,
       timeSlots,
+      playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, groupLabels]);
 
   // Create/update champ
   const createChamp = useMutation({

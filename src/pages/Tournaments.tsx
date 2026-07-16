@@ -136,20 +136,17 @@ export default function Tournaments() {
   const poolLetter = (p: number | null | undefined) =>
     p == null ? null : String.fromCharCode(64 + p);
 
-  // Some champs never persist `pool_number` on matches — the field is only
-  // written by newer auto-pair flows. To keep the Pool A/B filter working
-  // everywhere (especially for admins who aren't in the draw), derive the
-  // pool for each match from the tournament's `swiss_pools` config + the
-  // player_a entry's order_index using the same block distribution the
-  // scoreboard uses.
+  // Some champs never persist `pool_number` on matches. To keep the Pool A/B
+  // filter working everywhere (especially for admins who aren't in the draw),
+  // derive the pool for each match from the tournament's pools-per-league config
+  // + entry order_index using the same block distribution the generator uses.
   const poolByMatchId = useMemo(() => {
     const out = new Map<string, number>();
     // Precompute per-champ pool maps: champId -> groupNum -> Map(entityId, pool)
     const champPoolMaps = new Map<string, Map<number, Map<string, number>>>();
     for (const champ of allChamps) {
-      const isSwiss = (champ as any).scoring_mode === "swiss";
       const cfg: Record<string, number> = ((champ as any).swiss_pools as any) || {};
-      if (!isSwiss) continue;
+      if (!Object.values(cfg).some((v) => Number(v) > 1)) continue;
       const isDoubles = (champ as any).match_type === "doubles";
       const champEntries = (allEntries as any[]).filter((e) => e.champ_id === champ.id);
       const groupMap = new Map<number, Map<string, number>>();
@@ -209,7 +206,7 @@ export default function Tournaments() {
       if (ga !== gb) return ga - gb;
       return (a.pool ?? 999) - (b.pool ?? 999);
     });
-  }, [upcomingMatches, allChamps]);
+  }, [upcomingMatches, allChamps, poolByMatchId]);
 
   const bucketColor = (key: string) => {
     const idx = buckets.findIndex((b) => b.key === key);

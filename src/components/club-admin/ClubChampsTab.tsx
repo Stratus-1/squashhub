@@ -1864,10 +1864,36 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         set.add(key);
       };
 
+      // Interleave matches across leagues/pools so every group gets court time
+      // in parallel rather than League 1 finishing before League 2 starts.
+      // Sort each league's non-bye matches by roundNum, then round-robin pop
+      // one match per league at a time. Byes stay attached to their league
+      // group but keep their order.
+      const nonByes = allMatches.filter((m) => !m.isBye);
+      const byLeague = new Map<number, typeof nonByes>();
+      for (const m of nonByes) {
+        const arr = byLeague.get(m.groupNum) ?? [];
+        arr.push(m);
+        byLeague.set(m.groupNum, arr);
+      }
+      for (const arr of byLeague.values()) {
+        arr.sort((a, b) => (a.roundNum ?? 0) - (b.roundNum ?? 0));
+      }
+      const leagueKeys = [...byLeague.keys()].sort((a, b) => a - b);
+      const interleaved: typeof nonByes = [];
+      let anyLeft = true;
+      while (anyLeft) {
+        anyLeft = false;
+        for (const k of leagueKeys) {
+          const arr = byLeague.get(k)!;
+          const next = arr.shift();
+          if (next) { interleaved.push(next); anyLeft = true; }
+        }
+      }
+
       // First pass: honour the "no same-day repeat per entity" gap (spread mode)
       // or pack sequentially (fill mode). Always avoid concurrent-slot conflicts.
-      for (const match of allMatches) {
-        if (match.isBye) continue;
+      for (const match of interleaved) {
         const playersA = getPlayersForEntity(match.entityA);
         const playersB = getPlayersForEntity(match.entityB);
         const allPlayers = [...playersA, ...playersB];
@@ -1889,6 +1915,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           }
         }
       }
+
       // Second pass: anything left unscheduled falls into any free slot so it
       // doesn't show as TBD. This is a soft fallback — the first pass already
       // spread same-entity matches across different days where possible.

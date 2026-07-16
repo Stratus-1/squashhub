@@ -2491,6 +2491,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setSwissRounds({});
     setPointsPerGame(0);
     setBestOf(0);
+    setPlayAllGames(false);
     setGroupDurations({});
     setGroupBreakMinutes({});
     setGroupLabels({});

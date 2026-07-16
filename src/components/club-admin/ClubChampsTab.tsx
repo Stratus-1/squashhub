@@ -48,6 +48,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
   groups: "Leagues",
   schedule: "Schedule",
   review: "Review & Generate",
+  preview: "Preview Schedule",
 };
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

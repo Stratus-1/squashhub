@@ -1781,7 +1781,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         const playersB = getPlayersForEntity(match.entityB);
         const allPlayers = [...playersA, ...playersB];
 
-        for (let si = 0; si < allSlots.length; si++) {
+        for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];
           if (allPlayers.every((pid) => canScheduleOn(pid, slot.date))) {
@@ -1799,7 +1799,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // spread same-entity matches across different days where possible.
       for (const match of allMatches) {
         if (match.isBye || match.date) continue;
-        for (let si = 0; si < allSlots.length; si++) {
+        for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];
           match.date = slot.date;
@@ -1809,6 +1809,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           break;
         }
       }
+
     }
 
     const playableMatches = allMatches.filter((m) => !m.isBye);

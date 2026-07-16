@@ -186,15 +186,34 @@ export default function ClubChampsView() {
 
   const isCrossLeague = (champ as any)?.round_format === "cross_league";
 
-  const getGroupStandings = (groupNum: number) => {
-    const groupEntries = entries.filter((e: any) => e.group_number === groupNum);
+  const isSwissMode = (champ as any)?.scoring_mode === "swiss";
+  const swissPoolsCfg: Record<string, number> = ((champ as any)?.swiss_pools as Record<string, number>) || {};
+  const poolCountFor = (gn: number) =>
+    isSwissMode ? Math.max(1, Number(swissPoolsCfg[String(gn)]) || 1) : 1;
+  const poolLabel = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
+
+  const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
+    let groupEntries = entries.filter((e: any) => e.group_number === groupNum);
+    // Pool-scoped filtering (Swiss with multiple pools per league).
+    if (poolNumber != null && isSwissMode) {
+      const poolCount = poolCountFor(groupNum);
+      const poolMap = assignPools(entries as SwissEntry[], groupNum, poolCount, isDoubles);
+      groupEntries = groupEntries.filter(
+        (e: any) => poolMap.get(entityIdForEntry(e as SwissEntry, isDoubles)) === poolNumber,
+      );
+    }
+
     const groupMemberIds = new Set<string>(
       groupEntries.flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
     );
     // For cross-league play, a match "belongs" to this league if any of the league's
     // members took part. Otherwise we filter by group_number as before.
     const matchBelongsToGroup = (m: any) => {
-      if (!isCrossLeague) return m.group_number === groupNum;
+      if (!isCrossLeague) {
+        if (m.group_number !== groupNum) return false;
+        if (poolNumber != null && (m.pool_number ?? null) !== poolNumber) return false;
+        return true;
+      }
       return (
         groupMemberIds.has(m.player_a_member_id) ||
         groupMemberIds.has(m.player_b_member_id) ||
@@ -205,6 +224,7 @@ export default function ClubChampsView() {
     const groupMatchesAll = matches.filter(
       (m: any) => matchBelongsToGroup(m) && !m.is_bye,
     );
+
     const groupMatches = sortMatchesChrono(groupMatchesAll.filter((m: any) => m.status === "completed"));
     const groupByes = matches.filter(
       (m: any) => matchBelongsToGroup(m) && m.is_bye,
@@ -319,6 +339,117 @@ export default function ClubChampsView() {
       return (a.order_index ?? 0) - (b.order_index ?? 0);
     });
   };
+
+  // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
+  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean }) => {
+    const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
+    const highlightMe = opts?.highlightMe !== false;
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="pb-2 font-medium">#</th>
+              <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
+              {isBells ? (
+                <>
+                  <th className="pb-2 font-medium text-center" title="Games played">GP</th>
+                  <th className="pb-2 font-medium text-center" title="Games won">W</th>
+                  <th className="pb-2 font-medium text-center" title="Games lost">L</th>
+                  <th className="pb-2 font-medium text-center" title="Points for (scored) — used for ranking">PF</th>
+                  <th className="pb-2 font-medium text-center" title="Points against (conceded)">PA</th>
+                  <th className="pb-2 font-medium text-center" title="Points difference">+/-</th>
+                  {Array.from({ length: maxGames }).map((_, gi) => (
+                    <th key={`g${gi}`} className="pb-2 font-medium text-center text-muted-foreground" title={`Game ${gi + 1} points scored`}>G{gi + 1}</th>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <th className="pb-2 font-medium text-center">P</th>
+                  <th className="pb-2 font-medium text-center">W</th>
+                  <th className="pb-2 font-medium text-center">L</th>
+                  {standingsColumns.map((col) => (
+                    <th key={col.key} className="pb-2 font-medium text-center" title={col.title}>{col.label}</th>
+                  ))}
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {standings.map((s: any, i: number) => {
+              const isMe = highlightMe && myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
+              const rowStyle = getRankRowStyle(i, standings.length);
+              return (
+                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
+                  <td className="py-2 text-muted-foreground">{i + 1}</td>
+                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}</td>
+                  {isBells ? (
+                    <>
+                      <td className="py-2 text-center tabular-nums">{s.played}</td>
+                      <td className="py-2 text-center tabular-nums">{s.won}</td>
+                      <td className="py-2 text-center tabular-nums">{s.lost}</td>
+                      <td className="py-2 text-center font-semibold tabular-nums">{s.pointsFor}</td>
+                      <td className="py-2 text-center tabular-nums">{s.pointsAgainst}</td>
+                      <td className="py-2 text-center tabular-nums">{s.pointsDiff > 0 ? `+${s.pointsDiff}` : s.pointsDiff}</td>
+                      {Array.from({ length: maxGames }).map((_, gi) => {
+                        const v = s.gamePoints?.[gi];
+                        return (
+                          <td key={`g${gi}`} className="py-2 text-center tabular-nums text-muted-foreground">
+                            {v == null ? "–" : v}
+                          </td>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-2 text-center">{s.played}</td>
+                      <td className="py-2 text-center">{s.won}</td>
+                      <td className="py-2 text-center">{s.lost}</td>
+                      {standingsColumns.map((col) => (
+                        <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(s)}</td>
+                      ))}
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // Renders either a single standings table for a league, or one table per pool
+  // (Swiss with multiple pools). Pool headers appear as "Pool A", "Pool B" etc.
+  const renderGroupStandings = (gn: number) => {
+    const pc = poolCountFor(gn);
+    if (pc <= 1 || isCrossLeague) {
+      return renderStandingsTable(getGroupStandings(gn));
+    }
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: pc }).map((_, i) => {
+          const poolNumber = i + 1;
+          const s = getGroupStandings(gn, poolNumber);
+          return (
+            <div key={poolNumber} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs font-semibold">Pool {poolLabel(poolNumber)}</Badge>
+                <span className="text-xs text-muted-foreground">
+                  {s.length} {isDoubles ? (s.length === 1 ? "pair" : "pairs") : (s.length === 1 ? "player" : "players")}
+                </span>
+              </div>
+              {s.length > 0 ? renderStandingsTable(s) : (
+                <p className="text-xs text-muted-foreground italic">No entries in this pool yet.</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+
 
 
   const groupNumbers = [...new Set(entries.map((e: any) => e.group_number as number))].sort();
@@ -1196,87 +1327,16 @@ export default function ClubChampsView() {
             <TabsContent value="my-fixtures" className="space-y-4">
               {/* My league standings */}
               {myGroupNumbers.map((gn: number) => {
-                const standings = getGroupStandings(gn);
-                const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
                 return (
                   <Card key={gn}>
                     <CardHeader><CardTitle className="text-lg">{getGroupLabel(champ, gn)}</CardTitle></CardHeader>
                     <CardContent>
-                      <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b text-left">
-                              <th className="pb-2 font-medium">#</th>
-                              <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
-                              {isBells ? (
-                                <>
-                                  <th className="pb-2 font-medium text-center" title="Games played">GP</th>
-                                  <th className="pb-2 font-medium text-center" title="Games won">W</th>
-                                  <th className="pb-2 font-medium text-center" title="Games lost">L</th>
-                                  <th className="pb-2 font-medium text-center" title="Points for (scored) — used for ranking">PF</th>
-                                  <th className="pb-2 font-medium text-center" title="Points against (conceded)">PA</th>
-                                  <th className="pb-2 font-medium text-center" title="Points difference">+/-</th>
-                                  {Array.from({ length: maxGames }).map((_, gi) => (
-                                    <th key={`g${gi}`} className="pb-2 font-medium text-center text-muted-foreground" title={`Game ${gi + 1} points scored`}>G{gi + 1}</th>
-                                  ))}
-                                </>
-                              ) : (
-                                <>
-                                  <th className="pb-2 font-medium text-center">P</th>
-                                  <th className="pb-2 font-medium text-center">W</th>
-                                  <th className="pb-2 font-medium text-center">L</th>
-                                  {standingsColumns.map((col) => (
-                                    <th key={col.key} className="pb-2 font-medium text-center" title={col.title}>{col.label}</th>
-                                  ))}
-                                </>
-                              )}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {standings.map((s: any, i: number) => {
-                              const isMe = s.club_member_id === myMemberId || s.partner_member_id === myMemberId;
-                              const rowStyle = getRankRowStyle(i, standings.length);
-                              return (
-                                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
-                                  <td className="py-2 text-muted-foreground">{i + 1}</td>
-                                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}</td>
-                                  {isBells ? (
-                                    <>
-                                      <td className="py-2 text-center tabular-nums">{s.played}</td>
-                                      <td className="py-2 text-center tabular-nums">{s.won}</td>
-                                      <td className="py-2 text-center tabular-nums">{s.lost}</td>
-                                      <td className="py-2 text-center font-semibold tabular-nums">{s.pointsFor}</td>
-                                      <td className="py-2 text-center tabular-nums">{s.pointsAgainst}</td>
-                                      <td className="py-2 text-center tabular-nums">{s.pointsDiff > 0 ? `+${s.pointsDiff}` : s.pointsDiff}</td>
-                                      {Array.from({ length: maxGames }).map((_, gi) => {
-                                        const v = s.gamePoints?.[gi];
-                                        return (
-                                          <td key={`g${gi}`} className="py-2 text-center tabular-nums text-muted-foreground">
-                                            {v == null ? "–" : v}
-                                          </td>
-                                        );
-                                      })}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <td className="py-2 text-center">{s.played}</td>
-                                      <td className="py-2 text-center">{s.won}</td>
-                                      <td className="py-2 text-center">{s.lost}</td>
-                                      {standingsColumns.map((col) => (
-                                        <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(s)}</td>
-                                      ))}
-                                    </>
-                                  )}
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                      {renderGroupStandings(gn)}
                     </CardContent>
                   </Card>
                 );
               })}
+
 
               {/* My fixtures list */}
               <Card>
@@ -1827,7 +1887,6 @@ export default function ClubChampsView() {
     const fixtureCards: JSX.Element[] = [];
 
     orderedGroups.forEach((gn: number) => {
-      const standings = getGroupStandings(gn);
       const groupMemberIds = new Set<string>(
         entries.filter((e: any) => e.group_number === gn)
           .flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
@@ -1840,83 +1899,11 @@ export default function ClubChampsView() {
             : m.group_number === gn
         )
       );
-      const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
       const leagueTotal = leagueTotals?.get(gn);
       const isLeading = !!leagueTotal && leagueTotal.pf > 0 && leagueTotal.pf === maxLeaguePf;
 
-      const standingsTable = (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="pb-2 font-medium">#</th>
-                <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
-                {isBells ? (
-                  <>
-                    <th className="pb-2 font-medium text-center" title="Games played">GP</th>
-                    <th className="pb-2 font-medium text-center" title="Games won">W</th>
-                    <th className="pb-2 font-medium text-center" title="Games lost">L</th>
-                    <th className="pb-2 font-medium text-center" title="Points for (scored) — used for ranking">PF</th>
-                    <th className="pb-2 font-medium text-center" title="Points against (conceded)">PA</th>
-                    <th className="pb-2 font-medium text-center" title="Points difference">+/-</th>
-                    {Array.from({ length: maxGames }).map((_, gi) => (
-                      <th key={`g${gi}`} className="pb-2 font-medium text-center text-muted-foreground" title={`Game ${gi + 1} points scored`}>G{gi + 1}</th>
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    <th className="pb-2 font-medium text-center">P</th>
-                    <th className="pb-2 font-medium text-center">W</th>
-                    <th className="pb-2 font-medium text-center">L</th>
-                    {standingsColumns.map((col) => (
-                      <th key={col.key} className="pb-2 font-medium text-center" title={col.title}>{col.label}</th>
-                    ))}
-                  </>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((s: any, i: number) => {
-                const isMe = myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
-                const rowStyle = getRankRowStyle(i, standings.length);
-                return (
-                  <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", isMe && "ring-2 ring-inset ring-primary/60")}>
-                    <td className="py-2 text-muted-foreground">{i + 1}</td>
-                    <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}</td>
-                    {isBells ? (
-                      <>
-                        <td className="py-2 text-center tabular-nums">{s.played}</td>
-                        <td className="py-2 text-center tabular-nums">{s.won}</td>
-                        <td className="py-2 text-center tabular-nums">{s.lost}</td>
-                        <td className="py-2 text-center font-semibold tabular-nums">{s.pointsFor}</td>
-                        <td className="py-2 text-center tabular-nums">{s.pointsAgainst}</td>
-                        <td className="py-2 text-center tabular-nums">{s.pointsDiff > 0 ? `+${s.pointsDiff}` : s.pointsDiff}</td>
-                        {Array.from({ length: maxGames }).map((_, gi) => {
-                          const v = s.gamePoints?.[gi];
-                          return (
-                            <td key={`g${gi}`} className="py-2 text-center tabular-nums text-muted-foreground">
-                              {v == null ? "–" : v}
-                            </td>
-                          );
-                        })}
-                      </>
-                    ) : (
-                      <>
-                        <td className="py-2 text-center">{s.played}</td>
-                        <td className="py-2 text-center">{s.won}</td>
-                        <td className="py-2 text-center">{s.lost}</td>
-                        {standingsColumns.map((col) => (
-                          <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(s)}</td>
-                        ))}
-                      </>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      );
+      const standingsTable = renderGroupStandings(gn);
+
 
       const titleNode = (
         <CardTitle className="text-lg flex items-center gap-2 flex-wrap">

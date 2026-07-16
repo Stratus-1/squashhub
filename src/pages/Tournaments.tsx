@@ -180,11 +180,14 @@ export default function Tournaments() {
   }, [allChamps, allEntries, allMatches]);
 
   const poolOf = (m: any): number | null => (m.pool_number ?? poolByMatchId.get(m.id) ?? null);
+  const isPlayoff = (m: any) => typeof m?.stage === "string" && m.stage.startsWith("playoff");
   const bucketKeyOf = (m: any) =>
-    `${m.champ_id}|${m.group_number ?? "-"}|${poolOf(m) ?? "-"}`;
+    isPlayoff(m)
+      ? `${m.champ_id}|playoff|${m.stage}`
+      : `${m.champ_id}|${m.group_number ?? "-"}|${poolOf(m) ?? "-"}`;
 
   const buckets = useMemo(() => {
-    const seen = new Map<string, { key: string; champId: string; group: number | null; pool: number | null; count: number }>();
+    const seen = new Map<string, { key: string; champId: string; group: number | null; pool: number | null; stage: string | null; stageLabel: string | null; count: number }>();
     for (const m of upcomingMatches) {
       const key = bucketKeyOf(m);
       const existing = seen.get(key);
@@ -192,16 +195,19 @@ export default function Tournaments() {
       seen.set(key, {
         key,
         champId: m.champ_id,
-        group: m.group_number ?? null,
-        pool: poolOf(m),
+        group: isPlayoff(m) ? null : (m.group_number ?? null),
+        pool: isPlayoff(m) ? null : poolOf(m),
+        stage: isPlayoff(m) ? (m as any).stage : null,
+        stageLabel: isPlayoff(m) ? ((m as any).stage_label || "Play-offs") : null,
         count: 1,
       });
     }
-    // Sort by champ name, then group, then pool
+    // Sort by champ name, then group-stage before playoffs, then group, then pool
     return [...seen.values()].sort((a, b) => {
       const ca = allChamps.find((c: any) => c.id === a.champId)?.name || "";
       const cb = allChamps.find((c: any) => c.id === b.champId)?.name || "";
       if (ca !== cb) return ca.localeCompare(cb);
+      if (!!a.stage !== !!b.stage) return a.stage ? 1 : -1;
       const ga = a.group ?? 999; const gb = b.group ?? 999;
       if (ga !== gb) return ga - gb;
       return (a.pool ?? 999) - (b.pool ?? 999);
@@ -222,10 +228,14 @@ export default function Tournaments() {
     };
   };
 
-  const bucketLabel = (b: { champId: string; group: number | null; pool: number | null }, opts: { withChamp?: boolean } = {}) => {
+  const bucketLabel = (b: { champId: string; group: number | null; pool: number | null; stage?: string | null; stageLabel?: string | null }, opts: { withChamp?: boolean } = {}) => {
     const champ = allChamps.find((c: any) => c.id === b.champId);
     const parts: string[] = [];
     if (opts.withChamp && champ) parts.push(champ.name);
+    if (b.stage) {
+      parts.push(b.stageLabel || "Play-offs");
+      return parts.join(" · ");
+    }
     if (b.group != null) parts.push(getGroupLabel(champ, b.group));
     const pl = poolLetter(b.pool);
     if (pl) parts.push(`Pool ${pl}`);
@@ -315,7 +325,7 @@ export default function Tournaments() {
             <span className="text-muted-foreground"> vs </span>
             <span className={teamBClass}>{teamB}</span>
           </span>
-          {bMeta && (bMeta.group != null || bMeta.pool != null) && (
+          {bMeta && (bMeta.group != null || bMeta.pool != null || bMeta.stage) && (
             <span
               style={chipStyle}
               className="text-[10px] shrink-0 px-1.5 py-0.5 rounded border font-medium"

@@ -2820,6 +2820,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
     setAvoidBackToBack((champ as any).avoid_back_to_back !== false);
+    setScheduleMode(((champ as any).schedule_mode as "spread" | "fill") || "spread");
     setRoundFormat((champ.round_format as any) || "");
     setByeHandling((champ.bye_handling as any) || "");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0

@@ -2224,6 +2224,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           if (endStr > existing.end) existing.end = endStr;
         }
       }
+      // Include play-off placeholder slots in booking coverage.
+      for (const r of (schedulePreview as any).playoffPlaceholders || []) {
+        if (!r.__date || !r.__time || !r.__courtId) continue;
+        const [h, min] = String(r.__time).split(":").map(Number);
+        const endMins = h * 60 + min + matchDuration;
+        const endH = Math.floor(endMins / 60) % 24;
+        const endM = endMins % 60;
+        const endStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+        const key = `${r.__date}:${r.__courtId}`;
+        const existing = slotMap.get(key);
+        if (!existing) {
+          slotMap.set(key, { date: r.__date, courtId: r.__courtId, start: r.__time, end: endStr });
+        } else {
+          if (r.__time < existing.start) existing.start = r.__time;
+          if (endStr > existing.end) existing.end = endStr;
+        }
+      }
 
       const bookings = Array.from(slotMap.values()).map((s) => ({
         club_id: clubId,

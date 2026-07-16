@@ -1095,13 +1095,14 @@ export default function ClubAuth() {
                       Sign up as a new member
                     </button>
                   </p>
-                  <div className="pt-2">
+                  <div className="pt-2 text-[11px] text-muted-foreground">
+                    Visiting?{" "}
                     <button
                       type="button"
                       onClick={() => setActiveTab("visitor")}
-                      className="text-[11px] text-muted-foreground hover:text-primary hover:underline"
+                      className="text-primary font-medium hover:underline"
                     >
-                      Visiting? Sign up as a visitor →
+                      Sign up as a visitor →
                     </button>
                   </div>
                 </div>

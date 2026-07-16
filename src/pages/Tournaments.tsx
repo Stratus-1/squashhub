@@ -196,7 +196,7 @@ export default function Tournaments() {
         key,
         champId: m.champ_id,
         group: m.group_number ?? null,
-        pool: m.pool_number ?? null,
+        pool: poolOf(m),
         count: 1,
       });
     }

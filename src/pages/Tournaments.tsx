@@ -183,7 +183,7 @@ export default function Tournaments() {
   const isPlayoff = (m: any) => typeof m?.stage === "string" && m.stage.startsWith("playoff");
   const bucketKeyOf = (m: any) =>
     isPlayoff(m)
-      ? `${m.champ_id}|playoff|${m.stage}`
+      ? `${m.champ_id}|playoff|${(m as any).stage_label || m.stage}`
       : `${m.champ_id}|${m.group_number ?? "-"}|${poolOf(m) ?? "-"}`;
 
   const buckets = useMemo(() => {

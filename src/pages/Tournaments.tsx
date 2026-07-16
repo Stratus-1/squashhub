@@ -568,29 +568,57 @@ export default function Tournaments() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {memberId && myUpcoming.length > 0 ? (
+                  {buckets.length > 1 && (
+                    <div className="mb-3 flex items-center gap-2">
+                      <label className="text-xs text-muted-foreground shrink-0">Filter:</label>
+                      <Select value={poolFilter} onValueChange={setPoolFilter}>
+                        <SelectTrigger className="h-8 text-xs w-full sm:max-w-[280px]">
+                          <SelectValue placeholder="All leagues & pools" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All leagues & pools ({upcomingMatches.length})</SelectItem>
+                          {buckets.map((b) => {
+                            const color = bucketColor(b.key);
+                            return (
+                              <SelectItem key={b.key} value={b.key}>
+                                <span className="inline-flex items-center gap-2">
+                                  <span
+                                    className="inline-block w-2.5 h-2.5 rounded-sm"
+                                    style={{ backgroundColor: color?.border }}
+                                  />
+                                  {bucketLabel(b, { withChamp: champs.length > 1 })} ({b.count})
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {memberId && filteredMine.length > 0 ? (
                     <Tabs defaultValue="all" className="w-full">
                       <TabsList className="grid w-full grid-cols-2 h-auto mb-3">
-                        <TabsTrigger value="all" className="text-xs py-1.5">All Games ({upcomingMatches.length})</TabsTrigger>
-                        <TabsTrigger value="mine" className="text-xs py-1.5 gap-1"><User className="w-3 h-3" /> My Fixtures ({myUpcoming.length})</TabsTrigger>
+                        <TabsTrigger value="all" className="text-xs py-1.5">All Games ({filteredUpcoming.length})</TabsTrigger>
+                        <TabsTrigger value="mine" className="text-xs py-1.5 gap-1"><User className="w-3 h-3" /> My Fixtures ({filteredMine.length})</TabsTrigger>
                       </TabsList>
                       <TabsContent value="all" className="mt-0">
-                        {upcomingMatches.length === 0 ? (
+                        {filteredUpcoming.length === 0 ? (
                           <p className="text-sm text-muted-foreground">No scheduled games.</p>
                         ) : (
-                          <div className="space-y-1.5">{upcomingMatches.map(renderMatchRow)}</div>
+                          <div className="space-y-1.5">{filteredUpcoming.map(renderMatchRow)}</div>
                         )}
                       </TabsContent>
                       <TabsContent value="mine" className="mt-0">
-                        <div className="space-y-1.5">{myUpcoming.map(renderMatchRow)}</div>
+                        <div className="space-y-1.5">{filteredMine.map(renderMatchRow)}</div>
                       </TabsContent>
                     </Tabs>
-                  ) : upcomingMatches.length === 0 ? (
+                  ) : filteredUpcoming.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No scheduled games.</p>
                   ) : (
-                    <div className="space-y-1.5">{upcomingMatches.map(renderMatchRow)}</div>
+                    <div className="space-y-1.5">{filteredUpcoming.map(renderMatchRow)}</div>
                   )}
                 </CardContent>
+
               </Card>
             </TabsContent>
 

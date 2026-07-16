@@ -21,6 +21,7 @@ import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialo
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { UserX, Trophy, Shuffle, RotateCcw } from "lucide-react";
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
+import { buildPlayoffMatches, type StandingEntity } from "@/lib/tournament-playoffs";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };

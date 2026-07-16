@@ -1833,10 +1833,12 @@ export default function ClubChampsView() {
           .flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
       );
       const groupMatches = matches.filter((m: any) =>
-        isCrossLeague
-          ? (groupMemberIds.has(m.player_a_member_id) || groupMemberIds.has(m.player_b_member_id) ||
-             (isDoubles && (groupMemberIds.has(m.partner_a_member_id) || groupMemberIds.has(m.partner_b_member_id))))
-          : m.group_number === gn
+        (m.stage || "group") === "group" && (
+          isCrossLeague
+            ? (groupMemberIds.has(m.player_a_member_id) || groupMemberIds.has(m.player_b_member_id) ||
+               (isDoubles && (groupMemberIds.has(m.partner_a_member_id) || groupMemberIds.has(m.partner_b_member_id))))
+            : m.group_number === gn
+        )
       );
       const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
       const leagueTotal = leagueTotals?.get(gn);

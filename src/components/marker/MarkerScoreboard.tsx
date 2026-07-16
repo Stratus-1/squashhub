@@ -507,7 +507,7 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           </Button>
           <Badge variant="outline" className="text-[10px]">
             {config.scoringFormat === "par11" ? "PAR 11" : config.scoringFormat === "par15" ? "PAR 15" : "English 9"}
-            {" · "}Best of {config.bestOf}
+            {" · "}{config.playAllGames ? `Play all ${config.bestOf}` : `Best of ${config.bestOf}`}
           </Badge>
         </div>
       </div>

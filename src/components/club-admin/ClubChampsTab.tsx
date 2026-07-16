@@ -1428,13 +1428,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       });
     }
 
-    // Scheduling with 2-day gap per entity
+    // Scheduling gap per entity: prevent same-day repeats only, so consecutive
+    // play-days (e.g. Fri→Sat→Sun) can all be used. A stricter 2-day rest
+    // would leave the busiest days (typically Saturday) empty when only a few
+    // slots exist per day.
     const entityLastDate = new Map<string, string>();
     const canScheduleOn = (entityId: string, dateStr: string): boolean => {
       const last = entityLastDate.get(entityId);
       if (!last) return true;
       const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));
-      return diffDays >= 2;
+      return diffDays >= 1;
     };
     const getPlayersForEntity = (entityId: string): string[] => {
       if (!isDoubles) return [entityId];
@@ -1746,6 +1749,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     } else {
       const usedSlots = new Set<number>();
+      // First pass: honour the "no same-day repeat per entity" gap.
       for (const match of allMatches) {
         if (match.isBye) continue;
         const playersA = getPlayersForEntity(match.entityA);
@@ -1763,6 +1767,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             allPlayers.forEach((pid) => entityLastDate.set(pid, slot.date));
             break;
           }
+        }
+      }
+      // Second pass: anything left unscheduled falls into any free slot so it
+      // doesn't show as TBD. This is a soft fallback — the first pass already
+      // spread same-entity matches across different days where possible.
+      for (const match of allMatches) {
+        if (match.isBye || match.date) continue;
+        for (let si = 0; si < allSlots.length; si++) {
+          if (usedSlots.has(si)) continue;
+          const slot = allSlots[si];
+          match.date = slot.date;
+          match.time = slot.time;
+          match.courtId = slot.courtId;
+          usedSlots.add(si);
+          break;
         }
       }
     }

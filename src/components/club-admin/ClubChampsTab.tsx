@@ -1844,6 +1844,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             swiss_rounds: roundFormat === "swiss" ? swissRounds : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
+            play_all_games: playAllGames,
             win_condition: winCondition,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,

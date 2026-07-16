@@ -1322,6 +1322,31 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const totalSlots = allSlots.length;
     const timeSlots = Array.from(new Set(allSlots.map((s) => s.time))).sort();
 
+    // Iteration order for scheduling: interleave slot indices across dates so
+    // matches spread evenly across all play-days instead of front-loading day 1.
+    // Within each date the original chronological/court order is preserved.
+    const slotOrder: number[] = (() => {
+      const byDate = new Map<string, number[]>();
+      allSlots.forEach((s, i) => {
+        if (!byDate.has(s.date)) byDate.set(s.date, []);
+        byDate.get(s.date)!.push(i);
+      });
+      const dateKeys = Array.from(byDate.keys()).sort();
+      const buckets = dateKeys.map((d) => byDate.get(d)!);
+      const out: number[] = [];
+      let step = 0;
+      while (out.length < allSlots.length) {
+        let added = false;
+        for (const bucket of buckets) {
+          if (step < bucket.length) { out.push(bucket[step]); added = true; }
+        }
+        if (!added) break;
+        step++;
+      }
+      return out;
+    })();
+
+
     // Build round-robin matches
     const allMatches: MatchDef[] = [];
     const isCrossLeague = roundFormat === "cross_league";
@@ -1756,7 +1781,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         const playersB = getPlayersForEntity(match.entityB);
         const allPlayers = [...playersA, ...playersB];
 
-        for (let si = 0; si < allSlots.length; si++) {
+        for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];
           if (allPlayers.every((pid) => canScheduleOn(pid, slot.date))) {
@@ -1774,7 +1799,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // spread same-entity matches across different days where possible.
       for (const match of allMatches) {
         if (match.isBye || match.date) continue;
-        for (let si = 0; si < allSlots.length; si++) {
+        for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];
           match.date = slot.date;
@@ -1784,6 +1809,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           break;
         }
       }
+
     }
 
     const playableMatches = allMatches.filter((m) => !m.isBye);

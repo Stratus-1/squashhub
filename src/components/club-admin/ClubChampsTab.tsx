@@ -4843,7 +4843,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                   <div key={pair.id}>
                                     {showHeader && (
                                       <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[p % poolTint.length]}`}>
-                                        Pool {poolLetter(p)}
+                                        Pool {poolLetter(p)} <span className="opacity-70 normal-case">({poolSize(p, pools, g.length)} {isDoubles ? "pairs" : "players"})</span>
                                       </div>
                                     )}
                                     <SortableRow id={pair.id}>
@@ -4911,7 +4911,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                   <div key={p.id}>
                                     {showHeader && (
                                       <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[pl % poolTint.length]}`}>
-                                        Pool {poolLetter(pl)}
+                                        Pool {poolLetter(pl)} <span className="opacity-70 normal-case">({poolSize(pl, pools, g.length)} players)</span>
                                       </div>
                                     )}
                                     <SortableRow id={p.id}>

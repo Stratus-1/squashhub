@@ -4820,7 +4820,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                             <span className="text-muted-foreground text-xs">({g.length} pairs)</span>
                             {isSwissPools && pools > 1 && (
                               <Badge variant="outline" className="text-[10px]">
-                                {pools} pools · snake-balanced
+                                {pools} pools · block distribution
                               </Badge>
                             )}
                           </div>
@@ -4888,7 +4888,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                             <span className="text-muted-foreground text-xs">({g.length} players)</span>
                             {isSwissPools && pools > 1 && (
                               <Badge variant="outline" className="text-[10px]">
-                                {pools} pools · snake-balanced
+                                {pools} pools · block distribution
                               </Badge>
                             )}
                           </div>

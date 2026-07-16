@@ -127,6 +127,72 @@ export default function Tournaments() {
       )
     : [];
 
+  // --- Pool / league filter + color coding -----------------------------------
+  // A "bucket" is a unique (champ, league group, pool) combination. Each bucket
+  // gets its own colour so admins can visually separate pools even across
+  // different leagues in the same tournament (Pool A in League 1 ≠ Pool A in
+  // League 2). The dropdown lets the user narrow the list to one bucket.
+  const poolLetter = (p: number | null | undefined) =>
+    p == null ? null : String.fromCharCode(64 + p);
+  const bucketKeyOf = (m: any) =>
+    `${m.champ_id}|${m.group_number ?? "-"}|${m.pool_number ?? "-"}`;
+
+  const buckets = useMemo(() => {
+    const seen = new Map<string, { key: string; champId: string; group: number | null; pool: number | null; count: number }>();
+    for (const m of upcomingMatches) {
+      const key = bucketKeyOf(m);
+      const existing = seen.get(key);
+      if (existing) { existing.count++; continue; }
+      seen.set(key, {
+        key,
+        champId: m.champ_id,
+        group: m.group_number ?? null,
+        pool: m.pool_number ?? null,
+        count: 1,
+      });
+    }
+    // Sort by champ name, then group, then pool
+    return [...seen.values()].sort((a, b) => {
+      const ca = allChamps.find((c: any) => c.id === a.champId)?.name || "";
+      const cb = allChamps.find((c: any) => c.id === b.champId)?.name || "";
+      if (ca !== cb) return ca.localeCompare(cb);
+      const ga = a.group ?? 999; const gb = b.group ?? 999;
+      if (ga !== gb) return ga - gb;
+      return (a.pool ?? 999) - (b.pool ?? 999);
+    });
+  }, [upcomingMatches, allChamps]);
+
+  const bucketColor = (key: string) => {
+    const idx = buckets.findIndex((b) => b.key === key);
+    if (idx < 0) return null;
+    // Evenly-spaced hues around the wheel with a small offset so first bucket
+    // isn't pure red.
+    const hue = Math.round(((idx * 360) / Math.max(buckets.length, 1) + 15) % 360);
+    return {
+      border: `hsl(${hue} 70% 45%)`,
+      bg: `hsl(${hue} 70% 45% / 0.10)`,
+      chipBg: `hsl(${hue} 70% 45% / 0.18)`,
+      chipText: `hsl(${hue} 70% 30%)`,
+    };
+  };
+
+  const bucketLabel = (b: { champId: string; group: number | null; pool: number | null }, opts: { withChamp?: boolean } = {}) => {
+    const champ = allChamps.find((c: any) => c.id === b.champId);
+    const parts: string[] = [];
+    if (opts.withChamp && champ) parts.push(champ.name);
+    if (b.group != null) parts.push(getGroupLabel(champ, b.group));
+    const pl = poolLetter(b.pool);
+    if (pl) parts.push(`Pool ${pl}`);
+    return parts.join(" · ") || "Unassigned";
+  };
+
+  const [poolFilter, setPoolFilter] = useState<string>("all");
+  const filterBucket = (list: any[]) =>
+    poolFilter === "all" ? list : list.filter((m) => bucketKeyOf(m) === poolFilter);
+  const filteredUpcoming = filterBucket(upcomingMatches);
+  const filteredMine = filterBucket(myUpcoming);
+
+
   const hcLabel = (h: any) => {
     const n = Number(h) || 0;
     return n !== 0 ? ` (${n > 0 ? "+" : ""}${n})` : "";

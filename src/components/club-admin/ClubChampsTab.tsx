@@ -5505,28 +5505,30 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       })()}
 
       {/* Navigation */}
-      <div className="flex justify-between items-center gap-2">
-        <Button variant="outline" onClick={() => { if (stepIdx === 0) { setShowWizard(false); } else { setStep(activeSteps[stepIdx - 1]); void saveDraft(); } }}>
-          <ChevronLeft className="w-4 h-4 mr-1" /> {stepIdx === 0 ? "Cancel" : "Back"}
-        </Button>
-        <Button variant="secondary" onClick={() => void handleManualSave()}>
-          <Save className="w-4 h-4 mr-1" /> Save Progress
-        </Button>
-        {step === "review" ? (
-          <Button onClick={() => createChamp.mutate()} disabled={createChamp.isPending}>
-            {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-            {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
+      {step !== "preview" && (
+        <div className="flex justify-between items-center gap-2">
+          <Button variant="outline" onClick={() => { if (stepIdx === 0) { setShowWizard(false); } else { setStep(activeSteps[stepIdx - 1]); void saveDraft(); } }}>
+            <ChevronLeft className="w-4 h-4 mr-1" /> {stepIdx === 0 ? "Cancel" : "Back"}
           </Button>
-        ) : (
-          <Button
-            onClick={() => goToStep(activeSteps[stepIdx + 1])}
-            disabled={!canProceed()}
-            title={canProceed() ? undefined : `Complete: ${missingForStep().join(", ")}`}
-          >
-            Next <ChevronRight className="w-4 h-4 ml-1" />
+          <Button variant="secondary" onClick={() => void handleManualSave()}>
+            <Save className="w-4 h-4 mr-1" /> Save Progress
           </Button>
-        )}
-      </div>
+          {step === "review" ? (
+            <Button onClick={() => createChamp.mutate()} disabled={createChamp.isPending}>
+              {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => goToStep(activeSteps[stepIdx + 1])}
+              disabled={!canProceed()}
+              title={canProceed() ? undefined : `Complete: ${missingForStep().join(", ")}`}
+            >
+              Next <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          )}
+        </div>
+      )}
 
 
 

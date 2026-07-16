@@ -807,6 +807,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       day_schedules: customizeDailySchedule ? daySchedules : [],
       court_ids: Array.from(selectedCourtIds),
       schedule_mode: scheduleMode,
+      playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
+      playoff_date: playoffDate || null,
     };
     try {
       if (editingChampId) {

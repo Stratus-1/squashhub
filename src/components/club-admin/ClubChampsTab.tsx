@@ -1781,8 +1781,35 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const entriesPerLeague: number[] = isDoubles
         ? (groups as DoublePair[][]).map((g) => g.length)
         : (groups as ClubMember[][]).map((g) => g.length);
+
+      // Swiss pool mode: per-league pool count + per-pool entry sizes so
+      // playoff placeholders are intra-league (Pool A #P vs Pool B #P).
+      const isSwissFmt = roundFormat === "swiss";
+      const poolsByLeague: Record<number, number> = {};
+      const entriesByLeaguePool: Record<number, number[]> = {};
+      if (isSwissFmt) {
+        entriesPerLeague.forEach((total, gi) => {
+          const lg = gi + 1;
+          const pc = Math.max(1, Number(swissPools[String(lg)]) || 1);
+          poolsByLeague[lg] = pc;
+          const size = Math.ceil(total / pc);
+          const sizes: number[] = [];
+          for (let p = 0; p < pc; p++) {
+            const from = p * size;
+            const to = Math.min(total, (p + 1) * size);
+            sizes.push(Math.max(0, to - from));
+          }
+          entriesByLeaguePool[lg] = sizes;
+        });
+      }
+
       const playoffCount = enablePlayoffs
-        ? countPlayoffPlaceholders({ numLeagues: entriesPerLeague.length, entriesPerLeague })
+        ? countPlayoffPlaceholders({
+            numLeagues: entriesPerLeague.length,
+            entriesPerLeague,
+            poolsByLeague: isSwissFmt ? poolsByLeague : undefined,
+            entriesByLeaguePool: isSwissFmt ? entriesByLeaguePool : undefined,
+          })
         : 0;
       const reservedSlotIdx: number[] = [];
       if (playoffCount > 0) {
@@ -1792,6 +1819,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           usedSlots.add(i);
         }
       }
+
 
       // First pass: honour the "no same-day repeat per entity" gap.
       for (const match of allMatches) {

@@ -4788,11 +4788,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   const isSwissPools = roundFormat === "swiss";
                   const poolsFor = (gi: number) =>
                     isSwissPools ? Math.max(1, Number(swissPools[String(gi + 1)]) || 1) : 1;
-                  // Snake distribution so strength balances across pools within a league.
-                  const poolIdx = (i: number, pools: number) => {
+                  // Block distribution: pool A = first chunk, pool B = next chunk, etc.
+                  // Admins arrange strength manually by dragging within the pool.
+                  const poolIdx = (i: number, pools: number, total: number) => {
                     if (pools <= 1) return 0;
-                    const cycle = Math.floor(i / pools);
-                    return cycle % 2 === 0 ? i % pools : pools - 1 - (i % pools);
+                    const size = Math.ceil(total / pools);
+                    return Math.min(pools - 1, Math.floor(i / size));
                   };
                   const poolLetter = (p: number) => String.fromCharCode(65 + p);
                   const poolTint = [
@@ -4819,7 +4820,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                             <span className="text-muted-foreground text-xs">({g.length} pairs)</span>
                             {isSwissPools && pools > 1 && (
                               <Badge variant="outline" className="text-[10px]">
-                                {pools} pools · snake-balanced
+                                {pools} pools · block distribution
                               </Badge>
                             )}
                           </div>
@@ -4829,8 +4830,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
                               )}
                               {g.map((pair, i) => {
-                                const p = poolIdx(i, pools);
-                                const prevP = i > 0 ? poolIdx(i - 1, pools) : -1;
+                                const p = poolIdx(i, pools, g.length);
+                                const prevP = i > 0 ? poolIdx(i - 1, pools, g.length) : -1;
                                 const showHeader = isSwissPools && pools > 1 && p !== prevP;
                                 return (
                                   <div key={pair.id}>
@@ -4887,7 +4888,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                             <span className="text-muted-foreground text-xs">({g.length} players)</span>
                             {isSwissPools && pools > 1 && (
                               <Badge variant="outline" className="text-[10px]">
-                                {pools} pools · snake-balanced
+                                {pools} pools · block distribution
                               </Badge>
                             )}
                           </div>
@@ -4897,8 +4898,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 <p className="text-[11px] text-muted-foreground italic py-2">Drop players here</p>
                               )}
                               {g.map((p, i) => {
-                                const pl = poolIdx(i, pools);
-                                const prevPl = i > 0 ? poolIdx(i - 1, pools) : -1;
+                                const pl = poolIdx(i, pools, g.length);
+                                const prevPl = i > 0 ? poolIdx(i - 1, pools, g.length) : -1;
                                 const showHeader = isSwissPools && pools > 1 && pl !== prevPl;
                                 return (
                                   <div key={p.id}>

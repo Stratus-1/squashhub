@@ -35,7 +35,9 @@ export function entityIdForEntry(e: Entry, isDoubles: boolean): string {
   return isDoubles ? e.id : e.club_member_id;
 }
 
-/** Snake distribution — returns pool_number (1-based) for each entity id. */
+/** Block distribution — returns pool_number (1-based) for each entity id.
+ *  Pool A = first chunk of ordered entries, Pool B = next chunk, etc.
+ *  Admins arrange strength manually by dragging within each pool. */
 export function assignPools(
   entries: Entry[],
   groupNumber: number,
@@ -47,9 +49,9 @@ export function assignPools(
     .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   const map = new Map<string, number>();
   const pools = Math.max(1, poolCount);
+  const size = Math.ceil(ordered.length / pools);
   ordered.forEach((e, i) => {
-    const cycle = Math.floor(i / pools);
-    const idx = cycle % 2 === 0 ? i % pools : pools - 1 - (i % pools);
+    const idx = Math.min(pools - 1, Math.floor(i / size));
     map.set(entityIdForEntry(e, isDoubles), idx + 1);
   });
   return map;

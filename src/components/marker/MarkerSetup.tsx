@@ -39,6 +39,10 @@ export interface MarkerConfig {
   matchType: MatchType;
   scoringFormat: ScoringFormat;
   bestOf: BestOf;
+  /** When true, all `bestOf` games are played (no early termination when a
+   *  side reaches the games-to-win threshold). Winner = most games won,
+   *  tiebreak on total points across games. */
+  playAllGames?: boolean;
   deuceRule: DeuceRule;
   source: MatchSource;
   sourceId?: string; // tournament match id or booking id

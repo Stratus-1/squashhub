@@ -2779,6 +2779,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEndTime("20:00");
     setMatchDuration(0);
     setScheduleMode("spread");
+    setPlayoffBreakMinutes(0);
+    setPlayoffDate("");
     setScoringMode("");
     setSwissPools({});
     setSwissRounds({});

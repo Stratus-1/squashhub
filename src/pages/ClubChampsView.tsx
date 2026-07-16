@@ -192,6 +192,28 @@ export default function ClubChampsView() {
     isSwissMode ? Math.max(1, Number(swissPoolsCfg[String(gn)]) || 1) : 1;
   const poolLabel = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
 
+  // Resolve a match's pool number. Prefers persisted pool_number, else derives
+  // from the pool assignment of player_a's entry (Swiss with >1 pool). Returns
+  // null when pools don't apply.
+  const resolvePoolNumber = (m: any, groupNum: number): number | null => {
+    if (m?.pool_number != null) return m.pool_number as number;
+    const pc = poolCountFor(groupNum);
+    if (pc <= 1) return null;
+    const memberIds: string[] = [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id].filter(Boolean);
+    if (memberIds.length === 0) return null;
+    const poolMap = assignPools(entries as SwissEntry[], groupNum, pc, isDoubles);
+    for (const mid of memberIds) {
+      const e = (entries as any[]).find(
+        (x) => x.group_number === groupNum && (x.club_member_id === mid || x.partner_member_id === mid),
+      );
+      if (!e) continue;
+      const p = poolMap.get(entityIdForEntry(e as SwissEntry, isDoubles));
+      if (p) return p;
+    }
+    return null;
+  };
+
+
   const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
     let groupEntries = entries.filter((e: any) => e.group_number === groupNum);
     // Pool-scoped filtering (Swiss with multiple pools per league).
@@ -211,8 +233,9 @@ export default function ClubChampsView() {
     const matchBelongsToGroup = (m: any) => {
       if (!isCrossLeague) {
         if (m.group_number !== groupNum) return false;
-        if (poolNumber != null && (m.pool_number ?? null) !== poolNumber) return false;
+        if (poolNumber != null && resolvePoolNumber(m, groupNum) !== poolNumber) return false;
         return true;
+
       }
       return (
         groupMemberIds.has(m.player_a_member_id) ||
@@ -1953,7 +1976,7 @@ export default function ClubChampsView() {
           <div className="space-y-4">
             {Array.from({ length: pc }).map((_, i) => {
               const poolNumber = i + 1;
-              const poolMatches = groupMatches.filter((m: any) => (m.pool_number ?? null) === poolNumber);
+              const poolMatches = groupMatches.filter((m: any) => resolvePoolNumber(m, gn) === poolNumber);
               return (
                 <div key={poolNumber} className="space-y-1.5">
                   <div className="flex items-center gap-2">

@@ -29,7 +29,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { Users as UsersIcon } from "lucide-react";
 import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-formats";
-import { playoffMatchesForBracket } from "@/lib/tournament-playoffs";
+import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 
 interface ClubChampsTabProps {
   clubId: string;
@@ -1774,6 +1774,25 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     } else {
       const usedSlots = new Set<number>();
+
+      // Reserve the LAST N chronological slots for play-off placeholders so
+      // pool matches don't grab them. `allSlots` is built in date/time/court
+      // order, so the tail of the array is the latest end of the tournament.
+      const entriesPerLeague: number[] = isDoubles
+        ? (groups as DoublePair[][]).map((g) => g.length)
+        : (groups as ClubMember[][]).map((g) => g.length);
+      const playoffCount = enablePlayoffs
+        ? countPlayoffPlaceholders({ numLeagues: entriesPerLeague.length, entriesPerLeague })
+        : 0;
+      const reservedSlotIdx: number[] = [];
+      if (playoffCount > 0) {
+        const take = Math.min(playoffCount, allSlots.length);
+        for (let i = allSlots.length - take; i < allSlots.length; i++) {
+          reservedSlotIdx.push(i);
+          usedSlots.add(i);
+        }
+      }
+
       // First pass: honour the "no same-day repeat per entity" gap.
       for (const match of allMatches) {
         if (match.isBye) continue;
@@ -1810,19 +1829,42 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         }
       }
 
+      // Playoff placeholders occupy the reserved tail slots in stage order:
+      // QF (round 1) → SF (round 2) → Final/3rd (round 3). Chronological
+      // ordering of reservedSlotIdx already achieves earliest-first.
+      if (playoffCount > 0 && reservedSlotIdx.length > 0) {
+        const placeholderRows = buildPlayoffPlaceholders({
+          champId: "__preview__",
+          numLeagues: entriesPerLeague.length,
+          entriesPerLeague,
+          leagueLabels: entriesPerLeague.map((_, i) => groupLabels[String(i + 1)] || `League ${i + 1}`),
+        });
+        placeholderRows.sort((a, b) => a.round_number - b.round_number);
+        placeholderRows.forEach((row, i) => {
+          const si = reservedSlotIdx[i];
+          if (si == null) return;
+          const slot = allSlots[si];
+          (row as any).__date = slot.date;
+          (row as any).__time = slot.time;
+          (row as any).__courtId = slot.courtId;
+        });
+        (allMatches as any).__playoffPlaceholders = placeholderRows;
+      }
     }
 
     const playableMatches = allMatches.filter((m) => !m.isBye);
+    const placeholderCount = ((allMatches as any).__playoffPlaceholders?.length ?? 0);
     // Bells mode schedules every match by construction — treat slots as sufficient.
     const effectiveTotalSlots = isBellsMode ? playableMatches.length : totalSlots;
     return {
       allMatches,
       totalSlots: effectiveTotalSlots,
-      totalMatches: playableMatches.length,
+      totalMatches: playableMatches.length + placeholderCount,
       allDates,
       timeSlots,
+      playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, groupLabels]);
 
   // Create/update champ
   const createChamp = useMutation({
@@ -2096,6 +2138,35 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (matchErr) throw matchErr;
       }
 
+      // Play-off placeholders: reserve court slots for the knockout / finals
+      // up-front so admins can see the tournament's true end date from day 1.
+      // Real players fill in via handleGeneratePlayoffs once group standings
+      // are known — those rows keep the same court + start_time.
+      const placeholderRows = (schedulePreview as any).playoffPlaceholders as any[] | undefined;
+      if (enablePlayoffs && placeholderRows && placeholderRows.length > 0) {
+        const rowsToInsert = placeholderRows.map((r) => ({
+          champ_id: champId,
+          group_number: r.group_number,
+          round_number: r.round_number,
+          stage: r.stage,
+          stage_label: r.stage_label,
+          bracket_position: r.bracket_position,
+          player_a_member_id: null,
+          partner_a_member_id: null,
+          player_b_member_id: null,
+          partner_b_member_id: null,
+          placeholder_a: r.placeholder_a ?? null,
+          placeholder_b: r.placeholder_b ?? null,
+          scheduled_date: r.__date ?? null,
+          scheduled_time: r.__time ?? null,
+          court_id: r.__courtId ?? null,
+          is_bye: false,
+          status: "scheduled",
+        }));
+        const { error: pErr } = await fromExt("club_champs_matches").insert(rowsToInsert);
+        if (pErr) console.warn("Play-off placeholder insert failed:", pErr);
+      }
+
       // League-ranking handicap: compute starting-score offsets for every match.
       if (matchType === "singles" && handicapMode !== "none") {
         try {
@@ -2150,6 +2221,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           slotMap.set(key, { date: m.date, courtId: m.courtId, start: m.time, end: endStr });
         } else {
           if (m.time < existing.start) existing.start = m.time;
+          if (endStr > existing.end) existing.end = endStr;
+        }
+      }
+      // Include play-off placeholder slots in booking coverage.
+      for (const r of (schedulePreview as any).playoffPlaceholders || []) {
+        if (!r.__date || !r.__time || !r.__courtId) continue;
+        const [h, min] = String(r.__time).split(":").map(Number);
+        const endMins = h * 60 + min + matchDuration;
+        const endH = Math.floor(endMins / 60) % 24;
+        const endM = endMins % 60;
+        const endStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+        const key = `${r.__date}:${r.__courtId}`;
+        const existing = slotMap.get(key);
+        if (!existing) {
+          slotMap.set(key, { date: r.__date, courtId: r.__courtId, start: r.__time, end: endStr });
+        } else {
+          if (r.__time < existing.start) existing.start = r.__time;
           if (endStr > existing.end) existing.end = endStr;
         }
       }

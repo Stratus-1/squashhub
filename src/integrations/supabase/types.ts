@@ -1270,6 +1270,8 @@ export type Database = {
           leg: string | null
           partner_a_member_id: string | null
           partner_b_member_id: string | null
+          placeholder_a: string | null
+          placeholder_b: string | null
           player_a_member_id: string | null
           player_b_member_id: string | null
           pool_number: number | null
@@ -1304,6 +1306,8 @@ export type Database = {
           leg?: string | null
           partner_a_member_id?: string | null
           partner_b_member_id?: string | null
+          placeholder_a?: string | null
+          placeholder_b?: string | null
           player_a_member_id?: string | null
           player_b_member_id?: string | null
           pool_number?: number | null
@@ -1338,6 +1342,8 @@ export type Database = {
           leg?: string | null
           partner_a_member_id?: string | null
           partner_b_member_id?: string | null
+          placeholder_a?: string | null
+          placeholder_b?: string | null
           player_a_member_id?: string | null
           player_b_member_id?: string | null
           pool_number?: number | null
@@ -7591,6 +7597,8 @@ export type Database = {
           leg: string | null
           partner_a_member_id: string | null
           partner_b_member_id: string | null
+          placeholder_a: string | null
+          placeholder_b: string | null
           player_a_member_id: string | null
           player_b_member_id: string | null
           pool_number: number | null
@@ -7670,6 +7678,8 @@ export type Database = {
           leg: string | null
           partner_a_member_id: string | null
           partner_b_member_id: string | null
+          placeholder_a: string | null
+          placeholder_b: string | null
           player_a_member_id: string | null
           player_b_member_id: string | null
           pool_number: number | null

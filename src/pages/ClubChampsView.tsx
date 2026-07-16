@@ -481,8 +481,14 @@ export default function ClubChampsView() {
     const n = Number(h) || 0;
     return n !== 0 ? ` (HCP ${n > 0 ? "+" : ""}${n})` : "";
   };
-  const getMatchTeamA = (m: any) => (isDoubles ? getTeamName(m.player_a, m.partner_a) : getPlayerName(m.player_a)) + hcLabel(m.handicap_a);
-  const getMatchTeamB = (m: any) => (isDoubles ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b)) + hcLabel(m.handicap_b);
+  const getMatchTeamA = (m: any) =>
+    (m.player_a_member_id
+      ? (isDoubles ? getTeamName(m.player_a, m.partner_a) : getPlayerName(m.player_a))
+      : (m.placeholder_a || "TBD")) + hcLabel(m.handicap_a);
+  const getMatchTeamB = (m: any) =>
+    (m.player_b_member_id
+      ? (isDoubles ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b))
+      : (m.placeholder_b || "TBD")) + hcLabel(m.handicap_b);
 
   const isMyMatch = (m: any) =>
     myMemberId && (m.player_a_member_id === myMemberId || m.player_b_member_id === myMemberId ||
@@ -816,15 +822,13 @@ export default function ClubChampsView() {
         return w === m.player_a_member_id ? m.player_b_member_id : m.player_a_member_id;
       };
 
-      // Wipe any incomplete playoff rows we generated previously — keep
-      // completed rounds so their standings feed the next round.
-      const staleIds = playoffMatches
-        .filter((m: any) => m.status !== "completed")
-        .map((m: any) => m.id);
-      if (staleIds.length > 0) {
-        const { error: delErr } = await fromExt("club_champs_matches").delete().in("id", staleIds);
-        if (delErr) throw delErr;
-      }
+      // Existing incomplete playoff rows are either (a) reserved placeholder
+      // rows created at fixture-generation time (with placeholder_a/_b text
+      // and pre-assigned court + time) or (b) leftovers from a previous
+      // "Generate play-offs" run. We prefer to UPDATE placeholders in-place
+      // so their scheduled slot is preserved. Anything left over after
+      // matching gets deleted; anything we can't match gets inserted fresh.
+      const incompletePlayoffs = playoffMatches.filter((m: any) => m.status !== "completed");
 
       // Build seed standings per league.
       const numLeagues = groupNumbers.length;
@@ -876,8 +880,6 @@ export default function ClubChampsView() {
             (m: any) => m.stage === "playoff_qf" && (m.bracket_position ?? null) === (row.bracket_position ?? null),
           );
           const winners = qfs.map(winnerOf).filter(Boolean) as string[];
-          // First SF row gets winners[0]/winners[3], second gets winners[1]/winners[2]
-          // Simplified: hand out in order — admin can swap manually if needed.
           if (winners.length >= 2) {
             row.player_a_member_id = row.player_a_member_id ?? winners.shift()!;
             row.player_b_member_id = row.player_b_member_id ?? winners.shift()!;
@@ -887,8 +889,51 @@ export default function ClubChampsView() {
 
       if (newRows.length === 0) throw new Error("Not enough finishers to build a play-off bracket");
 
-      const { error: insErr } = await fromExt("club_champs_matches").insert(newRows as any);
-      if (insErr) throw insErr;
+      // Try to match each newRow to an existing incomplete playoff row so we
+      // keep its scheduled_date / scheduled_time / court_id.
+      const buckets = new Map<string, any[]>();
+      for (const m of incompletePlayoffs) {
+        const key = `${m.stage}|${m.bracket_position ?? "null"}|${m.round_number}`;
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key)!.push(m);
+      }
+      const rowsToInsert: any[] = [];
+      const usedExistingIds = new Set<string>();
+      for (const row of newRows) {
+        const key = `${row.stage}|${row.bracket_position ?? "null"}|${row.round_number}`;
+        const bucket = buckets.get(key) || [];
+        const target = bucket.shift();
+        if (target) {
+          usedExistingIds.add(target.id);
+          const { error: uErr } = await fromExt("club_champs_matches")
+            .update({
+              player_a_member_id: row.player_a_member_id,
+              partner_a_member_id: row.partner_a_member_id,
+              player_b_member_id: row.player_b_member_id,
+              partner_b_member_id: row.partner_b_member_id,
+              stage_label: row.stage_label,
+              placeholder_a: null,
+              placeholder_b: null,
+            })
+            .eq("id", target.id);
+          if (uErr) throw uErr;
+        } else {
+          rowsToInsert.push(row);
+        }
+      }
+      // Delete any leftover incomplete playoff rows that we didn't reuse.
+      const leftoverIds = incompletePlayoffs
+        .map((m: any) => m.id)
+        .filter((id: string) => !usedExistingIds.has(id));
+      if (leftoverIds.length > 0) {
+        const { error: delErr } = await fromExt("club_champs_matches").delete().in("id", leftoverIds);
+        if (delErr) throw delErr;
+      }
+
+      if (rowsToInsert.length > 0) {
+        const { error: insErr } = await fromExt("club_champs_matches").insert(rowsToInsert as any);
+        if (insErr) throw insErr;
+      }
       return newRows.length;
     },
     onSuccess: (n) => {

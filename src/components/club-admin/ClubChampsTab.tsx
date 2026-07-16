@@ -1837,11 +1837,40 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const reservedSlotIdx: number[] = [];
       if (playoffCount > 0) {
         const take = Math.min(playoffCount, allSlots.length);
-        if (scheduleMode === "fill") {
+        const timeToMin = (t: string) => {
+          const [hh, mm] = String(t).slice(0, 5).split(":").map(Number);
+          return (hh || 0) * 60 + (mm || 0);
+        };
+        // Priority 1: explicit playoff date — reserve slots on that date only.
+        const onDate = playoffDate
+          ? slotOrder.filter((si) => allSlots[si].date === playoffDate)
+          : [];
+        if (playoffDate && onDate.length >= take) {
+          for (let k = 0; k < take; k++) {
+            reservedSlotIdx.push(onDate[k]);
+            usedSlots.add(onDate[k]);
+          }
+        } else if (scheduleMode === "fill") {
           // Fill mode: playoffs follow directly after the pool matches so the
           // finals happen the same day pool play ends (no forced next-day roll).
           const poolCount = allMatches.filter((m) => !m.isBye).length;
-          const start = Math.min(allSlots.length - take, poolCount);
+          let start = Math.min(allSlots.length - take, poolCount);
+          // Apply optional break minutes between the last pool slot and the
+          // first playoff slot on the same day. Skip forward until the gap is
+          // satisfied or we roll onto a later date.
+          const breakMin = Math.max(0, Number(playoffBreakMinutes) || 0);
+          if (breakMin > 0 && poolCount > 0 && poolCount <= slotOrder.length) {
+            const lastPool = allSlots[slotOrder[poolCount - 1]];
+            const need = timeToMin(lastPool.time) + (matchDuration || 0) + breakMin;
+            let s = start;
+            while (s < slotOrder.length - take) {
+              const cand = allSlots[slotOrder[s]];
+              if (cand.date !== lastPool.date) break; // new day → gap satisfied
+              if (timeToMin(cand.time) >= need) break;
+              s++;
+            }
+            start = Math.min(slotOrder.length - take, s);
+          }
           for (let k = 0; k < take; k++) {
             const idx = start + k;
             reservedSlotIdx.push(slotOrder[idx]);

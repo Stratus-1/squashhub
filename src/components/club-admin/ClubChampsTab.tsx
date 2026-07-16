@@ -4225,6 +4225,76 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </label>
               </div>
             </div>
+
+            {/* Playoff finishing options — only when playoffs are enabled */}
+            {enablePlayoffs && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Playoff finishing options</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Fine-tune when the finals happen after the pool stage ends.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="playoff-break" className="text-xs">
+                      Break after last pool match
+                    </Label>
+                    <Select
+                      value={String(playoffBreakMinutes)}
+                      onValueChange={(v) => setPlayoffBreakMinutes(Number(v))}
+                      disabled={!!playoffDate}
+                    >
+                      <SelectTrigger id="playoff-break" className="h-9">
+                        <SelectValue placeholder="No break" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">No break — start immediately</SelectItem>
+                        <SelectItem value="15">15 minutes</SelectItem>
+                        <SelectItem value="30">30 minutes</SelectItem>
+                        <SelectItem value="45">45 minutes</SelectItem>
+                        <SelectItem value="60">1 hour</SelectItem>
+                        <SelectItem value="90">1½ hours (lunch)</SelectItem>
+                        <SelectItem value="120">2 hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Applies to fill-mode when playoffs run on the same day as pool play.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="playoff-date" className="text-xs">
+                      Play finals on a specific date (optional)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="playoff-date"
+                        type="date"
+                        className="h-9"
+                        value={playoffDate}
+                        min={startDate || undefined}
+                        max={endDate || undefined}
+                        onChange={(e) => setPlayoffDate(e.target.value)}
+                      />
+                      {playoffDate && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-9"
+                          onClick={() => setPlayoffDate("")}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Overrides the break setting — finals are forced onto this date.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

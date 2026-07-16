@@ -801,6 +801,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       affects_ranking_points: affectsRankingPoints,
       day_schedules: customizeDailySchedule ? daySchedules : [],
       court_ids: Array.from(selectedCourtIds),
+      schedule_mode: scheduleMode,
     };
     try {
       if (editingChampId) {

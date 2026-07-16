@@ -1976,7 +1976,7 @@ export default function ClubChampsView() {
           <div className="space-y-4">
             {Array.from({ length: pc }).map((_, i) => {
               const poolNumber = i + 1;
-              const poolMatches = groupMatches.filter((m: any) => (m.pool_number ?? null) === poolNumber);
+              const poolMatches = groupMatches.filter((m: any) => resolvePoolNumber(m, gn) === poolNumber);
               return (
                 <div key={poolNumber} className="space-y-1.5">
                   <div className="flex items-center gap-2">

@@ -325,7 +325,7 @@ export default function Tournaments() {
             <span className="text-muted-foreground"> vs </span>
             <span className={teamBClass}>{teamB}</span>
           </span>
-          {bMeta && (bMeta.group != null || bMeta.pool != null) && (
+          {bMeta && (bMeta.group != null || bMeta.pool != null || bMeta.stage) && (
             <span
               style={chipStyle}
               className="text-[10px] shrink-0 px-1.5 py-0.5 rounded border font-medium"

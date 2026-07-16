@@ -1777,7 +1777,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       allDates,
       timeSlots,
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds]);
 
   // Create/update champ
   const createChamp = useMutation({

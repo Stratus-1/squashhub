@@ -1381,6 +1381,43 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
         : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
       ingestCrossLeague(groupIds);
+    } else if (roundFormat === "swiss") {
+      // Swiss: split each league into pools (block distribution) and reserve
+      // R rounds per pool. Pairings are done manually round-by-round in the
+      // live tournament view — here we only need enough placeholder matches
+      // so the schedule reserves the right number of court slots. Total per
+      // league = pools × rounds × ceil(pool/2), matching the capacity math.
+      const buildLeague = (gi: number, ids: string[]) => {
+        const pools = Math.max(1, Number(swissPools[String(gi + 1)]) || 1);
+        const rounds = Math.max(1, Number(swissRounds[String(gi + 1)]) || 1);
+        const size = Math.ceil(ids.length / pools);
+        for (let p = 0; p < pools; p++) {
+          const poolIds = ids.slice(p * size, Math.min(ids.length, (p + 1) * size));
+          if (poolIds.length < 2) continue;
+          // Reuse round-robin generator to get valid per-round pairings, then
+          // truncate/cycle to R rounds so player-busy tracking stays realistic.
+          const { rounds: rrRounds, byesPerRound } = generateRoundRobinRounds(poolIds, "single");
+          for (let r = 0; r < rounds; r++) {
+            const src = rrRounds[r % rrRounds.length] || [];
+            src.forEach(([a, b, leg]) => {
+              allMatches.push({ groupNum: gi + 1, roundNum: r + 1, entityA: a, entityB: b, leg });
+            });
+            const byeId = byesPerRound[r % byesPerRound.length];
+            if (byeId && byeHandling !== "no_match") {
+              allMatches.push({
+                groupNum: gi + 1, roundNum: r + 1,
+                entityA: byeId, entityB: byeId, leg: null,
+                isBye: true, byeEntityId: byeId,
+              });
+            }
+          }
+        }
+      };
+      if (isDoubles) {
+        (groups as DoublePair[][]).forEach((groupPairs, gi) => buildLeague(gi, groupPairs.map((p) => p.id)));
+      } else {
+        (groups as ClubMember[][]).forEach((groupPlayers, gi) => buildLeague(gi, groupPlayers.map((p) => p.id)));
+      }
     } else if (isDoubles) {
       (groups as DoublePair[][]).forEach((groupPairs, gi) => {
         ingestRounds(gi, groupPairs.map((p) => p.id));
@@ -1740,7 +1777,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       allDates,
       timeSlots,
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds]);
 
   // Create/update champ
   const createChamp = useMutation({

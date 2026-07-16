@@ -4898,8 +4898,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 <p className="text-[11px] text-muted-foreground italic py-2">Drop players here</p>
                               )}
                               {g.map((p, i) => {
-                                const pl = poolIdx(i, pools);
-                                const prevPl = i > 0 ? poolIdx(i - 1, pools) : -1;
+                                const pl = poolIdx(i, pools, g.length);
+                                const prevPl = i > 0 ? poolIdx(i - 1, pools, g.length) : -1;
                                 const showHeader = isSwissPools && pools > 1 && pl !== prevPl;
                                 return (
                                   <div key={p.id}>

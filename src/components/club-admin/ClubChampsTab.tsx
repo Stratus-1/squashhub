@@ -1866,6 +1866,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           numLeagues: entriesPerLeague.length,
           entriesPerLeague,
           leagueLabels: entriesPerLeague.map((_, i) => groupLabels[String(i + 1)] || `League ${i + 1}`),
+          poolsByLeague: isSwissFmt ? poolsByLeague : undefined,
+          entriesByLeaguePool: isSwissFmt ? entriesByLeaguePool : undefined,
         });
         placeholderRows.sort((a, b) => a.round_number - b.round_number);
         placeholderRows.forEach((row, i) => {

@@ -382,9 +382,25 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
         // Live progress broadcast (game-by-game)
         try { onProgress?.(newCompleted); } catch {}
 
-        // Check match won
-        if (newGamesA >= gamesToWin || newGamesB >= gamesToWin) {
-          const winner = newGamesA >= gamesToWin ? "a" : "b";
+        // Check match won. In "Play all games" mode, keep playing until every
+        // game of bestOf has been completed; winner is decided by most games
+        // won, with total points as a tiebreak (points-in-final-game as a
+        // second tiebreak).
+        const playAll = !!config.playAllGames;
+        const totalGamesPlayed = newCompleted.length;
+        const reachedThreshold = newGamesA >= gamesToWin || newGamesB >= gamesToWin;
+        const matchEnds = playAll ? totalGamesPlayed >= config.bestOf : reachedThreshold;
+        if (matchEnds) {
+          let winner: "a" | "b" = newGamesA >= newGamesB ? "a" : "b";
+          if (playAll && newGamesA === newGamesB) {
+            const totA = newCompleted.reduce((s, g) => s + g.a, 0);
+            const totB = newCompleted.reduce((s, g) => s + g.b, 0);
+            if (totA !== totB) winner = totA > totB ? "a" : "b";
+            else {
+              const last = newCompleted[newCompleted.length - 1];
+              winner = (last?.a ?? 0) >= (last?.b ?? 0) ? "a" : "b";
+            }
+          }
           setMatchOver(true);
           setMatchWinner(winner);
           if (timerRef.current) clearInterval(timerRef.current);

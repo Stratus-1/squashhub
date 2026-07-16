@@ -381,6 +381,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
   const [matchDuration, setMatchDuration] = useState(0);
+  // Scheduling density: "fill" packs games into the earliest days first (finish as
+  // quickly as possible); "spread" interleaves across all play-days (default).
+  const [scheduleMode, setScheduleMode] = useState<"spread" | "fill">("spread");
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss">("");
   // Swiss-only config: per-league pools & rounds (keyed by group_number string).
   const [swissPools, setSwissPools] = useState<Record<string, number>>({});

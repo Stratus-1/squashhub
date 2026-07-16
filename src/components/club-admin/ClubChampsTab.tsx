@@ -4795,6 +4795,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     const size = Math.ceil(total / pools);
                     return Math.min(pools - 1, Math.floor(i / size));
                   };
+                  const poolSize = (p: number, pools: number, total: number) => {
+                    if (pools <= 1) return total;
+                    const size = Math.ceil(total / pools);
+                    if (p < pools - 1) return size;
+                    return Math.max(0, total - size * (pools - 1));
+                  };
                   const poolLetter = (p: number) => String.fromCharCode(65 + p);
                   const poolTint = [
                     "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30",
@@ -4837,7 +4843,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                   <div key={pair.id}>
                                     {showHeader && (
                                       <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[p % poolTint.length]}`}>
-                                        Pool {poolLetter(p)}
+                                        Pool {poolLetter(p)} <span className="opacity-70 normal-case">({poolSize(p, pools, g.length)} {isDoubles ? "pairs" : "players"})</span>
                                       </div>
                                     )}
                                     <SortableRow id={pair.id}>
@@ -4905,7 +4911,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                   <div key={p.id}>
                                     {showHeader && (
                                       <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[pl % poolTint.length]}`}>
-                                        Pool {poolLetter(pl)}
+                                        Pool {poolLetter(pl)} <span className="opacity-70 normal-case">({poolSize(pl, pools, g.length)} players)</span>
                                       </div>
                                     )}
                                     <SortableRow id={p.id}>

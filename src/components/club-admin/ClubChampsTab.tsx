@@ -1332,6 +1332,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     // matches spread evenly across all play-days instead of front-loading day 1.
     // Within each date the original chronological/court order is preserved.
     const slotOrder: number[] = (() => {
+      if (scheduleMode === "fill") {
+        // Fill mode: fill each day (and each court within the day) completely
+        // before moving to the next — finishes the tournament in as few days
+        // as possible.
+        return allSlots.map((_, i) => i);
+      }
       const byDate = new Map<string, number[]>();
       allSlots.forEach((s, i) => {
         if (!byDate.has(s.date)) byDate.set(s.date, []);

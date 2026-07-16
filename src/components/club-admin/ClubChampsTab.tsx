@@ -2138,6 +2138,35 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (matchErr) throw matchErr;
       }
 
+      // Play-off placeholders: reserve court slots for the knockout / finals
+      // up-front so admins can see the tournament's true end date from day 1.
+      // Real players fill in via handleGeneratePlayoffs once group standings
+      // are known — those rows keep the same court + start_time.
+      const placeholderRows = (schedulePreview as any).playoffPlaceholders as any[] | undefined;
+      if (enablePlayoffs && placeholderRows && placeholderRows.length > 0) {
+        const rowsToInsert = placeholderRows.map((r) => ({
+          champ_id: champId,
+          group_number: r.group_number,
+          round_number: r.round_number,
+          stage: r.stage,
+          stage_label: r.stage_label,
+          bracket_position: r.bracket_position,
+          player_a_member_id: null,
+          partner_a_member_id: null,
+          player_b_member_id: null,
+          partner_b_member_id: null,
+          placeholder_a: r.placeholder_a ?? null,
+          placeholder_b: r.placeholder_b ?? null,
+          scheduled_date: r.__date ?? null,
+          scheduled_time: r.__time ?? null,
+          court_id: r.__courtId ?? null,
+          is_bye: false,
+          status: "scheduled",
+        }));
+        const { error: pErr } = await fromExt("club_champs_matches").insert(rowsToInsert);
+        if (pErr) console.warn("Play-off placeholder insert failed:", pErr);
+      }
+
       // League-ranking handicap: compute starting-score offsets for every match.
       if (matchType === "singles" && handicapMode !== "none") {
         try {

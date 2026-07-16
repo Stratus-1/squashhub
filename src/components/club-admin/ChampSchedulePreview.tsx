@@ -92,17 +92,29 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
 
   const poolLetter = (p: number | null | undefined) => (p == null ? null : String.fromCharCode(64 + p));
   const poolOf = (m: any): number | null => m.pool_number ?? poolByMatchId.get(m.id) ?? null;
-  const bucketKeyOf = (m: any) => `${m.group_number ?? "-"}|${poolOf(m) ?? "-"}`;
+  const isPlayoff = (m: any) => typeof m?.stage === "string" && m.stage.startsWith("playoff");
+  const bucketKeyOf = (m: any) =>
+    isPlayoff(m)
+      ? `playoff|${m.stage}`
+      : `${m.group_number ?? "-"}|${poolOf(m) ?? "-"}`;
 
   const buckets = useMemo(() => {
-    const seen = new Map<string, { key: string; group: number | null; pool: number | null; count: number }>();
+    const seen = new Map<string, { key: string; group: number | null; pool: number | null; stage: string | null; stageLabel: string | null; count: number }>();
     for (const m of matches as any[]) {
       const key = bucketKeyOf(m);
       const existing = seen.get(key);
       if (existing) { existing.count++; continue; }
-      seen.set(key, { key, group: m.group_number ?? null, pool: poolOf(m), count: 1 });
+      seen.set(key, {
+        key,
+        group: isPlayoff(m) ? null : (m.group_number ?? null),
+        pool: isPlayoff(m) ? null : poolOf(m),
+        stage: isPlayoff(m) ? m.stage : null,
+        stageLabel: isPlayoff(m) ? (m.stage_label || "Play-offs") : null,
+        count: 1,
+      });
     }
     return [...seen.values()].sort((a, b) => {
+      if (!!a.stage !== !!b.stage) return a.stage ? 1 : -1;
       const ga = a.group ?? 999; const gb = b.group ?? 999;
       if (ga !== gb) return ga - gb;
       return (a.pool ?? 999) - (b.pool ?? 999);
@@ -121,7 +133,8 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
     };
   };
 
-  const bucketLabel = (b: { group: number | null; pool: number | null }) => {
+  const bucketLabel = (b: { group: number | null; pool: number | null; stage?: string | null; stageLabel?: string | null }) => {
+    if (b.stage) return b.stageLabel || "Play-offs";
     const parts: string[] = [];
     if (b.group != null) parts.push(getGroupLabel(champ, b.group));
     const pl = poolLetter(b.pool);

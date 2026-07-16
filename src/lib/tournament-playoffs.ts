@@ -314,6 +314,9 @@ export type PlaceholderInput = {
   numLeagues: number;
   entriesPerLeague: number[]; // 1-indexed by league (element 0 = league 1)
   leagueLabels?: string[];    // optional per-league display labels (Pool A, League 1, …)
+  // Optional Swiss pool mode.
+  poolsByLeague?: Record<number, number>;                     // league# → pool count
+  entriesByLeaguePool?: Record<number, number[]>;             // league# → [pool1Size, pool2Size, …]
 };
 
 const bracketSizeFor = (K: number): 2 | 4 | 8 =>

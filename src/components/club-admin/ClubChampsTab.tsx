@@ -5479,8 +5479,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         </Card>
       )}
 
+      {/* ── STEP: PREVIEW SCHEDULE (post-rebuild) ── */}
+      {step === "preview" && editingChampId && (
+        <ChampSchedulePreview
+          champId={editingChampId}
+          onBack={() => setStep("review")}
+          onFinalize={() => { setShowWizard(false); resetWizard(); }}
+          onMakeBookings={() => createBookings.mutate()}
+          isBooking={createBookings.isPending}
+        />
+      )}
+
       {/* Inline validation hint — lists missing required fields for the current step. */}
-      {(() => {
+      {step !== "preview" && (() => {
         const missing = step === "review" ? [] : missingForStep();
         if (missing.length === 0) return null;
         return (

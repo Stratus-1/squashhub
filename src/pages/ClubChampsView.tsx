@@ -830,9 +830,12 @@ export default function ClubChampsView() {
       // matching gets deleted; anything we can't match gets inserted fresh.
       const incompletePlayoffs = playoffMatches.filter((m: any) => m.status !== "completed");
 
-      // Build seed standings per league.
+      // Build seed standings per league (and per-pool for Swiss with pools>1).
       const numLeagues = groupNumbers.length;
       const standingsByLeague = new Map<number, StandingEntity[]>();
+      const swissPoolMode = isSwiss && (groupNumbers as number[]).some((gn) => poolCountFor(gn as number) > 1);
+      const poolsByLeague: Record<number, number> = {};
+      const standingsByLeaguePool = new Map<number, Map<number, StandingEntity[]>>();
       for (const gn of groupNumbers as number[]) {
         const rows = getGroupStandings(gn as number);
         standingsByLeague.set(
@@ -843,6 +846,23 @@ export default function ClubChampsView() {
             rank: i + 1,
           })),
         );
+        if (swissPoolMode) {
+          const pc = poolCountFor(gn as number);
+          poolsByLeague[gn as number] = pc;
+          const perPool = new Map<number, StandingEntity[]>();
+          for (let p = 1; p <= pc; p++) {
+            const poolRows = getGroupStandings(gn as number, p);
+            perPool.set(
+              p,
+              poolRows.map((r: any, i: number) => ({
+                memberId: r.club_member_id,
+                partnerId: r.partner_member_id ?? null,
+                rank: i + 1,
+              })),
+            );
+          }
+          standingsByLeaguePool.set(gn as number, perPool);
+        }
       }
 
       const newRows = buildPlayoffMatches({
@@ -850,7 +870,11 @@ export default function ClubChampsView() {
         isDoubles,
         standingsByLeague,
         numLeagues,
+        poolsByLeague: swissPoolMode ? poolsByLeague : undefined,
+        standingsByLeaguePool: swissPoolMode ? standingsByLeaguePool : undefined,
+        leagueLabels: (groupNumbers as number[]).map((gn) => (champ as any)?.group_labels?.[String(gn)] || `League ${gn}`),
       });
+
 
       // Any completed playoff rounds we kept? Fill their downstream
       // placeholders using the resolved winners/losers.

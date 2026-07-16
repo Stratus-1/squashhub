@@ -867,6 +867,22 @@ export default function ClubChampsView() {
                 Reschedule {unassignedCount} TBD match{unassignedCount === 1 ? "" : "es"}
               </Button>
             )}
+            {canManage && enablePlayoffs && (
+              <Button
+                variant={groupComplete ? "default" : "outline"}
+                size="sm"
+                onClick={() => generatePlayoffs.mutate()}
+                disabled={!groupComplete || generatePlayoffs.isPending}
+                title={!groupComplete ? "Finish all group-stage matches first" : playoffsExist ? "Regenerate — fills in Finals whose semis are done" : "Seed the position-based knockout"}
+              >
+                {generatePlayoffs.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Trophy className="w-4 h-4 mr-1" />
+                )}
+                {playoffsExist ? "Regenerate play-offs" : "Generate play-offs"}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="w-4 h-4 mr-1" /> Print / PDF
             </Button>

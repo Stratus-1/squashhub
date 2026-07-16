@@ -186,16 +186,23 @@ export default function ClubChampsView() {
 
   const isCrossLeague = (champ as any)?.round_format === "cross_league";
 
+  const isSwissMode = (champ as any)?.scoring_mode === "swiss";
+  const swissPoolsCfg: Record<string, number> = ((champ as any)?.swiss_pools as Record<string, number>) || {};
+  const poolCountFor = (gn: number) =>
+    isSwissMode ? Math.max(1, Number(swissPoolsCfg[String(gn)]) || 1) : 1;
+  const poolLabel = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
+
   const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
     let groupEntries = entries.filter((e: any) => e.group_number === groupNum);
     // Pool-scoped filtering (Swiss with multiple pools per league).
-    if (poolNumber != null && isSwiss) {
-      const poolCount = Math.max(1, Number(swissPools[String(groupNum)]) || 1);
+    if (poolNumber != null && isSwissMode) {
+      const poolCount = poolCountFor(groupNum);
       const poolMap = assignPools(entries as SwissEntry[], groupNum, poolCount, isDoubles);
       groupEntries = groupEntries.filter(
         (e: any) => poolMap.get(entityIdForEntry(e as SwissEntry, isDoubles)) === poolNumber,
       );
     }
+
     const groupMemberIds = new Set<string>(
       groupEntries.flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
     );

@@ -710,6 +710,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const stepIdx = activeSteps.indexOf(step);
 
   useEffect(() => {
+    if (step === "preview") return; // preview is programmatic, not part of activeSteps
     if (activeSteps.includes(step)) return;
     const currentOrder = STEPS.indexOf(step);
     const nextStep = activeSteps.find((s) => STEPS.indexOf(s) >= currentOrder) || activeSteps[activeSteps.length - 1];

@@ -2331,6 +2331,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         }
       }
 
+      // For real schedule generation (not just saving a shell awaiting player
+      // pairs), keep the wizard open on a Preview step so the admin can review
+      // the full schedule, filter by league/pool/date, and step back to edit
+      // if something looks wrong. The wizard only truly closes on Finalize.
+      if (!awaitingPlayerPairs && data?.id) {
+        if (!editingChampId) setEditingChampId(data.id);
+        setStep("preview");
+        return;
+      }
+
       setShowWizard(false);
       resetWizard();
     },

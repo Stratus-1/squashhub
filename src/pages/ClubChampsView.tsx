@@ -186,15 +186,27 @@ export default function ClubChampsView() {
 
   const isCrossLeague = (champ as any)?.round_format === "cross_league";
 
-  const getGroupStandings = (groupNum: number) => {
-    const groupEntries = entries.filter((e: any) => e.group_number === groupNum);
+  const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
+    let groupEntries = entries.filter((e: any) => e.group_number === groupNum);
+    // Pool-scoped filtering (Swiss with multiple pools per league).
+    if (poolNumber != null && isSwiss) {
+      const poolCount = Math.max(1, Number(swissPools[String(groupNum)]) || 1);
+      const poolMap = assignPools(entries as SwissEntry[], groupNum, poolCount, isDoubles);
+      groupEntries = groupEntries.filter(
+        (e: any) => poolMap.get(entityIdForEntry(e as SwissEntry, isDoubles)) === poolNumber,
+      );
+    }
     const groupMemberIds = new Set<string>(
       groupEntries.flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
     );
     // For cross-league play, a match "belongs" to this league if any of the league's
     // members took part. Otherwise we filter by group_number as before.
     const matchBelongsToGroup = (m: any) => {
-      if (!isCrossLeague) return m.group_number === groupNum;
+      if (!isCrossLeague) {
+        if (m.group_number !== groupNum) return false;
+        if (poolNumber != null && (m.pool_number ?? null) !== poolNumber) return false;
+        return true;
+      }
       return (
         groupMemberIds.has(m.player_a_member_id) ||
         groupMemberIds.has(m.player_b_member_id) ||
@@ -205,6 +217,7 @@ export default function ClubChampsView() {
     const groupMatchesAll = matches.filter(
       (m: any) => matchBelongsToGroup(m) && !m.is_bye,
     );
+
     const groupMatches = sortMatchesChrono(groupMatchesAll.filter((m: any) => m.status === "completed"));
     const groupByes = matches.filter(
       (m: any) => matchBelongsToGroup(m) && m.is_bye,

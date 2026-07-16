@@ -200,8 +200,8 @@ export default function Tournaments() {
         champId: m.champ_id,
         group: isPlayoff(m) ? null : (m.group_number ?? null),
         pool: isPlayoff(m) ? null : poolOf(m),
-        stage: isPlayoff(m) ? (m as any).stage : null,
-        stageLabel: isPlayoff(m) ? ((m as any).stage_label || "Play-offs") : null,
+        stage: isPlayoff(m) ? "playoff" : null,
+        stageLabel: isPlayoff(m) ? "Play-offs" : null,
         count: 1,
       });
     }

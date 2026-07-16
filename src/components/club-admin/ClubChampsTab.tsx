@@ -35,7 +35,7 @@ interface ClubChampsTabProps {
   clubId: string;
 }
 
-type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review";
+type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
 type GenderCategory = "men" | "ladies" | "mixed" | "open";
 type MatchType = "singles" | "doubles";
 

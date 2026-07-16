@@ -146,8 +146,83 @@ const poolLetter = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
  * needed — the caller instead patches those specific rows with winner IDs.
  */
 export function buildPlayoffMatches(input: BuildInput): PlayoffMatchRow[] {
-  const { champId, isDoubles, standingsByLeague, numLeagues } = input;
+  const { champId, isDoubles, standingsByLeague, numLeagues, poolsByLeague, standingsByLeaguePool, leagueLabels } = input;
   const rows: PlayoffMatchRow[] = [];
+
+  // ── Swiss pool mode → intra-league per-position bracket across pools ──
+  if (hasPoolMode(poolsByLeague) && standingsByLeaguePool) {
+    const labelForLeague = (lg: number) => leagueLabels?.[lg - 1] || `League ${lg}`;
+    for (let lg = 1; lg <= numLeagues; lg++) {
+      const poolCount = Math.max(1, Number(poolsByLeague?.[lg] || 1));
+      if (poolCount <= 1) {
+        // League has one pool — no intra-league bracket; fall back to
+        // in-league knockout of top finishers for this league.
+        const league = standingsByLeaguePool.get(lg) ?? new Map();
+        const flat = league.get(1) ?? standingsByLeague.get(lg) ?? [];
+        if (flat.length < 2) continue;
+        const K = flat.length >= 8 ? 8 : flat.length >= 4 ? 4 : 2;
+        const seeded = flat.slice(0, K);
+        const pairs = firstRoundPairs(seeded);
+        const firstRoundStage = K === 8 ? "playoff_qf" : K === 4 ? "playoff_sf" : "playoff_final";
+        const firstRoundLabel = `${labelForLeague(lg)} · ` + (K === 8 ? "Quarter-final" : K === 4 ? "Semi-final" : "Final");
+        const bp = poolBracketPos(lg, 1);
+        pairs.forEach(([a, b]) => {
+          const r = emptyRow(champId, lg, 1, firstRoundStage, firstRoundLabel, bp);
+          setSide(r, "a", a, isDoubles);
+          setSide(r, "b", b, isDoubles);
+          rows.push(r);
+        });
+        if (K >= 4) {
+          if (K === 8) for (let i = 0; i < 2; i++) rows.push(emptyRow(champId, lg, 2, "playoff_sf", `${labelForLeague(lg)} · Semi-final`, bp));
+          rows.push(emptyRow(champId, lg, K === 8 ? 3 : 2, "playoff_final", `${labelForLeague(lg)} · Final`, bp));
+          rows.push(emptyRow(champId, lg, K === 8 ? 3 : 2, "playoff_3rd", `${labelForLeague(lg)} · 3rd Place Play-off`, bp));
+        }
+        continue;
+      }
+
+      // Per-position intra-league bracket across the league's pools.
+      const poolStandings = standingsByLeaguePool.get(lg) ?? new Map<number, StandingEntity[]>();
+      const poolSizes: number[] = [];
+      for (let p = 1; p <= poolCount; p++) poolSizes.push((poolStandings.get(p) ?? []).length);
+      const validSizes = poolSizes.filter((n) => n > 0);
+      if (validSizes.length < 2) continue;
+      const minSize = Math.min(...validSizes);
+      if (!Number.isFinite(minSize) || minSize < 1) continue;
+
+      for (let pos = 1; pos <= minSize; pos++) {
+        const seeded: StandingEntity[] = [];
+        for (let p = 1; p <= poolCount; p++) {
+          const finisher = (poolStandings.get(p) ?? [])[pos - 1];
+          if (finisher) seeded.push(finisher);
+        }
+        const K = seeded.length;
+        if (K < 2) continue;
+        const size = K <= 2 ? 2 : K <= 4 ? 4 : 8;
+        const firstRoundStage = size === 8 ? "playoff_qf" : size === 4 ? "playoff_sf" : "playoff_final";
+        const posPrefix = `${labelForLeague(lg)} · Pos ${pos}`;
+        const firstRoundLabel = size === 8 ? `${posPrefix} · Quarter-final` : size === 4 ? `${posPrefix} · Semi-final` : `${posPrefix} · Final`;
+        const bp = poolBracketPos(lg, pos);
+        const pairs = firstRoundPairs(seeded);
+        pairs.forEach(([a, b]) => {
+          const r = emptyRow(champId, lg, 1, firstRoundStage, firstRoundLabel, bp);
+          setSide(r, "a", a, isDoubles);
+          setSide(r, "b", b, isDoubles);
+          rows.push(r);
+        });
+        if (size === 8) {
+          for (let i = 0; i < 2; i++) rows.push(emptyRow(champId, lg, 2, "playoff_sf", `${posPrefix} · Semi-final`, bp));
+        }
+        if (size >= 4) {
+          const finalRound = size === 8 ? 3 : 2;
+          rows.push(emptyRow(champId, lg, finalRound, "playoff_final", `${posPrefix} · Final`, bp));
+          rows.push(emptyRow(champId, lg, finalRound, "playoff_3rd", `${posPrefix} · 3rd Place`, bp));
+        }
+      }
+    }
+    return rows;
+  }
+
+
 
   // ── Single-league mode → in-league knockout of the top finishers ──────
   if (numLeagues <= 1) {

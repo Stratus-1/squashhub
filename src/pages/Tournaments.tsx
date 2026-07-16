@@ -187,10 +187,22 @@ export default function Tournaments() {
   };
 
   const [poolFilter, setPoolFilter] = useState<string>("all");
-  const filterBucket = (list: any[]) =>
-    poolFilter === "all" ? list : list.filter((m) => bucketKeyOf(m) === poolFilter);
-  const filteredUpcoming = filterBucket(upcomingMatches);
-  const filteredMine = filterBucket(myUpcoming);
+  const [dateFilter, setDateFilter] = useState<string>("all");
+
+  const availableDates = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of upcomingMatches) if (m.scheduled_date) set.add(m.scheduled_date);
+    return [...set].sort();
+  }, [upcomingMatches]);
+
+  const applyFilters = (list: any[]) =>
+    list.filter(
+      (m) =>
+        (poolFilter === "all" || bucketKeyOf(m) === poolFilter) &&
+        (dateFilter === "all" || m.scheduled_date === dateFilter),
+    );
+  const filteredUpcoming = applyFilters(upcomingMatches);
+  const filteredMine = applyFilters(myUpcoming);
 
 
   const hcLabel = (h: any) => {

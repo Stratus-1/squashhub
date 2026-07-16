@@ -1322,6 +1322,31 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const totalSlots = allSlots.length;
     const timeSlots = Array.from(new Set(allSlots.map((s) => s.time))).sort();
 
+    // Iteration order for scheduling: interleave slot indices across dates so
+    // matches spread evenly across all play-days instead of front-loading day 1.
+    // Within each date the original chronological/court order is preserved.
+    const slotOrder: number[] = (() => {
+      const byDate = new Map<string, number[]>();
+      allSlots.forEach((s, i) => {
+        if (!byDate.has(s.date)) byDate.set(s.date, []);
+        byDate.get(s.date)!.push(i);
+      });
+      const dateKeys = Array.from(byDate.keys()).sort();
+      const buckets = dateKeys.map((d) => byDate.get(d)!);
+      const out: number[] = [];
+      let step = 0;
+      while (out.length < allSlots.length) {
+        let added = false;
+        for (const bucket of buckets) {
+          if (step < bucket.length) { out.push(bucket[step]); added = true; }
+        }
+        if (!added) break;
+        step++;
+      }
+      return out;
+    })();
+
+
     // Build round-robin matches
     const allMatches: MatchDef[] = [];
     const isCrossLeague = roundFormat === "cross_league";

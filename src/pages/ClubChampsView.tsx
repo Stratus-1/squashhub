@@ -675,10 +675,10 @@ export default function ClubChampsView() {
       // Build seed standings per league.
       const numLeagues = groupNumbers.length;
       const standingsByLeague = new Map<number, StandingEntity[]>();
-      for (const gn of groupNumbers) {
-        const rows = getGroupStandings(gn);
+      for (const gn of groupNumbers as number[]) {
+        const rows = getGroupStandings(gn as number);
         standingsByLeague.set(
-          gn,
+          gn as number,
           rows.map((r: any, i: number) => ({
             memberId: r.club_member_id,
             partnerId: r.partner_member_id ?? null,

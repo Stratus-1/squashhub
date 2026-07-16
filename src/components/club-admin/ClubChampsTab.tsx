@@ -1428,13 +1428,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       });
     }
 
-    // Scheduling with 2-day gap per entity
+    // Scheduling gap per entity: prevent same-day repeats only, so consecutive
+    // play-days (e.g. Fri→Sat→Sun) can all be used. A stricter 2-day rest
+    // would leave the busiest days (typically Saturday) empty when only a few
+    // slots exist per day.
     const entityLastDate = new Map<string, string>();
     const canScheduleOn = (entityId: string, dateStr: string): boolean => {
       const last = entityLastDate.get(entityId);
       if (!last) return true;
       const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));
-      return diffDays >= 2;
+      return diffDays >= 1;
     };
     const getPlayersForEntity = (entityId: string): string[] => {
       if (!isDoubles) return [entityId];

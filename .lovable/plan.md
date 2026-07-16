@@ -1,53 +1,47 @@
 ## Goal
 
-Restore the original model: **platform base rates in ZAR (R6 / R5)**, with a per-club billing currency. Only clubs whose currency is USD (e.g. Riverside) see and are invoiced in USD; ZAR clubs see and are invoiced in ZAR; other currencies use FX from ZAR.
+When a tournament is generated, also create the playoff/finals fixtures **up front** as placeholder matches (e.g. "Winner Pool A vs Runner-up Pool B", "Winner SF1 vs Winner SF2"). Slot them into the schedule after the group-stage cutoff, so the whole tournament — from Friday pool games through Sunday finals — appears on the fixture list at day 1.
 
-## What I got wrong last time
+As pool results come in, the placeholder slots fill with real players (existing "Regenerate play-offs" logic already handles this).
 
-I hardcoded USD everywhere — Super Admin fee structure, club Subscription tab, participation card, SLA copy, Home pricing, and the billing edge functions. That flipped every club to USD instead of only the international ones.
+## What changes
 
-## Fix plan
+### 1. Build placeholder playoff rows at generation time
+- Today `buildPlayoffMatches` only produces rows once standings are known.
+- Add a companion `buildPlayoffPlaceholders({ champId, mode, leagueCount, minLeagueSize, isDoubles, enable3rd })` in `src/lib/tournament-playoffs.ts` that returns the same row shape but with:
+  - `player_a_member_id / player_b_member_id = null`
+  - `stage_label` describing the source: e.g. `"League 1 · Pos 1 · Semi-final (P1 A vs P4 A)"`, `"Final (Winner SF1 vs Winner SF2)"`, `"3rd Place (Loser SF1 vs Loser SF2)"`.
+  - A new `placeholder_a` / `placeholder_b` text column so the UI can render "Winner Pool A" etc. before players are known.
 
-### 1. Super Admin → Fee structure (`SuperAdminSubscriptions.tsx`)
-- Restore ZAR as the **base** platform rate: `saas_rate_zar_monthly` (R6), `saas_rate_zar_annual` (R5), `saas_min_charge_monthly/annual`, `saas_intl_uplift_pct`, `saas_fx_usd_per_zar`, `saas_fx_eur_per_zar`, `saas_fx_locked_at`, `saas_fx_review_due`.
-- Bring back the ZAR + USD/EUR side-by-side rate inputs and the FX-lock UI.
-- Labels back to "R" for ZAR base; USD/EUR shown as derived.
-- Restore `SUBSCRIPTION_CURRENCY = "ZAR"`, `SUBSCRIPTION_SYMBOL = "R"`, ZAR-based defaults for the plan editor.
-- Currency totals grid keeps supporting mixed ZAR/USD/EUR (it already does).
+### 2. Schedule pool games first, playoffs after cutoff
+- In `ClubChampsTab.tsx` scheduler (`customizeDailySchedule` + slot loops):
+  - Reuse the group-stage cutoff already discussed (default: last pool day evening, or user-set date+time).
+  - Pass 1 — pool matches into slots **before** cutoff (using the balanced `slotOrder` we added).
+  - Pass 2 — playoff placeholders into slots **at/after** cutoff, in bracket order (QF → SF → 3rd/Final), with a minimum gap so a player isn't scheduled back-to-back once resolved.
+- If placeholders overflow available post-cutoff slots, show a warning in the capacity box ("Play-offs need 2 more slots after 15:00 Sat").
 
-### 2. Club → Subscription tab (`SubscriptionTab.tsx`)
-- Default currency back to `ZAR` in `fmtMoney` and `outstandingCurrency`, so a ZAR club sees "R…". Invoices already carry their own `currency` field, so a USD-invoiced Riverside row still renders "$…" — no logic change needed there.
+### 3. Persisting placeholders
+- Insert placeholder rows into `club_champs_matches` at generation time alongside pool matches. They already fit the schema (player IDs are nullable). Add the `placeholder_a` / `placeholder_b` columns via migration.
 
-### 3. Club Participation card (`ClubParticipationCard.tsx`)
-- Use `useClubCurrency()` to drive the displayed rates:
-  - ZAR club → "R6 / R5", "R0.60 / member / year" savings, ZAR estimate.
-  - USD club → "$0.35 / $0.30", "$0.60" savings, USD estimate.
-  - Other → show ZAR base + note "Invoiced in {clubCurrencyCode} at platform FX rate".
-- Keep the 150-member cap + estimated monthly / annual block, but compute in the club's currency.
-- Fee-commence note and SLA links unchanged.
+### 4. Filling placeholders as results come in
+- Extend the existing `handleGeneratePlayoffs` flow in `ClubChampsView.tsx`:
+  - Instead of deleting + recreating playoff rows, look up matching placeholder rows by `(stage, group_number, bracket_position, round_number)` and `UPDATE` them with real `player_*_member_id` values, preserving the pre-assigned court + start_time.
+  - When a QF/SF completes, auto-fill the downstream Final/3rd placeholder (same logic already in place, just switched from insert to update).
 
-### 4. SLA copy (`SquashHubSlaContent.tsx`)
-- Revert to ZAR primary wording (R6.00 monthly / R5.00 annual / R60 per year / R12 savings), with the existing note that international clubs are invoiced in USD/EUR at platform FX.
+### 5. UI
+- Fixtures list + pool cards in `ClubChampsView.tsx`: when player IDs are null, render `placeholder_a` / `placeholder_b` strings (e.g. "Winner Pool A") instead of "TBD".
+- Standings/pools tabs unchanged.
 
-### 5. Home page (`Home.tsx`)
-- Revert pricing labels and FAQ back to "From R5" primary, with the secondary "≈ $0.42 USD • €0.38 EUR" line reinstated.
+## Technical notes
 
-### 6. Billing edge function (`run-subscription-billing/index.ts`)
-- Restore ZAR-base logic: `saas_rate_zar_*`, `saas_intl_uplift_pct`, `saas_fx_usd_per_zar`, `saas_fx_eur_per_zar`, `fxRateFor`, `resolveBillingCurrency`, `convert`, and the `clubCurrencies` map. Per-club invoice `currency` returns to being derived from the club's currency (ZAR default, USD/EUR converted).
-- `stitch-pay-platform-invoice` and `platform-stitch-test-payment`: default currency back to `ZAR`, R-labelled test-payment strings.
+- Migration: `ALTER TABLE club_champs_matches ADD COLUMN placeholder_a text, ADD COLUMN placeholder_b text;` — no RLS/grant changes needed (existing table).
+- Scheduler change is confined to the two slot loops we recently touched in `ClubChampsTab.tsx`; the `slotOrder` interleaving stays for the pre-cutoff pass.
+- No changes to standings/points logic.
 
-### 7. Data repair migration
-Only touches platform-settings / plans / open invoices, not paid history:
-- `app_settings`: put ZAR rate keys back (R6 / R5 / R0 min / cap 150 / 0% uplift / FX rows blank for admin to fill).
-- `subscription_plans`: Standard Monthly `price_per_member = 6.00`, Standard Annual `price_per_member = 5.00`, `minimum_charge = 0`, currency `ZAR`, descriptions back to Rand wording.
-- `platform_subscription_invoices` where `status IN ('draft','open','issued')`: recompute using each club's currency (ZAR default; USD for Riverside) and the restored rates. Paid/settled invoices are left untouched.
-- `club_subscriptions.amount_due` recomputed in the club's own currency.
+## Open question
 
-## Confirmation before I start
+Do you want the group-stage cutoff to be:
+- **(a) Auto** — last pool day at 12:00 (so afternoons on Sat = playoffs), or
+- **(b) Manual** — you pick the exact date+time in the wizard when generating fixtures?
 
-Two things to confirm so I don't over-reach:
-
-1. **Riverside is the only USD club today** — correct? If there are others, I'll pick them up via `clubs.currency = 'USD'` automatically, no hardcoding.
-2. OK to touch **only unpaid** platform invoices (draft/open/issued) when recomputing? I'll leave any `paid` invoice history exactly as-is.
-
-Reply "go" (with any tweaks) and I'll ship it.
+If you're happy with the plan, tell me which cutoff option and I'll implement.

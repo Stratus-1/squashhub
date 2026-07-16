@@ -1906,7 +1906,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, groupLabels]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, groupLabels, scheduleMode]);
 
   // Create/update champ
   const createChamp = useMutation({

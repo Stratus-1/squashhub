@@ -1749,6 +1749,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     } else {
       const usedSlots = new Set<number>();
+      // First pass: honour the "no same-day repeat per entity" gap.
       for (const match of allMatches) {
         if (match.isBye) continue;
         const playersA = getPlayersForEntity(match.entityA);
@@ -1766,6 +1767,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             allPlayers.forEach((pid) => entityLastDate.set(pid, slot.date));
             break;
           }
+        }
+      }
+      // Second pass: anything left unscheduled falls into any free slot so it
+      // doesn't show as TBD. This is a soft fallback — the first pass already
+      // spread same-entity matches across different days where possible.
+      for (const match of allMatches) {
+        if (match.isBye || match.date) continue;
+        for (let si = 0; si < allSlots.length; si++) {
+          if (usedSlots.has(si)) continue;
+          const slot = allSlots[si];
+          match.date = slot.date;
+          match.time = slot.time;
+          match.courtId = slot.courtId;
+          usedSlots.add(si);
+          break;
         }
       }
     }

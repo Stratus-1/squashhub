@@ -61,12 +61,11 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
   });
 
   const isDoubles = (champ as any)?.match_type === "doubles";
-  const isSwiss = (champ as any)?.scoring_mode === "swiss";
   const swissCfg: Record<string, number> = ((champ as any)?.swiss_pools as any) || {};
 
   const poolByMatchId = useMemo(() => {
     const out = new Map<string, number>();
-    if (!isSwiss) return out;
+    if (!Object.values(swissCfg).some((v) => Number(v) > 1)) return out;
     const groupNums = [...new Set((entries as any[]).map((e) => e.group_number))] as number[];
     const groupPoolMaps = new Map<number, Map<string, number>>();
     for (const gn of groupNums) {
@@ -89,7 +88,7 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
       }
     }
     return out;
-  }, [matches, entries, swissCfg, isSwiss, isDoubles]);
+  }, [matches, entries, swissCfg, isDoubles]);
 
   const poolLetter = (p: number | null | undefined) => (p == null ? null : String.fromCharCode(64 + p));
   const poolOf = (m: any): number | null => m.pool_number ?? poolByMatchId.get(m.id) ?? null;

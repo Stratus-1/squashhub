@@ -1,0 +1,1 @@
+ALTER TABLE public.club_champs ADD COLUMN IF NOT EXISTS schedule_mode TEXT NOT NULL DEFAULT 'spread' CHECK (schedule_mode IN ('spread','fill'));

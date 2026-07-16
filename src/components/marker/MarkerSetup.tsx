@@ -303,6 +303,7 @@ export function MarkerSetup({ onStart }: Props) {
   const [matchType, setMatchType] = useState<MatchType>("friendly");
   const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("par11");
   const [bestOf, setBestOf] = useState<BestOf>(3);
+  const [playAllGames, setPlayAllGames] = useState(false);
   const [deuceRule, setDeuceRule] = useState<DeuceRule>("win_by_2");
 
   // League filter mode: "mine" (default — fixtures my league/team plays in) or "all"

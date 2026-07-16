@@ -1948,18 +1948,39 @@ export default function ClubChampsView() {
             <CardContent>{swissControlsFor(gn)}{standingsTable}</CardContent>
           </Card>
         );
+        const pc = poolCountFor(gn);
+        const fixtureBody = pc > 1 ? (
+          <div className="space-y-4">
+            {Array.from({ length: pc }).map((_, i) => {
+              const poolNumber = i + 1;
+              const poolMatches = groupMatches.filter((m: any) => (m.pool_number ?? null) === poolNumber);
+              return (
+                <div key={poolNumber} className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs font-semibold">Pool {poolLabel(poolNumber)}</Badge>
+                    <span className="text-xs text-muted-foreground">{poolMatches.length} matches</span>
+                  </div>
+                  {poolMatches.length > 0
+                    ? poolMatches.map((m: any) => renderMatchRow(m))
+                    : <p className="text-xs text-muted-foreground italic">No fixtures scheduled in this pool yet.</p>}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {groupMatches.map((m: any) => renderMatchRow(m))}
+          </div>
+        );
         fixtureCards.push(
           <Card key={`f-${gn}`}>
             <CardHeader>
               <CardTitle className="text-lg">{getGroupLabel(champ, gn)} — Fixtures & Results</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-1.5">
-                {groupMatches.map((m: any) => renderMatchRow(m))}
-              </div>
-            </CardContent>
+            <CardContent>{fixtureBody}</CardContent>
           </Card>
         );
+
       } else {
         // Single group (or cross-league): keep combined card as before
         standingsCards.push(

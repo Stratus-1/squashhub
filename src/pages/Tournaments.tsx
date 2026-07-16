@@ -638,21 +638,25 @@ export default function Tournaments() {
                     </div>
                   )}
 
-                  {memberId && filteredMine.length > 0 ? (
+                  {memberId && myUpcoming.length > 0 ? (
                     <Tabs defaultValue="all" className="w-full">
                       <TabsList className="grid w-full grid-cols-2 h-auto mb-3">
                         <TabsTrigger value="all" className="text-xs py-1.5">All Games ({filteredUpcoming.length})</TabsTrigger>
-                        <TabsTrigger value="mine" className="text-xs py-1.5 gap-1"><User className="w-3 h-3" /> My Fixtures ({filteredMine.length})</TabsTrigger>
+                        <TabsTrigger value="mine" className="text-xs py-1.5 gap-1"><User className="w-3 h-3" /> My Games ({filteredMine.length})</TabsTrigger>
                       </TabsList>
                       <TabsContent value="all" className="mt-0">
                         {filteredUpcoming.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No scheduled games.</p>
+                          <p className="text-sm text-muted-foreground">No scheduled games match these filters.</p>
                         ) : (
                           <div className="space-y-1.5">{filteredUpcoming.map(renderMatchRow)}</div>
                         )}
                       </TabsContent>
                       <TabsContent value="mine" className="mt-0">
-                        <div className="space-y-1.5">{filteredMine.map(renderMatchRow)}</div>
+                        {filteredMine.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">None of your games match these filters.</p>
+                        ) : (
+                          <div className="space-y-1.5">{filteredMine.map(renderMatchRow)}</div>
+                        )}
                       </TabsContent>
                     </Tabs>
                   ) : filteredUpcoming.length === 0 ? (
@@ -660,6 +664,7 @@ export default function Tournaments() {
                   ) : (
                     <div className="space-y-1.5">{filteredUpcoming.map(renderMatchRow)}</div>
                   )}
+
                 </CardContent>
 
               </Card>

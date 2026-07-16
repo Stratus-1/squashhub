@@ -95,7 +95,7 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
   const isPlayoff = (m: any) => typeof m?.stage === "string" && m.stage.startsWith("playoff");
   const bucketKeyOf = (m: any) =>
     isPlayoff(m)
-      ? `playoff|${m.stage}`
+      ? `playoff|${m.stage_label || m.stage}`
       : `${m.group_number ?? "-"}|${poolOf(m) ?? "-"}`;
 
   const buckets = useMemo(() => {

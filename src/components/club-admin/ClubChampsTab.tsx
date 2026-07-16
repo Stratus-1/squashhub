@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
+import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { useClubMembers, type ClubMember } from "@/hooks/use-club";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +36,7 @@ interface ClubChampsTabProps {
   clubId: string;
 }
 
-type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review";
+type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
 type GenderCategory = "men" | "ladies" | "mixed" | "open";
 type MatchType = "singles" | "doubles";
 
@@ -48,6 +49,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
   groups: "Leagues",
   schedule: "Schedule",
   review: "Review & Generate",
+  preview: "Preview Schedule",
 };
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -708,6 +710,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const stepIdx = activeSteps.indexOf(step);
 
   useEffect(() => {
+    if (step === "preview") return; // preview is programmatic, not part of activeSteps
     if (activeSteps.includes(step)) return;
     const currentOrder = STEPS.indexOf(step);
     const nextStep = activeSteps.find((s) => STEPS.indexOf(s) >= currentOrder) || activeSteps[activeSteps.length - 1];
@@ -2328,6 +2331,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         } else {
           toast.info(`Tournament saved. Open the edit dialog and click “Send / Re-send invites” when you're ready to notify ${inviteeCount} member${inviteeCount === 1 ? "" : "s"}.`, { duration: 7000 });
         }
+      }
+
+      // For real schedule generation (not just saving a shell awaiting player
+      // pairs), keep the wizard open on a Preview step so the admin can review
+      // the full schedule, filter by league/pool/date, and step back to edit
+      // if something looks wrong. The wizard only truly closes on Finalize.
+      if (!awaitingPlayerPairs && data?.id) {
+        if (!editingChampId) setEditingChampId(data.id);
+        setStep("preview");
+        return;
       }
 
       setShowWizard(false);
@@ -5467,8 +5480,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         </Card>
       )}
 
+      {/* ── STEP: PREVIEW SCHEDULE (post-rebuild) ── */}
+      {step === "preview" && editingChampId && (
+        <ChampSchedulePreview
+          champId={editingChampId}
+          onBack={() => setStep("review")}
+          onFinalize={() => { setShowWizard(false); resetWizard(); }}
+          onMakeBookings={() => createBookings.mutate()}
+          isBooking={createBookings.isPending}
+        />
+      )}
+
       {/* Inline validation hint — lists missing required fields for the current step. */}
-      {(() => {
+      {step !== "preview" && (() => {
         const missing = step === "review" ? [] : missingForStep();
         if (missing.length === 0) return null;
         return (
@@ -5482,28 +5506,30 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       })()}
 
       {/* Navigation */}
-      <div className="flex justify-between items-center gap-2">
-        <Button variant="outline" onClick={() => { if (stepIdx === 0) { setShowWizard(false); } else { setStep(activeSteps[stepIdx - 1]); void saveDraft(); } }}>
-          <ChevronLeft className="w-4 h-4 mr-1" /> {stepIdx === 0 ? "Cancel" : "Back"}
-        </Button>
-        <Button variant="secondary" onClick={() => void handleManualSave()}>
-          <Save className="w-4 h-4 mr-1" /> Save Progress
-        </Button>
-        {step === "review" ? (
-          <Button onClick={() => createChamp.mutate()} disabled={createChamp.isPending}>
-            {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-            {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
+      {step !== "preview" && (
+        <div className="flex justify-between items-center gap-2">
+          <Button variant="outline" onClick={() => { if (stepIdx === 0) { setShowWizard(false); } else { setStep(activeSteps[stepIdx - 1]); void saveDraft(); } }}>
+            <ChevronLeft className="w-4 h-4 mr-1" /> {stepIdx === 0 ? "Cancel" : "Back"}
           </Button>
-        ) : (
-          <Button
-            onClick={() => goToStep(activeSteps[stepIdx + 1])}
-            disabled={!canProceed()}
-            title={canProceed() ? undefined : `Complete: ${missingForStep().join(", ")}`}
-          >
-            Next <ChevronRight className="w-4 h-4 ml-1" />
+          <Button variant="secondary" onClick={() => void handleManualSave()}>
+            <Save className="w-4 h-4 mr-1" /> Save Progress
           </Button>
-        )}
-      </div>
+          {step === "review" ? (
+            <Button onClick={() => createChamp.mutate()} disabled={createChamp.isPending}>
+              {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => goToStep(activeSteps[stepIdx + 1])}
+              disabled={!canProceed()}
+              title={canProceed() ? undefined : `Complete: ${missingForStep().join(", ")}`}
+            >
+              Next <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          )}
+        </div>
+      )}
 
 
 

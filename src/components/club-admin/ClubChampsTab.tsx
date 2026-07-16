@@ -384,6 +384,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Scheduling density: "fill" packs games into the earliest days first (finish as
   // quickly as possible); "spread" interleaves across all play-days (default).
   const [scheduleMode, setScheduleMode] = useState<"spread" | "fill">("spread");
+  // Playoff scheduling extras:
+  //   playoffBreakMinutes — pause between the last pool match and the first playoff match.
+  //   playoffDate         — force the playoffs onto a specific date (overrides the break gap).
+  const [playoffBreakMinutes, setPlayoffBreakMinutes] = useState<number>(0);
+  const [playoffDate, setPlayoffDate] = useState<string>("");
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss">("");
   // Swiss-only config: per-league pools & rounds (keyed by group_number string).
   const [swissPools, setSwissPools] = useState<Record<string, number>>({});
@@ -802,6 +807,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       day_schedules: customizeDailySchedule ? daySchedules : [],
       court_ids: Array.from(selectedCourtIds),
       schedule_mode: scheduleMode,
+      playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
+      playoff_date: playoffDate || null,
     };
     try {
       if (editingChampId) {
@@ -1830,11 +1837,40 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const reservedSlotIdx: number[] = [];
       if (playoffCount > 0) {
         const take = Math.min(playoffCount, allSlots.length);
-        if (scheduleMode === "fill") {
+        const timeToMin = (t: string) => {
+          const [hh, mm] = String(t).slice(0, 5).split(":").map(Number);
+          return (hh || 0) * 60 + (mm || 0);
+        };
+        // Priority 1: explicit playoff date — reserve slots on that date only.
+        const onDate = playoffDate
+          ? slotOrder.filter((si) => allSlots[si].date === playoffDate)
+          : [];
+        if (playoffDate && onDate.length >= take) {
+          for (let k = 0; k < take; k++) {
+            reservedSlotIdx.push(onDate[k]);
+            usedSlots.add(onDate[k]);
+          }
+        } else if (scheduleMode === "fill") {
           // Fill mode: playoffs follow directly after the pool matches so the
           // finals happen the same day pool play ends (no forced next-day roll).
           const poolCount = allMatches.filter((m) => !m.isBye).length;
-          const start = Math.min(allSlots.length - take, poolCount);
+          let start = Math.min(allSlots.length - take, poolCount);
+          // Apply optional break minutes between the last pool slot and the
+          // first playoff slot on the same day. Skip forward until the gap is
+          // satisfied or we roll onto a later date.
+          const breakMin = Math.max(0, Number(playoffBreakMinutes) || 0);
+          if (breakMin > 0 && poolCount > 0 && poolCount <= slotOrder.length) {
+            const lastPool = allSlots[slotOrder[poolCount - 1]];
+            const need = timeToMin(lastPool.time) + (matchDuration || 0) + breakMin;
+            let s = start;
+            while (s < slotOrder.length - take) {
+              const cand = allSlots[slotOrder[s]];
+              if (cand.date !== lastPool.date) break; // new day → gap satisfied
+              if (timeToMin(cand.time) >= need) break;
+              s++;
+            }
+            start = Math.min(slotOrder.length - take, s);
+          }
           for (let k = 0; k < take; k++) {
             const idx = start + k;
             reservedSlotIdx.push(slotOrder[idx]);
@@ -1969,7 +2005,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, groupLabels, scheduleMode]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate]);
 
   // Create/update champ
   const createChamp = useMutation({
@@ -2772,6 +2808,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEndTime("20:00");
     setMatchDuration(0);
     setScheduleMode("spread");
+    setPlayoffBreakMinutes(0);
+    setPlayoffDate("");
     setScoringMode("");
     setSwissPools({});
     setSwissRounds({});
@@ -2848,6 +2886,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
     setAvoidBackToBack((champ as any).avoid_back_to_back !== false);
     setScheduleMode(((champ as any).schedule_mode as "spread" | "fill") || "spread");
+    setPlayoffBreakMinutes(Number((champ as any).playoff_break_minutes) || 0);
+    setPlayoffDate(((champ as any).playoff_date as string) || "");
     setRoundFormat((champ.round_format as any) || "");
     setByeHandling((champ.bye_handling as any) || "");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
@@ -4185,6 +4225,76 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </label>
               </div>
             </div>
+
+            {/* Playoff finishing options — only when playoffs are enabled */}
+            {enablePlayoffs && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Playoff finishing options</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Fine-tune when the finals happen after the pool stage ends.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="playoff-break" className="text-xs">
+                      Break after last pool match
+                    </Label>
+                    <Select
+                      value={String(playoffBreakMinutes)}
+                      onValueChange={(v) => setPlayoffBreakMinutes(Number(v))}
+                      disabled={!!playoffDate}
+                    >
+                      <SelectTrigger id="playoff-break" className="h-9">
+                        <SelectValue placeholder="No break" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">No break — start immediately</SelectItem>
+                        <SelectItem value="15">15 minutes</SelectItem>
+                        <SelectItem value="30">30 minutes</SelectItem>
+                        <SelectItem value="45">45 minutes</SelectItem>
+                        <SelectItem value="60">1 hour</SelectItem>
+                        <SelectItem value="90">1½ hours (lunch)</SelectItem>
+                        <SelectItem value="120">2 hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Applies to fill-mode when playoffs run on the same day as pool play.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="playoff-date" className="text-xs">
+                      Play finals on a specific date (optional)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="playoff-date"
+                        type="date"
+                        className="h-9"
+                        value={playoffDate}
+                        min={startDate || undefined}
+                        max={endDate || undefined}
+                        onChange={(e) => setPlayoffDate(e.target.value)}
+                      />
+                      {playoffDate && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-9"
+                          onClick={() => setPlayoffDate("")}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Overrides the break setting — finals are forced onto this date.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

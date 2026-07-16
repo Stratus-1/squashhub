@@ -1031,6 +1031,8 @@ export type Database = {
           payment_required: boolean
           play_all_games: boolean
           play_days: number[]
+          playoff_break_minutes: number
+          playoff_date: string | null
           points_per_game: number
           registration_closes_at: string | null
           registration_mode: string
@@ -1091,6 +1093,8 @@ export type Database = {
           payment_required?: boolean
           play_all_games?: boolean
           play_days?: number[]
+          playoff_break_minutes?: number
+          playoff_date?: string | null
           points_per_game?: number
           registration_closes_at?: string | null
           registration_mode?: string
@@ -1151,6 +1155,8 @@ export type Database = {
           payment_required?: boolean
           play_all_games?: boolean
           play_days?: number[]
+          playoff_break_minutes?: number
+          playoff_date?: string | null
           points_per_game?: number
           registration_closes_at?: string | null
           registration_mode?: string

@@ -1993,6 +1993,50 @@ export default function ClubChampsView() {
       </Card>
     ) : null;
     const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";
+
+    // Play-offs card — grouped by bracket_position (position-based) or a
+    // single knockout list when there's only one league.
+    const playoffCard = playoffsExist ? (() => {
+      const stageOrder = ["playoff_qf", "playoff_sf", "playoff_final", "playoff_3rd"];
+      const sorted = [...playoffMatches].sort((a: any, b: any) => {
+        const pa = (a.bracket_position ?? 0) - (b.bracket_position ?? 0);
+        if (pa !== 0) return pa;
+        return stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage);
+      });
+      const byPos = new Map<number, any[]>();
+      for (const m of sorted) {
+        const key = (m as any).bracket_position ?? 0;
+        if (!byPos.has(key)) byPos.set(key, []);
+        byPos.get(key)!.push(m);
+      }
+      return (
+        <Card key="playoffs" className="border-primary/40">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-primary" /> Play-offs
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Array.from(byPos.entries()).map(([pos, rows]) => (
+              <div key={pos} className="space-y-1.5">
+                {pos > 0 && (
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Position {pos} bracket
+                  </div>
+                )}
+                {rows.map((m: any) => renderMatchRow(m))}
+              </div>
+            ))}
+            {canManage && !playoffMatches.every((m: any) => m.status === "completed") && (
+              <p className="text-[11px] text-muted-foreground">
+                Later rounds (Final / 3rd) will be filled in automatically — click <strong>Regenerate play-offs</strong> once the semi-finals are complete to seed the next round.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    })() : null;
+
     return (
       <>
         {summary}
@@ -2008,6 +2052,7 @@ export default function ClubChampsView() {
         )}
         {fixtureCards}
         {combinedFixtures}
+        {playoffCard}
       </>
     );
 

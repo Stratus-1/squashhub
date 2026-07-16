@@ -4788,11 +4788,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   const isSwissPools = roundFormat === "swiss";
                   const poolsFor = (gi: number) =>
                     isSwissPools ? Math.max(1, Number(swissPools[String(gi + 1)]) || 1) : 1;
-                  // Snake distribution so strength balances across pools within a league.
-                  const poolIdx = (i: number, pools: number) => {
+                  // Block distribution: pool A = first chunk, pool B = next chunk, etc.
+                  // Admins arrange strength manually by dragging within the pool.
+                  const poolIdx = (i: number, pools: number, total: number) => {
                     if (pools <= 1) return 0;
-                    const cycle = Math.floor(i / pools);
-                    return cycle % 2 === 0 ? i % pools : pools - 1 - (i % pools);
+                    const size = Math.ceil(total / pools);
+                    return Math.min(pools - 1, Math.floor(i / size));
                   };
                   const poolLetter = (p: number) => String.fromCharCode(65 + p);
                   const poolTint = [

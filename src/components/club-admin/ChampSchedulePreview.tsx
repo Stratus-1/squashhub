@@ -110,8 +110,8 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
         key,
         group: isPlayoff(m) ? null : (m.group_number ?? null),
         pool: isPlayoff(m) ? null : poolOf(m),
-        stage: isPlayoff(m) ? m.stage : null,
-        stageLabel: isPlayoff(m) ? (m.stage_label || "Play-offs") : null,
+        stage: isPlayoff(m) ? "playoff" : null,
+        stageLabel: isPlayoff(m) ? "Play-offs" : null,
         count: 1,
       });
     }

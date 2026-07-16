@@ -366,7 +366,30 @@ const placeholderRow = (
  * Mirrors buildPlayoffPlaceholders exactly — use it to size court reservations.
  */
 export function countPlayoffPlaceholders(input: Omit<PlaceholderInput, "champId">): number {
-  const { numLeagues, entriesPerLeague } = input;
+  const { numLeagues, entriesPerLeague, poolsByLeague, entriesByLeaguePool } = input;
+
+  // Swiss pool mode: sum intra-league brackets across pools.
+  if (hasPoolMode(poolsByLeague) && entriesByLeaguePool) {
+    let total = 0;
+    for (let lg = 1; lg <= numLeagues; lg++) {
+      const poolCount = Math.max(1, Number(poolsByLeague?.[lg] || 1));
+      const sizes = (entriesByLeaguePool[lg] || []).filter((n) => n > 0);
+      if (poolCount <= 1) {
+        const K = sizes[0] ?? entriesPerLeague[lg - 1] ?? 0;
+        if (K < 2) continue;
+        const cap = K >= 8 ? 8 : K >= 4 ? 4 : 2;
+        total += playoffMatchesForBracket(cap);
+        continue;
+      }
+      if (sizes.length < 2) continue;
+      const minSize = Math.min(...sizes);
+      if (!Number.isFinite(minSize) || minSize < 1) continue;
+      const size = bracketSizeFor(poolCount);
+      total += minSize * playoffMatchesForBracket(size);
+    }
+    return total;
+  }
+
   if (numLeagues <= 1) {
     const K = entriesPerLeague[0] ?? 0;
     if (K < 2) return 0;

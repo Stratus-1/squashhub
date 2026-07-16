@@ -959,13 +959,26 @@ export function MarkerSetup({ onStart }: Props) {
           </div>
           <div>
             <Label className="text-xs">Best of</Label>
-            <Select value={String(bestOf)} onValueChange={(v) => setBestOf(Number(v) as BestOf)}>
+            <Select
+              value={playAllGames ? `all${bestOf}` : String(bestOf)}
+              onValueChange={(v) => {
+                if (v.startsWith("all")) {
+                  setBestOf(Number(v.slice(3)) as BestOf);
+                  setPlayAllGames(true);
+                } else {
+                  setBestOf(Number(v) as BestOf);
+                  setPlayAllGames(false);
+                }
+              }}
+            >
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="3">Best of 3</SelectItem>
+                <SelectItem value="all3">Play all 3</SelectItem>
                 <SelectItem value="5">Best of 5</SelectItem>
+                <SelectItem value="all5">Play all 5</SelectItem>
               </SelectContent>
             </Select>
           </div>

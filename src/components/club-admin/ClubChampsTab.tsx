@@ -4830,8 +4830,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
                               )}
                               {g.map((pair, i) => {
-                                const p = poolIdx(i, pools);
-                                const prevP = i > 0 ? poolIdx(i - 1, pools) : -1;
+                                const p = poolIdx(i, pools, g.length);
+                                const prevP = i > 0 ? poolIdx(i - 1, pools, g.length) : -1;
                                 const showHeader = isSwissPools && pools > 1 && p !== prevP;
                                 return (
                                   <div key={pair.id}>

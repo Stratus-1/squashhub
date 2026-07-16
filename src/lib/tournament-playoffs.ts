@@ -33,6 +33,8 @@ export type PlayoffMatchRow = {
   partner_a_member_id: string | null;
   player_b_member_id: string | null;
   partner_b_member_id: string | null;
+  placeholder_a?: string | null;
+  placeholder_b?: string | null;
   status: "scheduled";
   is_bye: false;
 };

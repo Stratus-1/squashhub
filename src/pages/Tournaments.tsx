@@ -224,12 +224,23 @@ export default function Tournaments() {
         ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 px-1 rounded"
         : "";
 
+    const bKey = bucketKeyOf(m);
+    const bMeta = buckets.find((x) => x.key === bKey) || null;
+    const color = bucketColor(bKey);
+    const rowStyle = color
+      ? { borderLeft: `4px solid ${color.border}`, backgroundColor: today ? undefined : color.bg }
+      : undefined;
+    const chipStyle = color
+      ? { backgroundColor: color.chipBg, color: color.chipText, borderColor: color.border }
+      : undefined;
+
     return (
       <div
         key={m.id}
+        style={rowStyle}
         className={cn(
           "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded",
-          today ? "bg-primary/10 border border-primary/20" : "bg-muted/50",
+          today ? "bg-primary/10 border border-primary/20" : !color && "bg-muted/50",
         )}
       >
         <button
@@ -246,6 +257,14 @@ export default function Tournaments() {
             <span className="text-muted-foreground"> vs </span>
             <span className={teamBClass}>{teamB}</span>
           </span>
+          {bMeta && (bMeta.group != null || bMeta.pool != null) && (
+            <span
+              style={chipStyle}
+              className="text-[10px] shrink-0 px-1.5 py-0.5 rounded border font-medium"
+            >
+              {bucketLabel(bMeta)}
+            </span>
+          )}
           {champ && (
             <Badge variant="outline" className="text-[10px] shrink-0 max-w-[140px] truncate">
               {champ.name}
@@ -264,6 +283,7 @@ export default function Tournaments() {
           )}
           {today && !isLive(m) && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
+
         <Button
           size="sm"
           variant="default"

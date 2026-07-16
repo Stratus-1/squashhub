@@ -233,8 +233,9 @@ export default function ClubChampsView() {
     const matchBelongsToGroup = (m: any) => {
       if (!isCrossLeague) {
         if (m.group_number !== groupNum) return false;
-        if (poolNumber != null && (m.pool_number ?? null) !== poolNumber) return false;
+        if (poolNumber != null && resolvePoolNumber(m, groupNum) !== poolNumber) return false;
         return true;
+
       }
       return (
         groupMemberIds.has(m.player_a_member_id) ||

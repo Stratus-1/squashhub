@@ -1037,6 +1037,7 @@ export type Database = {
           registration_opens_at: string | null
           registration_required: boolean
           round_format: string
+          schedule_mode: string
           scoring_mode: string
           source_league_id: string | null
           source_league_ids: string[]
@@ -1096,6 +1097,7 @@ export type Database = {
           registration_opens_at?: string | null
           registration_required?: boolean
           round_format?: string
+          schedule_mode?: string
           scoring_mode?: string
           source_league_id?: string | null
           source_league_ids?: string[]
@@ -1155,6 +1157,7 @@ export type Database = {
           registration_opens_at?: string | null
           registration_required?: boolean
           round_format?: string
+          schedule_mode?: string
           scoring_mode?: string
           source_league_id?: string | null
           source_league_ids?: string[]

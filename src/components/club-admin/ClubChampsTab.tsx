@@ -801,6 +801,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       affects_ranking_points: affectsRankingPoints,
       day_schedules: customizeDailySchedule ? daySchedules : [],
       court_ids: Array.from(selectedCourtIds),
+      schedule_mode: scheduleMode,
     };
     try {
       if (editingChampId) {
@@ -1829,9 +1830,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const reservedSlotIdx: number[] = [];
       if (playoffCount > 0) {
         const take = Math.min(playoffCount, allSlots.length);
-        for (let i = allSlots.length - take; i < allSlots.length; i++) {
-          reservedSlotIdx.push(i);
-          usedSlots.add(i);
+        if (scheduleMode === "fill") {
+          // Fill mode: playoffs follow directly after the pool matches so the
+          // finals happen the same day pool play ends (no forced next-day roll).
+          const poolCount = allMatches.filter((m) => !m.isBye).length;
+          const start = Math.min(allSlots.length - take, poolCount);
+          for (let k = 0; k < take; k++) {
+            const idx = start + k;
+            reservedSlotIdx.push(slotOrder[idx]);
+            usedSlots.add(slotOrder[idx]);
+          }
+        } else {
+          for (let i = allSlots.length - take; i < allSlots.length; i++) {
+            reservedSlotIdx.push(i);
+            usedSlots.add(i);
+          }
         }
       }
 
@@ -2807,6 +2820,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
     setAvoidBackToBack((champ as any).avoid_back_to_back !== false);
+    setScheduleMode(((champ as any).schedule_mode as "spread" | "fill") || "spread");
     setRoundFormat((champ.round_format as any) || "");
     setByeHandling((champ.bye_handling as any) || "");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0

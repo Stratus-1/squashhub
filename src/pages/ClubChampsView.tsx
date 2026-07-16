@@ -21,6 +21,7 @@ import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialo
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { UserX, Trophy, Shuffle, RotateCcw } from "lucide-react";
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
+import { buildPlayoffMatches, type StandingEntity } from "@/lib/tournament-playoffs";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -629,6 +630,121 @@ export default function ClubChampsView() {
     onError: (err: any) => toast.error(err.message || "Failed to pair round"),
   });
 
+  // ── Play-offs ────────────────────────────────────────────────────────
+  // Toggle `enable_playoffs` on the champ record drives whether this UI
+  // shows at all. The button becomes enabled only once every group-stage
+  // match is completed (byes excluded) — then it seeds the position-based
+  // knockout described by the tooltip in the wizard.
+  const enablePlayoffs = !!(champ as any)?.enable_playoffs;
+  const groupMatchesAll = (matches as any[]).filter((m) => (m.stage || "group") === "group" && !m.is_bye);
+  const groupComplete = groupMatchesAll.length > 0 && groupMatchesAll.every((m: any) => m.status === "completed");
+  const playoffMatches = (matches as any[]).filter((m) => (m.stage || "group") !== "group");
+  const playoffsExist = playoffMatches.length > 0;
+
+  const generatePlayoffs = useMutation({
+    mutationFn: async () => {
+      if (!champ) throw new Error("Tournament not loaded");
+      if (!enablePlayoffs) throw new Error("Play-offs are not enabled for this tournament");
+      if (!groupComplete) throw new Error("All group-stage matches must be completed first");
+
+      // Winner resolver for already-completed playoff rounds (SF → Final, etc.)
+      const winnerOf = (m: any): string | null => {
+        if (!m || m.status !== "completed") return null;
+        if (m.winner_member_id) return m.winner_member_id;
+        const a = Number(m.side_a_points) || 0;
+        const b = Number(m.side_b_points) || 0;
+        if (a === b) return null;
+        return a > b ? m.player_a_member_id : m.player_b_member_id;
+      };
+      const loserOf = (m: any): string | null => {
+        const w = winnerOf(m);
+        if (!w) return null;
+        return w === m.player_a_member_id ? m.player_b_member_id : m.player_a_member_id;
+      };
+
+      // Wipe any incomplete playoff rows we generated previously — keep
+      // completed rounds so their standings feed the next round.
+      const staleIds = playoffMatches
+        .filter((m: any) => m.status !== "completed")
+        .map((m: any) => m.id);
+      if (staleIds.length > 0) {
+        const { error: delErr } = await fromExt("club_champs_matches").delete().in("id", staleIds);
+        if (delErr) throw delErr;
+      }
+
+      // Build seed standings per league.
+      const numLeagues = groupNumbers.length;
+      const standingsByLeague = new Map<number, StandingEntity[]>();
+      for (const gn of groupNumbers as number[]) {
+        const rows = getGroupStandings(gn as number);
+        standingsByLeague.set(
+          gn as number,
+          rows.map((r: any, i: number) => ({
+            memberId: r.club_member_id,
+            partnerId: r.partner_member_id ?? null,
+            rank: i + 1,
+          })),
+        );
+      }
+
+      const newRows = buildPlayoffMatches({
+        champId: champId!,
+        isDoubles,
+        standingsByLeague,
+        numLeagues,
+      });
+
+      // Any completed playoff rounds we kept? Fill their downstream
+      // placeholders using the resolved winners/losers.
+      const completedPlayoffs = playoffMatches.filter((m: any) => m.status === "completed");
+      for (const row of newRows) {
+        if (row.player_a_member_id && row.player_b_member_id) continue;
+        // Final: winners of both SFs at same bracket_position.
+        if (row.stage === "playoff_final") {
+          const sfs = completedPlayoffs.filter(
+            (m: any) => m.stage === "playoff_sf" && (m.bracket_position ?? null) === (row.bracket_position ?? null),
+          );
+          const winners = sfs.map(winnerOf).filter(Boolean) as string[];
+          if (winners[0]) row.player_a_member_id = winners[0];
+          if (winners[1]) row.player_b_member_id = winners[1];
+        }
+        if (row.stage === "playoff_3rd") {
+          const sfs = completedPlayoffs.filter(
+            (m: any) => m.stage === "playoff_sf" && (m.bracket_position ?? null) === (row.bracket_position ?? null),
+          );
+          const losers = sfs.map(loserOf).filter(Boolean) as string[];
+          if (losers[0]) row.player_a_member_id = losers[0];
+          if (losers[1]) row.player_b_member_id = losers[1];
+        }
+        if (row.stage === "playoff_sf") {
+          // SF placeholders fed by QFs at the same bracket_position.
+          const qfs = completedPlayoffs.filter(
+            (m: any) => m.stage === "playoff_qf" && (m.bracket_position ?? null) === (row.bracket_position ?? null),
+          );
+          const winners = qfs.map(winnerOf).filter(Boolean) as string[];
+          // First SF row gets winners[0]/winners[3], second gets winners[1]/winners[2]
+          // Simplified: hand out in order — admin can swap manually if needed.
+          if (winners.length >= 2) {
+            row.player_a_member_id = row.player_a_member_id ?? winners.shift()!;
+            row.player_b_member_id = row.player_b_member_id ?? winners.shift()!;
+          }
+        }
+      }
+
+      if (newRows.length === 0) throw new Error("Not enough finishers to build a play-off bracket");
+
+      const { error: insErr } = await fromExt("club_champs_matches").insert(newRows as any);
+      if (insErr) throw insErr;
+      return newRows.length;
+    },
+    onSuccess: (n) => {
+      toast.success(`Generated ${n} play-off match${n === 1 ? "" : "es"} (TBD slots). Use "Reschedule TBD" to place courts and times.`);
+      qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to generate play-offs"),
+  });
+
+
   const swissControlsFor = (groupNumber: number) => {
     if (!isSwiss || !canManage) return null;
     const poolCount = Math.max(1, Number(swissPools[String(groupNumber)]) || 1);
@@ -749,6 +865,22 @@ export default function ClubChampsView() {
                   <CalendarClock className="w-4 h-4 mr-1" />
                 )}
                 Reschedule {unassignedCount} TBD match{unassignedCount === 1 ? "" : "es"}
+              </Button>
+            )}
+            {canManage && enablePlayoffs && (
+              <Button
+                variant={groupComplete ? "default" : "outline"}
+                size="sm"
+                onClick={() => generatePlayoffs.mutate()}
+                disabled={!groupComplete || generatePlayoffs.isPending}
+                title={!groupComplete ? "Finish all group-stage matches first" : playoffsExist ? "Regenerate — fills in Finals whose semis are done" : "Seed the position-based knockout"}
+              >
+                {generatePlayoffs.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Trophy className="w-4 h-4 mr-1" />
+                )}
+                {playoffsExist ? "Regenerate play-offs" : "Generate play-offs"}
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => window.print()}>
@@ -1701,10 +1833,12 @@ export default function ClubChampsView() {
           .flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
       );
       const groupMatches = matches.filter((m: any) =>
-        isCrossLeague
-          ? (groupMemberIds.has(m.player_a_member_id) || groupMemberIds.has(m.player_b_member_id) ||
-             (isDoubles && (groupMemberIds.has(m.partner_a_member_id) || groupMemberIds.has(m.partner_b_member_id))))
-          : m.group_number === gn
+        (m.stage || "group") === "group" && (
+          isCrossLeague
+            ? (groupMemberIds.has(m.player_a_member_id) || groupMemberIds.has(m.player_b_member_id) ||
+               (isDoubles && (groupMemberIds.has(m.partner_a_member_id) || groupMemberIds.has(m.partner_b_member_id))))
+            : m.group_number === gn
+        )
       );
       const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
       const leagueTotal = leagueTotals?.get(gn);
@@ -1859,6 +1993,50 @@ export default function ClubChampsView() {
       </Card>
     ) : null;
     const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";
+
+    // Play-offs card — grouped by bracket_position (position-based) or a
+    // single knockout list when there's only one league.
+    const playoffCard = playoffsExist ? (() => {
+      const stageOrder = ["playoff_qf", "playoff_sf", "playoff_final", "playoff_3rd"];
+      const sorted = [...playoffMatches].sort((a: any, b: any) => {
+        const pa = (a.bracket_position ?? 0) - (b.bracket_position ?? 0);
+        if (pa !== 0) return pa;
+        return stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage);
+      });
+      const byPos = new Map<number, any[]>();
+      for (const m of sorted) {
+        const key = (m as any).bracket_position ?? 0;
+        if (!byPos.has(key)) byPos.set(key, []);
+        byPos.get(key)!.push(m);
+      }
+      return (
+        <Card key="playoffs" className="border-primary/40">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-primary" /> Play-offs
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Array.from(byPos.entries()).map(([pos, rows]) => (
+              <div key={pos} className="space-y-1.5">
+                {pos > 0 && (
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Position {pos} bracket
+                  </div>
+                )}
+                {rows.map((m: any) => renderMatchRow(m))}
+              </div>
+            ))}
+            {canManage && !playoffMatches.every((m: any) => m.status === "completed") && (
+              <p className="text-[11px] text-muted-foreground">
+                Later rounds (Final / 3rd) will be filled in automatically — click <strong>Regenerate play-offs</strong> once the semi-finals are complete to seed the next round.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      );
+    })() : null;
+
     return (
       <>
         {summary}
@@ -1874,6 +2052,7 @@ export default function ClubChampsView() {
         )}
         {fixtureCards}
         {combinedFixtures}
+        {playoffCard}
       </>
     );
 

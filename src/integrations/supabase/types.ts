@@ -1251,6 +1251,7 @@ export type Database = {
         Row: {
           bell_ends_at: string | null
           bell_paused_seconds: number | null
+          bracket_position: number | null
           bye_member_id: string | null
           champ_id: string
           court_id: number | null
@@ -1266,8 +1267,8 @@ export type Database = {
           leg: string | null
           partner_a_member_id: string | null
           partner_b_member_id: string | null
-          player_a_member_id: string
-          player_b_member_id: string
+          player_a_member_id: string | null
+          player_b_member_id: string | null
           pool_number: number | null
           round_number: number
           scheduled_date: string | null
@@ -1275,6 +1276,8 @@ export type Database = {
           score: string | null
           side_a_points: number | null
           side_b_points: number | null
+          stage: string
+          stage_label: string | null
           status: string
           updated_at: string
           winner_member_id: string | null
@@ -1282,6 +1285,7 @@ export type Database = {
         Insert: {
           bell_ends_at?: string | null
           bell_paused_seconds?: number | null
+          bracket_position?: number | null
           bye_member_id?: string | null
           champ_id: string
           court_id?: number | null
@@ -1297,8 +1301,8 @@ export type Database = {
           leg?: string | null
           partner_a_member_id?: string | null
           partner_b_member_id?: string | null
-          player_a_member_id: string
-          player_b_member_id: string
+          player_a_member_id?: string | null
+          player_b_member_id?: string | null
           pool_number?: number | null
           round_number?: number
           scheduled_date?: string | null
@@ -1306,6 +1310,8 @@ export type Database = {
           score?: string | null
           side_a_points?: number | null
           side_b_points?: number | null
+          stage?: string
+          stage_label?: string | null
           status?: string
           updated_at?: string
           winner_member_id?: string | null
@@ -1313,6 +1319,7 @@ export type Database = {
         Update: {
           bell_ends_at?: string | null
           bell_paused_seconds?: number | null
+          bracket_position?: number | null
           bye_member_id?: string | null
           champ_id?: string
           court_id?: number | null
@@ -1328,8 +1335,8 @@ export type Database = {
           leg?: string | null
           partner_a_member_id?: string | null
           partner_b_member_id?: string | null
-          player_a_member_id?: string
-          player_b_member_id?: string
+          player_a_member_id?: string | null
+          player_b_member_id?: string | null
           pool_number?: number | null
           round_number?: number
           scheduled_date?: string | null
@@ -1337,6 +1344,8 @@ export type Database = {
           score?: string | null
           side_a_points?: number | null
           side_b_points?: number | null
+          stage?: string
+          stage_label?: string | null
           status?: string
           updated_at?: string
           winner_member_id?: string | null
@@ -7563,6 +7572,7 @@ export type Database = {
         Returns: {
           bell_ends_at: string | null
           bell_paused_seconds: number | null
+          bracket_position: number | null
           bye_member_id: string | null
           champ_id: string
           court_id: number | null
@@ -7578,8 +7588,8 @@ export type Database = {
           leg: string | null
           partner_a_member_id: string | null
           partner_b_member_id: string | null
-          player_a_member_id: string
-          player_b_member_id: string
+          player_a_member_id: string | null
+          player_b_member_id: string | null
           pool_number: number | null
           round_number: number
           scheduled_date: string | null
@@ -7587,6 +7597,8 @@ export type Database = {
           score: string | null
           side_a_points: number | null
           side_b_points: number | null
+          stage: string
+          stage_label: string | null
           status: string
           updated_at: string
           winner_member_id: string | null
@@ -7639,6 +7651,7 @@ export type Database = {
         Returns: {
           bell_ends_at: string | null
           bell_paused_seconds: number | null
+          bracket_position: number | null
           bye_member_id: string | null
           champ_id: string
           court_id: number | null
@@ -7654,8 +7667,8 @@ export type Database = {
           leg: string | null
           partner_a_member_id: string | null
           partner_b_member_id: string | null
-          player_a_member_id: string
-          player_b_member_id: string
+          player_a_member_id: string | null
+          player_b_member_id: string | null
           pool_number: number | null
           round_number: number
           scheduled_date: string | null
@@ -7663,6 +7676,8 @@ export type Database = {
           score: string | null
           side_a_points: number | null
           side_b_points: number | null
+          stage: string
+          stage_label: string | null
           status: string
           updated_at: string
           winner_member_id: string | null

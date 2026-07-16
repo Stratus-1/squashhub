@@ -3109,14 +3109,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <div>
                     <Label className="text-xs font-medium">Best of</Label>
                     <Select
-                      value={bestOf > 0 ? String(bestOf) : ""}
-                      onValueChange={(v) => setBestOf(Number(v) as 3 | 5)}
+                      value={bestOf > 0 ? (playAllGames ? `all${bestOf}` : String(bestOf)) : ""}
+                      onValueChange={(v) => {
+                        if (v.startsWith("all")) {
+                          setBestOf(Number(v.slice(3)) as 3 | 5);
+                          setPlayAllGames(true);
+                        } else {
+                          setBestOf(Number(v) as 3 | 5);
+                          setPlayAllGames(false);
+                        }
+                      }}
                     >
                       <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                         <SelectItem value="3">Best of 3 (first to 2 games)</SelectItem>
+                        <SelectItem value="all3">Play all 3 (winner = most games)</SelectItem>
                         <SelectItem value="5">Best of 5 (first to 3 games)</SelectItem>
+                        <SelectItem value="all5">Play all 5 (winner = most games)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

@@ -630,6 +630,121 @@ export default function ClubChampsView() {
     onError: (err: any) => toast.error(err.message || "Failed to pair round"),
   });
 
+  // ── Play-offs ────────────────────────────────────────────────────────
+  // Toggle `enable_playoffs` on the champ record drives whether this UI
+  // shows at all. The button becomes enabled only once every group-stage
+  // match is completed (byes excluded) — then it seeds the position-based
+  // knockout described by the tooltip in the wizard.
+  const enablePlayoffs = !!(champ as any)?.enable_playoffs;
+  const groupMatchesAll = (matches as any[]).filter((m) => (m.stage || "group") === "group" && !m.is_bye);
+  const groupComplete = groupMatchesAll.length > 0 && groupMatchesAll.every((m: any) => m.status === "completed");
+  const playoffMatches = (matches as any[]).filter((m) => (m.stage || "group") !== "group");
+  const playoffsExist = playoffMatches.length > 0;
+
+  const generatePlayoffs = useMutation({
+    mutationFn: async () => {
+      if (!champ) throw new Error("Tournament not loaded");
+      if (!enablePlayoffs) throw new Error("Play-offs are not enabled for this tournament");
+      if (!groupComplete) throw new Error("All group-stage matches must be completed first");
+
+      // Winner resolver for already-completed playoff rounds (SF → Final, etc.)
+      const winnerOf = (m: any): string | null => {
+        if (!m || m.status !== "completed") return null;
+        if (m.winner_member_id) return m.winner_member_id;
+        const a = Number(m.side_a_points) || 0;
+        const b = Number(m.side_b_points) || 0;
+        if (a === b) return null;
+        return a > b ? m.player_a_member_id : m.player_b_member_id;
+      };
+      const loserOf = (m: any): string | null => {
+        const w = winnerOf(m);
+        if (!w) return null;
+        return w === m.player_a_member_id ? m.player_b_member_id : m.player_a_member_id;
+      };
+
+      // Wipe any incomplete playoff rows we generated previously — keep
+      // completed rounds so their standings feed the next round.
+      const staleIds = playoffMatches
+        .filter((m: any) => m.status !== "completed")
+        .map((m: any) => m.id);
+      if (staleIds.length > 0) {
+        const { error: delErr } = await fromExt("club_champs_matches").delete().in("id", staleIds);
+        if (delErr) throw delErr;
+      }
+
+      // Build seed standings per league.
+      const numLeagues = groupNumbers.length;
+      const standingsByLeague = new Map<number, StandingEntity[]>();
+      for (const gn of groupNumbers) {
+        const rows = getGroupStandings(gn);
+        standingsByLeague.set(
+          gn,
+          rows.map((r: any, i: number) => ({
+            memberId: r.club_member_id,
+            partnerId: r.partner_member_id ?? null,
+            rank: i + 1,
+          })),
+        );
+      }
+
+      const newRows = buildPlayoffMatches({
+        champId: champId!,
+        isDoubles,
+        standingsByLeague,
+        numLeagues,
+      });
+
+      // Any completed playoff rounds we kept? Fill their downstream
+      // placeholders using the resolved winners/losers.
+      const completedPlayoffs = playoffMatches.filter((m: any) => m.status === "completed");
+      for (const row of newRows) {
+        if (row.player_a_member_id && row.player_b_member_id) continue;
+        // Final: winners of both SFs at same bracket_position.
+        if (row.stage === "playoff_final") {
+          const sfs = completedPlayoffs.filter(
+            (m: any) => m.stage === "playoff_sf" && (m.bracket_position ?? null) === (row.bracket_position ?? null),
+          );
+          const winners = sfs.map(winnerOf).filter(Boolean) as string[];
+          if (winners[0]) row.player_a_member_id = winners[0];
+          if (winners[1]) row.player_b_member_id = winners[1];
+        }
+        if (row.stage === "playoff_3rd") {
+          const sfs = completedPlayoffs.filter(
+            (m: any) => m.stage === "playoff_sf" && (m.bracket_position ?? null) === (row.bracket_position ?? null),
+          );
+          const losers = sfs.map(loserOf).filter(Boolean) as string[];
+          if (losers[0]) row.player_a_member_id = losers[0];
+          if (losers[1]) row.player_b_member_id = losers[1];
+        }
+        if (row.stage === "playoff_sf") {
+          // SF placeholders fed by QFs at the same bracket_position.
+          const qfs = completedPlayoffs.filter(
+            (m: any) => m.stage === "playoff_qf" && (m.bracket_position ?? null) === (row.bracket_position ?? null),
+          );
+          const winners = qfs.map(winnerOf).filter(Boolean) as string[];
+          // First SF row gets winners[0]/winners[3], second gets winners[1]/winners[2]
+          // Simplified: hand out in order — admin can swap manually if needed.
+          if (winners.length >= 2) {
+            row.player_a_member_id = row.player_a_member_id ?? winners.shift()!;
+            row.player_b_member_id = row.player_b_member_id ?? winners.shift()!;
+          }
+        }
+      }
+
+      if (newRows.length === 0) throw new Error("Not enough finishers to build a play-off bracket");
+
+      const { error: insErr } = await fromExt("club_champs_matches").insert(newRows as any);
+      if (insErr) throw insErr;
+      return newRows.length;
+    },
+    onSuccess: (n) => {
+      toast.success(`Generated ${n} play-off match${n === 1 ? "" : "es"} (TBD slots). Use "Reschedule TBD" to place courts and times.`);
+      qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to generate play-offs"),
+  });
+
+
   const swissControlsFor = (groupNumber: number) => {
     if (!isSwiss || !canManage) return null;
     const poolCount = Math.max(1, Number(swissPools[String(groupNumber)]) || 1);

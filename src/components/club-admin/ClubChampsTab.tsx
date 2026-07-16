@@ -1471,6 +1471,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     // slots exist per day.
     const entityLastDate = new Map<string, string>();
     const canScheduleOn = (entityId: string, dateStr: string): boolean => {
+      // Fill mode: pack the earliest days completely — allow multiple matches
+      // per entity per day so Saturday isn't capped at one match per pair.
+      if (scheduleMode === "fill") return true;
       const last = entityLastDate.get(entityId);
       if (!last) return true;
       const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));

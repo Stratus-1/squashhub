@@ -1471,6 +1471,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     // slots exist per day.
     const entityLastDate = new Map<string, string>();
     const canScheduleOn = (entityId: string, dateStr: string): boolean => {
+      // Fill mode: pack the earliest days completely — allow multiple matches
+      // per entity per day so Saturday isn't capped at one match per pair.
+      if (scheduleMode === "fill") return true;
       const last = entityLastDate.get(entityId);
       if (!last) return true;
       const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));
@@ -1833,7 +1836,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
 
 
-      // First pass: honour the "no same-day repeat per entity" gap.
+      // Track (date|time) slots each entity is already playing, so fill mode
+      // can pack multiple matches per entity per day without double-booking
+      // the same time on two different courts.
+      const entityBusySlot = new Map<string, Set<string>>();
+      const isEntityFree = (pid: string, slot: { date: string; time: string }) => {
+        const key = `${slot.date}|${slot.time}`;
+        return !entityBusySlot.get(pid)?.has(key);
+      };
+      const markEntityBusy = (pid: string, slot: { date: string; time: string }) => {
+        const key = `${slot.date}|${slot.time}`;
+        let set = entityBusySlot.get(pid);
+        if (!set) { set = new Set(); entityBusySlot.set(pid, set); }
+        set.add(key);
+      };
+
+      // First pass: honour the "no same-day repeat per entity" gap (spread mode)
+      // or pack sequentially (fill mode). Always avoid concurrent-slot conflicts.
       for (const match of allMatches) {
         if (match.isBye) continue;
         const playersA = getPlayersForEntity(match.entityA);
@@ -1843,12 +1862,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];
+          if (!allPlayers.every((pid) => isEntityFree(pid, slot))) continue;
           if (allPlayers.every((pid) => canScheduleOn(pid, slot.date))) {
             match.date = slot.date;
             match.time = slot.time;
             match.courtId = slot.courtId;
             usedSlots.add(si);
-            allPlayers.forEach((pid) => entityLastDate.set(pid, slot.date));
+            allPlayers.forEach((pid) => {
+              entityLastDate.set(pid, slot.date);
+              markEntityBusy(pid, slot);
+            });
             break;
           }
         }

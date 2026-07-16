@@ -387,6 +387,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [parallelLeagues, setParallelLeagues] = useState(false);
   const [pointsPerGame, setPointsPerGame] = useState<0 | 11 | 15>(0);
   const [bestOf, setBestOf] = useState<0 | 3 | 5>(0);
+  const [playAllGames, setPlayAllGames] = useState(false);
   const [winCondition, setWinCondition] = useState<"win_by_2" | "sudden_death">("win_by_2");
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
@@ -759,6 +760,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       swiss_rounds: roundFormat === "swiss" ? swissRounds : null,
       points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
       best_of: bestOf > 0 ? bestOf : null,
+      play_all_games: playAllGames,
       win_condition: winCondition,
       group_durations: groupDurations,
       group_break_minutes: groupBreakMinutes,
@@ -1785,6 +1787,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             swiss_rounds: roundFormat === "swiss" ? swissRounds : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
+            play_all_games: playAllGames,
             win_condition: winCondition,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
@@ -1841,6 +1844,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             swiss_rounds: roundFormat === "swiss" ? swissRounds : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
+            play_all_games: playAllGames,
             win_condition: winCondition,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
@@ -2487,6 +2491,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setSwissRounds({});
     setPointsPerGame(0);
     setBestOf(0);
+    setPlayAllGames(false);
     setGroupDurations({});
     setGroupBreakMinutes({});
     setGroupLabels({});
@@ -2548,6 +2553,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setSwissRounds(((champ as any).swiss_rounds as Record<string, number>) || {});
     setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
+    setPlayAllGames(!!(champ as any).play_all_games);
     setWinCondition(((champ as any).win_condition as any) === "sudden_death" ? "sudden_death" : "win_by_2");
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
@@ -3103,14 +3109,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <div>
                     <Label className="text-xs font-medium">Best of</Label>
                     <Select
-                      value={bestOf > 0 ? String(bestOf) : ""}
-                      onValueChange={(v) => setBestOf(Number(v) as 3 | 5)}
+                      value={bestOf > 0 ? (playAllGames ? `all${bestOf}` : String(bestOf)) : ""}
+                      onValueChange={(v) => {
+                        if (v.startsWith("all")) {
+                          setBestOf(Number(v.slice(3)) as 3 | 5);
+                          setPlayAllGames(true);
+                        } else {
+                          setBestOf(Number(v) as 3 | 5);
+                          setPlayAllGames(false);
+                        }
+                      }}
                     >
                       <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                         <SelectItem value="3">Best of 3 (first to 2 games)</SelectItem>
+                        <SelectItem value="all3">Play all 3 (winner = most games)</SelectItem>
                         <SelectItem value="5">Best of 5 (first to 3 games)</SelectItem>
+                        <SelectItem value="all5">Play all 5 (winner = most games)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

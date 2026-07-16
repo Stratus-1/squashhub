@@ -39,6 +39,10 @@ export interface MarkerConfig {
   matchType: MatchType;
   scoringFormat: ScoringFormat;
   bestOf: BestOf;
+  /** When true, all `bestOf` games are played (no early termination when a
+   *  side reaches the games-to-win threshold). Winner = most games won,
+   *  tiebreak on total points across games. */
+  playAllGames?: boolean;
   deuceRule: DeuceRule;
   source: MatchSource;
   sourceId?: string; // tournament match id or booking id
@@ -299,6 +303,7 @@ export function MarkerSetup({ onStart }: Props) {
   const [matchType, setMatchType] = useState<MatchType>("friendly");
   const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("par11");
   const [bestOf, setBestOf] = useState<BestOf>(3);
+  const [playAllGames, setPlayAllGames] = useState(false);
   const [deuceRule, setDeuceRule] = useState<DeuceRule>("win_by_2");
 
   // League filter mode: "mine" (default — fixtures my league/team plays in) or "all"
@@ -954,13 +959,26 @@ export function MarkerSetup({ onStart }: Props) {
           </div>
           <div>
             <Label className="text-xs">Best of</Label>
-            <Select value={String(bestOf)} onValueChange={(v) => setBestOf(Number(v) as BestOf)}>
+            <Select
+              value={playAllGames ? `all${bestOf}` : String(bestOf)}
+              onValueChange={(v) => {
+                if (v.startsWith("all")) {
+                  setBestOf(Number(v.slice(3)) as BestOf);
+                  setPlayAllGames(true);
+                } else {
+                  setBestOf(Number(v) as BestOf);
+                  setPlayAllGames(false);
+                }
+              }}
+            >
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="3">Best of 3</SelectItem>
+                <SelectItem value="all3">Play all 3</SelectItem>
                 <SelectItem value="5">Best of 5</SelectItem>
+                <SelectItem value="all5">Play all 5</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -993,6 +1011,7 @@ export function MarkerSetup({ onStart }: Props) {
             matchType,
             scoringFormat,
             bestOf,
+            playAllGames,
             deuceRule,
             source,
             sourceId: selectedSourceId || undefined,

@@ -1029,6 +1029,7 @@ export type Database = {
           partner_mode: string
           payment_methods: string[]
           payment_required: boolean
+          play_all_games: boolean
           play_days: number[]
           points_per_game: number
           registration_closes_at: string | null
@@ -1087,6 +1088,7 @@ export type Database = {
           partner_mode?: string
           payment_methods?: string[]
           payment_required?: boolean
+          play_all_games?: boolean
           play_days?: number[]
           points_per_game?: number
           registration_closes_at?: string | null
@@ -1145,6 +1147,7 @@ export type Database = {
           partner_mode?: string
           payment_methods?: string[]
           payment_required?: boolean
+          play_all_games?: boolean
           play_days?: number[]
           points_per_game?: number
           registration_closes_at?: string | null

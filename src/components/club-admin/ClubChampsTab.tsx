@@ -4795,6 +4795,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     const size = Math.ceil(total / pools);
                     return Math.min(pools - 1, Math.floor(i / size));
                   };
+                  const poolSize = (p: number, pools: number, total: number) => {
+                    if (pools <= 1) return total;
+                    const size = Math.ceil(total / pools);
+                    if (p < pools - 1) return size;
+                    return Math.max(0, total - size * (pools - 1));
+                  };
                   const poolLetter = (p: number) => String.fromCharCode(65 + p);
                   const poolTint = [
                     "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30",

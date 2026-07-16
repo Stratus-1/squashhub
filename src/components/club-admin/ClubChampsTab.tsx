@@ -381,6 +381,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
   const [matchDuration, setMatchDuration] = useState(0);
+  // Scheduling density: "fill" packs games into the earliest days first (finish as
+  // quickly as possible); "spread" interleaves across all play-days (default).
+  const [scheduleMode, setScheduleMode] = useState<"spread" | "fill">("spread");
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss">("");
   // Swiss-only config: per-league pools & rounds (keyed by group_number string).
   const [swissPools, setSwissPools] = useState<Record<string, number>>({});
@@ -1329,6 +1332,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     // matches spread evenly across all play-days instead of front-loading day 1.
     // Within each date the original chronological/court order is preserved.
     const slotOrder: number[] = (() => {
+      if (scheduleMode === "fill") {
+        // Fill mode: fill each day (and each court within the day) completely
+        // before moving to the next — finishes the tournament in as few days
+        // as possible.
+        return allSlots.map((_, i) => i);
+      }
       const byDate = new Map<string, number[]>();
       allSlots.forEach((s, i) => {
         if (!byDate.has(s.date)) byDate.set(s.date, []);
@@ -1897,7 +1906,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, groupLabels]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, groupLabels, scheduleMode]);
 
   // Create/update champ
   const createChamp = useMutation({
@@ -2699,6 +2708,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStartTime("18:00");
     setEndTime("20:00");
     setMatchDuration(0);
+    setScheduleMode("spread");
     setScoringMode("");
     setSwissPools({});
     setSwissRounds({});
@@ -4066,139 +4076,49 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
 
 
+            {/* Schedule density — fill vs spread. Court bookings are made on the final Review step. */}
             <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Book the courts now</p>
-                  <p className="text-xs text-muted-foreground">
-                    Reserves one block per (date, time-window, court) under the tournament name. Safe to re-run after editing — blocks are upserted, not duplicated.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={
-                    !startDate || !endDate || !startTime || !endTime ||
-                    selectedCourtIds.size === 0 ||
-                    !(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))
-                  }
-                  onClick={async () => {
-                    try {
-                      const id = await saveDraft();
-                      if (!id || !clubId) {
-                        toast.error("Could not save tournament shell — try again.");
-                        return;
-                      }
-                      const courtIds = Array.from(selectedCourtIds);
-                      const { data: champRow } = await fromExt("club_champs").select("name").eq("id", id).maybeSingle();
-                      const tournamentLabel = ((champRow?.name as string) || champName || "Tournament").trim();
-
-                      // Build (date, start, end, courtIds) windows.
-                      type Window = { date: string; start: string; end: string; courts: number[] };
-                      const windows: Window[] = [];
-                      if (customizeDailySchedule && daySchedules.length > 0) {
-                        for (const d of daySchedules) {
-                          if (!d.date || !d.start_time || !d.end_time) continue;
-                          const cs = (d.court_ids && d.court_ids.length > 0
-                            ? d.court_ids.filter((cid) => selectedCourtIds.has(cid))
-                            : courtIds);
-                          if (cs.length === 0) continue;
-                          windows.push({
-                            date: d.date,
-                            start: String(d.start_time).slice(0, 5),
-                            end: String(d.end_time).slice(0, 5),
-                            courts: cs,
-                          });
-                        }
-                      } else {
-                        const gStart = String(startTime).slice(0, 5);
-                        const gEnd = String(endTime).slice(0, 5);
-                        const cur = new Date(startDate);
-                        const end = new Date(endDate);
-                        while (cur <= end) {
-                          if (playDays.size === 0 || playDays.has(cur.getDay())) {
-                            windows.push({
-                              date: format(cur, "yyyy-MM-dd"),
-                              start: gStart,
-                              end: gEnd,
-                              courts: courtIds,
-                            });
-                          }
-                          cur.setDate(cur.getDate() + 1);
-                        }
-                      }
-                      if (windows.length === 0) {
-                        toast.error("No play days / time windows configured.");
-                        return;
-                      }
-                      const rows = windows.flatMap((w) =>
-                        w.courts.map((cid) => ({
-                          club_id: clubId,
-                          court_id: cid,
-                          user_id: null,
-                          club_member_id: null,
-                          date: w.date,
-                          start_time: w.start,
-                          end_time: w.end,
-                          status: "active",
-                          is_friendly: false,
-                          guest_name: tournamentLabel,
-                          source: "club_event",
-                          // include start time so multiple windows per (date,court) don't collide
-                          external_id: `champ:${id}:block:${w.date}:${w.start}:${cid}`,
-                        }))
-                      );
-                      // Wipe any prior tournament blocks for THIS champ.
-                      await fromExt("bookings")
-                        .delete()
-                        .eq("club_id", clubId)
-                        .eq("source", "club_event")
-                        .like("external_id", `champ:${id}:%`);
-                      // Also wipe any *other* tournament/club_event blocks that
-                      // would collide on (court, date, start_time) — these are
-                      // leftovers from earlier champ drafts on the same slot
-                      // and would otherwise trip the no-double-booking index.
-                      const datesToClear = Array.from(new Set(rows.map((r) => r.date)));
-                      const courtsToClear = Array.from(new Set(rows.map((r) => r.court_id)));
-                      const { data: existingBlocks } = await fromExt("bookings")
-                        .select("id,court_id,date,start_time,end_time,external_id")
-                        .eq("club_id", clubId)
-                        .eq("source", "club_event")
-                        .eq("status", "active")
-                        .in("date", datesToClear)
-                        .in("court_id", courtsToClear);
-                      const toMin = (t: string) => {
-                        const [h, m] = String(t).slice(0, 5).split(":").map(Number);
-                        return h * 60 + (m || 0);
-                      };
-                      const collidingIds = (existingBlocks || [])
-                        .filter((b: any) =>
-                          rows.some(
-                            (r) =>
-                              r.court_id === b.court_id &&
-                              r.date === b.date &&
-                              toMin(r.start_time) < toMin(b.end_time) &&
-                              toMin(r.end_time) > toMin(b.start_time),
-                          ),
-                        )
-                        .map((b: any) => b.id);
-                      if (collidingIds.length > 0) {
-                        await fromExt("bookings").delete().in("id", collidingIds);
-                      }
-                      const { error: bErr } = await fromExt("bookings")
-                        .upsert(rows, { onConflict: "club_id,source,external_id" });
-                      if (bErr) throw bErr;
-                      qc.invalidateQueries({ queryKey: ["bookings"] });
-                      qc.invalidateQueries({ queryKey: ["my-bookings"] });
-                      toast.success(`${rows.length} court booking${rows.length === 1 ? "" : "s"} created under "${tournamentLabel}"`);
-                    } catch (e: any) {
-                      toast.error(e?.message || "Could not book courts");
-                    }
-                  }}
-                >
-                  Book courts now
-                </Button>
+              <p className="text-sm font-medium">How should games be scheduled?</p>
+              <p className="text-[11px] text-muted-foreground">
+                Controls how the generator fills the available time. You can rebuild the schedule after changing this.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
+                  scheduleMode === "fill" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
+                )}>
+                  <input
+                    type="radio"
+                    name="schedule-mode"
+                    className="mt-0.5"
+                    checked={scheduleMode === "fill"}
+                    onChange={() => setScheduleMode("fill")}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium">Fill up games — finish as quickly as possible</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Packs every slot on the earliest day first. Later days are only used if needed — the tournament may finish in fewer days than selected.
+                    </div>
+                  </div>
+                </label>
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
+                  scheduleMode === "spread" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
+                )}>
+                  <input
+                    type="radio"
+                    name="schedule-mode"
+                    className="mt-0.5"
+                    checked={scheduleMode === "spread"}
+                    onChange={() => setScheduleMode("spread")}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium">Spread across available times</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Interleaves games evenly across all selected play-days so nobody is loaded onto a single day.
+                    </div>
+                  </div>
+                </label>
               </div>
             </div>
           </CardContent>

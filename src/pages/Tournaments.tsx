@@ -135,8 +135,56 @@ export default function Tournaments() {
   // League 2). The dropdown lets the user narrow the list to one bucket.
   const poolLetter = (p: number | null | undefined) =>
     p == null ? null : String.fromCharCode(64 + p);
+
+  // Some champs never persist `pool_number` on matches — the field is only
+  // written by newer auto-pair flows. To keep the Pool A/B filter working
+  // everywhere (especially for admins who aren't in the draw), derive the
+  // pool for each match from the tournament's `swiss_pools` config + the
+  // player_a entry's order_index using the same block distribution the
+  // scoreboard uses.
+  const poolByMatchId = useMemo(() => {
+    const out = new Map<string, number>();
+    // Precompute per-champ pool maps: champId -> groupNum -> Map(entityId, pool)
+    const champPoolMaps = new Map<string, Map<number, Map<string, number>>>();
+    for (const champ of allChamps) {
+      const isSwiss = (champ as any).scoring_mode === "swiss";
+      const cfg: Record<string, number> = ((champ as any).swiss_pools as any) || {};
+      if (!isSwiss) continue;
+      const isDoubles = (champ as any).match_type === "doubles";
+      const champEntries = (allEntries as any[]).filter((e) => e.champ_id === champ.id);
+      const groupMap = new Map<number, Map<string, number>>();
+      const groupNums = [...new Set(champEntries.map((e) => e.group_number))] as number[];
+      for (const gn of groupNums) {
+        const pc = Math.max(1, Number(cfg[String(gn)]) || 1);
+        if (pc <= 1) continue;
+        groupMap.set(gn, assignPools(champEntries as SwissEntry[], gn, pc, isDoubles));
+      }
+      if (groupMap.size) champPoolMaps.set(champ.id, groupMap);
+    }
+    for (const m of allMatches as any[]) {
+      if (m.pool_number != null) { out.set(m.id, m.pool_number); continue; }
+      const gm = champPoolMaps.get(m.champ_id);
+      if (!gm) continue;
+      const poolMap = gm.get(m.group_number);
+      if (!poolMap) continue;
+      const champ = allChamps.find((c: any) => c.id === m.champ_id);
+      const isDoubles = (champ as any)?.match_type === "doubles";
+      const memberIds: string[] = [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id].filter(Boolean);
+      for (const mid of memberIds) {
+        const e = (allEntries as any[]).find(
+          (x) => x.champ_id === m.champ_id && x.group_number === m.group_number && (x.club_member_id === mid || x.partner_member_id === mid),
+        );
+        if (!e) continue;
+        const p = poolMap.get(entityIdForEntry(e as SwissEntry, isDoubles));
+        if (p) { out.set(m.id, p); break; }
+      }
+    }
+    return out;
+  }, [allChamps, allEntries, allMatches]);
+
+  const poolOf = (m: any): number | null => (m.pool_number ?? poolByMatchId.get(m.id) ?? null);
   const bucketKeyOf = (m: any) =>
-    `${m.champ_id}|${m.group_number ?? "-"}|${m.pool_number ?? "-"}`;
+    `${m.champ_id}|${m.group_number ?? "-"}|${poolOf(m) ?? "-"}`;
 
   const buckets = useMemo(() => {
     const seen = new Map<string, { key: string; champId: string; group: number | null; pool: number | null; count: number }>();

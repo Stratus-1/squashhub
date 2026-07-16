@@ -1829,9 +1829,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const reservedSlotIdx: number[] = [];
       if (playoffCount > 0) {
         const take = Math.min(playoffCount, allSlots.length);
-        for (let i = allSlots.length - take; i < allSlots.length; i++) {
-          reservedSlotIdx.push(i);
-          usedSlots.add(i);
+        if (scheduleMode === "fill") {
+          // Fill mode: playoffs follow directly after the pool matches so the
+          // finals happen the same day pool play ends (no forced next-day roll).
+          const poolCount = allMatches.filter((m) => !m.isBye).length;
+          const start = Math.min(allSlots.length - take, poolCount);
+          for (let k = 0; k < take; k++) {
+            const idx = start + k;
+            reservedSlotIdx.push(slotOrder[idx]);
+            usedSlots.add(slotOrder[idx]);
+          }
+        } else {
+          for (let i = allSlots.length - take; i < allSlots.length; i++) {
+            reservedSlotIdx.push(i);
+            usedSlots.add(i);
+          }
         }
       }
 

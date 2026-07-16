@@ -1011,6 +1011,7 @@ export function MarkerSetup({ onStart }: Props) {
             matchType,
             scoringFormat,
             bestOf,
+            playAllGames,
             deuceRule,
             source,
             sourceId: selectedSourceId || undefined,

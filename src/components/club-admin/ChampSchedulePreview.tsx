@@ -191,7 +191,7 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
         <span className="font-medium flex-1 min-w-0 truncate">
           {teamA} <span className="text-muted-foreground">vs</span> {teamB}
         </span>
-        {bMeta && (bMeta.group != null || bMeta.pool != null) && (
+        {bMeta && (bMeta.group != null || bMeta.pool != null || bMeta.stage) && (
           <span
             style={chipStyle}
             className="text-[10px] shrink-0 px-1.5 py-0.5 rounded border font-medium"

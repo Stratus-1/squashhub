@@ -93,9 +93,11 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
   const poolLetter = (p: number | null | undefined) => (p == null ? null : String.fromCharCode(64 + p));
   const poolOf = (m: any): number | null => m.pool_number ?? poolByMatchId.get(m.id) ?? null;
   const isPlayoff = (m: any) => typeof m?.stage === "string" && m.stage.startsWith("playoff");
+  // All playoff stages collapse into a single "Play-offs" bucket so the
+  // filter dropdown stays short — one entry instead of one per final.
   const bucketKeyOf = (m: any) =>
     isPlayoff(m)
-      ? `playoff|${m.stage_label || m.stage}`
+      ? `playoff|all`
       : `${m.group_number ?? "-"}|${poolOf(m) ?? "-"}`;
 
   const buckets = useMemo(() => {

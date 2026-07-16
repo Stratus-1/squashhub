@@ -119,7 +119,25 @@ export type BuildInput = {
   isDoubles: boolean;
   standingsByLeague: Map<number, StandingEntity[]>; // league# → seeded entities (rank 1 first)
   numLeagues: number;
+  // Optional Swiss pool mode. When any league has >1 pool, playoffs run
+  // intra-league across pools (Pool A #P vs Pool B #P) instead of
+  // cross-league. If present and any pool count > 1, this overrides the
+  // standard mode. Standings must be provided per pool.
+  poolsByLeague?: Record<number, number>;
+  standingsByLeaguePool?: Map<number, Map<number, StandingEntity[]>>;
+  leagueLabels?: string[]; // 1-indexed labels for leagues in pool-mode output
 };
+
+// Encode league scope onto bracket_position so downstream feed logic
+// (winnerOf/loserOf) can match SFs → Finals per league × position.
+const POOL_BRACKET_STRIDE = 1000;
+const poolBracketPos = (leagueNum: number, pos: number) =>
+  leagueNum * POOL_BRACKET_STRIDE + pos;
+
+const hasPoolMode = (poolsByLeague?: Record<number, number>): boolean =>
+  !!poolsByLeague && Object.values(poolsByLeague).some((n) => (n || 0) > 1);
+
+const poolLetter = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
 
 /**
  * Build ALL playoff match rows for the tournament. Later-round rows have

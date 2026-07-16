@@ -181,9 +181,12 @@ export default function Tournaments() {
 
   const poolOf = (m: any): number | null => (m.pool_number ?? poolByMatchId.get(m.id) ?? null);
   const isPlayoff = (m: any) => typeof m?.stage === "string" && m.stage.startsWith("playoff");
+  // Collapse all playoff stages into a single "Play-offs" bucket per tournament
+  // so admins can filter with one click instead of scrolling through every
+  // individual final/semifinal/etc.
   const bucketKeyOf = (m: any) =>
     isPlayoff(m)
-      ? `${m.champ_id}|playoff|${(m as any).stage_label || m.stage}`
+      ? `${m.champ_id}|playoff|all`
       : `${m.champ_id}|${m.group_number ?? "-"}|${poolOf(m) ?? "-"}`;
 
   const buckets = useMemo(() => {
@@ -197,8 +200,8 @@ export default function Tournaments() {
         champId: m.champ_id,
         group: isPlayoff(m) ? null : (m.group_number ?? null),
         pool: isPlayoff(m) ? null : poolOf(m),
-        stage: isPlayoff(m) ? (m as any).stage : null,
-        stageLabel: isPlayoff(m) ? ((m as any).stage_label || "Play-offs") : null,
+        stage: isPlayoff(m) ? "playoff" : null,
+        stageLabel: isPlayoff(m) ? "Play-offs" : null,
         count: 1,
       });
     }

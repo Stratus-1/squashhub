@@ -580,33 +580,64 @@ export default function Tournaments() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {buckets.length > 1 && (
-                    <div className="mb-3 flex items-center gap-2">
+                  {(buckets.length > 1 || availableDates.length > 1) && (
+                    <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2">
                       <label className="text-xs text-muted-foreground shrink-0">Filter:</label>
-                      <Select value={poolFilter} onValueChange={setPoolFilter}>
-                        <SelectTrigger className="h-8 text-xs w-full sm:max-w-[280px]">
-                          <SelectValue placeholder="All leagues & pools" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All leagues & pools ({upcomingMatches.length})</SelectItem>
-                          {buckets.map((b) => {
-                            const color = bucketColor(b.key);
-                            return (
-                              <SelectItem key={b.key} value={b.key}>
-                                <span className="inline-flex items-center gap-2">
-                                  <span
-                                    className="inline-block w-2.5 h-2.5 rounded-sm"
-                                    style={{ backgroundColor: color?.border }}
-                                  />
-                                  {bucketLabel(b, { withChamp: champs.length > 1 })} ({b.count})
-                                </span>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                      {availableDates.length > 1 && (
+                        <Select value={dateFilter} onValueChange={setDateFilter}>
+                          <SelectTrigger className="h-8 text-xs w-full sm:max-w-[180px]">
+                            <SelectValue placeholder="All dates" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All dates ({upcomingMatches.length})</SelectItem>
+                            {availableDates.map((d) => {
+                              const count = upcomingMatches.filter((m: any) => m.scheduled_date === d).length;
+                              return (
+                                <SelectItem key={d} value={d}>
+                                  {format(new Date(d), "EEE dd MMM")} ({count})
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {buckets.length > 1 && (
+                        <Select value={poolFilter} onValueChange={setPoolFilter}>
+                          <SelectTrigger className="h-8 text-xs w-full sm:max-w-[280px]">
+                            <SelectValue placeholder="All leagues & pools" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All leagues & pools ({upcomingMatches.length})</SelectItem>
+                            {buckets.map((b) => {
+                              const color = bucketColor(b.key);
+                              return (
+                                <SelectItem key={b.key} value={b.key}>
+                                  <span className="inline-flex items-center gap-2">
+                                    <span
+                                      className="inline-block w-2.5 h-2.5 rounded-sm"
+                                      style={{ backgroundColor: color?.border }}
+                                    />
+                                    {bucketLabel(b, { withChamp: champs.length > 1 })} ({b.count})
+                                  </span>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {(poolFilter !== "all" || dateFilter !== "all") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => { setPoolFilter("all"); setDateFilter("all"); }}
+                        >
+                          Clear
+                        </Button>
+                      )}
                     </div>
                   )}
+
                   {memberId && filteredMine.length > 0 ? (
                     <Tabs defaultValue="all" className="w-full">
                       <TabsList className="grid w-full grid-cols-2 h-auto mb-3">

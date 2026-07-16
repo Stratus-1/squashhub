@@ -384,6 +384,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Scheduling density: "fill" packs games into the earliest days first (finish as
   // quickly as possible); "spread" interleaves across all play-days (default).
   const [scheduleMode, setScheduleMode] = useState<"spread" | "fill">("spread");
+  // Playoff scheduling extras:
+  //   playoffBreakMinutes — pause between the last pool match and the first playoff match.
+  //   playoffDate         — force the playoffs onto a specific date (overrides the break gap).
+  const [playoffBreakMinutes, setPlayoffBreakMinutes] = useState<number>(0);
+  const [playoffDate, setPlayoffDate] = useState<string>("");
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss">("");
   // Swiss-only config: per-league pools & rounds (keyed by group_number string).
   const [swissPools, setSwissPools] = useState<Record<string, number>>({});

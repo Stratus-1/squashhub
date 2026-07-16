@@ -1674,14 +1674,32 @@ export default function ClubChampsView() {
         })
       : groupNumbers;
 
-    // Winners table — top of each league plus the overall tournament winner.
-    const leagueWinners = groupNumbers
-      .map((gn: number) => {
-        const s = getGroupStandings(gn);
-        // Prefer someone who has played, otherwise top of standings so the
-        // card is visible even before the first match is completed.
+    // Completion detection: any non-bye group match exists AND all are completed.
+    const groupPlayable = matches.filter((m: any) => (m.stage || "group") === "group" && !m.is_bye);
+    const isComplete = groupPlayable.length > 0 && groupPlayable.every((m: any) => m.status === "completed");
+    const winnersTitle = isComplete ? "Winners" : "Current Standings — Leaders";
+    const spoonsTitle = isComplete ? "Wooden Spoons" : "Current Standings — Bottom";
+    const overallWinnerLabel = isComplete ? "Overall" : "Overall (current)";
+
+    // Expand each league into (gn, poolNumber|null) rows so Swiss multi-pool
+    // leagues show one winner/loser per pool.
+    type Slice = { gn: number; poolNumber: number | null };
+    const slices: Slice[] = groupNumbers.flatMap((gn: number) => {
+      const pc = poolCountFor(gn);
+      if (pc <= 1 || isCrossLeague) return [{ gn, poolNumber: null }];
+      return Array.from({ length: pc }).map((_, i) => ({ gn, poolNumber: i + 1 }));
+    });
+    const sliceLabel = (s: Slice) =>
+      s.poolNumber == null
+        ? getGroupLabel(champ, s.gn)
+        : `${getGroupLabel(champ, s.gn)} · Pool ${poolLabel(s.poolNumber)}`;
+
+    // Winners table — top of each league/pool plus the overall tournament winner.
+    const leagueWinners = slices
+      .map((sl) => {
+        const s = getGroupStandings(sl.gn, sl.poolNumber);
         const w = s.find((r: any) => (r.played || 0) > 0) || s[0] || null;
-        return { gn, winner: w };
+        return { slice: sl, winner: w };
       })
       .filter((w) => w.winner);
     const overallRows = groupNumbers
@@ -1696,7 +1714,7 @@ export default function ClubChampsView() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Trophy className="h-4 w-4 text-amber-600" />
-            Winners
+            {winnersTitle}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1723,9 +1741,9 @@ export default function ClubChampsView() {
                 </tr>
               </thead>
               <tbody>
-                {leagueWinners.map(({ gn, winner: w }) => (
-                  <tr key={gn} className="border-b border-border/30">
-                    <td className="py-1.5 font-medium">{getGroupLabel(champ, gn)}</td>
+                {leagueWinners.map(({ slice, winner: w }) => (
+                  <tr key={`${slice.gn}-${slice.poolNumber ?? "x"}`} className="border-b border-border/30">
+                    <td className="py-1.5 font-medium">{sliceLabel(slice)}</td>
                     <td className="py-1.5">{w.name}</td>
                     {isBells ? (
                       <>
@@ -1748,7 +1766,7 @@ export default function ClubChampsView() {
                     <td className="py-2">
                       <span className="inline-flex items-center gap-1.5">
                         <Trophy className="h-3.5 w-3.5 text-amber-600" />
-                        Overall
+                        {overallWinnerLabel}
                       </span>
                     </td>
                     <td className="py-2">
@@ -1780,12 +1798,12 @@ export default function ClubChampsView() {
       </Card>
     ) : null;
 
-    // Wooden spoons table — bottom of each league plus the overall tournament loser.
-    const leagueLosers = groupNumbers
-      .map((gn: number) => {
-        const s = getGroupStandings(gn);
+    // Wooden spoons table — bottom of each league/pool plus the overall tournament loser.
+    const leagueLosers = slices
+      .map((sl) => {
+        const s = getGroupStandings(sl.gn, sl.poolNumber);
         const l = s.slice().reverse().find((r: any) => (r.played || 0) > 0) || s[s.length - 1] || null;
-        return { gn, loser: l };
+        return { slice: sl, loser: l };
       })
       .filter((l) => l.loser);
     const overallLoser =
@@ -1797,7 +1815,7 @@ export default function ClubChampsView() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <span className="text-amber-700 dark:text-amber-300">🥄</span>
-            <span className="text-amber-800 dark:text-amber-300">Wooden Spoons</span>
+            <span className="text-amber-800 dark:text-amber-300">{spoonsTitle}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1824,9 +1842,9 @@ export default function ClubChampsView() {
                 </tr>
               </thead>
               <tbody>
-                {leagueLosers.map(({ gn, loser: l }) => (
-                  <tr key={gn} className="border-b border-border/30">
-                    <td className="py-1.5 font-medium">{getGroupLabel(champ, gn)}</td>
+                {leagueLosers.map(({ slice, loser: l }) => (
+                  <tr key={`${slice.gn}-${slice.poolNumber ?? "x"}`} className="border-b border-border/30">
+                    <td className="py-1.5 font-medium">{sliceLabel(slice)}</td>
                     <td className="py-1.5">{l.name}</td>
                     {isBells ? (
                       <>
@@ -1849,7 +1867,7 @@ export default function ClubChampsView() {
                     <td className="py-2">
                       <span className="inline-flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
                         <span>🥄</span>
-                        Overall
+                        {overallWinnerLabel}
                       </span>
                     </td>
                     <td className="py-2">
@@ -1880,6 +1898,7 @@ export default function ClubChampsView() {
         </CardContent>
       </Card>
     ) : null;
+
 
 
     const multipleGroups = orderedGroups.length > 1;
@@ -1929,18 +1948,39 @@ export default function ClubChampsView() {
             <CardContent>{swissControlsFor(gn)}{standingsTable}</CardContent>
           </Card>
         );
+        const pc = poolCountFor(gn);
+        const fixtureBody = pc > 1 ? (
+          <div className="space-y-4">
+            {Array.from({ length: pc }).map((_, i) => {
+              const poolNumber = i + 1;
+              const poolMatches = groupMatches.filter((m: any) => (m.pool_number ?? null) === poolNumber);
+              return (
+                <div key={poolNumber} className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs font-semibold">Pool {poolLabel(poolNumber)}</Badge>
+                    <span className="text-xs text-muted-foreground">{poolMatches.length} matches</span>
+                  </div>
+                  {poolMatches.length > 0
+                    ? poolMatches.map((m: any) => renderMatchRow(m))
+                    : <p className="text-xs text-muted-foreground italic">No fixtures scheduled in this pool yet.</p>}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {groupMatches.map((m: any) => renderMatchRow(m))}
+          </div>
+        );
         fixtureCards.push(
           <Card key={`f-${gn}`}>
             <CardHeader>
               <CardTitle className="text-lg">{getGroupLabel(champ, gn)} — Fixtures & Results</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-1.5">
-                {groupMatches.map((m: any) => renderMatchRow(m))}
-              </div>
-            </CardContent>
+            <CardContent>{fixtureBody}</CardContent>
           </Card>
         );
+
       } else {
         // Single group (or cross-league): keep combined card as before
         standingsCards.push(

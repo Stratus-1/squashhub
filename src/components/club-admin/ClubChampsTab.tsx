@@ -29,6 +29,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { Users as UsersIcon } from "lucide-react";
 import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-formats";
+import { playoffMatchesForBracket } from "@/lib/tournament-playoffs";
 
 interface ClubChampsTabProps {
   clubId: string;

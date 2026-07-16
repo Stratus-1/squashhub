@@ -3721,6 +3721,35 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                               {anyOverflow ? " — exceeds capacity in one or more leagues" : " — fits ✓"}
                             </div>
                           )}
+                          {enablePlayoffs && (() => {
+                            // Estimate playoff matches to reserve court-time for.
+                            //  - Single league: knockout of top 2/4/8 based on entrants.
+                            //  - Multi league: per-position bracket for each position 1..minLeagueSize.
+                            const sizes = perLeague.map((l) => (l.actualEntities > 0 ? l.actualEntities : l.maxEntities));
+                            const minSize = sizes.length ? Math.min(...sizes) : 0;
+                            let playoffGames = 0;
+                            if (groupCount <= 1) {
+                              const N = sizes[0] || 0;
+                              const K = N >= 8 ? 8 : N >= 4 ? 4 : N >= 2 ? 2 : 0;
+                              playoffGames = playoffMatchesForBracket(K);
+                            } else if (minSize >= 1) {
+                              playoffGames = minSize * playoffMatchesForBracket(groupCount);
+                            }
+                            if (playoffGames <= 0) return null;
+                            // Court-minutes needed at the slowest league's slot length (safe upper bound).
+                            const slowestSlot = Math.max(...perLeague.map((l) => l.slot));
+                            const totalGamesAvail = perLeague.reduce((a, l) => a + l.games, 0);
+                            const totalGroupNeeded = perLeague.reduce((a, l) => a + l.gamesNeeded, 0);
+                            const freeAfterGroup = Math.max(0, totalGamesAvail - totalGroupNeeded);
+                            const playoffFits = playoffGames <= freeAfterGroup;
+                            return (
+                              <div className={`text-[11px] mt-1 ${playoffFits ? "text-muted-foreground" : "text-destructive font-medium"}`}>
+                                Play-offs reserve: <strong>{playoffGames}</strong> extra match{playoffGames === 1 ? "" : "es"} (~{playoffGames * slowestSlot} court-min)
+                                {" · "}{freeAfterGroup} slot{freeAfterGroup === 1 ? "" : "s"} free after group stage
+                                {playoffFits ? " ✓" : ` · short by ${playoffGames - freeAfterGroup}`}
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
                     })()}

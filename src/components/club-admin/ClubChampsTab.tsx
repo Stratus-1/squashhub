@@ -3581,7 +3581,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   capSessions = daySchedules
                     .map((d) => {
                       const cs = (d.court_ids && d.court_ids.length > 0
-                        ? d.court_ids.filter((id) => selectedCourtIds.has(id))
+                        ? Array.from(new Set(d.court_ids.filter((id) => selectedCourtIds.has(id))))
                         : Array.from(selectedCourtIds));
                       return { date: d.date, minutes: parseHM(d.end_time) - parseHM(d.start_time), courts: cs.length };
                     })

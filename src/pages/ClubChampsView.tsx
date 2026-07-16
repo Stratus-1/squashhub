@@ -691,7 +691,7 @@ export default function ClubChampsView() {
   });
 
   // ── Swiss pairing ────────────────────────────────────────────────────────
-  const isSwiss = (champ as any)?.scoring_mode === "swiss";
+  const isSwiss = (champ as any)?.round_format === "swiss" || (champ as any)?.scoring_mode === "swiss";
   const swissPools: Record<string, number> = ((champ as any)?.swiss_pools as Record<string, number>) || {};
   const swissRounds: Record<string, number> = ((champ as any)?.swiss_rounds as Record<string, number>) || {};
 

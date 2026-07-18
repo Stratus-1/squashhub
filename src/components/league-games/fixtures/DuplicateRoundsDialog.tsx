@@ -125,7 +125,18 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
         const newStartD = parseISO(newStart);
         const newEnd = format(addDays(newStartD, span), "yyyy-MM-dd");
 
-        const cloneName = /return/i.test(src.name) ? `${src.name} (v${nextNum})` : `${src.name} (return)`;
+        const ord = (n: number) => {
+          const s = ["th", "st", "nd", "rd"], v = n % 100;
+          return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        };
+        // Try to preserve the original naming pattern by swapping the ordinal
+        // and trailing round number. Falls back to "<name> (return)".
+        const patternMatch = src.name.match(/^(\d+)(st|nd|rd|th)\s+(.*?)(\d+)\s*$/i);
+        const cloneName = patternMatch
+          ? `${ord(nextNum)} ${patternMatch[3]}${nextNum}`
+          : /return/i.test(src.name)
+            ? `${src.name} (v${nextNum})`
+            : `${src.name} (return)`;
 
         const { data: inserted, error: rErr } = await fromExt("league_rounds")
           .insert({

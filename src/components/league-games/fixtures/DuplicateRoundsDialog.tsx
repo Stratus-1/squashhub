@@ -57,7 +57,33 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
     [rounds],
   );
 
-  const earliestDate = sortedRounds[0]?.round_date;
+  // Fetch earliest fixture date per round — the "first game played" date the
+  // admin cares about (round_date is just when the round was created).
+  const { data: firstFixtureByRound } = useQuery({
+    queryKey: ["duplicate-rounds-first-fixture", rounds.map((r) => r.id).sort()],
+    enabled: open && rounds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await fromExt("platform_league_fixtures")
+        .select("round_id, fixture_date")
+        .in("round_id", rounds.map((r) => r.id))
+        .not("fixture_date", "is", null)
+        .order("fixture_date", { ascending: true });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of (data ?? []) as { round_id: string; fixture_date: string }[]) {
+        if (row.round_id && !map[row.round_id]) map[row.round_id] = row.fixture_date;
+      }
+      return map;
+    },
+  });
+
+  const originalDateFor = (r: RoundRow): string =>
+    (firstFixtureByRound?.[r.id]) || r.round_date;
+
+  const earliestDate = sortedRounds.length
+    ? [...sortedRounds.map((r) => originalDateFor(r)).filter(Boolean)].sort()[0]
+    : undefined;
+
   const defaultStart = earliestDate
     ? format(addDays(parseISO(earliestDate), 7 * (rounds.length || 1)), "yyyy-MM-dd")
     : format(new Date(), "yyyy-MM-dd");
@@ -81,7 +107,7 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
     setSelected(sel);
     setNewDates(dates);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, earliestDate]);
 
   const autoFill = () => {
     if (!startFrom || !earliestDate) return;
@@ -89,7 +115,9 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
     const anchor = parseISO(earliestDate);
     const dates: Record<string, string> = {};
     sortedRounds.forEach((r) => {
-      const delta = differenceInCalendarDays(parseISO(r.round_date), anchor);
+      const orig = originalDateFor(r);
+      if (!orig) return;
+      const delta = differenceInCalendarDays(parseISO(orig), anchor);
       dates[r.id] = format(addDays(base, delta), "yyyy-MM-dd");
     });
     setNewDates(dates);
@@ -261,7 +289,10 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
                       <div className="text-[11px] text-muted-foreground">Round {r.round_number}</div>
                     </td>
                     <td className="p-2 text-muted-foreground">
-                      {r.round_date ? format(parseISO(r.round_date), "EEE dd MMM yyyy") : "—"}
+                      {(() => {
+                        const d = originalDateFor(r);
+                        return d ? format(parseISO(d), "EEE dd MMM yyyy") : "—";
+                      })()}
                     </td>
                     <td className="p-2">
                       <Input

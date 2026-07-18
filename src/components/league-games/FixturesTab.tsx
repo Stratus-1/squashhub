@@ -211,6 +211,60 @@ export function FixturesTab({ clubId, associationId }: Props) {
             if (stale.error) throw stale.error;
           }
         }
+
+        // If auto-bookings is enabled, ensure every playable fixture on this
+        // round has a linked booking. Fixtures cloned from a "duplicate rounds"
+        // action (or created before this toggle was on) may have court_id and
+        // start_time but no booking_id yet — create them here.
+        if (payload.auto_create_bookings) {
+          const { data: allFx } = await fromExt("platform_league_fixtures")
+            .select("id, booking_id, court_id, fixture_date, start_time, end_time, home_team_code, away_team_code")
+            .eq("round_id", r.id);
+          const needBooking = ((allFx ?? []) as any[]).filter(
+            (f) => !f.booking_id && f.court_id && f.start_time && f.fixture_date && f.away_team_code !== "__BYE__",
+          );
+          if (needBooking.length) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const slotMin = Number(r.slot_minutes || 60);
+              for (const f of needBooking) {
+                const startStr = String(f.start_time).slice(0, 5);
+                let endStr: string;
+                if (f.end_time) {
+                  endStr = String(f.end_time).slice(0, 5);
+                } else {
+                  const [h, m] = startStr.split(":").map(Number);
+                  const em = h * 60 + m + slotMin;
+                  endStr = `${String(Math.floor(em / 60)).padStart(2, "0")}:${String(em % 60).padStart(2, "0")}`;
+                }
+                const homeName = teams.find((t) => t.code === f.home_team_code)?.name?.trim();
+                const awayName = teams.find((t) => t.code === f.away_team_code)?.name?.trim();
+                const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";
+                const guestName = matchup ? `${r.name} - ${matchup}` : r.name;
+                const { data: booking, error: bErr } = await supabase
+                  .from("bookings")
+                  .insert({
+                    court_id: f.court_id,
+                    user_id: user.id,
+                    club_id: clubId,
+                    date: f.fixture_date,
+                    start_time: `${startStr}:00`,
+                    end_time: `${endStr}:00`,
+                    status: "active",
+                    is_friendly: false,
+                    guest_name: guestName,
+                  })
+                  .select("id")
+                  .single();
+                if (!bErr && booking) {
+                  await fromExt("platform_league_fixtures")
+                    .update({ booking_id: booking.id })
+                    .eq("id", f.id);
+                }
+              }
+            }
+          }
+        }
       } else {
         const { error } = await fromExt("league_rounds").insert(payload);
         if (error) throw error;
@@ -219,6 +273,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["league-rounds", associationId] });
       qc.invalidateQueries({ queryKey: ["round-fixtures"] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
       toast.success("Round saved");
     },
     onError: (e: any) => toast.error(e.message ?? "Save failed"),

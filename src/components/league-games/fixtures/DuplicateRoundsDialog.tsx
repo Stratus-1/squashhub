@@ -113,12 +113,24 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
     if (!startFrom || !earliestDate) return;
     const base = parseISO(startFrom);
     const anchor = parseISO(earliestDate);
+    const anchorDow = anchor.getDay();
+    const baseDow = base.getDay();
     const dates: Record<string, string> = {};
     sortedRounds.forEach((r) => {
       const orig = originalDateFor(r);
       if (!orig) return;
-      const delta = differenceInCalendarDays(parseISO(orig), anchor);
-      dates[r.id] = format(addDays(base, delta), "yyyy-MM-dd");
+      const o = parseISO(orig);
+      // Preserve each round's own weekday. Bucket rounds into weeks that start
+      // on the anchor's weekday, then in the new series apply the round's own
+      // weekday offset relative to the chosen start date's weekday.
+      const diffFromWeekStart = (o.getDay() - anchorDow + 7) % 7;
+      const weekStartOfOrig = addDays(o, -diffFromWeekStart);
+      const weeksBetween = Math.round(
+        differenceInCalendarDays(weekStartOfOrig, anchor) / 7,
+      );
+      const newWeekdayOffset = (o.getDay() - baseDow + 7) % 7;
+      const newDate = addDays(base, weeksBetween * 7 + newWeekdayOffset);
+      dates[r.id] = format(newDate, "yyyy-MM-dd");
     });
     setNewDates(dates);
   };

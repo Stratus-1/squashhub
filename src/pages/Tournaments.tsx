@@ -117,6 +117,14 @@ export default function Tournaments() {
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => (b ? `${getName(a)} & ${getName(b)}` : getName(a));
+  // Placeholder-aware side label — playoff/finals slots have no player yet
+  // (player_a is null) but do have a human-readable placeholder like
+  // "Winner Pool A". Fall back to that before showing "Unknown".
+  const sideLabel = (player: any, partner: any, placeholder: string | null | undefined, isDoubles: boolean) => {
+    if (!player && placeholder) return placeholder;
+    return isDoubles ? getTeam(player, partner) : getName(player);
+  };
+
 
   const myUpcoming = memberId
     ? upcomingMatches.filter(

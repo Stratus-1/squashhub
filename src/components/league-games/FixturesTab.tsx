@@ -46,6 +46,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
   const qc = useQueryClient();
   const { activeMember, isAdmin: isClubAdmin } = useMemberContext();
   const isAdmin = useIsClubAdmin() || isClubAdmin;
+  const isSuperAdmin = useIsSuperAdmin();
   const [openRoundId, setOpenRoundId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRound, setEditingRound] = useState<Partial<RoundDraft> | undefined>();

@@ -50,6 +50,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRound, setEditingRound] = useState<Partial<RoundDraft> | undefined>();
   const [pendingDeleteRound, setPendingDeleteRound] = useState<Round | null>(null);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
 
   const { data: rounds } = useQuery({
     queryKey: ["league-rounds", associationId],

@@ -309,6 +309,7 @@ function RoundCard({
   teams,
   clubId,
   isAdmin,
+  canDelete = false,
   open,
   onToggle,
   onEdit,
@@ -318,6 +319,7 @@ function RoundCard({
   teams: { code: string; name: string }[];
   clubId: string;
   isAdmin: boolean;
+  canDelete?: boolean;
   open: boolean;
   onToggle: () => void;
   onEdit: () => void;

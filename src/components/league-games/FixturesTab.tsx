@@ -110,52 +110,105 @@ export function FixturesTab({ clubId, associationId }: Props) {
         const prevEnd = prev?.end_time ? String(prev.end_time).slice(0, 5) : null;
         const newStart = r.start_time ? String(r.start_time).slice(0, 5) : null;
         const newEndDefault = r.end_time ? String(r.end_time).slice(0, 5) : null;
+        const prevRoundDate = prev?.round_date ?? null;
+        const newRoundDate = r.round_date ?? null;
 
         const { error } = await fromExt("league_rounds").update(payload).eq("id", r.id);
         if (error) throw error;
 
-        // Cascade round time edits onto all fixtures and linked court bookings.
-        // Also cancel stale duplicate bookings left by previous fixture re-saves,
-        // so the court grid cannot keep showing the old time.
-        if (newStart && (prevStart !== newStart || prevEnd !== newEndDefault || Number(prev?.slot_minutes) !== Number(r.slot_minutes))) {
+        // Compute how many days the round moved so we can shift each fixture
+        // by the same amount (preserves per-league weekday spacing set at
+        // duplication time).
+        let dayShift = 0;
+        if (prevRoundDate && newRoundDate && prevRoundDate !== newRoundDate) {
+          const [py, pm, pd] = prevRoundDate.split("-").map(Number);
+          const [ny, nm, nd] = newRoundDate.split("-").map(Number);
+          const prevMs = Date.UTC(py, pm - 1, pd);
+          const newMs = Date.UTC(ny, nm - 1, nd);
+          dayShift = Math.round((newMs - prevMs) / 86400000);
+        }
+
+        const timeChanged =
+          !!newStart &&
+          (prevStart !== newStart ||
+            prevEnd !== newEndDefault ||
+            Number(prev?.slot_minutes) !== Number(r.slot_minutes));
+
+        // Cascade round time and/or date edits onto all fixtures and linked
+        // court bookings. Also cancel stale duplicate bookings left by
+        // previous fixture re-saves, so the court grid cannot keep showing
+        // the old slot.
+        if (timeChanged || dayShift !== 0) {
           const { data: fixtures } = await fromExt("platform_league_fixtures")
             .select("id, start_time, booking_id, fixture_date, court_id, away_team_code")
             .eq("round_id", r.id);
           const playableFixtures = ((fixtures ?? []) as Array<{ id: string; start_time: string | null; booking_id: string | null; fixture_date: string | null; court_id: number | null; away_team_code: string }>).filter(
-            (f) => f.away_team_code !== "__BYE__" && f.court_id && f.fixture_date,
+            (f) => f.away_team_code !== "__BYE__",
           );
-          const bookingIds = playableFixtures.map((f) => f.booking_id).filter(Boolean) as string[];
-          const [h, m] = newStart.split(":").map(Number);
-          const endMin = h * 60 + m + Number(r.slot_minutes || prev?.slot_minutes || 120);
-          const computedEnd = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
-          const newEnd = `${newEndDefault ?? computedEnd}:00`;
 
-          if (playableFixtures.length > 0) {
+          const shiftDate = (iso: string | null): string | null => {
+            if (!iso || !dayShift) return iso;
+            const [y, mo, d] = iso.split("-").map(Number);
+            const ms = Date.UTC(y, mo - 1, d) + dayShift * 86400000;
+            const dt = new Date(ms);
+            return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+          };
+
+          // Update fixtures individually so each keeps its own date offset.
+          for (const f of playableFixtures) {
+            const patch: Record<string, unknown> = {};
+            if (timeChanged && newStart) {
+              const [h, m] = newStart.split(":").map(Number);
+              const endMin = h * 60 + m + Number(r.slot_minutes || prev?.slot_minutes || 120);
+              const computedEnd = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+              patch.start_time = newStart;
+              patch.end_time = newEndDefault ?? computedEnd;
+            }
+            if (dayShift !== 0 && f.fixture_date) {
+              patch.fixture_date = shiftDate(f.fixture_date);
+            }
+            if (Object.keys(patch).length === 0) continue;
             const { error: fxErr } = await fromExt("platform_league_fixtures")
-              .update({ start_time: newStart, end_time: newEndDefault ?? computedEnd })
-              .in("id", playableFixtures.map((f) => f.id));
+              .update(patch)
+              .eq("id", f.id);
             if (fxErr) throw fxErr;
           }
 
-          if (bookingIds.length > 0) {
+          // Update linked bookings (date and/or time) and cancel stale
+          // duplicates only for fixtures that had a court/date.
+          const bookableFixtures = playableFixtures.filter((f) => f.court_id && f.fixture_date);
+          const [h, m] = (newStart ?? "00:00").split(":").map(Number);
+          const endMin = h * 60 + m + Number(r.slot_minutes || prev?.slot_minutes || 120);
+          const computedEnd = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+
+          for (const f of bookableFixtures) {
+            if (!f.booking_id) continue;
+            const bookingPatch: Record<string, unknown> = {};
+            if (timeChanged && newStart) {
+              bookingPatch.start_time = `${newStart}:00`;
+              bookingPatch.end_time = `${newEndDefault ?? computedEnd}:00`;
+            }
+            if (dayShift !== 0 && f.fixture_date) {
+              bookingPatch.date = shiftDate(f.fixture_date);
+            }
+            if (Object.keys(bookingPatch).length === 0) continue;
             const { error: bErr } = await supabase
               .from("bookings")
-              .update({ start_time: `${newStart}:00`, end_time: newEnd })
-              .in("id", bookingIds);
+              .update(bookingPatch)
+              .eq("id", f.booking_id);
             if (bErr) throw bErr;
 
-            for (const f of playableFixtures) {
-              const stale = await supabase
-                .from("bookings")
-                .update({ status: "cancelled" })
-                .eq("club_id", clubId)
-                .eq("date", f.fixture_date!)
-                .eq("court_id", f.court_id!)
-                .eq("status", "active")
-                .like("guest_name", `${r.name} - %`)
-                .neq("id", f.booking_id || "00000000-0000-0000-0000-000000000000");
-              if (stale.error) throw stale.error;
-            }
+            // Cancel any stale duplicate booking on the OLD date/court.
+            const stale = await supabase
+              .from("bookings")
+              .update({ status: "cancelled" })
+              .eq("club_id", clubId)
+              .eq("date", f.fixture_date!)
+              .eq("court_id", f.court_id!)
+              .eq("status", "active")
+              .like("guest_name", `${r.name} - %`)
+              .neq("id", f.booking_id);
+            if (stale.error) throw stale.error;
           }
         }
       } else {

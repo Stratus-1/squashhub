@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fromExt } from "@/lib/supabase-ext";
+import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -227,23 +227,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
 
   const deleteRound = useMutation({
     mutationFn: async (id: string) => {
-      // 1. Get fixtures to find linked bookings before we delete them
-      const { data: fixtures } = await fromExt("platform_league_fixtures")
-        .select("id, booking_id")
-        .eq("round_id", id);
-
-      const bookingIds = (fixtures || []).map(f => f.booking_id).filter(Boolean) as string[];
-
-      // 2. Cancel associated court bookings
-      if (bookingIds.length > 0) {
-        await supabase.from("bookings").update({ status: "cancelled" }).in("id", bookingIds);
-      }
-
-      // 3. Delete fixtures first to prevent orphaned records
-      await fromExt("platform_league_fixtures").delete().eq("round_id", id);
-
-      // 4. Finally delete the round itself
-      const { error } = await fromExt("league_rounds").delete().eq("id", id);
+      const { error } = await rpcExt("delete_league_round_cascade", { _round_id: id });
       if (error) throw error;
     },
     onSuccess: () => {

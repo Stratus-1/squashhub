@@ -91,14 +91,34 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
 
   const [startFrom, setStartFrom] = useState<string>(defaultStart);
   const [swapVenues, setSwapVenues] = useState<boolean>(true);
+  const [createBookings, setCreateBookings] = useState<boolean>(true);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [newDates, setNewDates] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  // Team code → name lookup for booking guest_name.
+  const { data: teamMap } = useQuery({
+    queryKey: ["dup-rounds-teams", clubId, associationId],
+    enabled: open && !!clubId && !!associationId,
+    queryFn: async () => {
+      const { data, error } = await fromExt("leagues")
+        .select("code, name")
+        .eq("club_id", clubId)
+        .eq("association_id", associationId);
+      if (error) throw error;
+      const m: Record<string, string> = {};
+      for (const l of (data ?? []) as { code: string; name: string }[]) {
+        if (l.code) m[l.code] = l.name;
+      }
+      return m;
+    },
+  });
 
   useEffect(() => {
     if (!open) return;
     setStartFrom(defaultStart);
     setSwapVenues(true);
+    setCreateBookings(true);
     const sel: Record<string, boolean> = {};
     const dates: Record<string, string> = {};
     sortedRounds.forEach((r) => {

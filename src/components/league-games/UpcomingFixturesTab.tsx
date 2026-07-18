@@ -110,7 +110,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
         .order("fixture_date")
         .order("division");
       if (error) throw error;
-      return (data || []).filter((f) => {
+      const filtered = (data || []).filter((f) => {
         const home = (f.home_team_code || "").toUpperCase();
         const away = (f.away_team_code || "").toUpperCase();
         return clubPrefixes.some((p) => {
@@ -118,9 +118,27 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
           return re.test(home) || re.test(away);
         });
       });
+      // Dedupe: legacy imports and re-syncs occasionally leave orphaned
+      // fixture rows (round_id = NULL) that shadow the real round-linked
+      // rows in the Upcoming list, causing some matches to appear multiple
+      // times and others to seem missing when rendered per league. Prefer
+      // the row with a round_id, then the newest, and drop the rest.
+      const bucket = new Map<string, any>();
+      for (const f of filtered) {
+        const key = `${f.association_id}|${f.fixture_date}|${(f.home_team_code || "").toUpperCase()}|${(f.away_team_code || "").toUpperCase()}|${f.start_time ?? ""}`;
+        const cur = bucket.get(key);
+        if (!cur) { bucket.set(key, f); continue; }
+        const better =
+          (!!f.round_id && !cur.round_id) ? f :
+          (!f.round_id && !!cur.round_id) ? cur :
+          (String(f.created_at || "") > String(cur.created_at || "") ? f : cur);
+        bucket.set(key, better);
+      }
+      return Array.from(bucket.values());
     },
     enabled: platformAssocIds.length > 0 && clubPrefixes.length > 0,
   });
+
 
   // Fixtures are read from the DB only (synced nightly from NSA via the
   // `nsa-sync-fixtures` edge function + super-admin "Sync from NSA" button).

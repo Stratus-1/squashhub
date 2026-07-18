@@ -308,6 +308,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data: members = [] } = useClubMembers(clubId);
+  const isSuperAdmin = useIsSuperAdmin();
 
   // Club-level payment config — drives the "Accepted payment methods" picker on the Registration step.
   // We read the configured online gateway (clubs.payment_gateway) and check whether bank details

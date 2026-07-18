@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { RoundConfigDialog, type RoundDraft } from "./fixtures/RoundConfigDialog";
 import { FixtureEditorTable, type EditableFixture } from "./fixtures/FixtureEditorTable";
 import { ConfirmDeleteDialog } from "./fixtures/ConfirmDeleteDialog";
+import { DuplicateRoundsDialog } from "./fixtures/DuplicateRoundsDialog";
 import {
   allocateRoundRobinByDate,
   allocatePairingsWithCourtFairness,
@@ -49,6 +50,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRound, setEditingRound] = useState<Partial<RoundDraft> | undefined>();
   const [pendingDeleteRound, setPendingDeleteRound] = useState<Round | null>(null);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
 
   const { data: rounds } = useQuery({
     queryKey: ["league-rounds", associationId],
@@ -187,21 +189,28 @@ export function FixturesTab({ clubId, associationId }: Props) {
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Rounds & fixtures</h3>
         {isAdmin && (
-          <Button
-            size="sm"
-            onClick={() => {
-              {
-                const ord = (n: number) => {
-                  const s = ["th", "st", "nd", "rd"], v = n % 100;
-                  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-                };
-                setEditingRound({ round_number: nextRoundNumber, name: `${ord(nextRoundNumber)} League Round ${nextRoundNumber}` });
-              }
-              setDialogOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-1" /> Add round
-          </Button>
+          <div className="flex items-center gap-2">
+            {(rounds?.length ?? 0) > 0 && (
+              <Button size="sm" variant="outline" onClick={() => setDuplicateOpen(true)}>
+                Duplicate rounds
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={() => {
+                {
+                  const ord = (n: number) => {
+                    const s = ["th", "st", "nd", "rd"], v = n % 100;
+                    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+                  };
+                  setEditingRound({ round_number: nextRoundNumber, name: `${ord(nextRoundNumber)} League Round ${nextRoundNumber}` });
+                }
+                setDialogOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Add round
+            </Button>
+          </div>
         )}
       </div>
 
@@ -254,6 +263,14 @@ export function FixturesTab({ clubId, associationId }: Props) {
           if (pendingDeleteRound) await deleteRound.mutateAsync(pendingDeleteRound.id);
           setPendingDeleteRound(null);
         }}
+      />
+
+      <DuplicateRoundsDialog
+        open={duplicateOpen}
+        onOpenChange={setDuplicateOpen}
+        clubId={clubId}
+        associationId={associationId}
+        rounds={(rounds ?? []) as any}
       />
     </div>
   );

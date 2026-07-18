@@ -226,22 +226,29 @@ export function FixturesTab({ clubId, associationId }: Props) {
         const all = rounds ?? [];
         const upcoming = all.filter((r) => (r.end_date || r.round_date) >= today);
         const past = all.filter((r) => (r.end_date || r.round_date) < today);
-        const renderCard = (r: Round) => (
-          <RoundCard
-            key={r.id}
-            round={r}
-            teams={teams}
-            clubId={clubId}
-            isAdmin={isAdmin}
-            open={openRoundId === r.id}
-            onToggle={() => setOpenRoundId(openRoundId === r.id ? null : r.id)}
-            onEdit={() => {
-              setEditingRound(r);
-              setDialogOpen(true);
-            }}
-            onDelete={() => setPendingDeleteRound(r)}
-          />
-        );
+        const renderCard = (r: Round) => {
+          // Admin can only delete rounds that haven't started yet.
+          // Super admin can always delete.
+          const notStartedYet = r.round_date > today;
+          const canDelete = isSuperAdmin || (isAdmin && notStartedYet);
+          return (
+            <RoundCard
+              key={r.id}
+              round={r}
+              teams={teams}
+              clubId={clubId}
+              isAdmin={isAdmin}
+              canDelete={canDelete}
+              open={openRoundId === r.id}
+              onToggle={() => setOpenRoundId(openRoundId === r.id ? null : r.id)}
+              onEdit={() => {
+                setEditingRound(r);
+                setDialogOpen(true);
+              }}
+              onDelete={() => setPendingDeleteRound(r)}
+            />
+          );
+        };
         return (
           <>
             {upcoming.map(renderCard)}

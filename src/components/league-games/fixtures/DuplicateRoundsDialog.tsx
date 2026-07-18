@@ -289,7 +289,10 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
                       <div className="text-[11px] text-muted-foreground">Round {r.round_number}</div>
                     </td>
                     <td className="p-2 text-muted-foreground">
-                      {r.round_date ? format(parseISO(r.round_date), "EEE dd MMM yyyy") : "—"}
+                      {(() => {
+                        const d = originalDateFor(r);
+                        return d ? format(parseISO(d), "EEE dd MMM yyyy") : "—";
+                      })()}
                     </td>
                     <td className="p-2">
                       <Input

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,14 +91,34 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
 
   const [startFrom, setStartFrom] = useState<string>(defaultStart);
   const [swapVenues, setSwapVenues] = useState<boolean>(true);
+  const [createBookings, setCreateBookings] = useState<boolean>(true);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [newDates, setNewDates] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  // Team code → name lookup for booking guest_name.
+  const { data: teamMap } = useQuery({
+    queryKey: ["dup-rounds-teams", clubId, associationId],
+    enabled: open && !!clubId && !!associationId,
+    queryFn: async () => {
+      const { data, error } = await fromExt("leagues")
+        .select("code, name")
+        .eq("club_id", clubId)
+        .eq("association_id", associationId);
+      if (error) throw error;
+      const m: Record<string, string> = {};
+      for (const l of (data ?? []) as { code: string; name: string }[]) {
+        if (l.code) m[l.code] = l.name;
+      }
+      return m;
+    },
+  });
 
   useEffect(() => {
     if (!open) return;
     setStartFrom(defaultStart);
     setSwapVenues(true);
+    setCreateBookings(true);
     const sel: Record<string, boolean> = {};
     const dates: Record<string, string> = {};
     sortedRounds.forEach((r) => {
@@ -198,7 +219,7 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
             slot_minutes: src.slot_minutes,
             play_dows: src.play_dows ?? [],
             notes: src.notes,
-            auto_create_bookings: false,
+            auto_create_bookings: createBookings,
             created_by: activeMember?.id ?? null,
           })
           .select("id")
@@ -229,8 +250,55 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
               status: "scheduled",
             };
           });
-          const { error: iErr } = await fromExt("platform_league_fixtures").insert(newFxRows);
+          const { data: insertedFx, error: iErr } = await fromExt("platform_league_fixtures")
+            .insert(newFxRows)
+            .select("id, court_id, start_time, end_time, fixture_date, home_team_code, away_team_code");
           if (iErr) throw iErr;
+
+          // Create court bookings for cloned fixtures when requested.
+          if (createBookings && insertedFx && insertedFx.length) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const slotMin = src.slot_minutes ?? 60;
+              for (const f of insertedFx as any[]) {
+                if (!f.court_id || !f.start_time) continue;
+                if (f.away_team_code === "__BYE__") continue;
+                const startStr = String(f.start_time).slice(0, 5);
+                let endTime: string;
+                if (f.end_time) {
+                  endTime = String(f.end_time).slice(0, 5);
+                } else {
+                  const [h, m] = startStr.split(":").map(Number);
+                  const endMin = h * 60 + m + slotMin;
+                  endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+                }
+                const homeName = teamMap?.[f.home_team_code]?.trim();
+                const awayName = teamMap?.[f.away_team_code]?.trim();
+                const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";
+                const guestName = matchup ? `${cloneName} - ${matchup}` : cloneName;
+                const { data: booking, error: bErr } = await supabase
+                  .from("bookings")
+                  .insert({
+                    court_id: f.court_id,
+                    user_id: user.id,
+                    date: f.fixture_date || newStart,
+                    start_time: `${startStr}:00`,
+                    end_time: `${endTime}:00`,
+                    status: "active",
+                    is_friendly: false,
+                    club_id: clubId,
+                    guest_name: guestName,
+                  })
+                  .select("id")
+                  .single();
+                if (!bErr && booking) {
+                  await fromExt("platform_league_fixtures")
+                    .update({ booking_id: booking.id })
+                    .eq("id", f.id);
+                }
+              }
+            }
+          }
         }
         nextNum += 1;
       }
@@ -238,6 +306,7 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
       toast.success(`Duplicated ${selectedIds.length} round${selectedIds.length === 1 ? "" : "s"}${swapVenues ? " with home/visitor swapped" : ""}.`);
       qc.invalidateQueries({ queryKey: ["league-rounds", associationId] });
       qc.invalidateQueries({ queryKey: ["round-fixtures"] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message ?? "Duplication failed");
@@ -279,6 +348,13 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
                 onCheckedChange={(v) => setSwapVenues(!!v)}
               />
               <span>Swap home / visitor for the return series</span>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={createBookings}
+                onCheckedChange={(v) => setCreateBookings(!!v)}
+              />
+              <span>Create court bookings for the new fixtures</span>
             </label>
           </div>
 

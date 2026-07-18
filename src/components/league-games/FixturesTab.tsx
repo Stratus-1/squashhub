@@ -28,7 +28,7 @@ import {
 } from "./fixtures/scheduler";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { useIsClubAdmin } from "@/hooks/use-club";
+import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 
 type Props = {
   clubId: string;

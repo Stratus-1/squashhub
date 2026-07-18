@@ -257,21 +257,20 @@ export function FixturesTab({ clubId, associationId }: Props) {
             This permanently deletes <strong>{pendingDeleteRound?.name}</strong> and all its
             fixtures. This action cannot be undone.
           </span>
+        }
+        confirmLabel="Delete round"
+        onConfirm={async () => {
+          if (pendingDeleteRound) await deleteRound.mutateAsync(pendingDeleteRound.id);
+          setPendingDeleteRound(null);
+        }}
+      />
+
       <DuplicateRoundsDialog
         open={duplicateOpen}
         onOpenChange={setDuplicateOpen}
         clubId={clubId}
         associationId={associationId}
         rounds={(rounds ?? []) as any}
-      />
-    </div>
-  );
-}
-        confirmLabel="Delete round"
-        onConfirm={async () => {
-          if (pendingDeleteRound) await deleteRound.mutateAsync(pendingDeleteRound.id);
-          setPendingDeleteRound(null);
-        }}
       />
     </div>
   );

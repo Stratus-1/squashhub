@@ -117,6 +117,14 @@ export default function Tournaments() {
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => (b ? `${getName(a)} & ${getName(b)}` : getName(a));
+  // Placeholder-aware side label — playoff/finals slots have no player yet
+  // (player_a is null) but do have a human-readable placeholder like
+  // "Winner Pool A". Fall back to that before showing "Unknown".
+  const sideLabel = (player: any, partner: any, placeholder: string | null | undefined, isDoubles: boolean) => {
+    if (!player && placeholder) return placeholder;
+    return isDoubles ? getTeam(player, partner) : getName(player);
+  };
+
 
   const myUpcoming = memberId
     ? upcomingMatches.filter(
@@ -273,8 +281,9 @@ export default function Tournaments() {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles";
     const tournamentFormat = getTournamentFormat(champ?.scoring_mode);
-    const teamA = (isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a)) + hcLabel(m.handicap_a ?? m.n_a);
-    const teamB = (isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b)) + hcLabel(m.handicap_b ?? m.n_b);
+    const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a ?? m.n_a);
+    const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles) + hcLabel(m.handicap_b ?? m.n_b);
+
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const today = matchDate && isToday(matchDate);
     const markRoute = tournamentFormat.markerRoute(m.id);
@@ -420,8 +429,9 @@ export default function Tournaments() {
       .map((m) => {
         const champ = allChamps.find((c: any) => c.id === m.champ_id);
         const isDoubles = champ?.match_type === "doubles";
-        const teamA = isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a);
-        const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
+        const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles);
+        const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles);
+
         const date = m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD";
         const time = m.scheduled_time?.slice(0, 5) || "";
         const court = m.court?.name || "";
@@ -479,8 +489,9 @@ export default function Tournaments() {
     matches.forEach((m) => {
       const champ = allChamps.find((c: any) => c.id === m.champ_id);
       const isDoubles = champ?.match_type === "doubles";
-      const teamA = isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a);
-      const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
+      const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles);
+      const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles);
+
       lines.push([
         m.scheduled_date || "",
         m.scheduled_time?.slice(0, 5) || "",

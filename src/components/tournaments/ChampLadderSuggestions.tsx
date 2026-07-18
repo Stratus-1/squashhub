@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,7 @@ import { ArrowUp, ArrowDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { computeChampLadderSuggestions, type LadderSuggestion } from "@/lib/tournament-formats/handicap";
 import { useMemberContext } from "@/contexts/MemberContext";
+
 
 type Props = {
   champId: string;
@@ -53,30 +55,24 @@ export function ChampLadderSuggestions({ champId, clubId, isAdmin }: Props) {
 
   const applyMutation = useMutation({
     mutationFn: async () => {
-      const batchId = crypto.randomUUID();
-      // Apply in two passes so unique constraints on ladder_position
-      // (if any) don't fire mid-way: park all targets in a high range,
-      // then set final positions.
-      const parkOffset = 1_000_000;
-      for (const s of suggestions) {
-        await fromExt("club_members")
-          .update({ ladder_position: parkOffset + s.suggested_position })
-          .eq("id", s.member_id);
-      }
-      for (const s of suggestions) {
-        await fromExt("club_members")
-          .update({ ladder_position: s.suggested_position })
-          .eq("id", s.member_id);
-        await fromExt("ladder_adjustment_log").insert({
-          batch_id: batchId,
-          club_id: clubId,
-          club_member_id: s.member_id,
-          old_position: s.current_position,
-          new_position: s.suggested_position,
-          reason: `Tournament handicap review (champ ${champId}, avg residual ${s.avg_residual.toFixed(1)} over ${s.sample_size} matches)`,
-          applied_by: activeMember?.id ?? null,
-        });
-      }
+      // Route through the SECURITY DEFINER RPC — it does the two-pass
+      // reordering atomically AND writes ladder_adjustment_log rows.
+      // Direct client updates + inserts would fail RLS (log table has no
+      // INSERT policy) and could leave rows parked at 1_000_000+.
+      const adjustments = suggestions.map((s) => ({
+        member_id: s.member_id,
+        old_position: s.current_position,
+        new_position: s.suggested_position,
+        reason: `Tournament handicap review (champ ${champId}, avg residual ${s.avg_residual.toFixed(1)} over ${s.sample_size} matches)`,
+      }));
+      const { error } = await (supabase as any).rpc("apply_ladder_adjustments", {
+        _club_id: clubId,
+        _association_id: null,
+        _fixture_id: null,
+        _adjustments: adjustments,
+        _summary: `Champ ${champId} handicap review`,
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success(`Applied ${suggestions.length} ladder adjustments`);
@@ -87,6 +83,7 @@ export function ChampLadderSuggestions({ champId, clubId, isAdmin }: Props) {
     onError: (e: any) => toast.error(e?.message || "Failed to apply adjustments"),
     onSettled: () => setApplying(false),
   });
+
 
   if (isLoading) return null;
   if (suggestions.length === 0) return null;

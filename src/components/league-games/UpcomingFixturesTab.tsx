@@ -125,7 +125,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
       // the row with a round_id, then the newest, and drop the rest.
       const bucket = new Map<string, any>();
       for (const f of filtered) {
-        const key = `${f.association_id}|${f.fixture_date}|${(f.home_team_code || "").toUpperCase()}|${(f.away_team_code || "").toUpperCase()}|${f.start_time ?? ""}`;
+        const key = `${f.association_id}|${f.fixture_date}|${(f.home_team_code || "").toUpperCase()}|${(f.away_team_code || "").toUpperCase()}|${(f.start_time || "").slice(0, 5)}`;
         const cur = bucket.get(key);
         if (!cur) { bucket.set(key, f); continue; }
         const better =

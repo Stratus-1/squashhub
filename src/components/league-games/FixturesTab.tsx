@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fromExt } from "@/lib/supabase-ext";
+import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -142,9 +142,8 @@ export function FixturesTab({ clubId, associationId }: Props) {
           const { data: fixtures } = await fromExt("platform_league_fixtures")
             .select("id, start_time, booking_id, fixture_date, court_id, away_team_code")
             .eq("round_id", r.id);
-          const playableFixtures = ((fixtures ?? []) as Array<{ id: string; start_time: string | null; booking_id: string | null; fixture_date: string | null; court_id: number | null; away_team_code: string }>).filter(
-            (f) => f.away_team_code !== "__BYE__",
-          );
+          const allFixtures = (fixtures ?? []) as Array<{ id: string; start_time: string | null; booking_id: string | null; fixture_date: string | null; court_id: number | null; away_team_code: string }>;
+          const playableFixtures = allFixtures.filter(f => f.away_team_code !== "__BYE__");
 
           const shiftDate = (iso: string | null): string | null => {
             if (!iso || !dayShift) return iso;
@@ -155,9 +154,10 @@ export function FixturesTab({ clubId, associationId }: Props) {
           };
 
           // Update fixtures individually so each keeps its own date offset.
-          for (const f of playableFixtures) {
+          for (const f of allFixtures) {
+            const isBye = f.away_team_code === "__BYE__";
             const patch: Record<string, unknown> = {};
-            if (timeChanged && newStart) {
+            if (!isBye && timeChanged && newStart) {
               const [h, m] = newStart.split(":").map(Number);
               const endMin = h * 60 + m + Number(r.slot_minutes || prev?.slot_minutes || 120);
               const computedEnd = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
@@ -227,7 +227,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
 
   const deleteRound = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await fromExt("league_rounds").delete().eq("id", id);
+      const { error } = await rpcExt("delete_league_round_cascade", { _round_id: id });
       if (error) throw error;
     },
     onSuccess: () => {

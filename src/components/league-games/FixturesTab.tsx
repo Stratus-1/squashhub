@@ -142,7 +142,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
           const { data: fixtures } = await fromExt("platform_league_fixtures")
             .select("id, start_time, booking_id, fixture_date, court_id, away_team_code")
             .eq("round_id", r.id);
-          const playableFixtures = ((fixtures ?? []) as Array<{ id: string; start_time: string | null; booking_id: string | null; fixture_date: string | null; court_id: number | null; away_team_code: string }>).filter(
+          const allFixtures = (fixtures ?? []) as Array<{ id: string; start_time: string | null; booking_id: string | null; fixture_date: string | null; court_id: number | null; away_team_code: string }>;
             (f) => f.away_team_code !== "__BYE__",
           );
 
@@ -155,9 +155,10 @@ export function FixturesTab({ clubId, associationId }: Props) {
           };
 
           // Update fixtures individually so each keeps its own date offset.
-          for (const f of playableFixtures) {
+          for (const f of allFixtures) {
+            const isBye = f.away_team_code === "__BYE__";
             const patch: Record<string, unknown> = {};
-            if (timeChanged && newStart) {
+            if (!isBye && timeChanged && newStart) {
               const [h, m] = newStart.split(":").map(Number);
               const endMin = h * 60 + m + Number(r.slot_minutes || prev?.slot_minutes || 120);
               const computedEnd = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
@@ -184,7 +185,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
           for (const f of bookableFixtures) {
             if (!f.booking_id) continue;
             const bookingPatch: Record<string, unknown> = {};
-            if (timeChanged && newStart) {
+            if (!isBye && timeChanged && newStart) {
               bookingPatch.start_time = `${newStart}:00`;
               bookingPatch.end_time = `${newEndDefault ?? computedEnd}:00`;
             }
@@ -227,6 +228,22 @@ export function FixturesTab({ clubId, associationId }: Props) {
 
   const deleteRound = useMutation({
     mutationFn: async (id: string) => {
+      // 1. Get fixtures to find linked bookings before we delete them
+      const { data: fixtures } = await fromExt("platform_league_fixtures")
+        .select("id, booking_id")
+        .eq("round_id", id);
+
+      const bookingIds = (fixtures || []).map(f => f.booking_id).filter(Boolean) as string[];
+
+      // 2. Cancel associated court bookings
+      if (bookingIds.length > 0) {
+        await supabase.from("bookings").update({ status: "cancelled" }).in("id", bookingIds);
+      }
+
+      // 3. Delete fixtures first to prevent orphaned records
+      await fromExt("platform_league_fixtures").delete().eq("round_id", id);
+
+      // 4. Finally delete the round itself
       const { error } = await fromExt("league_rounds").delete().eq("id", id);
       if (error) throw error;
     },

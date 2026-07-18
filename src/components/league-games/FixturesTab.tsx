@@ -220,22 +220,42 @@ export function FixturesTab({ clubId, associationId }: Props) {
         </Card>
       )}
 
-      {rounds?.map((r) => (
-        <RoundCard
-          key={r.id}
-          round={r}
-          teams={teams}
-          clubId={clubId}
-          isAdmin={isAdmin}
-          open={openRoundId === r.id}
-          onToggle={() => setOpenRoundId(openRoundId === r.id ? null : r.id)}
-          onEdit={() => {
-            setEditingRound(r);
-            setDialogOpen(true);
-          }}
-          onDelete={() => setPendingDeleteRound(r)}
-        />
-      ))}
+      {(() => {
+        const today = format(new Date(), "yyyy-MM-dd");
+        const all = rounds ?? [];
+        const upcoming = all.filter((r) => (r.end_date || r.round_date) >= today);
+        const past = all.filter((r) => (r.end_date || r.round_date) < today);
+        const renderCard = (r: Round) => (
+          <RoundCard
+            key={r.id}
+            round={r}
+            teams={teams}
+            clubId={clubId}
+            isAdmin={isAdmin}
+            open={openRoundId === r.id}
+            onToggle={() => setOpenRoundId(openRoundId === r.id ? null : r.id)}
+            onEdit={() => {
+              setEditingRound(r);
+              setDialogOpen(true);
+            }}
+            onDelete={() => setPendingDeleteRound(r)}
+          />
+        );
+        return (
+          <>
+            {upcoming.map(renderCard)}
+            {past.length > 0 && (
+              <details className="rounded-lg border bg-muted/20">
+                <summary className="cursor-pointer select-none p-3 text-sm font-medium flex items-center justify-between">
+                  <span>Past rounds</span>
+                  <Badge variant="secondary">{past.length}</Badge>
+                </summary>
+                <div className="p-2 space-y-2">{past.map(renderCard)}</div>
+              </details>
+            )}
+          </>
+        );
+      })()}
 
       <RoundConfigDialog
         open={dialogOpen}

@@ -489,8 +489,9 @@ export default function Tournaments() {
     matches.forEach((m) => {
       const champ = allChamps.find((c: any) => c.id === m.champ_id);
       const isDoubles = champ?.match_type === "doubles";
-      const teamA = isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a);
-      const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
+      const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles);
+      const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles);
+
       lines.push([
         m.scheduled_date || "",
         m.scheduled_time?.slice(0, 5) || "",

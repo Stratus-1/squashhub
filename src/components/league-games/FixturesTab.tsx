@@ -883,9 +883,11 @@ function RoundCard({
               <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {canDelete && (
+                <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete round">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </>
           )}
         </div>

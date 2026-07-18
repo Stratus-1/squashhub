@@ -28,7 +28,7 @@ import {
 } from "./fixtures/scheduler";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { useIsClubAdmin } from "@/hooks/use-club";
+import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 
 type Props = {
   clubId: string;
@@ -46,6 +46,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
   const qc = useQueryClient();
   const { activeMember, isAdmin: isClubAdmin } = useMemberContext();
   const isAdmin = useIsClubAdmin() || isClubAdmin;
+  const isSuperAdmin = useIsSuperAdmin();
   const [openRoundId, setOpenRoundId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRound, setEditingRound] = useState<Partial<RoundDraft> | undefined>();
@@ -225,22 +226,29 @@ export function FixturesTab({ clubId, associationId }: Props) {
         const all = rounds ?? [];
         const upcoming = all.filter((r) => (r.end_date || r.round_date) >= today);
         const past = all.filter((r) => (r.end_date || r.round_date) < today);
-        const renderCard = (r: Round) => (
-          <RoundCard
-            key={r.id}
-            round={r}
-            teams={teams}
-            clubId={clubId}
-            isAdmin={isAdmin}
-            open={openRoundId === r.id}
-            onToggle={() => setOpenRoundId(openRoundId === r.id ? null : r.id)}
-            onEdit={() => {
-              setEditingRound(r);
-              setDialogOpen(true);
-            }}
-            onDelete={() => setPendingDeleteRound(r)}
-          />
-        );
+        const renderCard = (r: Round) => {
+          // Admin can only delete rounds that haven't started yet.
+          // Super admin can always delete.
+          const notStartedYet = r.round_date > today;
+          const canDelete = isSuperAdmin || (isAdmin && notStartedYet);
+          return (
+            <RoundCard
+              key={r.id}
+              round={r}
+              teams={teams}
+              clubId={clubId}
+              isAdmin={isAdmin}
+              canDelete={canDelete}
+              open={openRoundId === r.id}
+              onToggle={() => setOpenRoundId(openRoundId === r.id ? null : r.id)}
+              onEdit={() => {
+                setEditingRound(r);
+                setDialogOpen(true);
+              }}
+              onDelete={() => setPendingDeleteRound(r)}
+            />
+          );
+        };
         return (
           <>
             {upcoming.map(renderCard)}
@@ -301,6 +309,7 @@ function RoundCard({
   teams,
   clubId,
   isAdmin,
+  canDelete = false,
   open,
   onToggle,
   onEdit,
@@ -310,6 +319,7 @@ function RoundCard({
   teams: { code: string; name: string }[];
   clubId: string;
   isAdmin: boolean;
+  canDelete?: boolean;
   open: boolean;
   onToggle: () => void;
   onEdit: () => void;
@@ -873,9 +883,11 @@ function RoundCard({
               <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {canDelete && (
+                <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete round">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </>
           )}
         </div>

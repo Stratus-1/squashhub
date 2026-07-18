@@ -5,7 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
-import { useClubMembers, type ClubMember } from "@/hooks/use-club";
+import { useClubMembers, useIsSuperAdmin, type ClubMember } from "@/hooks/use-club";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -308,6 +308,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data: members = [] } = useClubMembers(clubId);
+  const isSuperAdmin = useIsSuperAdmin();
 
   // Club-level payment config — drives the "Accepted payment methods" picker on the Registration step.
   // We read the configured online gateway (clubs.payment_gateway) and check whether bank details
@@ -3247,9 +3248,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       <Copy className="w-4 h-4 mr-1" /> Copy
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
+                  {(() => {
+                    // Club admin can only delete tournaments that haven't started yet.
+                    // Only super admin can delete active or completed tournaments.
+                    const today = new Date().toISOString().slice(0, 10);
+                    const notStartedYet = !c.start_date || c.start_date > today;
+                    const canDelete = isSuperAdmin || notStartedYet;
+                    if (!canDelete) return null;
+                    return (
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })} title="Delete tournament">
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    );
+                  })()}
                 </div>
               </CardContent>
             </Card>

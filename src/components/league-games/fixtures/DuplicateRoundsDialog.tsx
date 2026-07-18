@@ -159,9 +159,14 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
       for (const src of sortedRounds) {
         if (!selected[src.id]) continue;
         const newStart = newDates[src.id];
-        const oldStart = parseISO(src.round_date);
-        const oldEnd = src.end_date ? parseISO(src.end_date) : oldStart;
-        const span = differenceInCalendarDays(oldEnd, oldStart);
+        // Anchor fixture shifting on the ACTUAL first-fixture date (same
+        // reference the auto-fill uses), not the round_date — a duplicated
+        // round's round_date is the chosen start date, and the first fixture
+        // must land on it.
+        const oldStart = parseISO(originalDateFor(src));
+        const oldRoundStart = parseISO(src.round_date);
+        const oldEnd = src.end_date ? parseISO(src.end_date) : oldRoundStart;
+        const span = differenceInCalendarDays(oldEnd, oldRoundStart);
         const newStartD = parseISO(newStart);
         const newEnd = format(addDays(newStartD, span), "yyyy-MM-dd");
 

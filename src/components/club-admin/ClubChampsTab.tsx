@@ -3248,9 +3248,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       <Copy className="w-4 h-4 mr-1" /> Copy
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
+                  {(() => {
+                    // Club admin can only delete tournaments that haven't started yet.
+                    // Only super admin can delete active or completed tournaments.
+                    const today = new Date().toISOString().slice(0, 10);
+                    const notStartedYet = !c.start_date || c.start_date > today;
+                    const canDelete = isSuperAdmin || notStartedYet;
+                    if (!canDelete) return null;
+                    return (
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })} title="Delete tournament">
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    );
+                  })()}
                 </div>
               </CardContent>
             </Card>

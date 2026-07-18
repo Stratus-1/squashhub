@@ -143,8 +143,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
             .select("id, start_time, booking_id, fixture_date, court_id, away_team_code")
             .eq("round_id", r.id);
           const allFixtures = (fixtures ?? []) as Array<{ id: string; start_time: string | null; booking_id: string | null; fixture_date: string | null; court_id: number | null; away_team_code: string }>;
-            (f) => f.away_team_code !== "__BYE__",
-          );
+          const playableFixtures = allFixtures.filter(f => f.away_team_code !== "__BYE__");
 
           const shiftDate = (iso: string | null): string | null => {
             if (!iso || !dayShift) return iso;
@@ -185,7 +184,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
           for (const f of bookableFixtures) {
             if (!f.booking_id) continue;
             const bookingPatch: Record<string, unknown> = {};
-            if (!isBye && timeChanged && newStart) {
+            if (timeChanged && newStart) {
               bookingPatch.start_time = `${newStart}:00`;
               bookingPatch.end_time = `${newEndDefault ?? computedEnd}:00`;
             }

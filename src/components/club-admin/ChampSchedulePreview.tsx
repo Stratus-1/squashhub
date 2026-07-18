@@ -163,8 +163,15 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
   const getTeam = (a: any, b: any) => (b ? `${getName(a)} & ${getName(b)}` : getName(a));
 
   const renderRow = (m: any) => {
-    const teamA = isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a);
-    const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
+    // Placeholder-aware side label — reserved playoff/finals slots have no
+    // player yet but carry a human-readable placeholder ("Winner Pool A").
+    const teamA = !m.player_a && m.placeholder_a
+      ? m.placeholder_a
+      : (isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a));
+    const teamB = !m.player_b && m.placeholder_b
+      ? m.placeholder_b
+      : (isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b));
+
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const bKey = bucketKeyOf(m);
     const bMeta = buckets.find((x) => x.key === bKey) || null;

@@ -349,6 +349,13 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
               />
               <span>Swap home / visitor for the return series</span>
             </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={createBookings}
+                onCheckedChange={(v) => setCreateBookings(!!v)}
+              />
+              <span>Create court bookings for the new fixtures</span>
+            </label>
           </div>
 
           <div className="max-h-[45vh] overflow-y-auto rounded-lg border">

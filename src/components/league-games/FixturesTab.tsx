@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { RoundConfigDialog, type RoundDraft } from "./fixtures/RoundConfigDialog";
 import { FixtureEditorTable, type EditableFixture } from "./fixtures/FixtureEditorTable";
 import { ConfirmDeleteDialog } from "./fixtures/ConfirmDeleteDialog";
+import { DuplicateRoundsDialog } from "./fixtures/DuplicateRoundsDialog";
 import {
   allocateRoundRobinByDate,
   allocatePairingsWithCourtFairness,

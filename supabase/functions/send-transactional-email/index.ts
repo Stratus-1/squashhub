@@ -16,16 +16,11 @@ const SENDER_DOMAIN = "reg.squashhub.co.za"
 // even though actual sending uses the subdomain above.
 const FROM_DOMAIN = "squashhub.co.za"
 
-// Billing / essential-service templates that MUST NOT include an unsubscribe
-// footer. These are legally-required transactional communications (invoices,
-// payment receipts, account/billing notices) — a recipient opting out of them
-// would silently stop receiving statutory billing correspondence.
-const NO_UNSUBSCRIBE_TEMPLATES = new Set<string>([
-  'subscription-invoice',
-  'subscription-payment-received',
-  'subscription-payment-failed',
-  'subscription-overdue',
-])
+// NOTE: The downstream Email API requires an unsubscribe_token on every
+// transactional email (400 missing_unsubscribe otherwise). We always include
+// the token here; footer opt-out UX is handled at the template layer.
+const NO_UNSUBSCRIBE_TEMPLATES = new Set<string>([])
+
 
 // Generate a cryptographically random 32-byte hex token
 function generateToken(): string {

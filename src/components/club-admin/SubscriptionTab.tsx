@@ -285,6 +285,11 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                       <TableCell className="text-right text-xs">{inv.member_count}</TableCell>
                       <TableCell className="text-right font-semibold text-xs">
                         {fmtMoney(Number(inv.total), inv.currency)}
+                        {inv.display_currency && inv.display_currency !== inv.currency && inv.display_total != null && (
+                          <div className="text-[10px] font-normal text-muted-foreground">
+                            ≈ {fmtMoney(Number(inv.display_total), inv.display_currency)}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs">{fmtDate(inv.due_date)}</TableCell>
                       <TableCell>

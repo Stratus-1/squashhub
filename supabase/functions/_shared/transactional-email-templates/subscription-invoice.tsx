@@ -91,6 +91,10 @@ const Email = (p: Props) => {
     invoiceFooter,
     payLink,
     manageUrl,
+    displayCurrency,
+    displayPricePerMember,
+    displayTotal,
+    fxRateToZar,
   } = p
 
   const senderName = tradingAs || companyName

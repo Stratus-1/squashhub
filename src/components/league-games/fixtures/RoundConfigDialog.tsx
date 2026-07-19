@@ -346,12 +346,12 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
             onClick={async () => {
               if (!draft.name?.trim()) { toast.error("Please enter a round name."); return; }
               if (!draft.round_date) { toast.error("Please pick a start date."); return; }
-
-              if (!draft.venue_name?.trim() || draft.venue_name === "__custom__") { toast.error("Please select a venue."); return; }
+              if (!selectedVenues.length) { toast.error("Please select at least one venue."); return; }
               if (!draft.court_ids.length) { toast.error("Please select at least one court."); return; }
+              const venueLabel = selectedVenues.join(", ");
               setSaving(true);
               try {
-                await onSave(draft);
+                await onSave({ ...draft, venue_name: venueLabel });
                 onOpenChange(false);
               } catch (e: any) {
                 toast.error(e?.message ?? "Could not save round");

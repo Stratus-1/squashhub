@@ -1227,14 +1227,18 @@ export default function SuperAdminSubscriptions() {
           <DialogHeader>
             <DialogTitle>Edit Subscription — {editSub?.clubs?.name}</DialogTitle>
           </DialogHeader>
+          {(() => {
+            const clubCcy = (editSub?.clubs?.currency_code || "ZAR").toUpperCase();
+            const sym = ccySymbol(clubCcy);
+            return (
           <div className="space-y-3 py-2">
             <div>
-              <Label className="text-xs">Subscription Plan</Label>
+              <Label className="text-xs">Subscription Plan ({clubCcy})</Label>
               <Select value={subForm.plan_id} onValueChange={v => { setSubForm(f => ({ ...f, plan_id: v })); recalcAmount(v, subForm.member_count); }}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select plan" /></SelectTrigger>
                 <SelectContent>
                   {plans.filter(p => p.active).map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name} — {fmtSubscriptionMoney(p.price_per_member)}/member</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.name} — {fmtSubscriptionMoney(rateForClub(p, clubCcy), sym)}/member</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1258,7 +1262,7 @@ export default function SuperAdminSubscriptions() {
                 <Input type="number" min="0" value={subForm.member_count} onChange={e => { setSubForm(f => ({ ...f, member_count: e.target.value })); recalcAmount(subForm.plan_id, e.target.value); }} className="h-8 text-xs font-mono" />
               </div>
               <div>
-                <Label className="text-xs">Amount Due ({SUBSCRIPTION_CURRENCY})</Label>
+                <Label className="text-xs">Amount Due ({clubCcy})</Label>
                 <Input type="number" min="0" step="0.01" value={subForm.amount_due} onChange={e => setSubForm(f => ({ ...f, amount_due: e.target.value }))} className="h-8 text-xs font-mono" />
               </div>
             </div>

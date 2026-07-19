@@ -294,10 +294,11 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
                 const groups = new Map<string, any[]>();
                 for (const c of (courts ?? []) as any[]) {
                   const key = c.venue_label || "Other";
+                  if (selectedVenues.length && !selectedVenues.includes(key)) continue;
                   if (!groups.has(key)) groups.set(key, []);
                   groups.get(key)!.push(c);
                 }
-                if (!groups.size) return <p className="text-xs text-muted-foreground">No courts found</p>;
+                if (!groups.size) return <p className="text-xs text-muted-foreground">Select a venue above to see its courts.</p>;
                 return Array.from(groups.entries()).map(([venue, list]) => (
                   <div key={venue}>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{venue}</div>

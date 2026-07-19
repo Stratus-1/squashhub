@@ -42,8 +42,8 @@ type ClubSub = {
   amount_due: number;
   last_payment_at: string | null;
   cancelled_at: string | null;
-  clubs?: { name: string; logo_url: string | null; subdomain: string | null };
-  subscription_plans?: { name: string } | null;
+  clubs?: { name: string; logo_url: string | null; subdomain: string | null; currency_code?: string | null };
+  subscription_plans?: { name: string; billing_cycle?: string } | null;
 };
 
 // Platform subscription base currency is ZAR.

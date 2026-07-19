@@ -16,6 +16,17 @@ const SENDER_DOMAIN = "reg.squashhub.co.za"
 // even though actual sending uses the subdomain above.
 const FROM_DOMAIN = "squashhub.co.za"
 
+// Billing / essential-service templates that MUST NOT include an unsubscribe
+// footer. These are legally-required transactional communications (invoices,
+// payment receipts, account/billing notices) — a recipient opting out of them
+// would silently stop receiving statutory billing correspondence.
+const NO_UNSUBSCRIBE_TEMPLATES = new Set<string>([
+  'subscription-invoice',
+  'subscription-payment-received',
+  'subscription-payment-failed',
+  'subscription-overdue',
+])
+
 // Generate a cryptographically random 32-byte hex token
 function generateToken(): string {
   const bytes = new Uint8Array(32)

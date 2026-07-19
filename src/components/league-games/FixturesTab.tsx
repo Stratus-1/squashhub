@@ -356,7 +356,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
                   }
                 }
 
-                const stale = await supabase
+                let staleQuery = supabase
                   .from("bookings")
                   .update({ status: "cancelled" })
                   .eq("club_id", clubId)
@@ -365,6 +365,9 @@ export function FixturesTab({ clubId, associationId }: Props) {
                   .eq("status", "active")
                   .like("guest_name", `${r.name} - %`)
                   .neq("id", oldBookingId || "00000000-0000-0000-0000-000000000000");
+                const oldStart = hm(f.start_time);
+                if (oldStart) staleQuery = staleQuery.eq("start_time", `${oldStart}:00`);
+                const stale = await staleQuery;
                 if (stale.error) throw stale.error;
               } else if (oldBookingId) {
                 const { error: bCancelErr } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", oldBookingId);

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Trash2, ArrowLeftRight } from "lucide-react";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 
 export type EditableFixture = {

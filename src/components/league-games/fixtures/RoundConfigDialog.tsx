@@ -42,16 +42,28 @@ type Props = {
 
 export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, initial, onSave }: Props) {
   const { data: courts } = useQuery({
-    queryKey: ["club-courts-for-rounds", clubId],
+    queryKey: ["club-courts-for-rounds", clubId, associationId],
     queryFn: async () => {
+      // Collect club IDs: this club + every other club in the same association
+      const clubIds = new Set<string>([clubId]);
+      if (associationId) {
+        const { data: assocClubs } = await fromExt("leagues")
+          .select("club_id")
+          .eq("association_id", associationId);
+        (assocClubs ?? []).forEach((r: any) => r?.club_id && clubIds.add(r.club_id));
+      }
       const { data, error } = await supabase
         .from("courts")
-        .select("id, name")
-        .eq("club_id", clubId)
+        .select("id, name, venue_name, club_id, clubs(name)")
+        .in("club_id", Array.from(clubIds))
         .eq("is_external", false)
+        .order("venue_name", { ascending: true, nullsFirst: true })
         .order("name");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map((c: any) => ({
+        ...c,
+        venue_label: c.venue_name?.trim() || c.clubs?.name || "Other",
+      }));
     },
     enabled: !!clubId && open,
   });

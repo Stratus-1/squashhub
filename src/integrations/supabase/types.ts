@@ -5915,9 +5915,13 @@ export type Database = {
           club_id: string
           created_at: string
           currency: string
+          display_currency: string | null
+          display_price_per_member: number | null
+          display_total: number | null
           due_date: string | null
           email_sent_at: string | null
           email_status: string | null
+          fx_rate_to_zar: number | null
           id: string
           invoice_number: string
           issued_at: string
@@ -5944,9 +5948,13 @@ export type Database = {
           club_id: string
           created_at?: string
           currency?: string
+          display_currency?: string | null
+          display_price_per_member?: number | null
+          display_total?: number | null
           due_date?: string | null
           email_sent_at?: string | null
           email_status?: string | null
+          fx_rate_to_zar?: number | null
           id?: string
           invoice_number: string
           issued_at?: string
@@ -5973,9 +5981,13 @@ export type Database = {
           club_id?: string
           created_at?: string
           currency?: string
+          display_currency?: string | null
+          display_price_per_member?: number | null
+          display_total?: number | null
           due_date?: string | null
           email_sent_at?: string | null
           email_status?: string | null
+          fx_rate_to_zar?: number | null
           id?: string
           invoice_number?: string
           issued_at?: string

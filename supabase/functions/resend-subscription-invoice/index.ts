@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
 
     // Resolve recipient
     const club = inv.clubs as any
-    const recipient = (override_email && String(override_email).trim()) || club?.billing_email || club?.email
+    const recipient = (override_email && String(override_email).trim()) || club?.email
     if (!recipient) return json({ error: 'No recipient email on file for this club' }, 400)
 
     const subdomain = club?.subdomain

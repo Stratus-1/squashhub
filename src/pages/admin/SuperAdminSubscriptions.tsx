@@ -1271,6 +1271,8 @@ export default function SuperAdminSubscriptions() {
               <Input type="date" value={subForm.trial_ends_at} onChange={e => setSubForm(f => ({ ...f, trial_ends_at: e.target.value }))} className="h-8 text-xs" />
             </div>
           </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setEditSub(null)}>Cancel</Button>
             <Button size="sm" onClick={() => editSub && updateSub.mutate({ id: editSub.id, plan_id: subForm.plan_id, status: subForm.status, trial_ends_at: subForm.trial_ends_at || null, member_count: Number(subForm.member_count), amount_due: Number(subForm.amount_due) })} disabled={updateSub.isPending}>

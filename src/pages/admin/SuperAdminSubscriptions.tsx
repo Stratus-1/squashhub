@@ -42,8 +42,8 @@ type ClubSub = {
   amount_due: number;
   last_payment_at: string | null;
   cancelled_at: string | null;
-  clubs?: { name: string; logo_url: string | null; subdomain: string | null };
-  subscription_plans?: { name: string } | null;
+  clubs?: { name: string; logo_url: string | null; subdomain: string | null; currency_code?: string | null };
+  subscription_plans?: { name: string; billing_cycle?: string } | null;
 };
 
 // Platform subscription base currency is ZAR.
@@ -144,7 +144,7 @@ export default function SuperAdminSubscriptions() {
     queryKey: ["sa-club-subscriptions"],
     queryFn: async () => {
       const { data, error } = await fromExt("club_subscriptions")
-        .select("*, clubs(name, logo_url, subdomain), subscription_plans(name)")
+        .select("*, clubs(name, logo_url, subdomain, currency_code), subscription_plans(name, billing_cycle)")
         .order("created_at", { ascending: false })
         .range(0, 49999);
       if (error) throw error;
@@ -487,12 +487,23 @@ export default function SuperAdminSubscriptions() {
     });
   };
 
+  const ccySymbol = (code?: string | null) => ({ ZAR: "R", USD: "$", EUR: "€", GBP: "£" } as Record<string, string>)[(code || "ZAR").toUpperCase()] || `${(code || "ZAR").toUpperCase()} `;
+  const rateForClub = (plan: Plan | undefined, ccy: string) => {
+    if (!plan) return 0;
+    const code = (ccy || "ZAR").toUpperCase();
+    const annual = plan.billing_cycle === "annual";
+    if (code === "USD") return Number(annual ? intlForm.saas_rate_usd_annual : intlForm.saas_rate_usd_monthly) || 0;
+    if (code === "EUR") return Number(annual ? intlForm.saas_rate_eur_annual : intlForm.saas_rate_eur_monthly) || 0;
+    return plan.price_per_member;
+  };
+
   const recalcAmount = (planId: string, memberCount: string) => {
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
     const count = Number(memberCount) || 0;
     const billable = plan.max_billable_members ? Math.min(count, plan.max_billable_members) : count;
-    const calculated = Math.max(billable * plan.price_per_member, plan.minimum_charge);
+    const rate = rateForClub(plan, editSub?.clubs?.currency_code || "ZAR");
+    const calculated = Math.max(billable * rate, plan.minimum_charge);
     setSubForm(f => ({ ...f, amount_due: String(calculated) }));
   };
 
@@ -1216,14 +1227,18 @@ export default function SuperAdminSubscriptions() {
           <DialogHeader>
             <DialogTitle>Edit Subscription — {editSub?.clubs?.name}</DialogTitle>
           </DialogHeader>
+          {(() => {
+            const clubCcy = (editSub?.clubs?.currency_code || "ZAR").toUpperCase();
+            const sym = ccySymbol(clubCcy);
+            return (
           <div className="space-y-3 py-2">
             <div>
-              <Label className="text-xs">Subscription Plan</Label>
+              <Label className="text-xs">Subscription Plan ({clubCcy})</Label>
               <Select value={subForm.plan_id} onValueChange={v => { setSubForm(f => ({ ...f, plan_id: v })); recalcAmount(v, subForm.member_count); }}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select plan" /></SelectTrigger>
                 <SelectContent>
                   {plans.filter(p => p.active).map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name} — {fmtSubscriptionMoney(p.price_per_member)}/member</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.name} — {fmtSubscriptionMoney(rateForClub(p, clubCcy), sym)}/member</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1247,7 +1262,7 @@ export default function SuperAdminSubscriptions() {
                 <Input type="number" min="0" value={subForm.member_count} onChange={e => { setSubForm(f => ({ ...f, member_count: e.target.value })); recalcAmount(subForm.plan_id, e.target.value); }} className="h-8 text-xs font-mono" />
               </div>
               <div>
-                <Label className="text-xs">Amount Due ({SUBSCRIPTION_CURRENCY})</Label>
+                <Label className="text-xs">Amount Due ({clubCcy})</Label>
                 <Input type="number" min="0" step="0.01" value={subForm.amount_due} onChange={e => setSubForm(f => ({ ...f, amount_due: e.target.value }))} className="h-8 text-xs font-mono" />
               </div>
             </div>
@@ -1256,6 +1271,8 @@ export default function SuperAdminSubscriptions() {
               <Input type="date" value={subForm.trial_ends_at} onChange={e => setSubForm(f => ({ ...f, trial_ends_at: e.target.value }))} className="h-8 text-xs" />
             </div>
           </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setEditSub(null)}>Cancel</Button>
             <Button size="sm" onClick={() => editSub && updateSub.mutate({ id: editSub.id, plan_id: subForm.plan_id, status: subForm.status, trial_ends_at: subForm.trial_ends_at || null, member_count: Number(subForm.member_count), amount_due: Number(subForm.amount_due) })} disabled={updateSub.isPending}>

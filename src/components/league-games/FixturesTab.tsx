@@ -485,6 +485,33 @@ export function FixturesTab({ clubId, associationId }: Props) {
             }
           }
         }
+
+        // Cancel any stale active bookings on courts that were removed from
+        // this round. Even if a fixture's linked booking was moved to a new
+        // court above, older duplicate bookings (e.g. Court 3 for this round)
+        // may still be sitting on the schedule — clean them up here.
+        const removedCourts = prevCourts.filter((c) => !newCourts.includes(c));
+        if (removedCourts.length) {
+          const { data: staleRows } = await supabase
+            .from("bookings")
+            .select("id")
+            .eq("club_id", clubId)
+            .eq("status", "active")
+            .in("court_id", removedCourts)
+            .like("guest_name", `${r.name} - %`);
+          const staleIds = ((staleRows ?? []) as any[]).map((x) => x.id);
+          if (staleIds.length) {
+            const { error: cancelErr } = await supabase
+              .from("bookings")
+              .update({ status: "cancelled" })
+              .in("id", staleIds);
+            if (cancelErr) throw cancelErr;
+            // Ensure no fixture still points at these cancelled bookings.
+            await fromExt("platform_league_fixtures")
+              .update({ booking_id: null })
+              .in("booking_id", staleIds);
+          }
+        }
       } else {
         const { error } = await fromExt("league_rounds").insert(payload);
         if (error) throw error;

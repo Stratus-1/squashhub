@@ -176,6 +176,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         const dateWindowChanged = prevRoundDate !== newRoundDate || (prev?.end_date ?? prevRoundDate) !== (r.end_date ?? newRoundDate);
         const playDaysChanged = !sameNumberList((prev as any)?.play_dows ?? [], r.play_dows ?? []);
         const venueChanged = (prev?.venue_name ?? "") !== (r.venue_name ?? "");
+        const regenerateDatesAndTimes = timeChanged || dateWindowChanged || playDaysChanged;
         const shouldRescheduleFixtures = timeChanged || courtsChanged || dateWindowChanged || playDaysChanged;
 
         if (venueChanged) {
@@ -229,28 +230,52 @@ export function FixturesTab({ clubId, associationId }: Props) {
 
             const fallbackStart = newStart ?? "18:00";
             const fallbackEnd = newEndDefault ?? addMinutesToHm(fallbackStart, Number(r.slot_minutes || 45));
-            const slotTimes = timeSlotsBetween(r.start_time, r.end_time, Number(r.slot_minutes || 45));
-            if (!slotTimes.length) throw new Error("Check the round start/end time and slot length.");
-            const matchesPerDay = Math.max(1, newCourts.length * slotTimes.length);
-            const requiredDays = Math.max(1, Math.ceil(playable.length / matchesPerDay));
-            const playDates = nextPlayDates(r.round_date, requiredDays, r.play_dows ?? []);
-            if (!playDates.length) throw new Error("Check the round start date and play days.");
             const nextById = new Map<string, { fixture_date: string; start_time: string; end_time: string; court_id: number }>();
-            playable.forEach((f, idx) => {
-              const dayIdx = Math.floor(idx / matchesPerDay);
-              const withinDay = idx % matchesPerDay;
-              const timeIdx = Math.floor(withinDay / newCourts.length);
-              const courtIdx = withinDay % newCourts.length;
-              const start = slotTimes[timeIdx] ?? fallbackStart;
-              nextById.set(f.id, {
-                fixture_date: playDates[Math.min(dayIdx, playDates.length - 1)] ?? r.round_date,
-                start_time: start,
-                end_time: addMinutesToHm(start, Number(r.slot_minutes || 45)) || fallbackEnd,
-                court_id: newCourts[courtIdx] ?? newCourts[idx % newCourts.length],
-              });
-            });
+            let byeDates = [r.round_date];
 
-            const byeDates = playDates.length ? playDates : [r.round_date];
+            if (regenerateDatesAndTimes) {
+              const slotTimes = timeSlotsBetween(r.start_time, r.end_time, Number(r.slot_minutes || 45));
+              if (!slotTimes.length) throw new Error("Check the round start/end time and slot length.");
+              const matchesPerDay = Math.max(1, newCourts.length * slotTimes.length);
+              const requiredDays = Math.max(1, Math.ceil(playable.length / matchesPerDay));
+              const playDates = nextPlayDates(r.round_date, requiredDays, r.play_dows ?? []);
+              if (!playDates.length) throw new Error("Check the round start date and play days.");
+              byeDates = playDates;
+              playable.forEach((f, idx) => {
+                const dayIdx = Math.floor(idx / matchesPerDay);
+                const withinDay = idx % matchesPerDay;
+                const timeIdx = Math.floor(withinDay / newCourts.length);
+                const courtIdx = withinDay % newCourts.length;
+                const start = slotTimes[timeIdx] ?? fallbackStart;
+                nextById.set(f.id, {
+                  fixture_date: playDates[Math.min(dayIdx, playDates.length - 1)] ?? r.round_date,
+                  start_time: start,
+                  end_time: addMinutesToHm(start, Number(r.slot_minutes || 45)) || fallbackEnd,
+                  court_id: newCourts[courtIdx] ?? newCourts[idx % newCourts.length],
+                });
+              });
+            } else {
+              // Court/venue-only edits should keep the league round dates intact;
+              // just replace courts that are no longer allowed, spreading them
+              // across the selected venue courts within each date/time cell.
+              const counters = new Map<string, number>();
+              playable.forEach((f, idx) => {
+                const key = `${f.fixture_date || r.round_date}|${hm(f.start_time) || fallbackStart}`;
+                const slotIndex = counters.get(key) ?? 0;
+                counters.set(key, slotIndex + 1);
+                const currentAllowed = !!f.court_id && newCourts.includes(f.court_id);
+                const nextCourt = currentAllowed ? f.court_id! : newCourts[slotIndex % newCourts.length];
+                const start = hm(f.start_time) ?? fallbackStart;
+                nextById.set(f.id, {
+                  fixture_date: f.fixture_date || r.round_date,
+                  start_time: start,
+                  end_time: hm(f.end_time) ?? addMinutesToHm(start, Number(r.slot_minutes || 45)) ?? fallbackEnd,
+                  court_id: nextCourt ?? newCourts[idx % newCourts.length],
+                });
+              });
+              byeDates = Array.from(new Set(existingFx.map((f) => f.fixture_date).filter(Boolean) as string[]));
+              if (!byeDates.length) byeDates = [r.round_date];
+            }
 
             for (const f of existingFx) {
               const oldBookingId = f.booking_id;

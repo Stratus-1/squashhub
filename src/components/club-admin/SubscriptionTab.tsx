@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Landmark, FileText, ExternalLink, Copy, Loader2, Printer } from "lucide-react";
+import { Landmark, FileText, ExternalLink, Copy, Loader2, Printer, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useMyClub } from "@/hooks/use-club";
 import { ClubParticipationCard } from "@/components/club-admin/ClubParticipationCard";

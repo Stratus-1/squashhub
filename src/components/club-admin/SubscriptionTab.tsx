@@ -29,6 +29,10 @@ interface Invoice {
   vat_amount: number;
   total: number;
   currency: string;
+  display_currency?: string | null;
+  display_price_per_member?: number | null;
+  display_total?: number | null;
+  fx_rate_to_zar?: number | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -90,6 +94,10 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
   );
   const totalOutstanding = outstanding.reduce((s, i) => s + Number(i.total || 0), 0);
   const outstandingCurrency = (outstanding[0] as any)?.currency || (club as any)?.currency_code || "ZAR";
+  const outstandingDisplayCurrency = (outstanding[0] as any)?.display_currency || null;
+  const totalOutstandingDisplay = outstandingDisplayCurrency && outstandingDisplayCurrency !== outstandingCurrency
+    ? outstanding.reduce((s, i) => s + Number((i as any).display_total || 0), 0)
+    : 0;
 
   const copy = (text: string, label = "Copied") => {
     navigator.clipboard.writeText(text).then(
@@ -225,6 +233,11 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
               <div className="text-lg font-bold text-amber-800 dark:text-amber-300">
                 {fmtMoney(totalOutstanding, outstandingCurrency)}
               </div>
+              {outstandingDisplayCurrency && totalOutstandingDisplay > 0 && (
+                <div className="text-[10px] text-muted-foreground">
+                  ≈ {fmtMoney(totalOutstandingDisplay, outstandingDisplayCurrency)}
+                </div>
+              )}
             </div>
           </div>
         </Card>
@@ -281,6 +294,11 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                       <TableCell className="text-right text-xs">{inv.member_count}</TableCell>
                       <TableCell className="text-right font-semibold text-xs">
                         {fmtMoney(Number(inv.total), inv.currency)}
+                        {inv.display_currency && inv.display_currency !== inv.currency && inv.display_total != null && (
+                          <div className="text-[10px] font-normal text-muted-foreground">
+                            ≈ {fmtMoney(Number(inv.display_total), inv.display_currency)}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs">{fmtDate(inv.due_date)}</TableCell>
                       <TableCell>

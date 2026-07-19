@@ -122,6 +122,8 @@ export default function SuperAdminSubscriptions() {
     saas_min_charge_annual: MIN_CHARGE,
     saas_billing_cap: "150",
     saas_trial_days: "30",
+    fx_usd_to_zar: "18.50",
+    fx_eur_to_zar: "20.00",
   });
   const [intlDirty, setIntlDirty] = useState(false);
   const updateIntlField = (k: keyof typeof intlForm, v: string) => {
@@ -213,6 +215,7 @@ export default function SuperAdminSubscriptions() {
         "saas_rate_eur_monthly", "saas_rate_eur_annual",
         "saas_min_charge_monthly", "saas_min_charge_annual",
         "saas_billing_cap", "saas_trial_days",
+        "fx_usd_to_zar", "fx_eur_to_zar",
       ];
       const { data, error } = await supabase
         .from("app_settings")
@@ -237,6 +240,8 @@ export default function SuperAdminSubscriptions() {
         saas_min_charge_annual: map.get("saas_min_charge_annual") || (annualPlan ? String(annualPlan.minimum_charge) : MIN_CHARGE),
         saas_billing_cap: map.get("saas_billing_cap") || (anyPlan?.max_billable_members != null ? String(anyPlan.max_billable_members) : "150"),
         saas_trial_days: map.get("saas_trial_days") || (anyPlan ? String(anyPlan.trial_days) : "30"),
+        fx_usd_to_zar: map.get("fx_usd_to_zar") || "18.50",
+        fx_eur_to_zar: map.get("fx_eur_to_zar") || "20.00",
       };
       setIntlForm(parsed);
       setIntlDirty(false);
@@ -626,6 +631,20 @@ export default function SuperAdminSubscriptions() {
                 </div>
               </div>
 
+              {/* FX rates */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">FX rates → ZAR (Stitch charges in ZAR only)</p>
+                <div>
+                  <Label className="text-xs">USD → ZAR</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.fx_usd_to_zar} onChange={e => updateIntlField("fx_usd_to_zar", e.target.value)} placeholder="e.g. 18.50" />
+                </div>
+                <div>
+                  <Label className="text-xs">EUR → ZAR</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.fx_eur_to_zar} onChange={e => updateIntlField("fx_eur_to_zar", e.target.value)} placeholder="e.g. 20.00" />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">USD/EUR clubs see "~$/€ per member" for reference but are actually billed the equivalent in ZAR.</p>
+              </div>
+
               {/* Cap / trial */}
               <div className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Limits & trial</p>
@@ -640,6 +659,7 @@ export default function SuperAdminSubscriptions() {
                 </div>
               </div>
             </div>
+
 
             {(() => {
               const rows = [

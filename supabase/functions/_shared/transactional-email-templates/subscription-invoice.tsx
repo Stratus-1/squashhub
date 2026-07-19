@@ -47,6 +47,10 @@ interface Props {
   invoiceFooter?: string
   payLink?: string
   manageUrl?: string
+  displayCurrency?: string
+  displayPricePerMember?: number | string
+  displayTotal?: number | string
+  fxRateToZar?: number | string
 }
 
 const money = (v: number | string | undefined, ccy = 'ZAR') => {
@@ -87,6 +91,10 @@ const Email = (p: Props) => {
     invoiceFooter,
     payLink,
     manageUrl,
+    displayCurrency,
+    displayPricePerMember,
+    displayTotal,
+    fxRateToZar,
   } = p
 
   const senderName = tradingAs || companyName
@@ -142,7 +150,14 @@ const Email = (p: Props) => {
             <LineRow label="Billing Cycle" value={billingCycle} />
             <LineRow label="Billing Period" value={`${periodStart} → ${periodEnd}`} />
             <LineRow label="Members" value={String(memberCount)} />
-            <LineRow label="Price / Member" value={money(pricePerMember, currency)} />
+            {displayCurrency && displayCurrency !== 'ZAR' && displayPricePerMember != null ? (
+              <LineRow
+                label="Price / Member"
+                value={`~${money(displayPricePerMember, displayCurrency)} (${money(pricePerMember, currency)})`}
+              />
+            ) : (
+              <LineRow label="Price / Member" value={money(pricePerMember, currency)} />
+            )}
             {Number(minimumCharge) > 0 && (
               <LineRow label="Minimum Charge" value={money(minimumCharge, currency)} />
             )}
@@ -152,7 +167,13 @@ const Email = (p: Props) => {
               <LineRow label="VAT" value={money(vatAmount, currency)} />
             )}
             <LineRow label="Total Due" value={money(total, currency)} bold />
+            {displayCurrency && displayCurrency !== 'ZAR' && displayTotal != null && (
+              <Text style={{ ...muted, textAlign: 'right' as const, margin: '4px 0 0' }}>
+                ≈ {money(displayTotal, displayCurrency)} at {Number(fxRateToZar || 0).toFixed(2)} ZAR/{displayCurrency}
+              </Text>
+            )}
           </Section>
+
 
           {(payLink || manageUrl) && (
             <Section style={{ textAlign: 'center', margin: '24px 0 8px' }}>

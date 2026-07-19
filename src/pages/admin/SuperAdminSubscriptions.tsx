@@ -631,6 +631,20 @@ export default function SuperAdminSubscriptions() {
                 </div>
               </div>
 
+              {/* FX rates */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">FX rates → ZAR (Stitch charges in ZAR only)</p>
+                <div>
+                  <Label className="text-xs">USD → ZAR</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.fx_usd_to_zar} onChange={e => updateIntlField("fx_usd_to_zar", e.target.value)} placeholder="e.g. 18.50" />
+                </div>
+                <div>
+                  <Label className="text-xs">EUR → ZAR</Label>
+                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.fx_eur_to_zar} onChange={e => updateIntlField("fx_eur_to_zar", e.target.value)} placeholder="e.g. 20.00" />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">USD/EUR clubs see "~$/€ per member" for reference but are actually billed the equivalent in ZAR.</p>
+              </div>
+
               {/* Cap / trial */}
               <div className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Limits & trial</p>
@@ -645,6 +659,7 @@ export default function SuperAdminSubscriptions() {
                 </div>
               </div>
             </div>
+
 
             {(() => {
               const rows = [

@@ -122,6 +122,8 @@ export default function SuperAdminSubscriptions() {
     saas_min_charge_annual: MIN_CHARGE,
     saas_billing_cap: "150",
     saas_trial_days: "30",
+    fx_usd_to_zar: "18.50",
+    fx_eur_to_zar: "20.00",
   });
   const [intlDirty, setIntlDirty] = useState(false);
   const updateIntlField = (k: keyof typeof intlForm, v: string) => {

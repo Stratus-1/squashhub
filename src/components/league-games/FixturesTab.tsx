@@ -42,6 +42,22 @@ type Round = RoundDraft & {
   association_id: string;
 };
 
+const hm = (time?: string | null) => (time ? String(time).slice(0, 5) : null);
+
+const addMinutesToHm = (time: string, minutes: number) => {
+  const [h, m] = time.split(":").map(Number);
+  const total = h * 60 + m + minutes;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+};
+
+const sameNumberSet = (a: number[] = [], b: number[] = []) => {
+  const aa = [...a].sort((x, y) => x - y).join(",");
+  const bb = [...b].sort((x, y) => x - y).join(",");
+  return aa === bb;
+};
+
+const sameNumberList = (a: number[] = [], b: number[] = []) => (a ?? []).join(",") === (b ?? []).join(",");
+
 export function FixturesTab({ clubId, associationId }: Props) {
   const qc = useQueryClient();
   const { activeMember, isAdmin: isClubAdmin } = useMemberContext();

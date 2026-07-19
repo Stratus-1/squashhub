@@ -122,146 +122,213 @@ export function FixturesTab({ clubId, associationId }: Props) {
       if (r.id) {
         // Capture previous defaults to detect a time shift we should cascade.
         const prev = (rounds ?? []).find((x) => x.id === r.id);
-        const prevStart = prev?.start_time ? String(prev.start_time).slice(0, 5) : null;
-        const prevEnd = prev?.end_time ? String(prev.end_time).slice(0, 5) : null;
-        const newStart = r.start_time ? String(r.start_time).slice(0, 5) : null;
-        const newEndDefault = r.end_time ? String(r.end_time).slice(0, 5) : null;
+        const prevStart = hm(prev?.start_time);
+        const prevEnd = hm(prev?.end_time);
+        const newStart = hm(r.start_time);
+        const newEndDefault = hm(r.end_time);
         const prevRoundDate = prev?.round_date ?? null;
         const newRoundDate = r.round_date ?? null;
 
         const { error } = await fromExt("league_rounds").update(payload).eq("id", r.id);
         if (error) throw error;
 
-        // Compute how many days the round moved so we can shift each fixture
-        // by the same amount (preserves per-league weekday spacing set at
-        // duplication time).
-        let dayShift = 0;
-        if (prevRoundDate && newRoundDate && prevRoundDate !== newRoundDate) {
-          const [py, pm, pd] = prevRoundDate.split("-").map(Number);
-          const [ny, nm, nd] = newRoundDate.split("-").map(Number);
-          const prevMs = Date.UTC(py, pm - 1, pd);
-          const newMs = Date.UTC(ny, nm - 1, nd);
-          dayShift = Math.round((newMs - prevMs) / 86400000);
-        }
-
         const timeChanged =
           !!newStart &&
           (prevStart !== newStart ||
             prevEnd !== newEndDefault ||
             Number(prev?.slot_minutes) !== Number(r.slot_minutes));
+        const prevCourts: number[] = (prev as any)?.court_ids ?? [];
+        const newCourts: number[] = r.court_ids ?? [];
+        const courtsChanged = !sameNumberSet(prevCourts, newCourts) || !sameNumberList(prevCourts, newCourts);
+        const dateWindowChanged = prevRoundDate !== newRoundDate || (prev?.end_date ?? prevRoundDate) !== (r.end_date ?? newRoundDate);
+        const playDaysChanged = !sameNumberList((prev as any)?.play_dows ?? [], r.play_dows ?? []);
+        const venueChanged = (prev?.venue_name ?? "") !== (r.venue_name ?? "");
+        const shouldRescheduleFixtures = timeChanged || courtsChanged || dateWindowChanged || playDaysChanged;
 
-        // Cascade round time and/or date edits onto all fixtures and linked
-        // court bookings. Also cancel stale duplicate bookings left by
-        // previous fixture re-saves, so the court grid cannot keep showing
-        // the old slot.
-        if (timeChanged || dayShift !== 0) {
-          const { data: fixtures } = await fromExt("platform_league_fixtures")
-            .select("id, start_time, booking_id, fixture_date, court_id, away_team_code")
+        if (venueChanged) {
+          const { error: vErr } = await fromExt("platform_league_fixtures")
+            .update({ venue_name: r.venue_name || "Home" })
             .eq("round_id", r.id);
-          const allFixtures = (fixtures ?? []) as Array<{ id: string; start_time: string | null; booking_id: string | null; fixture_date: string | null; court_id: number | null; away_team_code: string }>;
-          const playableFixtures = allFixtures.filter(f => f.away_team_code !== "__BYE__");
-
-          const shiftDate = (iso: string | null): string | null => {
-            if (!iso || !dayShift) return iso;
-            const [y, mo, d] = iso.split("-").map(Number);
-            const ms = Date.UTC(y, mo - 1, d) + dayShift * 86400000;
-            const dt = new Date(ms);
-            return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
-          };
-
-          // Update fixtures individually so each keeps its own date offset.
-          for (const f of allFixtures) {
-            const isBye = f.away_team_code === "__BYE__";
-            const patch: Record<string, unknown> = {};
-            if (!isBye && timeChanged && newStart) {
-              const [h, m] = newStart.split(":").map(Number);
-              const endMin = h * 60 + m + Number(r.slot_minutes || prev?.slot_minutes || 120);
-              const computedEnd = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
-              patch.start_time = newStart;
-              patch.end_time = newEndDefault ?? computedEnd;
-            }
-            if (dayShift !== 0 && f.fixture_date) {
-              patch.fixture_date = shiftDate(f.fixture_date);
-            }
-            if (Object.keys(patch).length === 0) continue;
-            const { error: fxErr } = await fromExt("platform_league_fixtures")
-              .update(patch)
-              .eq("id", f.id);
-            if (fxErr) throw fxErr;
-          }
-
-          // Update linked bookings (date and/or time) and cancel stale
-          // duplicates only for fixtures that had a court/date.
-          const bookableFixtures = playableFixtures.filter((f) => f.court_id && f.fixture_date);
-          const [h, m] = (newStart ?? "00:00").split(":").map(Number);
-          const endMin = h * 60 + m + Number(r.slot_minutes || prev?.slot_minutes || 120);
-          const computedEnd = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
-
-          for (const f of bookableFixtures) {
-            if (!f.booking_id) continue;
-            const bookingPatch: Record<string, unknown> = {};
-            if (timeChanged && newStart) {
-              bookingPatch.start_time = `${newStart}:00`;
-              bookingPatch.end_time = `${newEndDefault ?? computedEnd}:00`;
-            }
-            if (dayShift !== 0 && f.fixture_date) {
-              bookingPatch.date = shiftDate(f.fixture_date);
-            }
-            if (Object.keys(bookingPatch).length === 0) continue;
-            const { error: bErr } = await supabase
-              .from("bookings")
-              .update(bookingPatch)
-              .eq("id", f.booking_id);
-            if (bErr) throw bErr;
-
-            // Cancel any stale duplicate booking on the OLD date/court.
-            const stale = await supabase
-              .from("bookings")
-              .update({ status: "cancelled" })
-              .eq("club_id", clubId)
-              .eq("date", f.fixture_date!)
-              .eq("court_id", f.court_id!)
-              .eq("status", "active")
-              .like("guest_name", `${r.name} - %`)
-              .neq("id", f.booking_id);
-            if (stale.error) throw stale.error;
-          }
+          if (vErr) throw vErr;
         }
 
-        // Court list changed → remap fixtures that reference removed courts onto
-        // the newly-added courts (round-robin within their timeslot). Also move
-        // any linked bookings; if no replacement court is available, cancel the
-        // booking and unlink it.
-        {
-          const prevCourts: number[] = (prev as any)?.court_ids ?? [];
-          const newCourts: number[] = r.court_ids ?? [];
-          const removed = prevCourts.filter((c) => !newCourts.includes(c));
-          const added = newCourts.filter((c) => !prevCourts.includes(c));
-          if (removed.length) {
-            const { data: orphaned } = await fromExt("platform_league_fixtures")
-              .select("id, court_id, booking_id, fixture_date, start_time")
-              .eq("round_id", r.id)
-              .in("court_id", removed);
-            const list = ((orphaned ?? []) as any[]).sort((a, b) => {
-              const ka = `${a.fixture_date ?? ""} ${a.start_time ?? ""}`;
-              const kb = `${b.fixture_date ?? ""} ${b.start_time ?? ""}`;
-              return ka.localeCompare(kb);
+        // Editing round settings must reproduce the saved fixture plan, not just
+        // update the round header. Preserve existing pairings/results, but
+        // regenerate dates/times/courts from the latest venue/court choices and
+        // keep linked court bookings in sync.
+        if (shouldRescheduleFixtures) {
+          const { data: fixtureRows, error: fxLoadErr } = await fromExt("platform_league_fixtures")
+            .select("id, home_team_code, away_team_code, booking_id, fixture_date, court_id, start_time, end_time, status")
+            .eq("round_id", r.id)
+            .order("fixture_date", { ascending: true })
+            .order("start_time", { ascending: true });
+          if (fxLoadErr) throw fxLoadErr;
+
+          type FxRow = {
+            id: string;
+            home_team_code: string;
+            away_team_code: string;
+            booking_id: string | null;
+            fixture_date: string | null;
+            court_id: number | null;
+            start_time: string | null;
+            end_time: string | null;
+            status: string | null;
+          };
+          const existingFx = (fixtureRows ?? []) as FxRow[];
+          const playable = existingFx.filter((f) => f.away_team_code !== "__BYE__");
+
+          if (playable.length && newCourts.length) {
+            const ids = playable.map((f) => f.id);
+            const [{ data: resRows }, { data: lineupRows }, { data: matchRows }] = await Promise.all([
+              fromExt("league_fixture_results").select("fixture_id").in("fixture_id", ids),
+              fromExt("league_fixture_lineups").select("fixture_id").in("fixture_id", ids),
+              fromExt("league_match_results").select("fixture_id").in("fixture_id", ids),
+            ]);
+            const protectedIds = new Set<string>([
+              ...((resRows ?? []) as any[]).map((x) => x.fixture_id),
+              ...((lineupRows ?? []) as any[]).map((x) => x.fixture_id),
+              ...((matchRows ?? []) as any[]).map((x) => x.fixture_id),
+            ]);
+            if (protectedIds.size) {
+              throw new Error("This round already has saved scorecards/lineups, so its fixtures cannot be regenerated from round settings.");
+            }
+
+            const allocation = allocatePairingsWithCourtFairness(
+              [playable.map((f) => ({ home: f.home_team_code, away: f.away_team_code }))],
+              newCourts,
+              r.start_time,
+              r.end_time,
+              Number(r.slot_minutes || 45),
+              r.round_date,
+              r.end_date,
+              r.play_dows ?? [],
+              new Map(),
+            );
+            if (allocation.error) throw new Error(allocation.error);
+            const fallbackStart = newStart ?? "18:00";
+            const fallbackEnd = newEndDefault ?? addMinutesToHm(fallbackStart, Number(r.slot_minutes || 45));
+            const nextById = new Map<string, { fixture_date: string; start_time: string; end_time: string; court_id: number }>();
+            playable.forEach((f, idx) => {
+              const slot = allocation.slots[idx];
+              const start = slot?.startTime ?? fallbackStart;
+              nextById.set(f.id, {
+                fixture_date: slot?.date ?? r.round_date,
+                start_time: start,
+                end_time: addMinutesToHm(start, Number(r.slot_minutes || 45)) || fallbackEnd,
+                court_id: slot?.courtId ?? newCourts[idx % newCourts.length],
+              });
             });
-            let i = 0;
-            for (const f of list) {
-              const newCourt = added.length ? added[i % added.length] : null;
-              i++;
-              await fromExt("platform_league_fixtures")
-                .update({ court_id: newCourt })
+
+            const byeDates = allocation.slots.length
+              ? Array.from(new Set(allocation.slots.map((s) => s.date)))
+              : [r.round_date];
+
+            for (const f of existingFx) {
+              const oldBookingId = f.booking_id;
+              const next = f.away_team_code === "__BYE__"
+                ? {
+                    fixture_date: byeDates[0] ?? r.round_date,
+                    start_time: null,
+                    end_time: null,
+                    court_id: null,
+                    venue_name: r.venue_name || "Home",
+                  }
+                : {
+                    ...(nextById.get(f.id) ?? {
+                      fixture_date: f.fixture_date || r.round_date,
+                      start_time: hm(f.start_time) ?? fallbackStart,
+                      end_time: hm(f.end_time) ?? fallbackEnd,
+                      court_id: f.court_id ?? newCourts[0],
+                    }),
+                    venue_name: r.venue_name || "Home",
+                  };
+
+              const { error: upErr } = await fromExt("platform_league_fixtures")
+                .update(next)
                 .eq("id", f.id);
-              if (f.booking_id) {
-                if (newCourt) {
-                  await supabase.from("bookings").update({ court_id: newCourt }).eq("id", f.booking_id);
-                } else {
-                  await supabase.from("bookings").update({ status: "cancelled" }).eq("id", f.booking_id);
-                  await fromExt("platform_league_fixtures").update({ booking_id: null }).eq("id", f.id);
+              if (upErr) throw upErr;
+
+              if (f.away_team_code === "__BYE__") {
+                if (oldBookingId) {
+                  const { error: bCancelErr } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", oldBookingId);
+                  if (bCancelErr) throw bCancelErr;
+                  const { error: unlinkErr } = await fromExt("platform_league_fixtures").update({ booking_id: null }).eq("id", f.id);
+                  if (unlinkErr) throw unlinkErr;
                 }
+                continue;
               }
+
+              if (payload.auto_create_bookings && next.court_id && next.start_time && next.fixture_date) {
+                const homeName = teams.find((t) => t.code === f.home_team_code)?.name?.trim();
+                const awayName = teams.find((t) => t.code === f.away_team_code)?.name?.trim();
+                const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";
+                const guestName = matchup ? `${r.name} - ${matchup}` : r.name;
+                if (oldBookingId) {
+                  const { error: bErr } = await supabase
+                    .from("bookings")
+                    .update({
+                      court_id: next.court_id,
+                      date: next.fixture_date,
+                      start_time: `${next.start_time}:00`,
+                      end_time: `${next.end_time}:00`,
+                      guest_name: guestName,
+                      status: "active",
+                    })
+                    .eq("id", oldBookingId);
+                  if (bErr) throw bErr;
+                } else {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user) {
+                    const { data: booking, error: bErr } = await supabase
+                      .from("bookings")
+                      .insert({
+                        court_id: next.court_id,
+                        user_id: user.id,
+                        club_id: clubId,
+                        date: next.fixture_date,
+                        start_time: `${next.start_time}:00`,
+                        end_time: `${next.end_time}:00`,
+                        status: "active",
+                        is_friendly: false,
+                        guest_name: guestName,
+                      })
+                      .select("id")
+                      .single();
+                    if (!bErr && booking) {
+                      const { error: linkErr } = await fromExt("platform_league_fixtures").update({ booking_id: booking.id }).eq("id", f.id);
+                      if (linkErr) throw linkErr;
+                    }
+                  }
+                }
+
+                const stale = await supabase
+                  .from("bookings")
+                  .update({ status: "cancelled" })
+                  .eq("club_id", clubId)
+                  .eq("date", f.fixture_date || next.fixture_date)
+                  .eq("court_id", f.court_id || next.court_id)
+                  .eq("status", "active")
+                  .like("guest_name", `${r.name} - %`)
+                  .neq("id", oldBookingId || "00000000-0000-0000-0000-000000000000");
+                if (stale.error) throw stale.error;
+              } else if (oldBookingId) {
+                const { error: bCancelErr } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", oldBookingId);
+                if (bCancelErr) throw bCancelErr;
+                const { error: unlinkErr } = await fromExt("platform_league_fixtures").update({ booking_id: null }).eq("id", f.id);
+                if (unlinkErr) throw unlinkErr;
+              }
+            }
+          } else if (!newCourts.length) {
+            for (const f of playable) {
+              if (f.booking_id) {
+                const { error: bCancelErr } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", f.booking_id);
+                if (bCancelErr) throw bCancelErr;
+              }
+              const { error: clearErr } = await fromExt("platform_league_fixtures")
+                .update({ court_id: null, booking_id: null, venue_name: r.venue_name || "Home" })
+                .eq("id", f.id);
+              if (clearErr) throw clearErr;
             }
           }
         }

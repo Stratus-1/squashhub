@@ -172,8 +172,11 @@ Deno.serve(async (req) => {
   }
 
   // 3. Get or create unsubscribe token (one token per email address)
+  const skipUnsubscribe = NO_UNSUBSCRIBE_TEMPLATES.has(templateName)
   const normalizedEmail = effectiveRecipient.toLowerCase()
-  let unsubscribeToken: string
+  let unsubscribeToken: string | undefined
+
+  if (!skipUnsubscribe) {
 
   // Check for existing token for this email
   const { data: existingToken, error: tokenLookupError } = await supabase

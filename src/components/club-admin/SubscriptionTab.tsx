@@ -233,6 +233,11 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
               <div className="text-lg font-bold text-amber-800 dark:text-amber-300">
                 {fmtMoney(totalOutstanding, outstandingCurrency)}
               </div>
+              {outstandingDisplayCurrency && totalOutstandingDisplay > 0 && (
+                <div className="text-[10px] text-muted-foreground">
+                  ≈ {fmtMoney(totalOutstandingDisplay, outstandingDisplayCurrency)}
+                </div>
+              )}
             </div>
           </div>
         </Card>

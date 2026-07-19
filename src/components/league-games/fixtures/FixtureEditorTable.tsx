@@ -239,6 +239,17 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                     </SelectContent>
                   </Select>
                 </td>
+                <td className="p-1 text-center">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    title="Swap home/away"
+                    onClick={() => swap(i)}
+                  >
+                    <ArrowLeftRight className="h-3.5 w-3.5" />
+                  </Button>
+                </td>
                 <td className="p-1">
                   <Select value={f.away_team_code} onValueChange={(v) => update(i, { away_team_code: v })}>
                     <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
@@ -250,13 +261,38 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                   </Select>
                 </td>
                 <td className="p-1">
+                  {(() => {
+                    const currentVenue = venueOfCourt(f.court_id);
+                    return (
+                      <Select
+                        value={currentVenue}
+                        onValueChange={(v) => {
+                          // If the selected court doesn't belong to the new venue, clear it
+                          const options = courtsForVenue(v);
+                          const stillValid = options.some((c) => c.id === f.court_id);
+                          update(i, {
+                            court_id: stillValid ? f.court_id : (options[0]?.id ?? null),
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          {venues.map((v) => (
+                            <SelectItem key={v.key} value={v.key}>{v.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
+                </td>
+                <td className="p-1">
                   <Select
                     value={f.court_id ? String(f.court_id) : ""}
                     onValueChange={(v) => update(i, { court_id: v ? Number(v) : null })}
                   >
                     <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
                     <SelectContent>
-                      {courts.map((c) => (
+                      {courtsForVenue(venueOfCourt(f.court_id)).map((c) => (
                         <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>

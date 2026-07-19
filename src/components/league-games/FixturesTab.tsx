@@ -212,6 +212,44 @@ export function FixturesTab({ clubId, associationId }: Props) {
           }
         }
 
+        // Court list changed → remap fixtures that reference removed courts onto
+        // the newly-added courts (round-robin within their timeslot). Also move
+        // any linked bookings; if no replacement court is available, cancel the
+        // booking and unlink it.
+        {
+          const prevCourts: number[] = (prev as any)?.court_ids ?? [];
+          const newCourts: number[] = r.court_ids ?? [];
+          const removed = prevCourts.filter((c) => !newCourts.includes(c));
+          const added = newCourts.filter((c) => !prevCourts.includes(c));
+          if (removed.length) {
+            const { data: orphaned } = await fromExt("platform_league_fixtures")
+              .select("id, court_id, booking_id, fixture_date, start_time")
+              .eq("round_id", r.id)
+              .in("court_id", removed);
+            const list = ((orphaned ?? []) as any[]).sort((a, b) => {
+              const ka = `${a.fixture_date ?? ""} ${a.start_time ?? ""}`;
+              const kb = `${b.fixture_date ?? ""} ${b.start_time ?? ""}`;
+              return ka.localeCompare(kb);
+            });
+            let i = 0;
+            for (const f of list) {
+              const newCourt = added.length ? added[i % added.length] : null;
+              i++;
+              await fromExt("platform_league_fixtures")
+                .update({ court_id: newCourt })
+                .eq("id", f.id);
+              if (f.booking_id) {
+                if (newCourt) {
+                  await supabase.from("bookings").update({ court_id: newCourt }).eq("id", f.booking_id);
+                } else {
+                  await supabase.from("bookings").update({ status: "cancelled" }).eq("id", f.booking_id);
+                  await fromExt("platform_league_fixtures").update({ booking_id: null }).eq("id", f.id);
+                }
+              }
+            }
+          }
+        }
+
         // If auto-bookings is enabled, ensure every playable fixture on this
         // round has a linked booking. Fixtures cloned from a "duplicate rounds"
         // action (or created before this toggle was on) may have court_id and

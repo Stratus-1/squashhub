@@ -16,6 +16,17 @@ const SENDER_DOMAIN = "reg.squashhub.co.za"
 // even though actual sending uses the subdomain above.
 const FROM_DOMAIN = "squashhub.co.za"
 
+// Billing / essential-service templates that MUST NOT include an unsubscribe
+// footer. These are legally-required transactional communications (invoices,
+// payment receipts, account/billing notices) — a recipient opting out of them
+// would silently stop receiving statutory billing correspondence.
+const NO_UNSUBSCRIBE_TEMPLATES = new Set<string>([
+  'subscription-invoice',
+  'subscription-payment-received',
+  'subscription-payment-failed',
+  'subscription-overdue',
+])
+
 // Generate a cryptographically random 32-byte hex token
 function generateToken(): string {
   const bytes = new Uint8Array(32)
@@ -161,8 +172,11 @@ Deno.serve(async (req) => {
   }
 
   // 3. Get or create unsubscribe token (one token per email address)
+  const skipUnsubscribe = NO_UNSUBSCRIBE_TEMPLATES.has(templateName)
   const normalizedEmail = effectiveRecipient.toLowerCase()
-  let unsubscribeToken: string
+  let unsubscribeToken: string | undefined
+
+  if (!skipUnsubscribe) {
 
   // Check for existing token for this email
   const { data: existingToken, error: tokenLookupError } = await supabase
@@ -276,6 +290,9 @@ Deno.serve(async (req) => {
       }
     )
   }
+  } // end if (!skipUnsubscribe)
+
+
 
   // 4. Render React Email template to HTML and plain text
   const html = await renderAsync(
@@ -303,22 +320,29 @@ Deno.serve(async (req) => {
     status: 'pending',
   })
 
+  const enqueuePayload: Record<string, any> = {
+    message_id: messageId,
+    to: effectiveRecipient,
+    from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+    sender_domain: SENDER_DOMAIN,
+    subject: resolvedSubject,
+    html,
+    text: plainText,
+    purpose: 'transactional',
+    label: templateName,
+    idempotency_key: idempotencyKey,
+    queued_at: new Date().toISOString(),
+  }
+  // Only include unsubscribe token for templates that support opt-out.
+  // Billing/essential-service emails omit it so the downstream API skips the
+  // unsubscribe footer entirely.
+  if (unsubscribeToken) {
+    enqueuePayload.unsubscribe_token = unsubscribeToken
+  }
+
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
     queue_name: 'transactional_emails',
-    payload: {
-      message_id: messageId,
-      to: effectiveRecipient,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-      sender_domain: SENDER_DOMAIN,
-      subject: resolvedSubject,
-      html,
-      text: plainText,
-      purpose: 'transactional',
-      label: templateName,
-      idempotency_key: idempotencyKey,
-      unsubscribe_token: unsubscribeToken,
-      queued_at: new Date().toISOString(),
-    },
+    payload: enqueuePayload,
   })
 
   if (enqueueError) {

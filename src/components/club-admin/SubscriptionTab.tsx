@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Landmark, FileText, ExternalLink, Copy, Loader2, Printer } from "lucide-react";
+import { Landmark, FileText, ExternalLink, Copy, Loader2, Printer, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useMyClub } from "@/hooks/use-club";
 import { ClubParticipationCard } from "@/components/club-admin/ClubParticipationCard";
@@ -133,6 +133,27 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
       await openStitchCheckout(url);
     } catch (e: any) {
       toast.error(e?.message || "Failed to start Stitch payment", { id: t });
+    }
+  };
+
+  const handleVerifyStitch = async (inv: Invoice) => {
+    const t = toast.loading(`Checking Stitch for ${inv.invoice_number}…`);
+    try {
+      const { data, error } = await supabase.functions.invoke("stitch-verify-platform-invoice", {
+        body: { invoice_number: inv.invoice_number },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const status = (data as any)?.status;
+      const stitchState = (data as any)?.stitch_state;
+      if (status === "paid") {
+        toast.success("Payment confirmed — invoice marked paid.", { id: t });
+        qc.invalidateQueries({ queryKey: ["club-platform-invoices", clubId] });
+      } else {
+        toast.message(`Stitch status: ${stitchState || status || "unknown"}`, { id: t });
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Verification failed", { id: t });
     }
   };
 
@@ -318,14 +339,25 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                             <Printer className="w-3 h-3 mr-1" /> View
                           </Button>
                           {unpaid && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="h-7 text-xs"
-                              onClick={() => handlePayStitch(inv)}
-                            >
-                              <ExternalLink className="w-3 h-3 mr-1" /> Pay via Stitch
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-7 text-xs"
+                                onClick={() => handlePayStitch(inv)}
+                              >
+                                <ExternalLink className="w-3 h-3 mr-1" /> Pay via Stitch
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => handleVerifyStitch(inv)}
+                                title="Check Stitch payment status"
+                              >
+                                <RefreshCw className="w-3 h-3 mr-1" /> Verify
+                              </Button>
+                            </>
                           )}
                           <Button
                             size="sm"

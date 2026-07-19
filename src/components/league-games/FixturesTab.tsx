@@ -178,6 +178,22 @@ export function FixturesTab({ clubId, associationId }: Props) {
         const venueChanged = (prev?.venue_name ?? "") !== (r.venue_name ?? "");
         const regenerateDatesAndTimes = timeChanged || dateWindowChanged || playDaysChanged;
         const shouldRescheduleFixtures = true;
+        let venueByCourt = new Map<number, string>();
+        if (newCourts.length) {
+          const { data: courtRows, error: courtErr } = await supabase
+            .from("courts")
+            .select("id, venue_name, clubs(name)")
+            .in("id", newCourts);
+          if (courtErr) throw courtErr;
+          venueByCourt = new Map(
+            ((courtRows ?? []) as any[]).map((c) => [
+              Number(c.id),
+              c.venue_name?.trim() || c.clubs?.name || r.venue_name || "Home",
+            ]),
+          );
+        }
+        const venueForCourt = (courtId?: number | null) =>
+          courtId ? (venueByCourt.get(courtId) ?? r.venue_name ?? "Home") : (r.venue_name || "Home");
 
         if (venueChanged) {
           const { error: vErr } = await fromExt("platform_league_fixtures")
@@ -320,7 +336,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
                       end_time: hm(f.end_time) ?? fallbackEnd,
                       court_id: f.court_id ?? newCourts[0],
                     }),
-                    venue_name: r.venue_name || "Home",
+                    venue_name: venueForCourt((nextById.get(f.id)?.court_id ?? f.court_id ?? newCourts[0]) as number),
                   };
 
               const { error: upErr } = await fromExt("platform_league_fixtures")

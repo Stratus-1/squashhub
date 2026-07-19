@@ -136,6 +136,27 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
     }
   };
 
+  const handleVerifyStitch = async (inv: Invoice) => {
+    const t = toast.loading(`Checking Stitch for ${inv.invoice_number}…`);
+    try {
+      const { data, error } = await supabase.functions.invoke("stitch-verify-platform-invoice", {
+        body: { invoice_number: inv.invoice_number },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const status = (data as any)?.status;
+      const stitchState = (data as any)?.stitch_state;
+      if (status === "paid") {
+        toast.success("Payment confirmed — invoice marked paid.", { id: t });
+        qc.invalidateQueries({ queryKey: ["club-platform-invoices", clubId] });
+      } else {
+        toast.message(`Stitch status: ${stitchState || status || "unknown"}`, { id: t });
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Verification failed", { id: t });
+    }
+  };
+
   // On return from Stitch (URL has reference=INV-... or payment_id=...), poll to confirm payment
   useEffect(() => {
     const reference = searchParams.get("reference");

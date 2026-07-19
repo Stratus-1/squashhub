@@ -174,18 +174,29 @@ Deno.serve(async (req) => {
       const cap = plan.max_billable_members ? Number(plan.max_billable_members) : null
       const billableMembers = cap && cap > 0 ? Math.min(memberCount, cap) : memberCount
 
-      // Per-club billing currency + rate
-      const billingCurrency = clubCurrencies.get(sub.club_id) || 'ZAR'
+      // Per-club display currency + rate (what the admin sees, e.g. "$0.35/member").
+      // We always CHARGE in ZAR because Stitch only accepts ZAR — convert the local
+      // total to ZAR via the configured FX rate.
+      const displayCurrency = clubCurrencies.get(sub.club_id) || 'ZAR'
       const cycle = (plan.billing_cycle === 'annual' ? 'annual' : 'monthly') as 'monthly' | 'annual'
       const planPriceZar = +Number(plan.price_per_member).toFixed(2)
       const planMinZar = +Number(plan.minimum_charge || 0).toFixed(2)
-      const pricePerMemberLocal = +rateFor(billingCurrency, cycle, planPriceZar).toFixed(2)
+      const pricePerMemberLocal = +rateFor(displayCurrency, cycle, planPriceZar).toFixed(2)
       const minimumChargeLocal = +minChargeFor(cycle, planMinZar).toFixed(2)
 
-      const gross = billableMembers * pricePerMemberLocal
-      const subtotal = +Math.max(gross, minimumChargeLocal).toFixed(2)
-      const vatAmount = +(subtotal * vatRate).toFixed(2)
-      const total = +(subtotal + vatAmount).toFixed(2)
+      const grossLocal = billableMembers * pricePerMemberLocal
+      const subtotalLocal = +Math.max(grossLocal, minimumChargeLocal).toFixed(2)
+      const vatLocal = +(subtotalLocal * vatRate).toFixed(2)
+      const displayTotal = +(subtotalLocal + vatLocal).toFixed(2)
+
+      // Convert to ZAR (actual charge currency).
+      const fxRate = fxToZar(displayCurrency)
+      const billingCurrency = 'ZAR'
+      const pricePerMemberZar = +(pricePerMemberLocal * fxRate).toFixed(2)
+      const minimumChargeZar = +(minimumChargeLocal * fxRate).toFixed(2)
+      const subtotal = +(subtotalLocal * fxRate).toFixed(2)
+      const vatAmount = +(vatLocal * fxRate).toFixed(2)
+      const total = +(displayTotal * fxRate).toFixed(2)
 
       // Determine billing period (next cycle after last period_end, or from billingDate)
       const periodStart = new Date(sub.current_period_end || billingDate)
@@ -207,17 +218,22 @@ Deno.serve(async (req) => {
           invoice_number: invoiceNumber,
           member_count: memberCount,
           currency: billingCurrency,
-          price_per_member: pricePerMemberLocal,
+          price_per_member: pricePerMemberZar,
           subtotal,
           vat: vatAmount,
           total,
+          display_currency: displayCurrency,
+          display_price_per_member: pricePerMemberLocal,
+          display_total: displayTotal,
+          fx_rate_to_zar: fxRate,
           status: 'dry-run',
         })
         seq++
         continue
       }
 
-      // Insert invoice record
+      // Insert invoice record — stored in ZAR (what Stitch charges), with the
+      // original local-currency amounts kept for display on the invoice/email.
       const { data: inv, error: invErr } = await supabase
         .from('platform_subscription_invoices')
         .insert({
@@ -230,12 +246,16 @@ Deno.serve(async (req) => {
           period_start: periodStart.toISOString().slice(0, 10),
           period_end: periodEnd.toISOString().slice(0, 10),
           member_count: billableMembers,
-          price_per_member: pricePerMemberLocal,
-          minimum_charge: minimumChargeLocal,
+          price_per_member: pricePerMemberZar,
+          minimum_charge: minimumChargeZar,
           subtotal,
           vat_amount: vatAmount,
           total,
           currency: billingCurrency,
+          display_currency: displayCurrency,
+          display_price_per_member: pricePerMemberLocal,
+          display_total: displayTotal,
+          fx_rate_to_zar: fxRate,
           due_date: dueDate.toISOString().slice(0, 10),
           snapshot: settings,
           status: 'issued',
@@ -244,6 +264,7 @@ Deno.serve(async (req) => {
         .single()
 
       if (invErr) throw invErr
+
 
       // Build the club's subscription management URL (for the email fallback link
       // and Stitch redirect after payment).

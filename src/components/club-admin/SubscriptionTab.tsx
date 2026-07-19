@@ -318,14 +318,25 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                             <Printer className="w-3 h-3 mr-1" /> View
                           </Button>
                           {unpaid && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="h-7 text-xs"
-                              onClick={() => handlePayStitch(inv)}
-                            >
-                              <ExternalLink className="w-3 h-3 mr-1" /> Pay via Stitch
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-7 text-xs"
+                                onClick={() => handlePayStitch(inv)}
+                              >
+                                <ExternalLink className="w-3 h-3 mr-1" /> Pay via Stitch
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => handleVerifyStitch(inv)}
+                                title="Check Stitch payment status"
+                              >
+                                <RefreshCw className="w-3 h-3 mr-1" /> Verify
+                              </Button>
+                            </>
                           )}
                           <Button
                             size="sm"

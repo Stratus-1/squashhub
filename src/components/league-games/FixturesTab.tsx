@@ -233,7 +233,14 @@ export function FixturesTab({ clubId, associationId }: Props) {
             const nextById = new Map<string, { fixture_date: string; start_time: string; end_time: string; court_id: number }>();
             let byeDates = [r.round_date];
 
-            if (regenerateDatesAndTimes) {
+            const existingGroupSizes = new Map<string, number>();
+            for (const f of playable) {
+              const key = `${f.fixture_date || r.round_date}|${hm(f.start_time) || fallbackStart}`;
+              existingGroupSizes.set(key, (existingGroupSizes.get(key) ?? 0) + 1);
+            }
+            const exceedsSelectedCourtCapacity = Array.from(existingGroupSizes.values()).some((n) => n > newCourts.length);
+
+            if (regenerateDatesAndTimes || exceedsSelectedCourtCapacity) {
               const slotTimes = timeSlotsBetween(r.start_time, r.end_time, Number(r.slot_minutes || 45));
               if (!slotTimes.length) throw new Error("Check the round start/end time and slot length.");
               const matchesPerDay = Math.max(1, newCourts.length * slotTimes.length);
@@ -272,20 +279,20 @@ export function FixturesTab({ clubId, associationId }: Props) {
                 }
                 let fallbackIdx = 0;
                 for (const f of group) {
-                const currentAllowed = !!f.court_id && newCourts.includes(f.court_id);
+                  const currentAllowed = !!f.court_id && newCourts.includes(f.court_id);
                   let nextCourt = currentAllowed ? f.court_id! : null;
                   if (!nextCourt) {
                     nextCourt = newCourts.find((c) => !used.has(c)) ?? newCourts[fallbackIdx % newCourts.length];
                     fallbackIdx++;
                     if (nextCourt) used.add(nextCourt);
                   }
-                const start = hm(f.start_time) ?? fallbackStart;
-                nextById.set(f.id, {
-                  fixture_date: f.fixture_date || r.round_date,
-                  start_time: start,
-                  end_time: hm(f.end_time) ?? addMinutesToHm(start, Number(r.slot_minutes || 45)) ?? fallbackEnd,
+                  const start = hm(f.start_time) ?? fallbackStart;
+                  nextById.set(f.id, {
+                    fixture_date: f.fixture_date || r.round_date,
+                    start_time: start,
+                    end_time: hm(f.end_time) ?? addMinutesToHm(start, Number(r.slot_minutes || 45)) ?? fallbackEnd,
                     court_id: nextCourt ?? newCourts[0],
-                });
+                  });
                 }
               }
               byeDates = Array.from(new Set(existingFx.map((f) => f.fixture_date).filter(Boolean) as string[]));

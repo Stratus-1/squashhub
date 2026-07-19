@@ -42,16 +42,28 @@ type Props = {
 
 export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, initial, onSave }: Props) {
   const { data: courts } = useQuery({
-    queryKey: ["club-courts-for-rounds", clubId],
+    queryKey: ["club-courts-for-rounds", clubId, associationId],
     queryFn: async () => {
+      // Collect club IDs: this club + every other club in the same association
+      const clubIds = new Set<string>([clubId]);
+      if (associationId) {
+        const { data: assocClubs } = await fromExt("leagues")
+          .select("club_id")
+          .eq("association_id", associationId);
+        (assocClubs ?? []).forEach((r: any) => r?.club_id && clubIds.add(r.club_id));
+      }
       const { data, error } = await supabase
         .from("courts")
-        .select("id, name")
-        .eq("club_id", clubId)
+        .select("id, name, venue_name, club_id, clubs(name)")
+        .in("club_id", Array.from(clubIds))
         .eq("is_external", false)
+        .order("venue_name", { ascending: true, nullsFirst: true })
         .order("name");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map((c: any) => ({
+        ...c,
+        venue_label: c.venue_name?.trim() || c.clubs?.name || "Other",
+      }));
     },
     enabled: !!clubId && open,
   });
@@ -244,17 +256,32 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
           </div>
           <div>
             <Label>Courts</Label>
-            <div className="grid grid-cols-2 gap-2 mt-1 max-h-40 overflow-auto rounded border p-2">
-              {(courts ?? []).map((c: any) => (
-                <label key={c.id} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={draft.court_ids.includes(c.id)}
-                    onCheckedChange={() => toggleCourt(c.id)}
-                  />
-                  {c.name}
-                </label>
-              ))}
-              {!courts?.length && <p className="text-xs text-muted-foreground">No courts found</p>}
+            <div className="mt-1 max-h-56 overflow-auto rounded border p-2 space-y-2">
+              {(() => {
+                const groups = new Map<string, any[]>();
+                for (const c of (courts ?? []) as any[]) {
+                  const key = c.venue_label || "Other";
+                  if (!groups.has(key)) groups.set(key, []);
+                  groups.get(key)!.push(c);
+                }
+                if (!groups.size) return <p className="text-xs text-muted-foreground">No courts found</p>;
+                return Array.from(groups.entries()).map(([venue, list]) => (
+                  <div key={venue}>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{venue}</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {list.map((c: any) => (
+                        <label key={c.id} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={draft.court_ids.includes(c.id)}
+                            onCheckedChange={() => toggleCourt(c.id)}
+                          />
+                          {c.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
           </div>
           <div>

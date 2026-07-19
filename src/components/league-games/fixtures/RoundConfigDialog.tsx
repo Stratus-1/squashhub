@@ -205,22 +205,23 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
 
           <div>
             <Label>Venue</Label>
-            <Select value={draft.venue_name} onValueChange={(v) => setDraft({ ...draft, venue_name: v })}>
-              <SelectTrigger><SelectValue placeholder="Select venue" /></SelectTrigger>
-              <SelectContent>
-                {(venueOptions ?? []).map((n) => (
-                  <SelectItem key={n} value={n}>{n}</SelectItem>
-                ))}
-                <SelectItem value="__custom__">Other / custom…</SelectItem>
-              </SelectContent>
-            </Select>
-            {draft.venue_name === "__custom__" && (
-              <Input
-                className="mt-2"
-                placeholder="Enter venue name"
-                onChange={(e) => setDraft({ ...draft, venue_name: e.target.value })}
-              />
-            )}
+            <div className="mt-1 rounded border p-2 grid grid-cols-2 gap-1.5">
+              {venueOptions.length === 0 && (
+                <p className="text-xs text-muted-foreground col-span-2">No venues found</p>
+              )}
+              {venueOptions.map((n) => (
+                <label key={n} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={selectedVenues.includes(n)}
+                    onCheckedChange={() => toggleVenue(n)}
+                  />
+                  {n}
+                </label>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Tick every venue whose courts you want to make available for this round.
+            </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>

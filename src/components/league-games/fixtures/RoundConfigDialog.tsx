@@ -113,13 +113,44 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Default venue to user's club (first option) if not yet set
+  // Selected venues drive which court groups appear.
+  const [selectedVenues, setSelectedVenues] = useState<string[]>([]);
+
+  // Seed selected venues when opening: parse existing venue_name (comma-joined)
+  // and also include any venue implied by pre-selected courts.
   useEffect(() => {
-    if (open && !draft.venue_name && venueOptions?.length) {
-      setDraft((d) => ({ ...d, venue_name: venueOptions[0] }));
+    if (!open) return;
+    const fromName = (draft.venue_name ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const fromCourts = (courts ?? [])
+      .filter((c: any) => draft.court_ids.includes(c.id))
+      .map((c: any) => c.venue_label);
+    const merged = Array.from(new Set([...fromName, ...fromCourts])).filter(
+      (v) => !venueOptions.length || venueOptions.includes(v),
+    );
+    if (merged.length) {
+      setSelectedVenues(merged);
+    } else if (venueOptions.length) {
+      setSelectedVenues([venueOptions[0]]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, venueOptions]);
+  }, [open, venueOptions.join("|")]);
+
+  const toggleVenue = (name: string) =>
+    setSelectedVenues((prev) => {
+      const next = prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name];
+      // Drop any selected courts whose venue is no longer selected
+      setDraft((d) => ({
+        ...d,
+        court_ids: d.court_ids.filter((cid) => {
+          const c = (courts ?? []).find((x: any) => x.id === cid);
+          return c ? next.includes(c.venue_label) : true;
+        }),
+      }));
+      return next;
+    });
 
   const toggleCourt = (id: number) =>
     setDraft((d) => ({
@@ -174,22 +205,23 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
 
           <div>
             <Label>Venue</Label>
-            <Select value={draft.venue_name} onValueChange={(v) => setDraft({ ...draft, venue_name: v })}>
-              <SelectTrigger><SelectValue placeholder="Select venue" /></SelectTrigger>
-              <SelectContent>
-                {(venueOptions ?? []).map((n) => (
-                  <SelectItem key={n} value={n}>{n}</SelectItem>
-                ))}
-                <SelectItem value="__custom__">Other / custom…</SelectItem>
-              </SelectContent>
-            </Select>
-            {draft.venue_name === "__custom__" && (
-              <Input
-                className="mt-2"
-                placeholder="Enter venue name"
-                onChange={(e) => setDraft({ ...draft, venue_name: e.target.value })}
-              />
-            )}
+            <div className="mt-1 rounded border p-2 grid grid-cols-2 gap-1.5">
+              {venueOptions.length === 0 && (
+                <p className="text-xs text-muted-foreground col-span-2">No venues found</p>
+              )}
+              {venueOptions.map((n) => (
+                <label key={n} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={selectedVenues.includes(n)}
+                    onCheckedChange={() => toggleVenue(n)}
+                  />
+                  {n}
+                </label>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Tick every venue whose courts you want to make available for this round.
+            </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
@@ -262,10 +294,11 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
                 const groups = new Map<string, any[]>();
                 for (const c of (courts ?? []) as any[]) {
                   const key = c.venue_label || "Other";
+                  if (selectedVenues.length && !selectedVenues.includes(key)) continue;
                   if (!groups.has(key)) groups.set(key, []);
                   groups.get(key)!.push(c);
                 }
-                if (!groups.size) return <p className="text-xs text-muted-foreground">No courts found</p>;
+                if (!groups.size) return <p className="text-xs text-muted-foreground">Select a venue above to see its courts.</p>;
                 return Array.from(groups.entries()).map(([venue, list]) => (
                   <div key={venue}>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{venue}</div>
@@ -313,12 +346,12 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
             onClick={async () => {
               if (!draft.name?.trim()) { toast.error("Please enter a round name."); return; }
               if (!draft.round_date) { toast.error("Please pick a start date."); return; }
-
-              if (!draft.venue_name?.trim() || draft.venue_name === "__custom__") { toast.error("Please select a venue."); return; }
+              if (!selectedVenues.length) { toast.error("Please select at least one venue."); return; }
               if (!draft.court_ids.length) { toast.error("Please select at least one court."); return; }
+              const venueLabel = selectedVenues.join(", ");
               setSaving(true);
               try {
-                await onSave(draft);
+                await onSave({ ...draft, venue_name: venueLabel });
                 onOpenChange(false);
               } catch (e: any) {
                 toast.error(e?.message ?? "Could not save round");

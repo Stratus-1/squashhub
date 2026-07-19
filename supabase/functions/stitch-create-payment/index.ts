@@ -226,13 +226,16 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
 }
 
 function appendRedirectUri(link: string, returnUrl: string) {
+  // Stitch hosted flows honour `redirect_url`; `redirect_uri` is silently
+  // ignored and leaves the payer stranded on Stitch's completion screen.
   try {
     const url = new URL(link);
-    url.searchParams.set("redirect_uri", returnUrl);
+    url.searchParams.delete("redirect_uri");
+    url.searchParams.set("redirect_url", returnUrl);
     return url.toString();
   } catch {
     const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
+    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
 }
 

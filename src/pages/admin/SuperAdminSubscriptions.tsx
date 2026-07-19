@@ -240,6 +240,8 @@ export default function SuperAdminSubscriptions() {
         saas_min_charge_annual: map.get("saas_min_charge_annual") || (annualPlan ? String(annualPlan.minimum_charge) : MIN_CHARGE),
         saas_billing_cap: map.get("saas_billing_cap") || (anyPlan?.max_billable_members != null ? String(anyPlan.max_billable_members) : "150"),
         saas_trial_days: map.get("saas_trial_days") || (anyPlan ? String(anyPlan.trial_days) : "30"),
+        fx_usd_to_zar: map.get("fx_usd_to_zar") || "18.50",
+        fx_eur_to_zar: map.get("fx_eur_to_zar") || "20.00",
       };
       setIntlForm(parsed);
       setIntlDirty(false);

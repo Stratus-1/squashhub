@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
       merchantReference,
       merchantRedirectUrl: return_url,
       redirectUrl: return_url,
-      currency: inv.currency || "ZAR",
+      currency: "ZAR",
     };
     const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
       method: "POST",

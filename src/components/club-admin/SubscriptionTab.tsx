@@ -94,6 +94,10 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
   );
   const totalOutstanding = outstanding.reduce((s, i) => s + Number(i.total || 0), 0);
   const outstandingCurrency = (outstanding[0] as any)?.currency || (club as any)?.currency_code || "ZAR";
+  const outstandingDisplayCurrency = (outstanding[0] as any)?.display_currency || null;
+  const totalOutstandingDisplay = outstandingDisplayCurrency && outstandingDisplayCurrency !== outstandingCurrency
+    ? outstanding.reduce((s, i) => s + Number((i as any).display_total || 0), 0)
+    : 0;
 
   const copy = (text: string, label = "Copied") => {
     navigator.clipboard.writeText(text).then(

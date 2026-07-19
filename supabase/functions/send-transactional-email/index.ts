@@ -320,22 +320,29 @@ Deno.serve(async (req) => {
     status: 'pending',
   })
 
+  const enqueuePayload: Record<string, any> = {
+    message_id: messageId,
+    to: effectiveRecipient,
+    from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+    sender_domain: SENDER_DOMAIN,
+    subject: resolvedSubject,
+    html,
+    text: plainText,
+    purpose: 'transactional',
+    label: templateName,
+    idempotency_key: idempotencyKey,
+    queued_at: new Date().toISOString(),
+  }
+  // Only include unsubscribe token for templates that support opt-out.
+  // Billing/essential-service emails omit it so the downstream API skips the
+  // unsubscribe footer entirely.
+  if (unsubscribeToken) {
+    enqueuePayload.unsubscribe_token = unsubscribeToken
+  }
+
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
     queue_name: 'transactional_emails',
-    payload: {
-      message_id: messageId,
-      to: effectiveRecipient,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-      sender_domain: SENDER_DOMAIN,
-      subject: resolvedSubject,
-      html,
-      text: plainText,
-      purpose: 'transactional',
-      label: templateName,
-      idempotency_key: idempotencyKey,
-      unsubscribe_token: unsubscribeToken,
-      queued_at: new Date().toISOString(),
-    },
+    payload: enqueuePayload,
   })
 
   if (enqueueError) {

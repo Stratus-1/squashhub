@@ -50,6 +50,39 @@ const addMinutesToHm = (time: string, minutes: number) => {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 };
 
+const timeSlotsBetween = (startTime: string, endTime: string, slotMinutes: number) => {
+  const start = hm(startTime);
+  const end = hm(endTime);
+  if (!start || !end || slotMinutes <= 0) return [] as string[];
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  let cur = sh * 60 + sm;
+  const limit = eh * 60 + em;
+  const out: string[] = [];
+  while (cur < limit) {
+    out.push(`${String(Math.floor(cur / 60)).padStart(2, "0")}:${String(cur % 60).padStart(2, "0")}`);
+    cur += slotMinutes;
+  }
+  return out;
+};
+
+const nextPlayDates = (startDate: string, count: number, playDows: number[] = []) => {
+  const out: string[] = [];
+  const allowed = playDows.length ? new Set(playDows) : null;
+  const [y, m, d] = startDate.split("-").map(Number);
+  let ms = Date.UTC(y, m - 1, d);
+  let guard = 0;
+  while (out.length < count && guard < count * 14 + 366) {
+    const dt = new Date(ms);
+    if (!allowed || allowed.has(dt.getUTCDay())) {
+      out.push(`${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`);
+    }
+    ms += 86400000;
+    guard++;
+  }
+  return out;
+};
+
 const sameNumberSet = (a: number[] = [], b: number[] = []) => {
   const aa = [...a].sort((x, y) => x - y).join(",");
   const bb = [...b].sort((x, y) => x - y).join(",");

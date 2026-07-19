@@ -56,8 +56,21 @@ Deno.serve(async (req) => {
       return json({ error: "Only club admins can pay this invoice" }, 200);
     }
 
-    const amountCents = Math.round(Number(inv.total || 0) * 100);
-    if (amountCents < 100) return json({ error: `Invoice total below minimum (${inv.currency || "ZAR"} 1.00)` }, 200);
+    // Stitch only supports ZAR. Convert non-ZAR invoices at the current FX rate from app_settings.
+    const invCurrency = String(inv.currency || "ZAR").toUpperCase();
+    let zarTotal = Number(inv.total || 0);
+    let fxNote = "";
+    if (invCurrency !== "ZAR") {
+      const fxKey = invCurrency === "USD" ? "fx_usd_to_zar" : invCurrency === "EUR" ? "fx_eur_to_zar" : null;
+      if (!fxKey) return json({ error: `Currency ${invCurrency} not supported for Stitch (ZAR only)` }, 200);
+      const { data: fxRow } = await admin.from("app_settings").select("value").eq("key", fxKey).maybeSingle();
+      const fxRate = Number(fxRow?.value || 0);
+      if (!fxRate || fxRate <= 0) return json({ error: `FX rate ${fxKey} not configured` }, 200);
+      zarTotal = Number(inv.total || 0) * fxRate;
+      fxNote = ` (converted from ${invCurrency} ${Number(inv.total).toFixed(2)} @ ${fxRate})`;
+    }
+    const amountCents = Math.round(zarTotal * 100);
+    if (amountCents < 100) return json({ error: `Invoice total below minimum (ZAR 1.00)${fxNote}` }, 200);
 
     // Load platform Stitch credentials
     const { data: settingRow, error: settingErr } = await admin
@@ -101,7 +114,7 @@ Deno.serve(async (req) => {
       merchantReference,
       merchantRedirectUrl: return_url,
       redirectUrl: return_url,
-      currency: inv.currency || "ZAR",
+      currency: "ZAR",
     };
     const plResp = await fetch(`${STITCH_BASE}/payment-links`, {
       method: "POST",

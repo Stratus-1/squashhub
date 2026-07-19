@@ -177,7 +177,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         const playDaysChanged = !sameNumberList((prev as any)?.play_dows ?? [], r.play_dows ?? []);
         const venueChanged = (prev?.venue_name ?? "") !== (r.venue_name ?? "");
         const regenerateDatesAndTimes = timeChanged || dateWindowChanged || playDaysChanged;
-        const shouldRescheduleFixtures = timeChanged || courtsChanged || dateWindowChanged || playDaysChanged;
+        const shouldRescheduleFixtures = true;
 
         if (venueChanged) {
           const { error: vErr } = await fromExt("platform_league_fixtures")
@@ -211,34 +211,38 @@ export function FixturesTab({ clubId, associationId }: Props) {
           };
           const existingFx = (fixtureRows ?? []) as FxRow[];
           const playable = existingFx.filter((f) => f.away_team_code !== "__BYE__");
+          const fixtureCourtMismatch = playable.some((f) => !!f.court_id && !newCourts.includes(f.court_id));
+          const fixtureMissingCourt = playable.some((f) => !f.court_id && newCourts.length > 0);
+          const existingGroupSizes = new Map<string, number>();
+          for (const f of playable) {
+            const key = `${f.fixture_date || r.round_date}|${hm(f.start_time) || newStart || "18:00"}`;
+            existingGroupSizes.set(key, (existingGroupSizes.get(key) ?? 0) + 1);
+          }
+          const exceedsSelectedCourtCapacity = Array.from(existingGroupSizes.values()).some((n) => n > newCourts.length);
+          const scheduleWillChange = regenerateDatesAndTimes || courtsChanged || fixtureCourtMismatch || fixtureMissingCourt || exceedsSelectedCourtCapacity;
 
           if (playable.length && newCourts.length) {
-            const ids = playable.map((f) => f.id);
-            const [{ data: resRows }, { data: lineupRows }, { data: matchRows }] = await Promise.all([
-              fromExt("league_fixture_results").select("fixture_id").in("fixture_id", ids),
-              fromExt("league_fixture_lineups").select("fixture_id").in("fixture_id", ids),
-              fromExt("league_match_results").select("fixture_id").in("fixture_id", ids),
-            ]);
-            const protectedIds = new Set<string>([
-              ...((resRows ?? []) as any[]).map((x) => x.fixture_id),
-              ...((lineupRows ?? []) as any[]).map((x) => x.fixture_id),
-              ...((matchRows ?? []) as any[]).map((x) => x.fixture_id),
-            ]);
-            if (protectedIds.size) {
-              throw new Error("This round already has saved scorecards/lineups, so its fixtures cannot be regenerated from round settings.");
+            if (scheduleWillChange) {
+              const ids = playable.map((f) => f.id);
+              const [{ data: resRows }, { data: lineupRows }, { data: matchRows }] = await Promise.all([
+                fromExt("league_fixture_results").select("fixture_id").in("fixture_id", ids),
+                fromExt("league_fixture_lineups").select("fixture_id").in("fixture_id", ids),
+                fromExt("league_match_results").select("fixture_id").in("fixture_id", ids),
+              ]);
+              const protectedIds = new Set<string>([
+                ...((resRows ?? []) as any[]).map((x) => x.fixture_id),
+                ...((lineupRows ?? []) as any[]).map((x) => x.fixture_id),
+                ...((matchRows ?? []) as any[]).map((x) => x.fixture_id),
+              ]);
+              if (protectedIds.size) {
+                throw new Error("This round already has saved scorecards/lineups, so its fixtures cannot be regenerated from round settings.");
+              }
             }
 
             const fallbackStart = newStart ?? "18:00";
             const fallbackEnd = newEndDefault ?? addMinutesToHm(fallbackStart, Number(r.slot_minutes || 45));
             const nextById = new Map<string, { fixture_date: string; start_time: string; end_time: string; court_id: number }>();
             let byeDates = [r.round_date];
-
-            const existingGroupSizes = new Map<string, number>();
-            for (const f of playable) {
-              const key = `${f.fixture_date || r.round_date}|${hm(f.start_time) || fallbackStart}`;
-              existingGroupSizes.set(key, (existingGroupSizes.get(key) ?? 0) + 1);
-            }
-            const exceedsSelectedCourtCapacity = Array.from(existingGroupSizes.values()).some((n) => n > newCourts.length);
 
             if (regenerateDatesAndTimes || exceedsSelectedCourtCapacity) {
               const slotTimes = timeSlotsBetween(r.start_time, r.end_time, Number(r.slot_minutes || 45));

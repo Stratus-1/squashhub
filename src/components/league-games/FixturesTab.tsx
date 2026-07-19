@@ -288,6 +288,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
               }
 
               if (payload.auto_create_bookings && next.court_id && next.start_time && next.fixture_date) {
+                const bookingEnd = next.end_time || addMinutesToHm(next.start_time, Number(r.slot_minutes || 45));
                 const homeName = teams.find((t) => t.code === f.home_team_code)?.name?.trim();
                 const awayName = teams.find((t) => t.code === f.away_team_code)?.name?.trim();
                 const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";
@@ -299,7 +300,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
                       court_id: next.court_id,
                       date: next.fixture_date,
                       start_time: `${next.start_time}:00`,
-                      end_time: `${next.end_time}:00`,
+                      end_time: `${bookingEnd}:00`,
                       guest_name: guestName,
                       status: "active",
                     })
@@ -316,7 +317,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
                         club_id: clubId,
                         date: next.fixture_date,
                         start_time: `${next.start_time}:00`,
-                        end_time: `${next.end_time}:00`,
+                        end_time: `${bookingEnd}:00`,
                         status: "active",
                         is_friendly: false,
                         guest_name: guestName,

@@ -1138,7 +1138,7 @@ function ReadOnlyFixtures({
   fallbackDate,
 }: {
   fixtures: EditableFixture[];
-  courts: { id: number; name: string }[];
+  courts: { id: number; name: string; venue_name?: string | null }[];
   teams: { code: string; name: string }[];
   fallbackDate?: string;
 }) {
@@ -1150,7 +1150,9 @@ function ReadOnlyFixtures({
     );
   }
   const teamName = (code: string) => teams.find((t) => t.code === code)?.name ?? code;
-  const courtName = (id: number | null) => (id ? courts.find((c) => c.id === id)?.name ?? `Court ${id}` : "—");
+  const courtOf = (id: number | null) => (id ? courts.find((c) => c.id === id) : null);
+  const courtName = (id: number | null) => courtOf(id)?.name ?? (id ? `Court ${id}` : "—");
+  const venueOf = (id: number | null) => courtOf(id)?.venue_name ?? "—";
   const fmtDate = (d?: string | null) => {
     const v = d || fallbackDate;
     if (!v) return "—";
@@ -1163,6 +1165,7 @@ function ReadOnlyFixtures({
           <tr className="text-left">
             <th className="p-2">Date</th>
             <th className="p-2">Time</th>
+            <th className="p-2">Venue</th>
             <th className="p-2">Court</th>
             <th className="p-2">Home</th>
             <th className="p-2">Away</th>
@@ -1173,6 +1176,7 @@ function ReadOnlyFixtures({
             <tr key={i} className="border-t">
               <td className="p-2">{fmtDate(f.fixture_date)}</td>
               <td className="p-2">{f.start_time?.slice(0, 5) ?? "—"}</td>
+              <td className="p-2">{venueOf(f.court_id)}</td>
               <td className="p-2">{courtName(f.court_id)}</td>
               <td className="p-2">{teamName(f.home_team_code)}</td>
               <td className="p-2">{teamName(f.away_team_code)}</td>

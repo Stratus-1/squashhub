@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Trash2, ArrowLeftRight } from "lucide-react";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 
 export type EditableFixture = {
@@ -19,7 +19,7 @@ export type EditableFixture = {
 type Props = {
   fixtures: EditableFixture[];
   teams: { code: string; name: string }[];
-  courts: { id: number; name: string }[];
+  courts: { id: number; name: string; venue_name?: string | null }[];
   onChange: (next: EditableFixture[]) => void;
   defaultDate?: string;
   minDate?: string;
@@ -52,10 +52,38 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
     };
   })();
 
+  const UNVENUED = "__unvenued__";
+  const venueOfCourt = (courtId: number | null | undefined): string => {
+    if (!courtId) return UNVENUED;
+    const c = courts.find((x) => x.id === courtId);
+    const v = c?.venue_name?.trim();
+    return v && v.length ? v : UNVENUED;
+  };
+  const venues = (() => {
+    const seen = new Map<string, string>();
+    for (const c of courts) {
+      const v = c.venue_name?.trim();
+      const key = v && v.length ? v : UNVENUED;
+      if (!seen.has(key)) seen.set(key, v && v.length ? v : "— No venue —");
+    }
+    return Array.from(seen.entries()).map(([key, label]) => ({ key, label }));
+  })();
+  const courtsForVenue = (venueKey: string) =>
+    courts.filter((c) => {
+      const v = c.venue_name?.trim();
+      const k = v && v.length ? v : UNVENUED;
+      return k === venueKey;
+    });
+
   const update = (idx: number, patch: Partial<EditableFixture>) => {
     const next = [...fixtures];
     next[idx] = { ...next[idx], ...patch };
     onChange(next);
+  };
+  const swap = (idx: number) => {
+    const f = fixtures[idx];
+    if (!f || f.away_team_code === "__BYE__") return;
+    update(idx, { home_team_code: f.away_team_code, away_team_code: f.home_team_code });
   };
   const remove = (idx: number) => {
     const next = [...fixtures];
@@ -142,7 +170,9 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
           <tr className="text-left">
             <th className="p-2">Date</th>
             <th className="p-2">Home</th>
+            <th className="p-2 w-8"></th>
             <th className="p-2">Away</th>
+            <th className="p-2">Venue</th>
             <th className="p-2">Court</th>
             <th className="p-2">Start</th>
             <th className="p-2">End</th>
@@ -175,7 +205,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-1 text-xs font-medium text-amber-700 dark:text-amber-400" colSpan={4}>
+                  <td className="p-1 text-xs font-medium text-amber-700 dark:text-amber-400" colSpan={6}>
                     BYE — no match this round
                   </td>
                   <td className="p-1 text-right">
@@ -209,6 +239,17 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                     </SelectContent>
                   </Select>
                 </td>
+                <td className="p-1 text-center">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    title="Swap home/away"
+                    onClick={() => swap(i)}
+                  >
+                    <ArrowLeftRight className="h-3.5 w-3.5" />
+                  </Button>
+                </td>
                 <td className="p-1">
                   <Select value={f.away_team_code} onValueChange={(v) => update(i, { away_team_code: v })}>
                     <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
@@ -220,13 +261,38 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                   </Select>
                 </td>
                 <td className="p-1">
+                  {(() => {
+                    const currentVenue = venueOfCourt(f.court_id);
+                    return (
+                      <Select
+                        value={currentVenue}
+                        onValueChange={(v) => {
+                          // If the selected court doesn't belong to the new venue, clear it
+                          const options = courtsForVenue(v);
+                          const stillValid = options.some((c) => c.id === f.court_id);
+                          update(i, {
+                            court_id: stillValid ? f.court_id : (options[0]?.id ?? null),
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          {venues.map((v) => (
+                            <SelectItem key={v.key} value={v.key}>{v.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
+                </td>
+                <td className="p-1">
                   <Select
                     value={f.court_id ? String(f.court_id) : ""}
                     onValueChange={(v) => update(i, { court_id: v ? Number(v) : null })}
                   >
                     <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
                     <SelectContent>
-                      {courts.map((c) => (
+                      {courtsForVenue(venueOfCourt(f.court_id)).map((c) => (
                         <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -258,7 +324,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
           })}
           {!fixtures.length && (
             <tr>
-              <td colSpan={7} className="p-3 text-center text-muted-foreground">
+              <td colSpan={9} className="p-3 text-center text-muted-foreground">
                 No fixtures yet — add manually or auto-distribute.
               </td>
             </tr>

@@ -257,12 +257,16 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = ""): string {
 }
 
 function appendRedirectUri(link: string, returnUrl: string): string {
+  // Stitch Express card-consent / subscription hosted URLs honour
+  // `redirect_url` (not `redirect_uri`). Using the wrong param leaves the
+  // payer stranded on express.stitch.money/card-consent/complete.
   try {
     const url = new URL(link);
-    url.searchParams.set("redirect_uri", returnUrl);
+    url.searchParams.delete("redirect_uri");
+    url.searchParams.set("redirect_url", returnUrl);
     return url.toString();
   } catch {
     const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
+    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
 }

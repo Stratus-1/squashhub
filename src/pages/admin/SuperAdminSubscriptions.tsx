@@ -1287,8 +1287,26 @@ export default function SuperAdminSubscriptions() {
 
 // ─── All Platform Subscription Invoices (Super Admin view) ───
 function AllInvoicesList() {
+  const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [q, setQ] = useState("");
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const resendInvoice = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      setResendingId(invoiceId);
+      const { data, error } = await supabase.functions.invoke("resend-subscription-invoice", { body: { invoice_id: invoiceId } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: (data: any) => {
+      toast.success(`Invoice email sent${data?.recipient ? ` to ${data.recipient}` : ""}`);
+      qc.invalidateQueries({ queryKey: ["all-platform-invoices"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to send invoice email"),
+    onSettled: () => setResendingId(null),
+  });
 
   const { data: invoices = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["all-platform-invoices"],

@@ -1287,8 +1287,26 @@ export default function SuperAdminSubscriptions() {
 
 // ─── All Platform Subscription Invoices (Super Admin view) ───
 function AllInvoicesList() {
+  const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [q, setQ] = useState("");
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const resendInvoice = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      setResendingId(invoiceId);
+      const { data, error } = await supabase.functions.invoke("resend-subscription-invoice", { body: { invoice_id: invoiceId } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: (data: any) => {
+      toast.success(`Invoice email sent${data?.recipient ? ` to ${data.recipient}` : ""}`);
+      qc.invalidateQueries({ queryKey: ["all-platform-invoices"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to send invoice email"),
+    onSettled: () => setResendingId(null),
+  });
 
   const { data: invoices = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["all-platform-invoices"],
@@ -1409,13 +1427,14 @@ function AllInvoicesList() {
                 <TableHead className="text-xs">Paid</TableHead>
                 <TableHead className="text-xs">Status</TableHead>
                 <TableHead className="text-xs">Email</TableHead>
+                <TableHead className="text-xs w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Loading…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Loading…</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">No invoices found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">No invoices found</TableCell></TableRow>
               ) : (
                 filtered.map((inv) => (
                   <TableRow key={inv.id}>
@@ -1437,6 +1456,18 @@ function AllInvoicesList() {
                       ) : (
                         <span className="text-muted-foreground">{inv.email_status || "—"}</span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px] px-2"
+                        disabled={resendingId === inv.id || inv.status === 'void'}
+                        onClick={() => resendInvoice.mutate(inv.id)}
+                        title="Resend invoice email to club billing address"
+                      >
+                        {resendingId === inv.id ? "…" : (inv.email_sent_at ? "Resend" : "Send")}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

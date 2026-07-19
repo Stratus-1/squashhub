@@ -238,9 +238,10 @@ Deno.serve(async (req) => {
       // Build the club's subscription management URL (for the email fallback link
       // and Stitch redirect after payment).
       const subdomain = (club as any)?.subdomain as string | undefined
-      const manageUrl = subdomain
+      const baseManage = subdomain
         ? `https://${subdomain}.squashhub.co.za/club-admin?tab=subscription`
         : `https://squashhub.co.za/club-admin?tab=subscription`
+      const manageUrl = `${baseManage}&pay=${inv.id}`
 
       // Try to create a Stitch payment link so the invoice email has a "Pay" button.
       // Best-effort — if it fails (creds missing / API down), we fall back to manageUrl.

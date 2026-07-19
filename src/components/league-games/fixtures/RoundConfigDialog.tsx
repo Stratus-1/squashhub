@@ -44,19 +44,27 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
   const { data: courts } = useQuery({
     queryKey: ["club-courts-for-rounds", clubId, associationId],
     queryFn: async () => {
-      // Collect club IDs: this club + every other club in the same association
+      // Collect club IDs: this club + every club in the same association (via leagues
+      // and via association_affiliated_clubs so cross-club courts show up even when
+      // that club isn't fielding a team in this specific association season).
       const clubIds = new Set<string>([clubId]);
       if (associationId) {
-        const { data: assocClubs } = await fromExt("leagues")
-          .select("club_id")
-          .eq("association_id", associationId);
-        (assocClubs ?? []).forEach((r: any) => r?.club_id && clubIds.add(r.club_id));
+        const [{ data: assocLeagueClubs }, { data: assocAffiliated }] = await Promise.all([
+          fromExt("leagues").select("club_id").eq("association_id", associationId),
+          supabase
+            .from("association_affiliated_clubs")
+            .select("club_id")
+            .eq("association_tenant_id", associationId)
+            .eq("status", "active"),
+        ]);
+        (assocLeagueClubs ?? []).forEach((r: any) => r?.club_id && clubIds.add(r.club_id));
+        (assocAffiliated ?? []).forEach((r: any) => r?.club_id && clubIds.add(r.club_id));
       }
+      // Include external courts too — admins use these to represent visitor venues.
       const { data, error } = await supabase
         .from("courts")
-        .select("id, name, venue_name, club_id, clubs(name)")
+        .select("id, name, venue_name, club_id, is_external, clubs(name)")
         .in("club_id", Array.from(clubIds))
-        .eq("is_external", false)
         .order("venue_name", { ascending: true, nullsFirst: true })
         .order("name");
       if (error) throw error;
@@ -68,21 +76,14 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
     enabled: !!clubId && open,
   });
 
-  // Venue options: this club + any other clubs participating in the same association
-  const { data: venueOptions } = useQuery({
-    queryKey: ["round-venue-options", clubId, associationId],
-    queryFn: async () => {
-      const names = new Set<string>();
-      const { data: myClub } = await supabase.from("clubs").select("name").eq("id", clubId).maybeSingle();
-      if (myClub?.name) names.add(myClub.name);
-      const { data: assocClubs } = await fromExt("leagues")
-        .select("clubs(name)")
-        .eq("association_id", associationId);
-      (assocClubs ?? []).forEach((row: any) => row?.clubs?.name && names.add(row.clubs.name));
-      return Array.from(names);
-    },
-    enabled: open && !!clubId && !!associationId,
-  });
+  // Venue options: derived from the courts list so external + affiliated venues appear
+  const venueOptions = (() => {
+    const names = new Set<string>();
+    for (const c of (courts ?? []) as any[]) {
+      if (c.venue_label) names.add(c.venue_label);
+    }
+    return Array.from(names).sort();
+  })();
 
   const today = new Date().toISOString().slice(0, 10);
   const [draft, setDraft] = useState<RoundDraft>({

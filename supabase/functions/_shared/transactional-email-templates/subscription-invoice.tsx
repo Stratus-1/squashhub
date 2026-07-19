@@ -47,6 +47,10 @@ interface Props {
   invoiceFooter?: string
   payLink?: string
   manageUrl?: string
+  displayCurrency?: string
+  displayPricePerMember?: number | string
+  displayTotal?: number | string
+  fxRateToZar?: number | string
 }
 
 const money = (v: number | string | undefined, ccy = 'ZAR') => {

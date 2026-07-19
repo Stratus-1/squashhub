@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     const tokenResp = await fetch(`${STITCH_BASE}/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId, clientSecret, scope: "client_paymentrequest" }),
+      body: JSON.stringify({ clientId, clientSecret }),
     });
     const tokenJson = await tokenResp.json().catch(() => ({}));
     if (!tokenResp.ok || !(tokenJson as any)?.data?.accessToken) {

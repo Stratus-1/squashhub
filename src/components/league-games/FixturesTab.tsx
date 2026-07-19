@@ -438,16 +438,32 @@ function RoundCard({
   
 
   const { data: courts } = useQuery({
-    queryKey: ["round-courts-all", clubId],
+    queryKey: ["round-courts-all", clubId, round.court_ids?.join(",") ?? ""],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Load this club's courts + any explicitly-referenced courts from other clubs
+      // (so cross-venue courts picked in the round config still appear in the editor).
+      const { data: mine, error: e1 } = await supabase
         .from("courts")
         .select("id, name, venue_name")
-        .eq("club_id", clubId)
-        .order("venue_name", { ascending: true, nullsFirst: true })
-        .order("name", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
+        .eq("club_id", clubId);
+      if (e1) throw e1;
+      const mineIds = new Set((mine ?? []).map((c: any) => c.id));
+      const extraIds = (round.court_ids ?? []).filter((id: number) => !mineIds.has(id));
+      let extras: any[] = [];
+      if (extraIds.length) {
+        const { data, error } = await supabase
+          .from("courts")
+          .select("id, name, venue_name")
+          .in("id", extraIds);
+        if (error) throw error;
+        extras = data ?? [];
+      }
+      return [...(mine ?? []), ...extras].sort((a: any, b: any) => {
+        const va = a.venue_name ?? "";
+        const vb = b.venue_name ?? "";
+        if (va !== vb) return va.localeCompare(vb);
+        return String(a.name).localeCompare(String(b.name));
+      });
     },
     enabled: open,
   });

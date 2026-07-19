@@ -261,10 +261,12 @@ const hr = { borderColor: '#e3e8f0', margin: '16px 0' }
 const payBtn = {
   backgroundColor: '#1E3A5F',
   color: '#ffffff',
-  padding: '12px 24px',
-  borderRadius: '6px',
-  fontSize: '15px',
-  fontWeight: 600,
+  padding: '16px 32px',
+  borderRadius: '8px',
+  fontSize: '17px',
+  fontWeight: 700,
   textDecoration: 'none',
   display: 'inline-block',
+  boxShadow: '0 2px 6px rgba(30,58,95,0.25)',
+  letterSpacing: '0.3px',
 }

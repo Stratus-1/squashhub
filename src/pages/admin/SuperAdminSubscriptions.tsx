@@ -215,6 +215,7 @@ export default function SuperAdminSubscriptions() {
         "saas_rate_eur_monthly", "saas_rate_eur_annual",
         "saas_min_charge_monthly", "saas_min_charge_annual",
         "saas_billing_cap", "saas_trial_days",
+        "fx_usd_to_zar", "fx_eur_to_zar",
       ];
       const { data, error } = await supabase
         .from("app_settings")

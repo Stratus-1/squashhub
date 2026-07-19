@@ -438,13 +438,14 @@ function RoundCard({
   
 
   const { data: courts } = useQuery({
-    queryKey: ["round-courts", clubId, round.court_ids],
+    queryKey: ["round-courts-all", clubId],
     queryFn: async () => {
-      if (!round.court_ids?.length) return [];
       const { data, error } = await supabase
         .from("courts")
-        .select("id, name")
-        .in("id", round.court_ids);
+        .select("id, name, venue_name")
+        .eq("club_id", clubId)
+        .order("venue_name", { ascending: true, nullsFirst: true })
+        .order("name", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },

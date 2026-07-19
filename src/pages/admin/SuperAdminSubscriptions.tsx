@@ -144,7 +144,7 @@ export default function SuperAdminSubscriptions() {
     queryKey: ["sa-club-subscriptions"],
     queryFn: async () => {
       const { data, error } = await fromExt("club_subscriptions")
-        .select("*, clubs(name, logo_url, subdomain), subscription_plans(name)")
+        .select("*, clubs(name, logo_url, subdomain, currency_code), subscription_plans(name, billing_cycle)")
         .order("created_at", { ascending: false })
         .range(0, 49999);
       if (error) throw error;

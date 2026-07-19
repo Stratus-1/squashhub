@@ -155,12 +155,13 @@ const Email = (p: Props) => {
           </Section>
 
           {(payLink || manageUrl) && (
-            <Section style={{ textAlign: 'center', margin: '20px 0 8px' }}>
-              {payLink && (
-                <Button href={payLink} style={payBtn}>
-                  Pay with Card via Stitch
-                </Button>
-              )}
+            <Section style={{ textAlign: 'center', margin: '24px 0 8px' }}>
+              <Button href={payLink || manageUrl} style={payBtn}>
+                💳 Click here to pay via Card / Stitch
+              </Button>
+              <Text style={{ ...muted, marginTop: '12px', fontSize: '12px' }}>
+                Secure payment powered by Stitch — cards, instant EFT & PayShap accepted
+              </Text>
               {manageUrl && (
                 <Text style={{ ...muted, marginTop: '10px' }}>
                   Or view/manage this invoice in your club admin:{' '}
@@ -260,10 +261,12 @@ const hr = { borderColor: '#e3e8f0', margin: '16px 0' }
 const payBtn = {
   backgroundColor: '#1E3A5F',
   color: '#ffffff',
-  padding: '12px 24px',
-  borderRadius: '6px',
-  fontSize: '15px',
-  fontWeight: 600,
+  padding: '16px 32px',
+  borderRadius: '8px',
+  fontSize: '17px',
+  fontWeight: 700,
   textDecoration: 'none',
   display: 'inline-block',
+  boxShadow: '0 2px 6px rgba(30,58,95,0.25)',
+  letterSpacing: '0.3px',
 }

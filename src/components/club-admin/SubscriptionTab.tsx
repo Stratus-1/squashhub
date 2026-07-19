@@ -29,6 +29,10 @@ interface Invoice {
   vat_amount: number;
   total: number;
   currency: string;
+  display_currency?: string | null;
+  display_price_per_member?: number | null;
+  display_total?: number | null;
+  fx_rate_to_zar?: number | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {

@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     // Load invoice
     const { data: inv, error: iErr } = await supabase
       .from('platform_subscription_invoices')
-      .select('*, clubs:club_id(name, subdomain, email, billing_email)')
+      .select('*, clubs:club_id(name, subdomain, email)')
       .eq('id', invoice_id)
       .maybeSingle()
     if (iErr || !inv) return json({ error: iErr?.message || 'invoice not found' }, 404)

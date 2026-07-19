@@ -113,13 +113,44 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Default venue to user's club (first option) if not yet set
+  // Selected venues drive which court groups appear.
+  const [selectedVenues, setSelectedVenues] = useState<string[]>([]);
+
+  // Seed selected venues when opening: parse existing venue_name (comma-joined)
+  // and also include any venue implied by pre-selected courts.
   useEffect(() => {
-    if (open && !draft.venue_name && venueOptions?.length) {
-      setDraft((d) => ({ ...d, venue_name: venueOptions[0] }));
+    if (!open) return;
+    const fromName = (draft.venue_name ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const fromCourts = (courts ?? [])
+      .filter((c: any) => draft.court_ids.includes(c.id))
+      .map((c: any) => c.venue_label);
+    const merged = Array.from(new Set([...fromName, ...fromCourts])).filter(
+      (v) => !venueOptions.length || venueOptions.includes(v),
+    );
+    if (merged.length) {
+      setSelectedVenues(merged);
+    } else if (venueOptions.length) {
+      setSelectedVenues([venueOptions[0]]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, venueOptions]);
+  }, [open, venueOptions.join("|")]);
+
+  const toggleVenue = (name: string) =>
+    setSelectedVenues((prev) => {
+      const next = prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name];
+      // Drop any selected courts whose venue is no longer selected
+      setDraft((d) => ({
+        ...d,
+        court_ids: d.court_ids.filter((cid) => {
+          const c = (courts ?? []).find((x: any) => x.id === cid);
+          return c ? next.includes(c.venue_label) : true;
+        }),
+      }));
+      return next;
+    });
 
   const toggleCourt = (id: number) =>
     setDraft((d) => ({

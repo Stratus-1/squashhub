@@ -68,6 +68,15 @@ Deno.serve(async (req) => {
   }
   const minChargeFor = (cycle: 'monthly' | 'annual', fallback: number): number =>
     num(`saas_min_charge_${cycle}`, fallback)
+  // FX rates: how many ZAR per 1 unit of foreign currency. Stitch only charges ZAR,
+  // so USD/EUR clubs see "~$X per member" for reference but are actually billed in ZAR.
+  const fxToZar = (ccy: string): number => {
+    const c = (ccy || 'ZAR').toUpperCase()
+    if (c === 'ZAR') return 1
+    if (c === 'USD') return num('fx_usd_to_zar', 18.5)
+    if (c === 'EUR') return num('fx_eur_to_zar', 20)
+    return 1
+  }
 
   if (!settings.company_name && !dryRun) {
     return json(

@@ -487,12 +487,23 @@ export default function SuperAdminSubscriptions() {
     });
   };
 
+  const ccySymbol = (code?: string | null) => ({ ZAR: "R", USD: "$", EUR: "€", GBP: "£" } as Record<string, string>)[(code || "ZAR").toUpperCase()] || `${(code || "ZAR").toUpperCase()} `;
+  const rateForClub = (plan: Plan | undefined, ccy: string) => {
+    if (!plan) return 0;
+    const code = (ccy || "ZAR").toUpperCase();
+    const annual = plan.billing_cycle === "annual";
+    if (code === "USD") return Number(annual ? intlForm.saas_rate_usd_annual : intlForm.saas_rate_usd_monthly) || 0;
+    if (code === "EUR") return Number(annual ? intlForm.saas_rate_eur_annual : intlForm.saas_rate_eur_monthly) || 0;
+    return plan.price_per_member;
+  };
+
   const recalcAmount = (planId: string, memberCount: string) => {
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
     const count = Number(memberCount) || 0;
     const billable = plan.max_billable_members ? Math.min(count, plan.max_billable_members) : count;
-    const calculated = Math.max(billable * plan.price_per_member, plan.minimum_charge);
+    const rate = rateForClub(plan, editSub?.clubs?.currency_code || "ZAR");
+    const calculated = Math.max(billable * rate, plan.minimum_charge);
     setSubForm(f => ({ ...f, amount_due: String(calculated) }));
   };
 

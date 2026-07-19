@@ -258,21 +258,36 @@ export function FixturesTab({ clubId, associationId }: Props) {
               // Court/venue-only edits should keep the league round dates intact;
               // just replace courts that are no longer allowed, spreading them
               // across the selected venue courts within each date/time cell.
-              const counters = new Map<string, number>();
-              playable.forEach((f, idx) => {
+              const groups = new Map<string, FxRow[]>();
+              for (const f of playable) {
                 const key = `${f.fixture_date || r.round_date}|${hm(f.start_time) || fallbackStart}`;
-                const slotIndex = counters.get(key) ?? 0;
-                counters.set(key, slotIndex + 1);
+                const arr = groups.get(key) ?? [];
+                arr.push(f);
+                groups.set(key, arr);
+              }
+              for (const group of groups.values()) {
+                const used = new Set<number>();
+                for (const f of group) {
+                  if (f.court_id && newCourts.includes(f.court_id)) used.add(f.court_id);
+                }
+                let fallbackIdx = 0;
+                for (const f of group) {
                 const currentAllowed = !!f.court_id && newCourts.includes(f.court_id);
-                const nextCourt = currentAllowed ? f.court_id! : newCourts[slotIndex % newCourts.length];
+                  let nextCourt = currentAllowed ? f.court_id! : null;
+                  if (!nextCourt) {
+                    nextCourt = newCourts.find((c) => !used.has(c)) ?? newCourts[fallbackIdx % newCourts.length];
+                    fallbackIdx++;
+                    if (nextCourt) used.add(nextCourt);
+                  }
                 const start = hm(f.start_time) ?? fallbackStart;
                 nextById.set(f.id, {
                   fixture_date: f.fixture_date || r.round_date,
                   start_time: start,
                   end_time: hm(f.end_time) ?? addMinutesToHm(start, Number(r.slot_minutes || 45)) ?? fallbackEnd,
-                  court_id: nextCourt ?? newCourts[idx % newCourts.length],
+                    court_id: nextCourt ?? newCourts[0],
                 });
-              });
+                }
+              }
               byeDates = Array.from(new Set(existingFx.map((f) => f.fixture_date).filter(Boolean) as string[]));
               if (!byeDates.length) byeDates = [r.round_date];
             }

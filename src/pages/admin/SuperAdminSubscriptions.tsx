@@ -107,6 +107,23 @@ export default function SuperAdminSubscriptions() {
   const [stitchForm, setStitchForm] = useState<StitchSettings>(EMPTY_STITCH_SETTINGS);
   const [stitchDirty, setStitchDirty] = useState(false);
   const [showStitchSecret, setShowStitchSecret] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const resendInvoice = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      setResendingId(invoiceId);
+      const { data, error } = await supabase.functions.invoke("resend-subscription-invoice", { body: { invoice_id: invoiceId } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: (data: any) => {
+      toast.success(`Invoice email sent${data?.recipient ? ` to ${data.recipient}` : ""}`);
+      qc.invalidateQueries({ queryKey: ["sa-platform-invoices"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to send invoice email"),
+    onSettled: () => setResendingId(null),
+  });
 
   // Unified pricing form: ZAR is the base billing currency; USD & EUR are used
   // only for clubs whose currency_code matches. Rates for each are stored explicitly

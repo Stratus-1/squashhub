@@ -19,7 +19,7 @@ export type EditableFixture = {
 type Props = {
   fixtures: EditableFixture[];
   teams: { code: string; name: string }[];
-  courts: { id: number; name: string }[];
+  courts: { id: number; name: string; venue_name?: string | null }[];
   onChange: (next: EditableFixture[]) => void;
   defaultDate?: string;
   minDate?: string;

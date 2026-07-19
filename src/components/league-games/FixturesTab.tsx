@@ -444,7 +444,7 @@ function RoundCard({
       // (so cross-venue courts picked in the round config still appear in the editor).
       const { data: mine, error: e1 } = await supabase
         .from("courts")
-        .select("id, name, venue_name")
+        .select("id, name, venue_name, club_id, clubs(name)")
         .eq("club_id", clubId);
       if (e1) throw e1;
       const mineIds = new Set((mine ?? []).map((c: any) => c.id));
@@ -453,12 +453,18 @@ function RoundCard({
       if (extraIds.length) {
         const { data, error } = await supabase
           .from("courts")
-          .select("id, name, venue_name")
+          .select("id, name, venue_name, club_id, clubs(name)")
           .in("id", extraIds);
         if (error) throw error;
         extras = data ?? [];
       }
-      return [...(mine ?? []), ...extras].sort((a: any, b: any) => {
+      // Fallback: if a court has no venue_name, use the owning club's name as venue.
+      const normalised = [...(mine ?? []), ...extras].map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        venue_name: c.venue_name?.trim() || c.clubs?.name || null,
+      }));
+      return normalised.sort((a, b) => {
         const va = a.venue_name ?? "";
         const vb = b.venue_name ?? "";
         if (va !== vb) return va.localeCompare(vb);

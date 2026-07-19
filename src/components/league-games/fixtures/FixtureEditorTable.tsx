@@ -52,10 +52,38 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
     };
   })();
 
+  const UNVENUED = "__unvenued__";
+  const venueOfCourt = (courtId: number | null | undefined): string => {
+    if (!courtId) return UNVENUED;
+    const c = courts.find((x) => x.id === courtId);
+    const v = c?.venue_name?.trim();
+    return v && v.length ? v : UNVENUED;
+  };
+  const venues = (() => {
+    const seen = new Map<string, string>();
+    for (const c of courts) {
+      const v = c.venue_name?.trim();
+      const key = v && v.length ? v : UNVENUED;
+      if (!seen.has(key)) seen.set(key, v && v.length ? v : "— No venue —");
+    }
+    return Array.from(seen.entries()).map(([key, label]) => ({ key, label }));
+  })();
+  const courtsForVenue = (venueKey: string) =>
+    courts.filter((c) => {
+      const v = c.venue_name?.trim();
+      const k = v && v.length ? v : UNVENUED;
+      return k === venueKey;
+    });
+
   const update = (idx: number, patch: Partial<EditableFixture>) => {
     const next = [...fixtures];
     next[idx] = { ...next[idx], ...patch };
     onChange(next);
+  };
+  const swap = (idx: number) => {
+    const f = fixtures[idx];
+    if (!f || f.away_team_code === "__BYE__") return;
+    update(idx, { home_team_code: f.away_team_code, away_team_code: f.home_team_code });
   };
   const remove = (idx: number) => {
     const next = [...fixtures];

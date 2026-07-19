@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
       'saas_rate_usd_monthly', 'saas_rate_usd_annual',
       'saas_rate_eur_monthly', 'saas_rate_eur_annual',
       'saas_min_charge_monthly', 'saas_min_charge_annual',
+      'fx_usd_to_zar', 'fx_eur_to_zar',
     ])
   if (settingErr && settingErr.code !== 'PGRST116') {
     return json({ error: `Failed to load invoice settings: ${settingErr.message}` }, 500)

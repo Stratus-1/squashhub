@@ -184,6 +184,28 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
     return () => { cancelled = true; };
   }, [searchParams, clubId, qc, setSearchParams]);
 
+  // Auto-trigger Stitch checkout when arriving from an email "Pay" button.
+  // Email links look like: /club-admin?tab=subscription&pay=<invoice_id>
+  const autoPayRef = useRef<string | null>(null);
+  useEffect(() => {
+    const payId = searchParams.get("pay");
+    if (!payId || invLoading) return;
+    if (autoPayRef.current === payId) return;
+    const inv = invoices.find((i) => i.id === payId);
+    if (!inv) return;
+    autoPayRef.current = payId;
+    // Strip the param so a refresh doesn't re-trigger.
+    const next = new URLSearchParams(searchParams);
+    next.delete("pay");
+    setSearchParams(next, { replace: true });
+    if (inv.status === "paid" || inv.status === "void") {
+      toast.info(`Invoice ${inv.invoice_number} is already ${inv.status}.`);
+      return;
+    }
+    void handlePayStitch(inv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, invoices, invLoading]);
+
   return (
     <div className="space-y-6 mt-4">
       {club && <ClubParticipationCard club={club} />}

@@ -1102,51 +1102,62 @@ function RoundCard({
         insertedRows = (inserted ?? []) as any;
       }
 
-      // 4) Booking sync: update existing bookings in place, create new ones where needed.
+      // 4) Booking sync — always keep linked bookings aligned with their
+      //    fixture's current court/date/time. Cancel bookings for BYEs or
+      //    fixtures that lost their court. Only *creating* brand-new bookings
+      //    for previously-unbooked fixtures is gated on the auto-create toggle.
       const allActive = [...updatedRows, ...insertedRows];
-      if (autoCreateBookings && allActive.length) {
+      if (allActive.length) {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          for (const f of allActive) {
-            if (!f.court_id || !f.start_time) continue;
-            let endTime: string;
-            if (f.end_time) {
-              endTime = String(f.end_time).slice(0, 5);
-            } else {
-              const [h, m] = String(f.start_time).split(":").map(Number);
-              const startMin = h * 60 + m;
-              const endMin = startMin + round.slot_minutes;
-              endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
-            }
-            const homeName = teams.find((t) => t.code === f.home_team_code)?.name?.trim();
-            const awayName = teams.find((t) => t.code === f.away_team_code)?.name?.trim();
-            const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";
-            const guestName = matchup ? `${round.name} - ${matchup}` : round.name;
-            const startStr = String(f.start_time).slice(0, 5);
+        for (const f of allActive) {
+          const isBye = f.away_team_code === "__BYE__";
+          const hasSlot = !!(f.court_id && f.start_time);
 
-            if (f.booking_id) {
-              await supabase.from("bookings").update({
-                court_id: f.court_id,
+          if ((isBye || !hasSlot) && f.booking_id) {
+            await supabase.from("bookings").update({ status: "cancelled" }).eq("id", f.booking_id);
+            await fromExt("platform_league_fixtures").update({ booking_id: null }).eq("id", f.id);
+            continue;
+          }
+          if (!hasSlot) continue;
+
+          let endTime: string;
+          if (f.end_time) {
+            endTime = String(f.end_time).slice(0, 5);
+          } else {
+            const [h, m] = String(f.start_time).split(":").map(Number);
+            const startMin = h * 60 + m;
+            const endMin = startMin + round.slot_minutes;
+            endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+          }
+          const homeName = teams.find((t) => t.code === f.home_team_code)?.name?.trim();
+          const awayName = teams.find((t) => t.code === f.away_team_code)?.name?.trim();
+          const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";
+          const guestName = matchup ? `${round.name} - ${matchup}` : round.name;
+          const startStr = String(f.start_time).slice(0, 5);
+
+          if (f.booking_id) {
+            // Always keep the existing booking in sync with the fixture.
+            await supabase.from("bookings").update({
+              court_id: f.court_id,
+              date: f.fixture_date || round.round_date,
+              start_time: `${startStr}:00`,
+              end_time: `${endTime}:00`,
+              guest_name: guestName,
+              status: "active",
+            }).eq("id", f.booking_id);
+          } else if (autoCreateBookings && user) {
+            const { data: booking, error: bErr } = await supabase
+              .from("bookings")
+              .insert({
+                court_id: f.court_id, user_id: user.id,
                 date: f.fixture_date || round.round_date,
-                start_time: `${startStr}:00`,
-                end_time: `${endTime}:00`,
-                guest_name: guestName,
-                status: "active",
-              }).eq("id", f.booking_id);
-            } else {
-              const { data: booking, error: bErr } = await supabase
-                .from("bookings")
-                .insert({
-                  court_id: f.court_id, user_id: user.id,
-                  date: f.fixture_date || round.round_date,
-                  start_time: `${startStr}:00`, end_time: `${endTime}:00`,
-                  status: "active", is_friendly: false,
-                  club_id: clubId, guest_name: guestName,
-                })
-                .select("id").single();
-              if (!bErr && booking) {
-                await fromExt("platform_league_fixtures").update({ booking_id: booking.id }).eq("id", f.id);
-              }
+                start_time: `${startStr}:00`, end_time: `${endTime}:00`,
+                status: "active", is_friendly: false,
+                club_id: clubId, guest_name: guestName,
+              })
+              .select("id").single();
+            if (!bErr && booking) {
+              await fromExt("platform_league_fixtures").update({ booking_id: booking.id }).eq("id", f.id);
             }
           }
         }

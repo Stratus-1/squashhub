@@ -248,6 +248,48 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Defensive fallback: the downstream Email API rejects transactional
+      // sends without an unsubscribe_token (400 missing_unsubscribe). If a
+      // payload was enqueued without one (older enqueue paths or a race in
+      // send-transactional-email's token upsert), look up or create the
+      // token for the recipient now instead of looping to DLQ.
+      if (queue === 'transactional_emails' && !payload.unsubscribe_token && payload.to) {
+        try {
+          const recipient = String(payload.to).toLowerCase()
+          const { data: existing } = await supabase
+            .from('email_unsubscribe_tokens')
+            .select('token')
+            .eq('email', recipient)
+            .maybeSingle()
+
+          let token = existing?.token as string | undefined
+          if (!token) {
+            const bytes = new Uint8Array(32)
+            crypto.getRandomValues(bytes)
+            token = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+            await supabase
+              .from('email_unsubscribe_tokens')
+              .upsert({ token, email: recipient }, { onConflict: 'email', ignoreDuplicates: true })
+            const { data: reRead } = await supabase
+              .from('email_unsubscribe_tokens')
+              .select('token')
+              .eq('email', recipient)
+              .maybeSingle()
+            token = (reRead?.token as string | undefined) ?? token
+          }
+          payload.unsubscribe_token = token
+          console.warn('Backfilled missing unsubscribe_token for transactional email', {
+            msg_id: msg.msg_id,
+            message_id: payload.message_id,
+          })
+        } catch (tokenErr) {
+          console.error('Failed to backfill unsubscribe_token', {
+            msg_id: msg.msg_id,
+            error: tokenErr instanceof Error ? tokenErr.message : String(tokenErr),
+          })
+        }
+      }
+
       try {
         await sendLovableEmail(
           {

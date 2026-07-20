@@ -447,6 +447,8 @@ export function FixturesTab({ clubId, associationId }: Props) {
                         status: "active",
                         is_friendly: false,
                         guest_name: guestName,
+                        source: "squashhub",
+                        booking_type: "league",
                       })
                       .select("id")
                       .single();
@@ -1289,6 +1291,7 @@ function RoundCard({
                 start_time: `${startStr}:00`, end_time: `${endTime}:00`,
                 status: "active", is_friendly: false,
                 club_id: clubId, guest_name: guestName,
+                source: "squashhub", booking_type: "league",
               })
               .select("id").single();
             if (!bErr && booking) {

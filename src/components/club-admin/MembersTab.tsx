@@ -1158,6 +1158,35 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       }
     }
 
+    // Fuzzy duplicate warning — same phone (last 9 digits) or same name (case-insensitive)
+    // within the club. Not a hard block: family members legitimately share a phone.
+    try {
+      const phoneDigits = (phone || "").replace(/\D+/g, "");
+      const phoneTail = phoneDigits.length >= 9 ? phoneDigits.slice(-9) : "";
+      const nameLc = trimmedName.toLowerCase();
+      const { data: candidates } = await fromExt("club_members")
+        .select("id, name, phone, email, club_member_number")
+        .eq("club_id", clubId);
+      const matches = (candidates || []).filter((c: any) => {
+        const cTail = String(c.phone || "").replace(/\D+/g, "").slice(-9);
+        const phoneHit = !!phoneTail && cTail === phoneTail;
+        const nameHit = (c.name || "").trim().toLowerCase() === nameLc;
+        return phoneHit || nameHit;
+      });
+      if (matches.length > 0) {
+        const rows = matches.slice(0, 5).map((m: any) => {
+          const bits = [m.name, m.club_member_number, m.email, m.phone].filter(Boolean);
+          return `• ${bits.join(" · ")}`;
+        }).join("\n");
+        const ok = window.confirm(
+          `Possible duplicate — the club already has ${matches.length} member(s) with a matching name or phone:\n\n${rows}\n\nAdd this new member anyway?`
+        );
+        if (!ok) return;
+      }
+    } catch (e) {
+      console.warn("dup check failed", e);
+    }
+
     setLoading(true);
     try {
       const { data: profile } = await fromExt("profiles").select("id").eq("email", trimmedEmail).maybeSingle();

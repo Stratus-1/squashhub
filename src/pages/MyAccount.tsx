@@ -379,7 +379,7 @@ export default function MyAccount() {
         });
         return;
       }
-      const { error } = await fromExt("member_credit_transactions").insert({
+      const { data: inserted, error } = await fromExt("member_credit_transactions").insert({
         club_id: clubId,
         club_member_id: clubMemberId,
         amount,
@@ -387,8 +387,16 @@ export default function MyAccount() {
         method,
         description: `Top-up via ${method.toUpperCase()}${paidByTag}`,
         status: "pending",
-      });
+      }).select("id").single();
       if (error) throw error;
+
+      // Notify finance/treasurer recipients about the pending EFT top-up.
+      // Best-effort — do not block the user if the notification fails.
+      if (method === "eft" && inserted?.id) {
+        supabase.functions
+          .invoke("notify-pending-topup", { body: { transactionId: inserted.id } })
+          .catch((e) => console.warn("[notify-pending-topup] failed", e));
+      }
     },
 
     onSuccess: () => {

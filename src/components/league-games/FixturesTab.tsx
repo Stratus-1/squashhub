@@ -1119,11 +1119,13 @@ function RoundCard({
         const keepIds = new Set(allActive.map((f) => f.booking_id).filter(Boolean) as string[]);
         const { data: existingBookings } = await supabase
           .from("bookings")
-          .select("id")
+          .select("id, source")
           .in("court_id", round.court_ids)
           .gte("date", startDate)
           .lte("date", endDate)
-          .eq("status", "active");
+          .eq("status", "active")
+          .not("source", "in", "(club_event,gobook)");
+
         const stray = ((existingBookings ?? []) as { id: string }[])
           .filter((b) => !keepIds.has(b.id))
           .map((b) => b.id);

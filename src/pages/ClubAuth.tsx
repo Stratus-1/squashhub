@@ -636,6 +636,29 @@ export default function ClubAuth() {
       toast.error("Please select your home club");
       return;
     }
+    // Soft duplicate warning — same name or phone already at this club.
+    // Not a hard block: families sometimes share a phone/name.
+    if (club?.id) {
+      try {
+        const { data: dupCount } = await supabase.rpc("count_member_duplicate_hints", {
+          _club_id: club.id,
+          _name: name,
+          _phone: phone || "",
+        });
+        const n = Number(dupCount || 0);
+        if (n > 0) {
+          const ok = window.confirm(
+            `${club.name} already has ${n} member${n === 1 ? "" : "s"} with a matching name or phone number. ` +
+            `If that's you, please sign in instead — or ask the club admin to link your account. ` +
+            `\n\nContinue creating a brand new account anyway?`
+          );
+          if (!ok) return;
+        }
+      } catch (e) {
+        console.warn("dup check failed", e);
+      }
+    }
+
     setLoading(true);
     const nowIso = new Date().toISOString();
     const homeClub = pickerClubs?.find((c) => c.id === homeClubId);

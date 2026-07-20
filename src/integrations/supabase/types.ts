@@ -7264,6 +7264,10 @@ export type Database = {
         }
         Returns: string
       }
+      count_member_duplicate_hints: {
+        Args: { _club_id: string; _name: string; _phone: string }
+        Returns: number
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

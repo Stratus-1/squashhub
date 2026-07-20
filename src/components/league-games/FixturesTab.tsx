@@ -1109,6 +1109,29 @@ function RoundCard({
       //    fixtures that lost their court. Only *creating* brand-new bookings
       //    for previously-unbooked fixtures is gated on the auto-create toggle.
       const allActive = [...updatedRows, ...insertedRows];
+
+      // 4a) Optional deep sync: cancel any stray active bookings on this round's
+      //     courts within its date window that aren't linked to a current fixture,
+      //     so manual/leftover bookings from prior schedules don't collide.
+      if (syncBookings && round.court_ids?.length) {
+        const startDate = round.round_date;
+        const endDate = round.end_date || round.round_date;
+        const keepIds = new Set(allActive.map((f) => f.booking_id).filter(Boolean) as string[]);
+        const { data: existingBookings } = await supabase
+          .from("bookings")
+          .select("id")
+          .in("court_id", round.court_ids)
+          .gte("date", startDate)
+          .lte("date", endDate)
+          .eq("status", "active");
+        const stray = ((existingBookings ?? []) as { id: string }[])
+          .filter((b) => !keepIds.has(b.id))
+          .map((b) => b.id);
+        if (stray.length) {
+          await supabase.from("bookings").update({ status: "cancelled" }).in("id", stray);
+        }
+      }
+
       if (allActive.length) {
         const { data: { user } } = await supabase.auth.getUser();
         for (const f of allActive) {
@@ -1138,7 +1161,6 @@ function RoundCard({
           const startStr = String(f.start_time).slice(0, 5);
 
           if (f.booking_id) {
-            // Always keep the existing booking in sync with the fixture.
             await supabase.from("bookings").update({
               court_id: f.court_id,
               date: f.fixture_date || round.round_date,
@@ -1147,7 +1169,7 @@ function RoundCard({
               guest_name: guestName,
               status: "active",
             }).eq("id", f.booking_id);
-          } else if (autoCreateBookings && user) {
+          } else if ((autoCreateBookings || syncBookings) && user) {
             const { data: booking, error: bErr } = await supabase
               .from("bookings")
               .insert({
@@ -1163,6 +1185,8 @@ function RoundCard({
             }
           }
         }
+      }
+
       }
     },
     onSuccess: () => {

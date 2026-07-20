@@ -233,10 +233,38 @@ export function FixturesTab({ clubId, associationId }: Props) {
           };
           const existingFx = (fixtureRows ?? []) as FxRow[];
           const playable = existingFx.filter((f) => f.away_team_code !== "__BYE__");
-          // Manual per-fixture court overrides (courts outside the round's
-          // court list) are respected. Only truly missing courts trigger a
-          // reshuffle.
-          const fixtureCourtMismatch = false;
+          const linkedRoundBookingIds = Array.from(new Set(existingFx.map((f) => f.booking_id).filter(Boolean) as string[]));
+          const roundBookingIdsToRecreate = new Set<string>();
+          const roundProtectedBookingIds = new Set<string>();
+          if (payload.auto_create_bookings && linkedRoundBookingIds.length) {
+            const { data: linkedBookings, error: linkedBookingsErr } = await supabase
+              .from("bookings")
+              .select("id, source")
+              .in("id", linkedRoundBookingIds);
+            if (linkedBookingsErr) throw linkedBookingsErr;
+            for (const b of (linkedBookings ?? []) as Array<{ id: string; source: string | null }>) {
+              if (b.source === "club_event" || b.source === "gobook") roundProtectedBookingIds.add(b.id);
+              else roundBookingIdsToRecreate.add(b.id);
+            }
+            if (roundBookingIdsToRecreate.size) {
+              const ids = Array.from(roundBookingIdsToRecreate);
+              const { error: cancelErr } = await supabase.from("bookings").update({ status: "cancelled" }).in("id", ids);
+              if (cancelErr) throw cancelErr;
+            }
+            const unlinkIds = [...Array.from(roundBookingIdsToRecreate), ...Array.from(roundProtectedBookingIds)];
+            if (unlinkIds.length) {
+              const { error: unlinkErr } = await fromExt("platform_league_fixtures")
+                .update({ booking_id: null })
+                .eq("round_id", r.id)
+                .in("booking_id", unlinkIds);
+              if (unlinkErr) throw unlinkErr;
+            }
+          }
+          // Saving the round settings should make the saved schedule match the
+          // selected round courts. Manual per-fixture overrides are still allowed
+          // from the fixture editor, but the round-settings save is the explicit
+          // "reproduce this round from these settings" action.
+          const fixtureCourtMismatch = playable.some((f) => !!f.court_id && !newCourts.includes(f.court_id));
           const fixtureMissingCourt = playable.some((f) => !f.court_id && newCourts.length > 0);
           const existingGroupSizes = new Map<string, number>();
           for (const f of playable) {
@@ -317,10 +345,10 @@ export function FixturesTab({ clubId, associationId }: Props) {
                 }
                 let fallbackIdx = 0;
                 for (const f of group) {
-                  // Preserve any existing court on the fixture (including
-                  // manual overrides for courts not in the round's list).
+                  // Preserve existing selected courts, but move any fixture that
+                  // is on a court no longer selected for this round.
                   let nextCourt: number | null = f.court_id ?? null;
-                  if (!nextCourt) {
+                  if (!nextCourt || !newCourts.includes(nextCourt)) {
                     nextCourt = newCourts.find((c) => !used.has(c)) ?? newCourts[fallbackIdx % newCourts.length] ?? null;
                     fallbackIdx++;
                     if (nextCourt) used.add(nextCourt);
@@ -339,7 +367,9 @@ export function FixturesTab({ clubId, associationId }: Props) {
             }
 
             for (const f of existingFx) {
-              const oldBookingId = f.booking_id;
+              const oldBookingId = f.booking_id && !roundBookingIdsToRecreate.has(f.booking_id) && !roundProtectedBookingIds.has(f.booking_id)
+                ? f.booking_id
+                : null;
               const next = f.away_team_code === "__BYE__"
                 ? {
                     fixture_date: byeDates[0] ?? r.round_date,
@@ -395,6 +425,16 @@ export function FixturesTab({ clubId, associationId }: Props) {
                 } else {
                   const { data: { user } } = await supabase.auth.getUser();
                   if (user) {
+                    const { data: conflicts, error: conflictErr } = await supabase
+                      .from("bookings")
+                      .select("id")
+                      .eq("court_id", next.court_id)
+                      .eq("date", next.fixture_date)
+                      .eq("start_time", `${next.start_time}:00`)
+                      .eq("status", "active")
+                      .limit(1);
+                    if (conflictErr) throw conflictErr;
+                    if (conflicts?.length) continue;
                     const { data: booking, error: bErr } = await supabase
                       .from("bookings")
                       .insert({
@@ -1045,6 +1085,28 @@ function RoundCard({
       if (linkErr) throw linkErr;
       if (!platformAssocId) throw new Error("Could not link league to platform association.");
 
+      const fixtureCourtIds = Array.from(new Set<number>(
+        list
+          .map((f) => Number(f.court_id))
+          .filter((n) => Number.isFinite(n) && n > 0),
+      ));
+      let saveVenueByCourt = new Map<number, string>();
+      if (fixtureCourtIds.length) {
+        const { data: courtRows, error: courtErr } = await supabase
+          .from("courts")
+          .select("id, venue_name, clubs(name)")
+          .in("id", fixtureCourtIds);
+        if (courtErr) throw courtErr;
+        saveVenueByCourt = new Map(
+          ((courtRows ?? []) as any[]).map((c) => [
+            Number(c.id),
+            c.venue_name?.trim() || c.clubs?.name || "Home",
+          ]),
+        );
+      }
+      const saveVenueForCourt = (courtId?: number | null) =>
+        courtId ? (saveVenueByCourt.get(Number(courtId)) ?? "Home") : (round.venue_name || "Home");
+
       // 1) Delete safe (no-result) unmatched fixtures + cancel their bookings.
       const bookingIdsToCancel = toDelete.map((e) => e.booking_id).filter(Boolean) as string[];
       if (bookingIdsToCancel.length) {
@@ -1065,6 +1127,7 @@ function RoundCard({
         const isBye = d.away_team_code === "__BYE__";
         const patch = {
           fixture_date: d.fixture_date || round.round_date,
+          venue_name: saveVenueForCourt(isBye ? null : d.court_id),
           home_team_code: d.home_team_code,
           away_team_code: d.away_team_code,
           division: d.home_team_code,
@@ -1087,7 +1150,7 @@ function RoundCard({
             association_id: platformAssocId,
             round_id: round.id,
             fixture_date: f.fixture_date || round.round_date,
-            venue_name: round.venue_name || "Home",
+            venue_name: saveVenueForCourt(isBye ? null : f.court_id),
             home_team_code: f.home_team_code,
             away_team_code: f.away_team_code,
             division: f.home_team_code,
@@ -1109,6 +1172,42 @@ function RoundCard({
       //    fixtures that lost their court. Only *creating* brand-new bookings
       //    for previously-unbooked fixtures is gated on the auto-create toggle.
       const allActive = [...updatedRows, ...insertedRows];
+
+      // If the admin asked for a full sync, recreate regular linked court
+      // bookings instead of updating them in place. This avoids unique-slot
+      // collisions when old bookings are currently attached to the wrong
+      // fixture/court. Event and external bookings are never cancelled here.
+      if (syncBookings) {
+        const linkedBookingIds = Array.from(new Set(allActive.map((f) => f.booking_id).filter(Boolean) as string[]));
+        if (linkedBookingIds.length) {
+          const { data: linkedBookings, error: linkedErr } = await supabase
+            .from("bookings")
+            .select("id, source")
+            .in("id", linkedBookingIds);
+          if (linkedErr) throw linkedErr;
+          const recreateIds = ((linkedBookings ?? []) as Array<{ id: string; source: string | null }>)
+            .filter((b) => b.source !== "club_event" && b.source !== "gobook")
+            .map((b) => b.id);
+          const protectedIds = ((linkedBookings ?? []) as Array<{ id: string; source: string | null }>)
+            .filter((b) => b.source === "club_event" || b.source === "gobook")
+            .map((b) => b.id);
+          if (recreateIds.length) {
+            const { error: cancelErr } = await supabase.from("bookings").update({ status: "cancelled" }).in("id", recreateIds);
+            if (cancelErr) throw cancelErr;
+          }
+          const unlinkIds = [...recreateIds, ...protectedIds];
+          if (unlinkIds.length) {
+            const { error: unlinkErr } = await fromExt("platform_league_fixtures")
+              .update({ booking_id: null })
+              .in("id", allActive.map((f) => f.id))
+              .in("booking_id", unlinkIds);
+            if (unlinkErr) throw unlinkErr;
+            for (const f of allActive) {
+              if (f.booking_id && unlinkIds.includes(f.booking_id)) f.booking_id = null;
+            }
+          }
+        }
+      }
 
       // 4a) Optional deep sync: cancel any stray active bookings on this round's
       //     courts within its date window that aren't linked to a current fixture,
@@ -1172,6 +1271,16 @@ function RoundCard({
               status: "active",
             }).eq("id", f.booking_id);
           } else if ((autoCreateBookings || syncBookings) && user) {
+            const { data: conflicts, error: conflictErr } = await supabase
+              .from("bookings")
+              .select("id")
+              .eq("court_id", f.court_id)
+              .eq("date", f.fixture_date || round.round_date)
+              .eq("start_time", `${startStr}:00`)
+              .eq("status", "active")
+              .limit(1);
+            if (conflictErr) throw conflictErr;
+            if (conflicts?.length) continue;
             const { data: booking, error: bErr } = await supabase
               .from("bookings")
               .insert({

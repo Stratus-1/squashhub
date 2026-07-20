@@ -1,0 +1,2 @@
+ALTER TABLE public.club_events DROP CONSTRAINT IF EXISTS club_events_event_type_check;
+ALTER TABLE public.club_events ADD CONSTRAINT club_events_event_type_check CHECK (event_type = ANY (ARRAY['social','coaching','training','league','tournament','meeting','other']));

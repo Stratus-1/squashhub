@@ -317,10 +317,11 @@ export function FixturesTab({ clubId, associationId }: Props) {
                 }
                 let fallbackIdx = 0;
                 for (const f of group) {
-                  const currentAllowed = !!f.court_id && newCourts.includes(f.court_id);
-                  let nextCourt = currentAllowed ? f.court_id! : null;
+                  // Preserve any existing court on the fixture (including
+                  // manual overrides for courts not in the round's list).
+                  let nextCourt: number | null = f.court_id ?? null;
                   if (!nextCourt) {
-                    nextCourt = newCourts.find((c) => !used.has(c)) ?? newCourts[fallbackIdx % newCourts.length];
+                    nextCourt = newCourts.find((c) => !used.has(c)) ?? newCourts[fallbackIdx % newCourts.length] ?? null;
                     fallbackIdx++;
                     if (nextCourt) used.add(nextCourt);
                   }

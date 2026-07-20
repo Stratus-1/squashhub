@@ -145,7 +145,7 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
-async function lookupStitchStatus(clientId: string, clientSecret: string, requestId: string, redirectUrl?: string | null) {
+async function lookupStitchStatus(clientId: string, clientSecret: string, requestId: string, redirectUrl?: string | null): Promise<{ status: string; detectedMethod: "card" | "paybybank" | null }> {
   if (String(redirectUrl || "").includes("secure.stitch.money/connect/payment-request")) {
     try {
       const accessToken = await getPaymentRequestToken(clientId, clientSecret);
@@ -153,12 +153,12 @@ async function lookupStitchStatus(clientId: string, clientSecret: string, reques
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       });
       const data = await resp.json().catch(() => ({}));
-      if (resp.ok) return String(data?.status || "pending").toUpperCase();
+      if (resp.ok) return { status: String(data?.status || "pending").toUpperCase(), detectedMethod: detectMethod(data) };
       console.error("Stitch payment-request status error", resp.status, data);
-      return "PENDING";
+      return { status: "PENDING", detectedMethod: null };
     } catch (err) {
       console.error("Stitch payment-request lookup failed", (err as Error)?.message || err);
-      return "PENDING";
+      return { status: "PENDING", detectedMethod: null };
     }
   }
 
@@ -169,7 +169,7 @@ async function lookupStitchStatus(clientId: string, clientSecret: string, reques
   const tokenJson = await tokenResp.json().catch(() => ({}));
   if (!tokenResp.ok || !tokenJson?.data?.accessToken) {
     console.error("Stitch Express token error", tokenResp.status, tokenJson);
-    return "PENDING";
+    return { status: "PENDING", detectedMethod: null };
   }
   const accessToken: string = tokenJson.data.accessToken;
 
@@ -179,10 +179,35 @@ async function lookupStitchStatus(clientId: string, clientSecret: string, reques
   const plJson = await plResp.json().catch(() => ({}));
   if (!plResp.ok) {
     console.error("Stitch Express status error", plResp.status, plJson);
-    return "PENDING";
+    return { status: "PENDING", detectedMethod: null };
   }
   const payment = plJson?.data?.payment || plJson?.data || {};
-  return String(payment.status || "PENDING").toUpperCase();
+  return { status: String(payment.status || "PENDING").toUpperCase(), detectedMethod: detectMethod(payment) };
+}
+
+// Inspect a Stitch response payload for how the payer actually paid. Stitch
+// exposes this on different fields across products (payment-requests v2 vs
+// Express payments) — check the common ones and fall back to a heuristic scan.
+function detectMethod(payload: unknown): "card" | "paybybank" | null {
+  if (!payload || typeof payload !== "object") return null;
+  const candidates: string[] = [];
+  const push = (v: unknown) => { if (typeof v === "string") candidates.push(v.toLowerCase()); };
+  const p = payload as Record<string, any>;
+  push(p.paymentMethod); push(p.paymentMethodType); push(p.method); push(p.type);
+  if (Array.isArray(p.paymentMethods)) for (const m of p.paymentMethods) { push(m); if (m && typeof m === "object") push(m.type); }
+  if (p.card || p.cardPayment) return "card";
+  if (p.eft || p.payByBank || p.paybybank || p.bankPayment) return "paybybank";
+  for (const c of candidates) {
+    if (c.includes("card")) return "card";
+    if (c.includes("eft") || c.includes("bank") || c.includes("pbb") || c.includes("paybybank")) return "paybybank";
+  }
+  // Last-resort heuristic: scan a serialized snapshot for card-only markers.
+  try {
+    const s = JSON.stringify(payload).toLowerCase();
+    if (/\bcard\b|"card"|cardpayment|"pan"|"maskedpan"/.test(s)) return "card";
+    if (/paybybank|"eft"|bankpayment|"pbb"/.test(s)) return "paybybank";
+  } catch { /* ignore */ }
+  return null;
 }
 
 async function getPaymentRequestToken(clientId: string, clientSecret: string) {

@@ -1422,7 +1422,13 @@ function RoundCard({
                 {draft && (
                   <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Discard changes</Button>
                 )}
-                <Button size="sm" onClick={() => saveFixtures.mutate()} disabled={saveFixtures.isPending}>
+                <Button size="sm" onClick={() => {
+                  const sync = window.confirm(
+                    "Also sync court bookings?\n\nOK  – Cancel any existing bookings on this round's courts within its date range and recreate them to match these fixtures (replaces manual bookings).\nCancel – Only update bookings that are already linked to fixtures.",
+                  );
+                  saveFixtures.mutate({ syncBookings: sync });
+                }} disabled={saveFixtures.isPending}>
+
                   {saveFixtures.isPending ? "Saving…" : "Save fixtures"}
                 </Button>
               </div>

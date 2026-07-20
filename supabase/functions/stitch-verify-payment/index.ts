@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const clientSecret = (creds.client_secret || "").trim();
     if (!clientId || !clientSecret) return json({ error: "Stitch Express keys missing" }, 400);
 
-    const status = await lookupStitchStatus(clientId, clientSecret, session.stitch_request_id, session.stitch_redirect_url);
+    const { status, detectedMethod } = await lookupStitchStatus(clientId, clientSecret, session.stitch_request_id, session.stitch_redirect_url);
     const completed = status === "PAID" || status === "COMPLETED" || status === "COMPLETE" || status === "PAYMENTINITIATIONREQUESTCOMPLETED";
     const failed = status === "EXPIRED" || status === "CANCELLED" || status === "CANCELED" || status === "FAILED" || status === "PAYMENTINITIATIONREQUESTCANCELLED" || status === "PAYMENTINITIATIONREQUESTEXPIRED";
 
@@ -59,6 +59,14 @@ Deno.serve(async (req) => {
       return json({ status: next, stitch_state: status });
     }
 
+    // Persist the actual method Stitch reported (card vs eft/paybybank).
+    // The session.method reflects the requested method — payers can switch to
+    // card on Stitch's hosted page, so we must trust Stitch's response.
+    if (detectedMethod && detectedMethod !== session.method) {
+      await admin.from("stitch_payment_sessions").update({ method: detectedMethod }).eq("id", session.id);
+      session.method = detectedMethod;
+    }
+
     // Atomic claim
     const { data: claimed } = await admin.from("stitch_payment_sessions")
       .update({ status: "completed", completed_at: new Date().toISOString() })
@@ -66,7 +74,7 @@ Deno.serve(async (req) => {
     if (!claimed || claimed.length === 0) return json({ status: "completed", already: true });
 
     await finalisePayment(admin, session);
-    return json({ status: "completed", amount: Number(session.amount) });
+    return json({ status: "completed", amount: Number(session.amount), method: session.method });
   } catch (e: any) {
     console.error("stitch-verify-payment error:", e);
     return json({ error: e.message || "Unexpected error" }, 500);

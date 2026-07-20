@@ -178,29 +178,35 @@ export function FixturesTab({ clubId, associationId }: Props) {
         const venueChanged = (prev?.venue_name ?? "") !== (r.venue_name ?? "");
         const regenerateDatesAndTimes = timeChanged || dateWindowChanged || playDaysChanged;
         const shouldRescheduleFixtures = true;
+        // Build a court->venue map that covers both the round's selected
+        // courts AND any courts already referenced by existing fixtures
+        // (so manual per-fixture court overrides get labelled correctly).
+        const { data: existingCourtIdsRows } = await fromExt("platform_league_fixtures")
+          .select("court_id")
+          .eq("round_id", r.id);
+        const allCourtIds = Array.from(new Set<number>([
+          ...newCourts,
+          ...(((existingCourtIdsRows ?? []) as any[]).map((x) => Number(x.court_id)).filter((n) => Number.isFinite(n) && n > 0)),
+        ]));
         let venueByCourt = new Map<number, string>();
-        if (newCourts.length) {
+        if (allCourtIds.length) {
           const { data: courtRows, error: courtErr } = await supabase
             .from("courts")
             .select("id, venue_name, clubs(name)")
-            .in("id", newCourts);
+            .in("id", allCourtIds);
           if (courtErr) throw courtErr;
           venueByCourt = new Map(
             ((courtRows ?? []) as any[]).map((c) => [
               Number(c.id),
-              c.venue_name?.trim() || c.clubs?.name || r.venue_name || "Home",
+              c.venue_name?.trim() || c.clubs?.name || "Home",
             ]),
           );
         }
         const venueForCourt = (courtId?: number | null) =>
-          courtId ? (venueByCourt.get(courtId) ?? r.venue_name ?? "Home") : (r.venue_name || "Home");
-
-        if (venueChanged) {
-          const { error: vErr } = await fromExt("platform_league_fixtures")
-            .update({ venue_name: r.venue_name || "Home" })
-            .eq("round_id", r.id);
-          if (vErr) throw vErr;
-        }
+          courtId ? (venueByCourt.get(courtId) ?? "Home") : (r.venue_name || "Home");
+        // NOTE: intentionally no blanket venue_name overwrite here — venue is
+        // derived from each fixture's actual court_id below.
+        void venueChanged;
 
         // Editing round settings must reproduce the saved fixture plan, not just
         // update the round header. Preserve existing pairings/results, but

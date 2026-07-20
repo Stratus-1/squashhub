@@ -1,0 +1,1 @@
+UPDATE public.bookings SET status='cancelled' WHERE id='dd76fd2d-1947-4e53-be83-efb821e15599';

@@ -251,7 +251,16 @@ export function FixturesTab({ clubId, associationId }: Props) {
                 ...((matchRows ?? []) as any[]).map((x) => x.fixture_id),
               ]);
               if (protectedIds.size) {
-                throw new Error("This round already has saved scorecards/lineups, so its fixtures cannot be regenerated from round settings.");
+                // Only lock when the round has already fully finished (last match date in the past).
+                // Partially-played or upcoming rounds can still be rearranged.
+                const today = new Date().toISOString().slice(0, 10);
+                const lastDate = playable.reduce<string>((acc, f) => {
+                  const d = f.fixture_date || r.round_date;
+                  return d && d > acc ? d : acc;
+                }, "");
+                if (lastDate && lastDate < today) {
+                  throw new Error("This round has already finished and has saved scorecards/lineups, so its fixtures cannot be regenerated from round settings.");
+                }
               }
             }
 

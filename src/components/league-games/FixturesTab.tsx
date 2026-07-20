@@ -233,7 +233,10 @@ export function FixturesTab({ clubId, associationId }: Props) {
           };
           const existingFx = (fixtureRows ?? []) as FxRow[];
           const playable = existingFx.filter((f) => f.away_team_code !== "__BYE__");
-          const fixtureCourtMismatch = playable.some((f) => !!f.court_id && !newCourts.includes(f.court_id));
+          // Manual per-fixture court overrides (courts outside the round's
+          // court list) are respected. Only truly missing courts trigger a
+          // reshuffle.
+          const fixtureCourtMismatch = false;
           const fixtureMissingCourt = playable.some((f) => !f.court_id && newCourts.length > 0);
           const existingGroupSizes = new Map<string, number>();
           for (const f of playable) {

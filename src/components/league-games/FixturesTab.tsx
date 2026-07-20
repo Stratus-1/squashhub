@@ -971,7 +971,9 @@ function RoundCard({
   };
 
   const saveFixtures = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (opts?: { syncBookings?: boolean }) => {
+      const syncBookings = !!opts?.syncBookings;
+
       // ─────────────────────────────────────────────────────────────
       // Non-destructive save (protects captain-submitted scorecards):
       //  • Existing fixtures are UPDATED in place — fixture_id stays

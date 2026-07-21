@@ -41,6 +41,7 @@ import EventDetail from "./pages/EventDetail";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
+import SetPassword from "./pages/SetPassword";
 import OAuthConsent from "./pages/OAuthConsent";
 import PayReturn from "./pages/PayReturn";
 import StitchPaymentBridge from "./pages/StitchPaymentBridge";

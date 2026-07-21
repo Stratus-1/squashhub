@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
   // Load club for subdomain + name.
   const { data: club } = await admin
     .from("clubs")
-    .select("id, name, subdomain, contact_email")
+    .select("id, name, subdomain, email")
     .eq("id", clubId)
     .maybeSingle();
   if (!club) return json({ error: "Club not found" }, 404);
@@ -283,7 +283,7 @@ Deno.serve(async (req) => {
             venue: clubName,
             magicLink,
             clubUrl,
-            contactEmail: (club as any).contact_email || undefined,
+            contactEmail: (club as any).email || undefined,
           },
         };
         const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
@@ -325,7 +325,7 @@ Deno.serve(async (req) => {
   // Send an admin-copy summary email to the club contact so admins can see who was emailed.
   if (!dryRun) {
     try {
-      const adminEmail = (club as any).contact_email as string | null;
+      const adminEmail = (club as any).email as string | null;
       // Also include the importing admin's email if we can resolve it.
       let importerEmail: string | null = null;
       try {

@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
         const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
           type: "magiclink",
           email,
-          options: { redirectTo: clubUrl },
+          options: { redirectTo: magicRedirect },
         });
         if (!linkErr && (linkData as any)?.properties?.action_link) {
           magicLink = (linkData as any).properties.action_link;

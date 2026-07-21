@@ -2912,6 +2912,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPlayoffBreakMinutes(Number((champ as any).playoff_break_minutes) || 0);
     setPlayoffDate(((champ as any).playoff_date as string) || "");
     setRoundFormat((champ.round_format as any) || "");
+    const lf = ((champ as any).league_formats as Record<string, PerLeagueFormat> | null) || null;
+    setLeagueFormats(lf || {});
+    setUsePerLeagueFormats(!!lf && Object.keys(lf).length > 0);
     setByeHandling((champ.bye_handling as any) || "");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
       ? champ.source_league_ids

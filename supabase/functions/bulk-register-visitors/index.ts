@@ -28,6 +28,26 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function nameTokens(...parts: string[]): string[] {
+  return parts
+    .join(" ")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
+    .split(/\s+/)
+    .map((t) => t.replace(/^[-']+|[-']+$/g, ""))
+    .filter(Boolean);
+}
+
+function tokenLooksSame(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.length >= 3 && b.startsWith(a)) return true;
+  if (b.length >= 3 && a.startsWith(b)) return true;
+  return false;
+}
+
 interface Entrant {
   first_name: string;
   last_name: string;
@@ -217,11 +237,7 @@ Deno.serve(async (req) => {
       const homeClub = clubsById.get(cm.club_id);
       const name = String(cm.name || "").trim();
       if (!name) continue;
-      const tokens = name
-        .toLowerCase()
-        .replace(/[^\p{L}\s'-]/gu, " ")
-        .split(/\s+/)
-        .filter(Boolean);
+      const tokens = nameTokens(name);
       nsaIndex.push({
         club_member_id: cm.id,
         club_id: cm.club_id,
@@ -238,14 +254,15 @@ Deno.serve(async (req) => {
   }
 
   function findNsaCandidates(first: string, last: string): NsaCandidate[] {
-    const f = first.trim().toLowerCase();
-    const l = last.trim().toLowerCase();
-    if (!f || !l) return [];
+    const firstTokens = nameTokens(first);
+    const lastTokens = nameTokens(last);
+    if (firstTokens.length === 0 || lastTokens.length === 0) return [];
     const matches: NsaCandidate[] = [];
     for (const r of nsaIndex) {
-      // Both first and last must appear as separate tokens.
-      const hasFirst = r.tokens.some((t) => t === f || t.startsWith(f) || f.startsWith(t));
-      const hasLast = r.tokens.some((t) => t === l);
+      // First and last must both match, but tolerate initials, punctuation,
+      // and prefix differences from imported sheets/PDFs.
+      const hasFirst = firstTokens.some((f) => r.tokens.some((t) => tokenLooksSame(f, t)));
+      const hasLast = lastTokens.some((l) => r.tokens.some((t) => tokenLooksSame(l, t)));
       if (hasFirst && hasLast) {
         matches.push({
           club_member_id: r.club_member_id,
@@ -422,6 +439,12 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
+        if (nsaCandidates.length > 0 && !nsaDecided) {
+          row.status = "skipped";
+          row.message = "Possible NSA match found — please confirm or ignore before importing";
+          results.push(row);
+          continue;
+        }
         row.status = userId ? "linked_visitor" : "created";
         results.push(row);
         continue;

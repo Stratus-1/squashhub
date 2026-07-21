@@ -3984,9 +3984,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 const effectiveParallel = parallelLeagues && canParallel;
                 const anyLeagueSwiss = roundFormat === "swiss"
                   || (usePerLeagueFormats && Object.values(leagueFormats).includes("swiss"));
+                const isSwiss = anyLeagueSwiss; // header/summary flag (any league running Swiss)
                 const perLeague = leagues.map((gn) => {
                   const leagueFmt = formatForLeague(gn);
-                  const isSwiss = leagueFmt === "swiss";
+                  const isSwissL = leagueFmt === "swiss";
                   const isDouble = leagueFmt === "double_round_robin";
                   const slot = roundFormat === "cross_league"
                     ? sharedSlot

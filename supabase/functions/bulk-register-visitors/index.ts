@@ -40,6 +40,8 @@ interface Entrant {
   // Optional: admin confirmed NSA identity for this entrant.
   nsa_home_club_id?: string | null;
   nsa_number?: string | null;
+  // Admin explicitly said "not the same person" — skip NSA gate.
+  nsa_ignored?: boolean;
 }
 
 interface NsaCandidate {

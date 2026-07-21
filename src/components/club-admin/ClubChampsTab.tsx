@@ -4142,7 +4142,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     {!needsSlot && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {perLeague.map((L) => {
-                          const { gn, slot, games, maxPlayers, maxEntities, actualPlayers, actualEntities, gamesNeeded, fits, pools, rounds, suggestedRounds, swissMaxPerPool } = L;
+                          const { gn, slot, games, maxPlayers, maxEntities, actualPlayers, actualEntities, gamesNeeded, fits, pools, rounds, suggestedRounds, swissMaxPerPool, isSwissL } = L;
                           return (
                             <div key={gn} className={`flex flex-col gap-1 p-1.5 rounded border ${actualEntities > 0 && !fits ? "bg-destructive/10 border-destructive/40" : "bg-muted/30"}`}>
                               <div className="flex items-center gap-2">

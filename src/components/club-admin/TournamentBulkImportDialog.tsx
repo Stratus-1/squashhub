@@ -17,6 +17,16 @@ interface Props {
   champ: { id: string; name: string; match_type?: string | null } | null;
 }
 
+interface NsaCandidate {
+  club_member_id: string;
+  club_id: string;
+  club_name: string;
+  club_subdomain: string | null;
+  nsa_number: string;
+  full_name: string;
+  gender: string | null;
+}
+
 interface Row {
   key: string;
   first_name: string;
@@ -29,6 +39,13 @@ interface Row {
   partner_name: string;
   // match hint from server dry-run
   hint?: "already_member" | "linked_visitor" | "created" | "unknown";
+  // NSA candidates from dry-run
+  nsa_candidates?: NsaCandidate[];
+  // Admin-confirmed NSA identity
+  nsa_home_club_id?: string | null;
+  nsa_number?: string | null;
+  nsa_home_club_name?: string | null;
+  nsa_ignored?: boolean;
   // result after import
   status?: "already_member" | "linked_visitor" | "created" | "error" | "skipped";
   magic_link?: string;

@@ -249,7 +249,8 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
           return String(current ?? "") !== String(value ?? "");
         });
         if (changedIdentity) {
-          for (const field of RESULT_FIELDS) delete next[field];
+          const cleared = next as Partial<Row>;
+          for (const field of RESULT_FIELDS) delete cleared[field];
         }
         return next;
       })

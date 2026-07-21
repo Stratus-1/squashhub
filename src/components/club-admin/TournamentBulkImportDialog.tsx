@@ -297,7 +297,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
         },
       });
       if (error) throw error;
-      const results = (data as any)?.results as Array<{ index: number; status: Row["hint"]; nsa_candidates?: NsaCandidate[] }>;
+      const results = (data as any)?.results as Array<{ index: number; status: Row["status"] | Row["hint"]; message?: string; nsa_candidates?: NsaCandidate[] }>;
       if (Array.isArray(results)) {
         setRows((rs) => {
           const validKeys = validRows.map((v) => v.key);
@@ -305,8 +305,11 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
             const idx = validKeys.indexOf(r.key);
             if (idx < 0) return r;
             const res = results.find((x) => x.index === idx);
-            const hint = res?.status || "unknown";
-            return { ...r, hint, nsa_candidates: res?.nsa_candidates || [] };
+            if (res?.status === "skipped") {
+              return { ...r, status: "skipped", message: res.message, hint: undefined, nsa_candidates: res.nsa_candidates || [] };
+            }
+            const hint = (res?.status as Row["hint"]) || "unknown";
+            return { ...r, status: undefined, message: undefined, hint, nsa_candidates: res?.nsa_candidates || [] };
           });
         });
         toast.success("Match check complete");

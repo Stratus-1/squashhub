@@ -53,6 +53,19 @@ interface Row {
   message?: string;
 }
 
+const RESULT_FIELDS: Array<keyof Row> = [
+  "hint",
+  "nsa_candidates",
+  "nsa_home_club_id",
+  "nsa_number",
+  "nsa_home_club_name",
+  "nsa_ignored",
+  "status",
+  "magic_link",
+  "email_queued",
+  "message",
+];
+
 function newRow(): Row {
   return {
     key: crypto.randomUUID(),
@@ -189,6 +202,23 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  function updateEditableRow(key: string, patch: Partial<Row>) {
+    setRows((rs) =>
+      rs.map((r) => {
+        if (r.key !== key) return r;
+        const next: Row = { ...r, ...patch };
+        const changedIdentity = Object.entries(patch).some(([field, value]) => {
+          const current = r[field as keyof Row];
+          return String(current ?? "") !== String(value ?? "");
+        });
+        if (changedIdentity) {
+          for (const field of RESULT_FIELDS) delete next[field];
+        }
+        return next;
+      })
+    );
   }
 
   function removeRow(key: string) {
@@ -392,12 +422,12 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.key} className="border-t">
-                    <td className="p-1"><Input value={r.first_name} onChange={(e) => updateRow(r.key, { first_name: e.target.value })} className="h-8 text-xs" /></td>
-                    <td className="p-1"><Input value={r.last_name} onChange={(e) => updateRow(r.key, { last_name: e.target.value })} className="h-8 text-xs" /></td>
-                    <td className="p-1"><Input value={r.email} onChange={(e) => updateRow(r.key, { email: e.target.value })} className="h-8 text-xs" /></td>
-                    <td className="p-1"><Input value={r.phone} onChange={(e) => updateRow(r.key, { phone: e.target.value })} className="h-8 text-xs" /></td>
+                    <td className="p-1"><Input value={r.first_name} onChange={(e) => updateEditableRow(r.key, { first_name: e.target.value })} className="h-8 text-xs" /></td>
+                    <td className="p-1"><Input value={r.last_name} onChange={(e) => updateEditableRow(r.key, { last_name: e.target.value })} className="h-8 text-xs" /></td>
+                    <td className="p-1"><Input value={r.email} onChange={(e) => updateEditableRow(r.key, { email: e.target.value.toLowerCase() })} className="h-8 text-xs" /></td>
+                    <td className="p-1"><Input value={r.phone} onChange={(e) => updateEditableRow(r.key, { phone: e.target.value })} className="h-8 text-xs" /></td>
                     <td className="p-1">
-                      <Select value={r.gender} onValueChange={(v) => updateRow(r.key, { gender: v as any })}>
+                      <Select value={r.gender} onValueChange={(v) => updateEditableRow(r.key, { gender: v as any })}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Men">Men</SelectItem>
@@ -405,10 +435,10 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="p-1"><Input value={r.home_club_name} onChange={(e) => updateRow(r.key, { home_club_name: e.target.value })} className="h-8 text-xs" /></td>
-                    <td className="p-1"><Input value={r.division} onChange={(e) => updateRow(r.key, { division: e.target.value })} className="h-8 text-xs" /></td>
+                    <td className="p-1"><Input value={r.home_club_name} onChange={(e) => updateEditableRow(r.key, { home_club_name: e.target.value })} className="h-8 text-xs" /></td>
+                    <td className="p-1"><Input value={r.division} onChange={(e) => updateEditableRow(r.key, { division: e.target.value })} className="h-8 text-xs" /></td>
                     {isDoubles && (
-                      <td className="p-1"><Input value={r.partner_name} onChange={(e) => updateRow(r.key, { partner_name: e.target.value })} className="h-8 text-xs" /></td>
+                      <td className="p-1"><Input value={r.partner_name} onChange={(e) => updateEditableRow(r.key, { partner_name: e.target.value })} className="h-8 text-xs" /></td>
                     )}
                     <td className="p-1">
                       {r.status && r.status !== "skipped" ? (

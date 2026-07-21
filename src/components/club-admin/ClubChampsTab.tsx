@@ -559,7 +559,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!editingChampId && partnerMode === "players" && matchType === "doubles" && showWizard,
+    enabled: !!editingChampId && matchType === "doubles" && showWizard,
   });
 
   // Bells format ignores Match Duration (slot times are defined per-league).
@@ -571,7 +571,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [scoringMode, matchDuration]);
 
   useEffect(() => {
-    if (partnerMode !== "players" || matchType !== "doubles") return;
+    if (matchType !== "doubles") return;
     // Dedupe reciprocal rows: only keep one pair per unordered (a,b)
     const seen = new Set<string>();
     const pairs: DoublePair[] = [];
@@ -584,7 +584,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       seen.add(key);
       pairs.push({ id: crypto.randomUUID(), player1Id: a, player2Id: b });
     }
-    setDoublesPairs(pairs);
+    if (partnerMode === "players") {
+      // Players mode: registrations are the source of truth — replace.
+      setDoublesPairs(pairs);
+    } else {
+      // Admin mode: merge in any confirmed pairs (e.g. from bulk import)
+      // without wiping pairs the admin already built manually.
+      setDoublesPairs((prev) => {
+        const existing = new Set(prev.map((p) => [p.player1Id, p.player2Id].sort().join("|")));
+        const additions = pairs.filter((p) => !existing.has([p.player1Id, p.player2Id].sort().join("|")));
+        return additions.length ? [...prev, ...additions] : prev;
+      });
+    }
   }, [confirmedPairRegs, partnerMode, matchType]);
 
   const { data: availableLeagues = [] } = useQuery({

@@ -565,7 +565,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
                             <Button size="icon" variant="ghost" className="h-7 w-7"><MessageCircle className="w-3.5 h-3.5 text-emerald-600" /></Button>
                           </a>
                         ) : null}
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeRow(r.key)} title="Remove row">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeRow(r.key)} title="Remove row from this list (will not delete the visitor)">
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>

@@ -2962,6 +2962,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const lf = ((champ as any).league_formats as Record<string, PerLeagueFormat> | null) || null;
     setLeagueFormats(lf || {});
     setUsePerLeagueFormats(!!lf && Object.keys(lf).length > 0);
+    setExpectedPlayers(((champ as any).expected_players as Record<string, number>) || {});
     setByeHandling((champ.bye_handling as any) || "");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
       ? champ.source_league_ids

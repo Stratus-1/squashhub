@@ -3720,28 +3720,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 </Select>
                               </div>
                               {isSwiss && (
-                                <>
-                                  <div>
-                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Pools</Label>
-                                    <Input
-                                      type="number"
-                                      min={1}
-                                      value={swissPools[key] ?? 1}
-                                      onChange={(e) => setSwissPools((m) => ({ ...m, [key]: Math.max(1, Number(e.target.value) || 1) }))}
-                                      className="h-8 text-xs mt-0.5"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rounds</Label>
-                                    <Input
-                                      type="number"
-                                      min={1}
-                                      value={swissRounds[key] ?? 5}
-                                      onChange={(e) => setSwissRounds((m) => ({ ...m, [key]: Math.max(1, Number(e.target.value) || 1) }))}
-                                      className="h-8 text-xs mt-0.5"
-                                    />
-                                  </div>
-                                </>
+                                <div>
+                                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Pools</Label>
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    value={swissPools[key] ?? 1}
+                                    onChange={(e) => {
+                                      const pools = Math.max(1, Number(e.target.value) || 1);
+                                      setSwissPools((m) => ({ ...m, [key]: pools }));
+                                      const n = Number(expectedPlayers[key]) || 0;
+                                      if (n >= 2) {
+                                        const perPool = Math.max(2, Math.ceil(n / pools));
+                                        setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+                                      }
+                                    }}
+                                    className="h-8 text-xs mt-0.5"
+                                  />
+                                </div>
                               )}
                               <div className={isSwiss ? "" : "col-span-1"}>
                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -3760,6 +3756,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                       else next[key] = Math.round(n);
                                       return next;
                                     });
+                                    // Auto-derive Swiss rounds (treat pool as round-robin: rounds = perPool - 1)
+                                    if (isSwiss && Number.isFinite(n) && n >= 2) {
+                                      const pools = Math.max(1, Number(swissPools[key]) || 1);
+                                      const perPool = Math.max(2, Math.ceil(n / pools));
+                                      setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+                                    }
                                   }}
                                   className="h-8 text-xs mt-0.5"
                                 />

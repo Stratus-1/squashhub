@@ -176,18 +176,21 @@ Deno.serve(async (req) => {
 
     const affiliations = ((affiliationRows as any[]) || []).filter((r) => r.club_member_id && r.league_association_number);
     const memberIds = Array.from(new Set(affiliations.map((r) => r.club_member_id as string)));
-    const { data: memberRows, error: memberErr } = memberIds.length
-      ? await admin
-          .from("club_members")
-          .select("id, name, gender, club_id")
-          .in("id", memberIds)
-      : { data: [], error: null } as any;
-    if (memberErr) throw memberErr;
+    const memberRows: any[] = [];
+    for (let start = 0; start < memberIds.length; start += 200) {
+      const batchIds = memberIds.slice(start, start + 200);
+      const { data: batchMembers, error: memberErr } = await admin
+        .from("club_members")
+        .select("id, name, gender, club_id")
+        .in("id", batchIds);
+      if (memberErr) throw memberErr;
+      memberRows.push(...((batchMembers as any[]) || []));
+    }
 
-    const membersById = new Map(((memberRows as any[]) || []).map((m) => [m.id, m]));
+    const membersById = new Map(memberRows.map((m) => [m.id, m]));
     const clubIds = Array.from(
       new Set(
-        ((memberRows as any[]) || [])
+        memberRows
           .map((m) => m.club_id as string | null)
           .filter((id): id is string => !!id)
       )

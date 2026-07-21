@@ -285,6 +285,7 @@ Deno.serve(async (req) => {
 
       if (dryRun) {
         row.status = userId ? "linked_visitor" : "created";
+        row.nsa_candidates = findNsaCandidates(first, last);
         results.push(row);
         continue;
       }

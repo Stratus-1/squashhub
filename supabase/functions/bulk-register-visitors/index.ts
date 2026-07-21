@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
   // Load club for subdomain + name.
   const { data: club } = await admin
     .from("clubs")
-    .select("id, name, subdomain, contact_email")
+    .select("id, name, subdomain, email")
     .eq("id", clubId)
     .maybeSingle();
   if (!club) return json({ error: "Club not found" }, 404);

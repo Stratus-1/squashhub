@@ -309,15 +309,18 @@ export function FixturesTab({ clubId, associationId }: Props) {
             const nextById = new Map<string, { fixture_date: string; start_time: string; end_time: string; court_id: number }>();
             let byeDates = [r.round_date];
 
+            // Fixtures already played (with saved results/lineups) keep their
+            // original slot; only unplayed fixtures are re-slotted.
+            const reschedulable = playable.filter((f) => !playedProtectedIds.has(f.id));
             if (regenerateDatesAndTimes || exceedsSelectedCourtCapacity) {
               const slotTimes = timeSlotsBetween(r.start_time, r.end_time, Number(r.slot_minutes || 45));
               if (!slotTimes.length) throw new Error("Check the round start/end time and slot length.");
               const matchesPerDay = Math.max(1, newCourts.length * slotTimes.length);
-              const requiredDays = Math.max(1, Math.ceil(playable.length / matchesPerDay));
+              const requiredDays = Math.max(1, Math.ceil(reschedulable.length / matchesPerDay));
               const playDates = nextPlayDates(r.round_date, requiredDays, r.play_dows ?? []);
               if (!playDates.length) throw new Error("Check the round start date and play days.");
               byeDates = playDates;
-              playable.forEach((f, idx) => {
+              reschedulable.forEach((f, idx) => {
                 const dayIdx = Math.floor(idx / matchesPerDay);
                 const withinDay = idx % matchesPerDay;
                 const timeIdx = Math.floor(withinDay / newCourts.length);
@@ -335,7 +338,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
               // just replace courts that are no longer allowed, spreading them
               // across the selected venue courts within each date/time cell.
               const groups = new Map<string, FxRow[]>();
-              for (const f of playable) {
+              for (const f of reschedulable) {
                 const key = `${f.fixture_date || r.round_date}|${hm(f.start_time) || fallbackStart}`;
                 const arr = groups.get(key) ?? [];
                 arr.push(f);

@@ -3690,7 +3690,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 </>
                               )}
                               <div className={isSwiss ? "" : "col-span-1"}>
-                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Expected players</Label>
+                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {isDoubles ? "Expected pairs" : "Expected players"}
+                                </Label>
                                 <Input
                                   type="number"
                                   min={0}

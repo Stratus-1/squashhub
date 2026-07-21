@@ -401,18 +401,15 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
                       )}
                     </td>
                     <td className="p-1">
-                      <div className="flex gap-0.5">
-                        {r.status === "created" || r.status === "linked_visitor" ? (
-                          whatsappUrl(r) ? (
-                            <a href={whatsappUrl(r)!} target="_blank" rel="noopener noreferrer" title="Send WhatsApp with magic-link">
-                              <Button size="icon" variant="ghost" className="h-7 w-7"><MessageCircle className="w-3.5 h-3.5 text-emerald-600" /></Button>
-                            </a>
-                          ) : null
-                        ) : (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeRow(r.key)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
+                      <div className="flex gap-0.5 justify-end">
+                        {(r.status === "created" || r.status === "linked_visitor") && whatsappUrl(r) ? (
+                          <a href={whatsappUrl(r)!} target="_blank" rel="noopener noreferrer" title="Send WhatsApp with magic-link">
+                            <Button size="icon" variant="ghost" className="h-7 w-7"><MessageCircle className="w-3.5 h-3.5 text-emerald-600" /></Button>
+                          </a>
+                        ) : null}
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeRow(r.key)} title="Remove row">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </td>
                   </tr>

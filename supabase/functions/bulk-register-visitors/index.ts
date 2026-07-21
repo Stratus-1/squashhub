@@ -105,6 +105,13 @@ Deno.serve(async (req) => {
   const clubUrl = subdomain
     ? `https://${subdomain}.squashhub.co.za`
     : "https://squashhub.co.za";
+  // Magic-link redirect MUST be on Supabase's allowed-redirect list, otherwise
+  // GoTrue silently falls back to the project Site URL (squashhub.lovable.app).
+  // The production root + /auth/callback is allowlisted; a bootstrap script in
+  // index.html bounces the user to the tenant subdomain using ?tenant=<sub>.
+  const magicRedirect = subdomain
+    ? `https://www.squashhub.co.za/auth/callback?tenant=${encodeURIComponent(subdomain)}`
+    : `https://www.squashhub.co.za/auth/callback`;
 
   // Optional tournament context for email body.
   let tournamentName: string | null = null;

@@ -37,6 +37,19 @@ interface Entrant {
   home_club_name?: string | null;
   division?: string | null;
   partner_name?: string | null;
+  // Optional: admin confirmed NSA identity for this entrant.
+  nsa_home_club_id?: string | null;
+  nsa_number?: string | null;
+}
+
+interface NsaCandidate {
+  club_member_id: string;
+  club_id: string;
+  club_name: string;
+  club_subdomain: string | null;
+  nsa_number: string;
+  full_name: string;
+  gender: string | null;
 }
 
 interface RowResult {
@@ -52,6 +65,9 @@ interface RowResult {
   phone?: string | null;
   division?: string | null;
   partner_name?: string | null;
+  nsa_candidates?: NsaCandidate[];
+  nsa_registered_club_id?: string;
+  nsa_registered_number?: string;
 }
 
 Deno.serve(async (req) => {

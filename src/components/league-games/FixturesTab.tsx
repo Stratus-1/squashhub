@@ -274,30 +274,33 @@ export function FixturesTab({ clubId, associationId }: Props) {
           const exceedsSelectedCourtCapacity = Array.from(existingGroupSizes.values()).some((n) => n > newCourts.length);
           const scheduleWillChange = regenerateDatesAndTimes || courtsChanged || fixtureCourtMismatch || fixtureMissingCourt || exceedsSelectedCourtCapacity;
 
+          // Fixtures with saved scorecards/lineups/results must never be moved,
+          // even when the round is only partially played — their date, time,
+          // court, and booking are historical records.
+          const playedProtectedIds = new Set<string>();
+          if (playable.length) {
+            const ids = playable.map((f) => f.id);
+            const [{ data: resRows }, { data: lineupRows }, { data: matchRows }] = await Promise.all([
+              fromExt("league_fixture_results").select("fixture_id").in("fixture_id", ids),
+              fromExt("league_fixture_lineups").select("fixture_id").in("fixture_id", ids),
+              fromExt("league_match_results").select("fixture_id").in("fixture_id", ids),
+            ]);
+            for (const x of ((resRows ?? []) as any[])) playedProtectedIds.add(x.fixture_id);
+            for (const x of ((lineupRows ?? []) as any[])) playedProtectedIds.add(x.fixture_id);
+            for (const x of ((matchRows ?? []) as any[])) playedProtectedIds.add(x.fixture_id);
+          }
+
           if (playable.length && newCourts.length) {
-            if (scheduleWillChange) {
-              const ids = playable.map((f) => f.id);
-              const [{ data: resRows }, { data: lineupRows }, { data: matchRows }] = await Promise.all([
-                fromExt("league_fixture_results").select("fixture_id").in("fixture_id", ids),
-                fromExt("league_fixture_lineups").select("fixture_id").in("fixture_id", ids),
-                fromExt("league_match_results").select("fixture_id").in("fixture_id", ids),
-              ]);
-              const protectedIds = new Set<string>([
-                ...((resRows ?? []) as any[]).map((x) => x.fixture_id),
-                ...((lineupRows ?? []) as any[]).map((x) => x.fixture_id),
-                ...((matchRows ?? []) as any[]).map((x) => x.fixture_id),
-              ]);
-              if (protectedIds.size) {
-                // Only lock when the round has already fully finished (last match date in the past).
-                // Partially-played or upcoming rounds can still be rearranged.
-                const today = new Date().toISOString().slice(0, 10);
-                const lastDate = playable.reduce<string>((acc, f) => {
-                  const d = f.fixture_date || r.round_date;
-                  return d && d > acc ? d : acc;
-                }, "");
-                if (lastDate && lastDate < today) {
-                  throw new Error("This round has already finished and has saved scorecards/lineups, so its fixtures cannot be regenerated from round settings.");
-                }
+            if (scheduleWillChange && playedProtectedIds.size) {
+              // Only lock when the round has already fully finished (last match date in the past).
+              // Partially-played rounds proceed, but played fixtures are frozen below.
+              const today = new Date().toISOString().slice(0, 10);
+              const lastDate = playable.reduce<string>((acc, f) => {
+                const d = f.fixture_date || r.round_date;
+                return d && d > acc ? d : acc;
+              }, "");
+              if (lastDate && lastDate < today) {
+                throw new Error("This round has already finished and has saved scorecards/lineups, so its fixtures cannot be regenerated from round settings.");
               }
             }
 

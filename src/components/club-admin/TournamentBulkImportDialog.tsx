@@ -250,9 +250,15 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
   const pendingRows = useMemo(
     () =>
       validRows.filter(
-        (r) => !r.status || r.status === "error" || r.status === "skipped" || (r.status === "already_member" && champ?.id && !r.registration_id)
+        (r) =>
+          !r.status ||
+          r.status === "error" ||
+          r.status === "skipped" ||
+          ((r.status === "already_member" || r.status === "linked_visitor" || r.status === "created") &&
+            champ?.id &&
+            (!r.registration_id || (isDoubles && !!r.partner_name.trim() && !r.paired_with_member_id)))
       ),
-    [validRows, champ?.id]
+    [validRows, champ?.id, isDoubles]
   );
 
   function updateRow(key: string, patch: Partial<Row>) {

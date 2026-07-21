@@ -116,7 +116,7 @@ function parsePaste(text: string): Row[] {
 const HINT_LABELS: Record<NonNullable<Row["hint"]>, { label: string; className: string }> = {
   already_member: { label: "Already a member", className: "bg-slate-200 text-slate-700" },
   linked_visitor: { label: "Existing account → link as visitor", className: "bg-amber-100 text-amber-800" },
-  created: { label: "New — will be created", className: "bg-emerald-100 text-emerald-800" },
+  created: { label: "New — Ready to import", className: "bg-emerald-100 text-emerald-800" },
   unknown: { label: "—", className: "bg-slate-100 text-slate-500" },
 };
 

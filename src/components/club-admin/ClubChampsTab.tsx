@@ -418,12 +418,53 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss";
   const [leagueFormats, setLeagueFormats] = useState<Record<string, PerLeagueFormat>>({});
   const [usePerLeagueFormats, setUsePerLeagueFormats] = useState(false);
+  // Planning-only per-league expected player counts (keyed by group_number).
+  // Purely for the capacity readout in the wizard — not enforced anywhere.
+  const [expectedPlayers, setExpectedPlayers] = useState<Record<string, number>>({});
   // Effective format for a given league number (1-based). Falls back to the
   // tournament default; ignored when the default is `cross_league`.
   const formatForLeague = (gn: number): "single_round_robin" | "double_round_robin" | "cross_league" | "swiss" | "" => {
     if (roundFormat === "cross_league") return "cross_league";
     if (usePerLeagueFormats && leagueFormats[String(gn)]) return leagueFormats[String(gn)];
     return roundFormat;
+  };
+
+  // ---- Visual "Tournament Structure Builder" helpers ---------------------
+  const FORMAT_META: Record<PerLeagueFormat, { label: string; short: string; desc: string }> = {
+    single_round_robin: { label: "Single round-robin", short: "Single RR", desc: "Each player plays every other in their league once." },
+    double_round_robin: { label: "Double round-robin", short: "Double RR", desc: "Play each opponent twice — home & away." },
+    swiss: { label: "Swiss pairing", short: "Swiss", desc: "Fixed rounds; admin re-pairs each round by score." },
+  };
+  const addLeagueOfFormat = (fmt: PerLeagueFormat) => {
+    const gn = (numGroups || 0) + 1;
+    setNumGroups(gn);
+    setLeagueFormats((m) => ({ ...m, [String(gn)]: fmt }));
+    if (fmt === "swiss") {
+      setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
+      setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
+    }
+    setUsePerLeagueFormats(true);
+    if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
+  };
+  const removeLeagueAt = (gn: number) => {
+    const shift = <T,>(map: Record<string, T>): Record<string, T> => {
+      const out: Record<string, T> = {};
+      for (const [k, v] of Object.entries(map)) {
+        const n = Number(k);
+        if (!Number.isFinite(n)) { out[k] = v; continue; }
+        if (n < gn) out[k] = v;
+        else if (n > gn) out[String(n - 1)] = v;
+      }
+      return out;
+    };
+    setLeagueFormats(shift);
+    setSwissPools(shift);
+    setSwissRounds(shift);
+    setGroupLabels(shift);
+    setGroupDurations(shift);
+    setGroupBreakMinutes(shift);
+    setExpectedPlayers(shift);
+    setNumGroups((n) => Math.max(0, (n || 0) - 1));
   };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());

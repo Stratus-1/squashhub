@@ -165,16 +165,47 @@ Deno.serve(async (req) => {
   }
   let nsaIndex: NsaIndexRow[] = [];
   try {
-    const { data: nsaRows } = await admin
+    const { data: affiliationRows, error: affiliationErr } = await admin
       .from("member_association_affiliations")
       .select(
-        "league_association_number, active, club_members!inner(id, name, gender, club_id, clubs:clubs!inner(id, name, subdomain))"
+        "club_member_id, league_association_number"
       )
       .eq("active", true)
       .ilike("league_association_number", "NSF%");
-    for (const r of (nsaRows as any[]) || []) {
-      const cm = r.club_members;
+    if (affiliationErr) throw affiliationErr;
+
+    const affiliations = ((affiliationRows as any[]) || []).filter((r) => r.club_member_id && r.league_association_number);
+    const memberIds = Array.from(new Set(affiliations.map((r) => r.club_member_id as string)));
+    const { data: memberRows, error: memberErr } = memberIds.length
+      ? await admin
+          .from("club_members")
+          .select("id, name, gender, club_id")
+          .in("id", memberIds)
+      : { data: [], error: null } as any;
+    if (memberErr) throw memberErr;
+
+    const membersById = new Map(((memberRows as any[]) || []).map((m) => [m.id, m]));
+    const clubIds = Array.from(
+      new Set(
+        ((memberRows as any[]) || [])
+          .map((m) => m.club_id as string | null)
+          .filter((id): id is string => !!id)
+      )
+    );
+    const { data: clubRows, error: clubErr } = clubIds.length
+      ? await admin
+          .from("clubs")
+          .select("id, name, subdomain")
+          .in("id", clubIds)
+      : { data: [], error: null } as any;
+    if (clubErr) throw clubErr;
+
+    const clubsById = new Map(((clubRows as any[]) || []).map((c) => [c.id, c]));
+
+    for (const r of affiliations) {
+      const cm = membersById.get(r.club_member_id);
       if (!cm || cm.club_id === clubId) continue;
+      const homeClub = clubsById.get(cm.club_id);
       const name = String(cm.name || "").trim();
       if (!name) continue;
       const tokens = name
@@ -185,8 +216,8 @@ Deno.serve(async (req) => {
       nsaIndex.push({
         club_member_id: cm.id,
         club_id: cm.club_id,
-        club_name: cm.clubs?.name || "",
-        club_subdomain: cm.clubs?.subdomain || null,
+        club_name: homeClub?.name || "",
+        club_subdomain: homeClub?.subdomain || null,
         nsa_number: r.league_association_number,
         full_name: name,
         tokens,

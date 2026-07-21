@@ -661,6 +661,26 @@ Deno.serve(async (req) => {
       const rowByIndex = new Map<number, RowResult>();
       for (const r of results) rowByIndex.set(r.index, r);
 
+      // Fallback pool: all existing registrations in this tournament, with
+      // member names — so we can pair against previously-imported partners
+      // that aren't in the current batch.
+      type PoolEntry = { member_id: string; tokens: string[]; sig: string[] };
+      const pool: PoolEntry[] = [];
+      try {
+        const { data: regs } = await admin
+          .from("club_champs_registrations")
+          .select("club_member_id, club_members!inner(id, name)")
+          .eq("champ_id", tournamentId);
+        for (const r of (regs || []) as any[]) {
+          const nm = r?.club_members?.name || "";
+          const tokens = nameTokens(nm);
+          if (!tokens.length || !r.club_member_id) continue;
+          pool.push({ member_id: r.club_member_id, tokens, sig: significantTokens(tokens) });
+        }
+      } catch (err) {
+        console.error("[bulk-register-visitors] pool fetch failed:", err);
+      }
+
       for (let i = 0; i < entrants.length; i++) {
         const e = entrants[i];
         const partnerName = e.partner_name ? String(e.partner_name).trim() : "";
@@ -673,39 +693,50 @@ Deno.serve(async (req) => {
         if (pTokens.length === 0) continue;
         const pSig = significantTokens(pTokens);
 
-        // Find a partner among other entrants by name similarity.
-        let matchRow: RowResult | null = null;
+        // 1. Try current batch entrants.
+        let matchMemberId: string | null = null;
         for (let j = 0; j < entrants.length; j++) {
           if (j === i) continue;
-          const other = entrants[j];
           const otherRow = rowByIndex.get(j);
           if (!otherRow?.club_member_id) continue;
           if (otherRow.club_member_id === selfRow.club_member_id) continue;
+          const other = entrants[j];
           const otherTokens = nameTokens(other.first_name || "", other.last_name || "");
-          if (otherTokens.length === 0) continue;
+          if (!otherTokens.length) continue;
           const otherSig = significantTokens(otherTokens);
           const hasFirst = pTokens.some((f) => otherTokens.some((t) => tokenLooksSame(f, t)));
           const hasLast = pSig.some((l) => otherSig.some((t) => tokenLooksSame(l, t)));
-          if (hasFirst && hasLast) { matchRow = otherRow; break; }
+          if (hasFirst && hasLast) { matchMemberId = otherRow.club_member_id; break; }
         }
-        if (!matchRow?.club_member_id) continue;
+
+        // 2. Fallback: match against existing tournament registrations.
+        if (!matchMemberId) {
+          for (const p of pool) {
+            if (p.member_id === selfRow.club_member_id) continue;
+            if (paired.has(p.member_id)) continue;
+            const hasFirst = pTokens.some((f) => p.tokens.some((t) => tokenLooksSame(f, t)));
+            const hasLast = pSig.some((l) => p.sig.some((t) => tokenLooksSame(l, t)));
+            if (hasFirst && hasLast) { matchMemberId = p.member_id; break; }
+          }
+        }
+        if (!matchMemberId) continue;
 
         const updates = [
           admin.from("club_champs_registrations")
-            .update({ partner_member_id: matchRow.club_member_id, partner_confirmed: true })
+            .update({ partner_member_id: matchMemberId, partner_confirmed: true })
             .eq("champ_id", tournamentId)
             .eq("club_member_id", selfRow.club_member_id),
           admin.from("club_champs_registrations")
             .update({ partner_member_id: selfRow.club_member_id, partner_confirmed: true })
             .eq("champ_id", tournamentId)
-            .eq("club_member_id", matchRow.club_member_id),
+            .eq("club_member_id", matchMemberId),
         ];
         const [a, b] = await Promise.all(updates);
         if (a.error) console.error("[bulk-register-visitors] pair update A failed:", a.error);
         if (b.error) console.error("[bulk-register-visitors] pair update B failed:", b.error);
         if (!a.error && !b.error) {
           paired.add(selfRow.club_member_id);
-          paired.add(matchRow.club_member_id);
+          paired.add(matchMemberId);
         }
       }
     } catch (err) {

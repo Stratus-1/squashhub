@@ -1,38 +1,40 @@
-# Tournament Wizard — Preview Schedule Before Finalizing
+## Recommendation
 
-## Goal
+Keep it as **one tournament** with a per-league round format, rather than two separate tournaments. Court booking, day schedule, playoffs date, and cross-league court rotation already live at the tournament level — splitting into two tournaments would force manual court coordination and duplicate registrations/playoffs/reminders.
 
-When a club admin clicks **Generate Schedule** or **Rebuild Schedule** on the tournament wizard's Review step, the wizard should **not close**. Instead it should show a full schedule preview (same style as the Tournaments → Upcoming page) so the admin can:
+The wizard already treats leagues as independent groups (per-league Swiss pools, per-league Bells time caps, per-league round-robin generation). Adding a per-league **format** extends the same pattern.
 
-1. See every generated fixture — dates, times, courts, leagues, pools.
-2. Filter by league / pool / date, exactly like the Upcoming page.
-3. **Go Back** to the wizard to change something and rebuild again.
-4. **Finalize** to close the wizard when they're happy.
+## What Nelspruit will see
 
-## Behaviour
+In the wizard's **Round format** step:
 
-- Rebuild/Generate still writes the schedule to the database (same as today), but on success the wizard advances to a new `"preview"` step instead of closing.
-- The preview step reads `club_champs_matches` for the current tournament (fresh from DB) and renders them with the existing filter + colour-coding logic from `Tournaments.tsx`.
-- Two footer buttons on the preview step:
-  - **Back to Edit** — returns to the Review step, wizard stays open, admin can tweak players/pairings/dates and click Rebuild again.
-  - **Finalize** — closes the wizard, shows the existing success toast, invalidates queries (current behaviour).
-- Court bookings action (**Make Court Bookings**) is surfaced on the preview step too, so admins can create bookings after they're happy with the schedule.
-- For "awaiting player pairs" (registration-only save) the flow is unchanged — nothing to preview yet, wizard closes as today.
+- Existing dropdown stays as the tournament **default** format.
+- New toggle: *"Use a different format for some leagues"*.
+- When on, a small table lists each configured league with its own format dropdown (single round-robin, double round-robin, Swiss). Swiss pool/round inputs appear only next to leagues set to Swiss.
+- Capacity calculator and schedule preview already loop per-league — they switch on the chosen per-league format instead of the tournament default.
 
-## Technical Notes
+Playoffs, court rotation, break minutes, and finals date remain tournament-wide (unchanged). Bells stays tournament-wide for now — we'll revisit per-league Bells when it's needed.
 
-**Files:**
-- `src/components/club-admin/ClubChampsTab.tsx` — add `"preview"` step, new component, wire up `createChamp.onSuccess`.
-- New component `src/components/club-admin/ChampSchedulePreview.tsx` — reads matches/entries for one `champId`, renders the filter dropdowns + colour-coded match rows. Extract the shared bucket/pool-derivation helpers into `src/lib/tournament-formats/schedule-buckets.ts` so both `Tournaments.tsx` and the preview use identical logic (no duplicated colour maps).
-- Refactor `Tournaments.tsx` to import from the new helper module — no visual change there.
+## Technical details
 
-**Wizard flow:**
-- Add `"preview"` to `activeSteps` conditionally (only when `editingChampId` exists and `!awaitingPlayerPairs`).
-- In `createChamp.onSuccess`, if the tournament now has generated matches → `setStep("preview")` instead of `setShowWizard(false)` + `resetWizard()`. Keep the toast.
-- Preview step's **Back** goes to `"review"`; **Finalize** runs the current close-wizard logic.
-- If the admin clicks Rebuild again from Review, the same success path re-enters the preview with fresh data (react-query invalidation already covers this).
+**Data model (`club_champs`)**
 
-## Out of Scope
+- Add `league_formats jsonb` — map of `group_number` (string) → `"single_round_robin" | "double_round_robin" | "swiss"`. Legacy tournaments fall back to `round_format`.
+- `cross_league` remains tournament-wide and mutually exclusive with per-league mixing (the toggle is hidden when default is `cross_league`).
+- `swiss_pools` / `swiss_rounds` already keyed by league — only applied where that league's format is `swiss`.
 
-- No changes to the fixture generator, playoff logic, or booking creator.
-- No changes to the public Tournaments → Upcoming page beyond the shared-helper refactor.
+**Code changes**
+
+- `src/components/club-admin/ClubChampsTab.tsx`
+  - Add `leagueFormats` state + `formatForLeague(gi)` helper that falls back to top-level `roundFormat`.
+  - Replace `roundFormat === "swiss"` / `=== "double_round_robin"` inside the per-league generation loop (~L1373–L1500) and capacity calculator (~L3958–L3979) with `formatForLeague(gi)`.
+  - New UI block under the Round format select: toggle + per-league dropdown table; reuse existing Swiss pools/rounds inputs conditionally.
+  - Persist/restore `league_formats` alongside `swiss_pools` in the save payload and champ-load effect (~L2877).
+- `src/components/club-admin/ChampSchedulePreview.tsx` — accept `leagueFormats` and thread through per-league slot budgets; no new format-specific logic.
+- Migration: add `league_formats jsonb` column on `club_champs` (nullable, default null).
+
+**Out of scope**
+
+- Bells per-league (deferred — flag as follow-up when needed).
+- Playoffs generation, court rotation, bookings creator, invites/emails.
+- Two-tournament cross-coordination — no longer needed.

@@ -3543,6 +3543,57 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             </div>
 
+            {/* Per-league format overrides — mix round-robin & Swiss across leagues.
+                Hidden for cross-league (which is inherently tournament-wide). */}
+            {roundFormat && roundFormat !== "cross_league" && numGroups > 1 && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={usePerLeagueFormats}
+                    onChange={(e) => setUsePerLeagueFormats(e.target.checked)}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium">Use a different format per league</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Handy when one league has enough players for Swiss pools but another only needs a round-robin. All leagues still share courts and the same tournament schedule.
+                    </div>
+                  </div>
+                </label>
+                {usePerLeagueFormats && (
+                  <div className="grid gap-2 sm:grid-cols-2 pt-1">
+                    {Array.from({ length: Math.max(1, numGroups) }, (_, i) => i + 1).map((gn) => {
+                      const cur: PerLeagueFormat = (leagueFormats[String(gn)]
+                        ?? (roundFormat === "swiss" || roundFormat === "double_round_robin" || roundFormat === "single_round_robin"
+                            ? (roundFormat as PerLeagueFormat)
+                            : "single_round_robin"));
+                      return (
+                        <div key={gn} className="flex items-center gap-2 rounded border bg-background p-2">
+                          <span className="text-sm font-medium w-24">{groupLabels[String(gn)] || `League ${gn}`}</span>
+                          <Select
+                            value={cur}
+                            onValueChange={(v) => setLeagueFormats((m) => ({ ...m, [String(gn)]: v as PerLeagueFormat }))}
+                          >
+                            <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-950"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="single_round_robin">Single round-robin</SelectItem>
+                              <SelectItem value="double_round_robin">Double round-robin</SelectItem>
+                              <SelectItem value="swiss">Swiss pairing</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })}
+                    <p className="col-span-full text-[11px] text-muted-foreground">
+                      Set Pools &amp; Rounds for any Swiss league below in the capacity calculator.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+
             <div>
               <Label className="text-sm font-semibold mb-2 block">Gender Category <span className="text-destructive">*</span></Label>
 

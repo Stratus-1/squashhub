@@ -165,16 +165,22 @@ Deno.serve(async (req) => {
   }
   let nsaIndex: NsaIndexRow[] = [];
   try {
-    const { data: affiliationRows, error: affiliationErr } = await admin
-      .from("member_association_affiliations")
-      .select(
-        "club_member_id, league_association_number"
-      )
-      .eq("active", true)
-      .ilike("league_association_number", "NSF%");
-    if (affiliationErr) throw affiliationErr;
+    const affiliationRows: any[] = [];
+    for (let from = 0; ; from += 1000) {
+      const to = from + 999;
+      const { data: page, error: affiliationErr } = await admin
+        .from("member_association_affiliations")
+        .select("club_member_id, league_association_number")
+        .eq("active", true)
+        .ilike("league_association_number", "NSF%")
+        .range(from, to);
+      if (affiliationErr) throw affiliationErr;
+      const rows = (page as any[]) || [];
+      affiliationRows.push(...rows);
+      if (rows.length < 1000) break;
+    }
 
-    const affiliations = ((affiliationRows as any[]) || []).filter((r) => r.club_member_id && r.league_association_number);
+    const affiliations = affiliationRows.filter((r) => r.club_member_id && r.league_association_number);
     const memberIds = Array.from(new Set(affiliations.map((r) => r.club_member_id as string)));
     const memberRows: any[] = [];
     for (let start = 0; start < memberIds.length; start += 200) {

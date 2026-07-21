@@ -252,6 +252,81 @@ Deno.serve(async (req) => {
     return matches.slice(0, 4);
   }
 
+  async function registerNsaHomeClub(params: {
+    userId: string;
+    fullName: string;
+    email: string;
+    phone: string | null;
+    gender: string;
+    nsaHomeClubId: string;
+    nsaNumber: string;
+  }): Promise<{ registeredClubId?: string; registeredNumber?: string; errorMessage?: string }> {
+    const { userId, fullName, email, phone, gender, nsaHomeClubId, nsaNumber } = params;
+    if (!nsaHomeClubId || !nsaNumber || !/^NSF\d+$/i.test(nsaNumber)) return {};
+    try {
+      const { data: existingHome } = await admin
+        .from("club_members")
+        .select("id")
+        .eq("club_id", nsaHomeClubId)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      let homeMemberId = existingHome?.id as string | undefined;
+      if (!homeMemberId) {
+        const { data: homeInserted, error: homeErr } = await admin
+          .from("club_members")
+          .insert({
+            club_id: nsaHomeClubId,
+            user_id: userId,
+            role: "member",
+            name: fullName,
+            email,
+            phone: phone || null,
+            gender,
+            plays_league: true,
+          })
+          .select("id")
+          .single();
+        if (homeErr) throw homeErr;
+        homeMemberId = homeInserted.id;
+      }
+
+      const { data: assoc } = await admin
+        .from("league_associations")
+        .select("id")
+        .eq("club_id", nsaHomeClubId)
+        .ilike("name", "%northern squash%")
+        .limit(1)
+        .maybeSingle();
+
+      if (assoc?.id && homeMemberId) {
+        const { data: existingAff } = await admin
+          .from("member_association_affiliations")
+          .select("id")
+          .eq("club_member_id", homeMemberId)
+          .eq("association_id", assoc.id)
+          .maybeSingle();
+        if (!existingAff) {
+          await admin.from("member_association_affiliations").insert({
+            club_member_id: homeMemberId,
+            association_id: assoc.id,
+            league_association_number: nsaNumber,
+            active: true,
+          });
+        } else {
+          await admin
+            .from("member_association_affiliations")
+            .update({ league_association_number: nsaNumber, active: true })
+            .eq("id", existingAff.id);
+        }
+      }
+      return { registeredClubId: nsaHomeClubId, registeredNumber: nsaNumber };
+    } catch (err: any) {
+      console.error("[bulk-register-visitors] NSA home-club registration failed:", err);
+      return { errorMessage: "NSA home-club link failed: " + (err?.message || String(err)) };
+    }
+  }
+
   const results: RowResult[] = [];
 
   for (let i = 0; i < entrants.length; i++) {
@@ -288,7 +363,23 @@ Deno.serve(async (req) => {
         .ilike("email", email)
         .maybeSingle();
 
+      const nsaDecided = !!(e.nsa_home_club_id && e.nsa_number) || !!e.nsa_ignored;
+
       if (sameClub?.user_id) {
+        if (nsaCandidates.length > 0 && !nsaDecided) {
+          row.status = "skipped";
+          row.message = "Existing club visitor also matches NSA — please confirm or ignore";
+          results.push(row);
+          continue;
+        }
+        const nsaHomeClubId = e.nsa_home_club_id ? String(e.nsa_home_club_id).trim() : null;
+        const nsaNumber = e.nsa_number ? String(e.nsa_number).trim().toUpperCase() : null;
+        if (nsaHomeClubId && nsaNumber) {
+          const nsaResult = await registerNsaHomeClub({ userId: sameClub.user_id, fullName, email, phone, gender, nsaHomeClubId, nsaNumber });
+          row.nsa_registered_club_id = nsaResult.registeredClubId;
+          row.nsa_registered_number = nsaResult.registeredNumber;
+          if (nsaResult.errorMessage) row.message = nsaResult.errorMessage;
+        }
         row.status = "already_member";
         row.user_id = sameClub.user_id;
         row.club_member_id = sameClub.id;
@@ -329,7 +420,6 @@ Deno.serve(async (req) => {
 
       // Gate: if NSA candidates exist and the admin has neither confirmed one
       // nor explicitly ignored them, skip creation so the UI can prompt.
-      const nsaDecided = !!(e.nsa_home_club_id && e.nsa_number) || !!e.nsa_ignored;
       if (nsaCandidates.length > 0 && !nsaDecided) {
         row.status = "skipped";
         row.message = "NSA match found — please confirm or ignore before importing";
@@ -400,72 +490,10 @@ Deno.serve(async (req) => {
       const nsaHomeClubId = e.nsa_home_club_id ? String(e.nsa_home_club_id).trim() : null;
       const nsaNumber = e.nsa_number ? String(e.nsa_number).trim().toUpperCase() : null;
       if (nsaHomeClubId && nsaNumber && /^NSF\d+$/i.test(nsaNumber)) {
-        try {
-          // Skip if already a member at the home NSA club.
-          const { data: existingHome } = await admin
-            .from("club_members")
-            .select("id")
-            .eq("club_id", nsaHomeClubId)
-            .eq("user_id", userId)
-            .maybeSingle();
-
-          let homeMemberId = existingHome?.id as string | undefined;
-          if (!homeMemberId) {
-            const { data: homeInserted, error: homeErr } = await admin
-              .from("club_members")
-              .insert({
-                club_id: nsaHomeClubId,
-                user_id: userId,
-                role: "member",
-                name: fullName,
-                email,
-                phone: phone || null,
-                gender,
-                plays_league: true,
-              })
-              .select("id")
-              .single();
-            if (homeErr) throw homeErr;
-            homeMemberId = homeInserted.id;
-          }
-
-          // Resolve the NSA league association for the home club (name-based).
-          const { data: assoc } = await admin
-            .from("league_associations")
-            .select("id")
-            .eq("club_id", nsaHomeClubId)
-            .ilike("name", "%northern squash%")
-            .limit(1)
-            .maybeSingle();
-
-          if (assoc?.id && homeMemberId) {
-            // Upsert affiliation record.
-            const { data: existingAff } = await admin
-              .from("member_association_affiliations")
-              .select("id")
-              .eq("club_member_id", homeMemberId)
-              .eq("association_id", assoc.id)
-              .maybeSingle();
-            if (!existingAff) {
-              await admin.from("member_association_affiliations").insert({
-                club_member_id: homeMemberId,
-                association_id: assoc.id,
-                league_association_number: nsaNumber,
-                active: true,
-              });
-            } else {
-              await admin
-                .from("member_association_affiliations")
-                .update({ league_association_number: nsaNumber, active: true })
-                .eq("id", existingAff.id);
-            }
-          }
-          row.nsa_registered_club_id = nsaHomeClubId;
-          row.nsa_registered_number = nsaNumber;
-        } catch (err: any) {
-          console.error("[bulk-register-visitors] NSA home-club registration failed:", err);
-          row.message = (row.message ? row.message + "; " : "") + "NSA home-club link failed: " + (err?.message || String(err));
-        }
+        const nsaResult = await registerNsaHomeClub({ userId, fullName, email, phone, gender, nsaHomeClubId, nsaNumber });
+        row.nsa_registered_club_id = nsaResult.registeredClubId;
+        row.nsa_registered_number = nsaResult.registeredNumber;
+        if (nsaResult.errorMessage) row.message = (row.message ? row.message + "; " : "") + nsaResult.errorMessage;
       }
 
 

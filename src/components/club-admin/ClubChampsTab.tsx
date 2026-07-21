@@ -411,6 +411,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // end stay unscheduled — admin gets the standard shortage warning.
   const [avoidBackToBack, setAvoidBackToBack] = useState<boolean>(true);
   const [roundFormat, setRoundFormat] = useState<"" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss">("");
+  // Per-league format overrides (keyed by group_number string). When a league
+  // has no entry here, the tournament-wide `roundFormat` applies. Only used
+  // when `usePerLeagueFormats` is enabled — hidden while roundFormat is
+  // `cross_league` (which is inherently tournament-wide).
+  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss";
+  const [leagueFormats, setLeagueFormats] = useState<Record<string, PerLeagueFormat>>({});
+  const [usePerLeagueFormats, setUsePerLeagueFormats] = useState(false);
+  // Effective format for a given league number (1-based). Falls back to the
+  // tournament default; ignored when the default is `cross_league`.
+  const formatForLeague = (gn: number): "single_round_robin" | "double_round_robin" | "cross_league" | "swiss" | "" => {
+    if (roundFormat === "cross_league") return "cross_league";
+    if (usePerLeagueFormats && leagueFormats[String(gn)]) return leagueFormats[String(gn)];
+    return roundFormat;
+  };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   // Per-day schedule overrides — for short tournaments (Fri eve, Sat morning, Sat afternoon).

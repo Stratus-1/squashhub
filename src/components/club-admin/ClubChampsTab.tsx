@@ -418,12 +418,53 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss";
   const [leagueFormats, setLeagueFormats] = useState<Record<string, PerLeagueFormat>>({});
   const [usePerLeagueFormats, setUsePerLeagueFormats] = useState(false);
+  // Planning-only per-league expected player counts (keyed by group_number).
+  // Purely for the capacity readout in the wizard — not enforced anywhere.
+  const [expectedPlayers, setExpectedPlayers] = useState<Record<string, number>>({});
   // Effective format for a given league number (1-based). Falls back to the
   // tournament default; ignored when the default is `cross_league`.
   const formatForLeague = (gn: number): "single_round_robin" | "double_round_robin" | "cross_league" | "swiss" | "" => {
     if (roundFormat === "cross_league") return "cross_league";
     if (usePerLeagueFormats && leagueFormats[String(gn)]) return leagueFormats[String(gn)];
     return roundFormat;
+  };
+
+  // ---- Visual "Tournament Structure Builder" helpers ---------------------
+  const FORMAT_META: Record<PerLeagueFormat, { label: string; short: string; desc: string }> = {
+    single_round_robin: { label: "Single round-robin", short: "Single RR", desc: "Each player plays every other in their league once." },
+    double_round_robin: { label: "Double round-robin", short: "Double RR", desc: "Play each opponent twice — home & away." },
+    swiss: { label: "Swiss pairing", short: "Swiss", desc: "Fixed rounds; admin re-pairs each round by score." },
+  };
+  const addLeagueOfFormat = (fmt: PerLeagueFormat) => {
+    const gn = (numGroups || 0) + 1;
+    setNumGroups(gn);
+    setLeagueFormats((m) => ({ ...m, [String(gn)]: fmt }));
+    if (fmt === "swiss") {
+      setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
+      setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
+    }
+    setUsePerLeagueFormats(true);
+    if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
+  };
+  const removeLeagueAt = (gn: number) => {
+    const shift = <T,>(map: Record<string, T>): Record<string, T> => {
+      const out: Record<string, T> = {};
+      for (const [k, v] of Object.entries(map)) {
+        const n = Number(k);
+        if (!Number.isFinite(n)) { out[k] = v; continue; }
+        if (n < gn) out[k] = v;
+        else if (n > gn) out[String(n - 1)] = v;
+      }
+      return out;
+    };
+    setLeagueFormats(shift);
+    setSwissPools(shift);
+    setSwissRounds(shift);
+    setGroupLabels(shift);
+    setGroupDurations(shift);
+    setGroupBreakMinutes(shift);
+    setExpectedPlayers(shift);
+    setNumGroups((n) => Math.max(0, (n || 0) - 1));
   };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
@@ -784,6 +825,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       scoring_mode: scoringMode,
       swiss_pools: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissPools : null,
       swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
+      expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
       league_formats: usePerLeagueFormats && roundFormat !== "cross_league" ? leagueFormats : null,
       points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
       best_of: bestOf > 0 ? bestOf : null,
@@ -2071,6 +2113,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             scoring_mode: scoringMode,
             swiss_pools: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissPools : null,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
+            expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats && roundFormat !== "cross_league" ? leagueFormats : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
@@ -2129,6 +2172,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             scoring_mode: scoringMode,
             swiss_pools: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissPools : null,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
+            expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats && roundFormat !== "cross_league" ? leagueFormats : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
@@ -2836,6 +2880,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setScoringMode("");
     setSwissPools({});
     setSwissRounds({});
+    setExpectedPlayers({});
+    setLeagueFormats({});
+    setUsePerLeagueFormats(false);
     setPointsPerGame(0);
     setBestOf(0);
     setPlayAllGames(false);
@@ -2915,6 +2962,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const lf = ((champ as any).league_formats as Record<string, PerLeagueFormat> | null) || null;
     setLeagueFormats(lf || {});
     setUsePerLeagueFormats(!!lf && Object.keys(lf).length > 0);
+    setExpectedPlayers(((champ as any).expected_players as Record<string, number>) || {});
     setByeHandling((champ.bye_handling as any) || "");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
       ? champ.source_league_ids
@@ -3497,39 +3545,244 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm">
-              <div>
-                <Label className="text-sm font-semibold">Round Format <span className="text-destructive">*</span></Label>
-                <Select value={roundFormat} onValueChange={(v) => setRoundFormat(v as any)}>
-                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="single_round_robin">Single round-robin (within same league — each player plays every other player in their league once)</SelectItem>
-                    <SelectItem value="double_round_robin">Double round-robin (within same league — each player plays every other player in their league twice, home &amp; away)</SelectItem>
-                    <SelectItem value="cross_league">
-                      League vs League (cross-league only — players only play opponents from the other league, not their own) — set 2+ leagues on the Groups step
-                    </SelectItem>
-                    <SelectItem value="swiss">Swiss pairing (fixed rounds, admin pairs each round by score — set pools & rounds per league)</SelectItem>
-                  </SelectContent>
-                </Select>
-                {roundFormat ? (
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    {roundFormat === "double_round_robin"
-                      ? "All teams play one another twice — first round home, second round away."
-                      : roundFormat === "cross_league"
-                      ? "No intra-league games. Every player in league 1 plays every player in league 2 (and so on across leagues). Pick at least 2 leagues."
-                      : roundFormat === "swiss"
-                      ? "Players re-paired each round against opponents on similar scores. Configure Pools & Rounds per league in the capacity calculator."
-                      : "All teams play one another once."}
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground mt-1">Choose a round format to see details.</p>
-                )}
+            {/* ─── Tournament Structure Builder ─────────────────────────── */}
+            {/* Visual builder — admin drags/clicks formats from the palette to
+                add leagues, then tweaks name / pools / expected players inline.
+                Replaces the old Round Format dropdown + Per-league overrides
+                checkbox. Cross-league mode is a toggle above the builder since
+                it's inherently tournament-wide. */}
+            <div className="rounded-xl border-2 border-border bg-card shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
+                <div>
+                  <div className="text-sm font-semibold">Tournament Structure <span className="text-destructive">*</span></div>
+                  <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league can have its own format, pools and planned player count.</div>
+                </div>
+                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5"
+                    checked={roundFormat === "cross_league"}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setRoundFormat("cross_league");
+                        setUsePerLeagueFormats(false);
+                      } else {
+                        // Restore to the first league's format (or blank).
+                        const first = leagueFormats[String(1)];
+                        setRoundFormat((first as any) || "");
+                      }
+                    }}
+                  />
+                  Cross-league only (League vs League)
+                </label>
               </div>
+
+              {roundFormat === "cross_league" ? (
+                <div className="p-4 text-[12px] text-muted-foreground bg-muted/20">
+                  <p className="mb-1"><strong className="text-foreground">Cross-league mode.</strong> Every player in league 1 plays every player in the other leagues — no intra-league matches.</p>
+                  <p>Set the number of leagues in the capacity calculator below. Format-per-league doesn't apply in this mode.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px]">
+                  {/* Canvas */}
+                  <div
+                    className="p-4 space-y-3 min-h-[220px] bg-muted/10"
+                    onDragOver={(e) => { e.preventDefault(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const fmt = e.dataTransfer.getData("application/x-champ-format") as PerLeagueFormat;
+                      if (fmt && FORMAT_META[fmt]) addLeagueOfFormat(fmt);
+                    }}
+                  >
+                    {numGroups > 0 ? (
+                      Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => {
+                        const key = String(gn);
+                        const fmt: PerLeagueFormat = (leagueFormats[key]
+                          ?? (roundFormat === "swiss" || roundFormat === "double_round_robin" || roundFormat === "single_round_robin"
+                              ? (roundFormat as PerLeagueFormat)
+                              : "single_round_robin"));
+                        const meta = FORMAT_META[fmt];
+                        const isSwiss = fmt === "swiss";
+                        return (
+                          <div key={gn} className="relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm">
+                            <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">League {gn}</span>
+                                  <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
+                                </div>
+                                <Input
+                                  value={groupLabels[key] || ""}
+                                  placeholder={`League ${gn}`}
+                                  onChange={(e) => setGroupLabels((m) => ({ ...m, [key]: e.target.value }))}
+                                  className="h-8 text-sm font-semibold"
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => removeLeagueAt(gn)}
+                                title="Remove league"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              <div>
+                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Format</Label>
+                                <Select
+                                  value={fmt}
+                                  onValueChange={(v) => {
+                                    const nv = v as PerLeagueFormat;
+                                    setLeagueFormats((m) => ({ ...m, [key]: nv }));
+                                    setUsePerLeagueFormats(true);
+                                    if (nv === "swiss") {
+                                      setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
+                                      setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
+                                    }
+                                    if (!roundFormat) setRoundFormat(nv as any);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="single_round_robin">Single round-robin</SelectItem>
+                                    <SelectItem value="double_round_robin">Double round-robin</SelectItem>
+                                    <SelectItem value="swiss">Swiss pairing</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              {isSwiss && (
+                                <>
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Pools</Label>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={swissPools[key] ?? 1}
+                                      onChange={(e) => setSwissPools((m) => ({ ...m, [key]: Math.max(1, Number(e.target.value) || 1) }))}
+                                      className="h-8 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rounds</Label>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={swissRounds[key] ?? 5}
+                                      onChange={(e) => setSwissRounds((m) => ({ ...m, [key]: Math.max(1, Number(e.target.value) || 1) }))}
+                                      className="h-8 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                </>
+                              )}
+                              <div className={isSwiss ? "" : "col-span-1"}>
+                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Expected players</Label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  placeholder="—"
+                                  value={expectedPlayers[key] ?? ""}
+                                  onChange={(e) => {
+                                    const n = Number(e.target.value);
+                                    setExpectedPlayers((m) => {
+                                      const next = { ...m };
+                                      if (!Number.isFinite(n) || n <= 0) delete next[key];
+                                      else next[key] = Math.round(n);
+                                      return next;
+                                    });
+                                  }}
+                                  className="h-8 text-xs mt-0.5"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : null}
+
+                    {/* Drop zone / empty state */}
+                    <div className="rounded-lg border-2 border-dashed border-border/70 py-6 flex flex-col items-center justify-center text-muted-foreground hover:border-amber-500/50 hover:text-amber-600 transition-colors text-center px-3">
+                      <Trophy className="w-6 h-6 mb-1 opacity-60" />
+                      <div className="text-xs font-medium">Drop a format here to add {numGroups > 0 ? `League ${numGroups + 1}` : "League 1"}</div>
+                      <div className="text-[10px] text-muted-foreground/80 mt-0.5">or click a format on the right</div>
+                    </div>
+
+                    {(() => {
+                      const totalExpected = Object.values(expectedPlayers).reduce((a, b) => a + (Number(b) || 0), 0);
+                      if (numGroups === 0 && totalExpected === 0) return null;
+                      // Rough estimate: sum of C(n,2) per league for single RR, x2 for double,
+                      // pools * C(n/pools,2) * rounds for Swiss (approx).
+                      let est = 0;
+                      for (let gn = 1; gn <= numGroups; gn++) {
+                        const key = String(gn);
+                        const n = Number(expectedPlayers[key]) || 0;
+                        if (n < 2) continue;
+                        const fmt: PerLeagueFormat = (leagueFormats[key] ?? (roundFormat as PerLeagueFormat)) || "single_round_robin";
+                        if (fmt === "swiss") {
+                          const pools = Math.max(1, Number(swissPools[key]) || 1);
+                          const rounds = Math.max(1, Number(swissRounds[key]) || 5);
+                          est += Math.floor(n / 2) * rounds;
+                          void pools;
+                        } else {
+                          const games = (n * (n - 1)) / 2;
+                          est += fmt === "double_round_robin" ? games * 2 : games;
+                        }
+                      }
+                      return (
+                        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-500">
+                              <Trophy className="w-3.5 h-3.5" />
+                            </span>
+                            <div>
+                              <div className="font-semibold">{est > 0 ? `≈ ${est} match${est === 1 ? "" : "es"}` : "Planned capacity"}</div>
+                              <div className="text-[10px] text-muted-foreground">{numGroups} league{numGroups === 1 ? "" : "s"} · {totalExpected || "—"} planned player{totalExpected === 1 ? "" : "s"}</div>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground italic">Refined once players register</div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Format palette */}
+                  <div className="border-t lg:border-t-0 lg:border-l border-border bg-muted/30 p-3 space-y-2">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Format palette</div>
+                    {(Object.keys(FORMAT_META) as PerLeagueFormat[]).map((fmt) => {
+                      const meta = FORMAT_META[fmt];
+                      return (
+                        <button
+                          key={fmt}
+                          type="button"
+                          draggable
+                          onDragStart={(e) => { e.dataTransfer.setData("application/x-champ-format", fmt); e.dataTransfer.effectAllowed = "copy"; }}
+                          onClick={() => addLeagueOfFormat(fmt)}
+                          className="w-full text-left rounded-lg border border-border bg-card p-2.5 shadow-sm hover:border-amber-500/50 hover:shadow-md transition-all cursor-grab active:cursor-grabbing group"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-amber-500/10 text-amber-600 dark:text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                              <Plus className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="text-xs font-semibold">{meta.label}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground leading-tight">{meta.desc}</p>
+                        </button>
+                      );
+                    })}
+                    <p className="text-[10px] text-muted-foreground italic pt-1">Tip: add up to 6 leagues in one tournament.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>
                 <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
-                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Please select" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                     <SelectItem value="no_match">No match — bye not recorded</SelectItem>
@@ -3543,55 +3796,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             </div>
 
-            {/* Per-league format overrides — mix round-robin & Swiss across leagues.
-                Hidden for cross-league (which is inherently tournament-wide). */}
-            {roundFormat && roundFormat !== "cross_league" && numGroups > 1 && (
-              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5"
-                    checked={usePerLeagueFormats}
-                    onChange={(e) => setUsePerLeagueFormats(e.target.checked)}
-                  />
-                  <div className="space-y-0.5">
-                    <div className="text-sm font-medium">Use a different format per league</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Handy when one league has enough players for Swiss pools but another only needs a round-robin. All leagues still share courts and the same tournament schedule.
-                    </div>
-                  </div>
-                </label>
-                {usePerLeagueFormats && (
-                  <div className="grid gap-2 sm:grid-cols-2 pt-1">
-                    {Array.from({ length: Math.max(1, numGroups) }, (_, i) => i + 1).map((gn) => {
-                      const cur: PerLeagueFormat = (leagueFormats[String(gn)]
-                        ?? (roundFormat === "swiss" || roundFormat === "double_round_robin" || roundFormat === "single_round_robin"
-                            ? (roundFormat as PerLeagueFormat)
-                            : "single_round_robin"));
-                      return (
-                        <div key={gn} className="flex items-center gap-2 rounded border bg-background p-2">
-                          <span className="text-sm font-medium w-24">{groupLabels[String(gn)] || `League ${gn}`}</span>
-                          <Select
-                            value={cur}
-                            onValueChange={(v) => setLeagueFormats((m) => ({ ...m, [String(gn)]: v as PerLeagueFormat }))}
-                          >
-                            <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-950"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="single_round_robin">Single round-robin</SelectItem>
-                              <SelectItem value="double_round_robin">Double round-robin</SelectItem>
-                              <SelectItem value="swiss">Swiss pairing</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      );
-                    })}
-                    <p className="col-span-full text-[11px] text-muted-foreground">
-                      Set Pools &amp; Rounds for any Swiss league below in the capacity calculator.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
 
 
             <div>

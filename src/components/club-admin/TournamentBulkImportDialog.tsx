@@ -188,14 +188,14 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
   }
 
   async function runImport() {
-    if (validRows.length === 0) return;
+    if (pendingRows.length === 0) return;
     setImporting(true);
     try {
       const { data, error } = await supabase.functions.invoke("bulk-register-visitors", {
         body: {
           club_id: clubId,
           tournament_id: champ?.id || null,
-          entrants: validRows.map((r) => ({
+          entrants: pendingRows.map((r) => ({
             first_name: r.first_name,
             last_name: r.last_name,
             email: r.email,
@@ -212,9 +212,9 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
       const summary = (data as any)?.summary;
       if (Array.isArray(results)) {
         setRows((rs) => {
-          const validKeys = validRows.map((v) => v.key);
+          const pendingKeys = pendingRows.map((v) => v.key);
           return rs.map((r) => {
-            const idx = validKeys.indexOf(r.key);
+            const idx = pendingKeys.indexOf(r.key);
             if (idx < 0) return r;
             const res = results.find((x) => x.index === idx);
             if (!res) return r;

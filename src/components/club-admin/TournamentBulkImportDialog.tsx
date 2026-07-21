@@ -207,6 +207,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
       setRows((current) => {
         const filtered = current.filter((r) => !r.status || liveEmails.has(r.email.trim().toLowerCase()));
         const hasEmptyRow = filtered.some((r) => !r.first_name && !r.last_name && !r.email);
+        if (filtered.length === current.length && hasEmptyRow) return current;
         return hasEmptyRow ? filtered : [...filtered, newRow()];
       });
     }
@@ -215,7 +216,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
     return () => {
       cancelled = true;
     };
-  }, [open, clubId, champ?.id]);
+  }, [open, clubId, champ?.id, rows]);
 
   // Persist imported rows whenever they change.
   useEffect(() => {

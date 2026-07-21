@@ -378,10 +378,10 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
             <Button size="sm" variant="outline" onClick={() => setRows((rs) => [...rs, newRow()])}>
               <Plus className="w-3 h-3 mr-1" /> Add row
             </Button>
-            {!done && (
-              <Button size="sm" variant="outline" onClick={runPreview} disabled={previewing || validRows.length === 0}>
+            {pendingRows.length > 0 && (
+              <Button size="sm" variant="outline" onClick={runPreview} disabled={previewing || pendingRows.length === 0}>
                 {previewing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
-                Check matches ({validRows.length})
+                Check matches ({pendingRows.length})
               </Button>
             )}
             {done && (
@@ -393,11 +393,11 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{done ? "Close" : "Cancel"}</Button>
-          {!done && (
-            <Button onClick={runImport} disabled={importing || validRows.length === 0}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{done && pendingRows.length === 0 ? "Close" : "Cancel"}</Button>
+          {pendingRows.length > 0 && (
+            <Button onClick={runImport} disabled={importing || pendingRows.length === 0}>
               {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Import & email ({validRows.length})
+              Import & email ({pendingRows.length})
             </Button>
           )}
         </DialogFooter>

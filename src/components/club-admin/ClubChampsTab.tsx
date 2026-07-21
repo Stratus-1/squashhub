@@ -3557,24 +3557,35 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <div className="text-sm font-semibold">Tournament Structure <span className="text-destructive">*</span></div>
                   <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league can have its own format, pools and planned player count.</div>
                 </div>
-                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
-                  <input
-                    type="checkbox"
-                    className="h-3.5 w-3.5"
-                    checked={roundFormat === "cross_league"}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setRoundFormat("cross_league");
-                        setUsePerLeagueFormats(false);
-                      } else {
-                        // Restore to the first league's format (or blank).
-                        const first = leagueFormats[String(1)];
-                        setRoundFormat((first as any) || "");
-                      }
-                    }}
-                  />
-                  Cross-league only (League vs League)
-                </label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5"
+                      checked={enablePlayoffs}
+                      onChange={(e) => setEnablePlayoffs(e.target.checked)}
+                    />
+                    Include playoffs
+                  </label>
+                  <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5"
+                      checked={roundFormat === "cross_league"}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setRoundFormat("cross_league");
+                          setUsePerLeagueFormats(false);
+                        } else {
+                          // Restore to the first league's format (or blank).
+                          const first = leagueFormats[String(1)];
+                          setRoundFormat((first as any) || "");
+                        }
+                      }}
+                    />
+                    Cross-league only (League vs League)
+                  </label>
+                </div>
               </div>
 
               {roundFormat === "cross_league" ? (

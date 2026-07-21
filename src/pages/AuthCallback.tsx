@@ -26,6 +26,13 @@ export default function AuthCallback() {
         if (data.session) {
           const user = data.session.user;
           const meta = user.user_metadata || {};
+
+          // Mandatory first-time password setup (bulk-invited visitors).
+          if (meta.needs_password_setup) {
+            navigate("/set-password", { replace: true });
+            return;
+          }
+
           const metadataClubSubdomain = meta.club_subdomain as string | undefined;
           const oauthReturnClub = getClubSubdomain();
           const registrationType = meta.club_registration_type as string | undefined;

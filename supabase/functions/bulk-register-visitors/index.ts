@@ -93,6 +93,8 @@ interface RowResult {
   status: "already_member" | "linked_visitor" | "created" | "error" | "skipped";
   user_id?: string;
   club_member_id?: string;
+  registration_id?: string | null;
+  paired_with_member_id?: string | null;
   magic_link?: string;
   email_queued?: boolean;
   message?: string;
@@ -464,7 +466,7 @@ Deno.serve(async (req) => {
         row.status = "already_member";
         row.user_id = sameClub.user_id;
         row.club_member_id = sameClub.id;
-        if (!dryRun) await ensureRegistration(sameClub.id);
+        if (!dryRun) row.registration_id = await ensureRegistration(sameClub.id);
         results.push(row);
         continue;
       }
@@ -573,7 +575,7 @@ Deno.serve(async (req) => {
       row.user_id = userId;
       row.club_member_id = inserted.id;
       row.status = createdNew ? "created" : "linked_visitor";
-      await ensureRegistration(inserted.id);
+      row.registration_id = await ensureRegistration(inserted.id);
 
       // 6b. Confirmed NSA identity → register as member of their home NSA club too.
       const nsaHomeClubId = e.nsa_home_club_id ? String(e.nsa_home_club_id).trim() : null;
@@ -737,6 +739,9 @@ Deno.serve(async (req) => {
         if (!a.error && !b.error) {
           paired.add(selfRow.club_member_id);
           paired.add(matchMemberId);
+          selfRow.paired_with_member_id = matchMemberId;
+          const matchedRow = Array.from(rowByIndex.values()).find((r) => r.club_member_id === matchMemberId);
+          if (matchedRow) matchedRow.paired_with_member_id = selfRow.club_member_id;
         }
       }
     } catch (err) {

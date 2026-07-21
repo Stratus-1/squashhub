@@ -464,6 +464,7 @@ Deno.serve(async (req) => {
         row.status = "already_member";
         row.user_id = sameClub.user_id;
         row.club_member_id = sameClub.id;
+        if (!dryRun) await ensureRegistration(sameClub.id);
         results.push(row);
         continue;
       }

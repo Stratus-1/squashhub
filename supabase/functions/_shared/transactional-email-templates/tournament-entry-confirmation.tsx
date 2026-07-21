@@ -53,9 +53,10 @@ const Email = ({
         <Hr style={hr} />
 
         <Text style={intro}>
-          Tap the button below to sign in — no password needed. You'll land straight
-          on the {clubName || 'club'} page where you can view your fixtures, partner,
-          and schedule.
+          Tap the button below to sign in. If it's your first time, you'll be
+          prompted to create a password. Once signed in, select <strong>Club
+          Tournaments</strong> to view all the tournament information —
+          fixtures, your partner, standings and schedule.
         </Text>
 
         {magicLink ? (

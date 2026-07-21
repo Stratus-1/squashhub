@@ -231,15 +231,16 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
         },
       });
       if (error) throw error;
-      const results = (data as any)?.results as Array<{ index: number; status: Row["hint"] }>;
+      const results = (data as any)?.results as Array<{ index: number; status: Row["hint"]; nsa_candidates?: NsaCandidate[] }>;
       if (Array.isArray(results)) {
         setRows((rs) => {
           const validKeys = validRows.map((v) => v.key);
           return rs.map((r) => {
             const idx = validKeys.indexOf(r.key);
             if (idx < 0) return r;
-            const hint = results.find((x) => x.index === idx)?.status || "unknown";
-            return { ...r, hint };
+            const res = results.find((x) => x.index === idx);
+            const hint = res?.status || "unknown";
+            return { ...r, hint, nsa_candidates: res?.nsa_candidates || [] };
           });
         });
         toast.success("Match check complete");

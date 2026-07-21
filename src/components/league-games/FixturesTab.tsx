@@ -274,30 +274,33 @@ export function FixturesTab({ clubId, associationId }: Props) {
           const exceedsSelectedCourtCapacity = Array.from(existingGroupSizes.values()).some((n) => n > newCourts.length);
           const scheduleWillChange = regenerateDatesAndTimes || courtsChanged || fixtureCourtMismatch || fixtureMissingCourt || exceedsSelectedCourtCapacity;
 
+          // Fixtures with saved scorecards/lineups/results must never be moved,
+          // even when the round is only partially played — their date, time,
+          // court, and booking are historical records.
+          const playedProtectedIds = new Set<string>();
+          if (playable.length) {
+            const ids = playable.map((f) => f.id);
+            const [{ data: resRows }, { data: lineupRows }, { data: matchRows }] = await Promise.all([
+              fromExt("league_fixture_results").select("fixture_id").in("fixture_id", ids),
+              fromExt("league_fixture_lineups").select("fixture_id").in("fixture_id", ids),
+              fromExt("league_match_results").select("fixture_id").in("fixture_id", ids),
+            ]);
+            for (const x of ((resRows ?? []) as any[])) playedProtectedIds.add(x.fixture_id);
+            for (const x of ((lineupRows ?? []) as any[])) playedProtectedIds.add(x.fixture_id);
+            for (const x of ((matchRows ?? []) as any[])) playedProtectedIds.add(x.fixture_id);
+          }
+
           if (playable.length && newCourts.length) {
-            if (scheduleWillChange) {
-              const ids = playable.map((f) => f.id);
-              const [{ data: resRows }, { data: lineupRows }, { data: matchRows }] = await Promise.all([
-                fromExt("league_fixture_results").select("fixture_id").in("fixture_id", ids),
-                fromExt("league_fixture_lineups").select("fixture_id").in("fixture_id", ids),
-                fromExt("league_match_results").select("fixture_id").in("fixture_id", ids),
-              ]);
-              const protectedIds = new Set<string>([
-                ...((resRows ?? []) as any[]).map((x) => x.fixture_id),
-                ...((lineupRows ?? []) as any[]).map((x) => x.fixture_id),
-                ...((matchRows ?? []) as any[]).map((x) => x.fixture_id),
-              ]);
-              if (protectedIds.size) {
-                // Only lock when the round has already fully finished (last match date in the past).
-                // Partially-played or upcoming rounds can still be rearranged.
-                const today = new Date().toISOString().slice(0, 10);
-                const lastDate = playable.reduce<string>((acc, f) => {
-                  const d = f.fixture_date || r.round_date;
-                  return d && d > acc ? d : acc;
-                }, "");
-                if (lastDate && lastDate < today) {
-                  throw new Error("This round has already finished and has saved scorecards/lineups, so its fixtures cannot be regenerated from round settings.");
-                }
+            if (scheduleWillChange && playedProtectedIds.size) {
+              // Only lock when the round has already fully finished (last match date in the past).
+              // Partially-played rounds proceed, but played fixtures are frozen below.
+              const today = new Date().toISOString().slice(0, 10);
+              const lastDate = playable.reduce<string>((acc, f) => {
+                const d = f.fixture_date || r.round_date;
+                return d && d > acc ? d : acc;
+              }, "");
+              if (lastDate && lastDate < today) {
+                throw new Error("This round has already finished and has saved scorecards/lineups, so its fixtures cannot be regenerated from round settings.");
               }
             }
 
@@ -306,15 +309,18 @@ export function FixturesTab({ clubId, associationId }: Props) {
             const nextById = new Map<string, { fixture_date: string; start_time: string; end_time: string; court_id: number }>();
             let byeDates = [r.round_date];
 
+            // Fixtures already played (with saved results/lineups) keep their
+            // original slot; only unplayed fixtures are re-slotted.
+            const reschedulable = playable.filter((f) => !playedProtectedIds.has(f.id));
             if (regenerateDatesAndTimes || exceedsSelectedCourtCapacity) {
               const slotTimes = timeSlotsBetween(r.start_time, r.end_time, Number(r.slot_minutes || 45));
               if (!slotTimes.length) throw new Error("Check the round start/end time and slot length.");
               const matchesPerDay = Math.max(1, newCourts.length * slotTimes.length);
-              const requiredDays = Math.max(1, Math.ceil(playable.length / matchesPerDay));
+              const requiredDays = Math.max(1, Math.ceil(reschedulable.length / matchesPerDay));
               const playDates = nextPlayDates(r.round_date, requiredDays, r.play_dows ?? []);
               if (!playDates.length) throw new Error("Check the round start date and play days.");
               byeDates = playDates;
-              playable.forEach((f, idx) => {
+              reschedulable.forEach((f, idx) => {
                 const dayIdx = Math.floor(idx / matchesPerDay);
                 const withinDay = idx % matchesPerDay;
                 const timeIdx = Math.floor(withinDay / newCourts.length);
@@ -332,7 +338,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
               // just replace courts that are no longer allowed, spreading them
               // across the selected venue courts within each date/time cell.
               const groups = new Map<string, FxRow[]>();
-              for (const f of playable) {
+              for (const f of reschedulable) {
                 const key = `${f.fixture_date || r.round_date}|${hm(f.start_time) || fallbackStart}`;
                 const arr = groups.get(key) ?? [];
                 arr.push(f);
@@ -367,6 +373,9 @@ export function FixturesTab({ clubId, associationId }: Props) {
             }
 
             for (const f of existingFx) {
+              // Never rewrite already-played fixtures or their bookings — they
+              // are historical records tied to saved scorecards/lineups.
+              if (playedProtectedIds.has(f.id)) continue;
               const oldBookingId = f.booking_id && !roundBookingIdsToRecreate.has(f.booking_id) && !roundProtectedBookingIds.has(f.booking_id)
                 ? f.booking_id
                 : null;

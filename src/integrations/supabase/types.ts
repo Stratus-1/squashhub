@@ -1007,6 +1007,7 @@ export type Database = {
           end_time: string
           entries_locked: boolean
           entry_fee_cents: number
+          expected_players: Json | null
           gender: string
           group_break_minutes: Json
           group_durations: Json
@@ -1070,6 +1071,7 @@ export type Database = {
           end_time?: string
           entries_locked?: boolean
           entry_fee_cents?: number
+          expected_players?: Json | null
           gender: string
           group_break_minutes?: Json
           group_durations?: Json
@@ -1133,6 +1135,7 @@ export type Database = {
           end_time?: string
           entries_locked?: boolean
           entry_fee_cents?: number
+          expected_players?: Json | null
           gender?: string
           group_break_minutes?: Json
           group_durations?: Json

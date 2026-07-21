@@ -212,6 +212,8 @@ Deno.serve(async (req) => {
             phone: phone || undefined,
             terms_accepted_at: new Date().toISOString(),
             privacy_accepted_at: new Date().toISOString(),
+            needs_password_setup: true,
+            invited_club_subdomain: club?.subdomain || undefined,
           },
         });
         if (createErr || !created?.user) {

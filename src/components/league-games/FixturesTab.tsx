@@ -373,6 +373,9 @@ export function FixturesTab({ clubId, associationId }: Props) {
             }
 
             for (const f of existingFx) {
+              // Never rewrite already-played fixtures or their bookings — they
+              // are historical records tied to saved scorecards/lineups.
+              if (playedProtectedIds.has(f.id)) continue;
               const oldBookingId = f.booking_id && !roundBookingIdsToRecreate.has(f.booking_id) && !roundProtectedBookingIds.has(f.booking_id)
                 ? f.booking_id
                 : null;

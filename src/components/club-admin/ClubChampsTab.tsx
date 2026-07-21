@@ -4006,32 +4006,34 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   const actualPlayers = isDoubles ? actualEntities * 2 : actualEntities;
 
                   // Swiss sizing: split league into K pools, each plays R rounds; games needed per pool = ceil(N/2)*R
-                  const pools = isSwiss ? Math.max(1, Number(swissPools[String(gn)]) || 1) : 1;
+                  const pools = isSwissL ? Math.max(1, Number(swissPools[String(gn)]) || 1) : 1;
                   const gamesPerPool = Math.floor(games / pools);
-                  // Suggested rounds default when admin hasn't set one: aim for entities/pool if known, else 5
-                  const perPoolActual = isSwiss ? Math.ceil(actualEntities / pools) : 0;
-                  const suggestedRounds = isSwiss
+                  const perPoolActual = isSwissL ? Math.ceil(actualEntities / pools) : 0;
+                  const suggestedRounds = isSwissL
                     ? Math.max(1, perPoolActual > 1
                         ? Math.min(perPoolActual - 1, Math.floor(gamesPerPool / Math.max(1, Math.ceil(perPoolActual / 2))))
                         : Math.min(5, Math.floor(gamesPerPool / 2)))
                     : 0;
                   const roundsRaw = Number(swissRounds[String(gn)]);
-                  const rounds = isSwiss ? (roundsRaw > 0 ? roundsRaw : suggestedRounds) : 0;
-                  const gamesPerRoundPerPool = isSwiss ? Math.max(1, Math.ceil(Math.max(2, perPoolActual || 2) / 2)) : 0;
-                  // Max entities per pool given R rounds = floor(gamesPerPool / R) * 2
-                  const swissMaxPerPool = isSwiss && rounds > 0 ? Math.floor(gamesPerPool / rounds) * 2 : 0;
-                  const swissMaxEntities = isSwiss ? swissMaxPerPool * pools : 0;
+                  const rounds = isSwissL ? (roundsRaw > 0 ? roundsRaw : suggestedRounds) : 0;
+                  const gamesPerRoundPerPool = isSwissL ? Math.max(1, Math.ceil(Math.max(2, perPoolActual || 2) / 2)) : 0;
+                  const swissMaxPerPool = isSwissL && rounds > 0 ? Math.floor(gamesPerPool / rounds) * 2 : 0;
+                  const swissMaxEntities = isSwissL ? swissMaxPerPool * pools : 0;
                   const swissMaxPlayers = isDoubles ? swissMaxEntities * 2 : swissMaxEntities;
 
-                  const maxEntities = isSwiss ? swissMaxEntities : rrMaxEntities;
-                  const maxPlayers = isSwiss ? swissMaxPlayers : rrMaxPlayers;
-                  const gamesNeeded = isSwiss
+                  const maxEntities = isSwissL ? swissMaxEntities : rrMaxEntities;
+                  const maxPlayers = isSwissL ? swissMaxPlayers : rrMaxPlayers;
+                  const rrGamesNeeded = actualEntities > 1
+                    ? (actualEntities * (actualEntities - 1)) / (isDouble ? 1 : 2)
+                    : 0;
+                  const gamesNeeded = isSwissL
                     ? (rounds > 0 ? Math.ceil((actualEntities || 0) / pools / 2) * rounds * pools : 0)
-                    : (actualEntities > 1 ? (actualEntities * (actualEntities - 1)) / 2 : 0);
+                    : rrGamesNeeded;
                   const fits = gamesNeeded <= games;
                   return {
                     gn, slot, games, maxEntities, maxPlayers, actualEntities, actualPlayers, gamesNeeded, fits,
                     pools, rounds, suggestedRounds, gamesPerPool, swissMaxPerPool, perPoolActual,
+                    isSwissL,
                   };
                 });
                 const sessionsCount = capSessions.length;

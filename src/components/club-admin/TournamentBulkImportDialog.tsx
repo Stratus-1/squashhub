@@ -183,7 +183,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
     [rows]
   );
   const pendingRows = useMemo(
-    () => validRows.filter((r) => !r.status || r.status === "error"),
+    () => validRows.filter((r) => !r.status || r.status === "error" || r.status === "skipped"),
     [validRows]
   );
 
@@ -271,6 +271,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
             partner_name: r.partner_name || null,
             nsa_home_club_id: r.nsa_home_club_id || null,
             nsa_number: r.nsa_number || null,
+            nsa_ignored: !!r.nsa_ignored,
           })),
         },
       });
@@ -291,6 +292,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
               magic_link: res.magic_link,
               email_queued: res.email_queued,
               message: res.message,
+              nsa_candidates: res.nsa_candidates ?? r.nsa_candidates,
             };
           });
         });
@@ -409,7 +411,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
                       <td className="p-1"><Input value={r.partner_name} onChange={(e) => updateRow(r.key, { partner_name: e.target.value })} className="h-8 text-xs" /></td>
                     )}
                     <td className="p-1">
-                      {r.status ? (
+                      {r.status && r.status !== "skipped" ? (
                         <div className="space-y-0.5">
                           <Badge variant="secondary" className={STATUS_LABELS[r.status].className}>{STATUS_LABELS[r.status].label}</Badge>
                           {r.nsa_home_club_name && r.nsa_number && (
@@ -421,7 +423,9 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
                         </div>
                       ) : (
                         <div className="space-y-1">
-                          {r.hint ? (
+                          {r.status === "skipped" ? (
+                            <Badge variant="secondary" className={STATUS_LABELS.skipped.className}>Awaiting NSA decision</Badge>
+                          ) : r.hint ? (
                             <Badge variant="secondary" className={HINT_LABELS[r.hint].className}>{HINT_LABELS[r.hint].label}</Badge>
                           ) : (
                             <span className="text-muted-foreground">—</span>
@@ -458,7 +462,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
                                 className="text-[10px] text-sky-700 underline"
                                 onClick={() => updateRow(r.key, { nsa_ignored: true })}
                               >
-                                Not the same person — just add as Nelspruit visitor
+                                Not the same person — just add as visitor
                               </button>
                             </div>
                           )}

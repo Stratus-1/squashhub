@@ -40,6 +40,8 @@ interface Entrant {
   // Optional: admin confirmed NSA identity for this entrant.
   nsa_home_club_id?: string | null;
   nsa_number?: string | null;
+  // Admin explicitly said "not the same person" — skip NSA gate.
+  nsa_ignored?: boolean;
 }
 
 interface NsaCandidate {
@@ -241,6 +243,11 @@ Deno.serve(async (req) => {
       continue;
     }
 
+    // Always compute NSA candidates so the UI can surface a match even when
+    // the admin skipped the "Check matches" step.
+    const nsaCandidates = findNsaCandidates(first, last);
+    row.nsa_candidates = nsaCandidates;
+
     try {
       // 1. Already a member of THIS club?
       const { data: sameClub } = await admin
@@ -285,7 +292,16 @@ Deno.serve(async (req) => {
 
       if (dryRun) {
         row.status = userId ? "linked_visitor" : "created";
-        row.nsa_candidates = findNsaCandidates(first, last);
+        results.push(row);
+        continue;
+      }
+
+      // Gate: if NSA candidates exist and the admin has neither confirmed one
+      // nor explicitly ignored them, skip creation so the UI can prompt.
+      const nsaDecided = !!(e.nsa_home_club_id && e.nsa_number) || !!e.nsa_ignored;
+      if (nsaCandidates.length > 0 && !nsaDecided) {
+        row.status = "skipped";
+        row.message = "NSA match found — please confirm or ignore before importing";
         results.push(row);
         continue;
       }

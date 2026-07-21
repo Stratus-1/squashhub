@@ -151,8 +151,8 @@ function loadPersisted(champId: string | undefined | null): Row[] | null {
 function persistRows(champId: string | undefined | null, rows: Row[]) {
   const key = storageKey(champId);
   if (!key || typeof window === "undefined") return;
-  // Only persist rows that have been imported (have status) — skip empty scratch rows.
-  const toSave = rows.filter((r) => r.status);
+  // Only persist completed imports — preview-only skipped/error rows must stay editable in memory.
+  const toSave = rows.filter((r) => r.status === "created" || r.status === "linked_visitor" || r.status === "already_member");
   try {
     if (toSave.length === 0) window.localStorage.removeItem(key);
     else window.localStorage.setItem(key, JSON.stringify(toSave));
@@ -188,7 +188,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
     const importedEmails = Array.from(
       new Set(
         rows
-          .filter((r) => r.status && r.email.includes("@"))
+          .filter((r) => (r.status === "created" || r.status === "linked_visitor" || r.status === "already_member") && r.email.includes("@"))
           .map((r) => r.email.trim().toLowerCase())
           .filter(Boolean)
       )
@@ -205,7 +205,11 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
       if (cancelled || error) return;
       const liveEmails = new Set((data || []).map((m: any) => String(m.email || "").toLowerCase()));
       setRows((current) => {
-        const filtered = current.filter((r) => !r.status || liveEmails.has(r.email.trim().toLowerCase()));
+        const filtered = current.filter(
+          (r) =>
+            !(r.status === "created" || r.status === "linked_visitor" || r.status === "already_member") ||
+            liveEmails.has(r.email.trim().toLowerCase())
+        );
         const hasEmptyRow = filtered.some((r) => !r.first_name && !r.last_name && !r.email);
         if (filtered.length === current.length && hasEmptyRow) return current;
         return hasEmptyRow ? filtered : [...filtered, newRow()];

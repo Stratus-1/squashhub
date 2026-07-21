@@ -48,6 +48,18 @@ function tokenLooksSame(a: string, b: string): boolean {
   return false;
 }
 
+// Dutch/Afrikaans/European surname particles — never treated as the
+// "significant" surname token on their own (otherwise "van Niekerk" would
+// match every "van den Berg").
+const SURNAME_PARTICLES = new Set([
+  "van","von","der","den","de","du","le","la","di","da","del","della",
+  "dos","das","ten","ter","af","av","el","al","bin","ibn","mac","mc","o","st",
+]);
+function significantTokens(tokens: string[]): string[] {
+  const sig = tokens.filter((t) => !SURNAME_PARTICLES.has(t));
+  return sig.length > 0 ? sig : tokens;
+}
+
 interface Entrant {
   first_name: string;
   last_name: string;

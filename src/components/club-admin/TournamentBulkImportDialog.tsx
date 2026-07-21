@@ -456,7 +456,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
               disabled={!pasteText.trim()}
               title="Paste rows above (tab, comma, or 2+ spaces separated) or enter information directly in the table below"
             >
-              <Upload className="w-3 h-3 mr-1" /> Add pasted rows
+              <ArrowDown className="w-3 h-3 mr-1" /> Add pasted rows
             </Button>
           </div>
 

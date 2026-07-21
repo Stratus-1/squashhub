@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Trash2, MessageCircle, Copy, Upload, Sparkles } from "lucide-react";
+import { Loader2, Plus, Trash2, MessageCircle, Copy, ArrowDown, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {

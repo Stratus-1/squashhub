@@ -269,6 +269,8 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
             home_club_name: r.home_club_name || null,
             division: r.division || null,
             partner_name: r.partner_name || null,
+            nsa_home_club_id: r.nsa_home_club_id || null,
+            nsa_number: r.nsa_number || null,
           })),
         },
       });

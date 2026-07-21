@@ -556,8 +556,11 @@ export function useUpdateClub() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Club> & { id: string }) => {
-      const { data, error } = await fromExt("clubs").update(updates).eq("id", id).select().single();
+      const { data, error } = await fromExt("clubs").update(updates).eq("id", id).select().maybeSingle();
       if (error) throw error;
+      if (!data) {
+        throw new Error("You don't have permission to change club settings. Ask a club admin to grant you the 'club' permission.");
+      }
       return data as Club;
     },
     onSuccess: () => {

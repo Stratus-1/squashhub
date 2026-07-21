@@ -3752,7 +3752,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                             </span>
                             <div>
                               <div className="font-semibold">{est > 0 ? `≈ ${est} match${est === 1 ? "" : "es"}` : "Planned capacity"}</div>
-                              <div className="text-[10px] text-muted-foreground">{numGroups} league{numGroups === 1 ? "" : "s"} · {totalExpected || "—"} planned player{totalExpected === 1 ? "" : "s"}</div>
+                              <div className="text-[10px] text-muted-foreground">{numGroups} league{numGroups === 1 ? "" : "s"} · {totalExpected || "—"} planned {isDoubles ? `pair${totalExpected === 1 ? "" : "s"}` : `player${totalExpected === 1 ? "" : "s"}`}</div>
                             </div>
                           </div>
                           <div className="text-[10px] text-muted-foreground italic">Refined once players register</div>

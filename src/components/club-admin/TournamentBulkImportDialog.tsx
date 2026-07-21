@@ -183,6 +183,40 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
     }
   }, [open, champ?.id]);
 
+  useEffect(() => {
+    if (!open || !clubId) return;
+    const importedEmails = Array.from(
+      new Set(
+        rows
+          .filter((r) => r.status && r.email.includes("@"))
+          .map((r) => r.email.trim().toLowerCase())
+          .filter(Boolean)
+      )
+    );
+    if (importedEmails.length === 0) return;
+
+    let cancelled = false;
+    async function reconcileSavedRows() {
+      const { data, error } = await supabase
+        .from("club_members")
+        .select("email")
+        .eq("club_id", clubId)
+        .in("email", importedEmails);
+      if (cancelled || error) return;
+      const liveEmails = new Set((data || []).map((m: any) => String(m.email || "").toLowerCase()));
+      setRows((current) => {
+        const filtered = current.filter((r) => !r.status || liveEmails.has(r.email.trim().toLowerCase()));
+        const hasEmptyRow = filtered.some((r) => !r.first_name && !r.last_name && !r.email);
+        return hasEmptyRow ? filtered : [...filtered, newRow()];
+      });
+    }
+
+    reconcileSavedRows();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, clubId, champ?.id]);
+
   // Persist imported rows whenever they change.
   useEffect(() => {
     if (open) persistRows(champ?.id, rows);

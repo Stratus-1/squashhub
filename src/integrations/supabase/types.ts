@@ -1020,6 +1020,7 @@ export type Database = {
           invite_include_reserves: boolean
           invite_methods: string[]
           invite_source: string
+          league_formats: Json | null
           match_duration_minutes: number
           match_type: string
           name: string
@@ -1082,6 +1083,7 @@ export type Database = {
           invite_include_reserves?: boolean
           invite_methods?: string[]
           invite_source?: string
+          league_formats?: Json | null
           match_duration_minutes?: number
           match_type?: string
           name: string
@@ -1144,6 +1146,7 @@ export type Database = {
           invite_include_reserves?: boolean
           invite_methods?: string[]
           invite_source?: string
+          league_formats?: Json | null
           match_duration_minutes?: number
           match_type?: string
           name?: string

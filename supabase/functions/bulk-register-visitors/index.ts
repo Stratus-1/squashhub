@@ -648,6 +648,71 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ---------------------------------------------------------------
+  // Second pass: pair partners for doubles tournaments. Match each
+  // entrant's partner_name against another imported row by fuzzy name
+  // (tolerates surname particles like "van den"). If both sides have a
+  // tournament registration, link them via partner_member_id and mark
+  // partner_confirmed=true so the pair is treated as accepted.
+  // ---------------------------------------------------------------
+  if (!dryRun && tournamentId && tournamentMatchType === "doubles") {
+    try {
+      const paired = new Set<string>();
+      const rowByIndex = new Map<number, RowResult>();
+      for (const r of results) rowByIndex.set(r.index, r);
+
+      for (let i = 0; i < entrants.length; i++) {
+        const e = entrants[i];
+        const partnerName = e.partner_name ? String(e.partner_name).trim() : "";
+        if (!partnerName) continue;
+        const selfRow = rowByIndex.get(i);
+        if (!selfRow?.club_member_id) continue;
+        if (paired.has(selfRow.club_member_id)) continue;
+
+        const pTokens = nameTokens(partnerName);
+        if (pTokens.length === 0) continue;
+        const pSig = significantTokens(pTokens);
+
+        // Find a partner among other entrants by name similarity.
+        let matchRow: RowResult | null = null;
+        for (let j = 0; j < entrants.length; j++) {
+          if (j === i) continue;
+          const other = entrants[j];
+          const otherRow = rowByIndex.get(j);
+          if (!otherRow?.club_member_id) continue;
+          if (otherRow.club_member_id === selfRow.club_member_id) continue;
+          const otherTokens = nameTokens(other.first_name || "", other.last_name || "");
+          if (otherTokens.length === 0) continue;
+          const otherSig = significantTokens(otherTokens);
+          const hasFirst = pTokens.some((f) => otherTokens.some((t) => tokenLooksSame(f, t)));
+          const hasLast = pSig.some((l) => otherSig.some((t) => tokenLooksSame(l, t)));
+          if (hasFirst && hasLast) { matchRow = otherRow; break; }
+        }
+        if (!matchRow?.club_member_id) continue;
+
+        const updates = [
+          admin.from("club_champs_registrations")
+            .update({ partner_member_id: matchRow.club_member_id, partner_confirmed: true })
+            .eq("champ_id", tournamentId)
+            .eq("club_member_id", selfRow.club_member_id),
+          admin.from("club_champs_registrations")
+            .update({ partner_member_id: selfRow.club_member_id, partner_confirmed: true })
+            .eq("champ_id", tournamentId)
+            .eq("club_member_id", matchRow.club_member_id),
+        ];
+        const [a, b] = await Promise.all(updates);
+        if (a.error) console.error("[bulk-register-visitors] pair update A failed:", a.error);
+        if (b.error) console.error("[bulk-register-visitors] pair update B failed:", b.error);
+        if (!a.error && !b.error) {
+          paired.add(selfRow.club_member_id);
+          paired.add(matchRow.club_member_id);
+        }
+      }
+    } catch (err) {
+      console.error("[bulk-register-visitors] partner pairing pass failed:", err);
+    }
+  }
+
   const summary = {
     total: results.length,
     created: results.filter((r) => r.status === "created").length,

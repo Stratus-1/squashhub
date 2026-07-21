@@ -147,6 +147,78 @@ Deno.serve(async (req) => {
     }
   }
 
+  // -----------------------------------------------------------------
+  // Build NSA-affiliated member index (all clubs except target) so we
+  // can suggest an "NSF#### at ClubX" match by first+last name.
+  // -----------------------------------------------------------------
+  interface NsaIndexRow {
+    club_member_id: string;
+    club_id: string;
+    club_name: string;
+    club_subdomain: string | null;
+    nsa_number: string;
+    full_name: string;
+    tokens: string[];
+    gender: string | null;
+  }
+  let nsaIndex: NsaIndexRow[] = [];
+  try {
+    const { data: nsaRows } = await admin
+      .from("member_association_affiliations")
+      .select(
+        "league_association_number, active, club_members!inner(id, name, gender, club_id, clubs:clubs!inner(id, name, subdomain))"
+      )
+      .eq("active", true)
+      .ilike("league_association_number", "NSF%");
+    for (const r of (nsaRows as any[]) || []) {
+      const cm = r.club_members;
+      if (!cm || cm.club_id === clubId) continue;
+      const name = String(cm.name || "").trim();
+      if (!name) continue;
+      const tokens = name
+        .toLowerCase()
+        .replace(/[^\p{L}\s'-]/gu, " ")
+        .split(/\s+/)
+        .filter(Boolean);
+      nsaIndex.push({
+        club_member_id: cm.id,
+        club_id: cm.club_id,
+        club_name: cm.clubs?.name || "",
+        club_subdomain: cm.clubs?.subdomain || null,
+        nsa_number: r.league_association_number,
+        full_name: name,
+        tokens,
+        gender: cm.gender || null,
+      });
+    }
+  } catch (err) {
+    console.error("[bulk-register-visitors] NSA index load failed:", err);
+  }
+
+  function findNsaCandidates(first: string, last: string): NsaCandidate[] {
+    const f = first.trim().toLowerCase();
+    const l = last.trim().toLowerCase();
+    if (!f || !l) return [];
+    const matches: NsaCandidate[] = [];
+    for (const r of nsaIndex) {
+      // Both first and last must appear as separate tokens.
+      const hasFirst = r.tokens.some((t) => t === f || t.startsWith(f) || f.startsWith(t));
+      const hasLast = r.tokens.some((t) => t === l);
+      if (hasFirst && hasLast) {
+        matches.push({
+          club_member_id: r.club_member_id,
+          club_id: r.club_id,
+          club_name: r.club_name,
+          club_subdomain: r.club_subdomain,
+          nsa_number: r.nsa_number,
+          full_name: r.full_name,
+          gender: r.gender,
+        });
+      }
+    }
+    return matches.slice(0, 4);
+  }
+
   const results: RowResult[] = [];
 
   for (let i = 0; i < entrants.length; i++) {

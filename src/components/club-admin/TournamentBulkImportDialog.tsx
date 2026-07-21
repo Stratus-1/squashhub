@@ -118,6 +118,10 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
     () => rows.filter((r) => r.first_name.trim() && r.last_name.trim() && r.email.includes("@")),
     [rows]
   );
+  const pendingRows = useMemo(
+    () => validRows.filter((r) => !r.status || r.status === "error"),
+    [validRows]
+  );
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -184,14 +188,14 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
   }
 
   async function runImport() {
-    if (validRows.length === 0) return;
+    if (pendingRows.length === 0) return;
     setImporting(true);
     try {
       const { data, error } = await supabase.functions.invoke("bulk-register-visitors", {
         body: {
           club_id: clubId,
           tournament_id: champ?.id || null,
-          entrants: validRows.map((r) => ({
+          entrants: pendingRows.map((r) => ({
             first_name: r.first_name,
             last_name: r.last_name,
             email: r.email,
@@ -208,9 +212,9 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
       const summary = (data as any)?.summary;
       if (Array.isArray(results)) {
         setRows((rs) => {
-          const validKeys = validRows.map((v) => v.key);
+          const pendingKeys = pendingRows.map((v) => v.key);
           return rs.map((r) => {
-            const idx = validKeys.indexOf(r.key);
+            const idx = pendingKeys.indexOf(r.key);
             if (idx < 0) return r;
             const res = results.find((x) => x.index === idx);
             if (!res) return r;
@@ -374,10 +378,10 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
             <Button size="sm" variant="outline" onClick={() => setRows((rs) => [...rs, newRow()])}>
               <Plus className="w-3 h-3 mr-1" /> Add row
             </Button>
-            {!done && (
-              <Button size="sm" variant="outline" onClick={runPreview} disabled={previewing || validRows.length === 0}>
+            {pendingRows.length > 0 && (
+              <Button size="sm" variant="outline" onClick={runPreview} disabled={previewing || pendingRows.length === 0}>
                 {previewing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
-                Check matches ({validRows.length})
+                Check matches ({pendingRows.length})
               </Button>
             )}
             {done && (
@@ -389,11 +393,11 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{done ? "Close" : "Cancel"}</Button>
-          {!done && (
-            <Button onClick={runImport} disabled={importing || validRows.length === 0}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{done && pendingRows.length === 0 ? "Close" : "Cancel"}</Button>
+          {pendingRows.length > 0 && (
+            <Button onClick={runImport} disabled={importing || pendingRows.length === 0}>
               {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Import & email ({validRows.length})
+              Import & email ({pendingRows.length})
             </Button>
           )}
         </DialogFooter>

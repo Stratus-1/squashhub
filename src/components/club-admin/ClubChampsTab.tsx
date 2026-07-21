@@ -3982,8 +3982,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 const sharedSlot = Number(groupDurations["1"]) || matchDuration || 20;
                 const canParallel = groupCount > 1 && courtsUsed >= groupCount && roundFormat !== "cross_league";
                 const effectiveParallel = parallelLeagues && canParallel;
-                const isSwiss = roundFormat === "swiss";
+                const anyLeagueSwiss = roundFormat === "swiss"
+                  || (usePerLeagueFormats && Object.values(leagueFormats).includes("swiss"));
                 const perLeague = leagues.map((gn) => {
+                  const leagueFmt = formatForLeague(gn);
+                  const isSwiss = leagueFmt === "swiss";
+                  const isDouble = leagueFmt === "double_round_robin";
                   const slot = roundFormat === "cross_league"
                     ? sharedSlot
                     : (Number(groupDurations[String(gn)]) || matchDuration || 20);

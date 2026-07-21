@@ -1821,15 +1821,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         ? (groups as DoublePair[][]).map((g) => g.length)
         : (groups as ClubMember[][]).map((g) => g.length);
 
-      // Swiss pool mode: per-league pool count + per-pool entry sizes so
-      // playoff placeholders are intra-league (Pool A #P vs Pool B #P).
-      const isSwissFmt = roundFormat === "swiss";
+      // Pool mode: leagues running Swiss contribute their pool split;
+      // non-Swiss leagues stay as a single pool (i.e. one intra-league bracket).
+      // Any league on Swiss activates pool-mode for placeholder counting.
+      const anySwiss = (roundFormat === "swiss")
+        || (usePerLeagueFormats && Object.values(leagueFormats).some((f) => f === "swiss"));
       const poolsByLeague: Record<number, number> = {};
       const entriesByLeaguePool: Record<number, number[]> = {};
-      if (isSwissFmt) {
+      if (anySwiss) {
         entriesPerLeague.forEach((total, gi) => {
           const lg = gi + 1;
-          const pc = Math.max(1, Number(swissPools[String(lg)]) || 1);
+          const isLeagueSwiss = formatForLeague(lg) === "swiss";
+          const pc = isLeagueSwiss ? Math.max(1, Number(swissPools[String(lg)]) || 1) : 1;
           poolsByLeague[lg] = pc;
           const size = Math.ceil(total / pc);
           const sizes: number[] = [];
@@ -1846,10 +1849,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         ? countPlayoffPlaceholders({
             numLeagues: entriesPerLeague.length,
             entriesPerLeague,
-            poolsByLeague: isSwissFmt ? poolsByLeague : undefined,
-            entriesByLeaguePool: isSwissFmt ? entriesByLeaguePool : undefined,
+            poolsByLeague: anySwiss ? poolsByLeague : undefined,
+            entriesByLeaguePool: anySwiss ? entriesByLeaguePool : undefined,
           })
         : 0;
+
       const reservedSlotIdx: number[] = [];
       if (playoffCount > 0) {
         const take = Math.min(playoffCount, allSlots.length);

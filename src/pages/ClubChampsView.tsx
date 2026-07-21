@@ -975,7 +975,7 @@ export default function ClubChampsView() {
 
 
   const swissControlsFor = (groupNumber: number) => {
-    if (!isSwiss || !canManage) return null;
+    if (!isSwissForLeague(groupNumber) || !canManage) return null;
     const poolCount = Math.max(1, Number(swissPools[String(groupNumber)]) || 1);
     const targetRounds = Math.max(1, Number(swissRounds[String(groupNumber)]) || 0);
     const isDoubles = (champ as any).match_type === "doubles";

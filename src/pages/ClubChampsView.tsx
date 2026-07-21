@@ -223,7 +223,7 @@ export default function ClubChampsView() {
   const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
     let groupEntries = entries.filter((e: any) => e.group_number === groupNum);
     // Pool-scoped filtering (Swiss with multiple pools per league).
-    if (poolNumber != null && isSwissMode) {
+    if (poolNumber != null && isSwissForLeague(groupNum)) {
       const poolCount = poolCountFor(groupNum);
       const poolMap = assignPools(entries as SwissEntry[], groupNum, poolCount, isDoubles);
       groupEntries = groupEntries.filter(

@@ -4156,7 +4156,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                   )}
                                 </span>
                               </div>
-                              {isSwiss && (
+                              {isSwissL && (
                                 <div className="flex items-center gap-2 pl-[4.5rem]">
                                   <label className="text-[11px] text-muted-foreground flex items-center gap-1">
                                     Pools

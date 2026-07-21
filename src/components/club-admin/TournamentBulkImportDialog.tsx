@@ -98,6 +98,39 @@ const STATUS_LABELS: Record<NonNullable<Row["status"]>, { label: string; classNa
   skipped: { label: "Skipped", className: "bg-slate-200 text-slate-700" },
 };
 
+const STORAGE_PREFIX = "sh.tournament.bulk-import.v1.";
+
+function storageKey(champId: string | undefined | null): string | null {
+  return champId ? `${STORAGE_PREFIX}${champId}` : null;
+}
+
+function loadPersisted(champId: string | undefined | null): Row[] | null {
+  const key = storageKey(champId);
+  if (!key || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    return parsed as Row[];
+  } catch {
+    return null;
+  }
+}
+
+function persistRows(champId: string | undefined | null, rows: Row[]) {
+  const key = storageKey(champId);
+  if (!key || typeof window === "undefined") return;
+  // Only persist rows that have been imported (have status) — skip empty scratch rows.
+  const toSave = rows.filter((r) => r.status);
+  try {
+    if (toSave.length === 0) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, JSON.stringify(toSave));
+  } catch {
+    // ignore quota errors
+  }
+}
+
 export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }: Props) {
   const [rows, setRows] = useState<Row[]>([newRow()]);
   const [pasteText, setPasteText] = useState("");
@@ -107,11 +140,25 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
 
   useEffect(() => {
     if (open) {
-      setRows([newRow()]);
+      const persisted = loadPersisted(champ?.id);
+      if (persisted && persisted.length > 0) {
+        // Show previously imported entrants + one empty row for new additions.
+        setRows([...persisted, newRow()]);
+        setDone(true);
+      } else {
+        setRows([newRow()]);
+        setDone(false);
+      }
       setPasteText("");
-      setDone(false);
     }
-  }, [open]);
+  }, [open, champ?.id]);
+
+  // Persist imported rows whenever they change.
+  useEffect(() => {
+    if (open) persistRows(champ?.id, rows);
+  }, [rows, open, champ?.id]);
+
+
 
   const isDoubles = champ?.match_type === "doubles";
   const validRows = useMemo(
@@ -354,18 +401,15 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
                       )}
                     </td>
                     <td className="p-1">
-                      <div className="flex gap-0.5">
-                        {r.status === "created" || r.status === "linked_visitor" ? (
-                          whatsappUrl(r) ? (
-                            <a href={whatsappUrl(r)!} target="_blank" rel="noopener noreferrer" title="Send WhatsApp with magic-link">
-                              <Button size="icon" variant="ghost" className="h-7 w-7"><MessageCircle className="w-3.5 h-3.5 text-emerald-600" /></Button>
-                            </a>
-                          ) : null
-                        ) : (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeRow(r.key)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
+                      <div className="flex gap-0.5 justify-end">
+                        {(r.status === "created" || r.status === "linked_visitor") && whatsappUrl(r) ? (
+                          <a href={whatsappUrl(r)!} target="_blank" rel="noopener noreferrer" title="Send WhatsApp with magic-link">
+                            <Button size="icon" variant="ghost" className="h-7 w-7"><MessageCircle className="w-3.5 h-3.5 text-emerald-600" /></Button>
+                          </a>
+                        ) : null}
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeRow(r.key)} title="Remove row">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </td>
                   </tr>

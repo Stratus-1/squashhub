@@ -118,6 +118,10 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
     () => rows.filter((r) => r.first_name.trim() && r.last_name.trim() && r.email.includes("@")),
     [rows]
   );
+  const pendingRows = useMemo(
+    () => validRows.filter((r) => !r.status || r.status === "error"),
+    [validRows]
+  );
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));

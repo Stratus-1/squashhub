@@ -3792,9 +3792,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                         const fmt: PerLeagueFormat = (leagueFormats[key] ?? (roundFormat as PerLeagueFormat)) || "single_round_robin";
                         if (fmt === "swiss") {
                           const pools = Math.max(1, Number(swissPools[key]) || 1);
-                          const rounds = Math.max(1, Number(swissRounds[key]) || 5);
-                          est += Math.floor(n / 2) * rounds;
-                          void pools;
+                          const perPool = Math.max(2, Math.ceil(n / pools));
+                          const perPoolGames = (perPool * (perPool - 1)) / 2;
+                          est += pools * perPoolGames;
                         } else {
                           const games = (n * (n - 1)) / 2;
                           est += fmt === "double_round_robin" ? games * 2 : games;

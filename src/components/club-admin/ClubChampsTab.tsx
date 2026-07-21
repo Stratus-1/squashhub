@@ -4192,7 +4192,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 </div>
                               )}
                               <div className="text-[11px] text-muted-foreground pl-[4.5rem]">
-                                {isSwiss ? (
+                                {isSwissL ? (
                                   actualEntities > 0 ? (
                                     <>needs {gamesNeeded} game{gamesNeeded === 1 ? "" : "s"} ({rounds} rounds × {pools} pool{pools === 1 ? "" : "s"}) · {games} available {fits ? "✓" : `· short by ${gamesNeeded - games}`}</>
                                   ) : (

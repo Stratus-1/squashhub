@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     .eq("club_id", clubId)
     .eq("user_id", callerId)
     .maybeSingle();
-  const { data: isSuper } = await admin.rpc("has_role", { _user_id: callerId, _role: "super_admin" });
+  const { data: isSuper } = await admin.rpc("has_role", { _user_id: callerId, _role: "admin" });
   const isAdmin = adminMember?.role === "admin" || !!isSuper;
   if (!isAdmin) return json({ error: "Not authorized (club admin required)" }, 403);
 

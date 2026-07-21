@@ -2877,6 +2877,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setScoringMode("");
     setSwissPools({});
     setSwissRounds({});
+    setExpectedPlayers({});
+    setLeagueFormats({});
+    setUsePerLeagueFormats(false);
     setPointsPerGame(0);
     setBestOf(0);
     setPlayAllGames(false);

@@ -21,6 +21,7 @@ const BLOCKED_PATH_PREFIXES = [
   "/club-auth",
   "/register-club",
   "/reset-password",
+  "/set-password",
   "/onboarding",
   "/league-signup",
   "/booking-response",

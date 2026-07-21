@@ -437,6 +437,7 @@ function AppRoutes() {
         <Route path="/auth" element={<AuthGate />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/set-password" element={<SetPassword />} />
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
         <Route path="/pay/stitch" element={<ProtectedRoute><StitchPaymentBridge /></ProtectedRoute>} />
         <Route path="/pay/return" element={<PayReturn />} />

@@ -1385,9 +1385,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     // Build round-robin matches
     const allMatches: MatchDef[] = [];
     const isCrossLeague = roundFormat === "cross_league";
-    const fmt = roundFormat === "double_round_robin" ? "double" : "single";
+    // Round-robin format per league (single/double). Swiss is handled separately below.
+    const rrFmtForLeague = (gi: number): "single" | "double" => {
+      const f = formatForLeague(gi + 1);
+      return f === "double_round_robin" ? "double" : "single";
+    };
     const ingestRounds = (gi: number, ids: string[]) => {
-      const { rounds, byesPerRound } = generateRoundRobinRounds(ids, fmt);
+      const { rounds, byesPerRound } = generateRoundRobinRounds(ids, rrFmtForLeague(gi));
       rounds.forEach((roundMatches, ri) => {
         roundMatches.forEach(([a, b, leg]) => {
           allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
@@ -1408,6 +1412,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     // group_number for scheduling; standings include all matches the player took part in.
     const ingestCrossLeague = (allGroups: string[][]) => {
       let roundCounter = 1;
+      const fmt = roundFormat === "double_round_robin" ? "double" : "single";
       for (let i = 0; i < allGroups.length; i++) {
         for (let j = i + 1; j < allGroups.length; j++) {
           const a = allGroups[i];
@@ -1436,57 +1441,53 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     };
 
+    // Swiss for a single league — reserves placeholder matches based on
+    // pools × rounds × ceil(pool/2) so scheduling books the right slot count.
+    const buildSwissLeague = (gi: number, ids: string[]) => {
+      const pools = Math.max(1, Number(swissPools[String(gi + 1)]) || 1);
+      const rounds = Math.max(1, Number(swissRounds[String(gi + 1)]) || 1);
+      const size = Math.ceil(ids.length / pools);
+      for (let p = 0; p < pools; p++) {
+        const poolIds = ids.slice(p * size, Math.min(ids.length, (p + 1) * size));
+        if (poolIds.length < 2) continue;
+        const { rounds: rrRounds, byesPerRound } = generateRoundRobinRounds(poolIds, "single");
+        for (let r = 0; r < rounds; r++) {
+          const src = rrRounds[r % rrRounds.length] || [];
+          src.forEach(([a, b, leg]) => {
+            allMatches.push({ groupNum: gi + 1, roundNum: r + 1, entityA: a, entityB: b, leg });
+          });
+          const byeId = byesPerRound[r % byesPerRound.length];
+          if (byeId && byeHandling !== "no_match") {
+            allMatches.push({
+              groupNum: gi + 1, roundNum: r + 1,
+              entityA: byeId, entityB: byeId, leg: null,
+              isBye: true, byeEntityId: byeId,
+            });
+          }
+        }
+      }
+    };
+
     if (isCrossLeague) {
       const groupIds: string[][] = isDoubles
         ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
         : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
       ingestCrossLeague(groupIds);
-    } else if (roundFormat === "swiss") {
-      // Swiss: split each league into pools (block distribution) and reserve
-      // R rounds per pool. Pairings are done manually round-by-round in the
-      // live tournament view — here we only need enough placeholder matches
-      // so the schedule reserves the right number of court slots. Total per
-      // league = pools × rounds × ceil(pool/2), matching the capacity math.
-      const buildLeague = (gi: number, ids: string[]) => {
-        const pools = Math.max(1, Number(swissPools[String(gi + 1)]) || 1);
-        const rounds = Math.max(1, Number(swissRounds[String(gi + 1)]) || 1);
-        const size = Math.ceil(ids.length / pools);
-        for (let p = 0; p < pools; p++) {
-          const poolIds = ids.slice(p * size, Math.min(ids.length, (p + 1) * size));
-          if (poolIds.length < 2) continue;
-          // Reuse round-robin generator to get valid per-round pairings, then
-          // truncate/cycle to R rounds so player-busy tracking stays realistic.
-          const { rounds: rrRounds, byesPerRound } = generateRoundRobinRounds(poolIds, "single");
-          for (let r = 0; r < rounds; r++) {
-            const src = rrRounds[r % rrRounds.length] || [];
-            src.forEach(([a, b, leg]) => {
-              allMatches.push({ groupNum: gi + 1, roundNum: r + 1, entityA: a, entityB: b, leg });
-            });
-            const byeId = byesPerRound[r % byesPerRound.length];
-            if (byeId && byeHandling !== "no_match") {
-              allMatches.push({
-                groupNum: gi + 1, roundNum: r + 1,
-                entityA: byeId, entityB: byeId, leg: null,
-                isBye: true, byeEntityId: byeId,
-              });
-            }
-          }
-        }
-      };
-      if (isDoubles) {
-        (groups as DoublePair[][]).forEach((groupPairs, gi) => buildLeague(gi, groupPairs.map((p) => p.id)));
-      } else {
-        (groups as ClubMember[][]).forEach((groupPlayers, gi) => buildLeague(gi, groupPlayers.map((p) => p.id)));
-      }
-    } else if (isDoubles) {
-      (groups as DoublePair[][]).forEach((groupPairs, gi) => {
-        ingestRounds(gi, groupPairs.map((p) => p.id));
-      });
     } else {
-      (groups as ClubMember[][]).forEach((groupPlayers, gi) => {
-        ingestRounds(gi, groupPlayers.map((p) => p.id));
+      // Per-league dispatch: each league can independently be Swiss or
+      // (single/double) round-robin.
+      const perLeagueIds: string[][] = isDoubles
+        ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
+        : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
+      perLeagueIds.forEach((ids, gi) => {
+        if (formatForLeague(gi + 1) === "swiss") {
+          buildSwissLeague(gi, ids);
+        } else {
+          ingestRounds(gi, ids);
+        }
       });
     }
+
 
     // Scheduling gap per entity: prevent same-day repeats only, so consecutive
     // play-days (e.g. Fri→Sat→Sun) can all be used. A stricter 2-day rest

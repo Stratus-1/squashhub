@@ -98,6 +98,39 @@ const STATUS_LABELS: Record<NonNullable<Row["status"]>, { label: string; classNa
   skipped: { label: "Skipped", className: "bg-slate-200 text-slate-700" },
 };
 
+const STORAGE_PREFIX = "sh.tournament.bulk-import.v1.";
+
+function storageKey(champId: string | undefined | null): string | null {
+  return champId ? `${STORAGE_PREFIX}${champId}` : null;
+}
+
+function loadPersisted(champId: string | undefined | null): Row[] | null {
+  const key = storageKey(champId);
+  if (!key || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    return parsed as Row[];
+  } catch {
+    return null;
+  }
+}
+
+function persistRows(champId: string | undefined | null, rows: Row[]) {
+  const key = storageKey(champId);
+  if (!key || typeof window === "undefined") return;
+  // Only persist rows that have been imported (have status) — skip empty scratch rows.
+  const toSave = rows.filter((r) => r.status);
+  try {
+    if (toSave.length === 0) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, JSON.stringify(toSave));
+  } catch {
+    // ignore quota errors
+  }
+}
+
 export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }: Props) {
   const [rows, setRows] = useState<Row[]>([newRow()]);
   const [pasteText, setPasteText] = useState("");
@@ -107,11 +140,16 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
 
   useEffect(() => {
     if (open) {
-      setRows([newRow()]);
+      const persisted = loadPersisted(champ?.id);
+      if (persisted && persisted.length > 0) {
+        // Show previously imported entrants + one empty row for new additions.
+        setRows([...persisted, newRow()]);
+        setDone(true);
+      } else {
+        setRows([newRow()]);
+        setDone(false);
+      }
       setPasteText("");
-      setDone(false);
-    }
-  }, [open]);
 
   const isDoubles = champ?.match_type === "doubles";
   const validRows = useMemo(

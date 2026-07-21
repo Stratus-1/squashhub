@@ -3545,6 +3545,60 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               )}
             </div>
 
+            {/* Match Type & Gender come first — determines players vs pairs downstream */}
+            <div>
+              <Label className="text-sm font-semibold mb-2 block">Match Type <span className="text-destructive">*</span></Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant={matchType === "singles" ? "default" : "outline"}
+                  className="h-16 text-base"
+                  onClick={() => setMatchType("singles")}
+                >
+                  👤 Singles
+                </Button>
+                <Button
+                  variant={matchType === "doubles" ? "default" : "outline"}
+                  className="h-16 text-base"
+                  onClick={() => setMatchType("doubles")}
+                >
+                  👥 Doubles
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                {isDoubles
+                  ? "Doubles — planned counts below are entered as pairs."
+                  : "Singles — planned counts below are entered as players."}
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-sm font-semibold mb-2 block">Gender Category <span className="text-destructive">*</span></Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {(["men", "ladies", "mixed", "open"] as GenderCategory[]).map((g) => (
+                  <Button
+                    key={g}
+                    variant={gender === g ? "default" : "outline"}
+                    className="h-16 text-base"
+                    onClick={() => setGender(g)}
+                  >
+                    {g === "men"
+                      ? "🏆 Men's"
+                      : g === "ladies"
+                      ? "🏆 Ladies'"
+                      : g === "mixed"
+                      ? "🏆 Mixed"
+                      : "🏆 Open"}
+                  </Button>
+                ))}
+              </div>
+              {gender === "mixed" && (
+                <p className="text-[11px] text-muted-foreground mt-1.5">Mixed = traditional 1 man + 1 lady pairs.</p>
+              )}
+              {gender === "open" && (
+                <p className="text-[11px] text-muted-foreground mt-1.5">Open = any pairing allowed (M+M, F+F, or M+F). Great for fundraisers.</p>
+              )}
+            </div>
+
             {/* ─── Tournament Structure Builder ─────────────────────────── */}
             {/* Visual builder — admin drags/clicks formats from the palette to
                 add leagues, then tweaks name / pools / expected players inline.
@@ -3811,55 +3865,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
 
 
-            <div>
-              <Label className="text-sm font-semibold mb-2 block">Gender Category <span className="text-destructive">*</span></Label>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {(["men", "ladies", "mixed", "open"] as GenderCategory[]).map((g) => (
-                  <Button
-                    key={g}
-                    variant={gender === g ? "default" : "outline"}
-                    className="h-16 text-base"
-                    onClick={() => setGender(g)}
-                  >
-                    {g === "men"
-                      ? "🏆 Men's"
-                      : g === "ladies"
-                      ? "🏆 Ladies'"
-                      : g === "mixed"
-                      ? "🏆 Mixed"
-                      : "🏆 Open"}
-                  </Button>
-                ))}
-              </div>
-              {gender === "mixed" && (
-                <p className="text-[11px] text-muted-foreground mt-1.5">Mixed = traditional 1 man + 1 lady pairs.</p>
-              )}
-              {gender === "open" && (
-                <p className="text-[11px] text-muted-foreground mt-1.5">Open = any pairing allowed (M+M, F+F, or M+F). Great for fundraisers.</p>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-sm font-semibold mb-2 block">Match Type <span className="text-destructive">*</span></Label>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant={matchType === "singles" ? "default" : "outline"}
-                  className="h-16 text-base"
-                  onClick={() => setMatchType("singles")}
-                >
-                  👤 Singles
-                </Button>
-                <Button
-                  variant={matchType === "doubles" ? "default" : "outline"}
-                  className="h-16 text-base"
-                  onClick={() => setMatchType("doubles")}
-                >
-                  👥 Doubles
-                </Button>
-              </div>
-            </div>
-
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <Label className="text-sm font-medium">Include Visitors</Label>
@@ -3871,15 +3876,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
 
 
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div>
-                <Label className="text-sm font-medium">Enable Playoffs</Label>
-                <p className="text-xs text-muted-foreground">
-                  After group stages, matching positions play off (e.g. #1 vs #1, #2 vs #2). With 4+ groups, semi-finals and a final are added.
-                </p>
-              </div>
-              <Switch checked={enablePlayoffs} onCheckedChange={setEnablePlayoffs} />
-            </div>
 
             {includeVisitors && visitorClubs.length > 0 && (
               <div className="space-y-2 rounded-lg border p-3">

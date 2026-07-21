@@ -573,6 +573,7 @@ Deno.serve(async (req) => {
       row.user_id = userId;
       row.club_member_id = inserted.id;
       row.status = createdNew ? "created" : "linked_visitor";
+      await ensureRegistration(inserted.id);
 
       // 6b. Confirmed NSA identity → register as member of their home NSA club too.
       const nsaHomeClubId = e.nsa_home_club_id ? String(e.nsa_home_club_id).trim() : null;

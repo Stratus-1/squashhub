@@ -440,7 +440,13 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
               placeholder="John	Smith	john@example.com	0821234567	Men	Glenwood	A	Alex Brown"
               className="h-24 font-mono text-xs"
             />
-            <Button size="sm" variant="secondary" onClick={applyPaste} disabled={!pasteText.trim()}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={applyPaste}
+              disabled={!pasteText.trim()}
+              title="Paste rows above (tab, comma, or 2+ spaces separated) or enter information directly in the table below"
+            >
               <Upload className="w-3 h-3 mr-1" /> Add pasted rows
             </Button>
           </div>

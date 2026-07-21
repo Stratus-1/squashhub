@@ -183,7 +183,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
     [rows]
   );
   const pendingRows = useMemo(
-    () => validRows.filter((r) => !r.status || r.status === "error"),
+    () => validRows.filter((r) => !r.status || r.status === "error" || r.status === "skipped"),
     [validRows]
   );
 

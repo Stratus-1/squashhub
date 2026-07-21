@@ -48,6 +48,18 @@ function tokenLooksSame(a: string, b: string): boolean {
   return false;
 }
 
+// Dutch/Afrikaans/European surname particles — never treated as the
+// "significant" surname token on their own (otherwise "van Niekerk" would
+// match every "van den Berg").
+const SURNAME_PARTICLES = new Set([
+  "van","von","der","den","de","du","le","la","di","da","del","della",
+  "dos","das","ten","ter","af","av","el","al","bin","ibn","mac","mc","o","st",
+]);
+function significantTokens(tokens: string[]): string[] {
+  const sig = tokens.filter((t) => !SURNAME_PARTICLES.has(t));
+  return sig.length > 0 ? sig : tokens;
+}
+
 interface Entrant {
   first_name: string;
   last_name: string;
@@ -257,12 +269,15 @@ Deno.serve(async (req) => {
     const firstTokens = nameTokens(first);
     const lastTokens = nameTokens(last);
     if (firstTokens.length === 0 || lastTokens.length === 0) return [];
+    const lastSig = significantTokens(lastTokens);
     const matches: NsaCandidate[] = [];
     for (const r of nsaIndex) {
-      // First and last must both match, but tolerate initials, punctuation,
-      // and prefix differences from imported sheets/PDFs.
+      // First name: any token match (tolerates initials).
       const hasFirst = firstTokens.some((f) => r.tokens.some((t) => tokenLooksSame(f, t)));
-      const hasLast = lastTokens.some((l) => r.tokens.some((t) => tokenLooksSame(l, t)));
+      // Surname: the significant (non-particle) part must match a significant
+      // token on the roster side. Prevents "van Niekerk" ≈ "van den Berg".
+      const rosterSig = significantTokens(r.tokens);
+      const hasLast = lastSig.some((l) => rosterSig.some((t) => tokenLooksSame(l, t)));
       if (hasFirst && hasLast) {
         matches.push({
           club_member_id: r.club_member_id,

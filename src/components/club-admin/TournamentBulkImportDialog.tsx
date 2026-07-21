@@ -17,6 +17,16 @@ interface Props {
   champ: { id: string; name: string; match_type?: string | null } | null;
 }
 
+interface NsaCandidate {
+  club_member_id: string;
+  club_id: string;
+  club_name: string;
+  club_subdomain: string | null;
+  nsa_number: string;
+  full_name: string;
+  gender: string | null;
+}
+
 interface Row {
   key: string;
   first_name: string;
@@ -29,6 +39,13 @@ interface Row {
   partner_name: string;
   // match hint from server dry-run
   hint?: "already_member" | "linked_visitor" | "created" | "unknown";
+  // NSA candidates from dry-run
+  nsa_candidates?: NsaCandidate[];
+  // Admin-confirmed NSA identity
+  nsa_home_club_id?: string | null;
+  nsa_number?: string | null;
+  nsa_home_club_name?: string | null;
+  nsa_ignored?: boolean;
   // result after import
   status?: "already_member" | "linked_visitor" | "created" | "error" | "skipped";
   magic_link?: string;
@@ -214,15 +231,16 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
         },
       });
       if (error) throw error;
-      const results = (data as any)?.results as Array<{ index: number; status: Row["hint"] }>;
+      const results = (data as any)?.results as Array<{ index: number; status: Row["hint"]; nsa_candidates?: NsaCandidate[] }>;
       if (Array.isArray(results)) {
         setRows((rs) => {
           const validKeys = validRows.map((v) => v.key);
           return rs.map((r) => {
             const idx = validKeys.indexOf(r.key);
             if (idx < 0) return r;
-            const hint = results.find((x) => x.index === idx)?.status || "unknown";
-            return { ...r, hint };
+            const res = results.find((x) => x.index === idx);
+            const hint = res?.status || "unknown";
+            return { ...r, hint, nsa_candidates: res?.nsa_candidates || [] };
           });
         });
         toast.success("Match check complete");
@@ -251,6 +269,8 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
             home_club_name: r.home_club_name || null,
             division: r.division || null,
             partner_name: r.partner_name || null,
+            nsa_home_club_id: r.nsa_home_club_id || null,
+            nsa_number: r.nsa_number || null,
           })),
         },
       });
@@ -392,12 +412,73 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
                       {r.status ? (
                         <div className="space-y-0.5">
                           <Badge variant="secondary" className={STATUS_LABELS[r.status].className}>{STATUS_LABELS[r.status].label}</Badge>
+                          {r.nsa_home_club_name && r.nsa_number && (
+                            <div className="text-[10px] text-emerald-700">
+                              Registered at {r.nsa_home_club_name} · {r.nsa_number}
+                            </div>
+                          )}
                           {r.message && <div className="text-[10px] text-red-700">{r.message}</div>}
                         </div>
-                      ) : r.hint ? (
-                        <Badge variant="secondary" className={HINT_LABELS[r.hint].className}>{HINT_LABELS[r.hint].label}</Badge>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <div className="space-y-1">
+                          {r.hint ? (
+                            <Badge variant="secondary" className={HINT_LABELS[r.hint].className}>{HINT_LABELS[r.hint].label}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                          {!r.nsa_home_club_id && !r.nsa_ignored && r.nsa_candidates && r.nsa_candidates.length > 0 && (
+                            <div className="rounded border border-sky-200 bg-sky-50 p-1.5 space-y-1">
+                              <div className="text-[10px] font-medium text-sky-900">
+                                Possible NSA match{r.nsa_candidates.length > 1 ? "es" : ""}:
+                              </div>
+                              {r.nsa_candidates.map((c) => (
+                                <div key={c.club_member_id} className="flex items-center justify-between gap-1">
+                                  <div className="text-[10px] text-sky-900">
+                                    <span className="font-medium">{c.full_name}</span> · {c.nsa_number} · {c.club_name}
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-5 px-1.5 text-[10px]"
+                                    onClick={() =>
+                                      updateRow(r.key, {
+                                        nsa_home_club_id: c.club_id,
+                                        nsa_number: c.nsa_number,
+                                        nsa_home_club_name: c.club_name,
+                                        home_club_name: r.home_club_name || c.club_name,
+                                      })
+                                    }
+                                  >
+                                    Confirm
+                                  </Button>
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                className="text-[10px] text-sky-700 underline"
+                                onClick={() => updateRow(r.key, { nsa_ignored: true })}
+                              >
+                                Not the same person — just add as Nelspruit visitor
+                              </button>
+                            </div>
+                          )}
+                          {r.nsa_home_club_id && r.nsa_home_club_name && (
+                            <div className="flex items-center gap-1 rounded bg-emerald-50 border border-emerald-200 px-1.5 py-1">
+                              <div className="text-[10px] text-emerald-900 flex-1">
+                                Will register at <span className="font-medium">{r.nsa_home_club_name}</span> · {r.nsa_number}
+                              </div>
+                              <button
+                                type="button"
+                                className="text-[10px] text-emerald-700 underline"
+                                onClick={() =>
+                                  updateRow(r.key, { nsa_home_club_id: null, nsa_number: null, nsa_home_club_name: null })
+                                }
+                              >
+                                Undo
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="p-1">

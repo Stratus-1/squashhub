@@ -37,6 +37,19 @@ interface Entrant {
   home_club_name?: string | null;
   division?: string | null;
   partner_name?: string | null;
+  // Optional: admin confirmed NSA identity for this entrant.
+  nsa_home_club_id?: string | null;
+  nsa_number?: string | null;
+}
+
+interface NsaCandidate {
+  club_member_id: string;
+  club_id: string;
+  club_name: string;
+  club_subdomain: string | null;
+  nsa_number: string;
+  full_name: string;
+  gender: string | null;
 }
 
 interface RowResult {
@@ -52,6 +65,9 @@ interface RowResult {
   phone?: string | null;
   division?: string | null;
   partner_name?: string | null;
+  nsa_candidates?: NsaCandidate[];
+  nsa_registered_club_id?: string;
+  nsa_registered_number?: string;
 }
 
 Deno.serve(async (req) => {
@@ -131,6 +147,78 @@ Deno.serve(async (req) => {
     }
   }
 
+  // -----------------------------------------------------------------
+  // Build NSA-affiliated member index (all clubs except target) so we
+  // can suggest an "NSF#### at ClubX" match by first+last name.
+  // -----------------------------------------------------------------
+  interface NsaIndexRow {
+    club_member_id: string;
+    club_id: string;
+    club_name: string;
+    club_subdomain: string | null;
+    nsa_number: string;
+    full_name: string;
+    tokens: string[];
+    gender: string | null;
+  }
+  let nsaIndex: NsaIndexRow[] = [];
+  try {
+    const { data: nsaRows } = await admin
+      .from("member_association_affiliations")
+      .select(
+        "league_association_number, active, club_members!inner(id, name, gender, club_id, clubs:clubs!inner(id, name, subdomain))"
+      )
+      .eq("active", true)
+      .ilike("league_association_number", "NSF%");
+    for (const r of (nsaRows as any[]) || []) {
+      const cm = r.club_members;
+      if (!cm || cm.club_id === clubId) continue;
+      const name = String(cm.name || "").trim();
+      if (!name) continue;
+      const tokens = name
+        .toLowerCase()
+        .replace(/[^\p{L}\s'-]/gu, " ")
+        .split(/\s+/)
+        .filter(Boolean);
+      nsaIndex.push({
+        club_member_id: cm.id,
+        club_id: cm.club_id,
+        club_name: cm.clubs?.name || "",
+        club_subdomain: cm.clubs?.subdomain || null,
+        nsa_number: r.league_association_number,
+        full_name: name,
+        tokens,
+        gender: cm.gender || null,
+      });
+    }
+  } catch (err) {
+    console.error("[bulk-register-visitors] NSA index load failed:", err);
+  }
+
+  function findNsaCandidates(first: string, last: string): NsaCandidate[] {
+    const f = first.trim().toLowerCase();
+    const l = last.trim().toLowerCase();
+    if (!f || !l) return [];
+    const matches: NsaCandidate[] = [];
+    for (const r of nsaIndex) {
+      // Both first and last must appear as separate tokens.
+      const hasFirst = r.tokens.some((t) => t === f || t.startsWith(f) || f.startsWith(t));
+      const hasLast = r.tokens.some((t) => t === l);
+      if (hasFirst && hasLast) {
+        matches.push({
+          club_member_id: r.club_member_id,
+          club_id: r.club_id,
+          club_name: r.club_name,
+          club_subdomain: r.club_subdomain,
+          nsa_number: r.nsa_number,
+          full_name: r.full_name,
+          gender: r.gender,
+        });
+      }
+    }
+    return matches.slice(0, 4);
+  }
+
   const results: RowResult[] = [];
 
   for (let i = 0; i < entrants.length; i++) {
@@ -197,6 +285,7 @@ Deno.serve(async (req) => {
 
       if (dryRun) {
         row.status = userId ? "linked_visitor" : "created";
+        row.nsa_candidates = findNsaCandidates(first, last);
         results.push(row);
         continue;
       }
@@ -259,6 +348,79 @@ Deno.serve(async (req) => {
       row.user_id = userId;
       row.club_member_id = inserted.id;
       row.status = createdNew ? "created" : "linked_visitor";
+
+      // 6b. Confirmed NSA identity → register as member of their home NSA club too.
+      const nsaHomeClubId = e.nsa_home_club_id ? String(e.nsa_home_club_id).trim() : null;
+      const nsaNumber = e.nsa_number ? String(e.nsa_number).trim().toUpperCase() : null;
+      if (nsaHomeClubId && nsaNumber && /^NSF\d+$/i.test(nsaNumber)) {
+        try {
+          // Skip if already a member at the home NSA club.
+          const { data: existingHome } = await admin
+            .from("club_members")
+            .select("id")
+            .eq("club_id", nsaHomeClubId)
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          let homeMemberId = existingHome?.id as string | undefined;
+          if (!homeMemberId) {
+            const { data: homeInserted, error: homeErr } = await admin
+              .from("club_members")
+              .insert({
+                club_id: nsaHomeClubId,
+                user_id: userId,
+                role: "member",
+                name: fullName,
+                email,
+                phone: phone || null,
+                gender,
+                plays_league: true,
+              })
+              .select("id")
+              .single();
+            if (homeErr) throw homeErr;
+            homeMemberId = homeInserted.id;
+          }
+
+          // Resolve the NSA league association for the home club (name-based).
+          const { data: assoc } = await admin
+            .from("league_associations")
+            .select("id")
+            .eq("club_id", nsaHomeClubId)
+            .ilike("name", "%northern squash%")
+            .limit(1)
+            .maybeSingle();
+
+          if (assoc?.id && homeMemberId) {
+            // Upsert affiliation record.
+            const { data: existingAff } = await admin
+              .from("member_association_affiliations")
+              .select("id")
+              .eq("club_member_id", homeMemberId)
+              .eq("association_id", assoc.id)
+              .maybeSingle();
+            if (!existingAff) {
+              await admin.from("member_association_affiliations").insert({
+                club_member_id: homeMemberId,
+                association_id: assoc.id,
+                league_association_number: nsaNumber,
+                active: true,
+              });
+            } else {
+              await admin
+                .from("member_association_affiliations")
+                .update({ league_association_number: nsaNumber, active: true })
+                .eq("id", existingAff.id);
+            }
+          }
+          row.nsa_registered_club_id = nsaHomeClubId;
+          row.nsa_registered_number = nsaNumber;
+        } catch (err: any) {
+          console.error("[bulk-register-visitors] NSA home-club registration failed:", err);
+          row.message = (row.message ? row.message + "; " : "") + "NSA home-club link failed: " + (err?.message || String(err));
+        }
+      }
+
 
       // 7. Generate magic-link.
       let magicLink: string | undefined;

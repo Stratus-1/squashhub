@@ -163,21 +163,61 @@ Deno.serve(async (req) => {
     ? `https://www.squashhub.co.za/auth/callback?tenant=${encodeURIComponent(subdomain)}`
     : `https://www.squashhub.co.za/auth/callback`;
 
-  // Optional tournament context for email body.
+  // Optional tournament context for email body + auto-registration.
   let tournamentName: string | null = null;
   let tournamentStart: string | null = null;
+  let tournamentEntryFeeCents = 0;
+  let tournamentPaymentRequired = false;
+  let tournamentMatchType: string | null = null;
   if (tournamentId) {
     const { data: t } = await admin
       .from("club_champs")
-      .select("name, start_date, start_time")
+      .select("name, start_date, start_time, entry_fee_cents, payment_required, match_type")
       .eq("id", tournamentId)
       .maybeSingle();
     if (t) {
       tournamentName = t.name || null;
+      tournamentEntryFeeCents = Number((t as any).entry_fee_cents || 0);
+      tournamentPaymentRequired = !!(t as any).payment_required;
+      tournamentMatchType = (t as any).match_type || null;
       const parts: string[] = [];
       if (t.start_date) parts.push(t.start_date);
       if (t.start_time) parts.push(String(t.start_time).slice(0, 5));
       tournamentStart = parts.length ? parts.join(" at ") : null;
+    }
+  }
+
+  // Helper: create (or return existing) tournament registration for a member.
+  async function ensureRegistration(memberId: string): Promise<string | null> {
+    if (!tournamentId || !memberId) return null;
+    try {
+      const { data: existing } = await admin
+        .from("club_champs_registrations")
+        .select("id")
+        .eq("champ_id", tournamentId)
+        .eq("club_member_id", memberId)
+        .maybeSingle();
+      if (existing?.id) return existing.id;
+      const needsPay = tournamentPaymentRequired && tournamentEntryFeeCents > 0;
+      const { data: inserted, error: regErr } = await admin
+        .from("club_champs_registrations")
+        .insert({
+          champ_id: tournamentId,
+          club_member_id: memberId,
+          status: needsPay ? "pending_payment" : "paid",
+          invited_by_admin: true,
+          fee_paid_cents: 0,
+        })
+        .select("id")
+        .single();
+      if (regErr) {
+        console.error("[bulk-register-visitors] registration insert failed:", regErr);
+        return null;
+      }
+      return inserted.id;
+    } catch (err) {
+      console.error("[bulk-register-visitors] ensureRegistration error:", err);
+      return null;
     }
   }
 
@@ -424,6 +464,7 @@ Deno.serve(async (req) => {
         row.status = "already_member";
         row.user_id = sameClub.user_id;
         row.club_member_id = sameClub.id;
+        if (!dryRun) await ensureRegistration(sameClub.id);
         results.push(row);
         continue;
       }
@@ -532,6 +573,7 @@ Deno.serve(async (req) => {
       row.user_id = userId;
       row.club_member_id = inserted.id;
       row.status = createdNew ? "created" : "linked_visitor";
+      await ensureRegistration(inserted.id);
 
       // 6b. Confirmed NSA identity → register as member of their home NSA club too.
       const nsaHomeClubId = e.nsa_home_club_id ? String(e.nsa_home_club_id).trim() : null;
@@ -603,6 +645,71 @@ Deno.serve(async (req) => {
       row.status = "error";
       row.message = err?.message || String(err);
       results.push(row);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Second pass: pair partners for doubles tournaments. Match each
+  // entrant's partner_name against another imported row by fuzzy name
+  // (tolerates surname particles like "van den"). If both sides have a
+  // tournament registration, link them via partner_member_id and mark
+  // partner_confirmed=true so the pair is treated as accepted.
+  // ---------------------------------------------------------------
+  if (!dryRun && tournamentId && tournamentMatchType === "doubles") {
+    try {
+      const paired = new Set<string>();
+      const rowByIndex = new Map<number, RowResult>();
+      for (const r of results) rowByIndex.set(r.index, r);
+
+      for (let i = 0; i < entrants.length; i++) {
+        const e = entrants[i];
+        const partnerName = e.partner_name ? String(e.partner_name).trim() : "";
+        if (!partnerName) continue;
+        const selfRow = rowByIndex.get(i);
+        if (!selfRow?.club_member_id) continue;
+        if (paired.has(selfRow.club_member_id)) continue;
+
+        const pTokens = nameTokens(partnerName);
+        if (pTokens.length === 0) continue;
+        const pSig = significantTokens(pTokens);
+
+        // Find a partner among other entrants by name similarity.
+        let matchRow: RowResult | null = null;
+        for (let j = 0; j < entrants.length; j++) {
+          if (j === i) continue;
+          const other = entrants[j];
+          const otherRow = rowByIndex.get(j);
+          if (!otherRow?.club_member_id) continue;
+          if (otherRow.club_member_id === selfRow.club_member_id) continue;
+          const otherTokens = nameTokens(other.first_name || "", other.last_name || "");
+          if (otherTokens.length === 0) continue;
+          const otherSig = significantTokens(otherTokens);
+          const hasFirst = pTokens.some((f) => otherTokens.some((t) => tokenLooksSame(f, t)));
+          const hasLast = pSig.some((l) => otherSig.some((t) => tokenLooksSame(l, t)));
+          if (hasFirst && hasLast) { matchRow = otherRow; break; }
+        }
+        if (!matchRow?.club_member_id) continue;
+
+        const updates = [
+          admin.from("club_champs_registrations")
+            .update({ partner_member_id: matchRow.club_member_id, partner_confirmed: true })
+            .eq("champ_id", tournamentId)
+            .eq("club_member_id", selfRow.club_member_id),
+          admin.from("club_champs_registrations")
+            .update({ partner_member_id: selfRow.club_member_id, partner_confirmed: true })
+            .eq("champ_id", tournamentId)
+            .eq("club_member_id", matchRow.club_member_id),
+        ];
+        const [a, b] = await Promise.all(updates);
+        if (a.error) console.error("[bulk-register-visitors] pair update A failed:", a.error);
+        if (b.error) console.error("[bulk-register-visitors] pair update B failed:", b.error);
+        if (!a.error && !b.error) {
+          paired.add(selfRow.club_member_id);
+          paired.add(matchRow.club_member_id);
+        }
+      }
+    } catch (err) {
+      console.error("[bulk-register-visitors] partner pairing pass failed:", err);
     }
   }
 

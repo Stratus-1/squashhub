@@ -186,10 +186,16 @@ export default function ClubChampsView() {
 
   const isCrossLeague = (champ as any)?.round_format === "cross_league";
 
+  const leagueFormatsCfg: Record<string, string> = ((champ as any)?.league_formats as Record<string, string>) || {};
   const isSwissMode = (champ as any)?.round_format === "swiss" || (champ as any)?.scoring_mode === "swiss";
+  const isSwissForLeague = (gn: number) => {
+    const perLeague = leagueFormatsCfg?.[String(gn)];
+    if (perLeague) return perLeague === "swiss";
+    return isSwissMode;
+  };
   const swissPoolsCfg: Record<string, number> = ((champ as any)?.swiss_pools as Record<string, number>) || {};
   const poolCountFor = (gn: number) =>
-    isSwissMode ? Math.max(1, Number(swissPoolsCfg[String(gn)]) || 1) : 1;
+    isSwissForLeague(gn) ? Math.max(1, Number(swissPoolsCfg[String(gn)]) || 1) : 1;
   const poolLabel = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
 
   // Resolve a match's pool number. Prefers persisted pool_number, else derives
@@ -217,7 +223,7 @@ export default function ClubChampsView() {
   const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
     let groupEntries = entries.filter((e: any) => e.group_number === groupNum);
     // Pool-scoped filtering (Swiss with multiple pools per league).
-    if (poolNumber != null && isSwissMode) {
+    if (poolNumber != null && isSwissForLeague(groupNum)) {
       const poolCount = poolCountFor(groupNum);
       const poolMap = assignPools(entries as SwissEntry[], groupNum, poolCount, isDoubles);
       groupEntries = groupEntries.filter(
@@ -969,7 +975,7 @@ export default function ClubChampsView() {
 
 
   const swissControlsFor = (groupNumber: number) => {
-    if (!isSwiss || !canManage) return null;
+    if (!isSwissForLeague(groupNumber) || !canManage) return null;
     const poolCount = Math.max(1, Number(swissPools[String(groupNumber)]) || 1);
     const targetRounds = Math.max(1, Number(swissRounds[String(groupNumber)]) || 0);
     const isDoubles = (champ as any).match_type === "doubles";

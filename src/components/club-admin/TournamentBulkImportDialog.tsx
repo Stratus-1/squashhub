@@ -271,6 +271,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
             partner_name: r.partner_name || null,
             nsa_home_club_id: r.nsa_home_club_id || null,
             nsa_number: r.nsa_number || null,
+            nsa_ignored: !!r.nsa_ignored,
           })),
         },
       });
@@ -291,6 +292,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
               magic_link: res.magic_link,
               email_queued: res.email_queued,
               message: res.message,
+              nsa_candidates: res.nsa_candidates ?? r.nsa_candidates,
             };
           });
         });

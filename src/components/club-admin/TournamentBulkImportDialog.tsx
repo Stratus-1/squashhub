@@ -94,7 +94,16 @@ function parsePaste(text: string): Row[] {
     parts = parts.map((p) => p.trim());
     if (parts.length < 2) continue;
     // Skip a header row
-    if (/first[_\s]?name/i.test(parts[0]) || /email/i.test(parts[0])) continue;
+    if (/first[_\s]?name/i.test(parts[0]) || /^email$/i.test(parts[0])) continue;
+
+    // Auto-detect: if the SECOND column looks like an email, the first column
+    // is a full name that must be split into first + last.
+    if (parts.length >= 2 && parts[1].includes("@")) {
+      const full = parts[0].trim().split(/\s+/);
+      const first = full.shift() || "";
+      const last = full.join(" ");
+      parts = [first, last, ...parts.slice(1)];
+    }
 
     const [first = "", last = "", email = "", phone = "", gender = "", homeClub = "", division = "", partner = ""] = parts;
     if (!email.includes("@")) continue;

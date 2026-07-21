@@ -163,21 +163,61 @@ Deno.serve(async (req) => {
     ? `https://www.squashhub.co.za/auth/callback?tenant=${encodeURIComponent(subdomain)}`
     : `https://www.squashhub.co.za/auth/callback`;
 
-  // Optional tournament context for email body.
+  // Optional tournament context for email body + auto-registration.
   let tournamentName: string | null = null;
   let tournamentStart: string | null = null;
+  let tournamentEntryFeeCents = 0;
+  let tournamentPaymentRequired = false;
+  let tournamentMatchType: string | null = null;
   if (tournamentId) {
     const { data: t } = await admin
       .from("club_champs")
-      .select("name, start_date, start_time")
+      .select("name, start_date, start_time, entry_fee_cents, payment_required, match_type")
       .eq("id", tournamentId)
       .maybeSingle();
     if (t) {
       tournamentName = t.name || null;
+      tournamentEntryFeeCents = Number((t as any).entry_fee_cents || 0);
+      tournamentPaymentRequired = !!(t as any).payment_required;
+      tournamentMatchType = (t as any).match_type || null;
       const parts: string[] = [];
       if (t.start_date) parts.push(t.start_date);
       if (t.start_time) parts.push(String(t.start_time).slice(0, 5));
       tournamentStart = parts.length ? parts.join(" at ") : null;
+    }
+  }
+
+  // Helper: create (or return existing) tournament registration for a member.
+  async function ensureRegistration(memberId: string): Promise<string | null> {
+    if (!tournamentId || !memberId) return null;
+    try {
+      const { data: existing } = await admin
+        .from("club_champs_registrations")
+        .select("id")
+        .eq("champ_id", tournamentId)
+        .eq("club_member_id", memberId)
+        .maybeSingle();
+      if (existing?.id) return existing.id;
+      const needsPay = tournamentPaymentRequired && tournamentEntryFeeCents > 0;
+      const { data: inserted, error: regErr } = await admin
+        .from("club_champs_registrations")
+        .insert({
+          champ_id: tournamentId,
+          club_member_id: memberId,
+          status: needsPay ? "pending_payment" : "paid",
+          invited_by_admin: true,
+          fee_paid_cents: 0,
+        })
+        .select("id")
+        .single();
+      if (regErr) {
+        console.error("[bulk-register-visitors] registration insert failed:", regErr);
+        return null;
+      }
+      return inserted.id;
+    } catch (err) {
+      console.error("[bulk-register-visitors] ensureRegistration error:", err);
+      return null;
     }
   }
 

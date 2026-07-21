@@ -2113,6 +2113,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             scoring_mode: scoringMode,
             swiss_pools: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissPools : null,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
+            expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats && roundFormat !== "cross_league" ? leagueFormats : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,

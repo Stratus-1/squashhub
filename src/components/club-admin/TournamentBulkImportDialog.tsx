@@ -150,6 +150,15 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
         setDone(false);
       }
       setPasteText("");
+    }
+  }, [open, champ?.id]);
+
+  // Persist imported rows whenever they change.
+  useEffect(() => {
+    if (open) persistRows(champ?.id, rows);
+  }, [rows, open, champ?.id]);
+
+
 
   const isDoubles = champ?.match_type === "doubles";
   const validRows = useMemo(

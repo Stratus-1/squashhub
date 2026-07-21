@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Trash2, MessageCircle, Copy, Upload } from "lucide-react";
+import { Loader2, Plus, Trash2, MessageCircle, Copy, Upload, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -576,19 +576,24 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
             </table>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <Button size="sm" variant="outline" onClick={() => setRows((rs) => [...rs, newRow()])}>
               <Plus className="w-3 h-3 mr-1" /> Add row
             </Button>
-            {pendingRows.length > 0 && (
-              <Button size="sm" variant="outline" onClick={runPreview} disabled={previewing || pendingRows.length === 0}>
-                {previewing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
-                Check matches ({pendingRows.length})
-              </Button>
-            )}
             {done && (
               <Button size="sm" variant="outline" onClick={copyCsv}>
                 <Copy className="w-3 h-3 mr-1" /> Copy results CSV
+              </Button>
+            )}
+            {pendingRows.length > 0 && (
+              <Button
+                size="sm"
+                onClick={runPreview}
+                disabled={previewing || pendingRows.length === 0}
+                className="ml-auto bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500 hover:from-fuchsia-600 hover:via-purple-600 hover:to-indigo-600 text-white shadow-md shadow-purple-500/30 border-0"
+              >
+                {previewing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                Check matches ({pendingRows.length})
               </Button>
             )}
           </div>

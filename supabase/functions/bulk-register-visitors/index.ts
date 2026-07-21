@@ -49,6 +49,9 @@ interface RowResult {
   magic_link?: string;
   email_queued?: boolean;
   message?: string;
+  phone?: string | null;
+  division?: string | null;
+  partner_name?: string | null;
 }
 
 Deno.serve(async (req) => {
@@ -135,7 +138,7 @@ Deno.serve(async (req) => {
     const partnerName = e.partner_name ? String(e.partner_name).trim() : null;
     const fullName = `${first} ${last}`.trim();
 
-    const row: RowResult = { index: i, email, name: fullName, status: "error" };
+    const row: RowResult = { index: i, email, name: fullName, status: "error", phone, division, partner_name: partnerName };
 
     if (!email || !email.includes("@") || !first || !last) {
       row.message = "Missing name or email";
@@ -318,6 +321,60 @@ Deno.serve(async (req) => {
     errors: results.filter((r) => r.status === "error").length,
     emails_queued: results.filter((r) => r.email_queued).length,
   };
+
+  // Send an admin-copy summary email to the club contact so admins can see who was emailed.
+  if (!dryRun) {
+    try {
+      const adminEmail = (club as any).contact_email as string | null;
+      // Also include the importing admin's email if we can resolve it.
+      let importerEmail: string | null = null;
+      try {
+        const { data: authUser } = await admin.auth.admin.getUserById(callerId);
+        importerEmail = authUser?.user?.email || null;
+      } catch { /* ignore */ }
+
+      const recipients = Array.from(new Set([adminEmail, importerEmail].filter(Boolean))) as string[];
+      const entriesPayload = results.map((r) => ({
+        name: r.name,
+        email: r.email,
+        phone: r.phone || undefined,
+        status: r.status,
+        division: r.division || undefined,
+        partner: r.partner_name || undefined,
+        emailed: !!r.email_queued,
+        message: r.message || undefined,
+      }));
+
+      for (const to of recipients) {
+        const emailBody = {
+          templateName: "tournament-entry-import-summary",
+          recipientEmail: to,
+          idempotencyKey: `tournament-import-summary-${tournamentId || clubId}-${Date.now()}-${to}`,
+          templateData: {
+            clubName,
+            tournamentName: tournamentName || "the tournament",
+            importedBy: importerEmail || undefined,
+            summary,
+            entries: entriesPayload,
+          },
+        };
+        try {
+          await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify(emailBody),
+          });
+        } catch (err) {
+          console.error("[bulk-register-visitors] admin summary send failed:", err);
+        }
+      }
+    } catch (err) {
+      console.error("[bulk-register-visitors] admin summary block error:", err);
+    }
+  }
 
   return json({ ok: true, dryRun, summary, results });
 });

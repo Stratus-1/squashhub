@@ -1,40 +1,58 @@
-## Recommendation
+## Goal
 
-Keep it as **one tournament** with a per-league round format, rather than two separate tournaments. Court booking, day schedule, playoffs date, and cross-league court rotation already live at the tournament level — splitting into two tournaments would force manual court coordination and duplicate registrations/playoffs/reminders.
+Bulk-register the doubles entrants at Nelspruit and email each new visitor a Nelspruit-branded confirmation with a one-click magic-link. Reusable as more entries come in.
 
-The wizard already treats leagues as independent groups (per-league Swiss pools, per-league Bells time caps, per-league round-robin generation). Adding a per-league **format** extends the same pattern.
+## How sign-in works for the entrant
 
-## What Nelspruit will see
+Admin does the registration — the entrant just clicks a link.
 
-In the wizard's **Round format** step:
+1. Admin pastes/imports the list in the dialog.
+2. Server creates the auth user + Nelspruit `club_members` visitor row (partner, division, home club all filled in) before the email is sent.
+3. Entrant gets an email from Nelspruit Squash Club with a **Sign in to Nelspruit** button.
+4. Clicking it signs them in — no registration form, no password. They land on the Nelspruit page already recognised as a visitor for this tournament.
+5. No password is set. Magic-link only. Future logins: they request another magic-link from the login page.
 
-- Existing dropdown stays as the tournament **default** format.
-- New toggle: *"Use a different format for some leagues"*.
-- When on, a small table lists each configured league with its own format dropdown (single round-robin, double round-robin, Swiss). Swiss pool/round inputs appear only next to leagues set to Swiss.
-- Capacity calculator and schedule preview already loop per-league — they switch on the chosen per-league format instead of the tournament default.
+## Approach
 
-Playoffs, court rotation, break minutes, and finals date remain tournament-wide (unchanged). Bells stays tournament-wide for now — we'll revisit per-league Bells when it's needed.
+### 1. Edge function `bulk-register-visitors` (admin-only)
 
-## Technical details
+Input: `club_id`, `tournament_id`, entrants `[{ first_name, last_name, email, phone, gender, home_club_name, division, partner_name }]`.
 
-**Data model (`club_champs`)**
+Per entrant:
+1. **Match existing accounts** (`lower(email)` / digits-only phone / `lower(name)`).
+2. **Already a Nelspruit member** → skip, status `already_member`.
+3. **Exists at another NSA club** → insert a Nelspruit `club_members` visitor row reusing the same `user_id`. Status `linked_visitor`. Still send the confirmation email.
+4. **Brand new** → create auth user (email pre-confirmed, no password) + profile + Nelspruit visitor row. Status `created`.
+5. Generate a magic-link with `admin.auth.admin.generateLink({ type: 'magiclink' })`.
+6. Enqueue confirmation email via `send-transactional-email` using the new template below, passing the magic-link, tournament name, partner, and division.
 
-- Add `league_formats jsonb` — map of `group_number` (string) → `"single_round_robin" | "double_round_robin" | "swiss"`. Legacy tournaments fall back to `round_format`.
-- `cross_league` remains tournament-wide and mutually exclusive with per-league mixing (the toggle is hidden when default is `cross_league`).
-- `swiss_pools` / `swiss_rounds` already keyed by league — only applied where that league's format is `swiss`.
+Returns per-row results the UI renders.
 
-**Code changes**
+### 2. Email template `tournament-entry-confirmation.tsx`
 
-- `src/components/club-admin/ClubChampsTab.tsx`
-  - Add `leagueFormats` state + `formatForLeague(gi)` helper that falls back to top-level `roundFormat`.
-  - Replace `roundFormat === "swiss"` / `=== "double_round_robin"` inside the per-league generation loop (~L1373–L1500) and capacity calculator (~L3958–L3979) with `formatForLeague(gi)`.
-  - New UI block under the Round format select: toggle + per-league dropdown table; reuse existing Swiss pools/rounds inputs conditionally.
-  - Persist/restore `league_formats` alongside `swiss_pools` in the save payload and champ-load effect (~L2877).
-- `src/components/club-admin/ChampSchedulePreview.tsx` — accept `leagueFormats` and thread through per-league slot budgets; no new format-specific logic.
-- Migration: add `league_formats jsonb` column on `club_champs` (nullable, default null).
+Nelspruit navy/amber branding. Body: "You're entered in the Nelspruit Doubles Tournament", entry summary (division, partner, start time/venue), big **Sign in to Nelspruit** magic-link button. Registered in the transactional template registry. I'll check `email_domain--check_email_domain_status` first and run infra/scaffold setup only if needed.
 
-**Out of scope**
+### 3. Admin UI: `TournamentBulkImportDialog.tsx` (from `ClubChampsTab`)
 
-- Bells per-league (deferred — flag as follow-up when needed).
-- Playoffs generation, court rotation, bookings creator, invites/emails.
-- Two-tournament cross-coordination — no longer needed.
+- New **Bulk import entrants** button on the tournament editor.
+- Textarea that parses the Google-Form paste (pre-filled with Aam's 15 rows) + **Add row** for one-offs.
+- Each row shows a badge from the cross-match: *Already a Nelspruit member*, *NSA member at Glenwood — will link as visitor*, or *New — will be created*.
+- Editable columns: name, email, phone, division, gender, home club, partner.
+- **Import & email** → calls the edge function → shows per-row status + **Copy CSV** (name, email, magic-link, status).
+- Per row after import: a **Send WhatsApp** icon (opens `wa.me/<phone>` with a pre-filled message including the magic-link) — admin taps it manually, one at a time. No automated Twilio.
+
+### 4. Pre-filled data for Aam
+
+Once approved I'll open the dialog with the 15 rows populated and cross-match already applied. The already-Nelspruit rows get skipped; the ~15 new-or-visitor rows get processed on click.
+
+## Deliverables
+
+- `supabase/functions/bulk-register-visitors/index.ts`
+- `supabase/functions/_shared/transactional-email-templates/tournament-entry-confirmation.tsx` + registry entry
+- `src/components/club-admin/TournamentBulkImportDialog.tsx` + wire-up in `ClubChampsTab.tsx`
+
+## Confirmed with you
+
+- Magic-link email to every new/visitor entrant. ✅
+- WhatsApp = manual per-row `wa.me` click after import. ✅
+- No password fallback — magic-link only. ✅

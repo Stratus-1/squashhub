@@ -28,6 +28,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, useDro
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
+import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
 import { Users as UsersIcon } from "lucide-react";
 import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
@@ -2788,6 +2789,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
   const [registrationsChamp, setRegistrationsChamp] = useState<any | null>(null);
+  const [bulkImportChamp, setBulkImportChamp] = useState<any | null>(null);
 
   const deleteChamp = useMutation({
     mutationFn: async ({ id, withBookings }: { id: string; withBookings: boolean }) => {
@@ -3295,6 +3297,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       <Button variant="outline" size="sm" onClick={() => setRegistrationsChamp(c)}>
                         <UsersIcon className="w-4 h-4 mr-1" /> Registrations
                       </Button>
+                      <Button variant="outline" size="sm" onClick={() => setBulkImportChamp(c)} title="Bulk import entrants & email magic-links">
+                        <Plus className="w-4 h-4 mr-1" /> Import entrants
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => loadChampForEdit(c)}>
                         <Pencil className="w-4 h-4 mr-1" /> Edit
                       </Button>
@@ -3420,6 +3425,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             onOpenChange={(v) => !v && setRegistrationsChamp(null)}
             champ={registrationsChamp}
             clubId={clubId}
+          />
+        )}
+
+        {bulkImportChamp && (
+          <TournamentBulkImportDialog
+            open={!!bulkImportChamp}
+            onOpenChange={(v) => !v && setBulkImportChamp(null)}
+            clubId={clubId}
+            champ={bulkImportChamp}
           />
         )}
       </div>

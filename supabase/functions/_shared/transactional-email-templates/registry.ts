@@ -17,6 +17,7 @@ import { template as subscriptionInvoice } from './subscription-invoice.tsx'
 import { template as arrearsWarning } from './arrears-warning.tsx'
 import { template as stitchOnboardingApplication } from './stitch-onboarding-application.tsx'
 import { template as pendingTopupApproval } from './pending-topup-approval.tsx'
+import { template as tournamentEntryConfirmation } from './tournament-entry-confirmation.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-club-registered': newClubRegistered,
@@ -27,4 +28,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'subscription-invoice': subscriptionInvoice,
   'arrears-warning': arrearsWarning,
   'pending-topup-approval': pendingTopupApproval,
+  'tournament-entry-confirmation': tournamentEntryConfirmation,
 }

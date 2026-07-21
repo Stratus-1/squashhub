@@ -48,6 +48,8 @@ interface Row {
   nsa_ignored?: boolean;
   // result after import
   status?: "already_member" | "linked_visitor" | "created" | "error" | "skipped";
+  registration_id?: string | null;
+  paired_with_member_id?: string | null;
   magic_link?: string;
   email_queued?: boolean;
   message?: string;
@@ -61,6 +63,8 @@ const RESULT_FIELDS: Array<keyof Row> = [
   "nsa_home_club_name",
   "nsa_ignored",
   "status",
+  "registration_id",
+  "paired_with_member_id",
   "magic_link",
   "email_queued",
   "message",
@@ -130,7 +134,7 @@ const HINT_LABELS: Record<NonNullable<Row["hint"]>, { label: string; className: 
 };
 
 const STATUS_LABELS: Record<NonNullable<Row["status"]>, { label: string; className: string }> = {
-  already_member: { label: "Skipped (already member)", className: "bg-slate-200 text-slate-700" },
+  already_member: { label: "Already registered", className: "bg-sky-100 text-sky-800" },
   linked_visitor: { label: "Linked as visitor", className: "bg-amber-100 text-amber-800" },
   created: { label: "Created & emailed", className: "bg-emerald-100 text-emerald-800" },
   error: { label: "Error", className: "bg-red-100 text-red-800" },
@@ -244,8 +248,11 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
     [rows]
   );
   const pendingRows = useMemo(
-    () => validRows.filter((r) => !r.status || r.status === "error" || r.status === "skipped"),
-    [validRows]
+    () =>
+      validRows.filter(
+        (r) => !r.status || r.status === "error" || r.status === "skipped" || (r.status === "already_member" && champ?.id && !r.registration_id)
+      ),
+    [validRows, champ?.id]
   );
 
   function updateRow(key: string, patch: Partial<Row>) {
@@ -371,6 +378,8 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
             return {
               ...r,
               status: res.status,
+              registration_id: res.registration_id ?? r.registration_id,
+              paired_with_member_id: res.paired_with_member_id ?? r.paired_with_member_id,
               magic_link: res.magic_link,
               email_queued: res.email_queued,
               message: res.message,
@@ -506,6 +515,9 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
                             <div className="text-[10px] text-emerald-700">
                               Registered at {r.nsa_home_club_name} · {r.nsa_number}
                             </div>
+                          )}
+                          {r.paired_with_member_id && (
+                            <div className="text-[10px] text-emerald-700">Partner paired</div>
                           )}
                           {r.message && <div className="text-[10px] text-red-700">{r.message}</div>}
                         </div>

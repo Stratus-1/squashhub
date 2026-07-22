@@ -5865,13 +5865,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           <span className="text-xs font-medium w-20 shrink-0">{isAllLeagues ? "All leagues" : `League ${gn}`}</span>
                           <div className="flex items-center gap-1">
                             <Input
+                              key={`slot-${gn}-${groupDurations[String(gn)] ?? ""}-${matchDuration}`}
                               type="number"
                               min={5}
                               max={120}
                               placeholder={String(matchDuration)}
-                              value={groupDurations[String(gn)] ?? ""}
-                              onChange={(e) => {
-                                const v = e.target.value;
+                              defaultValue={groupDurations[String(gn)] ?? ""}
+                              onBlur={(e) => {
+                                const v = e.currentTarget.value;
                                 setGroupDurations((prev) => {
                                   const next = { ...prev };
                                   applyGroups.forEach((g) => {
@@ -5881,6 +5882,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                   return next;
                                 });
                               }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") e.currentTarget.blur();
+                              }}
                               className="h-7 text-xs w-16"
                             />
                             <span className="text-[10px] text-muted-foreground">slot</span>
@@ -5888,14 +5892,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           <span className="text-muted-foreground text-xs">−</span>
                           <div className="flex items-center gap-1">
                             <Input
+                              key={`break-${gn}-${groupBreakMinutes[String(gn)] ?? ""}-${defaultBreakMinutes}`}
                               type="number"
                               min={0}
                               max={30}
                               step={0.5}
                               placeholder={String(defaultBreakMinutes || 0)}
-                              value={groupBreakMinutes[String(gn)] ?? ""}
-                              onChange={(e) => {
-                                const v = e.target.value;
+                              defaultValue={groupBreakMinutes[String(gn)] ?? ""}
+                              onBlur={(e) => {
+                                const v = e.currentTarget.value;
                                 setGroupBreakMinutes((prev) => {
                                   const next = { ...prev };
                                   applyGroups.forEach((g) => {
@@ -5904,6 +5909,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                   });
                                   return next;
                                 });
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") e.currentTarget.blur();
                               }}
                               className="h-7 text-xs w-16"
                             />

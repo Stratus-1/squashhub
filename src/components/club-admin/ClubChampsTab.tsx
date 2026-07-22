@@ -1125,6 +1125,117 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Helper to strip "visitor-" prefix for DB inserts
   const toDbId = (id: string) => id.replace(/^visitor-/, "");
 
+  const syncDoublesRegistrationsForPairs = async (
+    champIdToUse: string,
+    pairs: Array<{ player1Id: string; player2Id: string }>,
+  ) => {
+    if (!champIdToUse || !isDoubles || partnerMode !== "admin") return;
+
+    const desired = new Map<string, string>();
+    pairs.forEach((p) => {
+      if (!p.player1Id || !p.player2Id || p.player1Id === p.player2Id) return;
+      desired.set(p.player1Id, p.player2Id);
+      desired.set(p.player2Id, p.player1Id);
+    });
+
+    const { data: existingRegs, error: fetchErr } = await fromExt("club_champs_registrations")
+      .select("club_member_id, partner_member_id, partner_confirmed, status")
+      .eq("champ_id", champIdToUse);
+    if (fetchErr) throw fetchErr;
+
+    const existingByMember = new Map<string, any>();
+    for (const r of (existingRegs || []) as any[]) existingByMember.set(r.club_member_id, r);
+
+    const inserts: any[] = [];
+    const updates: Array<{ memberId: string; patch: Record<string, any> }> = [];
+
+    for (const [memberId, partnerId] of desired.entries()) {
+      const existing = existingByMember.get(memberId);
+      if (!existing) {
+        inserts.push({
+          champ_id: champIdToUse,
+          club_member_id: memberId,
+          partner_member_id: partnerId,
+          partner_confirmed: true,
+          status: "paid",
+          invited_by_admin: false,
+          fee_paid_cents: 0,
+        });
+      } else if (
+        existing.partner_member_id !== partnerId ||
+        existing.partner_confirmed !== true ||
+        !["paid", "waived"].includes(existing.status)
+      ) {
+        updates.push({
+          memberId,
+          patch: {
+            partner_member_id: partnerId,
+            partner_confirmed: true,
+            status: "paid",
+          },
+        });
+      }
+    }
+
+    // Clear stale partner links that no longer match the admin-built pairs.
+    for (const r of (existingRegs || []) as any[]) {
+      const wantedPartner = desired.get(r.club_member_id);
+      const isStale = r.partner_member_id && (!wantedPartner || wantedPartner !== r.partner_member_id);
+      if (isStale) {
+        updates.push({
+          memberId: r.club_member_id,
+          patch: { partner_member_id: null, partner_confirmed: false },
+        });
+      }
+    }
+
+    if (inserts.length > 0) {
+      const { error } = await fromExt("club_champs_registrations").insert(inserts);
+      if (error) throw error;
+    }
+    for (const u of updates) {
+      const { error } = await fromExt("club_champs_registrations")
+        .update(u.patch)
+        .eq("champ_id", champIdToUse)
+        .eq("club_member_id", u.memberId);
+      if (error) throw error;
+    }
+  };
+
+  const persistDoublesPairsDraft = async (champIdToUse: string, pairs: DoublePair[]) => {
+    const rawIds = pairs.flatMap((p) => [p.player1Id, p.player2Id]).filter(Boolean);
+    const promotedList = rawIds.length > 0 ? await promoteVisitorIds(rawIds) : [];
+    const visitorMap = new Map<string, string>();
+    rawIds.forEach((raw, i) => visitorMap.set(raw, promotedList[i]));
+    const resolveId = (id: string) => (id?.startsWith("visitor-") ? (visitorMap.get(id) || toDbId(id)) : id);
+    const orderIdx = new Map(pairOrder.map((id, i) => [id, i]));
+    const groupCount = Math.max(1, numGroups || 1);
+    const rows = [...pairs]
+      .sort((a, b) => (orderIdx.get(a.id) ?? 1e9) - (orderIdx.get(b.id) ?? 1e9))
+      .map((pair, orderIndex) => {
+        const groupIndex = Math.min(groupCount - 1, Math.max(0, pairGroupAssignments.get(pair.id) ?? 0));
+        return {
+          champ_id: champIdToUse,
+          club_member_id: resolveId(pair.player1Id),
+          partner_member_id: resolveId(pair.player2Id),
+          group_number: groupIndex + 1,
+          order_index: orderIndex,
+        };
+      });
+
+    const { error: deleteErr } = await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
+    if (deleteErr) throw deleteErr;
+    if (rows.length > 0) {
+      const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
+      if (insertErr) throw insertErr;
+    }
+    await syncDoublesRegistrationsForPairs(
+      champIdToUse,
+      rows.map((r) => ({ player1Id: r.club_member_id, player2Id: r.partner_member_id })),
+    );
+    return rows;
+  };
+
   // Promote any `visitor-<uuid>` IDs to real club_members rows (role='visitor')
   // so tournament tables (which only accept club_member_id) can reference them.
   // Idempotent: keyed by club_member_number='visitor:<visitor_id>' so re-selecting

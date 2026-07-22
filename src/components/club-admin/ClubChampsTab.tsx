@@ -6068,12 +6068,17 @@ function PairBuilder({
     ? availablePlayers.filter((m) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()))
     : availablePlayers.filter((m) => m.id !== player1);
 
-  const pool1 = search1.trim()
+  const MAX_VISIBLE = 50;
+  const filtered1 = search1.trim()
     ? basePool1.filter((m) => nameOf(m).includes(search1.trim().toLowerCase()))
     : basePool1;
-  const pool2 = search2.trim()
+  const filtered2 = search2.trim()
     ? basePool2.filter((m) => nameOf(m).includes(search2.trim().toLowerCase()))
     : basePool2;
+  const pool1 = filtered1.slice(0, MAX_VISIBLE);
+  const pool2 = filtered2.slice(0, MAX_VISIBLE);
+  const truncated1 = filtered1.length > MAX_VISIBLE;
+  const truncated2 = filtered2.length > MAX_VISIBLE;
 
   const handleAdd = () => {
     if (player1 && player2 && player1 !== player2) {

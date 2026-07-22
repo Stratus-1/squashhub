@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -294,6 +294,7 @@ export function MarkerSetup({ onStart }: Props) {
   const [source, setSource] = useState<MatchSource>("manual");
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
   const [pendingAutoStart, setPendingAutoStart] = useState(false);
+  const skipNextSourceResetRef = useRef(false);
   const [isDoubles, setIsDoubles] = useState(false);
 
   const [playerA, setPlayerA] = useState<PlayerInfo>(emptyPlayer());
@@ -602,10 +603,13 @@ export function MarkerSetup({ onStart }: Props) {
     }
   }, [source, selectedSourceId, tournamentMatches, todayBookings, clubName]);
 
-  // Reset when source changes
   useEffect(() => {
+    if (skipNextSourceResetRef.current) {
+      skipNextSourceResetRef.current = false;
+      return;
+    }
     setSelectedSourceId("");
-    
+
     setPlayerA(emptyPlayer());
     setPlayerB(emptyPlayer());
     setPartnerA(emptyPlayer());
@@ -630,6 +634,7 @@ export function MarkerSetup({ onStart }: Props) {
           navigate(`/bells-marker/${matchId}`, { replace: true });
           return;
         }
+        if (source !== "tournament") skipNextSourceResetRef.current = true;
         setSource("tournament");
         setSelectedSourceId(matchId);
         setPendingAutoStart(true);
@@ -640,6 +645,7 @@ export function MarkerSetup({ onStart }: Props) {
     } else if (src === "booking" && todayBookings.length > 0) {
       const exists = todayBookings.find((b) => b.id === matchId);
       if (exists) {
+        if (source !== "booking") skipNextSourceResetRef.current = true;
         setSource("booking");
         setSelectedSourceId(matchId);
         setPendingAutoStart(true);

@@ -2249,10 +2249,29 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
 
       // Second pass: anything left unscheduled falls into any free slot so it
-      // doesn't show as TBD. This is a soft fallback — the first pass already
-      // spread same-entity matches across different days where possible.
-      for (const match of allMatches) {
+      // doesn't show as TBD. Iterate in interleaved order (not per-league) so
+      // the fallback also interleaves leagues, and still respect concurrent
+      // player conflicts so a pair isn't double-booked at the same time.
+      for (const match of interleaved) {
         if (match.isBye || match.date) continue;
+        const playersA = getPlayersForEntity(match.entityA);
+        const playersB = getPlayersForEntity(match.entityB);
+        const allPlayers = [...playersA, ...playersB];
+        let placed = false;
+        for (const si of slotOrder) {
+          if (usedSlots.has(si)) continue;
+          const slot = allSlots[si];
+          if (!allPlayers.every((pid) => isEntityFree(pid, slot))) continue;
+          match.date = slot.date;
+          match.time = slot.time;
+          match.courtId = slot.courtId;
+          usedSlots.add(si);
+          allPlayers.forEach((pid) => markEntityBusy(pid, slot));
+          placed = true;
+          break;
+        }
+        if (placed) continue;
+        // Absolute last resort: any free slot even with a conflict.
         for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];

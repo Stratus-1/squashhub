@@ -361,33 +361,63 @@ export function MarkerSetup({ onStart }: Props) {
 
       return (data || [])
         .filter((m) => clubChampIds.has(m.champ_id))
-        .map((m) => {
-          const champ = champMap.get(m.champ_id);
-          const pA = memberMap.get(m.player_a_member_id);
-          const pB = memberMap.get(m.player_b_member_id);
-          const ptA = m.partner_a_member_id ? memberMap.get(m.partner_a_member_id) : null;
-          const ptB = m.partner_b_member_id ? memberMap.get(m.partner_b_member_id) : null;
-          return {
-            ...m,
-            champName: champ?.name || "Tournament",
-            matchType: champ?.match_type || "singles",
-            scoringMode: champ?.scoring_mode || null,
-            playerAName: pA?.name || "Player A",
-            playerBName: pB?.name || "Player B",
-            playerANumber: pA?.club_member_number || "",
-            playerBNumber: pB?.club_member_number || "",
-            partnerAName: ptA?.name || null,
-            partnerBName: ptB?.name || null,
-            partnerANumber: ptA?.club_member_number || "",
-            partnerBNumber: ptB?.club_member_number || "",
-            partnerAMemberId: m.partner_a_member_id,
-            partnerBMemberId: m.partner_b_member_id,
-          };
-        });
+        .map((m) => normalizeTournamentMatch(m, champMap.get(m.champ_id), memberMap));
     },
     enabled: !!clubId,
     staleTime: 2 * 60 * 1000,
   });
+
+  const [directTournamentMatch, setDirectTournamentMatch] = useState<any | null>(null);
+  const tournamentMatchOptions = useMemo(() => {
+    if (!directTournamentMatch) return tournamentMatches;
+    if (tournamentMatches.some((m: any) => m.id === directTournamentMatch.id)) return tournamentMatches;
+    return [directTournamentMatch, ...tournamentMatches];
+  }, [directTournamentMatch, tournamentMatches]);
+
+  function normalizeTournamentMatch(m: any, champ?: any, memberMap?: Map<string, any>) {
+    const pA = memberMap?.get(m.player_a_member_id) || m.player_a || null;
+    const pB = memberMap?.get(m.player_b_member_id) || m.player_b || null;
+    const ptA = memberMap?.get(m.partner_a_member_id) || m.partner_a || null;
+    const ptB = memberMap?.get(m.partner_b_member_id) || m.partner_b || null;
+    return {
+      ...m,
+      champName: champ?.name || "Tournament",
+      matchType: champ?.match_type || "singles",
+      scoringMode: champ?.scoring_mode || null,
+      playerAName: pA?.name || "Player A",
+      playerBName: pB?.name || "Player B",
+      playerANumber: pA?.club_member_number || "",
+      playerBNumber: pB?.club_member_number || "",
+      partnerAName: ptA?.name || "",
+      partnerBName: ptB?.name || "",
+      partnerANumber: ptA?.club_member_number || "",
+      partnerBNumber: ptB?.club_member_number || "",
+      partnerAMemberId: m.partner_a_member_id,
+      partnerBMemberId: m.partner_b_member_id,
+    };
+  }
+
+  async function loadTournamentMatchById(matchId: string) {
+    const { data, error } = await fromExt("club_champs_matches")
+      .select(`
+        id, group_number, round_number, scheduled_date, scheduled_time, status,
+        champ_id, court_id, handicap_a, handicap_b,
+        player_a_member_id, player_b_member_id,
+        partner_a_member_id, partner_b_member_id,
+        club_champs!inner(id, name, club_id, match_type, scoring_mode),
+        player_a:player_a_member_id(id, name, club_member_number),
+        player_b:player_b_member_id(id, name, club_member_number),
+        partner_a:partner_a_member_id(id, name, club_member_number),
+        partner_b:partner_b_member_id(id, name, club_member_number)
+      `)
+      .eq("id", matchId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const row = data as any;
+    const champ = Array.isArray(row.club_champs) ? row.club_champs[0] : row.club_champs;
+    if (clubId && champ?.club_id !== clubId) return null;
+    return normalizeTournamentMatch(row, champ);
+  }
 
   // Fetch upcoming bookings (today + next 7 days)
   const today = format(new Date(), "yyyy-MM-dd");
@@ -549,7 +579,7 @@ export function MarkerSetup({ onStart }: Props) {
 
   useEffect(() => {
     if (source === "tournament" && selectedSourceId) {
-      const match = tournamentMatches.find((m) => m.id === selectedSourceId);
+      const match = tournamentMatchOptions.find((m: any) => m.id === selectedSourceId);
       if (match) {
         setPlayerA({
           name: match.playerAName,
@@ -567,7 +597,7 @@ export function MarkerSetup({ onStart }: Props) {
 
         const hasDoubles = match.matchType === "doubles" || match.matchType === "mixed";
         setIsDoubles(hasDoubles);
-        if (hasDoubles && match.partnerAMemberId) {
+        if (hasDoubles) {
           setPartnerA({
             name: match.partnerAName || "",
             number: match.partnerANumber || "",
@@ -580,6 +610,9 @@ export function MarkerSetup({ onStart }: Props) {
             club: clubName,
             clubMemberId: match.partnerBMemberId || undefined,
           });
+        } else {
+          setPartnerA(emptyPlayer());
+          setPartnerB(emptyPlayer());
         }
       }
     } else if (source === "booking" && selectedSourceId) {
@@ -601,7 +634,7 @@ export function MarkerSetup({ onStart }: Props) {
         setIsDoubles(false);
       }
     }
-  }, [source, selectedSourceId, tournamentMatches, todayBookings, clubName]);
+  }, [source, selectedSourceId, tournamentMatchOptions, todayBookings, clubName]);
 
   useEffect(() => {
     if (skipNextSourceResetRef.current) {
@@ -627,9 +660,13 @@ export function MarkerSetup({ onStart }: Props) {
     const src = searchParams.get("source");
     const matchId = searchParams.get("matchId") || searchParams.get("bookingId");
     if (!src || !matchId) return;
-    if (src === "tournament" && tournamentMatches.length > 0) {
-      const exists = tournamentMatches.find((m) => m.id === matchId);
-      if (exists) {
+    let cancelled = false;
+    const run = async () => {
+      if (src === "tournament") {
+        let exists = tournamentMatchOptions.find((m: any) => m.id === matchId) || null;
+        if (!exists) exists = await loadTournamentMatchById(matchId);
+        if (cancelled || !exists) return;
+        setDirectTournamentMatch(exists);
         if (exists.scoringMode === "time_capped_points") {
           navigate(`/bells-marker/${matchId}`, { replace: true });
           return;
@@ -641,8 +678,7 @@ export function MarkerSetup({ onStart }: Props) {
         searchParams.delete("source");
         searchParams.delete("matchId");
         setSearchParams(searchParams, { replace: true });
-      }
-    } else if (src === "booking" && todayBookings.length > 0) {
+      } else if (src === "booking" && todayBookings.length > 0) {
       const exists = todayBookings.find((b) => b.id === matchId);
       if (exists) {
         if (source !== "booking") skipNextSourceResetRef.current = true;
@@ -654,7 +690,10 @@ export function MarkerSetup({ onStart }: Props) {
         setSearchParams(searchParams, { replace: true });
       }
     }
-  }, [searchParams, tournamentMatches, todayBookings]);
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [searchParams, tournamentMatchOptions, todayBookings, clubId]);
 
 
   const playersFromSource = (source === "tournament" || source === "booking") && !!selectedSourceId;
@@ -677,10 +716,10 @@ export function MarkerSetup({ onStart }: Props) {
     source,
     sourceId: selectedSourceId || undefined,
     handicapA: source === "tournament" && selectedSourceId
-      ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_a) || 0
+      ? Number((tournamentMatchOptions.find((m: any) => m.id === selectedSourceId) as any)?.handicap_a) || 0
       : undefined,
     handicapB: source === "tournament" && selectedSourceId
-      ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_b) || 0
+      ? Number((tournamentMatchOptions.find((m: any) => m.id === selectedSourceId) as any)?.handicap_b) || 0
       : undefined,
     clubId: clubId || undefined,
   });
@@ -758,10 +797,10 @@ export function MarkerSetup({ onStart }: Props) {
           {/* Tournament list */}
           {source === "tournament" && (
             <div className="max-h-52 overflow-y-auto space-y-1">
-              {tournamentMatches.length === 0 ? (
+              {tournamentMatchOptions.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-3">No scheduled tournament matches</p>
               ) : (
-                tournamentMatches.map((m) => {
+                tournamentMatchOptions.map((m) => {
                   const isSelected = selectedSourceId === m.id;
                   const dateStr = m.scheduled_date ? format(new Date(m.scheduled_date), "dd MMM") : "";
                   const doublesLabel = m.matchType === "doubles" || m.matchType === "mixed" ? " (Doubles)" : "";

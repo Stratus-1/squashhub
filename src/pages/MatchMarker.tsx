@@ -179,6 +179,34 @@ export default function MatchMarker() {
     setConfig(null);
   };
 
+  const handleScratch = async () => {
+    // If this was a tournament match, roll the club_champs_matches row back
+    // to a pending/scheduled state and clear any recorded score so it appears
+    // in the "to be marked" list and standings recompute correctly.
+    if (config?.source === "tournament" && config.sourceId) {
+      try {
+        await fromExt("club_champs_matches")
+          .update({
+            score: null,
+            game_scores: null,
+            winner_member_id: null,
+            side_a_points: null,
+            side_b_points: null,
+            forfeit_member_id: null,
+            status: "scheduled",
+          } as any)
+          .eq("id", config.sourceId);
+        queryClient.invalidateQueries({ queryKey: ["club-champ-matches"] });
+        queryClient.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["my-champ-matches-events"] });
+        queryClient.invalidateQueries({ queryKey: ["club-champs-all-entries"] });
+      } catch (e) {
+        console.warn("Could not reset tournament match on scratch:", e);
+      }
+    }
+    resetMatch();
+  };
+
   const handleMatchComplete = async (result: {
     games: GameScore[];
     winnerId: "a" | "b";

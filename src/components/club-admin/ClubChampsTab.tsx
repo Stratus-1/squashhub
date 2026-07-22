@@ -747,10 +747,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     enabled: !!clubId,
   });
 
-  // Unique visitor clubs for filter
+  // Unique home clubs for filter — union of visitor home clubs AND
+  // out-of-club members (imported entrants whose home_club_name is set).
   const visitorClubs = useMemo(() => {
-    return [...new Set(allVisitors.map((v) => v.home_club_name))].sort();
-  }, [allVisitors]);
+    const set = new Set<string>();
+    for (const v of allVisitors) if (v?.home_club_name) set.add(v.home_club_name);
+    for (const m of (members || []) as any[]) if (m?.home_club_name) set.add(m.home_club_name);
+    return [...set].sort();
+  }, [allVisitors, members]);
+
+  // Per-club counts across visitors + out-of-club members (for the badge).
+  const homeClubCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const v of allVisitors) if (v?.home_club_name) counts[v.home_club_name] = (counts[v.home_club_name] || 0) + 1;
+    for (const m of (members || []) as any[]) if (m?.home_club_name) counts[m.home_club_name] = (counts[m.home_club_name] || 0) + 1;
+    return counts;
+  }, [allVisitors, members]);
 
   // Filter visitors by gender and selected clubs
   const filteredVisitors = useMemo(() => {
@@ -1192,9 +1204,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Admins can shortlist any club member (gender filter is only used for self-registration
   // eligibility and league-pre-fill — not for the manual invite list).
   const allSelectablePlayers = useMemo(() => {
-    const sortedMembers = [...members].sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
+    let baseMembers = [...members];
+    // When the admin has narrowed by home club, hide out-of-club members whose
+    // home club isn't in the selected set. Local members (no home_club_name)
+    // are always kept.
+    if (selectedVisitorClubs.size > 0) {
+      baseMembers = baseMembers.filter((m: any) => {
+        const hc = m?.home_club_name;
+        if (!hc) return true;
+        return selectedVisitorClubs.has(hc);
+      });
+    }
+    const sortedMembers = baseMembers.sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
     return [...sortedMembers, ...visitorAsMembers] as any[];
-  }, [members, visitorAsMembers]);
+  }, [members, visitorAsMembers, selectedVisitorClubs]);
 
   const selectedPlayers = useMemo(
     () => allSelectablePlayers.filter((m: any) => selectedPlayerIds.has(m.id)),
@@ -3904,11 +3927,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
 
 
-            {includeVisitors && visitorClubs.length > 0 && (
+            {visitorClubs.length > 0 && (
               <div className="space-y-2 rounded-lg border p-3">
                 <Label className="text-sm font-medium">Filter by Home Club</Label>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Leave all unchecked to include visitors from all clubs ({filteredVisitors.length} visitor{filteredVisitors.length !== 1 ? "s" : ""} matching)
+                  Leave all unchecked to include entrants from all clubs ({(homeClubCounts && Object.values(homeClubCounts).reduce((a, b) => a + b, 0)) || 0} out-of-club entrant{(Object.values(homeClubCounts).reduce((a, b) => a + b, 0)) !== 1 ? "s" : ""} across {visitorClubs.length} club{visitorClubs.length !== 1 ? "s" : ""})
                 </p>
                 <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
                   {visitorClubs.map((club) => (
@@ -3923,7 +3946,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       />
                       <span className="text-sm">{club}</span>
                       <Badge variant="secondary" className="ml-auto text-[10px]">
-                        {allVisitors.filter((v) => v.home_club_name === club).length}
+                        {homeClubCounts[club] || 0}
                       </Badge>
                     </label>
                   ))}

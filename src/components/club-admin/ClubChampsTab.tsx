@@ -968,19 +968,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       if (isDoubles) {
         if (doublesPairs.length === 0) return;
-        const rows = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
-          groupPairs.map((pair, orderIndex) => ({
-            champ_id: champIdToUse,
-            club_member_id: resolveId(pair.player1Id),
-            partner_member_id: resolveId(pair.player2Id),
-            group_number: gi + 1,
-            order_index: orderIndex,
-          }))
-        );
-        const { error: deleteErr } = await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
-        if (deleteErr) throw deleteErr;
-        const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
-        if (insertErr) throw insertErr;
+        const rows = await persistDoublesPairsDraft(champIdToUse, doublesPairs);
         allocatedMemberIds = rows.flatMap((r: any) => [r.club_member_id, r.partner_member_id]).filter(Boolean);
       } else {
         if (selectedPlayerIds.size === 0) return;
@@ -1005,9 +993,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // separate payment / registration step is required.
       const uniqueIds = Array.from(new Set(allocatedMemberIds));
       if (uniqueIds.length > 0) {
+        const pairedPartnerByMember = isDoubles && partnerMode === "admin"
+          ? new Map(
+              (groups as DoublePair[][]).flatMap((groupPairs) =>
+                groupPairs.flatMap((pair) => {
+                  const p1 = resolveId(pair.player1Id);
+                  const p2 = resolveId(pair.player2Id);
+                  return [[p1, p2], [p2, p1]] as [string, string][];
+                })
+              )
+            )
+          : new Map<string, string>();
         const regRows = uniqueIds.map((memberId) => ({
           champ_id: champIdToUse,
           club_member_id: memberId,
+          ...(pairedPartnerByMember.has(memberId)
+            ? { partner_member_id: pairedPartnerByMember.get(memberId), partner_confirmed: true }
+            : {}),
           status: "paid",
           // Do NOT set invited_by_admin here — the notify_champ_registration_event
           // trigger fires "Tournament invitation" notifications on INSERT when this

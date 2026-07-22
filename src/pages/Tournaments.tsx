@@ -440,7 +440,13 @@ export default function Tournaments() {
         )}
       >
         {isClubAdmin && (
-          <GripVertical className={cn("w-3.5 h-3.5 shrink-0 hidden sm:block", canDrag ? "text-muted-foreground/60" : "text-transparent")} />
+          <span
+            className={cn("shrink-0 flex items-center justify-center rounded", canDrag ? "cursor-grab active:cursor-grabbing text-muted-foreground hover:bg-muted hover:text-foreground" : "text-muted-foreground/30")}
+            title={canDrag ? "Drag to swap with another fixture on the same court" : "Drag not available"}
+            aria-label="Drag to swap"
+          >
+            <GripVertical className="w-4 h-4" />
+          </span>
         )}
         <button
           onClick={() => navigate(`/club-champs/${m.champ_id}`)}

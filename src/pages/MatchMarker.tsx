@@ -354,6 +354,12 @@ export default function MatchMarker() {
         }
       }
 
+      if (isTournament) {
+        setTimeout(() => navigate("/tournaments"), 900);
+        return;
+      }
+      }
+
       // Note: For league fixtures, marking is launched from the League Game Detail page
       // which already persists into league_match_results via its own handler.
       const otherMember = memberA?.user_id === user?.id ? memberB : memberA;

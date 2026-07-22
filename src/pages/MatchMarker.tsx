@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { MARKER_CONFIG_KEY, MARKER_STATE_KEY } from "@/lib/marker-storage";
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
@@ -15,7 +15,9 @@ import { setScoringActive } from "@/lib/scoring-lock";
 import { enqueueRankingDelta } from "@/lib/ranking-points";
 
 export default function MatchMarker() {
+  const [searchParams] = useSearchParams();
   const [config, setConfig] = useState<MarkerConfig | null>(() => {
+    if (new URLSearchParams(window.location.search).has("matchId")) return null;
     try {
       const raw = localStorage.getItem(MARKER_CONFIG_KEY);
       return raw ? (JSON.parse(raw) as MarkerConfig) : null;
@@ -26,6 +28,15 @@ export default function MatchMarker() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!searchParams.has("matchId") && !searchParams.has("bookingId")) return;
+    try {
+      localStorage.removeItem(MARKER_CONFIG_KEY);
+      localStorage.removeItem(MARKER_STATE_KEY);
+    } catch {}
+    setConfig(null);
+  }, [searchParams]);
 
   // Persist config so user can navigate away and resume
   useEffect(() => {

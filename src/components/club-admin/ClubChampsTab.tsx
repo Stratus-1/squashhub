@@ -469,6 +469,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
+  // Prune any selected court IDs that no longer exist in the club's courts
+  // list — protects against stale references (e.g. deleted external courts)
+  // that would break the FK when inserting matches on rebuild.
+  useEffect(() => {
+    if (!courts || courts.length === 0) return;
+    const valid = new Set(courts.map((c) => c.id));
+    setSelectedCourtIds((prev) => {
+      let changed = false;
+      const next = new Set<number>();
+      prev.forEach((id) => { if (valid.has(id)) next.add(id); else changed = true; });
+      return changed ? next : prev;
+    });
+  }, [courts]);
   // Per-day schedule overrides — for short tournaments (Fri eve, Sat morning, Sat afternoon).
   // Each entry is one time window on one date. A date can appear multiple times (multi-session days).
   type DaySchedule = { date: string; start_time: string; end_time: string; court_ids: number[] | null };

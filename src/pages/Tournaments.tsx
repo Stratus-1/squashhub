@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FinalizeTournamentSetupDialog } from "@/components/tournaments/FinalizeTournamentSetupDialog";
+import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { assignPools, entityIdForEntry, type Entry as SwissEntry } from "@/lib/swiss-pairing";

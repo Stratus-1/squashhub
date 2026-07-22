@@ -50,7 +50,7 @@ export default function MatchMarker() {
           id, champ_id, handicap_a, handicap_b,
           player_a_member_id, player_b_member_id,
           partner_a_member_id, partner_b_member_id,
-          club_champs!inner(id, club_id, match_type, scoring_mode),
+          club_champs!inner(id, club_id, match_type, scoring_mode, points_per_game, best_of, play_all_games, win_condition),
           player_a:player_a_member_id(id, name, club_member_number),
           player_b:player_b_member_id(id, name, club_member_number),
           partner_a:partner_a_member_id(id, name, club_member_number),

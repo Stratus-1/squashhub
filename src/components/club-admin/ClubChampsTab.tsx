@@ -1980,7 +1980,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 const freeAt = courtBusyUntil.get(cid) ?? 0;
                 if (freeAt > nowAbs) continue;
 
-                const owner = blockOwnership.get(cid);
+                // Rotate ownership by total placements so far — this makes
+                // leagues interleave across courts within a tick (e.g. with a
+                // 2:1 allocation the next placement flips who owns which
+                // court, producing "L1, L2, L1, L1, L2, L1…" instead of
+                // batching all L1 first, then all L2 later.
+                const tickOwnership = ownershipForBlock(
+                  block,
+                  sessionCourts,
+                  true,
+                  totalPlacedSoFar(),
+                );
+                const owner = tickOwnership.get(cid) ?? blockOwnership.get(cid);
                 // 1) Try owner league first (strict), 2) fall back to any league
                 //    so a court never sits idle when the owner has nothing to play.
                 const pickForLeague = (gn: number, enforceBreak: boolean) => {

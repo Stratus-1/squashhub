@@ -4,7 +4,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, LogOut } from "lucide-react";
+import { ChevronLeft, LogOut, RefreshCw } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getBackFallback } from "@/lib/breadcrumbs";
@@ -13,6 +13,19 @@ import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { TenantSwitcher } from "@/components/TenantSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+function isStandalonePWA(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return (
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      // iOS Safari
+      (window.navigator as any).standalone === true
+    );
+  } catch {
+    return false;
+  }
+}
 
 interface PageHeaderProps {
   title: string;
@@ -125,6 +138,19 @@ export function PageHeader({
           <div className="ml-auto flex items-center gap-1.5">
             <TenantSwitcher />
             <ThemeToggle />
+            {isStandalonePWA() && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                onClick={() => window.location.reload()}
+                aria-label="Refresh"
+                title="Refresh"
+              >
+                <RefreshCw className="w-4.5 h-4.5" />
+              </Button>
+            )}
             {showNotifications && <NotificationsDropdown />}
             <button
               type="button"

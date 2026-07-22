@@ -1355,25 +1355,46 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             ) : (
               <div className="flex-1 min-h-0 overflow-y-auto space-y-3 mt-3 pr-1">
                 {(() => {
-                  const memberEntries = (journalEntries || [])
-                    .filter((e: any) => e.club_member_id === statementMemberId && e.account === "debtors")
+                  const controlAccountEntries = (journalEntries || [])
+                    .filter((e: any) => e.club_member_id === statementMemberId && ["debtors", "member_credits"].includes(e.account));
+
+                  const internalSettlementRefs = new Set(
+                    Object.entries(
+                      controlAccountEntries.reduce((acc: Record<string, any[]>, e: any) => {
+                        const ref = String(e.journal_ref || e.id);
+                        acc[ref] = acc[ref] || [];
+                        acc[ref].push(e);
+                        return acc;
+                      }, {})
+                    )
+                      .filter(([, rows]: any) => {
+                        const accounts = new Set(rows.map((r: any) => r.account));
+                        const net = rows.reduce((sum: number, r: any) => sum + Number(r.debit || 0) - Number(r.credit || 0), 0);
+                        return accounts.has("debtors") && accounts.has("member_credits") && Math.abs(net) < 0.01;
+                      })
+                      .map(([ref]) => ref)
+                  );
+
+                  const memberEntries = controlAccountEntries
+                    // Hide internal wallet↔debtors settlement pairs on the unified statement;
+                    // they move value between buckets but do not change the member's net balance.
+                    .filter((e: any) => !internalSettlementRefs.has(String(e.journal_ref || e.id)))
                     .slice()
                     .sort((a: any, b: any) => {
                       const t = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
                       if (t !== 0) return t;
-                      // On ties, post debits (fees raised) before credits (payments) so running balance stays sensible
-                      const aIsDebit = Number(a.debit || 0) > 0 ? 0 : 1;
-                      const bIsDebit = Number(b.debit || 0) > 0 ? 0 : 1;
-                      return aIsDebit - bIsDebit;
+                      return String(a.id).localeCompare(String(b.id));
                     });
-                  const billed = memberEntries.reduce((s: number, e: any) => s + Number(e.debit || 0), 0);
-                  const paid = memberEntries.reduce((s: number, e: any) => s + Number(e.credit || 0), 0);
+                  const toMemberAmount = (e: any) => Number(e.debit || 0) - Number(e.credit || 0);
+                  const billed = memberEntries.reduce((s: number, e: any) => s + Math.max(toMemberAmount(e), 0), 0);
+                  const paid = memberEntries.reduce((s: number, e: any) => s + Math.max(-toMemberAmount(e), 0), 0);
                   const outstanding = billed - paid;
                   let running = 0;
                   const rowsDesc = memberEntries
                     .map((e: any) => {
-                      running += Number(e.debit || 0) - Number(e.credit || 0);
-                      return { ...e, running };
+                      const memberAmount = toMemberAmount(e);
+                      running += memberAmount;
+                      return { ...e, memberDebit: Math.max(memberAmount, 0), memberCredit: Math.max(-memberAmount, 0), running };
                     })
                     .reverse();
 
@@ -1385,11 +1406,11 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                           <p className="text-sm font-bold text-destructive tabular-nums">{money(billed)}</p>
                         </Card>
                         <Card className="p-2">
-                          <p className="text-[10px] text-muted-foreground">Total Paid</p>
+                          <p className="text-[10px] text-muted-foreground">Payments / Credits</p>
                           <p className="text-sm font-bold text-green-600 tabular-nums">{money(paid)}</p>
                         </Card>
                         <Card className="p-2">
-                          <p className="text-[10px] text-muted-foreground">Outstanding Balance</p>
+                          <p className="text-[10px] text-muted-foreground">Net Balance</p>
                           <p className={cn("text-sm font-bold tabular-nums", outstanding > 0.01 ? "text-destructive" : outstanding < -0.01 ? "text-green-600" : "text-muted-foreground")}>
                             {money(outstanding)} {outstanding < -0.01 ? "Cr" : ""}
                           </p>
@@ -1419,11 +1440,11 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                                 <Badge variant="outline" className="text-[10px] w-fit">
                                   {getLabel(entry.account)}
                                 </Badge>
-                                <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-green-600 font-medium")}>
-                                  {Number(entry.debit) > 0 ? money(Number(entry.debit)) : ""}
+                                <span className={cn("text-right tabular-nums", Number(entry.memberDebit) > 0 && "text-destructive font-medium")}>
+                                  {Number(entry.memberDebit) > 0 ? money(Number(entry.memberDebit)) : ""}
                                 </span>
-                                <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-destructive font-medium")}>
-                                  {Number(entry.credit) > 0 ? money(Number(entry.credit)) : ""}
+                                <span className={cn("text-right tabular-nums", Number(entry.memberCredit) > 0 && "text-green-600 font-medium")}>
+                                  {Number(entry.memberCredit) > 0 ? money(Number(entry.memberCredit)) : ""}
                                 </span>
                                 <span className={cn("text-right tabular-nums font-medium",
                                   entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"

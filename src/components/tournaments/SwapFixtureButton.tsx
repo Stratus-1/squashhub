@@ -22,6 +22,12 @@ interface Props {
   invalidateKeys?: (string | undefined)[][];
   /** Smaller button variant for compact rows. */
   size?: "icon" | "sm";
+  /** Restrict candidates to matches on the same court as `match` (default true). */
+  sameCourtOnly?: boolean;
+  /** Optional color accent per candidate row (for league/pool colour-coding). */
+  getRowColor?: (m: any) => { border: string; bg: string; chipBg: string; chipText: string } | null;
+  /** Optional short label (e.g. "L1 · Pool A") to show on each candidate row. */
+  getBucketLabel?: (m: any) => string | null;
 }
 
 /**

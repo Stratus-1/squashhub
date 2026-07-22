@@ -967,7 +967,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const resolveId = (id: string) => (id?.startsWith("visitor-") ? (visitorMap.get(id) || toDbId(id)) : id);
 
       if (isDoubles) {
-        if (doublesPairs.length === 0) return;
+        if (doublesPairs.length === 0) {
+          const { error: deleteErr } = await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
+          if (deleteErr) throw deleteErr;
+          await syncDoublesRegistrationsForPairs(champIdToUse, []);
+          return;
+        }
         const rows = await persistDoublesPairsDraft(champIdToUse, doublesPairs);
         allocatedMemberIds = rows.flatMap((r: any) => [r.club_member_id, r.partner_member_id]).filter(Boolean);
       } else {
@@ -2239,7 +2244,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         const currentCount = isDoubles
           ? doublesPairs.length
           : (groups as ClubMember[][]).flatMap((g) => g).length;
-        if (savedCount > 0 && currentCount < savedCount) {
+        if (savedCount > 0 && currentCount < savedCount && !entitiesChangedSinceLoad) {
           throw new Error(
             `Refusing to regenerate: only ${currentCount} ${isDoubles ? "pair" : "player"}(s) loaded but ${savedCount} are saved. Close the wizard, reopen the tournament, and try again so all entries load first.`
           );
@@ -4366,16 +4371,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             {scoringMode !== "time_capped_points" && (
               <div className="max-w-xs">
                 <Label className="text-sm">Match Duration (slot per game)</Label>
-                <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
-                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="20">20 min</SelectItem>
-                    <SelectItem value="30">30 min</SelectItem>
-                    <SelectItem value="45">45 min</SelectItem>
-                    <SelectItem value="60">60 min</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="mt-1 grid grid-cols-4 gap-1">
+                  {[20, 30, 45, 60].map((minutes) => (
+                    <Button
+                      key={minutes}
+                      type="button"
+                      size="sm"
+                      variant={matchDuration === minutes ? "default" : "outline"}
+                      className="h-8 px-2 text-xs"
+                      onClick={() => setMatchDuration(minutes)}
+                    >
+                      {minutes}m
+                    </Button>
+                  ))}
+                </div>
                 <p className="text-[11px] text-muted-foreground mt-1">
                   How long one game occupies a court — drives the capacity calculator below.
                 </p>
@@ -4729,24 +4738,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <Label htmlFor="playoff-break" className="text-xs">
                       Break after last pool match
                     </Label>
-                    <Select
-                      value={String(playoffBreakMinutes)}
-                      onValueChange={(v) => setPlayoffBreakMinutes(Number(v))}
-                      disabled={!!playoffDate}
-                    >
-                      <SelectTrigger id="playoff-break" className="h-9">
-                        <SelectValue placeholder="No break" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">No break — start immediately</SelectItem>
-                        <SelectItem value="15">15 minutes</SelectItem>
-                        <SelectItem value="30">30 minutes</SelectItem>
-                        <SelectItem value="45">45 minutes</SelectItem>
-                        <SelectItem value="60">1 hour</SelectItem>
-                        <SelectItem value="90">1½ hours (lunch)</SelectItem>
-                        <SelectItem value="120">2 hours</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div id="playoff-break" className="grid grid-cols-4 gap-1">
+                      {[0, 15, 30, 45, 60, 90, 120].map((minutes) => (
+                        <Button
+                          key={minutes}
+                          type="button"
+                          size="sm"
+                          variant={playoffBreakMinutes === minutes ? "default" : "outline"}
+                          className="h-8 px-2 text-xs"
+                          disabled={!!playoffDate}
+                          onClick={() => setPlayoffBreakMinutes(minutes)}
+                        >
+                          {minutes === 0 ? "None" : minutes === 90 ? "1½h" : minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
+                        </Button>
+                      ))}
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
                       Applies to fill-mode when playoffs run on the same day as pool play.
                     </p>

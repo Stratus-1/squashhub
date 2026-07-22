@@ -353,10 +353,17 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
                   Clear
                 </Button>
               )}
-              <span className="text-xs text-muted-foreground ml-auto">
-                Showing {filtered.length} of {matches.length}
+              <span className="text-xs text-muted-foreground ml-auto flex items-center gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={sameCourtOnly} onCheckedChange={(v) => setSameCourtOnly(!!v)} className="h-3.5 w-3.5" />
+                  <span>Same court only</span>
+                </label>
+                <span>Showing {filtered.length} of {matches.length}</span>
               </span>
             </div>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Tip: drag any row onto another to swap their date, time & court. Player-conflict and completed matches are blocked.
+            </p>
 
             <div className="space-y-1 max-h-[480px] overflow-y-auto pr-1">
               {filtered.map(renderRow)}

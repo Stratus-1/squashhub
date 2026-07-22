@@ -6090,58 +6090,79 @@ function PairBuilder({
     }
   };
 
+  const renderColumn = (
+    label: string,
+    search: string,
+    setSearch: (v: string) => void,
+    pool: ClubMember[],
+    filteredLen: number,
+    truncated: boolean,
+    selectedId: string,
+    setSelected: (v: string) => void,
+  ) => {
+    const selectedMember = selectedId
+      ? (pool.find((m) => m.id === selectedId) as any) ||
+        (availablePlayers.find((m) => m.id === selectedId) as any)
+      : null;
+    return (
+      <div className="space-y-1">
+        <Label className="text-xs">{label}</Label>
+        <Input
+          placeholder="Search name..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-8 text-xs"
+        />
+        {selectedId && selectedMember && (
+          <div className="flex items-center justify-between rounded border bg-primary/10 border-primary/30 px-2 py-1 text-xs">
+            <span className="truncate font-medium">{selectedMember.name || selectedMember.profiles?.name || getMemberName(selectedId)}</span>
+            <button
+              type="button"
+              onClick={() => setSelected("")}
+              className="text-muted-foreground hover:text-foreground ml-2"
+              aria-label="Clear"
+            >
+              ×
+            </button>
+          </div>
+        )}
+        <div className="max-h-56 overflow-y-auto rounded border bg-background">
+          {pool.length === 0 ? (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">No matches</div>
+          ) : (
+            pool.map((m) => {
+              const isSel = m.id === selectedId;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setSelected(m.id)}
+                  className={cn(
+                    "w-full text-left px-2 py-1 text-xs hover:bg-accent",
+                    isSel && "bg-primary/15 font-medium",
+                  )}
+                >
+                  {m.name || (m as any).profiles?.name || "—"}
+                </button>
+              );
+            })
+          )}
+          {truncated && (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
+              Showing {MAX_VISIBLE} of {filteredLen} — type to narrow
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-3">
       <Label className="text-xs text-muted-foreground uppercase tracking-wide">Add a pair</Label>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs">{isMixed ? "Player (Men)" : "Player 1"}</Label>
-          <Input
-            placeholder="Search name..."
-            value={search1}
-            onChange={(e) => setSearch1(e.target.value)}
-            className="h-8 text-xs"
-          />
-          <Select value={player1} onValueChange={setPlayer1}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder={`Select... (${filtered1.length})`} /></SelectTrigger>
-            <SelectContent>
-              {pool1.length === 0 ? (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">No matches</div>
-              ) : pool1.map((m) => (
-                <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || "—"}</SelectItem>
-              ))}
-              {truncated1 && (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
-                  Showing {MAX_VISIBLE} of {filtered1.length} — type to narrow
-                </div>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">{isMixed ? "Player (Ladies)" : "Player 2"}</Label>
-          <Input
-            placeholder="Search name..."
-            value={search2}
-            onChange={(e) => setSearch2(e.target.value)}
-            className="h-8 text-xs"
-          />
-          <Select value={player2} onValueChange={setPlayer2}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder={`Select... (${filtered2.length})`} /></SelectTrigger>
-            <SelectContent>
-              {pool2.length === 0 ? (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">No matches</div>
-              ) : pool2.map((m) => (
-                <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || "—"}</SelectItem>
-              ))}
-              {truncated2 && (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
-                  Showing {MAX_VISIBLE} of {filtered2.length} — type to narrow
-                </div>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+        {renderColumn(isMixed ? "Player (Men)" : "Player 1", search1, setSearch1, pool1, filtered1.length, truncated1, player1, setPlayer1)}
+        {renderColumn(isMixed ? "Player (Ladies)" : "Player 2", search2, setSearch2, pool2, filtered2.length, truncated2, player2, setPlayer2)}
       </div>
       <Button
         size="sm"

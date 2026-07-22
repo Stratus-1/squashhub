@@ -3200,11 +3200,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [doublesPairs]);
 
   const availableForPairing = useMemo(() => {
-    if (gender === "mixed" || gender === "open") return members.filter((m) => !usedPlayerIds.has(m.id));
+    const pool = allSelectablePlayers as ClubMember[];
+    if (gender === "mixed" || gender === "open") return pool.filter((m) => !usedPlayerIds.has(m.id));
     const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
-    return members
+    return pool
       .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()) && !usedPlayerIds.has(m.id));
-  }, [members, gender, usedPlayerIds]);
+  }, [allSelectablePlayers, gender, usedPlayerIds]);
 
   // Returns a list of friendly reasons why the current step can't advance.
   // Empty array means the user can click Next.

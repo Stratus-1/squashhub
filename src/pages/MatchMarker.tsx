@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MARKER_CONFIG_KEY, MARKER_STATE_KEY } from "@/lib/marker-storage";
 import { PageHeader } from "@/components/PageHeader";
@@ -210,6 +210,40 @@ export default function MatchMarker() {
     } catch {}
     setConfig(null);
   };
+
+  // Push live score to the tournament match row so the Tournaments/Upcoming
+  // page can highlight this match as LIVE and show the current running score.
+  const liveThrottleRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLiveRef = useRef<{ a: number; b: number } | null>(null);
+  const handleLiveScore = useCallback(
+    (_games: GameScore[], current: { a: number; b: number }) => {
+      if (config?.source !== "tournament" || !config.sourceId) return;
+      lastLiveRef.current = current;
+      if (liveThrottleRef.current) return;
+      liveThrottleRef.current = setTimeout(async () => {
+        liveThrottleRef.current = null;
+        const c = lastLiveRef.current;
+        if (!c || !config.sourceId) return;
+        try {
+          await fromExt("club_champs_matches")
+            .update({
+              status: "in_progress",
+              side_a_points: c.a,
+              side_b_points: c.b,
+            } as any)
+            .eq("id", config.sourceId);
+          queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+        } catch (e) {
+          console.warn("Live score push failed:", e);
+        }
+      }, 400);
+    },
+    [config, queryClient],
+  );
+
+  useEffect(() => () => {
+    if (liveThrottleRef.current) clearTimeout(liveThrottleRef.current);
+  }, []);
 
   const handleScratch = async () => {
     // If this was a tournament match, roll the club_champs_matches row back
@@ -461,6 +495,7 @@ export default function MatchMarker() {
             onMatchComplete={handleMatchComplete}
             onReset={resetMatch}
             onScratch={handleScratch}
+            onLiveScore={handleLiveScore}
           />
         )}
       </div>

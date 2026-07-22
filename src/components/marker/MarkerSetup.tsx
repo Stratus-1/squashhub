@@ -632,6 +632,7 @@ export function MarkerSetup({ onStart }: Props) {
         }
         setSource("tournament");
         setSelectedSourceId(matchId);
+        setPendingAutoStart(true);
         searchParams.delete("source");
         searchParams.delete("matchId");
         setSearchParams(searchParams, { replace: true });
@@ -641,6 +642,7 @@ export function MarkerSetup({ onStart }: Props) {
       if (exists) {
         setSource("booking");
         setSelectedSourceId(matchId);
+        setPendingAutoStart(true);
         searchParams.delete("source");
         searchParams.delete("bookingId");
         setSearchParams(searchParams, { replace: true });

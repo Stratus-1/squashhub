@@ -225,12 +225,15 @@ export function SwapFixtureButton({
           ) : (
             !busy && candidates.map((m) => {
               const { swapBlocked, reason } = conflictsFor(m);
+              const color = getRowColor ? getRowColor(m) : null;
+              const bLabel = getBucketLabel ? getBucketLabel(m) : null;
               return (
                 <button
                   key={m.id}
                   disabled={swapBlocked}
                   onClick={() => doSwap(m)}
                   title={swapBlocked ? reason : undefined}
+                  style={color ? { borderLeft: `3px solid ${color.border}`, backgroundColor: color.bg } : undefined}
                   className="w-full text-left px-3 py-2 text-xs hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between gap-2"
                 >
                   <div className="flex-1 min-w-0">
@@ -239,9 +242,16 @@ export function SwapFixtureButton({
                       {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
                       {m.scheduled_time ? ` · ${String(m.scheduled_time).slice(0, 5)}` : ""}
                       {getCourtName ? ` · ${getCourtName(m)}` : ""}
-                      {m.group_number != null ? ` · L${m.group_number}` : ""}
                     </div>
                   </div>
+                  {bLabel && (
+                    <span
+                      style={color ? { backgroundColor: color.chipBg, color: color.chipText, borderColor: color.border } : undefined}
+                      className="text-[9px] px-1.5 py-0.5 rounded border font-medium shrink-0"
+                    >
+                      {bLabel}
+                    </span>
+                  )}
                   {swapBlocked && (
                     <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40 shrink-0">
                       {reason}

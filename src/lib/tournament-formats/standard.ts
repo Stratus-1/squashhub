@@ -56,18 +56,21 @@ export const StandardFormat: TournamentFormat = {
         const gs = JSON.parse(match.game_scores);
         const sets = (gs.sets || []) as Array<{ a?: number; b?: number }>;
         sets.forEach((s) => {
-          if (isA) {
-            stats.gamesWon += s.a || 0;
-            stats.gamesLost += s.b || 0;
-          } else {
-            stats.gamesWon += s.b || 0;
-            stats.gamesLost += s.a || 0;
-          }
+          const aPts = s.a || 0;
+          const bPts = s.b || 0;
+          const myPts = isA ? aPts : bPts;
+          const oppPts = isA ? bPts : aPts;
+          stats.pointsFor += myPts;
+          stats.pointsAgainst += oppPts;
+          // Count games (sets) won/lost — GD is games difference.
+          if (myPts > oppPts) stats.gamesWon += 1;
+          else if (oppPts > myPts) stats.gamesLost += 1;
         });
       } catch {
         /* ignore malformed JSON */
       }
     }
+
     return true;
   },
 

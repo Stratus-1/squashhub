@@ -1703,10 +1703,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     // would leave the busiest days (typically Saturday) empty when only a few
     // slots exist per day.
     const entityLastDate = new Map<string, string>();
+    // Number of distinct play-dates available. When there's only one, the
+    // "1-day rest" spread rule can never be satisfied and every subsequent
+    // match falls to the soft fallback (which batches by league). Treat
+    // single-day as fill for the gap check.
+    const uniqueDateCount = new Set(allSlots.map((s) => s.date)).size;
     const canScheduleOn = (entityId: string, dateStr: string): boolean => {
       // Fill mode: pack the earliest days completely — allow multiple matches
       // per entity per day so Saturday isn't capped at one match per pair.
       if (scheduleMode === "fill") return true;
+      if (uniqueDateCount <= 1) return true;
       const last = entityLastDate.get(entityId);
       if (!last) return true;
       const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));
@@ -2243,10 +2249,29 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
 
       // Second pass: anything left unscheduled falls into any free slot so it
-      // doesn't show as TBD. This is a soft fallback — the first pass already
-      // spread same-entity matches across different days where possible.
-      for (const match of allMatches) {
+      // doesn't show as TBD. Iterate in interleaved order (not per-league) so
+      // the fallback also interleaves leagues, and still respect concurrent
+      // player conflicts so a pair isn't double-booked at the same time.
+      for (const match of interleaved) {
         if (match.isBye || match.date) continue;
+        const playersA = getPlayersForEntity(match.entityA);
+        const playersB = getPlayersForEntity(match.entityB);
+        const allPlayers = [...playersA, ...playersB];
+        let placed = false;
+        for (const si of slotOrder) {
+          if (usedSlots.has(si)) continue;
+          const slot = allSlots[si];
+          if (!allPlayers.every((pid) => isEntityFree(pid, slot))) continue;
+          match.date = slot.date;
+          match.time = slot.time;
+          match.courtId = slot.courtId;
+          usedSlots.add(si);
+          allPlayers.forEach((pid) => markEntityBusy(pid, slot));
+          placed = true;
+          break;
+        }
+        if (placed) continue;
+        // Absolute last resort: any free slot even with a conflict.
         for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];

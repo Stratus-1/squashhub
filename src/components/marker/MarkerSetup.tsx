@@ -338,7 +338,7 @@ export function MarkerSetup({ onStart }: Props) {
 
       const { data: champs } = await supabase
         .from("club_champs")
-        .select("id, name, club_id, match_type, scoring_mode")
+        .select("id, name, club_id, match_type, scoring_mode, points_per_game, best_of, play_all_games, win_condition")
         .in("id", champIds)
         .eq("club_id", clubId);
 
@@ -406,6 +406,10 @@ export function MarkerSetup({ onStart }: Props) {
       champName: champ?.name || "Tournament",
       matchType: champ?.match_type || "singles",
       scoringMode: champ?.scoring_mode || null,
+      pointsPerGame: champ?.points_per_game ?? null,
+      bestOf: champ?.best_of ?? null,
+      playAllGames: champ?.play_all_games ?? false,
+      winCondition: champ?.win_condition || null,
       playerAName: pA?.name || "Player A",
       playerBName: pB?.name || "Player B",
       playerANumber: pA?.club_member_number || "",
@@ -426,7 +430,7 @@ export function MarkerSetup({ onStart }: Props) {
         champ_id, court_id, handicap_a, handicap_b,
         player_a_member_id, player_b_member_id,
         partner_a_member_id, partner_b_member_id,
-        club_champs!inner(id, name, club_id, match_type, scoring_mode),
+        club_champs!inner(id, name, club_id, match_type, scoring_mode, points_per_game, best_of, play_all_games, win_condition),
         player_a:player_a_member_id(id, name, club_member_number),
         player_b:player_b_member_id(id, name, club_member_number),
         partner_a:partner_a_member_id(id, name, club_member_number),
@@ -619,6 +623,11 @@ export function MarkerSetup({ onStart }: Props) {
 
         const hasDoubles = match.matchType === "doubles" || match.matchType === "mixed";
         setIsDoubles(hasDoubles);
+        const scoring = tournamentScoringFromMatch(match);
+        setScoringFormat(scoring.scoringFormat);
+        setBestOf(scoring.bestOf);
+        setPlayAllGames(scoring.playAllGames);
+        setDeuceRule(scoring.deuceRule);
         if (hasDoubles) {
           setPartnerA({
             name: match.partnerAName || "",
@@ -717,6 +726,15 @@ export function MarkerSetup({ onStart }: Props) {
     return () => { cancelled = true; };
   }, [searchParams, tournamentMatchOptions, todayBookings, clubId]);
 
+  const tournamentScoringFromMatch = (match: any) => {
+    const ppg = Number(match?.pointsPerGame);
+    return {
+      scoringFormat: (ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11") as ScoringFormat,
+      bestOf: (Number(match?.bestOf) === 5 ? 5 : 3) as BestOf,
+      playAllGames: !!match?.playAllGames,
+      deuceRule: (match?.winCondition === "sudden_death" ? "sudden_death" : "win_by_2") as DeuceRule,
+    };
+  };
 
   const playersFromSource = (source === "tournament" || source === "booking") && !!selectedSourceId;
   const canStart =
@@ -724,27 +742,30 @@ export function MarkerSetup({ onStart }: Props) {
     playerB.name.trim().length > 0 &&
     (!isDoubles || (partnerA.name.trim().length > 0 && partnerB.name.trim().length > 0));
 
-  const buildStartPayload = () => ({
-    playerA,
-    playerB,
-    partnerA: isDoubles ? partnerA : undefined,
-    partnerB: isDoubles ? partnerB : undefined,
-    isDoubles,
-    matchType,
-    scoringFormat,
-    bestOf,
-    playAllGames,
-    deuceRule,
-    source,
-    sourceId: selectedSourceId || undefined,
-    handicapA: source === "tournament" && selectedSourceId
-      ? Number((tournamentMatchOptions.find((m: any) => m.id === selectedSourceId) as any)?.handicap_a) || 0
-      : undefined,
-    handicapB: source === "tournament" && selectedSourceId
-      ? Number((tournamentMatchOptions.find((m: any) => m.id === selectedSourceId) as any)?.handicap_b) || 0
-      : undefined,
-    clubId: clubId || undefined,
-  });
+  const buildStartPayload = () => {
+    const selectedTournamentMatch = source === "tournament" && selectedSourceId
+      ? tournamentMatchOptions.find((m: any) => m.id === selectedSourceId)
+      : null;
+    const scoring = selectedTournamentMatch ? tournamentScoringFromMatch(selectedTournamentMatch) : null;
+
+    return {
+      playerA,
+      playerB,
+      partnerA: isDoubles ? partnerA : undefined,
+      partnerB: isDoubles ? partnerB : undefined,
+      isDoubles,
+      matchType,
+      scoringFormat: scoring?.scoringFormat ?? scoringFormat,
+      bestOf: scoring?.bestOf ?? bestOf,
+      playAllGames: scoring?.playAllGames ?? playAllGames,
+      deuceRule: scoring?.deuceRule ?? deuceRule,
+      source,
+      sourceId: selectedSourceId || undefined,
+      handicapA: selectedTournamentMatch ? Number((selectedTournamentMatch as any)?.handicap_a) || 0 : undefined,
+      handicapB: selectedTournamentMatch ? Number((selectedTournamentMatch as any)?.handicap_b) || 0 : undefined,
+      clubId: clubId || undefined,
+    };
+  };
 
   // Auto-start scoring when arriving via deep-link once players are prefilled.
   useEffect(() => {

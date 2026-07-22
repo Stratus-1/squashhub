@@ -2204,6 +2204,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const leaguePerDateCount = new Map<number, Map<string, number>>();
       for (const k of leagueKeys) leaguePerDateCount.set(k, new Map());
 
+      // Per-entity (pair/player) totals and per-date quota. Prevents a single
+      // pair playing 4 matches on day 1 and 0 on day 2. Quota = ceil(pair's
+      // total matches / play-days), min 1 per day so every pair plays at
+      // least one game each day when they have enough matches to do so.
+      const entityTotals = new Map<string, number>();
+      for (const m of nonByes) {
+        for (const pid of [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)]) {
+          entityTotals.set(pid, (entityTotals.get(pid) || 0) + 1);
+        }
+      }
+      const entityTargetPerDate = new Map<string, number>();
+      for (const [pid, tot] of entityTotals) {
+        entityTargetPerDate.set(pid, Math.max(1, Math.ceil(tot / numDates)));
+      }
+      // entity -> date -> count already placed on that date
+      const entityPerDateCount = new Map<string, Map<string, number>>();
+
       const tryPlace = (
         match: typeof nonByes[number],
         allPlayers: string[],
@@ -2214,8 +2231,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];
-          if (respectQuota && scheduleMode === "spread" && perDate) {
-            if ((perDate.get(slot.date) || 0) >= target) continue;
+          if (respectQuota && scheduleMode === "spread") {
+            if (perDate && (perDate.get(slot.date) || 0) >= target) continue;
+            // Per-entity daily cap so a single pair can't pile up on one day.
+            let entityCapHit = false;
+            for (const pid of allPlayers) {
+              const cnt = entityPerDateCount.get(pid)?.get(slot.date) || 0;
+              const cap = entityTargetPerDate.get(pid) ?? Infinity;
+              if (cnt >= cap) { entityCapHit = true; break; }
+            }
+            if (entityCapHit) continue;
           }
           if (!allPlayers.every((pid) => isEntityFree(pid, slot))) continue;
           if (!allPlayers.every((pid) => canScheduleOn(pid, slot.date))) continue;
@@ -2226,6 +2251,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           allPlayers.forEach((pid) => {
             entityLastDate.set(pid, slot.date);
             markEntityBusy(pid, slot);
+            let epd = entityPerDateCount.get(pid);
+            if (!epd) { epd = new Map(); entityPerDateCount.set(pid, epd); }
+            epd.set(slot.date, (epd.get(slot.date) || 0) + 1);
           });
           if (perDate) perDate.set(slot.date, (perDate.get(slot.date) || 0) + 1);
           return true;

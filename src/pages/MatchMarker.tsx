@@ -15,7 +15,7 @@ import { setScoringActive } from "@/lib/scoring-lock";
 import { enqueueRankingDelta } from "@/lib/ranking-points";
 
 export default function MatchMarker() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [config, setConfig] = useState<MarkerConfig | null>(() => {
     if (new URLSearchParams(window.location.search).has("matchId")) return null;
     try {
@@ -37,6 +37,111 @@ export default function MatchMarker() {
     } catch {}
     setConfig(null);
   }, [searchParams]);
+
+  useEffect(() => {
+    const src = searchParams.get("source");
+    const matchId = searchParams.get("matchId");
+    if (src !== "tournament" || !matchId || config?.sourceId === matchId) return;
+
+    let cancelled = false;
+    const loadLinkedTournamentMatch = async () => {
+      const { data, error } = await fromExt("club_champs_matches")
+        .select(`
+          id, champ_id, handicap_a, handicap_b,
+          player_a_member_id, player_b_member_id,
+          partner_a_member_id, partner_b_member_id,
+          club_champs!inner(id, club_id, match_type, scoring_mode),
+          player_a:player_a_member_id(id, name, club_member_number),
+          player_b:player_b_member_id(id, name, club_member_number),
+          partner_a:partner_a_member_id(id, name, club_member_number),
+          partner_b:partner_b_member_id(id, name, club_member_number)
+        `)
+        .eq("id", matchId)
+        .maybeSingle();
+
+      if (cancelled || error || !data) return;
+
+      const row = data as any;
+      const champ = Array.isArray(row.club_champs) ? row.club_champs[0] : row.club_champs;
+      if (champ?.scoring_mode === "time_capped_points") {
+        navigate(`/bells-marker/${matchId}`, { replace: true });
+        return;
+      }
+
+      const ids = [
+        row.player_a_member_id,
+        row.player_b_member_id,
+        row.partner_a_member_id,
+        row.partner_b_member_id,
+      ].filter(Boolean);
+
+      const memberMap = new Map<string, any>();
+      if (ids.length > 0) {
+        const { data: members } = await supabase
+          .from("club_members")
+          .select("id, name, club_member_number")
+          .in("id", ids);
+        (members || []).forEach((m: any) => memberMap.set(m.id, m));
+
+        const missingIds = ids.filter((id: string) => !memberMap.has(id));
+        if (missingIds.length > 0) {
+          const { data: visitors } = await supabase
+            .from("club_visitors")
+            .select("id, first_name, last_name, member_number, home_club_name")
+            .in("id", missingIds);
+          (visitors || []).forEach((v: any) => {
+            memberMap.set(v.id, {
+              id: v.id,
+              name: `${v.first_name || ""} ${v.last_name || ""}`.trim(),
+              club_member_number: v.member_number || "",
+              club: v.home_club_name || "",
+            });
+          });
+        }
+      }
+
+      const playerFor = (id: string | null | undefined, joined: any, fallback: string) => {
+        const found = (id && memberMap.get(id)) || joined || null;
+        return {
+          name: found?.name || fallback,
+          number: found?.club_member_number || "",
+          club: found?.club || "Tournament",
+          clubMemberId: id || undefined,
+        };
+      };
+
+      const isDoubles = champ?.match_type === "doubles" || champ?.match_type === "mixed";
+      const nextConfig: MarkerConfig = {
+        playerA: playerFor(row.player_a_member_id, row.player_a, "Player A"),
+        playerB: playerFor(row.player_b_member_id, row.player_b, "Player B"),
+        partnerA: isDoubles ? playerFor(row.partner_a_member_id, row.partner_a, "Partner A") : undefined,
+        partnerB: isDoubles ? playerFor(row.partner_b_member_id, row.partner_b, "Partner B") : undefined,
+        isDoubles,
+        matchType: "club_champs",
+        scoringFormat: "par11",
+        bestOf: 3,
+        playAllGames: false,
+        deuceRule: "win_by_2",
+        source: "tournament",
+        sourceId: matchId,
+        handicapA: Number(row.handicap_a) || 0,
+        handicapB: Number(row.handicap_b) || 0,
+        clubId: champ?.club_id || undefined,
+      };
+
+      if (cancelled) return;
+      setConfig(nextConfig);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("source");
+        next.delete("matchId");
+        return next;
+      }, { replace: true });
+    };
+
+    loadLinkedTournamentMatch();
+    return () => { cancelled = true; };
+  }, [config?.sourceId, navigate, searchParams, setSearchParams]);
 
   // Persist config so user can navigate away and resume
   useEffect(() => {

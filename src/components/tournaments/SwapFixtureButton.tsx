@@ -54,6 +54,9 @@ export function SwapFixtureButton({
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [showAllCourts, setShowAllCourts] = useState(!sameCourtOnly);
+  const [allowB2B, setAllowB2B] = useState(false);
+  /** Minimum minutes required between two matches of the same player before they count as back-to-back. */
+  const B2B_GAP_MINUTES = 20;
 
   const playersOf = (m: any): string[] =>
     [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];
@@ -63,81 +66,49 @@ export function SwapFixtureButton({
       ? `${m.scheduled_date}|${String(m.scheduled_time).slice(0, 5)}`
       : null;
 
-  // Sorted distinct times per date across the whole tournament — used to compute
-  // "adjacent slot" (i.e. the immediately preceding / following used timeslot).
-  const timesByDate = useMemo(() => {
-    const map = new Map<string, string[]>();
-    for (const m of allMatches) {
-      if (!m.scheduled_date || !m.scheduled_time) continue;
-      const t = String(m.scheduled_time).slice(0, 5);
-      if (!map.has(m.scheduled_date)) map.set(m.scheduled_date, []);
-      const arr = map.get(m.scheduled_date)!;
-      if (!arr.includes(t)) arr.push(t);
-    }
-    for (const arr of map.values()) arr.sort();
-    return map;
-  }, [allMatches]);
-
-  const adjacentSlotKeys = (date: string, time: string): string[] => {
-    const arr = timesByDate.get(date) || [];
-    const t = time.slice(0, 5);
-    const i = arr.indexOf(t);
-    const out: string[] = [];
-    if (i > 0) out.push(`${date}|${arr[i - 1]}`);
-    if (i >= 0 && i < arr.length - 1) out.push(`${date}|${arr[i + 1]}`);
-    return out;
+  const toMin = (t: string) => {
+    const [h, m] = t.slice(0, 5).split(":").map(Number);
+    return h * 60 + m;
   };
 
-  /** Map memberId -> set of slot keys (excluding the two matches involved in any potential swap). */
-  const conflictsFor = (target: any) => {
-    // After the swap: this match would sit at target's slot, target sits at this match's slot.
-    const newSlotForThis = slotKey(target);
-    const newSlotForTarget = slotKey(match);
+  /** Map memberId -> [{date, minutes}] for every match EXCEPT the two being swapped. */
+  const buildOccupancy = (targetId: string) => {
+    const occ = new Map<string, Array<{ date: string; min: number }>>();
+    for (const m of allMatches) {
+      if (m.id === match.id || m.id === targetId) continue;
+      if (!m.scheduled_date || !m.scheduled_time) continue;
+      const entry = { date: m.scheduled_date, min: toMin(String(m.scheduled_time)) };
+      for (const pid of playersOf(m)) {
+        if (!occ.has(pid)) occ.set(pid, []);
+        occ.get(pid)!.push(entry);
+      }
+    }
+    return occ;
+  };
 
-    if (!newSlotForThis || !newSlotForTarget) {
+  const conflictsFor = (target: any) => {
+    if (!match.scheduled_date || !match.scheduled_time || !target.scheduled_date || !target.scheduled_time) {
       return { swapBlocked: true, reason: "missing slot" as const };
     }
 
-    // Build occupancy excluding the two matches we are swapping.
-    const occupancy = new Map<string, Set<string>>();
-    for (const m of allMatches) {
-      if (m.id === match.id || m.id === target.id) continue;
-      const k = slotKey(m);
-      if (!k) continue;
-      for (const pid of playersOf(m)) {
-        if (!occupancy.has(pid)) occupancy.set(pid, new Set());
-        occupancy.get(pid)!.add(k);
-      }
-    }
+    const occ = buildOccupancy(target.id);
 
-    // This match's players at target's slot
-    for (const pid of playersOf(match)) {
-      if (occupancy.get(pid)?.has(newSlotForThis)) {
-        return { swapBlocked: true, reason: "player conflict" as const };
+    const check = (players: string[], newDate: string, newMin: number) => {
+      for (const pid of players) {
+        const rows = occ.get(pid) || [];
+        for (const r of rows) {
+          if (r.date !== newDate) continue;
+          if (r.min === newMin) return "player conflict" as const;
+          if (!allowB2B && Math.abs(r.min - newMin) <= B2B_GAP_MINUTES) return "back-to-back" as const;
+        }
       }
-    }
-    // Target's players at this match's slot
-    for (const pid of playersOf(target)) {
-      if (occupancy.get(pid)?.has(newSlotForTarget)) {
-        return { swapBlocked: true, reason: "player conflict" as const };
-      }
-    }
+      return null;
+    };
 
-    // Back-to-back check: after the swap, neither side should end up playing
-    // in an immediately adjacent timeslot (same date) to another of their own
-    // fixtures — that would create two consecutive games with no rest.
-    const adjForThis = adjacentSlotKeys(target.scheduled_date, String(target.scheduled_time).slice(0, 5));
-    for (const pid of playersOf(match)) {
-      if (adjForThis.some((k) => occupancy.get(pid)?.has(k))) {
-        return { swapBlocked: true, reason: "back-to-back" as const };
-      }
-    }
-    const adjForTarget = adjacentSlotKeys(match.scheduled_date, String(match.scheduled_time).slice(0, 5));
-    for (const pid of playersOf(target)) {
-      if (adjForTarget.some((k) => occupancy.get(pid)?.has(k))) {
-        return { swapBlocked: true, reason: "back-to-back" as const };
-      }
-    }
+    const r1 = check(playersOf(match), target.scheduled_date, toMin(String(target.scheduled_time)));
+    if (r1) return { swapBlocked: true, reason: r1 };
+    const r2 = check(playersOf(target), match.scheduled_date, toMin(String(match.scheduled_time)));
+    if (r2) return { swapBlocked: true, reason: r2 };
 
     return { swapBlocked: false, reason: "" as const };
   };
@@ -254,6 +225,15 @@ export function SwapFixtureButton({
               className="h-3 w-3"
             />
             Same court only {getCourtName ? `(${getCourtName(match)})` : ""}
+          </label>
+          <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={allowB2B}
+              onChange={(e) => setAllowB2B(e.target.checked)}
+              className="h-3 w-3"
+            />
+            Allow back-to-back (ignore rest gap)
           </label>
         </div>
         <div className="max-h-[320px] overflow-y-auto divide-y">

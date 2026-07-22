@@ -125,6 +125,19 @@ export function PageHeader({
           <div className="ml-auto flex items-center gap-1.5">
             <TenantSwitcher />
             <ThemeToggle />
+            {isStandalonePWA() && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                onClick={() => window.location.reload()}
+                aria-label="Refresh"
+                title="Refresh"
+              >
+                <RefreshCw className="w-4.5 h-4.5" />
+              </Button>
+            )}
             {showNotifications && <NotificationsDropdown />}
             <button
               type="button"

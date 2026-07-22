@@ -3927,11 +3927,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
 
 
-            {includeVisitors && visitorClubs.length > 0 && (
+            {visitorClubs.length > 0 && (
               <div className="space-y-2 rounded-lg border p-3">
                 <Label className="text-sm font-medium">Filter by Home Club</Label>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Leave all unchecked to include visitors from all clubs ({filteredVisitors.length} visitor{filteredVisitors.length !== 1 ? "s" : ""} matching)
+                  Leave all unchecked to include entrants from all clubs ({(homeClubCounts && Object.values(homeClubCounts).reduce((a, b) => a + b, 0)) || 0} out-of-club entrant{(Object.values(homeClubCounts).reduce((a, b) => a + b, 0)) !== 1 ? "s" : ""} across {visitorClubs.length} club{visitorClubs.length !== 1 ? "s" : ""})
                 </p>
                 <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
                   {visitorClubs.map((club) => (

@@ -280,6 +280,89 @@ export default function Tournaments() {
     return n !== 0 ? ` (${n > 0 ? "+" : ""}${n})` : "";
   };
 
+  const qc = useQueryClient();
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const [swapping, setSwapping] = useState(false);
+
+  const playersOf = (m: any): string[] =>
+    [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];
+  const toMinutes = (t?: string | null) => {
+    if (!t) return null;
+    const [h, mn] = String(t).slice(0, 5).split(":").map(Number);
+    return h * 60 + mn;
+  };
+  const canSwap = (a: any, b: any): { ok: boolean; reason?: string; warn?: string } => {
+    if (!a || !b || a.id === b.id) return { ok: false, reason: "same match" };
+    if (a.status === "completed" || b.status === "completed") return { ok: false, reason: "completed match" };
+    if (!a.scheduled_date || !a.scheduled_time || !b.scheduled_date || !b.scheduled_time) return { ok: false, reason: "unscheduled" };
+    if (a.champ_id !== b.champ_id) return { ok: false, reason: "different tournament" };
+    if (a.court_id !== b.court_id) return { ok: false, reason: "different court" };
+    // Player conflict — same slot
+    const aPlayers = new Set(playersOf(a));
+    const bPlayers = new Set(playersOf(b));
+    for (const m of allMatches as any[]) {
+      if (m.id === a.id || m.id === b.id) continue;
+      if (!m.scheduled_date || !m.scheduled_time) continue;
+      // conflict at b's slot for a's players
+      if (m.scheduled_date === b.scheduled_date && String(m.scheduled_time).slice(0,5) === String(b.scheduled_time).slice(0,5)) {
+        for (const pid of aPlayers) if (playersOf(m).includes(pid)) return { ok: false, reason: "player clash at target slot" };
+      }
+      if (m.scheduled_date === a.scheduled_date && String(m.scheduled_time).slice(0,5) === String(a.scheduled_time).slice(0,5)) {
+        for (const pid of bPlayers) if (playersOf(m).includes(pid)) return { ok: false, reason: "player clash at target slot" };
+      }
+    }
+    // Back-to-back warning (≤20 min gap on same date for same player)
+    const near = (d1: string, t1: string, d2: string, t2: string) => {
+      if (d1 !== d2) return false;
+      const m1 = toMinutes(t1); const m2 = toMinutes(t2);
+      if (m1 == null || m2 == null) return false;
+      const gap = Math.abs(m1 - m2);
+      return gap > 0 && gap <= 20;
+    };
+    for (const m of allMatches as any[]) {
+      if (m.id === a.id || m.id === b.id) continue;
+      if (!m.scheduled_date || !m.scheduled_time) continue;
+      for (const pid of aPlayers) {
+        if (playersOf(m).includes(pid) && near(b.scheduled_date, b.scheduled_time, m.scheduled_date, m.scheduled_time)) {
+          return { ok: true, warn: "back-to-back for a player" };
+        }
+      }
+      for (const pid of bPlayers) {
+        if (playersOf(m).includes(pid) && near(a.scheduled_date, a.scheduled_time, m.scheduled_date, m.scheduled_time)) {
+          return { ok: true, warn: "back-to-back for a player" };
+        }
+      }
+    }
+    return { ok: true };
+  };
+  const doSwap = async (a: any, b: any) => {
+    setSwapping(true);
+    try {
+      const { error: e1 } = await (supabase as any).from("club_champs_matches")
+        .update({ scheduled_date: b.scheduled_date, scheduled_time: b.scheduled_time, court_id: b.court_id })
+        .eq("id", a.id);
+      if (e1) throw e1;
+      const { error: e2 } = await (supabase as any).from("club_champs_matches")
+        .update({ scheduled_date: a.scheduled_date, scheduled_time: a.scheduled_time, court_id: a.court_id })
+        .eq("id", b.id);
+      if (e2) {
+        await (supabase as any).from("club_champs_matches")
+          .update({ scheduled_date: a.scheduled_date, scheduled_time: a.scheduled_time, court_id: a.court_id })
+          .eq("id", a.id);
+        throw e2;
+      }
+      toast.success("Fixtures swapped");
+      qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
+    } catch (err: any) {
+      toast.error(err?.message || "Swap failed");
+    } finally {
+      setSwapping(false);
+      setDragId(null);
+      setHoverId(null);
+    }
+  };
+
   const renderMatchRow = (m: any) => {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles";

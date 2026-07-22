@@ -2145,6 +2145,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         arr.sort((a, b) => (a.roundNum ?? 0) - (b.roundNum ?? 0));
       }
       const leagueKeys = [...byLeague.keys()].sort((a, b) => a - b);
+      // Capture per-league totals BEFORE the interleave loop consumes byLeague.
+      const leagueTotals = new Map<number, number>();
+      for (const k of leagueKeys) leagueTotals.set(k, byLeague.get(k)!.length);
+
       const interleaved: typeof nonByes = [];
       let anyLeft = true;
       while (anyLeft) {
@@ -2156,28 +2160,61 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         }
       }
 
+      // Spread mode: give every league a per-date quota so each league's
+      // matches distribute across all play-days (a small league still plays
+      // on the last day, not just the first). Fill mode leaves quota off so
+      // the earliest days pack completely.
+      const dateList = Array.from(new Set(allSlots.map((s) => s.date))).sort();
+      const numDates = Math.max(1, dateList.length);
+      const leagueTargetPerDate = new Map<number, number>();
+      for (const [k, tot] of leagueTotals) {
+        leagueTargetPerDate.set(k, Math.max(1, Math.ceil(tot / numDates)));
+      }
+      // league -> date -> count already placed on that date
+      const leaguePerDateCount = new Map<number, Map<string, number>>();
+      for (const k of leagueKeys) leaguePerDateCount.set(k, new Map());
+
+      const tryPlace = (
+        match: typeof nonByes[number],
+        allPlayers: string[],
+        respectQuota: boolean,
+      ): boolean => {
+        const perDate = leaguePerDateCount.get(match.groupNum);
+        const target = leagueTargetPerDate.get(match.groupNum) ?? Infinity;
+        for (const si of slotOrder) {
+          if (usedSlots.has(si)) continue;
+          const slot = allSlots[si];
+          if (respectQuota && scheduleMode === "spread" && perDate) {
+            if ((perDate.get(slot.date) || 0) >= target) continue;
+          }
+          if (!allPlayers.every((pid) => isEntityFree(pid, slot))) continue;
+          if (!allPlayers.every((pid) => canScheduleOn(pid, slot.date))) continue;
+          match.date = slot.date;
+          match.time = slot.time;
+          match.courtId = slot.courtId;
+          usedSlots.add(si);
+          allPlayers.forEach((pid) => {
+            entityLastDate.set(pid, slot.date);
+            markEntityBusy(pid, slot);
+          });
+          if (perDate) perDate.set(slot.date, (perDate.get(slot.date) || 0) + 1);
+          return true;
+        }
+        return false;
+      };
+
       // First pass: honour the "no same-day repeat per entity" gap (spread mode)
       // or pack sequentially (fill mode). Always avoid concurrent-slot conflicts.
+      // In spread mode we also respect the per-league per-day quota so leagues
+      // finish on the same day rather than the biggest league running solo at
+      // the end.
       for (const match of interleaved) {
         const playersA = getPlayersForEntity(match.entityA);
         const playersB = getPlayersForEntity(match.entityB);
         const allPlayers = [...playersA, ...playersB];
-
-        for (const si of slotOrder) {
-          if (usedSlots.has(si)) continue;
-          const slot = allSlots[si];
-          if (!allPlayers.every((pid) => isEntityFree(pid, slot))) continue;
-          if (allPlayers.every((pid) => canScheduleOn(pid, slot.date))) {
-            match.date = slot.date;
-            match.time = slot.time;
-            match.courtId = slot.courtId;
-            usedSlots.add(si);
-            allPlayers.forEach((pid) => {
-              entityLastDate.set(pid, slot.date);
-              markEntityBusy(pid, slot);
-            });
-            break;
-          }
+        if (!tryPlace(match, allPlayers, true)) {
+          // Quota-relaxed retry so a match still lands somewhere valid.
+          tryPlace(match, allPlayers, false);
         }
       }
 

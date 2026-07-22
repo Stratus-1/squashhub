@@ -149,6 +149,64 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
 
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [sameCourtOnly, setSameCourtOnly] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const [swapping, setSwapping] = useState(false);
+  const qc = useQueryClient();
+
+  const playersOf = (m: any): string[] =>
+    [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];
+  const slotKey = (m: any) =>
+    m.scheduled_date && m.scheduled_time ? `${m.scheduled_date}|${String(m.scheduled_time).slice(0, 5)}` : null;
+
+  const canSwap = (a: any, b: any): { ok: boolean; reason?: string } => {
+    if (!a || !b || a.id === b.id) return { ok: false, reason: "same match" };
+    if (a.status === "completed" || b.status === "completed") return { ok: false, reason: "completed" };
+    const sA = slotKey(a); const sB = slotKey(b);
+    if (!sA || !sB) return { ok: false, reason: "unscheduled" };
+    if (sameCourtOnly && a.court_id !== b.court_id) return { ok: false, reason: "different court" };
+    // Player conflict check
+    const occ = new Map<string, Set<string>>();
+    for (const m of matches as any[]) {
+      if (m.id === a.id || m.id === b.id) continue;
+      const k = slotKey(m); if (!k) continue;
+      for (const pid of playersOf(m)) {
+        if (!occ.has(pid)) occ.set(pid, new Set());
+        occ.get(pid)!.add(k);
+      }
+    }
+    for (const pid of playersOf(a)) if (occ.get(pid)?.has(sB)) return { ok: false, reason: "player conflict" };
+    for (const pid of playersOf(b)) if (occ.get(pid)?.has(sA)) return { ok: false, reason: "player conflict" };
+    return { ok: true };
+  };
+
+  const doSwap = async (a: any, b: any) => {
+    setSwapping(true);
+    try {
+      const { error: e1 } = await (supabase as any).from("club_champs_matches")
+        .update({ scheduled_date: b.scheduled_date, scheduled_time: b.scheduled_time, court_id: b.court_id })
+        .eq("id", a.id);
+      if (e1) throw e1;
+      const { error: e2 } = await (supabase as any).from("club_champs_matches")
+        .update({ scheduled_date: a.scheduled_date, scheduled_time: a.scheduled_time, court_id: a.court_id })
+        .eq("id", b.id);
+      if (e2) {
+        await (supabase as any).from("club_champs_matches")
+          .update({ scheduled_date: a.scheduled_date, scheduled_time: a.scheduled_time, court_id: a.court_id })
+          .eq("id", a.id);
+        throw e2;
+      }
+      toast.success("Fixtures swapped");
+      qc.invalidateQueries({ queryKey: ["champ-preview-matches", champId] });
+    } catch (err: any) {
+      toast.error(err?.message || "Swap failed");
+    } finally {
+      setSwapping(false);
+      setDragId(null);
+      setHoverId(null);
+    }
+  };
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();

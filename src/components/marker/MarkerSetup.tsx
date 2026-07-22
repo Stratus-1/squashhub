@@ -634,6 +634,7 @@ export function MarkerSetup({ onStart }: Props) {
           navigate(`/bells-marker/${matchId}`, { replace: true });
           return;
         }
+        if (source !== "tournament") skipNextSourceResetRef.current = true;
         setSource("tournament");
         setSelectedSourceId(matchId);
         setPendingAutoStart(true);
@@ -644,6 +645,7 @@ export function MarkerSetup({ onStart }: Props) {
     } else if (src === "booking" && todayBookings.length > 0) {
       const exists = todayBookings.find((b) => b.id === matchId);
       if (exists) {
+        if (source !== "booking") skipNextSourceResetRef.current = true;
         setSource("booking");
         setSelectedSourceId(matchId);
         setPendingAutoStart(true);

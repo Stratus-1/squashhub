@@ -657,6 +657,37 @@ export function MarkerSetup({ onStart }: Props) {
     playerB.name.trim().length > 0 &&
     (!isDoubles || (partnerA.name.trim().length > 0 && partnerB.name.trim().length > 0));
 
+  const buildStartPayload = () => ({
+    playerA,
+    playerB,
+    partnerA: isDoubles ? partnerA : undefined,
+    partnerB: isDoubles ? partnerB : undefined,
+    isDoubles,
+    matchType,
+    scoringFormat,
+    bestOf,
+    playAllGames,
+    deuceRule,
+    source,
+    sourceId: selectedSourceId || undefined,
+    handicapA: source === "tournament" && selectedSourceId
+      ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_a) || 0
+      : undefined,
+    handicapB: source === "tournament" && selectedSourceId
+      ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_b) || 0
+      : undefined,
+    clubId: clubId || undefined,
+  });
+
+  // Auto-start scoring when arriving via deep-link once players are prefilled.
+  useEffect(() => {
+    if (!pendingAutoStart) return;
+    if (!playersFromSource || !canStart) return;
+    setPendingAutoStart(false);
+    onStart(buildStartPayload());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAutoStart, playersFromSource, canStart, playerA, playerB, partnerA, partnerB, isDoubles]);
+
   return (
     <div className="space-y-4">
       {/* Source selector */}

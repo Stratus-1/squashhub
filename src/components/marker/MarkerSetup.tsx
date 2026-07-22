@@ -603,10 +603,13 @@ export function MarkerSetup({ onStart }: Props) {
     }
   }, [source, selectedSourceId, tournamentMatches, todayBookings, clubName]);
 
-  // Reset when source changes
   useEffect(() => {
+    if (skipNextSourceResetRef.current) {
+      skipNextSourceResetRef.current = false;
+      return;
+    }
     setSelectedSourceId("");
-    
+
     setPlayerA(emptyPlayer());
     setPlayerB(emptyPlayer());
     setPartnerA(emptyPlayer());

@@ -747,10 +747,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     enabled: !!clubId,
   });
 
-  // Unique visitor clubs for filter
+  // Unique home clubs for filter — union of visitor home clubs AND
+  // out-of-club members (imported entrants whose home_club_name is set).
   const visitorClubs = useMemo(() => {
-    return [...new Set(allVisitors.map((v) => v.home_club_name))].sort();
-  }, [allVisitors]);
+    const set = new Set<string>();
+    for (const v of allVisitors) if (v?.home_club_name) set.add(v.home_club_name);
+    for (const m of (members || []) as any[]) if (m?.home_club_name) set.add(m.home_club_name);
+    return [...set].sort();
+  }, [allVisitors, members]);
+
+  // Per-club counts across visitors + out-of-club members (for the badge).
+  const homeClubCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const v of allVisitors) if (v?.home_club_name) counts[v.home_club_name] = (counts[v.home_club_name] || 0) + 1;
+    for (const m of (members || []) as any[]) if (m?.home_club_name) counts[m.home_club_name] = (counts[m.home_club_name] || 0) + 1;
+    return counts;
+  }, [allVisitors, members]);
 
   // Filter visitors by gender and selected clubs
   const filteredVisitors = useMemo(() => {

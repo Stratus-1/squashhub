@@ -160,13 +160,37 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
   const slotKey = (m: any) =>
     m.scheduled_date && m.scheduled_time ? `${m.scheduled_date}|${String(m.scheduled_time).slice(0, 5)}` : null;
 
+  const timesByDate = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const m of matches as any[]) {
+      if (!m.scheduled_date || !m.scheduled_time) continue;
+      const t = String(m.scheduled_time).slice(0, 5);
+      if (!map.has(m.scheduled_date)) map.set(m.scheduled_date, []);
+      const arr = map.get(m.scheduled_date)!;
+      if (!arr.includes(t)) arr.push(t);
+    }
+    for (const arr of map.values()) arr.sort();
+    return map;
+  }, [matches]);
+
+  const adjacentSlotKeys = (date: string | null, time: string | null): string[] => {
+    if (!date || !time) return [];
+    const arr = timesByDate.get(date) || [];
+    const t = String(time).slice(0, 5);
+    const i = arr.indexOf(t);
+    const out: string[] = [];
+    if (i > 0) out.push(`${date}|${arr[i - 1]}`);
+    if (i >= 0 && i < arr.length - 1) out.push(`${date}|${arr[i + 1]}`);
+    return out;
+  };
+
   const canSwap = (a: any, b: any): { ok: boolean; reason?: string } => {
     if (!a || !b || a.id === b.id) return { ok: false, reason: "same match" };
     if (a.status === "completed" || b.status === "completed") return { ok: false, reason: "completed" };
     const sA = slotKey(a); const sB = slotKey(b);
     if (!sA || !sB) return { ok: false, reason: "unscheduled" };
     if (sameCourtOnly && a.court_id !== b.court_id) return { ok: false, reason: "different court" };
-    // Player conflict check
+    // Player conflict + back-to-back check
     const occ = new Map<string, Set<string>>();
     for (const m of matches as any[]) {
       if (m.id === a.id || m.id === b.id) continue;
@@ -178,6 +202,10 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
     }
     for (const pid of playersOf(a)) if (occ.get(pid)?.has(sB)) return { ok: false, reason: "player conflict" };
     for (const pid of playersOf(b)) if (occ.get(pid)?.has(sA)) return { ok: false, reason: "player conflict" };
+    const adjForA = adjacentSlotKeys(b.scheduled_date, b.scheduled_time);
+    for (const pid of playersOf(a)) if (adjForA.some((k) => occ.get(pid)?.has(k))) return { ok: false, reason: "back-to-back" };
+    const adjForB = adjacentSlotKeys(a.scheduled_date, a.scheduled_time);
+    for (const pid of playersOf(b)) if (adjForB.some((k) => occ.get(pid)?.has(k))) return { ok: false, reason: "back-to-back" };
     return { ok: true };
   };
 

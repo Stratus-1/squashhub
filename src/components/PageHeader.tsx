@@ -14,6 +14,19 @@ import { fromExt } from "@/lib/supabase-ext";
 import { TenantSwitcher } from "@/components/TenantSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
+function isStandalonePWA(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return (
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      // iOS Safari
+      (window.navigator as any).standalone === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 interface PageHeaderProps {
   title: string;
   subtitle?: string;

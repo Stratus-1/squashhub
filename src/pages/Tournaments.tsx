@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FinalizeTournamentSetupDialog } from "@/components/tournaments/FinalizeTournamentSetupDialog";
+import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { assignPools, entityIdForEntry, type Entry as SwissEntry } from "@/lib/swiss-pairing";
@@ -378,6 +379,29 @@ export default function Tournaments() {
             ? <BellRing className="w-3 h-3" />
             : <Gavel className="w-3 h-3" />} {tournamentFormat.markerLabel}
         </Button>
+
+        {isClubAdmin && m.scheduled_date && m.scheduled_time && (
+          <SwapFixtureButton
+            match={m}
+            allMatches={allMatches.filter((x: any) => x.champ_id === m.champ_id)}
+            getMatchLabel={(x) => {
+              const c = allChamps.find((cc: any) => cc.id === x.champ_id);
+              const dbl = c?.match_type === "doubles";
+              const a = sideLabel(x.player_a, x.partner_a, x.placeholder_a, dbl);
+              const b = sideLabel(x.player_b, x.partner_b, x.placeholder_b, dbl);
+              return `${a} vs ${b}`;
+            }}
+            getCourtName={(x) => x.court?.name || ""}
+            getRowColor={(x) => bucketColor(bucketKeyOf(x))}
+            getBucketLabel={(x) => {
+              const bk = bucketKeyOf(x);
+              const bm = buckets.find((bb) => bb.key === bk);
+              return bm ? bucketLabel(bm) : null;
+            }}
+            invalidateKeys={[["tournaments-all-matches", champIds]]}
+            size="icon"
+          />
+        )}
       </div>
     );
   };

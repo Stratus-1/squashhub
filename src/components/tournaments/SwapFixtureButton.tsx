@@ -22,6 +22,12 @@ interface Props {
   invalidateKeys?: (string | undefined)[][];
   /** Smaller button variant for compact rows. */
   size?: "icon" | "sm";
+  /** Restrict candidates to matches on the same court as `match` (default true). */
+  sameCourtOnly?: boolean;
+  /** Optional color accent per candidate row (for league/pool colour-coding). */
+  getRowColor?: (m: any) => { border: string; bg: string; chipBg: string; chipText: string } | null;
+  /** Optional short label (e.g. "L1 · Pool A") to show on each candidate row. */
+  getBucketLabel?: (m: any) => string | null;
 }
 
 /**
@@ -39,11 +45,15 @@ export function SwapFixtureButton({
   getCourtName,
   invalidateKeys = [],
   size = "icon",
+  sameCourtOnly = true,
+  getRowColor,
+  getBucketLabel,
 }: Props) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showAllCourts, setShowAllCourts] = useState(!sameCourtOnly);
 
   const playersOf = (m: any): string[] =>
     [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];
@@ -94,6 +104,7 @@ export function SwapFixtureButton({
     const q = search.trim().toLowerCase();
     return allMatches
       .filter((m) => m.id !== match.id && !m.is_bye && m.status !== "completed")
+      .filter((m) => (showAllCourts ? true : m.court_id === match.court_id))
       .filter((m) => {
         if (!q) return true;
         return getMatchLabel(m).toLowerCase().includes(q);
@@ -104,7 +115,7 @@ export function SwapFixtureButton({
         return aKey.localeCompare(bKey);
       })
       .slice(0, 80);
-  }, [allMatches, match.id, getMatchLabel, search]);
+  }, [allMatches, match.id, match.court_id, showAllCourts, getMatchLabel, search]);
 
   const doSwap = async (target: any) => {
     setBusy(true);
@@ -193,6 +204,15 @@ export function SwapFixtureButton({
               className="pl-7 h-8 text-xs"
             />
           </div>
+          <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={!showAllCourts}
+              onChange={(e) => setShowAllCourts(!e.target.checked)}
+              className="h-3 w-3"
+            />
+            Same court only {getCourtName ? `(${getCourtName(match)})` : ""}
+          </label>
         </div>
         <div className="max-h-[320px] overflow-y-auto divide-y">
           {busy && (
@@ -205,12 +225,15 @@ export function SwapFixtureButton({
           ) : (
             !busy && candidates.map((m) => {
               const { swapBlocked, reason } = conflictsFor(m);
+              const color = getRowColor ? getRowColor(m) : null;
+              const bLabel = getBucketLabel ? getBucketLabel(m) : null;
               return (
                 <button
                   key={m.id}
                   disabled={swapBlocked}
                   onClick={() => doSwap(m)}
                   title={swapBlocked ? reason : undefined}
+                  style={color ? { borderLeft: `3px solid ${color.border}`, backgroundColor: color.bg } : undefined}
                   className="w-full text-left px-3 py-2 text-xs hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between gap-2"
                 >
                   <div className="flex-1 min-w-0">
@@ -219,9 +242,16 @@ export function SwapFixtureButton({
                       {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
                       {m.scheduled_time ? ` · ${String(m.scheduled_time).slice(0, 5)}` : ""}
                       {getCourtName ? ` · ${getCourtName(m)}` : ""}
-                      {m.group_number != null ? ` · L${m.group_number}` : ""}
                     </div>
                   </div>
+                  {bLabel && (
+                    <span
+                      style={color ? { backgroundColor: color.chipBg, color: color.chipText, borderColor: color.border } : undefined}
+                      className="text-[9px] px-1.5 py-0.5 rounded border font-medium shrink-0"
+                    >
+                      {bLabel}
+                    </span>
+                  )}
                   {swapBlocked && (
                     <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40 shrink-0">
                       {reason}

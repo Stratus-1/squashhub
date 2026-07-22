@@ -1,0 +1,1 @@
+UPDATE public.club_champs SET court_ids = ARRAY(SELECT unnest(court_ids) INTERSECT SELECT id FROM public.courts WHERE club_id = club_champs.club_id) WHERE court_ids IS NOT NULL AND EXISTS (SELECT 1 FROM unnest(court_ids) cid WHERE cid NOT IN (SELECT id FROM public.courts));

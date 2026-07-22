@@ -54,6 +54,9 @@ export function SwapFixtureButton({
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [showAllCourts, setShowAllCourts] = useState(!sameCourtOnly);
+  const [allowB2B, setAllowB2B] = useState(false);
+  /** Minimum minutes required between two matches of the same player before they count as back-to-back. */
+  const B2B_GAP_MINUTES = 20;
 
   const playersOf = (m: any): string[] =>
     [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];

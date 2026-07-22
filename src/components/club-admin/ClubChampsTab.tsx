@@ -2415,12 +2415,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       // Create entries. Promote any `visitor-*` IDs to real club_members rows
       // first, otherwise the FK on club_champs_entries.club_member_id fails.
+      let resolvedPairDbId = (id: string) => toDbId(id);
       if (isDoubles) {
         const rawIds = (groups as DoublePair[][]).flatMap((gp) => gp.flatMap((p) => [p.player1Id, p.player2Id]));
         const resolved = await promoteVisitorIds(rawIds);
         const idMap = new Map<string, string>();
         rawIds.forEach((raw, i) => idMap.set(raw, resolved[i]));
         const resolveId = (id: string) => idMap.get(id) || toDbId(id);
+        resolvedPairDbId = resolveId;
         const entries = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
           groupPairs.map((pair, orderIndex) => ({
               champ_id: champId,
@@ -2434,6 +2436,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (entryErr) throw entryErr;
         const keepIds = entries.map((e) => e.club_member_id);
         if (keepIds.length > 0) await fromExt("club_champs_entries").delete().eq("champ_id", champId).not("club_member_id", "in", `(${keepIds.join(",")})`);
+        await syncDoublesRegistrationsForPairs(
+          champId,
+          entries.map((e) => ({ player1Id: e.club_member_id, player2Id: e.partner_member_id })),
+        );
       } else {
         const rawIds = (groups as ClubMember[][]).flatMap((gp) => gp.map((p) => p.id));
         const resolved = await promoteVisitorIds(rawIds);
@@ -2469,16 +2475,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             champ_id: champId,
             group_number: m.groupNum,
             round_number: m.roundNum,
-            player_a_member_id: toDbId(pairA?.player1Id || m.entityA),
-            partner_a_member_id: pairA?.player2Id ? toDbId(pairA.player2Id) : null,
-            player_b_member_id: toDbId(pairB?.player1Id || m.entityB),
-            partner_b_member_id: pairB?.player2Id ? toDbId(pairB.player2Id) : null,
+            player_a_member_id: resolvedPairDbId(pairA?.player1Id || m.entityA),
+            partner_a_member_id: pairA?.player2Id ? resolvedPairDbId(pairA.player2Id) : null,
+            player_b_member_id: resolvedPairDbId(pairB?.player1Id || m.entityB),
+            partner_b_member_id: pairB?.player2Id ? resolvedPairDbId(pairB.player2Id) : null,
             scheduled_date: isBye ? null : m.date,
             scheduled_time: isBye ? null : m.time,
             court_id: isBye ? null : m.courtId,
             leg: m.leg ?? null,
             is_bye: isBye,
-            bye_member_id: isBye ? toDbId(pairA?.player1Id || m.entityA) : null,
+            bye_member_id: isBye ? resolvedPairDbId(pairA?.player1Id || m.entityA) : null,
             status: isBye
               ? (byeHandling === "walkover_win" ? "completed" : "scheduled")
               : "scheduled",

@@ -400,15 +400,48 @@ export default function Tournaments() {
       ? { backgroundColor: color.chipBg, color: color.chipText, borderColor: color.border }
       : undefined;
 
+    const canDrag = isClubAdmin && !!m.scheduled_date && !!m.scheduled_time && m.status !== "completed" && !swapping;
+    const isDragging = dragId === m.id;
+    const draggingMatch = dragId ? (allMatches as any[]).find((x) => x.id === dragId) : null;
+    const isHoverTarget = hoverId === m.id && dragId && dragId !== m.id;
+    const hoverCheck = isHoverTarget && draggingMatch ? canSwap(draggingMatch, m) : null;
+    const dropOk = hoverCheck?.ok;
+    const dropWarn = hoverCheck?.ok && hoverCheck.warn;
+    const dropBad = hoverCheck && !hoverCheck.ok;
+
     return (
       <div
         key={m.id}
         style={rowStyle}
+        draggable={canDrag}
+        onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = "move"; }}
+        onDragEnd={() => { setDragId(null); setHoverId(null); }}
+        onDragOver={(e) => { if (dragId && dragId !== m.id) { e.preventDefault(); setHoverId(m.id); } }}
+        onDragLeave={() => { if (hoverId === m.id) setHoverId(null); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!draggingMatch) return;
+          const chk = canSwap(draggingMatch, m);
+          if (!chk.ok) { toast.error(`Cannot swap: ${chk.reason}`); setDragId(null); setHoverId(null); return; }
+          if (chk.warn) {
+            const ok = window.confirm(`Warning: this swap will create a ${chk.warn}. Continue?`);
+            if (!ok) { setDragId(null); setHoverId(null); return; }
+          }
+          doSwap(draggingMatch, m);
+        }}
         className={cn(
-          "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded",
+          "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded transition-all",
           today ? "bg-primary/10 border border-primary/20" : !color && "bg-muted/50",
+          canDrag && "cursor-grab active:cursor-grabbing",
+          isDragging && "opacity-40",
+          dropOk && !dropWarn && "ring-2 ring-green-500",
+          dropWarn && "ring-2 ring-amber-500",
+          dropBad && "ring-2 ring-red-500",
         )}
       >
+        {isClubAdmin && (
+          <GripVertical className={cn("w-3.5 h-3.5 shrink-0 hidden sm:block", canDrag ? "text-muted-foreground/60" : "text-transparent")} />
+        )}
         <button
           onClick={() => navigate(`/club-champs/${m.champ_id}`)}
           className="flex flex-wrap items-center gap-x-2 gap-y-1 flex-1 min-w-0 text-left hover:opacity-80"

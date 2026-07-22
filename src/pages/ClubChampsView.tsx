@@ -302,8 +302,9 @@ export default function ClubChampsView() {
         won: totalWon,
         gameDiff: stats.gamesWon - stats.gamesLost,
         pointsDiff: stats.pointsFor - stats.pointsAgainst,
-        // Standard tournament points (used for ranking in standard mode).
-        points: totalWon * 2 + (totalPlayed - totalWon - stats.lost),
+        // Standard tournament points: 2 for a win, 1 for a loss (participation).
+        points: totalWon * 2 + stats.lost * 1,
+
       };
     };
 

@@ -63,6 +63,31 @@ export function SwapFixtureButton({
       ? `${m.scheduled_date}|${String(m.scheduled_time).slice(0, 5)}`
       : null;
 
+  // Sorted distinct times per date across the whole tournament — used to compute
+  // "adjacent slot" (i.e. the immediately preceding / following used timeslot).
+  const timesByDate = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const m of allMatches) {
+      if (!m.scheduled_date || !m.scheduled_time) continue;
+      const t = String(m.scheduled_time).slice(0, 5);
+      if (!map.has(m.scheduled_date)) map.set(m.scheduled_date, []);
+      const arr = map.get(m.scheduled_date)!;
+      if (!arr.includes(t)) arr.push(t);
+    }
+    for (const arr of map.values()) arr.sort();
+    return map;
+  }, [allMatches]);
+
+  const adjacentSlotKeys = (date: string, time: string): string[] => {
+    const arr = timesByDate.get(date) || [];
+    const t = time.slice(0, 5);
+    const i = arr.indexOf(t);
+    const out: string[] = [];
+    if (i > 0) out.push(`${date}|${arr[i - 1]}`);
+    if (i >= 0 && i < arr.length - 1) out.push(`${date}|${arr[i + 1]}`);
+    return out;
+  };
+
   /** Map memberId -> set of slot keys (excluding the two matches involved in any potential swap). */
   const conflictsFor = (target: any) => {
     // After the swap: this match would sit at target's slot, target sits at this match's slot.
@@ -97,6 +122,23 @@ export function SwapFixtureButton({
         return { swapBlocked: true, reason: "player conflict" as const };
       }
     }
+
+    // Back-to-back check: after the swap, neither side should end up playing
+    // in an immediately adjacent timeslot (same date) to another of their own
+    // fixtures — that would create two consecutive games with no rest.
+    const adjForThis = adjacentSlotKeys(target.scheduled_date, String(target.scheduled_time).slice(0, 5));
+    for (const pid of playersOf(match)) {
+      if (adjForThis.some((k) => occupancy.get(pid)?.has(k))) {
+        return { swapBlocked: true, reason: "back-to-back" as const };
+      }
+    }
+    const adjForTarget = adjacentSlotKeys(match.scheduled_date, String(match.scheduled_time).slice(0, 5));
+    for (const pid of playersOf(target)) {
+      if (adjForTarget.some((k) => occupancy.get(pid)?.has(k))) {
+        return { swapBlocked: true, reason: "back-to-back" as const };
+      }
+    }
+
     return { swapBlocked: false, reason: "" as const };
   };
 

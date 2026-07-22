@@ -1891,10 +1891,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           // visible: League 1 owns e.g. courts 1-2 for the first block, then
           // 2-3 next block, etc. Fallbacks below keep courts busy if the
           // owner has nothing eligible.
+          // Total matches placed so far across all leagues — used to rotate
+          // ownership at every placement so leagues interleave across courts
+          // and time (e.g. "2 L1, 1 L2, 2 L1, 1 L2 …") instead of one league
+          // batching all its games before the other starts.
+          const totalPlacedSoFar = () => {
+            let n = 0;
+            for (const gn of leagues) {
+              n += (initialCounts.get(gn) || 0) - (remainingByLeague.get(gn)?.length || 0);
+            }
+            return n;
+          };
           const ownershipForBlock = (
             block: number,
             sessionCourts: number[],
             applyShift: boolean,
+            extraShift = 0,
           ): Map<number, number> => {
             const totalCourts = sessionCourts.length;
             const remWeights = leagues.map((gn) => {
@@ -1933,7 +1945,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               }
             }
             const own = new Map<number, number>();
-            const shift = applyShift ? ((block % totalCourts) + totalCourts) % totalCourts : 0;
+            const baseShift = applyShift ? ((block % totalCourts) + totalCourts) % totalCourts : 0;
+            const shift = ((baseShift + extraShift) % totalCourts + totalCourts) % totalCourts;
             let cursor = 0;
             leagues.forEach((gn, i) => {
               for (let k = 0; k < allocs[i]; k++) {

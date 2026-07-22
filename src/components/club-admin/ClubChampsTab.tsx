@@ -3935,7 +3935,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       />
                       <span className="text-sm">{club}</span>
                       <Badge variant="secondary" className="ml-auto text-[10px]">
-                        {allVisitors.filter((v) => v.home_club_name === club).length}
+                        {homeClubCounts[club] || 0}
                       </Badge>
                     </label>
                   ))}

@@ -843,7 +843,9 @@ export function MarkerSetup({ onStart }: Props) {
                     >
                       <p className="text-xs font-medium text-primary">{m.champName}{doublesLabel}</p>
                       <p className="text-sm font-semibold mt-0.5">
-                        {m.playerAName} vs {m.playerBName}
+                        {m.partnerAName ? `${m.playerAName} / ${m.partnerAName}` : m.playerAName}
+                        {" vs "}
+                        {m.partnerBName ? `${m.playerBName} / ${m.partnerBName}` : m.playerBName}
                       </p>
                       {dateStr && (
                         <p className="text-[10px] text-muted-foreground mt-0.5">

@@ -623,6 +623,11 @@ export function MarkerSetup({ onStart }: Props) {
 
         const hasDoubles = match.matchType === "doubles" || match.matchType === "mixed";
         setIsDoubles(hasDoubles);
+        const scoring = tournamentScoringFromMatch(match);
+        setScoringFormat(scoring.scoringFormat);
+        setBestOf(scoring.bestOf);
+        setPlayAllGames(scoring.playAllGames);
+        setDeuceRule(scoring.deuceRule);
         if (hasDoubles) {
           setPartnerA({
             name: match.partnerAName || "",

@@ -204,6 +204,15 @@ export function SwapFixtureButton({
               className="pl-7 h-8 text-xs"
             />
           </div>
+          <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={!showAllCourts}
+              onChange={(e) => setShowAllCourts(!e.target.checked)}
+              className="h-3 w-3"
+            />
+            Same court only {getCourtName ? `(${getCourtName(match)})` : ""}
+          </label>
         </div>
         <div className="max-h-[320px] overflow-y-auto divide-y">
           {busy && (

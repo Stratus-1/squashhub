@@ -294,6 +294,7 @@ export function MarkerSetup({ onStart }: Props) {
   const [source, setSource] = useState<MatchSource>("manual");
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
   const [pendingAutoStart, setPendingAutoStart] = useState(false);
+  const skipNextSourceResetRef = useRef(false);
   const [isDoubles, setIsDoubles] = useState(false);
 
   const [playerA, setPlayerA] = useState<PlayerInfo>(emptyPlayer());

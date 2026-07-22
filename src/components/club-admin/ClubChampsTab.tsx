@@ -2297,6 +2297,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
+            affects_ranking_points: affectsRankingPoints,
+            day_schedules: customizeDailySchedule ? daySchedules : [],
+            court_ids: Array.from(selectedCourtIds),
+            schedule_mode: scheduleMode,
+            playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
+            playoff_date: playoffDate || null,
           })
           .eq("id", existingChampId);
         if (updateErr) throw updateErr;
@@ -2356,6 +2362,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
+            affects_ranking_points: affectsRankingPoints,
+            day_schedules: customizeDailySchedule ? daySchedules : [],
+            court_ids: Array.from(selectedCourtIds),
+            schedule_mode: scheduleMode,
+            playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
+            playoff_date: playoffDate || null,
           })
           .select()
           .single();

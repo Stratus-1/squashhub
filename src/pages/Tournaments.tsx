@@ -7,9 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, ChevronRight, Loader2, Calendar, User, BarChart3, Gavel, Settings2, Printer, BellRing } from "lucide-react";
+import { Trophy, ChevronRight, Loader2, Calendar, User, BarChart3, Gavel, Settings2, Printer, BellRing, GripVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
@@ -278,6 +280,89 @@ export default function Tournaments() {
     return n !== 0 ? ` (${n > 0 ? "+" : ""}${n})` : "";
   };
 
+  const qc = useQueryClient();
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const [swapping, setSwapping] = useState(false);
+
+  const playersOf = (m: any): string[] =>
+    [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];
+  const toMinutes = (t?: string | null) => {
+    if (!t) return null;
+    const [h, mn] = String(t).slice(0, 5).split(":").map(Number);
+    return h * 60 + mn;
+  };
+  const canSwap = (a: any, b: any): { ok: boolean; reason?: string; warn?: string } => {
+    if (!a || !b || a.id === b.id) return { ok: false, reason: "same match" };
+    if (a.status === "completed" || b.status === "completed") return { ok: false, reason: "completed match" };
+    if (!a.scheduled_date || !a.scheduled_time || !b.scheduled_date || !b.scheduled_time) return { ok: false, reason: "unscheduled" };
+    if (a.champ_id !== b.champ_id) return { ok: false, reason: "different tournament" };
+    if (a.court_id !== b.court_id) return { ok: false, reason: "different court" };
+    // Player conflict — same slot
+    const aPlayers = new Set(playersOf(a));
+    const bPlayers = new Set(playersOf(b));
+    for (const m of allMatches as any[]) {
+      if (m.id === a.id || m.id === b.id) continue;
+      if (!m.scheduled_date || !m.scheduled_time) continue;
+      // conflict at b's slot for a's players
+      if (m.scheduled_date === b.scheduled_date && String(m.scheduled_time).slice(0,5) === String(b.scheduled_time).slice(0,5)) {
+        for (const pid of aPlayers) if (playersOf(m).includes(pid)) return { ok: false, reason: "player clash at target slot" };
+      }
+      if (m.scheduled_date === a.scheduled_date && String(m.scheduled_time).slice(0,5) === String(a.scheduled_time).slice(0,5)) {
+        for (const pid of bPlayers) if (playersOf(m).includes(pid)) return { ok: false, reason: "player clash at target slot" };
+      }
+    }
+    // Back-to-back warning (≤20 min gap on same date for same player)
+    const near = (d1: string, t1: string, d2: string, t2: string) => {
+      if (d1 !== d2) return false;
+      const m1 = toMinutes(t1); const m2 = toMinutes(t2);
+      if (m1 == null || m2 == null) return false;
+      const gap = Math.abs(m1 - m2);
+      return gap > 0 && gap <= 20;
+    };
+    for (const m of allMatches as any[]) {
+      if (m.id === a.id || m.id === b.id) continue;
+      if (!m.scheduled_date || !m.scheduled_time) continue;
+      for (const pid of aPlayers) {
+        if (playersOf(m).includes(pid) && near(b.scheduled_date, b.scheduled_time, m.scheduled_date, m.scheduled_time)) {
+          return { ok: true, warn: "back-to-back for a player" };
+        }
+      }
+      for (const pid of bPlayers) {
+        if (playersOf(m).includes(pid) && near(a.scheduled_date, a.scheduled_time, m.scheduled_date, m.scheduled_time)) {
+          return { ok: true, warn: "back-to-back for a player" };
+        }
+      }
+    }
+    return { ok: true };
+  };
+  const doSwap = async (a: any, b: any) => {
+    setSwapping(true);
+    try {
+      const { error: e1 } = await (supabase as any).from("club_champs_matches")
+        .update({ scheduled_date: b.scheduled_date, scheduled_time: b.scheduled_time, court_id: b.court_id })
+        .eq("id", a.id);
+      if (e1) throw e1;
+      const { error: e2 } = await (supabase as any).from("club_champs_matches")
+        .update({ scheduled_date: a.scheduled_date, scheduled_time: a.scheduled_time, court_id: a.court_id })
+        .eq("id", b.id);
+      if (e2) {
+        await (supabase as any).from("club_champs_matches")
+          .update({ scheduled_date: a.scheduled_date, scheduled_time: a.scheduled_time, court_id: a.court_id })
+          .eq("id", a.id);
+        throw e2;
+      }
+      toast.success("Fixtures swapped");
+      qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
+    } catch (err: any) {
+      toast.error(err?.message || "Swap failed");
+    } finally {
+      setSwapping(false);
+      setDragId(null);
+      setHoverId(null);
+    }
+  };
+
   const renderMatchRow = (m: any) => {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles";
@@ -315,15 +400,48 @@ export default function Tournaments() {
       ? { backgroundColor: color.chipBg, color: color.chipText, borderColor: color.border }
       : undefined;
 
+    const canDrag = isClubAdmin && !!m.scheduled_date && !!m.scheduled_time && m.status !== "completed" && !swapping;
+    const isDragging = dragId === m.id;
+    const draggingMatch = dragId ? (allMatches as any[]).find((x) => x.id === dragId) : null;
+    const isHoverTarget = hoverId === m.id && dragId && dragId !== m.id;
+    const hoverCheck = isHoverTarget && draggingMatch ? canSwap(draggingMatch, m) : null;
+    const dropOk = hoverCheck?.ok;
+    const dropWarn = hoverCheck?.ok && hoverCheck.warn;
+    const dropBad = hoverCheck && !hoverCheck.ok;
+
     return (
       <div
         key={m.id}
         style={rowStyle}
+        draggable={canDrag}
+        onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = "move"; }}
+        onDragEnd={() => { setDragId(null); setHoverId(null); }}
+        onDragOver={(e) => { if (dragId && dragId !== m.id) { e.preventDefault(); setHoverId(m.id); } }}
+        onDragLeave={() => { if (hoverId === m.id) setHoverId(null); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!draggingMatch) return;
+          const chk = canSwap(draggingMatch, m);
+          if (!chk.ok) { toast.error(`Cannot swap: ${chk.reason}`); setDragId(null); setHoverId(null); return; }
+          if (chk.warn) {
+            const ok = window.confirm(`Warning: this swap will create a ${chk.warn}. Continue?`);
+            if (!ok) { setDragId(null); setHoverId(null); return; }
+          }
+          doSwap(draggingMatch, m);
+        }}
         className={cn(
-          "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded",
+          "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded transition-all",
           today ? "bg-primary/10 border border-primary/20" : !color && "bg-muted/50",
+          canDrag && "cursor-grab active:cursor-grabbing",
+          isDragging && "opacity-40",
+          dropOk && !dropWarn && "ring-2 ring-green-500",
+          dropWarn && "ring-2 ring-amber-500",
+          dropBad && "ring-2 ring-red-500",
         )}
       >
+        {isClubAdmin && (
+          <GripVertical className={cn("w-3.5 h-3.5 shrink-0 hidden sm:block", canDrag ? "text-muted-foreground/60" : "text-transparent")} />
+        )}
         <button
           onClick={() => navigate(`/club-champs/${m.champ_id}`)}
           className="flex flex-wrap items-center gap-x-2 gap-y-1 flex-1 min-w-0 text-left hover:opacity-80"

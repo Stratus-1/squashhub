@@ -104,6 +104,7 @@ export function SwapFixtureButton({
     const q = search.trim().toLowerCase();
     return allMatches
       .filter((m) => m.id !== match.id && !m.is_bye && m.status !== "completed")
+      .filter((m) => (showAllCourts ? true : m.court_id === match.court_id))
       .filter((m) => {
         if (!q) return true;
         return getMatchLabel(m).toLowerCase().includes(q);
@@ -114,7 +115,7 @@ export function SwapFixtureButton({
         return aKey.localeCompare(bKey);
       })
       .slice(0, 80);
-  }, [allMatches, match.id, getMatchLabel, search]);
+  }, [allMatches, match.id, match.court_id, showAllCourts, getMatchLabel, search]);
 
   const doSwap = async (target: any) => {
     setBusy(true);

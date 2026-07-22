@@ -244,15 +244,40 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
       ? { backgroundColor: color.chipBg, color: color.chipText, borderColor: color.border }
       : undefined;
 
+    const isDragging = dragId === m.id;
+    const isHovered = hoverId === m.id && dragId && dragId !== m.id;
+    const draggingMatch = dragId ? (matches as any[]).find((x) => x.id === dragId) : null;
+    const hoverCheck = isHovered && draggingMatch ? canSwap(draggingMatch, m) : null;
+    const isValidDrop = hoverCheck?.ok;
+    const isInvalidDrop = isHovered && hoverCheck && !hoverCheck.ok;
+    const isCompleted = m.status === "completed";
+
     return (
       <div
         key={m.id}
+        draggable={!isCompleted && !swapping}
+        onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = "move"; }}
+        onDragEnd={() => { setDragId(null); setHoverId(null); }}
+        onDragOver={(e) => { if (dragId && dragId !== m.id) { e.preventDefault(); setHoverId(m.id); } }}
+        onDragLeave={() => { if (hoverId === m.id) setHoverId(null); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!draggingMatch) return;
+          const chk = canSwap(draggingMatch, m);
+          if (!chk.ok) { toast.error(`Cannot swap: ${chk.reason}`); setDragId(null); setHoverId(null); return; }
+          doSwap(draggingMatch, m);
+        }}
         style={rowStyle}
         className={cn(
-          "w-full flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm p-2 rounded",
+          "w-full flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm p-2 rounded transition-all",
           !color && "bg-muted/50",
+          !isCompleted && !swapping && "cursor-grab active:cursor-grabbing",
+          isDragging && "opacity-40",
+          isValidDrop && "ring-2 ring-green-500",
+          isInvalidDrop && "ring-2 ring-red-500",
         )}
       >
+        <GripVertical className={cn("w-3.5 h-3.5 shrink-0", isCompleted ? "text-transparent" : "text-muted-foreground/60")} />
         <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <span className="text-muted-foreground shrink-0 w-24">
           {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}

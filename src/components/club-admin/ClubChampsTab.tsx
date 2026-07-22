@@ -1703,10 +1703,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     // would leave the busiest days (typically Saturday) empty when only a few
     // slots exist per day.
     const entityLastDate = new Map<string, string>();
+    // Number of distinct play-dates available. When there's only one, the
+    // "1-day rest" spread rule can never be satisfied and every subsequent
+    // match falls to the soft fallback (which batches by league). Treat
+    // single-day as fill for the gap check.
+    const uniqueDateCount = new Set(allSlots.map((s) => s.date)).size;
     const canScheduleOn = (entityId: string, dateStr: string): boolean => {
       // Fill mode: pack the earliest days completely — allow multiple matches
       // per entity per day so Saturday isn't capped at one match per pair.
       if (scheduleMode === "fill") return true;
+      if (uniqueDateCount <= 1) return true;
       const last = entityLastDate.get(entityId);
       if (!last) return true;
       const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));

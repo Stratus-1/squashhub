@@ -3221,14 +3221,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     }
 
     const savedCourtIds = (champ as any).court_ids as number[] | null;
+    // Drop any court ids that no longer exist (e.g. external courts that were
+    // deleted/replaced) — otherwise match insert fails the FK on court_id.
+    const validCourtIds = new Set((courts || []).map((c) => c.id));
     if (Array.isArray(savedCourtIds) && savedCourtIds.length > 0) {
-      setSelectedCourtIds(new Set(savedCourtIds));
+      setSelectedCourtIds(new Set(savedCourtIds.filter((id) => validCourtIds.has(id))));
     } else {
       const { data: champMatches } = await fromExt("club_champs_matches")
         .select("court_id")
         .eq("champ_id", champ.id);
       if (champMatches) {
-        const courtIds = new Set(champMatches.map((m: any) => m.court_id).filter(Boolean) as number[]);
+        const courtIds = new Set(
+          champMatches
+            .map((m: any) => m.court_id)
+            .filter((id: any) => id && validCourtIds.has(id)) as number[],
+        );
         setSelectedCourtIds(courtIds);
       }
     }

@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Loader2, Calendar as CalendarIcon, ChevronLeft, Check } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, ChevronLeft, Check, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { assignPools, entityIdForEntry, type Entry as SwissEntry } from "@/lib/swiss-pairing";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { cn } from "@/lib/utils";
@@ -146,6 +149,64 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
 
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [sameCourtOnly, setSameCourtOnly] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const [swapping, setSwapping] = useState(false);
+  const qc = useQueryClient();
+
+  const playersOf = (m: any): string[] =>
+    [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];
+  const slotKey = (m: any) =>
+    m.scheduled_date && m.scheduled_time ? `${m.scheduled_date}|${String(m.scheduled_time).slice(0, 5)}` : null;
+
+  const canSwap = (a: any, b: any): { ok: boolean; reason?: string } => {
+    if (!a || !b || a.id === b.id) return { ok: false, reason: "same match" };
+    if (a.status === "completed" || b.status === "completed") return { ok: false, reason: "completed" };
+    const sA = slotKey(a); const sB = slotKey(b);
+    if (!sA || !sB) return { ok: false, reason: "unscheduled" };
+    if (sameCourtOnly && a.court_id !== b.court_id) return { ok: false, reason: "different court" };
+    // Player conflict check
+    const occ = new Map<string, Set<string>>();
+    for (const m of matches as any[]) {
+      if (m.id === a.id || m.id === b.id) continue;
+      const k = slotKey(m); if (!k) continue;
+      for (const pid of playersOf(m)) {
+        if (!occ.has(pid)) occ.set(pid, new Set());
+        occ.get(pid)!.add(k);
+      }
+    }
+    for (const pid of playersOf(a)) if (occ.get(pid)?.has(sB)) return { ok: false, reason: "player conflict" };
+    for (const pid of playersOf(b)) if (occ.get(pid)?.has(sA)) return { ok: false, reason: "player conflict" };
+    return { ok: true };
+  };
+
+  const doSwap = async (a: any, b: any) => {
+    setSwapping(true);
+    try {
+      const { error: e1 } = await (supabase as any).from("club_champs_matches")
+        .update({ scheduled_date: b.scheduled_date, scheduled_time: b.scheduled_time, court_id: b.court_id })
+        .eq("id", a.id);
+      if (e1) throw e1;
+      const { error: e2 } = await (supabase as any).from("club_champs_matches")
+        .update({ scheduled_date: a.scheduled_date, scheduled_time: a.scheduled_time, court_id: a.court_id })
+        .eq("id", b.id);
+      if (e2) {
+        await (supabase as any).from("club_champs_matches")
+          .update({ scheduled_date: a.scheduled_date, scheduled_time: a.scheduled_time, court_id: a.court_id })
+          .eq("id", a.id);
+        throw e2;
+      }
+      toast.success("Fixtures swapped");
+      qc.invalidateQueries({ queryKey: ["champ-preview-matches", champId] });
+    } catch (err: any) {
+      toast.error(err?.message || "Swap failed");
+    } finally {
+      setSwapping(false);
+      setDragId(null);
+      setHoverId(null);
+    }
+  };
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();
@@ -183,15 +244,40 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
       ? { backgroundColor: color.chipBg, color: color.chipText, borderColor: color.border }
       : undefined;
 
+    const isDragging = dragId === m.id;
+    const isHovered = hoverId === m.id && dragId && dragId !== m.id;
+    const draggingMatch = dragId ? (matches as any[]).find((x) => x.id === dragId) : null;
+    const hoverCheck = isHovered && draggingMatch ? canSwap(draggingMatch, m) : null;
+    const isValidDrop = hoverCheck?.ok;
+    const isInvalidDrop = isHovered && hoverCheck && !hoverCheck.ok;
+    const isCompleted = m.status === "completed";
+
     return (
       <div
         key={m.id}
+        draggable={!isCompleted && !swapping}
+        onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = "move"; }}
+        onDragEnd={() => { setDragId(null); setHoverId(null); }}
+        onDragOver={(e) => { if (dragId && dragId !== m.id) { e.preventDefault(); setHoverId(m.id); } }}
+        onDragLeave={() => { if (hoverId === m.id) setHoverId(null); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!draggingMatch) return;
+          const chk = canSwap(draggingMatch, m);
+          if (!chk.ok) { toast.error(`Cannot swap: ${chk.reason}`); setDragId(null); setHoverId(null); return; }
+          doSwap(draggingMatch, m);
+        }}
         style={rowStyle}
         className={cn(
-          "w-full flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm p-2 rounded",
+          "w-full flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm p-2 rounded transition-all",
           !color && "bg-muted/50",
+          !isCompleted && !swapping && "cursor-grab active:cursor-grabbing",
+          isDragging && "opacity-40",
+          isValidDrop && "ring-2 ring-green-500",
+          isInvalidDrop && "ring-2 ring-red-500",
         )}
       >
+        <GripVertical className={cn("w-3.5 h-3.5 shrink-0", isCompleted ? "text-transparent" : "text-muted-foreground/60")} />
         <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <span className="text-muted-foreground shrink-0 w-24">
           {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
@@ -267,10 +353,17 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
                   Clear
                 </Button>
               )}
-              <span className="text-xs text-muted-foreground ml-auto">
-                Showing {filtered.length} of {matches.length}
+              <span className="text-xs text-muted-foreground ml-auto flex items-center gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={sameCourtOnly} onCheckedChange={(v) => setSameCourtOnly(!!v)} className="h-3.5 w-3.5" />
+                  <span>Same court only</span>
+                </label>
+                <span>Showing {filtered.length} of {matches.length}</span>
               </span>
             </div>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Tip: drag any row onto another to swap their date, time & court. Player-conflict and completed matches are blocked.
+            </p>
 
             <div className="space-y-1 max-h-[480px] overflow-y-auto pr-1">
               {filtered.map(renderRow)}

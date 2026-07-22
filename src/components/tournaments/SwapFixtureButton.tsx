@@ -45,11 +45,15 @@ export function SwapFixtureButton({
   getCourtName,
   invalidateKeys = [],
   size = "icon",
+  sameCourtOnly = true,
+  getRowColor,
+  getBucketLabel,
 }: Props) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showAllCourts, setShowAllCourts] = useState(!sameCourtOnly);
 
   const playersOf = (m: any): string[] =>
     [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];

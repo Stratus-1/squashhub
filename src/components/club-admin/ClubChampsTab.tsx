@@ -6127,13 +6127,18 @@ function PairBuilder({
             className="h-8 text-xs"
           />
           <Select value={player2} onValueChange={setPlayer2}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder={`Select... (${pool2.length})`} /></SelectTrigger>
+            <SelectTrigger className="mt-1"><SelectValue placeholder={`Select... (${filtered2.length})`} /></SelectTrigger>
             <SelectContent>
               {pool2.length === 0 ? (
                 <div className="px-2 py-1.5 text-xs text-muted-foreground">No matches</div>
               ) : pool2.map((m) => (
                 <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || "—"}</SelectItem>
               ))}
+              {truncated2 && (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
+                  Showing {MAX_VISIBLE} of {filtered2.length} — type to narrow
+                </div>
+              )}
             </SelectContent>
           </Select>
         </div>

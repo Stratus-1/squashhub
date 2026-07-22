@@ -196,35 +196,53 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
     }
   }, [open, champ?.id]);
 
+  // Reconcile persisted import rows against the actual registrations in the DB.
+  // The import list is only a setup helper — whatever an admin has since changed
+  // (removed players, edited pairs) in the tournament itself is the source of
+  // truth. Drop any persisted row whose registration no longer exists.
   useEffect(() => {
-    if (!open || !clubId) return;
-    const importedEmails = Array.from(
-      new Set(
-        rows
-          .filter((r) => (r.status === "created" || r.status === "linked_visitor" || r.status === "already_member") && r.email.includes("@"))
-          .map((r) => r.email.trim().toLowerCase())
-          .filter(Boolean)
-      )
-    );
-    if (importedEmails.length === 0) return;
-
+    if (!open || !clubId || !champ?.id) return;
     let cancelled = false;
     async function reconcileSavedRows() {
-      const { data, error } = await supabase
-        .from("club_members")
-        .select("email")
-        .eq("club_id", clubId)
-        .in("email", importedEmails);
+      const { data: regs, error } = await supabase
+        .from("club_champs_registrations")
+        .select("id, club_member_id, partner_member_id")
+        .eq("champ_id", champ!.id);
       if (cancelled || error) return;
-      const liveEmails = new Set((data || []).map((m: any) => String(m.email || "").toLowerCase()));
+      const liveRegIds = new Set((regs || []).map((r: any) => r.id));
+      const livePartnerByMember = new Map<string, string | null>(
+        (regs || []).map((r: any) => [r.club_member_id, r.partner_member_id ?? null]),
+      );
       setRows((current) => {
-        const filtered = current.filter(
-          (r) =>
-            !(r.status === "created" || r.status === "linked_visitor" || r.status === "already_member") ||
-            liveEmails.has(r.email.trim().toLowerCase())
-        );
+        let mutated = false;
+        const filtered = current.filter((r) => {
+          const isImported =
+            r.status === "created" || r.status === "linked_visitor" || r.status === "already_member";
+          if (!isImported) return true;
+          // Drop rows whose registration was deleted by admin.
+          if (!r.registration_id || !liveRegIds.has(r.registration_id)) {
+            mutated = true;
+            return false;
+          }
+          return true;
+        }).map((r) => {
+          // Sync paired_with_member_id with whatever the DB currently says so
+          // admin re-pairings are reflected next time the dialog is opened.
+          if (r.status && r.registration_id && liveRegIds.has(r.registration_id)) {
+            const memberId = (r as any).created_member_id || (r as any).club_member_id;
+            // We only have registration_id here; look up partner via any reg row we can match.
+            const regRow = (regs || []).find((x: any) => x.id === r.registration_id);
+            const partnerId = regRow?.partner_member_id ?? null;
+            const pairedId = r.paired_with_member_id ?? null;
+            if (partnerId !== pairedId) {
+              mutated = true;
+              return { ...r, paired_with_member_id: partnerId };
+            }
+          }
+          return r;
+        });
         const hasEmptyRow = filtered.some((r) => !r.first_name && !r.last_name && !r.email);
-        if (filtered.length === current.length && hasEmptyRow) return current;
+        if (!mutated && hasEmptyRow) return current;
         return hasEmptyRow ? filtered : [...filtered, newRow()];
       });
     }
@@ -233,7 +251,7 @@ export function TournamentBulkImportDialog({ open, onOpenChange, clubId, champ }
     return () => {
       cancelled = true;
     };
-  }, [open, clubId, champ?.id, rows]);
+  }, [open, clubId, champ?.id]);
 
   // Persist imported rows whenever they change.
   useEffect(() => {

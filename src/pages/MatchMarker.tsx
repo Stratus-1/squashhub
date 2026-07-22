@@ -271,7 +271,14 @@ export default function MatchMarker() {
         localStorage.removeItem(MARKER_STATE_KEY);
       } catch {}
 
-      toast.success(autoConfirm ? "Match result saved and confirmed!" : "Match result saved! Awaiting player confirmation.");
+      const isTournament = config.source === "tournament" && !!config.sourceId;
+      toast.success(
+        isTournament
+          ? "Results posted"
+          : autoConfirm
+            ? "Match result saved and confirmed!"
+            : "Match result saved! Awaiting player confirmation.",
+      );
 
       // If this was a tournament match, update the club_champs_matches record too
       if (config.source === "tournament" && config.sourceId) {
@@ -345,6 +352,11 @@ export default function MatchMarker() {
             console.warn("Ranking-points enqueue (tournament) failed:", e);
           }
         }
+      }
+
+      if (isTournament) {
+        setTimeout(() => navigate("/tournaments"), 900);
+        return;
       }
 
       // Note: For league fixtures, marking is launched from the League Game Detail page

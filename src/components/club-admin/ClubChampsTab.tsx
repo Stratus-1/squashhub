@@ -967,20 +967,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const resolveId = (id: string) => (id?.startsWith("visitor-") ? (visitorMap.get(id) || toDbId(id)) : id);
 
       if (isDoubles) {
-        if (doublesPairs.length === 0) return;
-        const rows = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
-          groupPairs.map((pair, orderIndex) => ({
-            champ_id: champIdToUse,
-            club_member_id: resolveId(pair.player1Id),
-            partner_member_id: resolveId(pair.player2Id),
-            group_number: gi + 1,
-            order_index: orderIndex,
-          }))
-        );
-        const { error: deleteErr } = await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
-        if (deleteErr) throw deleteErr;
-        const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
-        if (insertErr) throw insertErr;
+        if (doublesPairs.length === 0) {
+          const { error: deleteErr } = await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
+          if (deleteErr) throw deleteErr;
+          await syncDoublesRegistrationsForPairs(champIdToUse, []);
+          return;
+        }
+        const rows = await persistDoublesPairsDraft(champIdToUse, doublesPairs);
         allocatedMemberIds = rows.flatMap((r: any) => [r.club_member_id, r.partner_member_id]).filter(Boolean);
       } else {
         if (selectedPlayerIds.size === 0) return;
@@ -1005,9 +998,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // separate payment / registration step is required.
       const uniqueIds = Array.from(new Set(allocatedMemberIds));
       if (uniqueIds.length > 0) {
+        const pairedPartnerByMember = isDoubles && partnerMode === "admin"
+          ? new Map(
+              (groups as DoublePair[][]).flatMap((groupPairs) =>
+                groupPairs.flatMap((pair) => {
+                  const p1 = resolveId(pair.player1Id);
+                  const p2 = resolveId(pair.player2Id);
+                  return [[p1, p2], [p2, p1]] as [string, string][];
+                })
+              )
+            )
+          : new Map<string, string>();
         const regRows = uniqueIds.map((memberId) => ({
           champ_id: champIdToUse,
           club_member_id: memberId,
+          ...(pairedPartnerByMember.has(memberId)
+            ? { partner_member_id: pairedPartnerByMember.get(memberId), partner_confirmed: true }
+            : {}),
           status: "paid",
           // Do NOT set invited_by_admin here — the notify_champ_registration_event
           // trigger fires "Tournament invitation" notifications on INSERT when this
@@ -1124,6 +1131,117 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   // Helper to strip "visitor-" prefix for DB inserts
   const toDbId = (id: string) => id.replace(/^visitor-/, "");
+
+  const syncDoublesRegistrationsForPairs = async (
+    champIdToUse: string,
+    pairs: Array<{ player1Id: string; player2Id: string }>,
+  ) => {
+    if (!champIdToUse || !isDoubles || partnerMode !== "admin") return;
+
+    const desired = new Map<string, string>();
+    pairs.forEach((p) => {
+      if (!p.player1Id || !p.player2Id || p.player1Id === p.player2Id) return;
+      desired.set(p.player1Id, p.player2Id);
+      desired.set(p.player2Id, p.player1Id);
+    });
+
+    const { data: existingRegs, error: fetchErr } = await fromExt("club_champs_registrations")
+      .select("club_member_id, partner_member_id, partner_confirmed, status")
+      .eq("champ_id", champIdToUse);
+    if (fetchErr) throw fetchErr;
+
+    const existingByMember = new Map<string, any>();
+    for (const r of (existingRegs || []) as any[]) existingByMember.set(r.club_member_id, r);
+
+    const inserts: any[] = [];
+    const updates: Array<{ memberId: string; patch: Record<string, any> }> = [];
+
+    for (const [memberId, partnerId] of desired.entries()) {
+      const existing = existingByMember.get(memberId);
+      if (!existing) {
+        inserts.push({
+          champ_id: champIdToUse,
+          club_member_id: memberId,
+          partner_member_id: partnerId,
+          partner_confirmed: true,
+          status: "paid",
+          invited_by_admin: false,
+          fee_paid_cents: 0,
+        });
+      } else if (
+        existing.partner_member_id !== partnerId ||
+        existing.partner_confirmed !== true ||
+        !["paid", "waived"].includes(existing.status)
+      ) {
+        updates.push({
+          memberId,
+          patch: {
+            partner_member_id: partnerId,
+            partner_confirmed: true,
+            status: "paid",
+          },
+        });
+      }
+    }
+
+    // Clear stale partner links that no longer match the admin-built pairs.
+    for (const r of (existingRegs || []) as any[]) {
+      const wantedPartner = desired.get(r.club_member_id);
+      const isStale = r.partner_member_id && (!wantedPartner || wantedPartner !== r.partner_member_id);
+      if (isStale) {
+        updates.push({
+          memberId: r.club_member_id,
+          patch: { partner_member_id: null, partner_confirmed: false },
+        });
+      }
+    }
+
+    if (inserts.length > 0) {
+      const { error } = await fromExt("club_champs_registrations").insert(inserts);
+      if (error) throw error;
+    }
+    for (const u of updates) {
+      const { error } = await fromExt("club_champs_registrations")
+        .update(u.patch)
+        .eq("champ_id", champIdToUse)
+        .eq("club_member_id", u.memberId);
+      if (error) throw error;
+    }
+  };
+
+  const persistDoublesPairsDraft = async (champIdToUse: string, pairs: DoublePair[]) => {
+    const rawIds = pairs.flatMap((p) => [p.player1Id, p.player2Id]).filter(Boolean);
+    const promotedList = rawIds.length > 0 ? await promoteVisitorIds(rawIds) : [];
+    const visitorMap = new Map<string, string>();
+    rawIds.forEach((raw, i) => visitorMap.set(raw, promotedList[i]));
+    const resolveId = (id: string) => (id?.startsWith("visitor-") ? (visitorMap.get(id) || toDbId(id)) : id);
+    const orderIdx = new Map(pairOrder.map((id, i) => [id, i]));
+    const groupCount = Math.max(1, numGroups || 1);
+    const rows = [...pairs]
+      .sort((a, b) => (orderIdx.get(a.id) ?? 1e9) - (orderIdx.get(b.id) ?? 1e9))
+      .map((pair, orderIndex) => {
+        const groupIndex = Math.min(groupCount - 1, Math.max(0, pairGroupAssignments.get(pair.id) ?? 0));
+        return {
+          champ_id: champIdToUse,
+          club_member_id: resolveId(pair.player1Id),
+          partner_member_id: resolveId(pair.player2Id),
+          group_number: groupIndex + 1,
+          order_index: orderIndex,
+        };
+      });
+
+    const { error: deleteErr } = await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
+    if (deleteErr) throw deleteErr;
+    if (rows.length > 0) {
+      const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
+      if (insertErr) throw insertErr;
+    }
+    await syncDoublesRegistrationsForPairs(
+      champIdToUse,
+      rows.map((r) => ({ player1Id: r.club_member_id, player2Id: r.partner_member_id })),
+    );
+    return rows;
+  };
 
   // Promote any `visitor-<uuid>` IDs to real club_members rows (role='visitor')
   // so tournament tables (which only accept club_member_id) can reference them.
@@ -2126,7 +2244,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         const currentCount = isDoubles
           ? doublesPairs.length
           : (groups as ClubMember[][]).flatMap((g) => g).length;
-        if (savedCount > 0 && currentCount < savedCount) {
+        if (savedCount > 0 && currentCount < savedCount && !entitiesChangedSinceLoad) {
           throw new Error(
             `Refusing to regenerate: only ${currentCount} ${isDoubles ? "pair" : "player"}(s) loaded but ${savedCount} are saved. Close the wizard, reopen the tournament, and try again so all entries load first.`
           );
@@ -2184,6 +2302,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
+            affects_ranking_points: affectsRankingPoints,
+            day_schedules: customizeDailySchedule ? daySchedules : [],
+            court_ids: Array.from(selectedCourtIds),
+            schedule_mode: scheduleMode,
+            playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
+            playoff_date: playoffDate || null,
           })
           .eq("id", existingChampId);
         if (updateErr) throw updateErr;
@@ -2243,6 +2367,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
+            affects_ranking_points: affectsRankingPoints,
+            day_schedules: customizeDailySchedule ? daySchedules : [],
+            court_ids: Array.from(selectedCourtIds),
+            schedule_mode: scheduleMode,
+            playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
+            playoff_date: playoffDate || null,
           })
           .select()
           .single();
@@ -2290,12 +2420,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       // Create entries. Promote any `visitor-*` IDs to real club_members rows
       // first, otherwise the FK on club_champs_entries.club_member_id fails.
+      let resolvedPairDbId = (id: string) => toDbId(id);
       if (isDoubles) {
         const rawIds = (groups as DoublePair[][]).flatMap((gp) => gp.flatMap((p) => [p.player1Id, p.player2Id]));
         const resolved = await promoteVisitorIds(rawIds);
         const idMap = new Map<string, string>();
         rawIds.forEach((raw, i) => idMap.set(raw, resolved[i]));
         const resolveId = (id: string) => idMap.get(id) || toDbId(id);
+        resolvedPairDbId = resolveId;
         const entries = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
           groupPairs.map((pair, orderIndex) => ({
               champ_id: champId,
@@ -2309,6 +2441,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (entryErr) throw entryErr;
         const keepIds = entries.map((e) => e.club_member_id);
         if (keepIds.length > 0) await fromExt("club_champs_entries").delete().eq("champ_id", champId).not("club_member_id", "in", `(${keepIds.join(",")})`);
+        await syncDoublesRegistrationsForPairs(
+          champId,
+          entries.map((e) => ({ player1Id: e.club_member_id, player2Id: e.partner_member_id })),
+        );
       } else {
         const rawIds = (groups as ClubMember[][]).flatMap((gp) => gp.map((p) => p.id));
         const resolved = await promoteVisitorIds(rawIds);
@@ -2344,16 +2480,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             champ_id: champId,
             group_number: m.groupNum,
             round_number: m.roundNum,
-            player_a_member_id: toDbId(pairA?.player1Id || m.entityA),
-            partner_a_member_id: pairA?.player2Id ? toDbId(pairA.player2Id) : null,
-            player_b_member_id: toDbId(pairB?.player1Id || m.entityB),
-            partner_b_member_id: pairB?.player2Id ? toDbId(pairB.player2Id) : null,
+            player_a_member_id: resolvedPairDbId(pairA?.player1Id || m.entityA),
+            partner_a_member_id: pairA?.player2Id ? resolvedPairDbId(pairA.player2Id) : null,
+            player_b_member_id: resolvedPairDbId(pairB?.player1Id || m.entityB),
+            partner_b_member_id: pairB?.player2Id ? resolvedPairDbId(pairB.player2Id) : null,
             scheduled_date: isBye ? null : m.date,
             scheduled_time: isBye ? null : m.time,
             court_id: isBye ? null : m.courtId,
             leg: m.leg ?? null,
             is_bye: isBye,
-            bye_member_id: isBye ? toDbId(pairA?.player1Id || m.entityA) : null,
+            bye_member_id: isBye ? resolvedPairDbId(pairA?.player1Id || m.entityA) : null,
             status: isBye
               ? (byeHandling === "walkover_win" ? "completed" : "scheduled")
               : "scheduled",
@@ -4235,16 +4371,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             {scoringMode !== "time_capped_points" && (
               <div className="max-w-xs">
                 <Label className="text-sm">Match Duration (slot per game)</Label>
-                <Select value={matchDuration > 0 ? String(matchDuration) : ""} onValueChange={(v) => setMatchDuration(Number(v))}>
-                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="20">20 min</SelectItem>
-                    <SelectItem value="30">30 min</SelectItem>
-                    <SelectItem value="45">45 min</SelectItem>
-                    <SelectItem value="60">60 min</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="mt-1 grid grid-cols-4 gap-1">
+                  {[20, 30, 45, 60].map((minutes) => (
+                    <Button
+                      key={minutes}
+                      type="button"
+                      size="sm"
+                      variant={matchDuration === minutes ? "default" : "outline"}
+                      className="h-8 px-2 text-xs"
+                      onClick={() => setMatchDuration(minutes)}
+                    >
+                      {minutes}m
+                    </Button>
+                  ))}
+                </div>
                 <p className="text-[11px] text-muted-foreground mt-1">
                   How long one game occupies a court — drives the capacity calculator below.
                 </p>
@@ -4598,24 +4738,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <Label htmlFor="playoff-break" className="text-xs">
                       Break after last pool match
                     </Label>
-                    <Select
-                      value={String(playoffBreakMinutes)}
-                      onValueChange={(v) => setPlayoffBreakMinutes(Number(v))}
-                      disabled={!!playoffDate}
-                    >
-                      <SelectTrigger id="playoff-break" className="h-9">
-                        <SelectValue placeholder="No break" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">No break — start immediately</SelectItem>
-                        <SelectItem value="15">15 minutes</SelectItem>
-                        <SelectItem value="30">30 minutes</SelectItem>
-                        <SelectItem value="45">45 minutes</SelectItem>
-                        <SelectItem value="60">1 hour</SelectItem>
-                        <SelectItem value="90">1½ hours (lunch)</SelectItem>
-                        <SelectItem value="120">2 hours</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div id="playoff-break" className="grid grid-cols-4 gap-1">
+                      {[0, 15, 30, 45, 60, 90, 120].map((minutes) => (
+                        <Button
+                          key={minutes}
+                          type="button"
+                          size="sm"
+                          variant={playoffBreakMinutes === minutes ? "default" : "outline"}
+                          className="h-8 px-2 text-xs"
+                          disabled={!!playoffDate}
+                          onClick={() => setPlayoffBreakMinutes(minutes)}
+                        >
+                          {minutes === 0 ? "None" : minutes === 90 ? "1½h" : minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
+                        </Button>
+                      ))}
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
                       Applies to fill-mode when playoffs run on the same day as pool play.
                     </p>
@@ -5341,7 +5478,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <span className="font-medium text-sm flex-1">{getPairLabel(pair)}</span>
                     <Button
                       variant="ghost" size="icon" className="h-7 w-7"
-                      onClick={() => setDoublesPairs(doublesPairs.filter((p) => p.id !== pair.id))}
+                      onClick={() => {
+                        const nextPairs = doublesPairs.filter((p) => p.id !== pair.id);
+                        setDoublesPairs(nextPairs);
+                        setPairOrder((prev) => prev.filter((id) => id !== pair.id));
+                        setPairGroupAssignments((prev) => {
+                          const next = new Map(prev);
+                          next.delete(pair.id);
+                          return next;
+                        });
+                        if (editingChampId) {
+                          persistDoublesPairsDraft(editingChampId, nextPairs)
+                            .then(() => toast.success("Pairs saved"))
+                            .catch((e) => toast.error(e?.message || "Could not save pairs"));
+                        }
+                      }}
                     >
                       <X className="w-3.5 h-3.5" />
                     </Button>
@@ -5359,7 +5510,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               menMembers={menMembers}
               ladiesMembers={ladiesMembers}
               onAddPair={(p1, p2) => {
-                setDoublesPairs([...doublesPairs, { id: crypto.randomUUID(), player1Id: p1, player2Id: p2 }]);
+                const pair = { id: crypto.randomUUID(), player1Id: p1, player2Id: p2 };
+                const nextPairs = [...doublesPairs, pair];
+                setDoublesPairs(nextPairs);
+                setPairOrder((prev) => [...prev.filter((id) => id !== pair.id), pair.id]);
+                if (editingChampId) {
+                  persistDoublesPairsDraft(editingChampId, nextPairs)
+                    .then(() => toast.success("Pairs saved"))
+                    .catch((e) => toast.error(e?.message || "Could not save pairs"));
+                }
               }}
               getMemberName={getMemberName}
             />
@@ -5706,13 +5865,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           <span className="text-xs font-medium w-20 shrink-0">{isAllLeagues ? "All leagues" : `League ${gn}`}</span>
                           <div className="flex items-center gap-1">
                             <Input
+                              key={`slot-${gn}-${groupDurations[String(gn)] ?? ""}-${matchDuration}`}
                               type="number"
                               min={5}
                               max={120}
                               placeholder={String(matchDuration)}
-                              value={groupDurations[String(gn)] ?? ""}
-                              onChange={(e) => {
-                                const v = e.target.value;
+                              defaultValue={groupDurations[String(gn)] ?? ""}
+                              onBlur={(e) => {
+                                const v = e.currentTarget.value;
                                 setGroupDurations((prev) => {
                                   const next = { ...prev };
                                   applyGroups.forEach((g) => {
@@ -5722,6 +5882,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                   return next;
                                 });
                               }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") e.currentTarget.blur();
+                              }}
                               className="h-7 text-xs w-16"
                             />
                             <span className="text-[10px] text-muted-foreground">slot</span>
@@ -5729,14 +5892,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           <span className="text-muted-foreground text-xs">−</span>
                           <div className="flex items-center gap-1">
                             <Input
+                              key={`break-${gn}-${groupBreakMinutes[String(gn)] ?? ""}-${defaultBreakMinutes}`}
                               type="number"
                               min={0}
                               max={30}
                               step={0.5}
                               placeholder={String(defaultBreakMinutes || 0)}
-                              value={groupBreakMinutes[String(gn)] ?? ""}
-                              onChange={(e) => {
-                                const v = e.target.value;
+                              defaultValue={groupBreakMinutes[String(gn)] ?? ""}
+                              onBlur={(e) => {
+                                const v = e.currentTarget.value;
                                 setGroupBreakMinutes((prev) => {
                                   const next = { ...prev };
                                   applyGroups.forEach((g) => {
@@ -5745,6 +5909,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                   });
                                   return next;
                                 });
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") e.currentTarget.blur();
                               }}
                               className="h-7 text-xs w-16"
                             />

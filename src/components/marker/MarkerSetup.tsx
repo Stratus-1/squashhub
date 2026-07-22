@@ -293,6 +293,7 @@ export function MarkerSetup({ onStart }: Props) {
 
   const [source, setSource] = useState<MatchSource>("manual");
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
+  const [pendingAutoStart, setPendingAutoStart] = useState(false);
   const [isDoubles, setIsDoubles] = useState(false);
 
   const [playerA, setPlayerA] = useState<PlayerInfo>(emptyPlayer());
@@ -631,6 +632,7 @@ export function MarkerSetup({ onStart }: Props) {
         }
         setSource("tournament");
         setSelectedSourceId(matchId);
+        setPendingAutoStart(true);
         searchParams.delete("source");
         searchParams.delete("matchId");
         setSearchParams(searchParams, { replace: true });
@@ -640,6 +642,7 @@ export function MarkerSetup({ onStart }: Props) {
       if (exists) {
         setSource("booking");
         setSelectedSourceId(matchId);
+        setPendingAutoStart(true);
         searchParams.delete("source");
         searchParams.delete("bookingId");
         setSearchParams(searchParams, { replace: true });
@@ -653,6 +656,37 @@ export function MarkerSetup({ onStart }: Props) {
     playerA.name.trim().length > 0 &&
     playerB.name.trim().length > 0 &&
     (!isDoubles || (partnerA.name.trim().length > 0 && partnerB.name.trim().length > 0));
+
+  const buildStartPayload = () => ({
+    playerA,
+    playerB,
+    partnerA: isDoubles ? partnerA : undefined,
+    partnerB: isDoubles ? partnerB : undefined,
+    isDoubles,
+    matchType,
+    scoringFormat,
+    bestOf,
+    playAllGames,
+    deuceRule,
+    source,
+    sourceId: selectedSourceId || undefined,
+    handicapA: source === "tournament" && selectedSourceId
+      ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_a) || 0
+      : undefined,
+    handicapB: source === "tournament" && selectedSourceId
+      ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_b) || 0
+      : undefined,
+    clubId: clubId || undefined,
+  });
+
+  // Auto-start scoring when arriving via deep-link once players are prefilled.
+  useEffect(() => {
+    if (!pendingAutoStart) return;
+    if (!playersFromSource || !canStart) return;
+    setPendingAutoStart(false);
+    onStart(buildStartPayload());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAutoStart, playersFromSource, canStart, playerA, playerB, partnerA, partnerB, isDoubles]);
 
   return (
     <div className="space-y-4">

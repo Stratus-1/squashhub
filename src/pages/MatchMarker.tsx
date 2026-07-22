@@ -428,6 +428,7 @@ export default function MatchMarker() {
             }
             onMatchComplete={handleMatchComplete}
             onReset={resetMatch}
+            onScratch={handleScratch}
           />
         )}
       </div>

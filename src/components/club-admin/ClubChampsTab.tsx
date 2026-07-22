@@ -6068,12 +6068,17 @@ function PairBuilder({
     ? availablePlayers.filter((m) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()))
     : availablePlayers.filter((m) => m.id !== player1);
 
-  const pool1 = search1.trim()
+  const MAX_VISIBLE = 50;
+  const filtered1 = search1.trim()
     ? basePool1.filter((m) => nameOf(m).includes(search1.trim().toLowerCase()))
     : basePool1;
-  const pool2 = search2.trim()
+  const filtered2 = search2.trim()
     ? basePool2.filter((m) => nameOf(m).includes(search2.trim().toLowerCase()))
     : basePool2;
+  const pool1 = filtered1.slice(0, MAX_VISIBLE);
+  const pool2 = filtered2.slice(0, MAX_VISIBLE);
+  const truncated1 = filtered1.length > MAX_VISIBLE;
+  const truncated2 = filtered2.length > MAX_VISIBLE;
 
   const handleAdd = () => {
     if (player1 && player2 && player1 !== player2) {
@@ -6098,13 +6103,18 @@ function PairBuilder({
             className="h-8 text-xs"
           />
           <Select value={player1} onValueChange={setPlayer1}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder={`Select... (${pool1.length})`} /></SelectTrigger>
+            <SelectTrigger className="mt-1"><SelectValue placeholder={`Select... (${filtered1.length})`} /></SelectTrigger>
             <SelectContent>
               {pool1.length === 0 ? (
                 <div className="px-2 py-1.5 text-xs text-muted-foreground">No matches</div>
               ) : pool1.map((m) => (
                 <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || "—"}</SelectItem>
               ))}
+              {truncated1 && (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
+                  Showing {MAX_VISIBLE} of {filtered1.length} — type to narrow
+                </div>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -6117,13 +6127,18 @@ function PairBuilder({
             className="h-8 text-xs"
           />
           <Select value={player2} onValueChange={setPlayer2}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder={`Select... (${pool2.length})`} /></SelectTrigger>
+            <SelectTrigger className="mt-1"><SelectValue placeholder={`Select... (${filtered2.length})`} /></SelectTrigger>
             <SelectContent>
               {pool2.length === 0 ? (
                 <div className="px-2 py-1.5 text-xs text-muted-foreground">No matches</div>
               ) : pool2.map((m) => (
                 <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || "—"}</SelectItem>
               ))}
+              {truncated2 && (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
+                  Showing {MAX_VISIBLE} of {filtered2.length} — type to narrow
+                </div>
+              )}
             </SelectContent>
           </Select>
         </div>

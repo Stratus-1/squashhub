@@ -1204,9 +1204,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Admins can shortlist any club member (gender filter is only used for self-registration
   // eligibility and league-pre-fill — not for the manual invite list).
   const allSelectablePlayers = useMemo(() => {
-    const sortedMembers = [...members].sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
+    let baseMembers = [...members];
+    // When the admin has narrowed by home club, hide out-of-club members whose
+    // home club isn't in the selected set. Local members (no home_club_name)
+    // are always kept.
+    if (selectedVisitorClubs.size > 0) {
+      baseMembers = baseMembers.filter((m: any) => {
+        const hc = m?.home_club_name;
+        if (!hc) return true;
+        return selectedVisitorClubs.has(hc);
+      });
+    }
+    const sortedMembers = baseMembers.sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
     return [...sortedMembers, ...visitorAsMembers] as any[];
-  }, [members, visitorAsMembers]);
+  }, [members, visitorAsMembers, selectedVisitorClubs]);
 
   const selectedPlayers = useMemo(
     () => allSelectablePlayers.filter((m: any) => selectedPlayerIds.has(m.id)),

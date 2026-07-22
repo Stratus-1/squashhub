@@ -5478,7 +5478,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <span className="font-medium text-sm flex-1">{getPairLabel(pair)}</span>
                     <Button
                       variant="ghost" size="icon" className="h-7 w-7"
-                      onClick={() => setDoublesPairs(doublesPairs.filter((p) => p.id !== pair.id))}
+                      onClick={() => {
+                        const nextPairs = doublesPairs.filter((p) => p.id !== pair.id);
+                        setDoublesPairs(nextPairs);
+                        setPairOrder((prev) => prev.filter((id) => id !== pair.id));
+                        setPairGroupAssignments((prev) => {
+                          const next = new Map(prev);
+                          next.delete(pair.id);
+                          return next;
+                        });
+                        if (editingChampId) {
+                          persistDoublesPairsDraft(editingChampId, nextPairs)
+                            .then(() => toast.success("Pairs saved"))
+                            .catch((e) => toast.error(e?.message || "Could not save pairs"));
+                        }
+                      }}
                     >
                       <X className="w-3.5 h-3.5" />
                     </Button>
@@ -5496,7 +5510,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               menMembers={menMembers}
               ladiesMembers={ladiesMembers}
               onAddPair={(p1, p2) => {
-                setDoublesPairs([...doublesPairs, { id: crypto.randomUUID(), player1Id: p1, player2Id: p2 }]);
+                const pair = { id: crypto.randomUUID(), player1Id: p1, player2Id: p2 };
+                const nextPairs = [...doublesPairs, pair];
+                setDoublesPairs(nextPairs);
+                setPairOrder((prev) => [...prev.filter((id) => id !== pair.id), pair.id]);
+                if (editingChampId) {
+                  persistDoublesPairsDraft(editingChampId, nextPairs)
+                    .then(() => toast.success("Pairs saved"))
+                    .catch((e) => toast.error(e?.message || "Could not save pairs"));
+                }
               }}
               getMemberName={getMemberName}
             />

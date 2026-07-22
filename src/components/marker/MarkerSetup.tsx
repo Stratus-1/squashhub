@@ -774,7 +774,7 @@ export function MarkerSetup({ onStart }: Props) {
                   : "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-200"
               }`}
               onClick={() => setSource("tournament")}
-              disabled={tournamentMatches.length === 0}
+              disabled={tournamentMatchOptions.length === 0}
             >
               <Trophy className="w-3.5 h-3.5 mr-1" />
               Tournament
@@ -1080,29 +1080,7 @@ export function MarkerSetup({ onStart }: Props) {
         className="w-full"
         size="lg"
         disabled={!canStart}
-        onClick={() =>
-          onStart({
-            playerA,
-            playerB,
-            partnerA: isDoubles ? partnerA : undefined,
-            partnerB: isDoubles ? partnerB : undefined,
-            isDoubles,
-            matchType,
-            scoringFormat,
-            bestOf,
-            playAllGames,
-            deuceRule,
-            source,
-            sourceId: selectedSourceId || undefined,
-            handicapA: source === "tournament" && selectedSourceId
-              ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_a) || 0
-              : undefined,
-            handicapB: source === "tournament" && selectedSourceId
-              ? Number((tournamentMatches.find((m: any) => m.id === selectedSourceId) as any)?.handicap_b) || 0
-              : undefined,
-            clubId: clubId || undefined,
-          })
-        }
+        onClick={() => onStart(buildStartPayload())}
       >
         Start Marking
       </Button>

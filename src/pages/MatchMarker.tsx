@@ -111,6 +111,13 @@ export default function MatchMarker() {
       };
 
       const isDoubles = champ?.match_type === "doubles" || champ?.match_type === "mixed";
+      const ppg = Number(champ?.points_per_game);
+      const scoringFormat: "par11" | "par15" | "english9" =
+        ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11";
+      const rawBest = Number(champ?.best_of);
+      const bestOf: 1 | 3 | 5 = rawBest === 5 ? 5 : rawBest === 1 ? 1 : 3;
+      const deuceRule: "win_by_2" | "sudden_death" =
+        champ?.win_condition === "sudden_death" ? "sudden_death" : "win_by_2";
       const nextConfig: MarkerConfig = {
         playerA: playerFor(row.player_a_member_id, row.player_a, "Player A"),
         playerB: playerFor(row.player_b_member_id, row.player_b, "Player B"),
@@ -118,10 +125,10 @@ export default function MatchMarker() {
         partnerB: isDoubles ? playerFor(row.partner_b_member_id, row.partner_b, "Partner B") : undefined,
         isDoubles,
         matchType: "club_champs",
-        scoringFormat: "par11",
-        bestOf: 3,
-        playAllGames: false,
-        deuceRule: "win_by_2",
+        scoringFormat,
+        bestOf,
+        playAllGames: !!champ?.play_all_games,
+        deuceRule,
         source: "tournament",
         sourceId: matchId,
         handicapA: Number(row.handicap_a) || 0,

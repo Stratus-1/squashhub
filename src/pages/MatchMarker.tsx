@@ -150,6 +150,38 @@ export default function MatchMarker() {
     return () => { cancelled = true; };
   }, [config?.sourceId, navigate, searchParams, setSearchParams]);
 
+  useEffect(() => {
+    if (config?.source !== "tournament" || !config.sourceId) return;
+
+    let cancelled = false;
+    const syncTournamentScoring = async () => {
+      const { data } = await fromExt("club_champs_matches")
+        .select("club_champs!inner(points_per_game, best_of, play_all_games, win_condition)")
+        .eq("id", config.sourceId)
+        .maybeSingle();
+
+      if (cancelled || !data) return;
+      const champ = Array.isArray((data as any).club_champs) ? (data as any).club_champs[0] : (data as any).club_champs;
+      const ppg = Number(champ?.points_per_game);
+      const scoringFormat: MarkerConfig["scoringFormat"] = ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11";
+      const bestOf: MarkerConfig["bestOf"] = Number(champ?.best_of) === 5 ? 5 : 3;
+      const playAllGames = !!champ?.play_all_games;
+      const deuceRule: MarkerConfig["deuceRule"] = champ?.win_condition === "sudden_death" ? "sudden_death" : "win_by_2";
+
+      if (
+        config.scoringFormat !== scoringFormat ||
+        config.bestOf !== bestOf ||
+        !!config.playAllGames !== playAllGames ||
+        config.deuceRule !== deuceRule
+      ) {
+        setConfig({ ...config, scoringFormat, bestOf, playAllGames, deuceRule });
+      }
+    };
+
+    syncTournamentScoring();
+    return () => { cancelled = true; };
+  }, [config]);
+
   // Persist config so user can navigate away and resume
   useEffect(() => {
     try {

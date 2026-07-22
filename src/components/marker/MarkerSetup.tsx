@@ -322,7 +322,11 @@ export function MarkerSetup({ onStart }: Props) {
           id, group_number, round_number, scheduled_date, scheduled_time, status,
           champ_id, court_id, handicap_a, handicap_b,
           player_a_member_id, player_b_member_id,
-          partner_a_member_id, partner_b_member_id
+          partner_a_member_id, partner_b_member_id,
+          player_a:player_a_member_id(id, name, club_member_number),
+          player_b:player_b_member_id(id, name, club_member_number),
+          partner_a:partner_a_member_id(id, name, club_member_number),
+          partner_b:partner_b_member_id(id, name, club_member_number)
         `)
         .in("status", ["scheduled", "in_progress"])
         .order("scheduled_date", { ascending: true });
@@ -340,23 +344,41 @@ export function MarkerSetup({ onStart }: Props) {
 
       const clubChampIds = new Set((champs || []).map((c) => c.id));
 
-      // Collect member IDs for name lookup
+      // Backfill any names RLS-hid via FK joins (e.g. cross-club viewers) using client-side maps
       const memberIds = new Set<string>();
-      (data || []).forEach((m) => {
-        if (clubChampIds.has(m.champ_id)) {
-          memberIds.add(m.player_a_member_id);
-          memberIds.add(m.player_b_member_id);
-          if (m.partner_a_member_id) memberIds.add(m.partner_a_member_id);
-          if (m.partner_b_member_id) memberIds.add(m.partner_b_member_id);
-        }
+      (data || []).forEach((m: any) => {
+        if (!clubChampIds.has(m.champ_id)) return;
+        if (m.player_a_member_id && !m.player_a) memberIds.add(m.player_a_member_id);
+        if (m.player_b_member_id && !m.player_b) memberIds.add(m.player_b_member_id);
+        if (m.partner_a_member_id && !m.partner_a) memberIds.add(m.partner_a_member_id);
+        if (m.partner_b_member_id && !m.partner_b) memberIds.add(m.partner_b_member_id);
       });
 
-      const { data: members } = await supabase
-        .from("club_members")
-        .select("id, name, club_member_number")
-        .in("id", [...memberIds]);
+      let memberMap = new Map<string, any>();
+      if (memberIds.size > 0) {
+        const { data: members } = await supabase
+          .from("club_members")
+          .select("id, name, club_member_number")
+          .in("id", [...memberIds]);
+        memberMap = new Map((members || []).map((m: any) => [m.id, m]));
 
-      const memberMap = new Map((members || []).map((m) => [m.id, m]));
+        // Fallback: also check visitors table for any still-missing IDs
+        const stillMissing = [...memberIds].filter((id) => !memberMap.has(id));
+        if (stillMissing.length > 0) {
+          const { data: visitors } = await supabase
+            .from("club_visitors")
+            .select("id, first_name, last_name, member_number")
+            .in("id", stillMissing);
+          (visitors || []).forEach((v: any) => {
+            memberMap.set(v.id, {
+              id: v.id,
+              name: `${v.first_name} ${v.last_name}`.trim(),
+              club_member_number: v.member_number || "",
+            });
+          });
+        }
+      }
+
       const champMap = new Map((champs || []).map((c) => [c.id, c]));
 
       return (data || [])

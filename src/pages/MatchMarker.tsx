@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MARKER_CONFIG_KEY, MARKER_STATE_KEY } from "@/lib/marker-storage";
 import { PageHeader } from "@/components/PageHeader";

@@ -3200,11 +3200,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [doublesPairs]);
 
   const availableForPairing = useMemo(() => {
-    if (gender === "mixed" || gender === "open") return members.filter((m) => !usedPlayerIds.has(m.id));
+    const pool = allSelectablePlayers as ClubMember[];
+    if (gender === "mixed" || gender === "open") return pool.filter((m) => !usedPlayerIds.has(m.id));
     const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
-    return members
+    return pool
       .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()) && !usedPlayerIds.has(m.id));
-  }, [members, gender, usedPlayerIds]);
+  }, [allSelectablePlayers, gender, usedPlayerIds]);
 
   // Returns a list of friendly reasons why the current step can't advance.
   // Empty array means the user can click Next.
@@ -6051,23 +6052,36 @@ function PairBuilder({
 }) {
   const [player1, setPlayer1] = useState("");
   const [player2, setPlayer2] = useState("");
+  const [search1, setSearch1] = useState("");
+  const [search2, setSearch2] = useState("");
 
   // For mixed doubles, show men for P1 and ladies for P2
   const isMixed = gender === "mixed";
 
-  const pool1 = isMixed
-    ? availablePlayers.filter((m) => m.gender && ["men", "male", "m"].includes(m.gender.toLowerCase()))
-    : availablePlayers;
+  const nameOf = (m: any) => (m.name || m.profiles?.name || "").toLowerCase();
 
-  const pool2 = isMixed
+  const basePool1 = isMixed
+    ? availablePlayers.filter((m) => m.gender && ["men", "male", "m"].includes(m.gender.toLowerCase()))
+    : availablePlayers.filter((m) => m.id !== player2);
+
+  const basePool2 = isMixed
     ? availablePlayers.filter((m) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()))
     : availablePlayers.filter((m) => m.id !== player1);
+
+  const pool1 = search1.trim()
+    ? basePool1.filter((m) => nameOf(m).includes(search1.trim().toLowerCase()))
+    : basePool1;
+  const pool2 = search2.trim()
+    ? basePool2.filter((m) => nameOf(m).includes(search2.trim().toLowerCase()))
+    : basePool2;
 
   const handleAdd = () => {
     if (player1 && player2 && player1 !== player2) {
       onAddPair(player1, player2);
       setPlayer1("");
       setPlayer2("");
+      setSearch1("");
+      setSearch2("");
     }
   };
 
@@ -6075,23 +6089,39 @@ function PairBuilder({
     <div className="space-y-3">
       <Label className="text-xs text-muted-foreground uppercase tracking-wide">Add a pair</Label>
       <div className="grid grid-cols-2 gap-3">
-        <div>
+        <div className="space-y-1">
           <Label className="text-xs">{isMixed ? "Player (Men)" : "Player 1"}</Label>
+          <Input
+            placeholder="Search name..."
+            value={search1}
+            onChange={(e) => setSearch1(e.target.value)}
+            className="h-8 text-xs"
+          />
           <Select value={player1} onValueChange={setPlayer1}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+            <SelectTrigger className="mt-1"><SelectValue placeholder={`Select... (${pool1.length})`} /></SelectTrigger>
             <SelectContent>
-              {pool1.map((m) => (
+              {pool1.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">No matches</div>
+              ) : pool1.map((m) => (
                 <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || "—"}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div>
+        <div className="space-y-1">
           <Label className="text-xs">{isMixed ? "Player (Ladies)" : "Player 2"}</Label>
+          <Input
+            placeholder="Search name..."
+            value={search2}
+            onChange={(e) => setSearch2(e.target.value)}
+            className="h-8 text-xs"
+          />
           <Select value={player2} onValueChange={setPlayer2}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+            <SelectTrigger className="mt-1"><SelectValue placeholder={`Select... (${pool2.length})`} /></SelectTrigger>
             <SelectContent>
-              {pool2.map((m) => (
+              {pool2.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">No matches</div>
+              ) : pool2.map((m) => (
                 <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || "—"}</SelectItem>
               ))}
             </SelectContent>

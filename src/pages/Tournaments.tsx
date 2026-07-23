@@ -432,13 +432,23 @@ export default function Tournaments() {
           e.preventDefault();
           if (!draggingMatch) return;
           const chk = canSwap(draggingMatch, m);
-          if (!chk.ok) { toast.error(`Cannot swap: ${chk.reason}`); setDragId(null); setHoverId(null); return; }
+          if (!chk.ok) {
+            if (chk.reason === "player clash at target slot") {
+              toast.error("Player clash at target slot", {
+                description: "Tick 'Allow player conflict' in the ⇆ Swap popover to override this restriction on future drags.",
+              });
+            } else {
+              toast.error(`Cannot swap: ${chk.reason}`);
+            }
+            setDragId(null); setHoverId(null); return;
+          }
           if (chk.warn) {
             const ok = window.confirm(`Warning: this swap will create a ${chk.warn}. Continue?`);
             if (!ok) { setDragId(null); setHoverId(null); return; }
           }
           doSwap(draggingMatch, m);
         }}
+
         className={cn(
           "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded transition-all",
           today ? "bg-primary/10 border border-primary/20" : !color && "bg-muted/50",

@@ -301,7 +301,8 @@ export default function Tournaments() {
     if (a.status === "completed" || b.status === "completed") return { ok: false, reason: "completed match" };
     if (!a.scheduled_date || !a.scheduled_time || !b.scheduled_date || !b.scheduled_time) return { ok: false, reason: "unscheduled" };
     if (a.champ_id !== b.champ_id) return { ok: false, reason: "different tournament" };
-    if (a.court_id !== b.court_id) return { ok: false, reason: "different court" };
+    const showAllCourts = readSwapFlag("sh.swap.showAllCourts");
+    if (!showAllCourts && a.court_id !== b.court_id) return { ok: false, reason: "different court" };
     const allowConflict = readSwapFlag("sh.swap.allowConflict");
     const allowB2B = readSwapFlag("sh.swap.allowB2B");
     // Player conflict — same slot

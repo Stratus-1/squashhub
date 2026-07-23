@@ -292,50 +292,60 @@ export default function Tournaments() {
     const [h, mn] = String(t).slice(0, 5).split(":").map(Number);
     return h * 60 + mn;
   };
+  const readSwapFlag = (k: string) => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(k) === "1";
+  };
   const canSwap = (a: any, b: any): { ok: boolean; reason?: string; warn?: string } => {
     if (!a || !b || a.id === b.id) return { ok: false, reason: "same match" };
     if (a.status === "completed" || b.status === "completed") return { ok: false, reason: "completed match" };
     if (!a.scheduled_date || !a.scheduled_time || !b.scheduled_date || !b.scheduled_time) return { ok: false, reason: "unscheduled" };
     if (a.champ_id !== b.champ_id) return { ok: false, reason: "different tournament" };
     if (a.court_id !== b.court_id) return { ok: false, reason: "different court" };
+    const allowConflict = readSwapFlag("sh.swap.allowConflict");
+    const allowB2B = readSwapFlag("sh.swap.allowB2B");
     // Player conflict — same slot
     const aPlayers = new Set(playersOf(a));
     const bPlayers = new Set(playersOf(b));
-    for (const m of allMatches as any[]) {
-      if (m.id === a.id || m.id === b.id) continue;
-      if (!m.scheduled_date || !m.scheduled_time) continue;
-      // conflict at b's slot for a's players
-      if (m.scheduled_date === b.scheduled_date && String(m.scheduled_time).slice(0,5) === String(b.scheduled_time).slice(0,5)) {
-        for (const pid of aPlayers) if (playersOf(m).includes(pid)) return { ok: false, reason: "player clash at target slot" };
-      }
-      if (m.scheduled_date === a.scheduled_date && String(m.scheduled_time).slice(0,5) === String(a.scheduled_time).slice(0,5)) {
-        for (const pid of bPlayers) if (playersOf(m).includes(pid)) return { ok: false, reason: "player clash at target slot" };
+    if (!allowConflict) {
+      for (const m of allMatches as any[]) {
+        if (m.id === a.id || m.id === b.id) continue;
+        if (!m.scheduled_date || !m.scheduled_time) continue;
+        if (m.scheduled_date === b.scheduled_date && String(m.scheduled_time).slice(0,5) === String(b.scheduled_time).slice(0,5)) {
+          for (const pid of aPlayers) if (playersOf(m).includes(pid)) return { ok: false, reason: "player clash at target slot" };
+        }
+        if (m.scheduled_date === a.scheduled_date && String(m.scheduled_time).slice(0,5) === String(a.scheduled_time).slice(0,5)) {
+          for (const pid of bPlayers) if (playersOf(m).includes(pid)) return { ok: false, reason: "player clash at target slot" };
+        }
       }
     }
     // Back-to-back warning (≤20 min gap on same date for same player)
-    const near = (d1: string, t1: string, d2: string, t2: string) => {
-      if (d1 !== d2) return false;
-      const m1 = toMinutes(t1); const m2 = toMinutes(t2);
-      if (m1 == null || m2 == null) return false;
-      const gap = Math.abs(m1 - m2);
-      return gap > 0 && gap <= 20;
-    };
-    for (const m of allMatches as any[]) {
-      if (m.id === a.id || m.id === b.id) continue;
-      if (!m.scheduled_date || !m.scheduled_time) continue;
-      for (const pid of aPlayers) {
-        if (playersOf(m).includes(pid) && near(b.scheduled_date, b.scheduled_time, m.scheduled_date, m.scheduled_time)) {
-          return { ok: true, warn: "back-to-back for a player" };
+    if (!allowB2B) {
+      const near = (d1: string, t1: string, d2: string, t2: string) => {
+        if (d1 !== d2) return false;
+        const m1 = toMinutes(t1); const m2 = toMinutes(t2);
+        if (m1 == null || m2 == null) return false;
+        const gap = Math.abs(m1 - m2);
+        return gap > 0 && gap <= 20;
+      };
+      for (const m of allMatches as any[]) {
+        if (m.id === a.id || m.id === b.id) continue;
+        if (!m.scheduled_date || !m.scheduled_time) continue;
+        for (const pid of aPlayers) {
+          if (playersOf(m).includes(pid) && near(b.scheduled_date, b.scheduled_time, m.scheduled_date, m.scheduled_time)) {
+            return { ok: true, warn: "back-to-back for a player" };
+          }
         }
-      }
-      for (const pid of bPlayers) {
-        if (playersOf(m).includes(pid) && near(a.scheduled_date, a.scheduled_time, m.scheduled_date, m.scheduled_time)) {
-          return { ok: true, warn: "back-to-back for a player" };
+        for (const pid of bPlayers) {
+          if (playersOf(m).includes(pid) && near(a.scheduled_date, a.scheduled_time, m.scheduled_date, m.scheduled_time)) {
+            return { ok: true, warn: "back-to-back for a player" };
+          }
         }
       }
     }
     return { ok: true };
   };
+
   const doSwap = async (a: any, b: any) => {
     setSwapping(true);
     try {
@@ -422,13 +432,23 @@ export default function Tournaments() {
           e.preventDefault();
           if (!draggingMatch) return;
           const chk = canSwap(draggingMatch, m);
-          if (!chk.ok) { toast.error(`Cannot swap: ${chk.reason}`); setDragId(null); setHoverId(null); return; }
+          if (!chk.ok) {
+            if (chk.reason === "player clash at target slot") {
+              toast.error("Player clash at target slot", {
+                description: "Tick 'Allow player conflict' in the ⇆ Swap popover to override this restriction on future drags.",
+              });
+            } else {
+              toast.error(`Cannot swap: ${chk.reason}`);
+            }
+            setDragId(null); setHoverId(null); return;
+          }
           if (chk.warn) {
             const ok = window.confirm(`Warning: this swap will create a ${chk.warn}. Continue?`);
             if (!ok) { setDragId(null); setHoverId(null); return; }
           }
           doSwap(draggingMatch, m);
         }}
+
         className={cn(
           "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded transition-all",
           today ? "bg-primary/10 border border-primary/20" : !color && "bg-muted/50",

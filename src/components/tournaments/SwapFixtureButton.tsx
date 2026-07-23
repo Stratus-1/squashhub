@@ -220,7 +220,7 @@ export function SwapFixtureButton({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[360px] p-0" align="end">
+      <PopoverContent className={cn("p-0", isDoubles ? "w-[min(560px,95vw)]" : "w-[360px]")} align="end">
         <div className="p-2 border-b">
           <div className="text-[11px] text-muted-foreground mb-1">
             Swap <strong>{getMatchLabel(match)}</strong>

@@ -115,8 +115,14 @@ export default function Tournaments() {
       if (bLive && !aLive) return 1;
       const aKey = `${a.scheduled_date || "9999-12-31"} ${a.scheduled_time || "23:59:59"}`;
       const bKey = `${b.scheduled_date || "9999-12-31"} ${b.scheduled_time || "23:59:59"}`;
-      return aKey.localeCompare(bKey);
+      const k = aKey.localeCompare(bKey);
+      if (k !== 0) return k;
+      // Same slot → sort by court name ascending (Court 1, 2, 3…)
+      const ac = a.court?.name || "";
+      const bc = b.court?.name || "";
+      return ac.localeCompare(bc, undefined, { numeric: true, sensitivity: "base" });
     });
+
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => (b ? `${getName(a)} & ${getName(b)}` : getName(a));

@@ -53,8 +53,31 @@ export function SwapFixtureButton({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
-  const [showAllCourts, setShowAllCourts] = useState(!sameCourtOnly);
-  const [allowB2B, setAllowB2B] = useState(false);
+  const [showAllCourts, setShowAllCourtsState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return !sameCourtOnly;
+    const v = window.localStorage.getItem("sh.swap.showAllCourts");
+    return v === null ? !sameCourtOnly : v === "1";
+  });
+  const [allowB2B, setAllowB2BState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("sh.swap.allowB2B") === "1";
+  });
+  const [allowConflict, setAllowConflictState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("sh.swap.allowConflict") === "1";
+  });
+  const setShowAllCourts = (v: boolean) => {
+    setShowAllCourtsState(v);
+    try { window.localStorage.setItem("sh.swap.showAllCourts", v ? "1" : "0"); } catch {}
+  };
+  const setAllowB2B = (v: boolean) => {
+    setAllowB2BState(v);
+    try { window.localStorage.setItem("sh.swap.allowB2B", v ? "1" : "0"); } catch {}
+  };
+  const setAllowConflict = (v: boolean) => {
+    setAllowConflictState(v);
+    try { window.localStorage.setItem("sh.swap.allowConflict", v ? "1" : "0"); } catch {}
+  };
   /** Minimum minutes required between two matches of the same player before they count as back-to-back. */
   const B2B_GAP_MINUTES = 20;
 
@@ -98,8 +121,8 @@ export function SwapFixtureButton({
         const rows = occ.get(pid) || [];
         for (const r of rows) {
           if (r.date !== newDate) continue;
-          if (r.min === newMin) return "player conflict" as const;
-          if (!allowB2B && Math.abs(r.min - newMin) <= B2B_GAP_MINUTES) return "back-to-back" as const;
+          if (r.min === newMin && !allowConflict) return "player conflict" as const;
+          if (!allowB2B && r.min !== newMin && Math.abs(r.min - newMin) <= B2B_GAP_MINUTES) return "back-to-back" as const;
         }
       }
       return null;
@@ -234,6 +257,15 @@ export function SwapFixtureButton({
               className="h-3 w-3"
             />
             Allow back-to-back (ignore rest gap)
+          </label>
+          <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={allowConflict}
+              onChange={(e) => setAllowConflict(e.target.checked)}
+              className="h-3 w-3"
+            />
+            Allow player conflict (manual override)
           </label>
         </div>
         <div className="max-h-[320px] overflow-y-auto divide-y">

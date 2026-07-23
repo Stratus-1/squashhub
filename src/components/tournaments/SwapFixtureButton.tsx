@@ -258,6 +258,15 @@ export function SwapFixtureButton({
             />
             Allow back-to-back (ignore rest gap)
           </label>
+          <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={allowConflict}
+              onChange={(e) => setAllowConflict(e.target.checked)}
+              className="h-3 w-3"
+            />
+            Allow player conflict (manual override)
+          </label>
         </div>
         <div className="max-h-[320px] overflow-y-auto divide-y">
           {busy && (

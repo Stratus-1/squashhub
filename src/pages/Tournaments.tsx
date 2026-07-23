@@ -19,7 +19,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useNavigate } from "react-router-dom";
 import { format, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FinalizeTournamentSetupDialog } from "@/components/tournaments/FinalizeTournamentSetupDialog";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
@@ -264,6 +264,14 @@ export default function Tournaments() {
 
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [groupBySlot, setGroupBySlot] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("tournaments.groupBySlot") === "1";
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem("tournaments.groupBySlot", groupBySlot ? "1" : "0"); } catch {}
+  }, [groupBySlot]);
+
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();
@@ -395,6 +403,49 @@ export default function Tournaments() {
     const idx = digits ? (parseInt(digits, 10) - 1) % COURT_TINTS.length : Math.abs(name.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % COURT_TINTS.length;
     return COURT_TINTS[idx];
   };
+
+  const renderMatchList = (list: any[]) => {
+    if (!groupBySlot) {
+      return <div className="space-y-1.5">{list.map(renderMatchRow)}</div>;
+    }
+    // Group by date + time slot
+    const groups = new Map<string, any[]>();
+    list.forEach((m) => {
+      const key = `${m.scheduled_date || "TBD"}|${m.scheduled_time || "TBD"}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(m);
+    });
+    return (
+      <div className="space-y-2">
+        {Array.from(groups.entries()).map(([key, items]) => {
+          const [d, t] = key.split("|");
+          const dateObj = d && d !== "TBD" ? new Date(`${d}T00:00:00`) : null;
+          const courts = Array.from(new Set(items.map((m: any) => m.court?.name).filter(Boolean)));
+          return (
+            <details key={key} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
+              <summary className="cursor-pointer select-none flex items-center gap-2 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
+                <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
+                <span className="uppercase tracking-wider">
+                  {dateObj ? format(dateObj, "EEE dd MMM") : "TBD"} · {t !== "TBD" ? t.slice(0, 5) : "—"}
+                </span>
+                <span className="text-muted-foreground font-normal">({items.length} {items.length === 1 ? "match" : "matches"})</span>
+                <div className="ml-auto flex gap-1 flex-wrap">
+                  {courts.map((c: any) => {
+                    const tint = courtTint(c);
+                    return (
+                      <Badge key={c} variant="outline" className={cn("text-[9px] px-1.5 py-0", tint?.badge)}>{c}</Badge>
+                    );
+                  })}
+                </div>
+              </summary>
+              <div className="p-2 space-y-1.5">{items.map((m, i) => renderMatchRow(m, i, items))}</div>
+            </details>
+          );
+        })}
+      </div>
+    );
+  };
+
 
   const renderMatchRow = (m: any, idx: number, arr: any[]) => {
     const prev = idx > 0 ? arr[idx - 1] : null;
@@ -910,6 +961,15 @@ export default function Tournaments() {
                           </SelectContent>
                         </Select>
                       )}
+                      <Button
+                        variant={groupBySlot ? "default" : "outline"}
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => setGroupBySlot((v) => !v)}
+                        title="Toggle grouping by time slot"
+                      >
+                        {groupBySlot ? "Grouped by slot" : "Group by slot"}
+                      </Button>
                       {(poolFilter !== "all" || dateFilter !== "all") && (
                         <Button
                           variant="ghost"
@@ -923,6 +983,7 @@ export default function Tournaments() {
                     </div>
                   )}
 
+
                   {memberId && myUpcoming.length > 0 ? (
                     <Tabs defaultValue="all" className="w-full">
                       <TabsList className="grid w-full grid-cols-2 h-auto mb-3">
@@ -933,22 +994,23 @@ export default function Tournaments() {
                         {filteredUpcoming.length === 0 ? (
                           <p className="text-sm text-muted-foreground">No scheduled games match these filters.</p>
                         ) : (
-                          <div className="space-y-1.5">{filteredUpcoming.map(renderMatchRow)}</div>
+                          renderMatchList(filteredUpcoming)
                         )}
                       </TabsContent>
                       <TabsContent value="mine" className="mt-0">
                         {filteredMine.length === 0 ? (
                           <p className="text-sm text-muted-foreground">None of your games match these filters.</p>
                         ) : (
-                          <div className="space-y-1.5">{filteredMine.map(renderMatchRow)}</div>
+                          renderMatchList(filteredMine)
                         )}
                       </TabsContent>
                     </Tabs>
                   ) : filteredUpcoming.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No scheduled games.</p>
                   ) : (
-                    <div className="space-y-1.5">{filteredUpcoming.map(renderMatchRow)}</div>
+                    renderMatchList(filteredUpcoming)
                   )}
+
 
                 </CardContent>
 

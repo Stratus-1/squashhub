@@ -457,7 +457,7 @@ export default function Tournaments() {
             {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
           </span>
           <span className="text-muted-foreground shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
-          <span className="font-medium text-xs sm:text-sm truncate basis-full sm:basis-auto sm:flex-1 sm:min-w-0">
+          <span className="font-medium text-xs sm:text-sm break-words basis-full sm:basis-auto sm:flex-1 sm:min-w-0">
             <span className={teamAClass}>{teamA}</span>
             <span className="text-muted-foreground"> vs </span>
             <span className={teamBClass}>{teamB}</span>

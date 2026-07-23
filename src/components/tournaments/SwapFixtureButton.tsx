@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeftRight, Loader2, Search } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface Props {
   /** The match being moved (must be a real saved match with id, scheduled_date, scheduled_time, court_id). */

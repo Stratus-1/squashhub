@@ -583,9 +583,11 @@ export default function Tournaments() {
             size="icon"
           />
         )}
+        </div>
       </div>
     );
   };
+
 
   const getScheduleHeaders = (matches: any[]) => {
     // Only customise when every match belongs to the same cross-league tournament

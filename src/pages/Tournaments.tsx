@@ -264,6 +264,14 @@ export default function Tournaments() {
 
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [groupBySlot, setGroupBySlot] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("tournaments.groupBySlot") === "1";
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem("tournaments.groupBySlot", groupBySlot ? "1" : "0"); } catch {}
+  }, [groupBySlot]);
+
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();

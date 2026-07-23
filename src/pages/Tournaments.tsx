@@ -994,22 +994,23 @@ export default function Tournaments() {
                         {filteredUpcoming.length === 0 ? (
                           <p className="text-sm text-muted-foreground">No scheduled games match these filters.</p>
                         ) : (
-                          <div className="space-y-1.5">{filteredUpcoming.map(renderMatchRow)}</div>
+                          renderMatchList(filteredUpcoming)
                         )}
                       </TabsContent>
                       <TabsContent value="mine" className="mt-0">
                         {filteredMine.length === 0 ? (
                           <p className="text-sm text-muted-foreground">None of your games match these filters.</p>
                         ) : (
-                          <div className="space-y-1.5">{filteredMine.map(renderMatchRow)}</div>
+                          renderMatchList(filteredMine)
                         )}
                       </TabsContent>
                     </Tabs>
                   ) : filteredUpcoming.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No scheduled games.</p>
                   ) : (
-                    <div className="space-y-1.5">{filteredUpcoming.map(renderMatchRow)}</div>
+                    renderMatchList(filteredUpcoming)
                   )}
+
 
                 </CardContent>
 

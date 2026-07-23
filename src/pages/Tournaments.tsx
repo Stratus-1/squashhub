@@ -404,6 +404,49 @@ export default function Tournaments() {
     return COURT_TINTS[idx];
   };
 
+  const renderMatchList = (list: any[]) => {
+    if (!groupBySlot) {
+      return <div className="space-y-1.5">{list.map(renderMatchRow)}</div>;
+    }
+    // Group by date + time slot
+    const groups = new Map<string, any[]>();
+    list.forEach((m) => {
+      const key = `${m.scheduled_date || "TBD"}|${m.scheduled_time || "TBD"}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(m);
+    });
+    return (
+      <div className="space-y-2">
+        {Array.from(groups.entries()).map(([key, items]) => {
+          const [d, t] = key.split("|");
+          const dateObj = d && d !== "TBD" ? new Date(`${d}T00:00:00`) : null;
+          const courts = Array.from(new Set(items.map((m: any) => m.court?.name).filter(Boolean)));
+          return (
+            <details key={key} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
+              <summary className="cursor-pointer select-none flex items-center gap-2 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
+                <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
+                <span className="uppercase tracking-wider">
+                  {dateObj ? format(dateObj, "EEE dd MMM") : "TBD"} · {t !== "TBD" ? t.slice(0, 5) : "—"}
+                </span>
+                <span className="text-muted-foreground font-normal">({items.length} {items.length === 1 ? "match" : "matches"})</span>
+                <div className="ml-auto flex gap-1 flex-wrap">
+                  {courts.map((c: any) => {
+                    const tint = courtTint(c);
+                    return (
+                      <Badge key={c} variant="outline" className={cn("text-[9px] px-1.5 py-0", tint?.badge)}>{c}</Badge>
+                    );
+                  })}
+                </div>
+              </summary>
+              <div className="p-2 space-y-1.5">{items.map((m, i) => renderMatchRow(m, i, items))}</div>
+            </details>
+          );
+        })}
+      </div>
+    );
+  };
+
+
   const renderMatchRow = (m: any, idx: number, arr: any[]) => {
     const prev = idx > 0 ? arr[idx - 1] : null;
     const slotChanged = !prev || prev.scheduled_date !== m.scheduled_date || prev.scheduled_time !== m.scheduled_time;

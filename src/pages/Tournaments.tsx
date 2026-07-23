@@ -537,7 +537,15 @@ export default function Tournaments() {
               {tournamentFormat.badge.label}
             </Badge>
           )}
-          {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
+          {m.court && (
+            <Badge
+              variant="outline"
+              className={cn("text-[10px] shrink-0 font-semibold", tint?.badge)}
+            >
+              {m.court.name}
+            </Badge>
+          )}
+
           {isLive(m) && (
             <span className="live-indicator text-[10px] shrink-0 px-2.5 py-1">
               <span className="w-1.5 h-1.5 rounded-full bg-current" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}

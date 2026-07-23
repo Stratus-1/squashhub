@@ -447,10 +447,20 @@ export default function Tournaments() {
     const dropBad = hoverCheck && !hoverCheck.ok;
 
     return (
-      <div
-        key={m.id}
-        style={rowStyle}
-        draggable={canDrag}
+      <div key={m.id}>
+        {slotChanged && idx > 0 && (
+          <div className="flex items-center gap-2 pt-2 pb-1 select-none">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-1.5">
+              {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"} · {m.scheduled_time?.slice(0, 5) || "—"}
+            </span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+        )}
+        <div
+          style={rowStyle}
+          draggable={canDrag}
+
         onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = "move"; }}
         onDragEnd={() => { setDragId(null); setHoverId(null); }}
         onDragOver={(e) => { if (dragId && dragId !== m.id) { e.preventDefault(); setHoverId(m.id); } }}

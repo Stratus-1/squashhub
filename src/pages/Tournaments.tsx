@@ -961,6 +961,15 @@ export default function Tournaments() {
                           </SelectContent>
                         </Select>
                       )}
+                      <Button
+                        variant={groupBySlot ? "default" : "outline"}
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => setGroupBySlot((v) => !v)}
+                        title="Toggle grouping by time slot"
+                      >
+                        {groupBySlot ? "Grouped by slot" : "Group by slot"}
+                      </Button>
                       {(poolFilter !== "all" || dateFilter !== "all") && (
                         <Button
                           variant="ghost"
@@ -973,6 +982,7 @@ export default function Tournaments() {
                       )}
                     </div>
                   )}
+
 
                   {memberId && myUpcoming.length > 0 ? (
                     <Tabs defaultValue="all" className="w-full">

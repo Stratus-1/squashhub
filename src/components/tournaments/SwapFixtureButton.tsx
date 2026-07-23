@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeftRight, Loader2, Search } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface Props {
   /** The match being moved (must be a real saved match with id, scheduled_date, scheduled_time, court_id). */
@@ -83,6 +84,8 @@ export function SwapFixtureButton({
 
   const playersOf = (m: any): string[] =>
     [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];
+
+  const isDoubles = Boolean(match.partner_a_member_id || match.partner_b_member_id);
 
   const slotKey = (m: any) =>
     m.scheduled_date && m.scheduled_time
@@ -220,7 +223,7 @@ export function SwapFixtureButton({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[360px] p-0" align="end">
+      <PopoverContent className={cn("p-0", isDoubles ? "w-[min(560px,95vw)]" : "w-[360px]")} align="end">
         <div className="p-2 border-b">
           <div className="text-[11px] text-muted-foreground mb-1">
             Swap <strong>{getMatchLabel(match)}</strong>

@@ -85,6 +85,8 @@ export function SwapFixtureButton({
   const playersOf = (m: any): string[] =>
     [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];
 
+  const isDoubles = Boolean(match.partner_a_member_id || match.partner_b_member_id);
+
   const slotKey = (m: any) =>
     m.scheduled_date && m.scheduled_time
       ? `${m.scheduled_date}|${String(m.scheduled_time).slice(0, 5)}`

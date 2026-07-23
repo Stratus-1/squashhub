@@ -380,7 +380,27 @@ export default function Tournaments() {
     }
   };
 
-  const renderMatchRow = (m: any) => {
+  // Distinct color tint per court (helps visually match court columns while dragging)
+  const COURT_TINTS: { badge: string; ring: string }[] = [
+    { badge: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/40", ring: "ring-sky-400/60" },
+    { badge: "bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-500/40", ring: "ring-fuchsia-400/60" },
+    { badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40", ring: "ring-emerald-400/60" },
+    { badge: "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/40", ring: "ring-orange-400/60" },
+    { badge: "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/40", ring: "ring-violet-400/60" },
+    { badge: "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/40", ring: "ring-teal-400/60" },
+  ];
+  const courtTint = (name?: string | null) => {
+    if (!name) return null;
+    const digits = name.match(/\d+/)?.[0];
+    const idx = digits ? (parseInt(digits, 10) - 1) % COURT_TINTS.length : Math.abs(name.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % COURT_TINTS.length;
+    return COURT_TINTS[idx];
+  };
+
+  const renderMatchRow = (m: any, idx: number, arr: any[]) => {
+    const prev = idx > 0 ? arr[idx - 1] : null;
+    const slotChanged = !prev || prev.scheduled_date !== m.scheduled_date || prev.scheduled_time !== m.scheduled_time;
+    const tint = courtTint(m.court?.name);
+
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles";
     const tournamentFormat = getTournamentFormat(champ?.scoring_mode);

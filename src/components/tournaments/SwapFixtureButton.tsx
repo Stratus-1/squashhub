@@ -200,8 +200,6 @@ export function SwapFixtureButton({
     }
   };
 
-  const btnLabel = size === "icon" ? null : "Swap";
-
   return (
     <Popover
       open={open}
@@ -212,15 +210,16 @@ export function SwapFixtureButton({
     >
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
-          size={size === "icon" ? "icon" : "sm"}
-          className={size === "icon" ? "h-6 w-6 shrink-0" : "h-7 px-2 text-xs gap-1"}
-          title="Swap with another fixture"
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 text-[11px] gap-1 shrink-0 border-primary/40 text-primary hover:bg-primary/10"
+          title="Replace this fixture with another match in the tournament"
         >
           <ArrowLeftRight className="w-3.5 h-3.5" />
-          {btnLabel && <span>{btnLabel}</span>}
+          <span className="hidden sm:inline">Replace</span>
         </Button>
       </PopoverTrigger>
+
       <PopoverContent className="w-[360px] p-0" align="end">
         <div className="p-2 border-b">
           <div className="text-[11px] text-muted-foreground mb-1">

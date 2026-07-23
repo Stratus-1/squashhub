@@ -121,8 +121,8 @@ export function SwapFixtureButton({
         const rows = occ.get(pid) || [];
         for (const r of rows) {
           if (r.date !== newDate) continue;
-          if (r.min === newMin) return "player conflict" as const;
-          if (!allowB2B && Math.abs(r.min - newMin) <= B2B_GAP_MINUTES) return "back-to-back" as const;
+          if (r.min === newMin && !allowConflict) return "player conflict" as const;
+          if (!allowB2B && r.min !== newMin && Math.abs(r.min - newMin) <= B2B_GAP_MINUTES) return "back-to-back" as const;
         }
       }
       return null;

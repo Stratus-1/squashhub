@@ -115,8 +115,14 @@ export default function Tournaments() {
       if (bLive && !aLive) return 1;
       const aKey = `${a.scheduled_date || "9999-12-31"} ${a.scheduled_time || "23:59:59"}`;
       const bKey = `${b.scheduled_date || "9999-12-31"} ${b.scheduled_time || "23:59:59"}`;
-      return aKey.localeCompare(bKey);
+      const k = aKey.localeCompare(bKey);
+      if (k !== 0) return k;
+      // Same slot → sort by court name ascending (Court 1, 2, 3…)
+      const ac = a.court?.name || "";
+      const bc = b.court?.name || "";
+      return ac.localeCompare(bc, undefined, { numeric: true, sensitivity: "base" });
     });
+
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => (b ? `${getName(a)} & ${getName(b)}` : getName(a));
@@ -374,7 +380,27 @@ export default function Tournaments() {
     }
   };
 
-  const renderMatchRow = (m: any) => {
+  // Distinct color tint per court (helps visually match court columns while dragging)
+  const COURT_TINTS: { badge: string; ring: string }[] = [
+    { badge: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/40", ring: "ring-sky-400/60" },
+    { badge: "bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-500/40", ring: "ring-fuchsia-400/60" },
+    { badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40", ring: "ring-emerald-400/60" },
+    { badge: "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/40", ring: "ring-orange-400/60" },
+    { badge: "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/40", ring: "ring-violet-400/60" },
+    { badge: "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/40", ring: "ring-teal-400/60" },
+  ];
+  const courtTint = (name?: string | null) => {
+    if (!name) return null;
+    const digits = name.match(/\d+/)?.[0];
+    const idx = digits ? (parseInt(digits, 10) - 1) % COURT_TINTS.length : Math.abs(name.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % COURT_TINTS.length;
+    return COURT_TINTS[idx];
+  };
+
+  const renderMatchRow = (m: any, idx: number, arr: any[]) => {
+    const prev = idx > 0 ? arr[idx - 1] : null;
+    const slotChanged = !prev || prev.scheduled_date !== m.scheduled_date || prev.scheduled_time !== m.scheduled_time;
+    const tint = courtTint(m.court?.name);
+
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles";
     const tournamentFormat = getTournamentFormat(champ?.scoring_mode);
@@ -421,10 +447,20 @@ export default function Tournaments() {
     const dropBad = hoverCheck && !hoverCheck.ok;
 
     return (
-      <div
-        key={m.id}
-        style={rowStyle}
-        draggable={canDrag}
+      <div key={m.id}>
+        {slotChanged && idx > 0 && (
+          <div className="flex items-center gap-2 pt-2 pb-1 select-none">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-1.5">
+              {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"} · {m.scheduled_time?.slice(0, 5) || "—"}
+            </span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+        )}
+        <div
+          style={rowStyle}
+          draggable={canDrag}
+
         onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = "move"; }}
         onDragEnd={() => { setDragId(null); setHoverId(null); }}
         onDragOver={(e) => { if (dragId && dragId !== m.id) { e.preventDefault(); setHoverId(m.id); } }}
@@ -501,7 +537,15 @@ export default function Tournaments() {
               {tournamentFormat.badge.label}
             </Badge>
           )}
-          {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
+          {m.court && (
+            <Badge
+              variant="outline"
+              className={cn("text-[10px] shrink-0 font-semibold", tint?.badge)}
+            >
+              {m.court.name}
+            </Badge>
+          )}
+
           {isLive(m) && (
             <span className="live-indicator text-[10px] shrink-0 px-2.5 py-1">
               <span className="w-1.5 h-1.5 rounded-full bg-current" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
@@ -547,9 +591,11 @@ export default function Tournaments() {
             size="icon"
           />
         )}
+        </div>
       </div>
     );
   };
+
 
   const getScheduleHeaders = (matches: any[]) => {
     // Only customise when every match belongs to the same cross-league tournament

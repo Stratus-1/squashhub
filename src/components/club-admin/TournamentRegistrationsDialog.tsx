@@ -256,6 +256,29 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                           <MessageCircle className="w-3 h-3 mr-1" />WhatsApp
                         </Button>
                       )}
+                      {normalisePhoneForWhatsApp(r.member?.phone) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs text-emerald-700 hover:text-emerald-800"
+                          title="Send WhatsApp login reminder"
+                          onClick={() => {
+                            const name = getName(r.member);
+                            const first = String(name).split(/\s+/)[0] || name;
+                            const host = window.location.host.startsWith("id-preview")
+                              ? "squashhub.co.za"
+                              : window.location.host;
+                            const msg =
+                              `🏆 ${champ?.name}\n\n` +
+                              `Hi ${first}, quick reminder to log in and view your fixtures 👉 https://${host}\n\n` +
+                              `You're already registered with the email the organisers have on file — just tap *Log in* → *Forgot password* to set yours, then go to *Club Tournaments* → *My Games*.\n\n` +
+                              `Shout if you get stuck!`;
+                            openWhatsApp(r.member?.phone, msg);
+                          }}
+                        >
+                          <MessageCircle className="w-3 h-3 mr-1" />Remind
+                        </Button>
+                      )}
                       {(r.status === "pending_payment" || r.status === "pending_eft") && (
                         <>
                           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => markPaid.mutate(r)} disabled={markPaid.isPending}>

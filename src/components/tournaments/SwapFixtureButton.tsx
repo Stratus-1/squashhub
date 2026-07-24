@@ -31,6 +31,8 @@ interface Props {
   getBucketLabel?: (m: any) => string | null;
   /** Override button label (e.g. "Fill slot" for empty placeholders). */
   label?: string;
+  /** When true, only show candidates that have not yet been scheduled (no date/time/court). Used to fill placeholder slots with pairs that haven't been placed on the grid yet. */
+  unscheduledOnly?: boolean;
 }
 
 /**

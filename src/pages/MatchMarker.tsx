@@ -60,7 +60,16 @@ export default function MatchMarker() {
     if (new URLSearchParams(window.location.search).has("matchId")) return null;
     try {
       const raw = localStorage.getItem(MARKER_CONFIG_KEY);
-      return raw ? (JSON.parse(raw) as MarkerConfig) : null;
+      if (!raw) return null;
+      // Only auto-resume if the user actually started scoring (state was persisted).
+      // A bare config without state means they only opened the screen and left —
+      // don't drop them back into a phantom scoreboard.
+      const hasState = !!localStorage.getItem(MARKER_STATE_KEY);
+      if (!hasState) {
+        try { localStorage.removeItem(MARKER_CONFIG_KEY); } catch {}
+        return null;
+      }
+      return JSON.parse(raw) as MarkerConfig;
     } catch {
       return null;
     }
@@ -198,7 +207,10 @@ export default function MatchMarker() {
 
       if (cancelled) return;
       setConfig(nextConfig);
-      await markTournamentLive(matchId, parseTournamentScores(row));
+      // Do NOT flip the tournament match to in_progress just because someone
+      // opened the marker — only handleLiveScore (after a real point) should
+      // set status=in_progress. Otherwise merely viewing a match strands it
+      // as "LIVE 0-0" and creates a phantom resume prompt for the viewer.
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.delete("source");
@@ -261,8 +273,13 @@ export default function MatchMarker() {
   const startConfig = (c: MarkerConfig) => {
     try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}
     setConfig(c);
+    // Only flip the tournament match to in_progress if there are already
+    // real scores being resumed — starting from 0-0 waits for the first
+    // point (handleLiveScore) to avoid phantom LIVE indicators.
     if (c.source === "tournament" && c.sourceId) {
-      markTournamentLive(c.sourceId, (c as any).initialScores || []);
+      const initial = ((c as any).initialScores || []) as Array<{ a: number; b: number }>;
+      const hasProgress = initial.some((s) => (s?.a || 0) > 0 || (s?.b || 0) > 0);
+      if (hasProgress) markTournamentLive(c.sourceId, initial);
     }
   };
 

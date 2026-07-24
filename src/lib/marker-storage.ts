@@ -64,8 +64,13 @@ export function clearMarkerSession() {
 }
 
 export function hasActiveMarkerSession(): boolean {
+  // Only treat a marker session as "active" (i.e. worth resuming) if the user
+  // has actually started scoring — merely opening the marker screen and leaving
+  // must NOT prompt "Resume Marking".
   try {
-    return !!localStorage.getItem(MARKER_CONFIG_KEY);
+    if (!localStorage.getItem(MARKER_CONFIG_KEY)) return false;
+    if (!localStorage.getItem(MARKER_STATE_KEY)) return false;
+    return true;
   } catch {
     return false;
   }

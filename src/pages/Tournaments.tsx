@@ -107,7 +107,7 @@ export default function Tournaments() {
   };
   const activeChampIds = new Set(champs.map((c: any) => c.id));
   const upcomingMatches = allMatches
-    .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))
+    .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || m.status === "placeholder" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))
     .sort((a: any, b: any) => {
       // Live matches float to the top
       const aLive = isLive(a);

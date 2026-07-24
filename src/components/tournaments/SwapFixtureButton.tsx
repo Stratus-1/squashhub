@@ -140,8 +140,10 @@ export function SwapFixtureButton({
       return null;
     };
 
-    const r1 = check(playersOf(match), target.scheduled_date, toMin(String(target.scheduled_time)));
-    if (r1) return { swapBlocked: true, reason: r1 };
+    if (targetHasSlot) {
+      const r1 = check(playersOf(match), target.scheduled_date, toMin(String(target.scheduled_time)));
+      if (r1) return { swapBlocked: true, reason: r1 };
+    }
     const r2 = check(playersOf(target), match.scheduled_date, toMin(String(match.scheduled_time)));
     if (r2) return { swapBlocked: true, reason: r2 };
 

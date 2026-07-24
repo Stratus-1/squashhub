@@ -1735,26 +1735,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     }
 
 
-    // Scheduling gap per entity: prevent same-day repeats only, so consecutive
-    // play-days (e.g. Fri→Sat→Sun) can all be used. A stricter 2-day rest
-    // would leave the busiest days (typically Saturday) empty when only a few
-    // slots exist per day.
+    // Spread mode uses per-session entity caps (below) as its main balancer,
+    // so we no longer block same-day repeats — a pair *can* play in AM and PM
+    // of the same day, which is exactly what admins asked for. Kept as a
+    // no-op wrapper so downstream code doesn't change shape.
     const entityLastDate = new Map<string, string>();
-    // Number of distinct play-dates available. When there's only one, the
-    // "1-day rest" spread rule can never be satisfied and every subsequent
-    // match falls to the soft fallback (which batches by league). Treat
-    // single-day as fill for the gap check.
-    const uniqueDateCount = new Set(allSlots.map((s) => s.date)).size;
-    const canScheduleOn = (entityId: string, dateStr: string): boolean => {
-      // Fill mode: pack the earliest days completely — allow multiple matches
-      // per entity per day so Saturday isn't capped at one match per pair.
-      if (scheduleMode === "fill") return true;
-      if (uniqueDateCount <= 1) return true;
-      const last = entityLastDate.get(entityId);
-      if (!last) return true;
-      const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));
-      return diffDays >= 1;
-    };
+    const canScheduleOn = (_entityId: string, _dateStr: string): boolean => true;
+
     const getPlayersForEntity = (entityId: string): string[] => {
       if (!isDoubles) return [entityId];
       const pair = doublesPairs.find((p) => p.id === entityId);

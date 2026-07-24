@@ -51,7 +51,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     queryKey: ["champ-registrations", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("*, member:club_member_id(id, name, phone, gender, profiles:user_id(name)), partner:partner_member_id(id, name, phone, profiles:user_id(name))")
+        .select("*, member:club_member_id(id, name, phone, gender, role, user_id, profiles:user_id(name)), partner:partner_member_id(id, name, phone, profiles:user_id(name))")
         .eq("champ_id", champId)
         .order("created_at");
       if (error) throw error;
@@ -59,6 +59,22 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     },
     enabled: !!champId && open,
   });
+
+  const { data: signupStatus = [] } = useQuery({
+    queryKey: ["champ-signup-status", champId],
+    queryFn: async () => {
+      const { data, error } = await (await import("@/lib/supabase-ext")).rpcExt("get_champ_signup_status", { _champ_id: champId });
+      if (error) throw error;
+      return (data || []) as { club_member_id: string; has_account: boolean; has_signed_in: boolean }[];
+    },
+    enabled: !!champId && open,
+  });
+  const signupMap = useMemo(() => {
+    const m = new Map<string, { has_account: boolean; has_signed_in: boolean }>();
+    signupStatus.forEach((s) => m.set(s.club_member_id, { has_account: s.has_account, has_signed_in: s.has_signed_in }));
+    return m;
+  }, [signupStatus]);
+
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["champ-registrations", champId] });
 

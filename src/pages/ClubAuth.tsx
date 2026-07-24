@@ -260,7 +260,7 @@ export default function ClubAuth() {
     enabled: !!club?.id,
     queryFn: async () => {
       const [curatedRes, visitorsRes, memberVisitorsRes] = await Promise.all([
-        fromExt("club_visitor_home_clubs").select("name").eq("club_id", club!.id),
+        fromExt("club_visitor_home_clubs").select("name").is("club_id", null),
         fromExt("club_visitors").select("home_club_name").eq("club_id", club!.id),
         fromExt("club_members").select("home_club_name").eq("club_id", club!.id).eq("role", "visitor"),
       ]);

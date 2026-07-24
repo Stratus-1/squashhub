@@ -41,6 +41,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const [inviteMemberId, setInviteMemberId] = useState<string>("");
   const [overrideRegId, setOverrideRegId] = useState<string | null>(null);
   const [overridePartnerId, setOverridePartnerId] = useState<string>("");
+  const [showCancelled, setShowCancelled] = useState(false);
 
   const champId = champ?.id;
   const entryFee = Number(champ?.entry_fee_cents || 0) / 100;
@@ -174,8 +175,12 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
 
-  const paidCount = registrations.filter((r: any) => r.status === "paid" || r.status === "waived").length;
-  const pendingCount = registrations.filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft").length;
+  const activeRegistrations = registrations.filter((r: any) => r.status !== "cancelled");
+  const cancelledCount = registrations.length - activeRegistrations.length;
+  const visibleRegistrations = showCancelled ? registrations : activeRegistrations;
+
+  const paidCount = activeRegistrations.filter((r: any) => r.status === "paid" || r.status === "waived").length;
+  const pendingCount = activeRegistrations.filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft").length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -189,14 +194,23 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
             <Badge variant="default">Paid {paidCount}</Badge>
             <Badge variant="outline">Pending {pendingCount}</Badge>
             <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
-              Active {registrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
+              Active {activeRegistrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
             </Badge>
             <Badge variant="outline" className="text-amber-700 border-amber-500">
-              Invited, not activated {registrations.filter((r: any) => r.status !== "cancelled" && signupMap.get(r.club_member_id)?.has_account && !signupMap.get(r.club_member_id)?.has_signed_in).length}
+              Invited, not activated {activeRegistrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_account && !signupMap.get(r.club_member_id)?.has_signed_in).length}
             </Badge>
             <Badge variant="outline" className="text-rose-700 border-rose-500">
-              No account {registrations.filter((r: any) => r.status !== "cancelled" && !signupMap.get(r.club_member_id)?.has_account).length}
+              No account {activeRegistrations.filter((r: any) => !signupMap.get(r.club_member_id)?.has_account).length}
             </Badge>
+            {cancelledCount > 0 && (
+              <Badge
+                variant="outline"
+                className="cursor-pointer text-muted-foreground"
+                onClick={() => setShowCancelled((v) => !v)}
+              >
+                {showCancelled ? "Hide" : "Show"} cancelled {cancelledCount}
+              </Badge>
+            )}
             <Badge variant="secondary">
               Entry fee: {entryFee > 0 ? `R${entryFee.toFixed(2)}` : "Free"}
             </Badge>
@@ -233,11 +247,13 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
           {isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin" /></div>
-          ) : registrations.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No registrations yet.</p>
+          ) : visibleRegistrations.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              {registrations.length === 0 ? "No registrations yet." : "No active registrations. Toggle 'Show cancelled' to view withdrawn entries."}
+            </p>
           ) : (
             <div className="border rounded divide-y">
-              {registrations.map((r: any) => (
+              {visibleRegistrations.map((r: any) => (
                 <div key={r.id} className="p-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">

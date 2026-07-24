@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, ChevronRight, Loader2, Calendar, User, BarChart3, Gavel, Settings2, Printer, BellRing, GripVertical } from "lucide-react";
+import { Trophy, ChevronRight, Loader2, Calendar, User, BarChart3, Gavel, Settings2, Printer, BellRing, GripVertical, MoreVertical, Plus, Trash2, Eraser } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AddSlotDialog } from "@/components/tournaments/AddSlotDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,7 +107,7 @@ export default function Tournaments() {
   };
   const activeChampIds = new Set(champs.map((c: any) => c.id));
   const upcomingMatches = allMatches
-    .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))
+    .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || m.status === "placeholder" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))
     .sort((a: any, b: any) => {
       // Live matches float to the top
       const aLive = isLive(a);
@@ -298,6 +299,40 @@ export default function Tournaments() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [swapping, setSwapping] = useState(false);
+  const [addSlotOpen, setAddSlotOpen] = useState(false);
+  const [addSlotChampId, setAddSlotChampId] = useState<string | undefined>(undefined);
+
+  const deleteSlot = async (m: any) => {
+    if (!window.confirm(`Delete this ${m.status === "placeholder" ? "empty slot" : "fixture"}? The court will be freed.`)) return;
+    const { error } = await (supabase as any).from("club_champs_matches").delete().eq("id", m.id);
+    if (error) return toast.error(error.message || "Delete failed");
+    toast.success("Slot removed");
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
+  };
+
+  const markSlotEmpty = async (m: any) => {
+    if (!window.confirm("Mark this slot as an empty cell (no game)? Pair assignments will be cleared.")) return;
+    const { error } = await (supabase as any).from("club_champs_matches")
+      .update({
+        status: "placeholder",
+        player_a_member_id: null,
+        player_b_member_id: null,
+        partner_a_member_id: null,
+        partner_b_member_id: null,
+        winner_member_id: null,
+        score: null,
+        game_scores: null,
+        side_a_points: null,
+        side_b_points: null,
+        placeholder_a: "Empty slot",
+        placeholder_b: "Drag a match here",
+      })
+      .eq("id", m.id);
+    if (error) return toast.error(error.message || "Update failed");
+    toast.success("Marked as empty");
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
+  };
+
 
   const playersOf = (m: any): string[] =>
     [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];
@@ -454,9 +489,10 @@ export default function Tournaments() {
 
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles";
+    const isPlaceholder = m.status === "placeholder";
     const tournamentFormat = getTournamentFormat(champ?.scoring_mode);
-    const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a ?? m.n_a);
-    const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles) + hcLabel(m.handicap_b ?? m.n_b);
+    const teamA = isPlaceholder ? "Empty slot" : sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a ?? m.n_a);
+    const teamB = isPlaceholder ? "Drag a match here" : sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles) + hcLabel(m.handicap_b ?? m.n_b);
 
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const today = matchDate && isToday(matchDate);
@@ -542,6 +578,7 @@ export default function Tournaments() {
           today ? "bg-primary/10 border border-primary/20" : !color && "bg-muted/50",
           canDrag && "cursor-grab active:cursor-grabbing",
           isDragging && "opacity-40",
+          isPlaceholder && "bg-muted/30 border border-dashed border-muted-foreground/30 italic text-muted-foreground",
           dropOk && !dropWarn && "ring-2 ring-green-500",
           dropWarn && "ring-2 ring-amber-500",
           dropBad && "ring-2 ring-red-500",
@@ -605,22 +642,24 @@ export default function Tournaments() {
           {today && !isLive(m) && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
 
-        <Button
-          size="sm"
-          variant="default"
-          className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto animate-pulse-slow"
-          title={tournamentFormat.key === "time_capped_points" ? "Start the bell timer and score this game" : "Open the marker to score this match"}
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(markRoute);
-          }}
-        >
-          {tournamentFormat.key === "time_capped_points"
-            ? <BellRing className="w-3 h-3" />
-            : <Gavel className="w-3 h-3" />} {tournamentFormat.markerLabel}
-        </Button>
+        {!isPlaceholder && (
+          <Button
+            size="sm"
+            variant="default"
+            className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto animate-pulse-slow"
+            title={tournamentFormat.key === "time_capped_points" ? "Start the bell timer and score this game" : "Open the marker to score this match"}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(markRoute);
+            }}
+          >
+            {tournamentFormat.key === "time_capped_points"
+              ? <BellRing className="w-3 h-3" />
+              : <Gavel className="w-3 h-3" />} {tournamentFormat.markerLabel}
+          </Button>
+        )}
 
-        {isClubAdmin && m.scheduled_date && m.scheduled_time && (
+        {isClubAdmin && m.scheduled_date && m.scheduled_time && !isPlaceholder && (
           <SwapFixtureButton
             match={m}
             allMatches={allMatches.filter((x: any) => x.champ_id === m.champ_id)}
@@ -642,10 +681,40 @@ export default function Tournaments() {
             size="icon"
           />
         )}
+
+        {isClubAdmin && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                title="Slot actions"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              {!isPlaceholder && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); markSlotEmpty(m); }}>
+                  <Eraser className="w-3.5 h-3.5 mr-2" /> Mark as empty (no game)
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onClick={(e) => { e.stopPropagation(); deleteSlot(m); }}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete slot
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         </div>
       </div>
     );
   };
+
 
 
   const getScheduleHeaders = (matches: any[]) => {
@@ -864,10 +933,22 @@ export default function Tournaments() {
 
               <Card>
                 <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Calendar className="w-4 h-4" /> Tournament Games
                     </CardTitle>
+                    <div className="flex items-center gap-1.5">
+                      {isClubAdmin && champs.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 h-7"
+                          onClick={() => { setAddSlotChampId(champs[0].id); setAddSlotOpen(true); }}
+                          title="Insert an empty time slot (admin only)"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add slot
+                        </Button>
+                      )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="gap-1 h-7">
@@ -913,6 +994,7 @@ export default function Tournaments() {
                         })}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -1112,6 +1194,16 @@ export default function Tournaments() {
           isDoubles={finalizeChamp.match_type === "doubles"}
         />
       )}
+
+      <AddSlotDialog
+        open={addSlotOpen}
+        onOpenChange={setAddSlotOpen}
+        champs={champs}
+        allMatches={allMatches}
+        defaultChampId={addSlotChampId}
+        invalidateKeys={[["tournaments-all-matches", champIds]]}
+      />
+
     </div>
   );
 }

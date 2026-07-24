@@ -1533,6 +1533,42 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     // Distinct dates (for the summary card)
     const allDates = Array.from(new Set(sessions.map((s) => s.date))).map((d) => parseISO(d));
 
+    // ── Auto-detect sub-day sessions for the Spread algorithm ─────────────
+    // A raw session longer than MAX_SESSION_MIN gets split in half at the
+    // midpoint (rounded to matchDuration) into AM/PM sub-sessions. Every
+    // resulting session carries a stable `key` that slots reference so the
+    // spread quota can be enforced per-session (not just per-date).
+    const MAX_SESSION_MIN = 5 * 60;
+    type SessionMeta = { key: string; date: string; startMin: number; endMin: number; courtIds: number[]; label: string };
+    const sessionMetas: SessionMeta[] = [];
+    const perDateIdx = new Map<string, number>();
+    for (const s of sessions) {
+      const span = s.endMin - s.startMin;
+      const pieces: Array<{ startMin: number; endMin: number; label: string }> = [];
+      if (span > MAX_SESSION_MIN) {
+        // Split into AM/PM at the midpoint, aligned to matchDuration.
+        const rawMid = s.startMin + Math.floor(span / 2);
+        const midSteps = Math.max(1, Math.floor((rawMid - s.startMin) / matchDuration));
+        const mid = s.startMin + midSteps * matchDuration;
+        pieces.push({ startMin: s.startMin, endMin: mid, label: "AM" });
+        pieces.push({ startMin: mid, endMin: s.endMin, label: "PM" });
+      } else {
+        pieces.push({ startMin: s.startMin, endMin: s.endMin, label: "" });
+      }
+      for (const p of pieces) {
+        const idx = (perDateIdx.get(s.date) ?? 0);
+        perDateIdx.set(s.date, idx + 1);
+        sessionMetas.push({
+          key: `${s.date}#${idx}`,
+          date: s.date,
+          startMin: p.startMin,
+          endMin: p.endMin,
+          courtIds: s.courtIds,
+          label: p.label,
+        });
+      }
+    }
+
     type MatchDef = {
       groupNum: number; roundNum: number;
       entityA: string; entityB: string; // player ID or pair ID
@@ -1543,40 +1579,40 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     };
 
     // Build the universal slot list from sessions (used by non-Bells scheduling).
-    type Slot = { date: string; time: string; courtId: number };
+    type Slot = { date: string; time: string; courtId: number; sessionKey: string };
     const allSlots: Slot[] = [];
-    for (const s of sessions) {
-      const n = Math.floor((s.endMin - s.startMin) / matchDuration);
+    for (const sm of sessionMetas) {
+      const n = Math.floor((sm.endMin - sm.startMin) / matchDuration);
       for (let i = 0; i < n; i++) {
-        const mins = s.startMin + i * matchDuration;
+        const mins = sm.startMin + i * matchDuration;
         const h = Math.floor(mins / 60);
         const mm = mins % 60;
         const ts = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-        for (const cid of s.courtIds) {
-          allSlots.push({ date: s.date, time: ts, courtId: cid });
+        for (const cid of sm.courtIds) {
+          allSlots.push({ date: sm.date, time: ts, courtId: cid, sessionKey: sm.key });
         }
       }
     }
+
     const totalSlots = allSlots.length;
     const timeSlots = Array.from(new Set(allSlots.map((s) => s.time))).sort();
 
-    // Iteration order for scheduling: interleave slot indices across dates so
-    // matches spread evenly across all play-days instead of front-loading day 1.
-    // Within each date the original chronological/court order is preserved.
+    // Iteration order for scheduling. Spread mode interleaves across *sessions*
+    // (Fri eve / Sat AM / Sat PM / Sun AM …) so each pair's matches get a fair
+    // chance to land in every session — including the last one — instead of
+    // front-loading day 1 or morning-block. Fill mode packs chronologically.
     const slotOrder: number[] = (() => {
       if (scheduleMode === "fill") {
-        // Fill mode: fill each day (and each court within the day) completely
-        // before moving to the next — finishes the tournament in as few days
-        // as possible.
         return allSlots.map((_, i) => i);
       }
-      const byDate = new Map<string, number[]>();
+      const bySession = new Map<string, number[]>();
       allSlots.forEach((s, i) => {
-        if (!byDate.has(s.date)) byDate.set(s.date, []);
-        byDate.get(s.date)!.push(i);
+        if (!bySession.has(s.sessionKey)) bySession.set(s.sessionKey, []);
+        bySession.get(s.sessionKey)!.push(i);
       });
-      const dateKeys = Array.from(byDate.keys()).sort();
-      const buckets = dateKeys.map((d) => byDate.get(d)!);
+      // Preserve chronological session order (sessionMetas already sorted).
+      const sessionKeysOrdered = sessionMetas.map((m) => m.key).filter((k) => bySession.has(k));
+      const buckets = sessionKeysOrdered.map((k) => bySession.get(k)!);
       const out: number[] = [];
       let step = 0;
       while (out.length < allSlots.length) {
@@ -1589,6 +1625,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
       return out;
     })();
+
 
 
     // Build round-robin matches
@@ -1698,26 +1735,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     }
 
 
-    // Scheduling gap per entity: prevent same-day repeats only, so consecutive
-    // play-days (e.g. Fri→Sat→Sun) can all be used. A stricter 2-day rest
-    // would leave the busiest days (typically Saturday) empty when only a few
-    // slots exist per day.
+    // Spread mode uses per-session entity caps (below) as its main balancer,
+    // so we no longer block same-day repeats — a pair *can* play in AM and PM
+    // of the same day, which is exactly what admins asked for. Kept as a
+    // no-op wrapper so downstream code doesn't change shape.
     const entityLastDate = new Map<string, string>();
-    // Number of distinct play-dates available. When there's only one, the
-    // "1-day rest" spread rule can never be satisfied and every subsequent
-    // match falls to the soft fallback (which batches by league). Treat
-    // single-day as fill for the gap check.
-    const uniqueDateCount = new Set(allSlots.map((s) => s.date)).size;
-    const canScheduleOn = (entityId: string, dateStr: string): boolean => {
-      // Fill mode: pack the earliest days completely — allow multiple matches
-      // per entity per day so Saturday isn't capped at one match per pair.
-      if (scheduleMode === "fill") return true;
-      if (uniqueDateCount <= 1) return true;
-      const last = entityLastDate.get(entityId);
-      if (!last) return true;
-      const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));
-      return diffDays >= 1;
-    };
+    const canScheduleOn = (_entityId: string, _dateStr: string): boolean => true;
+
     const getPlayersForEntity = (entityId: string): string[] => {
       if (!isDoubles) return [entityId];
       const pair = doublesPairs.find((p) => p.id === entityId);
@@ -2190,54 +2214,53 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         }
       }
 
-      // Spread mode: give every league a per-date quota so each league's
-      // matches distribute across all play-days (a small league still plays
-      // on the last day, not just the first). Fill mode leaves quota off so
-      // the earliest days pack completely.
-      const dateList = Array.from(new Set(allSlots.map((s) => s.date))).sort();
-      const numDates = Math.max(1, dateList.length);
-      const leagueTargetPerDate = new Map<number, number>();
+      // Spread mode: split the play window into sessions (auto-detected above
+      // as Fri eve / Sat AM / Sat PM / Sun AM etc.) and give every league AND
+      // every pair a per-session quota. Result: each pair plays roughly the
+      // same number of games in every session, including the final one, so
+      // Saturday morning doesn't get stacked while Sunday sits empty.
+      const sessionKeysOrdered = sessionMetas.map((m) => m.key);
+      const numSessions = Math.max(1, sessionKeysOrdered.length);
+      const leagueTargetPerSession = new Map<number, number>();
       for (const [k, tot] of leagueTotals) {
-        leagueTargetPerDate.set(k, Math.max(1, Math.ceil(tot / numDates)));
+        leagueTargetPerSession.set(k, Math.max(1, Math.ceil(tot / numSessions)));
       }
-      // league -> date -> count already placed on that date
-      const leaguePerDateCount = new Map<number, Map<string, number>>();
-      for (const k of leagueKeys) leaguePerDateCount.set(k, new Map());
+      const leaguePerSessionCount = new Map<number, Map<string, number>>();
+      for (const k of leagueKeys) leaguePerSessionCount.set(k, new Map());
 
-      // Per-entity (pair/player) totals and per-date quota. Prevents a single
-      // pair playing 4 matches on day 1 and 0 on day 2. Quota = ceil(pair's
-      // total matches / play-days), min 1 per day so every pair plays at
-      // least one game each day when they have enough matches to do so.
       const entityTotals = new Map<string, number>();
       for (const m of nonByes) {
         for (const pid of [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)]) {
           entityTotals.set(pid, (entityTotals.get(pid) || 0) + 1);
         }
       }
-      const entityTargetPerDate = new Map<string, number>();
+      const entityTargetPerSession = new Map<string, number>();
       for (const [pid, tot] of entityTotals) {
-        entityTargetPerDate.set(pid, Math.max(1, Math.ceil(tot / numDates)));
+        entityTargetPerSession.set(pid, Math.max(1, Math.ceil(tot / numSessions)));
       }
-      // entity -> date -> count already placed on that date
-      const entityPerDateCount = new Map<string, Map<string, number>>();
+      const entityPerSessionCount = new Map<string, Map<string, number>>();
+      // Track which sessions a pair has already been placed into so the
+      // fallback pass can still prefer *new* sessions before doubling up.
+      const entitySessionsUsed = new Map<string, Set<string>>();
 
       const tryPlace = (
         match: typeof nonByes[number],
         allPlayers: string[],
         respectQuota: boolean,
+        opts?: { onlySessionKey?: string },
       ): boolean => {
-        const perDate = leaguePerDateCount.get(match.groupNum);
-        const target = leagueTargetPerDate.get(match.groupNum) ?? Infinity;
+        const perSess = leaguePerSessionCount.get(match.groupNum);
+        const target = leagueTargetPerSession.get(match.groupNum) ?? Infinity;
         for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];
+          if (opts?.onlySessionKey && slot.sessionKey !== opts.onlySessionKey) continue;
           if (respectQuota && scheduleMode === "spread") {
-            if (perDate && (perDate.get(slot.date) || 0) >= target) continue;
-            // Per-entity daily cap so a single pair can't pile up on one day.
+            if (perSess && (perSess.get(slot.sessionKey) || 0) >= target) continue;
             let entityCapHit = false;
             for (const pid of allPlayers) {
-              const cnt = entityPerDateCount.get(pid)?.get(slot.date) || 0;
-              const cap = entityTargetPerDate.get(pid) ?? Infinity;
+              const cnt = entityPerSessionCount.get(pid)?.get(slot.sessionKey) || 0;
+              const cap = entityTargetPerSession.get(pid) ?? Infinity;
               if (cnt >= cap) { entityCapHit = true; break; }
             }
             if (entityCapHit) continue;
@@ -2251,22 +2274,53 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           allPlayers.forEach((pid) => {
             entityLastDate.set(pid, slot.date);
             markEntityBusy(pid, slot);
-            let epd = entityPerDateCount.get(pid);
-            if (!epd) { epd = new Map(); entityPerDateCount.set(pid, epd); }
-            epd.set(slot.date, (epd.get(slot.date) || 0) + 1);
+            let eps = entityPerSessionCount.get(pid);
+            if (!eps) { eps = new Map(); entityPerSessionCount.set(pid, eps); }
+            eps.set(slot.sessionKey, (eps.get(slot.sessionKey) || 0) + 1);
+            let used = entitySessionsUsed.get(pid);
+            if (!used) { used = new Set(); entitySessionsUsed.set(pid, used); }
+            used.add(slot.sessionKey);
           });
-          if (perDate) perDate.set(slot.date, (perDate.get(slot.date) || 0) + 1);
+          if (perSess) perSess.set(slot.sessionKey, (perSess.get(slot.sessionKey) || 0) + 1);
           return true;
         }
         return false;
       };
 
-      // First pass: honour the "no same-day repeat per entity" gap (spread mode)
-      // or pack sequentially (fill mode). Always avoid concurrent-slot conflicts.
-      // In spread mode we also respect the per-league per-day quota so leagues
-      // finish on the same day rather than the biggest league running solo at
-      // the end.
+      // Priming pass (spread mode, ≥2 sessions): reserve one match per pair
+      // in the *final* session, round-robin across leagues, so every pair is
+      // guaranteed to still play on the last day. The main pass then fills
+      // backwards from there.
+      if (scheduleMode === "spread" && numSessions >= 2) {
+        const finalKey = sessionKeysOrdered[sessionKeysOrdered.length - 1];
+        const seeded = new Set<string>(); // pair/entity ids already primed
+        // Round-robin through leagues, picking the first unscheduled match
+        // whose participants haven't been seeded yet.
+        let progress = true;
+        while (progress) {
+          progress = false;
+          for (const gn of leagueKeys) {
+            const candidate = interleaved.find((m) => {
+              if (m.date || m.groupNum !== gn) return false;
+              return !seeded.has(m.entityA) && !seeded.has(m.entityB);
+            });
+            if (!candidate) continue;
+            const allPlayers = [
+              ...getPlayersForEntity(candidate.entityA),
+              ...getPlayersForEntity(candidate.entityB),
+            ];
+            if (tryPlace(candidate, allPlayers, true, { onlySessionKey: finalKey })) {
+              seeded.add(candidate.entityA);
+              seeded.add(candidate.entityB);
+              progress = true;
+            }
+          }
+        }
+      }
+
+      // First pass: place every remaining match honouring per-session quotas.
       for (const match of interleaved) {
+        if (match.date) continue;
         const playersA = getPlayersForEntity(match.entityA);
         const playersB = getPlayersForEntity(match.entityB);
         const allPlayers = [...playersA, ...playersB];
@@ -2275,6 +2329,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           tryPlace(match, allPlayers, false);
         }
       }
+
 
       // Second pass: anything left unscheduled falls into any free slot so it
       // doesn't show as TBD. Iterate in interleaved order (not per-league) so

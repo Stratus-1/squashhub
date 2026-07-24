@@ -1,42 +1,61 @@
-## Goal
-Give tournament admins full manual control over the schedule grid: add missing time slots on a given date/court, and clear or blank out empty cells that were left by the auto-scheduler.
+# Session-aware "Spread" scheduling
 
-## Context
-The current tournament preview / Upcoming list (`src/pages/Tournaments.tsx`, `src/components/tournaments/ChampSchedulePreview.tsx`) only renders slots that the scheduler produced. If a needed slot (e.g. Saturday 16:30, 17:00) was never generated, admins can't drag anything into it because it doesn't exist. Conversely, half-empty rounds leave dead cells (Saturday 13:30 Court 3, 15:00, 16:00) with no visual indicator.
+## Problem today
+The current **Spread** mode (`ClubChampsTab.tsx`, `schedulePreview` memo) only balances matches per **calendar date**. It has no notion of *sessions within a day*, so:
 
-For the Nelspruit doubles tournament specifically, admin also needs the two missing Saturday slots (16:30 and 17:00) added immediately so they can move the manually-placed pairs in.
+- A Saturday with a long time window is treated as one big bucket — a pair can get all their Saturday games back-to-back in the morning and nothing in the afternoon.
+- If Sunday only fits a handful of slots, most pairs finish on Saturday and never play on the last day.
+- "Play at least 2 per session" is impossible to express.
 
-## Plan
+## New logic (Spread mode only)
 
-### 1. "Add time slot" action (admin-only)
-- Add an **Add slot** button in both:
-  - `ChampSchedulePreview.tsx` (during wizard finalize step)
-  - `Tournaments.tsx` Upcoming list header (per tournament, admin-only)
-- Dialog fields: date, time (HH:mm), court (multi-select from tournament's court pool).
-- Creates a placeholder `tournament_matches` row per court with `status='placeholder'`, no players, and a court booking hold (same as normal fixtures) so the court is reserved.
-- Placeholder rows render as an empty grey cell labelled "Empty slot — drop a match here" and become valid drop targets for the existing drag-swap logic. Swapping a real match into a placeholder simply moves the match; the placeholder inherits the original match's date/time/court (so the old cell becomes the new empty).
+1. **Detect sessions automatically** from the existing day windows:
+   - Every entry in `daySchedules` (or the global `startTime`-`endTime` for each play-day) becomes one candidate session.
+   - Any session longer than a threshold (default **5 h**) is split in half at the midpoint into two sessions labelled *AM* and *PM* (a small lunch gap of `matchDuration` is skipped between them so an in-progress match isn't torn across sessions).
+   - Example, Fri 18:00-21:00 + Sat 08:00-17:00 + Sun 08:00-12:00 → `["Fri eve", "Sat AM", "Sat PM", "Sun AM"]` = 4 sessions.
+   - Sessions are tagged on every generated `allSlots` entry as `sessionKey` + `sessionIndex`.
 
-### 2. "Clear / delete slot" action
-- On any fixture row, add an admin overflow menu with:
-  - **Mark as no game** → converts row to placeholder (keeps court booking, hides from standings/points).
-  - **Delete slot** → removes the row and releases the court booking.
-- Applies to already-placed matches too: "Mark as no game" first moves the pair to an available placeholder if one exists, otherwise warns admin to swap first.
+2. **Per-pair session target** — for each entity (pair or player) in a league:
+   ```
+   gamesPerEntity = leagueMatches involving that entity
+   targetPerSession = ceil(gamesPerEntity / totalSessions)
+   ```
+   `tryPlace` gains a new guard: in Spread mode, refuse a slot when the entity has already reached `targetPerSession` for that session (unless the fallback pass is running).
 
-### 3. Immediate manual fix for Nelspruit doubles
-- As part of the same change, insert the two missing Saturday slots (16:30 and 17:00) across the courts currently used on that Saturday for the Nelspruit Masters doubles tournament, so admin can drag pairs in right away without waiting to use the new UI.
+3. **Per-league session target** (keeps leagues from monopolising a session):
+   ```
+   leagueTargetPerSession = ceil(leagueTotalMatches / totalSessions)
+   ```
+   Replaces the current per-date league quota when Spread is on.
 
-### 4. Guardrails
-- Placeholder rows are excluded from standings, points, notifications, and marker.
-- Court-booking sync (`saveFixtures`) treats placeholders as normal holds so no double-booking with league/other tournaments.
-- Only club admins (and super admin) see the Add/Delete/Mark actions.
+4. **Last-session anchor** — before general placement, run a **priming pass** over the *final* session that seeds one match per pair (round-robin across leagues) into that session's slots. Guarantees "everyone plays on the last day" whenever the session has capacity; the rest of the algorithm fills backwards from there.
 
-## Technical notes
-- New enum value `placeholder` on `tournament_matches.status` (migration) plus filter updates in standings/points calculators and marker deep-link.
-- Reuse existing `canSwap` / `doSwap` in `SwapFixtureButton.tsx` and drag handler — placeholders count as swappable targets with no player conflict.
-- Court-booking creation reuses the same helper `saveFixtures` uses; deletion cancels the booking row.
+5. **Per-session gap rule** — carry the existing "no back-to-back for the same entity" check but scope it to slots within the same session (so a pair *can* play the first slot of PM after the last slot of AM, which is what admins want).
 
-## Deliverables
-1. Migration: add `placeholder` status + filters.
-2. `AddSlotDialog.tsx` (new) wired into preview + Upcoming list.
-3. Row overflow menu with "Mark as no game" / "Delete slot".
-4. One-off data insert for Nelspruit Saturday 16:30 & 17:00 slots.
+6. **Fallback passes unchanged** — quota-relaxed pass, then conflict-allowed last resort, so scheduling never *fails* on tight tournaments; it just degrades gracefully back toward today's behaviour.
+
+7. **Preview surfacing** — the wizard's preview step (`ChampSchedulePreview`) already lists matches by date/time; add a subtle session divider (label + match count) so admins can see the distribution before clicking **Rebuild Schedule**.
+
+## Scope guardrails
+
+- **Spread mode only.** *Fill* mode is untouched (still packs chronologically).
+- **Rebuild only.** No migration, no data change, no automated update of any existing tournament. The algorithm change only takes effect when an admin clicks **Rebuild Schedule** in the wizard.
+- **Playoff reservation** logic (`reservedSlotIdx`, `playoff_break_minutes`, `playoff_date`) stays as-is — placeholders still claim the tail slots.
+- **Bells format** keeps its own separate scheduler; not part of this change.
+
+## Technical notes (for the dev)
+
+- File: `src/components/club-admin/ClubChampsTab.tsx` — the `schedulePreview` `useMemo` (session building at ~1495, `allSlots` at ~1547, `slotOrder` at ~1566, quotas at ~2193, `tryPlace` at ~2224).
+- Add a `buildSessions(sessions, matchDuration, maxSessionMinutes = 300)` helper that returns `{ sessionKey, date, startMin, endMin, courtIds }[]`, then rebuild `allSlots` from *those* rather than from raw sessions. Every slot carries its `sessionKey`.
+- Track two new counters alongside the existing per-date maps:
+  - `leagueSessionCount: Map<leagueId, Map<sessionKey, number>>`
+  - `entitySessionCount: Map<entityId, Map<sessionKey, number>>`
+- Priming pass: iterate leagues round-robin, walk each pair's remaining matches, place one into the final session using the standard conflict check.
+- No schema change — `sessionKey` is purely a client-side derivation from `(date, time)`.
+
+## Out of scope
+- UI to *manually* define sessions (auto-detected from existing day windows for now).
+- Any automated re-scheduling of existing `club_champs` rows.
+- Changes to *Fill* mode, drag-and-drop swap conflict rules, or the manual "Add slot / Fill slot" flow shipped earlier.
+
+Approve to proceed, or tell me what to adjust (session threshold, priming target, whether to expose session labels on the schedule preview, etc.).

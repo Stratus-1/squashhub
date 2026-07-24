@@ -2182,6 +2182,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (!set) { set = new Set(); entityBusySlot.set(pid, set); }
         set.add(key);
       };
+      // Returns true if this player already has a game in the time slot
+      // immediately before or after `slot` on the same date (back-to-back).
+      const timeToMin = (t: string) => {
+        const [h, m] = t.split(":").map(Number);
+        return h * 60 + m;
+      };
+      const hasAdjacent = (pid: string, slot: { date: string; time: string }) => {
+        const set = entityBusySlot.get(pid);
+        if (!set) return false;
+        const mins = timeToMin(slot.time);
+        const prev = mins - matchDuration;
+        const next = mins + matchDuration;
+        const fmt = (mm: number) => `${String(Math.floor(mm / 60)).padStart(2, "0")}:${String(mm % 60).padStart(2, "0")}`;
+        return set.has(`${slot.date}|${fmt(prev)}`) || set.has(`${slot.date}|${fmt(next)}`);
+      };
+
 
       // Interleave matches across leagues/pools so every group gets court time
       // in parallel rather than League 1 finishing before League 2 starts.

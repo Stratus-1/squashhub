@@ -2263,10 +2263,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         match: typeof nonByes[number],
         allPlayers: string[],
         respectQuota: boolean,
-        opts?: { onlySessionKey?: string },
+        opts?: { onlySessionKey?: string; avoidBackToBack?: boolean },
       ): boolean => {
         const perSess = leaguePerSessionCount.get(match.groupNum);
         const target = leagueTargetPerSession.get(match.groupNum) ?? Infinity;
+        const avoidB2B = opts?.avoidBackToBack ?? (scheduleMode === "spread");
         for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];
@@ -2283,6 +2284,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           }
           if (!allPlayers.every((pid) => isEntityFree(pid, slot))) continue;
           if (!allPlayers.every((pid) => canScheduleOn(pid, slot.date))) continue;
+          if (avoidB2B && allPlayers.some((pid) => hasAdjacent(pid, slot))) continue;
           match.date = slot.date;
           match.time = slot.time;
           match.courtId = slot.courtId;
@@ -2319,6 +2321,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             const candidate = interleaved.find((m) => {
               if (m.date || m.groupNum !== gn) return false;
               return !seeded.has(m.entityA) && !seeded.has(m.entityB);
+
             });
             if (!candidate) continue;
             const allPlayers = [

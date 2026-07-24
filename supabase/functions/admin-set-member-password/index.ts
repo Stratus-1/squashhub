@@ -36,9 +36,15 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    const { data: userRes } = await userClient.auth.getUser();
-    const caller = userRes?.user;
-    if (!caller) return json({ error: "unauthorised" }, 401);
+    const bearer = authHeader.replace("Bearer ", "").trim();
+    const isServiceRoleCall = bearer && bearer === SERVICE_KEY;
+
+    let caller: any = null;
+    if (!isServiceRoleCall) {
+      const { data: userRes } = await userClient.auth.getUser();
+      caller = userRes?.user;
+      if (!caller) return json({ error: "unauthorised" }, 401);
+    }
 
     const { club_member_id, password } = await req.json();
     if (!club_member_id) return json({ error: "club_member_id required" }, 400);

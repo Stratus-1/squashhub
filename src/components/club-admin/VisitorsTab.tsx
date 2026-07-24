@@ -348,7 +348,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         home.toLowerCase() !== "no club" &&
         !homeClubRows.some((r) => r.name.toLowerCase() === home.toLowerCase())
       ) {
-        await fromExt("club_visitor_home_clubs").insert({ club_id: clubId, name: home }).then(() => {
+        await fromExt("club_visitor_home_clubs").insert({ club_id: null, name: home }).then(() => {
           queryClient.invalidateQueries({ queryKey: ["club-visitor-home-clubs", clubId] });
         });
       }
@@ -372,7 +372,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     }
     setAddingOption(true);
     try {
-      const { error } = await fromExt("club_visitor_home_clubs").insert({ club_id: clubId, name });
+      const { error } = await fromExt("club_visitor_home_clubs").insert({ club_id: null, name });
       if (error) throw error;
       toast.success(`"${name}" added`);
       setNewHomeClub("");
@@ -457,7 +457,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     }
     setAddingOption(true);
     try {
-      const rows = toAdd.map((name) => ({ club_id: clubId, name }));
+      const rows = toAdd.map((name) => ({ club_id: null, name }));
       const { error } = await fromExt("club_visitor_home_clubs").insert(rows);
       if (error) throw error;
       toast.success(`Added ${toAdd.length} clubs`);

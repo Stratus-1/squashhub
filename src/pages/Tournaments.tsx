@@ -236,11 +236,15 @@ export default function Tournaments() {
   }, [upcomingMatches, allChamps, poolByMatchId]);
 
   const bucketColor = (key: string) => {
-    const idx = buckets.findIndex((b) => b.key === key);
-    if (idx < 0) return null;
-    // Evenly-spaced hues around the wheel with a small offset so first bucket
-    // isn't pure red.
-    const hue = Math.round(((idx * 360) / Math.max(buckets.length, 1) + 15) % 360);
+    if (!key) return null;
+    // Deterministic hue derived from the bucket key itself, so a bucket's
+    // colour never shifts when the total number of buckets changes (e.g. when
+    // placeholders are added/filled or a pair is moved between slots).
+    let h = 0;
+    for (let i = 0; i < key.length; i++) {
+      h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    }
+    const hue = (h + 15) % 360;
     return {
       border: `hsl(${hue} 70% 45%)`,
       bg: `hsl(${hue} 70% 45% / 0.10)`,

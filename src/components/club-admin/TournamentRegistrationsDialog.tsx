@@ -247,11 +247,13 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
           {isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin" /></div>
-          ) : registrations.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No registrations yet.</p>
+          ) : visibleRegistrations.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              {registrations.length === 0 ? "No registrations yet." : "No active registrations. Toggle 'Show cancelled' to view withdrawn entries."}
+            </p>
           ) : (
             <div className="border rounded divide-y">
-              {registrations.map((r: any) => (
+              {visibleRegistrations.map((r: any) => (
                 <div key={r.id} className="p-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">

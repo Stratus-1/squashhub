@@ -51,7 +51,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     queryKey: ["champ-registrations", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("*, member:club_member_id(id, name, phone, gender, profiles:user_id(name)), partner:partner_member_id(id, name, phone, profiles:user_id(name))")
+        .select("*, member:club_member_id(id, name, phone, gender, role, user_id, profiles:user_id(name)), partner:partner_member_id(id, name, phone, profiles:user_id(name))")
         .eq("champ_id", champId)
         .order("created_at");
       if (error) throw error;
@@ -59,6 +59,22 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     },
     enabled: !!champId && open,
   });
+
+  const { data: signupStatus = [] } = useQuery({
+    queryKey: ["champ-signup-status", champId],
+    queryFn: async () => {
+      const { data, error } = await (await import("@/lib/supabase-ext")).rpcExt("get_champ_signup_status", { _champ_id: champId });
+      if (error) throw error;
+      return (data || []) as { club_member_id: string; has_account: boolean; has_signed_in: boolean }[];
+    },
+    enabled: !!champId && open,
+  });
+  const signupMap = useMemo(() => {
+    const m = new Map<string, { has_account: boolean; has_signed_in: boolean }>();
+    signupStatus.forEach((s) => m.set(s.club_member_id, { has_account: s.has_account, has_signed_in: s.has_signed_in }));
+    return m;
+  }, [signupStatus]);
+
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["champ-registrations", champId] });
 
@@ -172,12 +188,19 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
           <div className="flex items-center gap-3 text-xs flex-wrap">
             <Badge variant="default">Paid {paidCount}</Badge>
             <Badge variant="outline">Pending {pendingCount}</Badge>
+            <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
+              Registered {registrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
+            </Badge>
+            <Badge variant="outline" className="text-amber-700 border-amber-500">
+              Not registered {registrations.filter((r: any) => r.status !== "cancelled" && !signupMap.get(r.club_member_id)?.has_signed_in).length}
+            </Badge>
             <Badge variant="secondary">
               Entry fee: {entryFee > 0 ? `R${entryFee.toFixed(2)}` : "Free"}
             </Badge>
             {champ?.payment_required && entryFee > 0 && <Badge variant="outline">Payment required</Badge>}
             {champ?.entries_locked && <Badge><Lock className="w-3 h-3 mr-1" />Entries locked</Badge>}
           </div>
+
 
           <div className="flex justify-between items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
@@ -227,10 +250,16 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         {r.confirmed_at && r.confirmation_source === "rsvp" && (
                           <Badge variant="default" className="text-[10px] bg-emerald-600 hover:bg-emerald-600">Accepted</Badge>
                         )}
+                        {signupMap.get(r.club_member_id)?.has_signed_in ? (
+                          <Badge variant="default" className="text-[10px] bg-sky-600 hover:bg-sky-600">Registered</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-500">Not registered</Badge>
+                        )}
                         {r.status === "cancelled" && (
                           <Badge variant="destructive" className="text-[10px]">Declined</Badge>
                         )}
                       </div>
+
                     </div>
                     <Badge variant={STATUS_VARIANT[r.status] || "outline"} className="text-[10px]">
                       {STATUS_LABEL[r.status] || r.status}

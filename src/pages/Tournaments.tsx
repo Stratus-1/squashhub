@@ -578,6 +578,7 @@ export default function Tournaments() {
           today ? "bg-primary/10 border border-primary/20" : !color && "bg-muted/50",
           canDrag && "cursor-grab active:cursor-grabbing",
           isDragging && "opacity-40",
+          isPlaceholder && "bg-muted/30 border border-dashed border-muted-foreground/30 italic text-muted-foreground",
           dropOk && !dropWarn && "ring-2 ring-green-500",
           dropWarn && "ring-2 ring-amber-500",
           dropBad && "ring-2 ring-red-500",

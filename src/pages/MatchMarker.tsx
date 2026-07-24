@@ -60,7 +60,16 @@ export default function MatchMarker() {
     if (new URLSearchParams(window.location.search).has("matchId")) return null;
     try {
       const raw = localStorage.getItem(MARKER_CONFIG_KEY);
-      return raw ? (JSON.parse(raw) as MarkerConfig) : null;
+      if (!raw) return null;
+      // Only auto-resume if the user actually started scoring (state was persisted).
+      // A bare config without state means they only opened the screen and left —
+      // don't drop them back into a phantom scoreboard.
+      const hasState = !!localStorage.getItem(MARKER_STATE_KEY);
+      if (!hasState) {
+        try { localStorage.removeItem(MARKER_CONFIG_KEY); } catch {}
+        return null;
+      }
+      return JSON.parse(raw) as MarkerConfig;
     } catch {
       return null;
     }

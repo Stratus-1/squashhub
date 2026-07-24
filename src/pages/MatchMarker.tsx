@@ -207,7 +207,10 @@ export default function MatchMarker() {
 
       if (cancelled) return;
       setConfig(nextConfig);
-      await markTournamentLive(matchId, parseTournamentScores(row));
+      // Do NOT flip the tournament match to in_progress just because someone
+      // opened the marker — only handleLiveScore (after a real point) should
+      // set status=in_progress. Otherwise merely viewing a match strands it
+      // as "LIVE 0-0" and creates a phantom resume prompt for the viewer.
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.delete("source");

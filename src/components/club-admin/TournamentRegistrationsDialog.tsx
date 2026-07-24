@@ -295,17 +295,45 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                           variant="ghost"
                           className="h-7 text-xs text-emerald-700 hover:text-emerald-800"
                           title="Send WhatsApp login reminder"
-                          onClick={() => {
+                          onClick={async () => {
                             const name = getName(r.member);
                             const first = String(name).split(/\s+/)[0] || name;
                             const host = window.location.host.startsWith("id-preview")
                               ? "squashhub.co.za"
                               : window.location.host;
-                            const msg =
-                              `🏆 ${champ?.name}\n\n` +
-                              `Hi ${first}, quick reminder to log in and view your fixtures 👉 https://${host}\n\n` +
-                              `You're already registered with the email the organisers have on file — just tap *Log in* → *Forgot password* to set yours, then go to *Club Tournaments* → *My Games*.\n\n` +
-                              `Shout if you get stuck!`;
+                            const s = signupMap.get(r.club_member_id);
+                            let msg: string;
+                            if (s && !s.has_signed_in) {
+                              // Not activated yet — try to generate a one-tap magic link
+                              let magicLink: string | null = null;
+                              try {
+                                const { supabase } = await import("@/integrations/supabase/client");
+                                const { data, error } = await supabase.functions.invoke("generate-member-magic-link", {
+                                  body: { club_member_id: r.club_member_id },
+                                });
+                                if (!error && (data as any)?.magic_link) magicLink = (data as any).magic_link;
+                                else if (error) toast.error("Could not create magic link — sending fallback reminder.");
+                              } catch (e) {
+                                toast.error("Could not create magic link — sending fallback reminder.");
+                              }
+                              if (magicLink) {
+                                msg =
+                                  `🏆 ${champ?.name}\n\n` +
+                                  `Hi ${first}, you're registered but haven't activated your SquashHub login yet.\n\n` +
+                                  `👉 One-tap sign in (opens the app & lets you set a password):\n${magicLink}\n\n` +
+                                  `Once in, tap *Club Tournaments* → *My Games* to see your fixtures.`;
+                              } else {
+                                msg =
+                                  `🏆 ${champ?.name}\n\n` +
+                                  `Hi ${first}, quick reminder to log in and view your fixtures 👉 https://${host}\n\n` +
+                                  `You're already registered with the email the organisers have on file — just tap *Log in* → *Forgot password* to set yours, then go to *Club Tournaments* → *My Games*.`;
+                              }
+                            } else {
+                              msg =
+                                `🏆 ${champ?.name}\n\n` +
+                                `Hi ${first}, quick reminder to check your fixtures 👉 https://${host}\n\n` +
+                                `Go to *Club Tournaments* → *My Games*.`;
+                            }
                             openWhatsApp(r.member?.phone, msg);
                           }}
                         >

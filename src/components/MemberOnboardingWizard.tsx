@@ -1068,13 +1068,18 @@ export function MemberOnboardingWizard({
                       <Label>Membership Category</Label>
                       <Select value={feeCategoryId} onValueChange={setFeeCategoryId}>
                         <SelectTrigger><SelectValue placeholder="Select category (optional)" /></SelectTrigger>
-                        <SelectContent>
-                          {feeCategories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name} — {money(cat.annual_fee)}/year
-                              {cat.id === suggestedCategory && " ⭐ Suggested"}
-                            </SelectItem>
-                          ))}
+                        <SelectContent className="max-h-[320px]">
+                          {[...feeCategories]
+                            // Hide the internal seeded "Standard Membership" placeholder;
+                            // paying categories first, then free ones (Visitor, Honorary…)
+                            .filter((c: any) => (c.fee_class ?? "club_income") !== "standard")
+                            .sort((a, b) => (Number(b.annual_fee) > 0 ? 1 : 0) - (Number(a.annual_fee) > 0 ? 1 : 0))
+                            .map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name} — {money(cat.annual_fee)}/year
+                                {cat.id === suggestedCategory && " ⭐ Suggested"}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                       {suggestedCategory && feeCategoryId === suggestedCategory && detectedAge !== null && (
@@ -1082,6 +1087,9 @@ export function MemberOnboardingWizard({
                           ⭐ Auto-suggested based on your age ({detectedAge} years). You may change this if needed.
                         </p>
                       )}
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Visiting from another club? Choose the <strong>Visitor</strong> option (R0/year) if available.
+                      </p>
                       {selectedCategory?.description && (
                         <p className="text-[10px] text-muted-foreground mt-0.5">{selectedCategory.description}</p>
                       )}

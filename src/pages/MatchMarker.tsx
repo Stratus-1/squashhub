@@ -69,6 +69,25 @@ export default function MatchMarker() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const markTournamentLive = useCallback(async (matchId: string, scores: Array<{ a: number; b: number }> = []) => {
+    const current = scores[scores.length - 1];
+    try {
+      const { error } = await fromExt("club_champs_matches")
+        .update({
+          status: "in_progress",
+          side_a_points: current?.a ?? 0,
+          side_b_points: current?.b ?? 0,
+          game_scores: scores.length > 0 ? JSON.stringify({ sets: scores.slice(0, -1), current }) : null,
+        } as any)
+        .eq("id", matchId)
+        .neq("status", "completed");
+      if (error) console.warn("Could not mark tournament match live:", error);
+      queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+    } catch (e) {
+      console.warn("Could not mark tournament match live:", e);
+    }
+  }, [queryClient]);
+
   useEffect(() => {
     if (!searchParams.has("matchId") && !searchParams.has("bookingId")) return;
     try {
@@ -190,7 +209,7 @@ export default function MatchMarker() {
 
     loadLinkedTournamentMatch();
     return () => { cancelled = true; };
-  }, [config?.sourceId, navigate, searchParams, setSearchParams]);
+  }, [config?.sourceId, markTournamentLive, navigate, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (config?.source !== "tournament" || !config.sourceId) return;
@@ -238,26 +257,6 @@ export default function MatchMarker() {
     setScoringActive(true);
     return () => setScoringActive(false);
   }, [config]);
-
-
-  const markTournamentLive = useCallback(async (matchId: string, scores: Array<{ a: number; b: number }> = []) => {
-    const current = scores[scores.length - 1];
-    try {
-      const { error } = await fromExt("club_champs_matches")
-        .update({
-          status: "in_progress",
-          side_a_points: current?.a ?? 0,
-          side_b_points: current?.b ?? 0,
-          game_scores: scores.length > 0 ? JSON.stringify({ sets: scores.slice(0, -1), current }) : null,
-        } as any)
-        .eq("id", matchId)
-        .neq("status", "completed");
-      if (error) console.warn("Could not mark tournament match live:", error);
-      queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
-    } catch (e) {
-      console.warn("Could not mark tournament match live:", e);
-    }
-  }, [queryClient]);
 
   const startConfig = (c: MarkerConfig) => {
     try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}

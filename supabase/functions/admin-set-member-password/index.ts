@@ -59,14 +59,16 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!member) return json({ error: "member not found" }, 404);
 
-    const { data: isAdmin } = await admin.rpc("is_club_admin", {
-      _user_id: caller.id,
-      _club_id: member.club_id,
-    });
-    const { data: isPlatformAdmin } = await admin.rpc("is_platform_admin", {
-      _user_id: caller.id,
-    });
-    if (!isAdmin && !isPlatformAdmin) return json({ error: "forbidden" }, 403);
+    if (!isServiceRoleCall) {
+      const { data: isAdmin } = await admin.rpc("is_club_admin", {
+        _user_id: caller.id,
+        _club_id: member.club_id,
+      });
+      const { data: isPlatformAdmin } = await admin.rpc("is_platform_admin", {
+        _user_id: caller.id,
+      });
+      if (!isAdmin && !isPlatformAdmin) return json({ error: "forbidden" }, 403);
+    }
 
     if (!member.email) return json({ error: "member has no email on file" }, 400);
 

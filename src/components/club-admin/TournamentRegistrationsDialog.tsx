@@ -243,10 +243,16 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         {r.confirmed_at && r.confirmation_source === "rsvp" && (
                           <Badge variant="default" className="text-[10px] bg-emerald-600 hover:bg-emerald-600">Accepted</Badge>
                         )}
+                        {signupMap.get(r.club_member_id)?.has_signed_in ? (
+                          <Badge variant="default" className="text-[10px] bg-sky-600 hover:bg-sky-600">Registered</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-500">Not registered</Badge>
+                        )}
                         {r.status === "cancelled" && (
                           <Badge variant="destructive" className="text-[10px]">Declined</Badge>
                         )}
                       </div>
+
                     </div>
                     <Badge variant={STATUS_VARIANT[r.status] || "outline"} className="text-[10px]">
                       {STATUS_LABEL[r.status] || r.status}

@@ -29,6 +29,8 @@ interface Props {
   getRowColor?: (m: any) => { border: string; bg: string; chipBg: string; chipText: string } | null;
   /** Optional short label (e.g. "L1 · Pool A") to show on each candidate row. */
   getBucketLabel?: (m: any) => string | null;
+  /** Override button label (e.g. "Fill slot" for empty placeholders). */
+  label?: string;
 }
 
 /**

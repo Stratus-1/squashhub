@@ -49,6 +49,7 @@ export interface MarkerConfig {
   sourcePosition?: number | string;
   handicapA?: number; // league-rank handicap, side A starting score offset
   handicapB?: number; // league-rank handicap, side B starting score offset
+  initialScores?: Array<{ a: number; b: number }>;
   clubId?: string;
 }
 

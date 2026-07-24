@@ -994,6 +994,7 @@ export default function Tournaments() {
                         })}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>

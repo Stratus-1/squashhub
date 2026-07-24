@@ -307,33 +307,57 @@ export default function Tournaments() {
   const [addSlotChampId, setAddSlotChampId] = useState<string | undefined>(undefined);
 
   const deleteSlot = async (m: any) => {
-    if (!window.confirm(`Delete this ${m.status === "placeholder" ? "empty slot" : "fixture"}? The court will be freed.`)) return;
-    const { error } = await (supabase as any).from("club_champs_matches").delete().eq("id", m.id);
-    if (error) return toast.error(error.message || "Delete failed");
-    toast.success("Slot removed");
+    const isPh = m.status === "placeholder";
+    const msg = isPh
+      ? "Delete this empty slot? The court will be freed."
+      : "Delete this time slot? The pair will be kept and moved back to the unscheduled list so you can re-slot them.";
+    if (!window.confirm(msg)) return;
+    if (isPh) {
+      const { error } = await (supabase as any).from("club_champs_matches").delete().eq("id", m.id);
+      if (error) return toast.error(error.message || "Delete failed");
+      toast.success("Empty slot removed");
+    } else {
+      // Preserve the pair — just clear the schedule so the match returns to
+      // the unscheduled pool and can be placed into another slot later.
+      const { error } = await (supabase as any).from("club_champs_matches")
+        .update({ scheduled_date: null, scheduled_time: null, court_id: null })
+        .eq("id", m.id);
+      if (error) return toast.error(error.message || "Update failed");
+      toast.success("Slot freed — pair moved back to unscheduled");
+    }
     qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
   };
 
   const markSlotEmpty = async (m: any) => {
-    if (!window.confirm("Mark this slot as an empty cell (no game)? Pair assignments will be cleared.")) return;
-    const { error } = await (supabase as any).from("club_champs_matches")
-      .update({
-        status: "placeholder",
-        player_a_member_id: null,
-        player_b_member_id: null,
-        partner_a_member_id: null,
-        partner_b_member_id: null,
-        winner_member_id: null,
-        score: null,
-        game_scores: null,
-        side_a_points: null,
-        side_b_points: null,
-        placeholder_a: "Empty slot",
-        placeholder_b: "Drag a match here",
-      })
+    if (m.status === "placeholder") return;
+    if (!window.confirm(
+      "Turn this into an empty cell? The pair will be kept and moved back to the unscheduled list so you can re-slot them into another time.",
+    )) return;
+    // Two-step swap-style change so the pair keeps their match record
+    // (unscheduled) and a fresh placeholder takes over this exact slot.
+    const { error: e1 } = await (supabase as any).from("club_champs_matches")
+      .update({ scheduled_date: null, scheduled_time: null, court_id: null })
       .eq("id", m.id);
-    if (error) return toast.error(error.message || "Update failed");
-    toast.success("Marked as empty");
+    if (e1) return toast.error(e1.message || "Update failed");
+    const { error: e2 } = await (supabase as any).from("club_champs_matches").insert({
+      champ_id: m.champ_id,
+      group_number: m.group_number,
+      round_number: 99,
+      scheduled_date: m.scheduled_date,
+      scheduled_time: m.scheduled_time,
+      court_id: m.court_id,
+      status: "placeholder",
+      placeholder_a: "Empty slot",
+      placeholder_b: "Drag a match here",
+    });
+    if (e2) {
+      // Roll back so we don't strand the pair
+      await (supabase as any).from("club_champs_matches")
+        .update({ scheduled_date: m.scheduled_date, scheduled_time: m.scheduled_time, court_id: m.court_id })
+        .eq("id", m.id);
+      return toast.error(e2.message || "Could not create empty slot");
+    }
+    toast.success("Slot emptied — pair moved back to unscheduled");
     qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
   };
 

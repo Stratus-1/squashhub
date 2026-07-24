@@ -1,58 +1,42 @@
 ## Goal
+Give tournament admins full manual control over the schedule grid: add missing time slots on a given date/court, and clear or blank out empty cells that were left by the auto-scheduler.
 
-Bulk-register the doubles entrants at Nelspruit and email each new visitor a Nelspruit-branded confirmation with a one-click magic-link. Reusable as more entries come in.
+## Context
+The current tournament preview / Upcoming list (`src/pages/Tournaments.tsx`, `src/components/tournaments/ChampSchedulePreview.tsx`) only renders slots that the scheduler produced. If a needed slot (e.g. Saturday 16:30, 17:00) was never generated, admins can't drag anything into it because it doesn't exist. Conversely, half-empty rounds leave dead cells (Saturday 13:30 Court 3, 15:00, 16:00) with no visual indicator.
 
-## How sign-in works for the entrant
+For the Nelspruit doubles tournament specifically, admin also needs the two missing Saturday slots (16:30 and 17:00) added immediately so they can move the manually-placed pairs in.
 
-Admin does the registration — the entrant just clicks a link.
+## Plan
 
-1. Admin pastes/imports the list in the dialog.
-2. Server creates the auth user + Nelspruit `club_members` visitor row (partner, division, home club all filled in) before the email is sent.
-3. Entrant gets an email from Nelspruit Squash Club with a **Sign in to Nelspruit** button.
-4. Clicking it signs them in — no registration form, no password. They land on the Nelspruit page already recognised as a visitor for this tournament.
-5. No password is set. Magic-link only. Future logins: they request another magic-link from the login page.
+### 1. "Add time slot" action (admin-only)
+- Add an **Add slot** button in both:
+  - `ChampSchedulePreview.tsx` (during wizard finalize step)
+  - `Tournaments.tsx` Upcoming list header (per tournament, admin-only)
+- Dialog fields: date, time (HH:mm), court (multi-select from tournament's court pool).
+- Creates a placeholder `tournament_matches` row per court with `status='placeholder'`, no players, and a court booking hold (same as normal fixtures) so the court is reserved.
+- Placeholder rows render as an empty grey cell labelled "Empty slot — drop a match here" and become valid drop targets for the existing drag-swap logic. Swapping a real match into a placeholder simply moves the match; the placeholder inherits the original match's date/time/court (so the old cell becomes the new empty).
 
-## Approach
+### 2. "Clear / delete slot" action
+- On any fixture row, add an admin overflow menu with:
+  - **Mark as no game** → converts row to placeholder (keeps court booking, hides from standings/points).
+  - **Delete slot** → removes the row and releases the court booking.
+- Applies to already-placed matches too: "Mark as no game" first moves the pair to an available placeholder if one exists, otherwise warns admin to swap first.
 
-### 1. Edge function `bulk-register-visitors` (admin-only)
+### 3. Immediate manual fix for Nelspruit doubles
+- As part of the same change, insert the two missing Saturday slots (16:30 and 17:00) across the courts currently used on that Saturday for the Nelspruit Masters doubles tournament, so admin can drag pairs in right away without waiting to use the new UI.
 
-Input: `club_id`, `tournament_id`, entrants `[{ first_name, last_name, email, phone, gender, home_club_name, division, partner_name }]`.
+### 4. Guardrails
+- Placeholder rows are excluded from standings, points, notifications, and marker.
+- Court-booking sync (`saveFixtures`) treats placeholders as normal holds so no double-booking with league/other tournaments.
+- Only club admins (and super admin) see the Add/Delete/Mark actions.
 
-Per entrant:
-1. **Match existing accounts** (`lower(email)` / digits-only phone / `lower(name)`).
-2. **Already a Nelspruit member** → skip, status `already_member`.
-3. **Exists at another NSA club** → insert a Nelspruit `club_members` visitor row reusing the same `user_id`. Status `linked_visitor`. Still send the confirmation email.
-4. **Brand new** → create auth user (email pre-confirmed, no password) + profile + Nelspruit visitor row. Status `created`.
-5. Generate a magic-link with `admin.auth.admin.generateLink({ type: 'magiclink' })`.
-6. Enqueue confirmation email via `send-transactional-email` using the new template below, passing the magic-link, tournament name, partner, and division.
-
-Returns per-row results the UI renders.
-
-### 2. Email template `tournament-entry-confirmation.tsx`
-
-Nelspruit navy/amber branding. Body: "You're entered in the Nelspruit Doubles Tournament", entry summary (division, partner, start time/venue), big **Sign in to Nelspruit** magic-link button. Registered in the transactional template registry. I'll check `email_domain--check_email_domain_status` first and run infra/scaffold setup only if needed.
-
-### 3. Admin UI: `TournamentBulkImportDialog.tsx` (from `ClubChampsTab`)
-
-- New **Bulk import entrants** button on the tournament editor.
-- Textarea that parses the Google-Form paste (pre-filled with Aam's 15 rows) + **Add row** for one-offs.
-- Each row shows a badge from the cross-match: *Already a Nelspruit member*, *NSA member at Glenwood — will link as visitor*, or *New — will be created*.
-- Editable columns: name, email, phone, division, gender, home club, partner.
-- **Import & email** → calls the edge function → shows per-row status + **Copy CSV** (name, email, magic-link, status).
-- Per row after import: a **Send WhatsApp** icon (opens `wa.me/<phone>` with a pre-filled message including the magic-link) — admin taps it manually, one at a time. No automated Twilio.
-
-### 4. Pre-filled data for Aam
-
-Once approved I'll open the dialog with the 15 rows populated and cross-match already applied. The already-Nelspruit rows get skipped; the ~15 new-or-visitor rows get processed on click.
+## Technical notes
+- New enum value `placeholder` on `tournament_matches.status` (migration) plus filter updates in standings/points calculators and marker deep-link.
+- Reuse existing `canSwap` / `doSwap` in `SwapFixtureButton.tsx` and drag handler — placeholders count as swappable targets with no player conflict.
+- Court-booking creation reuses the same helper `saveFixtures` uses; deletion cancels the booking row.
 
 ## Deliverables
-
-- `supabase/functions/bulk-register-visitors/index.ts`
-- `supabase/functions/_shared/transactional-email-templates/tournament-entry-confirmation.tsx` + registry entry
-- `src/components/club-admin/TournamentBulkImportDialog.tsx` + wire-up in `ClubChampsTab.tsx`
-
-## Confirmed with you
-
-- Magic-link email to every new/visitor entrant. ✅
-- WhatsApp = manual per-row `wa.me` click after import. ✅
-- No password fallback — magic-link only. ✅
+1. Migration: add `placeholder` status + filters.
+2. `AddSlotDialog.tsx` (new) wired into preview + Upcoming list.
+3. Row overflow menu with "Mark as no game" / "Delete slot".
+4. One-off data insert for Nelspruit Saturday 16:30 & 17:00 slots.

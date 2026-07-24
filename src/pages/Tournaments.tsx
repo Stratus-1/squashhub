@@ -546,8 +546,9 @@ export default function Tournaments() {
     const bMeta = buckets.find((x) => x.key === bKey) || null;
     const color = bucketColor(bKey);
     const rowStyle = color
-      ? { borderLeft: `4px solid ${color.border}`, backgroundColor: today ? undefined : color.bg }
+      ? { borderLeft: `4px solid ${color.border}`, backgroundColor: color.bg }
       : undefined;
+
     const chipStyle = color
       ? { backgroundColor: color.chipBg, color: color.chipText, borderColor: color.border }
       : undefined;
@@ -603,7 +604,7 @@ export default function Tournaments() {
 
         className={cn(
           "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded transition-all",
-          today ? "bg-primary/10 border border-primary/20" : !color && "bg-muted/50",
+          today && !color ? "bg-primary/10 border border-primary/20" : (today && color ? "ring-1 ring-primary/40" : !color && "bg-muted/50"),
           canDrag && "cursor-grab active:cursor-grabbing",
           isDragging && "opacity-40",
           isPlaceholder && "bg-muted/30 border border-dashed border-muted-foreground/30 italic text-muted-foreground",

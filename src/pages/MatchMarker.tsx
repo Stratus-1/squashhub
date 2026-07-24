@@ -139,6 +139,30 @@ export default function MatchMarker() {
         return;
       }
 
+      // Spectator gate: if this match is already being marked (status = in_progress)
+      // and THIS device is not the one that started it, bounce back to the fixture
+      // list — the live score already streams in there via realtime. This prevents
+      // two devices from opening the marker on the same match and clobbering scores.
+      if (row.status === "in_progress") {
+        let isOwnerDevice = false;
+        try {
+          const raw = localStorage.getItem(MARKER_CONFIG_KEY);
+          if (raw) {
+            const existing = JSON.parse(raw);
+            if (existing?.source === "tournament" && existing?.sourceId === matchId) {
+              isOwnerDevice = true;
+            }
+          }
+        } catch {}
+        if (!isOwnerDevice) {
+          toast.info("This match is already being marked", {
+            description: "Live scores appear on the tournament fixtures list.",
+          });
+          navigate("/tournaments", { replace: true });
+          return;
+        }
+      }
+
       const ids = [
         row.player_a_member_id,
         row.player_b_member_id,

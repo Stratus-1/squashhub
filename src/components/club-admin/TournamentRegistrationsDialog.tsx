@@ -175,8 +175,12 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
 
-  const paidCount = registrations.filter((r: any) => r.status === "paid" || r.status === "waived").length;
-  const pendingCount = registrations.filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft").length;
+  const activeRegistrations = registrations.filter((r: any) => r.status !== "cancelled");
+  const cancelledCount = registrations.length - activeRegistrations.length;
+  const visibleRegistrations = showCancelled ? registrations : activeRegistrations;
+
+  const paidCount = activeRegistrations.filter((r: any) => r.status === "paid" || r.status === "waived").length;
+  const pendingCount = activeRegistrations.filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft").length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

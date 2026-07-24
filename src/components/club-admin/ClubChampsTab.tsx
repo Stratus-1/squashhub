@@ -1533,6 +1533,42 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     // Distinct dates (for the summary card)
     const allDates = Array.from(new Set(sessions.map((s) => s.date))).map((d) => parseISO(d));
 
+    // ── Auto-detect sub-day sessions for the Spread algorithm ─────────────
+    // A raw session longer than MAX_SESSION_MIN gets split in half at the
+    // midpoint (rounded to matchDuration) into AM/PM sub-sessions. Every
+    // resulting session carries a stable `key` that slots reference so the
+    // spread quota can be enforced per-session (not just per-date).
+    const MAX_SESSION_MIN = 5 * 60;
+    type SessionMeta = { key: string; date: string; startMin: number; endMin: number; courtIds: number[]; label: string };
+    const sessionMetas: SessionMeta[] = [];
+    const perDateIdx = new Map<string, number>();
+    for (const s of sessions) {
+      const span = s.endMin - s.startMin;
+      const pieces: Array<{ startMin: number; endMin: number; label: string }> = [];
+      if (span > MAX_SESSION_MIN) {
+        // Split into AM/PM at the midpoint, aligned to matchDuration.
+        const rawMid = s.startMin + Math.floor(span / 2);
+        const midSteps = Math.max(1, Math.floor((rawMid - s.startMin) / matchDuration));
+        const mid = s.startMin + midSteps * matchDuration;
+        pieces.push({ startMin: s.startMin, endMin: mid, label: "AM" });
+        pieces.push({ startMin: mid, endMin: s.endMin, label: "PM" });
+      } else {
+        pieces.push({ startMin: s.startMin, endMin: s.endMin, label: "" });
+      }
+      for (const p of pieces) {
+        const idx = (perDateIdx.get(s.date) ?? 0);
+        perDateIdx.set(s.date, idx + 1);
+        sessionMetas.push({
+          key: `${s.date}#${idx}`,
+          date: s.date,
+          startMin: p.startMin,
+          endMin: p.endMin,
+          courtIds: s.courtIds,
+          label: p.label,
+        });
+      }
+    }
+
     type MatchDef = {
       groupNum: number; roundNum: number;
       entityA: string; entityB: string; // player ID or pair ID
@@ -1543,20 +1579,21 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     };
 
     // Build the universal slot list from sessions (used by non-Bells scheduling).
-    type Slot = { date: string; time: string; courtId: number };
+    type Slot = { date: string; time: string; courtId: number; sessionKey: string };
     const allSlots: Slot[] = [];
-    for (const s of sessions) {
-      const n = Math.floor((s.endMin - s.startMin) / matchDuration);
+    for (const sm of sessionMetas) {
+      const n = Math.floor((sm.endMin - sm.startMin) / matchDuration);
       for (let i = 0; i < n; i++) {
-        const mins = s.startMin + i * matchDuration;
+        const mins = sm.startMin + i * matchDuration;
         const h = Math.floor(mins / 60);
         const mm = mins % 60;
         const ts = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-        for (const cid of s.courtIds) {
-          allSlots.push({ date: s.date, time: ts, courtId: cid });
+        for (const cid of sm.courtIds) {
+          allSlots.push({ date: sm.date, time: ts, courtId: cid, sessionKey: sm.key });
         }
       }
     }
+
     const totalSlots = allSlots.length;
     const timeSlots = Array.from(new Set(allSlots.map((s) => s.time))).sort();
 

@@ -2214,54 +2214,53 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         }
       }
 
-      // Spread mode: give every league a per-date quota so each league's
-      // matches distribute across all play-days (a small league still plays
-      // on the last day, not just the first). Fill mode leaves quota off so
-      // the earliest days pack completely.
-      const dateList = Array.from(new Set(allSlots.map((s) => s.date))).sort();
-      const numDates = Math.max(1, dateList.length);
-      const leagueTargetPerDate = new Map<number, number>();
+      // Spread mode: split the play window into sessions (auto-detected above
+      // as Fri eve / Sat AM / Sat PM / Sun AM etc.) and give every league AND
+      // every pair a per-session quota. Result: each pair plays roughly the
+      // same number of games in every session, including the final one, so
+      // Saturday morning doesn't get stacked while Sunday sits empty.
+      const sessionKeysOrdered = sessionMetas.map((m) => m.key);
+      const numSessions = Math.max(1, sessionKeysOrdered.length);
+      const leagueTargetPerSession = new Map<number, number>();
       for (const [k, tot] of leagueTotals) {
-        leagueTargetPerDate.set(k, Math.max(1, Math.ceil(tot / numDates)));
+        leagueTargetPerSession.set(k, Math.max(1, Math.ceil(tot / numSessions)));
       }
-      // league -> date -> count already placed on that date
-      const leaguePerDateCount = new Map<number, Map<string, number>>();
-      for (const k of leagueKeys) leaguePerDateCount.set(k, new Map());
+      const leaguePerSessionCount = new Map<number, Map<string, number>>();
+      for (const k of leagueKeys) leaguePerSessionCount.set(k, new Map());
 
-      // Per-entity (pair/player) totals and per-date quota. Prevents a single
-      // pair playing 4 matches on day 1 and 0 on day 2. Quota = ceil(pair's
-      // total matches / play-days), min 1 per day so every pair plays at
-      // least one game each day when they have enough matches to do so.
       const entityTotals = new Map<string, number>();
       for (const m of nonByes) {
         for (const pid of [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)]) {
           entityTotals.set(pid, (entityTotals.get(pid) || 0) + 1);
         }
       }
-      const entityTargetPerDate = new Map<string, number>();
+      const entityTargetPerSession = new Map<string, number>();
       for (const [pid, tot] of entityTotals) {
-        entityTargetPerDate.set(pid, Math.max(1, Math.ceil(tot / numDates)));
+        entityTargetPerSession.set(pid, Math.max(1, Math.ceil(tot / numSessions)));
       }
-      // entity -> date -> count already placed on that date
-      const entityPerDateCount = new Map<string, Map<string, number>>();
+      const entityPerSessionCount = new Map<string, Map<string, number>>();
+      // Track which sessions a pair has already been placed into so the
+      // fallback pass can still prefer *new* sessions before doubling up.
+      const entitySessionsUsed = new Map<string, Set<string>>();
 
       const tryPlace = (
         match: typeof nonByes[number],
         allPlayers: string[],
         respectQuota: boolean,
+        opts?: { onlySessionKey?: string },
       ): boolean => {
-        const perDate = leaguePerDateCount.get(match.groupNum);
-        const target = leagueTargetPerDate.get(match.groupNum) ?? Infinity;
+        const perSess = leaguePerSessionCount.get(match.groupNum);
+        const target = leagueTargetPerSession.get(match.groupNum) ?? Infinity;
         for (const si of slotOrder) {
           if (usedSlots.has(si)) continue;
           const slot = allSlots[si];
+          if (opts?.onlySessionKey && slot.sessionKey !== opts.onlySessionKey) continue;
           if (respectQuota && scheduleMode === "spread") {
-            if (perDate && (perDate.get(slot.date) || 0) >= target) continue;
-            // Per-entity daily cap so a single pair can't pile up on one day.
+            if (perSess && (perSess.get(slot.sessionKey) || 0) >= target) continue;
             let entityCapHit = false;
             for (const pid of allPlayers) {
-              const cnt = entityPerDateCount.get(pid)?.get(slot.date) || 0;
-              const cap = entityTargetPerDate.get(pid) ?? Infinity;
+              const cnt = entityPerSessionCount.get(pid)?.get(slot.sessionKey) || 0;
+              const cap = entityTargetPerSession.get(pid) ?? Infinity;
               if (cnt >= cap) { entityCapHit = true; break; }
             }
             if (entityCapHit) continue;
@@ -2275,22 +2274,53 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           allPlayers.forEach((pid) => {
             entityLastDate.set(pid, slot.date);
             markEntityBusy(pid, slot);
-            let epd = entityPerDateCount.get(pid);
-            if (!epd) { epd = new Map(); entityPerDateCount.set(pid, epd); }
-            epd.set(slot.date, (epd.get(slot.date) || 0) + 1);
+            let eps = entityPerSessionCount.get(pid);
+            if (!eps) { eps = new Map(); entityPerSessionCount.set(pid, eps); }
+            eps.set(slot.sessionKey, (eps.get(slot.sessionKey) || 0) + 1);
+            let used = entitySessionsUsed.get(pid);
+            if (!used) { used = new Set(); entitySessionsUsed.set(pid, used); }
+            used.add(slot.sessionKey);
           });
-          if (perDate) perDate.set(slot.date, (perDate.get(slot.date) || 0) + 1);
+          if (perSess) perSess.set(slot.sessionKey, (perSess.get(slot.sessionKey) || 0) + 1);
           return true;
         }
         return false;
       };
 
-      // First pass: honour the "no same-day repeat per entity" gap (spread mode)
-      // or pack sequentially (fill mode). Always avoid concurrent-slot conflicts.
-      // In spread mode we also respect the per-league per-day quota so leagues
-      // finish on the same day rather than the biggest league running solo at
-      // the end.
+      // Priming pass (spread mode, ≥2 sessions): reserve one match per pair
+      // in the *final* session, round-robin across leagues, so every pair is
+      // guaranteed to still play on the last day. The main pass then fills
+      // backwards from there.
+      if (scheduleMode === "spread" && numSessions >= 2) {
+        const finalKey = sessionKeysOrdered[sessionKeysOrdered.length - 1];
+        const seeded = new Set<string>(); // pair/entity ids already primed
+        // Round-robin through leagues, picking the first unscheduled match
+        // whose participants haven't been seeded yet.
+        let progress = true;
+        while (progress) {
+          progress = false;
+          for (const gn of leagueKeys) {
+            const candidate = interleaved.find((m) => {
+              if (m.date || m.groupNum !== gn) return false;
+              return !seeded.has(m.entityA) && !seeded.has(m.entityB);
+            });
+            if (!candidate) continue;
+            const allPlayers = [
+              ...getPlayersForEntity(candidate.entityA),
+              ...getPlayersForEntity(candidate.entityB),
+            ];
+            if (tryPlace(candidate, allPlayers, true, { onlySessionKey: finalKey })) {
+              seeded.add(candidate.entityA);
+              seeded.add(candidate.entityB);
+              progress = true;
+            }
+          }
+        }
+      }
+
+      // First pass: place every remaining match honouring per-session quotas.
       for (const match of interleaved) {
+        if (match.date) continue;
         const playersA = getPlayersForEntity(match.entityA);
         const playersB = getPlayersForEntity(match.entityB);
         const allPlayers = [...playersA, ...playersB];
@@ -2299,6 +2329,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           tryPlace(match, allPlayers, false);
         }
       }
+
 
       // Second pass: anything left unscheduled falls into any free slot so it
       // doesn't show as TBD. Iterate in interleaved order (not per-league) so

@@ -640,22 +640,24 @@ export default function Tournaments() {
           {today && !isLive(m) && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
 
-        <Button
-          size="sm"
-          variant="default"
-          className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto animate-pulse-slow"
-          title={tournamentFormat.key === "time_capped_points" ? "Start the bell timer and score this game" : "Open the marker to score this match"}
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(markRoute);
-          }}
-        >
-          {tournamentFormat.key === "time_capped_points"
-            ? <BellRing className="w-3 h-3" />
-            : <Gavel className="w-3 h-3" />} {tournamentFormat.markerLabel}
-        </Button>
+        {!isPlaceholder && (
+          <Button
+            size="sm"
+            variant="default"
+            className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto animate-pulse-slow"
+            title={tournamentFormat.key === "time_capped_points" ? "Start the bell timer and score this game" : "Open the marker to score this match"}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(markRoute);
+            }}
+          >
+            {tournamentFormat.key === "time_capped_points"
+              ? <BellRing className="w-3 h-3" />
+              : <Gavel className="w-3 h-3" />} {tournamentFormat.markerLabel}
+          </Button>
+        )}
 
-        {isClubAdmin && m.scheduled_date && m.scheduled_time && (
+        {isClubAdmin && m.scheduled_date && m.scheduled_time && !isPlaceholder && (
           <SwapFixtureButton
             match={m}
             allMatches={allMatches.filter((x: any) => x.champ_id === m.champ_id)}
@@ -677,10 +679,40 @@ export default function Tournaments() {
             size="icon"
           />
         )}
+
+        {isClubAdmin && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                title="Slot actions"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              {!isPlaceholder && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); markSlotEmpty(m); }}>
+                  <Eraser className="w-3.5 h-3.5 mr-2" /> Mark as empty (no game)
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onClick={(e) => { e.stopPropagation(); deleteSlot(m); }}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete slot
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         </div>
       </div>
     );
   };
+
 
 
   const getScheduleHeaders = (matches: any[]) => {

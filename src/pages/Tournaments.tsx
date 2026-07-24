@@ -659,6 +659,23 @@ export default function Tournaments() {
             <span className="text-muted-foreground"> vs </span>
             <span className={teamBClass}>{teamB}</span>
           </span>
+          {(() => {
+            let sets: { a: number; b: number }[] = [];
+            if (m.game_scores) {
+              try { sets = (JSON.parse(m.game_scores)?.sets) || []; } catch { /* ignore */ }
+            }
+            if (!sets.length) return null;
+            return (
+              <span className="flex flex-wrap gap-1 shrink-0">
+                {sets.map((g, i) => (
+                  <Badge key={i} variant="outline" className="text-[10px] tabular-nums px-1.5">
+                    {g.a}-{g.b}
+                  </Badge>
+                ))}
+              </span>
+            );
+          })()}
+
           {bMeta && (bMeta.group != null || bMeta.pool != null || bMeta.stage) && (
             <span
               style={chipStyle}

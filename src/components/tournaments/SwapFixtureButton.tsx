@@ -166,7 +166,7 @@ export function SwapFixtureButton({
         return aKey.localeCompare(bKey);
       })
       .slice(0, 80);
-  }, [allMatches, match.id, match.court_id, showAllCourts, getMatchLabel, search]);
+  }, [allMatches, match.id, match.court_id, showAllCourts, unscheduledOnly, getMatchLabel, search]);
 
   const doSwap = async (target: any) => {
     setBusy(true);

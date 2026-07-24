@@ -54,6 +54,7 @@ export function SwapFixtureButton({
   getRowColor,
   getBucketLabel,
   label,
+  unscheduledOnly = false,
 }: Props) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);

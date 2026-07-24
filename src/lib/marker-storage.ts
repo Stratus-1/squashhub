@@ -1,6 +1,16 @@
 export const MARKER_CONFIG_KEY = "marker:active-config:v1";
 export const MARKER_STATE_KEY = "marker:active-state:v1";
 
+interface PersistedMarkerState {
+  scoreA?: number;
+  scoreB?: number;
+  gamesA?: number;
+  gamesB?: number;
+  completedGames?: unknown[];
+  history?: unknown[];
+  matchOver?: boolean;
+}
+
 interface MarkerSessionIdentity {
   source?: string;
   sourceId?: string;
@@ -63,15 +73,31 @@ export function clearMarkerSession() {
   } catch {}
 }
 
+function hasScoringProgress(state: PersistedMarkerState | null): boolean {
+  if (!state) return false;
+  return (
+    (state.history?.length || 0) > 0 ||
+    (state.completedGames?.length || 0) > 0 ||
+    (state.gamesA || 0) > 0 ||
+    (state.gamesB || 0) > 0 ||
+    state.matchOver === true
+  );
+}
+
 export function hasActiveMarkerSession(): boolean {
   // Only treat a marker session as "active" (i.e. worth resuming) if the user
   // has actually started scoring — merely opening the marker screen and leaving
   // must NOT prompt "Resume Marking".
   try {
-    if (!localStorage.getItem(MARKER_CONFIG_KEY)) return false;
-    if (!localStorage.getItem(MARKER_STATE_KEY)) return false;
-    return true;
+    const config = localStorage.getItem(MARKER_CONFIG_KEY);
+    const rawState = localStorage.getItem(MARKER_STATE_KEY);
+    if (!config || !rawState) return false;
+    const parsed = JSON.parse(rawState) as PersistedMarkerState;
+    const active = hasScoringProgress(parsed);
+    if (!active) clearMarkerSession();
+    return active;
   } catch {
+    clearMarkerSession();
     return false;
   }
 }

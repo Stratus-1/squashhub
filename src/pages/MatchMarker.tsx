@@ -273,8 +273,13 @@ export default function MatchMarker() {
   const startConfig = (c: MarkerConfig) => {
     try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}
     setConfig(c);
+    // Only flip the tournament match to in_progress if there are already
+    // real scores being resumed — starting from 0-0 waits for the first
+    // point (handleLiveScore) to avoid phantom LIVE indicators.
     if (c.source === "tournament" && c.sourceId) {
-      markTournamentLive(c.sourceId, (c as any).initialScores || []);
+      const initial = ((c as any).initialScores || []) as Array<{ a: number; b: number }>;
+      const hasProgress = initial.some((s) => (s?.a || 0) > 0 || (s?.b || 0) > 0);
+      if (hasProgress) markTournamentLive(c.sourceId, initial);
     }
   };
 

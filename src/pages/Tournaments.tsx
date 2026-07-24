@@ -299,6 +299,40 @@ export default function Tournaments() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [swapping, setSwapping] = useState(false);
+  const [addSlotOpen, setAddSlotOpen] = useState(false);
+  const [addSlotChampId, setAddSlotChampId] = useState<string | undefined>(undefined);
+
+  const deleteSlot = async (m: any) => {
+    if (!window.confirm(`Delete this ${m.status === "placeholder" ? "empty slot" : "fixture"}? The court will be freed.`)) return;
+    const { error } = await (supabase as any).from("club_champs_matches").delete().eq("id", m.id);
+    if (error) return toast.error(error.message || "Delete failed");
+    toast.success("Slot removed");
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
+  };
+
+  const markSlotEmpty = async (m: any) => {
+    if (!window.confirm("Mark this slot as an empty cell (no game)? Pair assignments will be cleared.")) return;
+    const { error } = await (supabase as any).from("club_champs_matches")
+      .update({
+        status: "placeholder",
+        player_a_member_id: null,
+        player_b_member_id: null,
+        partner_a_member_id: null,
+        partner_b_member_id: null,
+        winner_member_id: null,
+        score: null,
+        game_scores: null,
+        side_a_points: null,
+        side_b_points: null,
+        placeholder_a: "Empty slot",
+        placeholder_b: "Drag a match here",
+      })
+      .eq("id", m.id);
+    if (error) return toast.error(error.message || "Update failed");
+    toast.success("Marked as empty");
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
+  };
+
 
   const playersOf = (m: any): string[] =>
     [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[];

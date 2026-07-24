@@ -546,8 +546,9 @@ export default function Tournaments() {
     const bMeta = buckets.find((x) => x.key === bKey) || null;
     const color = bucketColor(bKey);
     const rowStyle = color
-      ? { borderLeft: `4px solid ${color.border}`, backgroundColor: today ? undefined : color.bg }
+      ? { borderLeft: `4px solid ${color.border}`, backgroundColor: color.bg }
       : undefined;
+
     const chipStyle = color
       ? { backgroundColor: color.chipBg, color: color.chipText, borderColor: color.border }
       : undefined;

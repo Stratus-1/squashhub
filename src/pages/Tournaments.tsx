@@ -933,10 +933,22 @@ export default function Tournaments() {
 
               <Card>
                 <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Calendar className="w-4 h-4" /> Tournament Games
                     </CardTitle>
+                    <div className="flex items-center gap-1.5">
+                      {isClubAdmin && champs.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 h-7"
+                          onClick={() => { setAddSlotChampId(champs[0].id); setAddSlotOpen(true); }}
+                          title="Insert an empty time slot (admin only)"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add slot
+                        </Button>
+                      )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="gap-1 h-7">

@@ -189,10 +189,13 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
             <Badge variant="default">Paid {paidCount}</Badge>
             <Badge variant="outline">Pending {pendingCount}</Badge>
             <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
-              Registered {registrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
+              Active {registrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
             </Badge>
             <Badge variant="outline" className="text-amber-700 border-amber-500">
-              Not registered {registrations.filter((r: any) => r.status !== "cancelled" && !signupMap.get(r.club_member_id)?.has_signed_in).length}
+              Invited, not activated {registrations.filter((r: any) => r.status !== "cancelled" && signupMap.get(r.club_member_id)?.has_account && !signupMap.get(r.club_member_id)?.has_signed_in).length}
+            </Badge>
+            <Badge variant="outline" className="text-rose-700 border-rose-500">
+              No account {registrations.filter((r: any) => r.status !== "cancelled" && !signupMap.get(r.club_member_id)?.has_account).length}
             </Badge>
             <Badge variant="secondary">
               Entry fee: {entryFee > 0 ? `R${entryFee.toFixed(2)}` : "Free"}
@@ -250,11 +253,12 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         {r.confirmed_at && r.confirmation_source === "rsvp" && (
                           <Badge variant="default" className="text-[10px] bg-emerald-600 hover:bg-emerald-600">Accepted</Badge>
                         )}
-                        {signupMap.get(r.club_member_id)?.has_signed_in ? (
-                          <Badge variant="default" className="text-[10px] bg-sky-600 hover:bg-sky-600">Registered</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-500">Not registered</Badge>
-                        )}
+                        {(() => {
+                          const s = signupMap.get(r.club_member_id);
+                          if (s?.has_signed_in) return <Badge variant="default" className="text-[10px] bg-sky-600 hover:bg-sky-600">Active</Badge>;
+                          if (s?.has_account) return <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-500">Invited, not activated</Badge>;
+                          return <Badge variant="outline" className="text-[10px] text-rose-700 border-rose-500">No account</Badge>;
+                        })()}
                         {r.status === "cancelled" && (
                           <Badge variant="destructive" className="text-[10px]">Declined</Badge>
                         )}

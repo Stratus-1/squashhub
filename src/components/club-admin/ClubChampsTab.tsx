@@ -2337,16 +2337,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         }
       }
 
-      // First pass: place every remaining match honouring per-session quotas.
+      // First pass: place every remaining match honouring per-session quotas
+      // AND avoiding back-to-back games. Progressive relaxation: quota+B2B →
+      // quota only → B2B only → anything free.
       for (const match of interleaved) {
         if (match.date) continue;
         const playersA = getPlayersForEntity(match.entityA);
         const playersB = getPlayersForEntity(match.entityB);
         const allPlayers = [...playersA, ...playersB];
-        if (!tryPlace(match, allPlayers, true)) {
-          // Quota-relaxed retry so a match still lands somewhere valid.
-          tryPlace(match, allPlayers, false);
-        }
+        if (tryPlace(match, allPlayers, true, { avoidBackToBack: true })) continue;
+        if (tryPlace(match, allPlayers, true, { avoidBackToBack: false })) continue;
+        if (tryPlace(match, allPlayers, false, { avoidBackToBack: true })) continue;
+        tryPlace(match, allPlayers, false, { avoidBackToBack: false });
       }
 
 
@@ -2360,18 +2362,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         const playersB = getPlayersForEntity(match.entityB);
         const allPlayers = [...playersA, ...playersB];
         let placed = false;
-        for (const si of slotOrder) {
-          if (usedSlots.has(si)) continue;
-          const slot = allSlots[si];
-          if (!allPlayers.every((pid) => isEntityFree(pid, slot))) continue;
-          match.date = slot.date;
-          match.time = slot.time;
-          match.courtId = slot.courtId;
-          usedSlots.add(si);
-          allPlayers.forEach((pid) => markEntityBusy(pid, slot));
-          placed = true;
-          break;
+        // Prefer slots that also avoid back-to-back.
+        for (const requireNoB2B of [true, false]) {
+          if (placed) break;
+          for (const si of slotOrder) {
+            if (usedSlots.has(si)) continue;
+            const slot = allSlots[si];
+            if (!allPlayers.every((pid) => isEntityFree(pid, slot))) continue;
+            if (requireNoB2B && allPlayers.some((pid) => hasAdjacent(pid, slot))) continue;
+            match.date = slot.date;
+            match.time = slot.time;
+            match.courtId = slot.courtId;
+            usedSlots.add(si);
+            allPlayers.forEach((pid) => markEntityBusy(pid, slot));
+            placed = true;
+            break;
+          }
         }
+
         if (placed) continue;
         // Absolute last resort: any free slot even with a conflict.
         for (const si of slotOrder) {

@@ -2715,21 +2715,21 @@ export type Database = {
       }
       club_visitor_home_clubs: {
         Row: {
-          club_id: string
+          club_id: string | null
           created_at: string
           id: string
           name: string
           updated_at: string
         }
         Insert: {
-          club_id: string
+          club_id?: string | null
           created_at?: string
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
-          club_id?: string
+          club_id?: string | null
           created_at?: string
           id?: string
           name?: string

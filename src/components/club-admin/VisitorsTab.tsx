@@ -112,7 +112,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data, error } = await fromExt("club_visitor_home_clubs")
         .select("id, name")
-        .eq("club_id", clubId)
+        .is("club_id", null)
         .order("name");
       if (error) throw error;
       return (data || []) as HomeClubOption[];

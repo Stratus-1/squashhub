@@ -14,6 +14,46 @@ import { toast } from "sonner";
 import { setScoringActive } from "@/lib/scoring-lock";
 import { enqueueRankingDelta } from "@/lib/ranking-points";
 
+function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
+  const scores: Array<{ a: number; b: number }> = [];
+  try {
+    const raw = row?.game_scores;
+    const parsed = typeof raw === "string" && raw.trim()
+      ? JSON.parse(raw)
+      : raw && typeof raw === "object"
+        ? raw
+        : null;
+    const sets = Array.isArray(parsed?.sets) ? parsed.sets : [];
+    for (const set of sets) {
+      const a = Number(set?.a) || 0;
+      const b = Number(set?.b) || 0;
+      if (a > 0 || b > 0) scores.push({ a, b });
+    }
+    const current = parsed?.current;
+    const currentA = Number(current?.a) || 0;
+    const currentB = Number(current?.b) || 0;
+    if (currentA > 0 || currentB > 0) scores.push({ a: currentA, b: currentB });
+  } catch {
+    // Ignore old/plain score strings; current side points below are the source of truth for live scores.
+  }
+
+  const sideA = Number(row?.side_a_points) || 0;
+  const sideB = Number(row?.side_b_points) || 0;
+  if (sideA > 0 || sideB > 0) {
+    const last = scores[scores.length - 1];
+    if (!last || last.a !== sideA || last.b !== sideB) scores.push({ a: sideA, b: sideB });
+  }
+  return scores;
+}
+
+function serializeLiveScores(games: GameScore[], current?: { a: number; b: number }) {
+  const payload: any = {
+    sets: games.map((g) => ({ a: g.a, b: g.b })),
+  };
+  if (current && (current.a > 0 || current.b > 0)) payload.current = current;
+  return JSON.stringify(payload);
+}
+
 export default function MatchMarker() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [config, setConfig] = useState<MarkerConfig | null>(() => {
@@ -28,6 +68,25 @@ export default function MatchMarker() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const markTournamentLive = useCallback(async (matchId: string, scores: Array<{ a: number; b: number }> = []) => {
+    const current = scores[scores.length - 1];
+    try {
+      const { error } = await fromExt("club_champs_matches")
+        .update({
+          status: "in_progress",
+          side_a_points: current?.a ?? 0,
+          side_b_points: current?.b ?? 0,
+          game_scores: scores.length > 0 ? JSON.stringify({ sets: scores.slice(0, -1), current }) : null,
+        } as any)
+        .eq("id", matchId)
+        .neq("status", "completed");
+      if (error) console.warn("Could not mark tournament match live:", error);
+      queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+    } catch (e) {
+      console.warn("Could not mark tournament match live:", e);
+    }
+  }, [queryClient]);
 
   useEffect(() => {
     if (!searchParams.has("matchId") && !searchParams.has("bookingId")) return;
@@ -47,7 +106,7 @@ export default function MatchMarker() {
     const loadLinkedTournamentMatch = async () => {
       const { data, error } = await fromExt("club_champs_matches")
         .select(`
-          id, champ_id, handicap_a, handicap_b,
+          id, champ_id, handicap_a, handicap_b, status, side_a_points, side_b_points, game_scores,
           player_a_member_id, player_b_member_id,
           partner_a_member_id, partner_b_member_id,
           club_champs!inner(id, club_id, match_type, scoring_mode, points_per_game, best_of, play_all_games, win_condition),
@@ -134,10 +193,12 @@ export default function MatchMarker() {
         handicapA: Number(row.handicap_a) || 0,
         handicapB: Number(row.handicap_b) || 0,
         clubId: champ?.club_id || undefined,
+        initialScores: parseTournamentScores(row),
       };
 
       if (cancelled) return;
       setConfig(nextConfig);
+      await markTournamentLive(matchId, parseTournamentScores(row));
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.delete("source");
@@ -148,7 +209,7 @@ export default function MatchMarker() {
 
     loadLinkedTournamentMatch();
     return () => { cancelled = true; };
-  }, [config?.sourceId, navigate, searchParams, setSearchParams]);
+  }, [config?.sourceId, markTournamentLive, navigate, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (config?.source !== "tournament" || !config.sourceId) return;
@@ -197,10 +258,12 @@ export default function MatchMarker() {
     return () => setScoringActive(false);
   }, [config]);
 
-
   const startConfig = (c: MarkerConfig) => {
     try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}
     setConfig(c);
+    if (c.source === "tournament" && c.sourceId) {
+      markTournamentLive(c.sourceId, (c as any).initialScores || []);
+    }
   };
 
   const resetMatch = () => {
@@ -230,6 +293,7 @@ export default function MatchMarker() {
               status: "in_progress",
               side_a_points: c.a,
               side_b_points: c.b,
+              game_scores: serializeLiveScores(_games, c),
             } as any)
             .eq("id", config.sourceId);
           queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
@@ -237,6 +301,26 @@ export default function MatchMarker() {
           console.warn("Live score push failed:", e);
         }
       }, 400);
+    },
+    [config, queryClient],
+  );
+
+  const handleTournamentProgress = useCallback(
+    async (games: GameScore[]) => {
+      if (config?.source !== "tournament" || !config.sourceId) return;
+      try {
+        await fromExt("club_champs_matches")
+          .update({
+            status: "in_progress",
+            side_a_points: 0,
+            side_b_points: 0,
+            game_scores: serializeLiveScores(games),
+          } as any)
+          .eq("id", config.sourceId);
+        queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+      } catch (e) {
+        console.warn("Live tournament progress push failed:", e);
+      }
     },
     [config, queryClient],
   );
@@ -488,13 +572,18 @@ export default function MatchMarker() {
           <MarkerScoreboard
             config={config}
             initialScores={
-              config.source === "tournament" && ((config as any).handicapA || (config as any).handicapB)
-                ? [{ a: Number((config as any).handicapA) || 0, b: Number((config as any).handicapB) || 0 }]
+              config.source === "tournament"
+                ? ((config as any).initialScores?.length
+                  ? (config as any).initialScores
+                  : ((config as any).handicapA || (config as any).handicapB)
+                    ? [{ a: Number((config as any).handicapA) || 0, b: Number((config as any).handicapB) || 0 }]
+                    : undefined)
                 : undefined
             }
             onMatchComplete={handleMatchComplete}
             onReset={resetMatch}
             onScratch={handleScratch}
+            onProgress={handleTournamentProgress}
             onLiveScore={handleLiveScore}
           />
         )}

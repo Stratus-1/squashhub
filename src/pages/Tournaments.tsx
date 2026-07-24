@@ -62,6 +62,7 @@ export default function Tournaments() {
     .sort((a: any, b: any) => (b.end_date || "").localeCompare(a.end_date || ""));
 
   const champIds = allChamps.map((c: any) => c.id);
+  const champIdsKey = champIds.slice().sort().join("|");
 
   const { data: allEntries = [] } = useQuery({
     queryKey: ["tournaments-all-entries", champIds],
@@ -300,6 +301,28 @@ export default function Tournaments() {
   };
 
   const qc = useQueryClient();
+  useEffect(() => {
+    if (!champIdsKey) return;
+    const watchedChampIds = new Set(champIdsKey.split("|").filter(Boolean));
+    const channel = supabase
+      .channel(`tournament-live-matches:${champIdsKey.slice(0, 60)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "club_champs_matches" },
+        (payload: any) => {
+          const champId = payload?.new?.champ_id || payload?.old?.champ_id;
+          if (!champId || watchedChampIds.has(champId)) {
+            qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [champIdsKey, qc]);
+
   const [dragId, setDragId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [swapping, setSwapping] = useState(false);

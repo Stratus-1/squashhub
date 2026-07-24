@@ -119,9 +119,12 @@ export function SwapFixtureButton({
   };
 
   const conflictsFor = (target: any) => {
-    if (!match.scheduled_date || !match.scheduled_time || !target.scheduled_date || !target.scheduled_time) {
+    if (!match.scheduled_date || !match.scheduled_time) {
       return { swapBlocked: true, reason: "missing slot" as const };
     }
+    // Target may be unscheduled (a pair not yet placed on the grid) — that's OK;
+    // we'll transfer this slot to them and the placeholder inherits their empty slot.
+    const targetHasSlot = Boolean(target.scheduled_date && target.scheduled_time);
 
     const occ = buildOccupancy(target.id);
 

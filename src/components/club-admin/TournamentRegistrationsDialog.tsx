@@ -188,12 +188,19 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
           <div className="flex items-center gap-3 text-xs flex-wrap">
             <Badge variant="default">Paid {paidCount}</Badge>
             <Badge variant="outline">Pending {pendingCount}</Badge>
+            <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
+              Registered {registrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
+            </Badge>
+            <Badge variant="outline" className="text-amber-700 border-amber-500">
+              Not registered {registrations.filter((r: any) => r.status !== "cancelled" && !signupMap.get(r.club_member_id)?.has_signed_in).length}
+            </Badge>
             <Badge variant="secondary">
               Entry fee: {entryFee > 0 ? `R${entryFee.toFixed(2)}` : "Free"}
             </Badge>
             {champ?.payment_required && entryFee > 0 && <Badge variant="outline">Payment required</Badge>}
             {champ?.entries_locked && <Badge><Lock className="w-3 h-3 mr-1" />Entries locked</Badge>}
           </div>
+
 
           <div className="flex justify-between items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>

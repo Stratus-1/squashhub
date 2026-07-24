@@ -29,6 +29,8 @@ interface Props {
   getRowColor?: (m: any) => { border: string; bg: string; chipBg: string; chipText: string } | null;
   /** Optional short label (e.g. "L1 · Pool A") to show on each candidate row. */
   getBucketLabel?: (m: any) => string | null;
+  /** Override button label (e.g. "Fill slot" for empty placeholders). */
+  label?: string;
 }
 
 /**
@@ -49,6 +51,7 @@ export function SwapFixtureButton({
   sameCourtOnly = true,
   getRowColor,
   getBucketLabel,
+  label,
 }: Props) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -216,10 +219,10 @@ export function SwapFixtureButton({
           variant="outline"
           size="sm"
           className="h-7 px-2 text-[11px] gap-1 shrink-0 border-primary/40 text-primary hover:bg-primary/10"
-          title="Replace this fixture with another match in the tournament"
+          title={label ? "Pick a pair to place in this empty slot" : "Replace this fixture with another match in the tournament"}
         >
           <ArrowLeftRight className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Replace</span>
+          <span className="hidden sm:inline">{label || "Replace"}</span>
         </Button>
       </PopoverTrigger>
 

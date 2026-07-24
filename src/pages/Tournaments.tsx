@@ -659,10 +659,11 @@ export default function Tournaments() {
           </Button>
         )}
 
-        {isClubAdmin && m.scheduled_date && m.scheduled_time && !isPlaceholder && (
+        {isClubAdmin && m.scheduled_date && m.scheduled_time && (
           <SwapFixtureButton
             match={m}
-            allMatches={allMatches.filter((x: any) => x.champ_id === m.champ_id)}
+            allMatches={allMatches.filter((x: any) => x.champ_id === m.champ_id && x.id !== m.id && x.status !== "placeholder")}
+            label={isPlaceholder ? "Fill slot" : undefined}
             getMatchLabel={(x) => {
               const c = allChamps.find((cc: any) => cc.id === x.champ_id);
               const dbl = c?.match_type === "doubles";

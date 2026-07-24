@@ -118,7 +118,7 @@ const TOSS_PROMPT_VERSION = 1;
 
 function hasScoringStarted(state: PersistedState | null): boolean {
   if (!state) return false;
-  return state.scoreA > 0 || state.scoreB > 0 || state.gamesA > 0 || state.gamesB > 0 || state.completedGames.length > 0 || state.history.length > 0;
+  return state.gamesA > 0 || state.gamesB > 0 || state.completedGames.length > 0 || state.history.length > 0 || state.matchOver;
 }
 
 function buildStateFromSavedScores(config: MarkerConfig, savedScores: Array<{ a: number; b: number }> = []): Pick<PersistedState, "scoreA" | "scoreB" | "gamesA" | "gamesB" | "completedGames" | "server" | "serveSide"> | null {
@@ -233,7 +233,12 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   // Persist scoreboard state so user can navigate away and resume
   useEffect(() => {
     if (matchOver) return;
+    const hasProgress = history.length > 0 || completedGames.length > 0 || gamesA > 0 || gamesB > 0;
     try {
+      if (!hasProgress) {
+        localStorage.removeItem(MARKER_STATE_KEY);
+        return;
+      }
       const snapshot: PersistedState = {
         sessionKey,
         scoreA, scoreB, gamesA, gamesB, completedGames,

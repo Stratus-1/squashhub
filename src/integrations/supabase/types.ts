@@ -7317,6 +7317,14 @@ export type Database = {
           subdomain: string
         }[]
       }
+      get_champ_signup_status: {
+        Args: { _champ_id: string }
+        Returns: {
+          club_member_id: string
+          has_account: boolean
+          has_signed_in: boolean
+        }[]
+      }
       get_club_analytics:
         | { Args: { days_back?: number }; Returns: Json }
         | { Args: { days_back?: number; p_club_id?: string }; Returns: Json }

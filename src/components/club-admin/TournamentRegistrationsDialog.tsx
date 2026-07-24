@@ -189,10 +189,13 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
             <Badge variant="default">Paid {paidCount}</Badge>
             <Badge variant="outline">Pending {pendingCount}</Badge>
             <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
-              Registered {registrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
+              Active {registrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
             </Badge>
             <Badge variant="outline" className="text-amber-700 border-amber-500">
-              Not registered {registrations.filter((r: any) => r.status !== "cancelled" && !signupMap.get(r.club_member_id)?.has_signed_in).length}
+              Invited, not activated {registrations.filter((r: any) => r.status !== "cancelled" && signupMap.get(r.club_member_id)?.has_account && !signupMap.get(r.club_member_id)?.has_signed_in).length}
+            </Badge>
+            <Badge variant="outline" className="text-rose-700 border-rose-500">
+              No account {registrations.filter((r: any) => r.status !== "cancelled" && !signupMap.get(r.club_member_id)?.has_account).length}
             </Badge>
             <Badge variant="secondary">
               Entry fee: {entryFee > 0 ? `R${entryFee.toFixed(2)}` : "Free"}

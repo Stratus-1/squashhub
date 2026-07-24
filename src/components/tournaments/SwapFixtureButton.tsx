@@ -31,6 +31,8 @@ interface Props {
   getBucketLabel?: (m: any) => string | null;
   /** Override button label (e.g. "Fill slot" for empty placeholders). */
   label?: string;
+  /** When true, only show candidates that have not yet been scheduled (no date/time/court). Used to fill placeholder slots with pairs that haven't been placed on the grid yet. */
+  unscheduledOnly?: boolean;
 }
 
 /**
@@ -52,6 +54,7 @@ export function SwapFixtureButton({
   getRowColor,
   getBucketLabel,
   label,
+  unscheduledOnly = false,
 }: Props) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -116,9 +119,12 @@ export function SwapFixtureButton({
   };
 
   const conflictsFor = (target: any) => {
-    if (!match.scheduled_date || !match.scheduled_time || !target.scheduled_date || !target.scheduled_time) {
+    if (!match.scheduled_date || !match.scheduled_time) {
       return { swapBlocked: true, reason: "missing slot" as const };
     }
+    // Target may be unscheduled (a pair not yet placed on the grid) — that's OK;
+    // we'll transfer this slot to them and the placeholder inherits their empty slot.
+    const targetHasSlot = Boolean(target.scheduled_date && target.scheduled_time);
 
     const occ = buildOccupancy(target.id);
 
@@ -134,8 +140,10 @@ export function SwapFixtureButton({
       return null;
     };
 
-    const r1 = check(playersOf(match), target.scheduled_date, toMin(String(target.scheduled_time)));
-    if (r1) return { swapBlocked: true, reason: r1 };
+    if (targetHasSlot) {
+      const r1 = check(playersOf(match), target.scheduled_date, toMin(String(target.scheduled_time)));
+      if (r1) return { swapBlocked: true, reason: r1 };
+    }
     const r2 = check(playersOf(target), match.scheduled_date, toMin(String(match.scheduled_time)));
     if (r2) return { swapBlocked: true, reason: r2 };
 
@@ -146,7 +154,8 @@ export function SwapFixtureButton({
     const q = search.trim().toLowerCase();
     return allMatches
       .filter((m) => m.id !== match.id && !m.is_bye && m.status !== "completed")
-      .filter((m) => (showAllCourts ? true : m.court_id === match.court_id))
+      .filter((m) => (unscheduledOnly ? (!m.scheduled_date || !m.scheduled_time || !m.court_id) : true))
+      .filter((m) => (unscheduledOnly || showAllCourts ? true : m.court_id === match.court_id))
       .filter((m) => {
         if (!q) return true;
         return getMatchLabel(m).toLowerCase().includes(q);
@@ -157,7 +166,7 @@ export function SwapFixtureButton({
         return aKey.localeCompare(bKey);
       })
       .slice(0, 80);
-  }, [allMatches, match.id, match.court_id, showAllCourts, getMatchLabel, search]);
+  }, [allMatches, match.id, match.court_id, showAllCourts, unscheduledOnly, getMatchLabel, search]);
 
   const doSwap = async (target: any) => {
     setBusy(true);

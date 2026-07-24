@@ -1597,23 +1597,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const totalSlots = allSlots.length;
     const timeSlots = Array.from(new Set(allSlots.map((s) => s.time))).sort();
 
-    // Iteration order for scheduling: interleave slot indices across dates so
-    // matches spread evenly across all play-days instead of front-loading day 1.
-    // Within each date the original chronological/court order is preserved.
+    // Iteration order for scheduling. Spread mode interleaves across *sessions*
+    // (Fri eve / Sat AM / Sat PM / Sun AM …) so each pair's matches get a fair
+    // chance to land in every session — including the last one — instead of
+    // front-loading day 1 or morning-block. Fill mode packs chronologically.
     const slotOrder: number[] = (() => {
       if (scheduleMode === "fill") {
-        // Fill mode: fill each day (and each court within the day) completely
-        // before moving to the next — finishes the tournament in as few days
-        // as possible.
         return allSlots.map((_, i) => i);
       }
-      const byDate = new Map<string, number[]>();
+      const bySession = new Map<string, number[]>();
       allSlots.forEach((s, i) => {
-        if (!byDate.has(s.date)) byDate.set(s.date, []);
-        byDate.get(s.date)!.push(i);
+        if (!bySession.has(s.sessionKey)) bySession.set(s.sessionKey, []);
+        bySession.get(s.sessionKey)!.push(i);
       });
-      const dateKeys = Array.from(byDate.keys()).sort();
-      const buckets = dateKeys.map((d) => byDate.get(d)!);
+      // Preserve chronological session order (sessionMetas already sorted).
+      const sessionKeysOrdered = sessionMetas.map((m) => m.key).filter((k) => bySession.has(k));
+      const buckets = sessionKeysOrdered.map((k) => bySession.get(k)!);
       const out: number[] = [];
       let step = 0;
       while (out.length < allSlots.length) {
@@ -1626,6 +1625,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
       return out;
     })();
+
 
 
     // Build round-robin matches

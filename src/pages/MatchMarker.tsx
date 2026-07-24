@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { MARKER_CONFIG_KEY, MARKER_STATE_KEY } from "@/lib/marker-storage";
+import { hasActiveMarkerSession, MARKER_CONFIG_KEY, MARKER_STATE_KEY } from "@/lib/marker-storage";
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { MarkerSetup, type MarkerConfig } from "@/components/marker/MarkerSetup";
@@ -64,9 +64,12 @@ export default function MatchMarker() {
       // Only auto-resume if the user actually started scoring (state was persisted).
       // A bare config without state means they only opened the screen and left —
       // don't drop them back into a phantom scoreboard.
-      const hasState = !!localStorage.getItem(MARKER_STATE_KEY);
+      const hasState = hasActiveMarkerSession();
       if (!hasState) {
-        try { localStorage.removeItem(MARKER_CONFIG_KEY); } catch {}
+        try {
+          localStorage.removeItem(MARKER_CONFIG_KEY);
+          localStorage.removeItem(MARKER_STATE_KEY);
+        } catch {}
         return null;
       }
       return JSON.parse(raw) as MarkerConfig;

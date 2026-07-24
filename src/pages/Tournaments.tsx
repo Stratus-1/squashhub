@@ -1194,6 +1194,16 @@ export default function Tournaments() {
           isDoubles={finalizeChamp.match_type === "doubles"}
         />
       )}
+
+      <AddSlotDialog
+        open={addSlotOpen}
+        onOpenChange={setAddSlotOpen}
+        champs={champs}
+        allMatches={allMatches}
+        defaultChampId={addSlotChampId}
+        invalidateKeys={[["tournaments-all-matches", champIds]]}
+      />
+
     </div>
   );
 }

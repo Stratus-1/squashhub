@@ -154,7 +154,8 @@ export function SwapFixtureButton({
     const q = search.trim().toLowerCase();
     return allMatches
       .filter((m) => m.id !== match.id && !m.is_bye && m.status !== "completed")
-      .filter((m) => (showAllCourts ? true : m.court_id === match.court_id))
+      .filter((m) => (unscheduledOnly ? (!m.scheduled_date || !m.scheduled_time || !m.court_id) : true))
+      .filter((m) => (unscheduledOnly || showAllCourts ? true : m.court_id === match.court_id))
       .filter((m) => {
         if (!q) return true;
         return getMatchLabel(m).toLowerCase().includes(q);

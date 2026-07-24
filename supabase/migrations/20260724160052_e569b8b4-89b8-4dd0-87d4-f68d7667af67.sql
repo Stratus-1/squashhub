@@ -1,0 +1,1 @@
+UPDATE auth.users SET encrypted_password = extensions.crypt('0833020224', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, now()), updated_at = now() WHERE id = '3488d6b1-0703-4342-a44a-50a0d22c98e3';

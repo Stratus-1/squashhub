@@ -565,6 +565,16 @@ export default function Tournaments() {
     const playoffHeading = isPlayoffMatch
       ? ["Play-off", m.stage_label, seedPair].filter(Boolean).join(" · ")
       : null;
+    // Provisional only while outstanding pool games could still change who plays.
+    // Once both sides are known (or that league's pool games are all played), it's fixed.
+    const bothSidesKnown = !!m.player_a && !!m.player_b;
+    const playoffProvisional =
+      isPlayoffMatch &&
+      m.status !== "completed" &&
+      !bothSidesKnown &&
+      (openPoolLeagues.has(`${m.champ_id}|${m.group_number ?? "-"}`) ||
+        (m.group_number == null && openPoolLeagues.has(`${m.champ_id}|*`)));
+
 
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const today = matchDate && isToday(matchDate);

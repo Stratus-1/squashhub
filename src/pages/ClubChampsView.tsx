@@ -302,8 +302,10 @@ export default function ClubChampsView() {
         won: totalWon,
         gameDiff: stats.gamesWon - stats.gamesLost,
         pointsDiff: stats.pointsFor - stats.pointsAgainst,
-        // Standard tournament points: 2 for a win, 1 for a loss (participation).
-        points: totalWon * 2 + stats.lost * 1,
+        // Standard tournament points: 1 point per game (set) won.
+        // e.g. 2-1 win → winner 2 pts / loser 1 pt; 3-0 win → 3 / 0.
+        // Byes handled as walkover wins get a full 3-game credit.
+        points: stats.gamesWon + byeWins * 3,
 
       };
     };

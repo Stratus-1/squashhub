@@ -2193,16 +2193,26 @@ export default function ClubChampsView() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {Array.from(byPos.entries()).map(([pos, rows]) => (
+            {Array.from(byPos.entries()).map(([pos, rows]) => {
+              // bracket_position is encoded as league*1000 + position in
+              // pool mode; decode it so headings read sensibly.
+              const lg = pos >= 1000 ? Math.floor(pos / 1000) : null;
+              const p = pos >= 1000 ? pos % 1000 : pos;
+              const heading = lg
+                ? `${getGroupLabel(champ, lg)}${p > 1 ? ` · Position ${p}` : ""} bracket`
+                : `Position ${p} bracket`;
+              return (
               <div key={pos} className="space-y-1.5">
                 {pos > 0 && (
                   <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Position {pos} bracket
+                    {heading}
                   </div>
                 )}
                 {rows.map((m: any) => renderMatchRow(m))}
               </div>
-            ))}
+              );
+            })}
+
             {canManage && !playoffMatches.every((m: any) => m.status === "completed") && (
               <p className="text-[11px] text-muted-foreground">
                 Later rounds (Final / 3rd) will be filled in automatically — click <strong>Regenerate play-offs</strong> once the semi-finals are complete to seed the next round.

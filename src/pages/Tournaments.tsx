@@ -694,6 +694,9 @@ export default function Tournaments() {
             {playoffHeading && (
               <span className="block text-[10px] uppercase tracking-wide font-semibold text-primary mb-0.5 break-words">
                 {playoffHeading}
+                {playoffProvisional && (
+                  <span className="ml-1 text-destructive font-semibold">(Provisional)</span>
+                )}
               </span>
             )}
             <span className={teamAClass}>{teamA}</span>

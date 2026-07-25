@@ -545,6 +545,13 @@ export default function Tournaments() {
     const teamA = isPlaceholder ? "Empty slot" : sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a ?? m.n_a);
     const teamB = isPlaceholder ? "Drag a match here" : sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles) + hcLabel(m.handicap_b ?? m.n_b);
 
+    // Play-off heading — e.g. "Play-off · League 1 · Semi-final — Pool A #1 vs Pool B #2"
+    const isPlayoffMatch = typeof m.stage === "string" && m.stage.startsWith("playoff");
+    const seedPair = m.placeholder_a && m.placeholder_b ? `${m.placeholder_a} vs ${m.placeholder_b}` : null;
+    const playoffHeading = isPlayoffMatch
+      ? ["Play-off", m.stage_label, seedPair].filter(Boolean).join(" · ")
+      : null;
+
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const today = matchDate && isToday(matchDate);
     const markRoute = tournamentFormat.markerRoute(m.id);
@@ -655,6 +662,11 @@ export default function Tournaments() {
           </span>
           <span className="text-muted-foreground shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
           <span className="font-medium text-xs sm:text-sm break-words basis-full sm:basis-auto sm:flex-1 sm:min-w-0">
+            {playoffHeading && (
+              <span className="block text-[10px] uppercase tracking-wide font-semibold text-primary mb-0.5 break-words">
+                {playoffHeading}
+              </span>
+            )}
             <span className={teamAClass}>{teamA}</span>
             <span className="text-muted-foreground"> vs </span>
             <span className={teamBClass}>{teamB}</span>

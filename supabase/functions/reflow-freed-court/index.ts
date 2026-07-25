@@ -70,15 +70,18 @@ async function findCandidate(freed: Freed) {
   if (freed.tournament_id) {
     const { data } = await admin
       .from("club_champs_matches")
-      .select("id, court_id, match_date, start_time, tournament_id, status")
-      .eq("match_date", freed.date)
-      .eq("tournament_id", freed.tournament_id)
-      .gt("start_time", cutoff)
+      .select("id, court_id, scheduled_date, scheduled_time, champ_id, status")
+      .eq("scheduled_date", freed.date)
+      .eq("champ_id", freed.tournament_id)
+      .gt("scheduled_time", cutoff)
       .neq("id", freed.source_id)
       .in("status", ["scheduled", "pending", "ready"])
-      .order("start_time", { ascending: true })
+      .order("scheduled_time", { ascending: true })
       .limit(1);
-    return (data || [])[0] ?? null;
+    const row = (data || [])[0] as any;
+    if (!row) return null;
+    // Normalise to the shape the caller expects.
+    return { ...row, start_time: row.scheduled_time };
   }
   return null;
 }

@@ -1143,16 +1143,25 @@ export default function ClubChampsView() {
                 variant={groupComplete ? "default" : "outline"}
                 size="sm"
                 onClick={() => generatePlayoffs.mutate({})}
-                disabled={!groupComplete || generatePlayoffs.isPending}
-                title={!groupComplete ? "Finish all group-stage matches first" : playoffsExist ? "Regenerate — fills in Finals whose semis are done" : "Seed the position-based knockout"}
+                disabled={groupResultsCount === 0 || generatePlayoffs.isPending}
+                title={
+                  groupResultsCount === 0
+                    ? "Play at least one group match first"
+                    : groupComplete
+                      ? "Final seeding — pool stage complete"
+                      : "Provisional seeding from current standings; updates automatically after every pool result"
+                }
               >
                 {generatePlayoffs.isPending ? (
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                 ) : (
                   <Trophy className="w-4 h-4 mr-1" />
                 )}
-                {playoffsExist ? "Regenerate play-offs" : "Generate play-offs"}
+                {playoffsExist
+                  ? groupComplete ? "Regenerate play-offs" : "Re-seed play-offs (provisional)"
+                  : "Generate play-offs"}
               </Button>
+
             )}
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="w-4 h-4 mr-1" /> Print / PDF

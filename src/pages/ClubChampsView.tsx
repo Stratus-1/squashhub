@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
@@ -811,7 +811,7 @@ export default function ClubChampsView() {
   const playoffsExist = playoffMatches.length > 0;
 
   const generatePlayoffs = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (opts?: { silent?: boolean }) => {
       if (!champ) throw new Error("Tournament not loaded");
       if (!enablePlayoffs) throw new Error("Play-offs are not enabled for this tournament");
       if (!groupComplete) throw new Error("All group-stage matches must be completed first");
@@ -969,12 +969,65 @@ export default function ClubChampsView() {
       }
       return newRows.length;
     },
-    onSuccess: (n) => {
-      toast.success(`Generated ${n} play-off match${n === 1 ? "" : "es"} (TBD slots). Use "Reschedule TBD" to place courts and times.`);
+    onSuccess: (n, vars) => {
+      if (vars?.silent) {
+        toast.success(`Play-offs updated automatically — ${n} match${n === 1 ? "" : "es"} seeded.`);
+      } else {
+        toast.success(`Generated ${n} play-off match${n === 1 ? "" : "es"} (TBD slots). Use "Reschedule TBD" to place courts and times.`);
+      }
       qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
     },
-    onError: (err: any) => toast.error(err.message || "Failed to generate play-offs"),
+    onError: (err: any, vars) => {
+      if (vars?.silent) return; // auto-runs stay quiet on failure
+      toast.error(err.message || "Failed to generate play-offs");
+    },
   });
+
+  // ── Auto-resolve play-offs ───────────────────────────────────────────
+  // As soon as the feeder matches for any unresolved play-off row are
+  // complete (group stage finished → first knockout round; QFs done → SFs;
+  // SFs done → Final / 3rd place), seed the names automatically instead of
+  // waiting for an admin to press "Generate play-offs". Runs once per
+  // distinct set of completed matches so it never loops.
+  const autoPlayoffKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!canManage || !enablePlayoffs || !groupComplete) return;
+    if (generatePlayoffs.isPending) return;
+
+    const completed = (matches as any[]).filter((m: any) => m.status === "completed");
+    const key = completed.map((m: any) => m.id).sort().join(",");
+    if (autoPlayoffKeyRef.current === key) return;
+
+    // Is there anything new we can actually resolve?
+    const incomplete = playoffMatches.filter((m: any) => m.status !== "completed");
+    const unresolved = incomplete.filter((m: any) => !m.player_a_member_id || !m.player_b_member_id);
+    let shouldRun = !playoffsExist || unresolved.length === 0 ? !playoffsExist : false;
+
+    if (!shouldRun && unresolved.length > 0) {
+      const completedPlayoffs = playoffMatches.filter((m: any) => m.status === "completed");
+      const doneAt = (stage: string, bracket: any) =>
+        completedPlayoffs.filter(
+          (m: any) => m.stage === stage && (m.bracket_position ?? null) === (bracket ?? null),
+        ).length;
+      shouldRun = unresolved.some((row: any) => {
+        const bp = row.bracket_position ?? null;
+        if (row.stage === "playoff_final" || row.stage === "playoff_3rd") return doneAt("playoff_sf", bp) >= 2;
+        if (row.stage === "playoff_sf") return doneAt("playoff_qf", bp) >= 2;
+        // First knockout round — resolvable now that the group stage is done.
+        return true;
+      });
+    }
+
+    if (!shouldRun) {
+      autoPlayoffKeyRef.current = key;
+      return;
+    }
+    autoPlayoffKeyRef.current = key;
+    generatePlayoffs.mutate({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canManage, enablePlayoffs, groupComplete, matches, playoffMatches, playoffsExist]);
+
+
 
 
   const swissControlsFor = (groupNumber: number) => {
@@ -1103,7 +1156,7 @@ export default function ClubChampsView() {
               <Button
                 variant={groupComplete ? "default" : "outline"}
                 size="sm"
-                onClick={() => generatePlayoffs.mutate()}
+                onClick={() => generatePlayoffs.mutate({})}
                 disabled={!groupComplete || generatePlayoffs.isPending}
                 title={!groupComplete ? "Finish all group-stage matches first" : playoffsExist ? "Regenerate — fills in Finals whose semis are done" : "Seed the position-based knockout"}
               >

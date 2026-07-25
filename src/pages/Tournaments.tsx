@@ -200,6 +200,20 @@ export default function Tournaments() {
 
   const poolOf = (m: any): number | null => (m.pool_number ?? poolByMatchId.get(m.id) ?? null);
   const isPlayoff = (m: any) => typeof m?.stage === "string" && m.stage.startsWith("playoff");
+
+  // Which champ+league still has unplayed pool games? Seeds in those play-off
+  // fixtures can still change, so they are shown as "(Provisional)".
+  const openPoolLeagues = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of allMatches as any[]) {
+      if (isPlayoff(m)) continue;
+      if (m.status === "completed" || m.status === "placeholder") continue;
+      set.add(`${m.champ_id}|${m.group_number ?? "-"}`);
+      set.add(`${m.champ_id}|*`);
+    }
+    return set;
+  }, [allMatches]);
+
   // Collapse all playoff stages into a single "Play-offs" bucket per tournament
   // so admins can filter with one click instead of scrolling through every
   // individual final/semifinal/etc.
@@ -551,6 +565,21 @@ export default function Tournaments() {
     const playoffHeading = isPlayoffMatch
       ? ["Play-off", m.stage_label, seedPair].filter(Boolean).join(" · ")
       : null;
+    // Provisional only while outstanding pool games can still change who plays here.
+    // Fixed (no tag) when: match is done, that league's pool games are all played,
+    // or both sides came through completed knockout feeders (Winner/Loser of ...).
+    const feederDriven =
+      /winner|loser/i.test(String(m.placeholder_a || "")) || /winner|loser/i.test(String(m.placeholder_b || ""));
+    const bothSidesKnown = !!m.player_a && !!m.player_b;
+    const poolStillOpen =
+      openPoolLeagues.has(`${m.champ_id}|${m.group_number ?? "-"}`) ||
+      (m.group_number == null && openPoolLeagues.has(`${m.champ_id}|*`));
+    const playoffProvisional =
+      isPlayoffMatch &&
+      m.status !== "completed" &&
+      poolStillOpen &&
+      !(feederDriven && bothSidesKnown);
+
 
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const today = matchDate && isToday(matchDate);
@@ -665,6 +694,9 @@ export default function Tournaments() {
             {playoffHeading && (
               <span className="block text-[10px] uppercase tracking-wide font-semibold text-primary mb-0.5 break-words">
                 {playoffHeading}
+                {playoffProvisional && (
+                  <span className="ml-1 text-destructive font-semibold">(Provisional)</span>
+                )}
               </span>
             )}
             <span className={teamAClass}>{teamA}</span>

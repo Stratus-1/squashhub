@@ -811,7 +811,7 @@ export default function ClubChampsView() {
   const playoffsExist = playoffMatches.length > 0;
 
   const generatePlayoffs = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (opts?: { silent?: boolean }) => {
       if (!champ) throw new Error("Tournament not loaded");
       if (!enablePlayoffs) throw new Error("Play-offs are not enabled for this tournament");
       if (!groupComplete) throw new Error("All group-stage matches must be completed first");

@@ -101,7 +101,10 @@ async function reflowCell(freed: Freed, depth: number, moved: any[]): Promise<vo
   if (fromStart <= toStart && fromCourt === toCourt) return;
 
   const table = freed.round_id ? "platform_league_fixtures" : "club_champs_matches";
-  await admin.from(table).update({ court_id: toCourt, start_time: toStart }).eq("id", candidate.id);
+  const update = freed.round_id
+    ? { court_id: toCourt, start_time: toStart }
+    : { court_id: toCourt, scheduled_time: toStart };
+  await admin.from(table).update(update).eq("id", candidate.id);
 
   await admin.from("court_reflow_log").insert({
     club_id: freed.club_id ?? null,

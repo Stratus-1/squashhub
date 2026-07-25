@@ -1103,7 +1103,7 @@ export default function ClubChampsView() {
               <Button
                 variant={groupComplete ? "default" : "outline"}
                 size="sm"
-                onClick={() => generatePlayoffs.mutate()}
+                onClick={() => generatePlayoffs.mutate({})}
                 disabled={!groupComplete || generatePlayoffs.isPending}
                 title={!groupComplete ? "Finish all group-stage matches first" : playoffsExist ? "Regenerate — fills in Finals whose semis are done" : "Seed the position-based knockout"}
               >

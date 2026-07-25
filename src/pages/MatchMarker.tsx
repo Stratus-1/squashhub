@@ -103,6 +103,20 @@ export default function MatchMarker() {
   useEffect(() => {
     if (!searchParams.has("matchId") && !searchParams.has("bookingId")) return;
     try {
+      // Preserve stored marker config if it already belongs to this same
+      // match/booking — otherwise the spectator gate below can't tell the
+      // real scorer apart from a random second device, and they get bounced
+      // out of their own live match.
+      const matchId = searchParams.get("matchId");
+      const bookingId = searchParams.get("bookingId");
+      const raw = localStorage.getItem(MARKER_CONFIG_KEY);
+      if (raw) {
+        const existing = JSON.parse(raw);
+        const targetId = matchId || bookingId;
+        if (existing?.sourceId && targetId && existing.sourceId === targetId) {
+          return;
+        }
+      }
       localStorage.removeItem(MARKER_CONFIG_KEY);
       localStorage.removeItem(MARKER_STATE_KEY);
     } catch {}

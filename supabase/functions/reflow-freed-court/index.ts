@@ -70,15 +70,18 @@ async function findCandidate(freed: Freed) {
   if (freed.tournament_id) {
     const { data } = await admin
       .from("club_champs_matches")
-      .select("id, court_id, match_date, start_time, tournament_id, status")
-      .eq("match_date", freed.date)
-      .eq("tournament_id", freed.tournament_id)
-      .gt("start_time", cutoff)
+      .select("id, court_id, scheduled_date, scheduled_time, champ_id, status")
+      .eq("scheduled_date", freed.date)
+      .eq("champ_id", freed.tournament_id)
+      .gt("scheduled_time", cutoff)
       .neq("id", freed.source_id)
       .in("status", ["scheduled", "pending", "ready"])
-      .order("start_time", { ascending: true })
+      .order("scheduled_time", { ascending: true })
       .limit(1);
-    return (data || [])[0] ?? null;
+    const row = (data || [])[0] as any;
+    if (!row) return null;
+    // Normalise to the shape the caller expects.
+    return { ...row, start_time: row.scheduled_time };
   }
   return null;
 }
@@ -98,7 +101,10 @@ async function reflowCell(freed: Freed, depth: number, moved: any[]): Promise<vo
   if (fromStart <= toStart && fromCourt === toCourt) return;
 
   const table = freed.round_id ? "platform_league_fixtures" : "club_champs_matches";
-  await admin.from(table).update({ court_id: toCourt, start_time: toStart }).eq("id", candidate.id);
+  const update = freed.round_id
+    ? { court_id: toCourt, start_time: toStart }
+    : { court_id: toCourt, scheduled_time: toStart };
+  await admin.from(table).update(update).eq("id", candidate.id);
 
   await admin.from("court_reflow_log").insert({
     club_id: freed.club_id ?? null,
@@ -170,15 +176,22 @@ Deno.serve(async (req) => {
       sourceId = body.tournament_match_id;
       const { data: m } = await admin
         .from("club_champs_matches")
-        .select("id, court_id, match_date, start_time, tournament_id, club_id")
+        .select("id, court_id, scheduled_date, scheduled_time, champ_id")
         .eq("id", body.tournament_match_id)
         .maybeSingle();
       if (!m) return json({ skipped: "match_not_found" });
       freedCourtId = (m as any).court_id;
-      freedDate = (m as any).match_date;
-      sourceStart = hhmm((m as any).start_time);
-      tournamentId = (m as any).tournament_id;
-      if (!clubId) clubId = (m as any).club_id;
+      freedDate = (m as any).scheduled_date;
+      sourceStart = hhmm((m as any).scheduled_time);
+      tournamentId = (m as any).champ_id;
+      if (!clubId && (m as any).champ_id) {
+        const { data: cc } = await admin
+          .from("club_champs")
+          .select("club_id")
+          .eq("id", (m as any).champ_id)
+          .maybeSingle();
+        if (cc) clubId = (cc as any).club_id;
+      }
     } else {
       return json({ error: "fixture_id or tournament_match_id required" }, 400);
     }

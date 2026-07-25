@@ -171,6 +171,36 @@ export function SwapFixtureButton({
   const doSwap = async (target: any) => {
     setBusy(true);
     try {
+      const matchIsPlaceholder = match.status === "placeholder";
+      const targetIsPlaceholder = target.status === "placeholder";
+      const targetHasSlot = !!(target.scheduled_date && target.scheduled_time && target.court_id);
+
+      // Special case: dropping an unscheduled match into an empty placeholder
+      // slot. Move the real match into the placeholder's slot and DELETE the
+      // placeholder — leaving it behind would show up forever as a ghost
+      // "Empty slot / Drag a match here" row with no date/time.
+      if (matchIsPlaceholder && !targetHasSlot && !targetIsPlaceholder) {
+        const { error: eMove } = await (supabase as any)
+          .from("club_champs_matches")
+          .update({
+            scheduled_date: match.scheduled_date,
+            scheduled_time: match.scheduled_time,
+            court_id: match.court_id,
+          })
+          .eq("id", target.id);
+        if (eMove) throw eMove;
+        const { error: eDel } = await (supabase as any)
+          .from("club_champs_matches")
+          .delete()
+          .eq("id", match.id);
+        if (eDel) throw eDel;
+        toast.success("Slot filled");
+        setOpen(false);
+        setSearch("");
+        invalidateKeys.forEach((k) => qc.invalidateQueries({ queryKey: k as any }));
+        return;
+      }
+
       // Two-step update (no real transaction in postgrest from client; race window is acceptable for
       // admin-only action — and we re-fetch right after).
       const { error: e1 } = await (supabase as any)

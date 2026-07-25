@@ -949,8 +949,8 @@ export default function ClubChampsView() {
               player_b_member_id: row.player_b_member_id,
               partner_b_member_id: row.partner_b_member_id,
               stage_label: row.stage_label,
-              placeholder_a: null,
-              placeholder_b: null,
+              placeholder_a: row.placeholder_a ?? target.placeholder_a ?? null,
+              placeholder_b: row.placeholder_b ?? target.placeholder_b ?? null,
             })
             .eq("id", target.id);
           if (uErr) throw uErr;

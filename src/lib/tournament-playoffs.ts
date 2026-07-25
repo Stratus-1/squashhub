@@ -20,6 +20,8 @@ export type StandingEntity = {
   memberId: string;
   partnerId?: string | null;
   rank: number; // 1-based finish position within their league
+  /** Human-readable seed label, e.g. "Pool A #1" or "League 1 #2". */
+  label?: string;
 };
 
 export type PlayoffMatchRow = {
@@ -68,12 +70,15 @@ const setSide = (
   isDoubles: boolean,
 ) => {
   if (!ent) return;
+  const label = ent.label || `Seed ${ent.rank}`;
   if (side === "a") {
     row.player_a_member_id = ent.memberId;
     row.partner_a_member_id = isDoubles ? ent.partnerId ?? null : null;
+    row.placeholder_a = label;
   } else {
     row.player_b_member_id = ent.memberId;
     row.partner_b_member_id = isDoubles ? ent.partnerId ?? null : null;
+    row.placeholder_b = label;
   }
 };
 
@@ -193,7 +198,7 @@ export function buildPlayoffMatches(input: BuildInput): PlayoffMatchRow[] {
         const seeded: StandingEntity[] = [];
         for (let p = 1; p <= poolCount; p++) {
           const finisher = (poolStandings.get(p) ?? [])[pos - 1];
-          if (finisher) seeded.push(finisher);
+          if (finisher) seeded.push({ ...finisher, label: `Pool ${poolLetter(p)} #${pos}` });
         }
         const K = seeded.length;
         if (K < 2) continue;
@@ -264,7 +269,7 @@ export function buildPlayoffMatches(input: BuildInput): PlayoffMatchRow[] {
     for (let lg = 1; lg <= numLeagues; lg++) {
       const league = standingsByLeague.get(lg) ?? [];
       const finisher = league[pos - 1];
-      if (finisher) seeded.push(finisher);
+      if (finisher) seeded.push({ ...finisher, label: `${leagueLabels?.[lg - 1] || `League ${lg}`} #${pos}` });
     }
     const K = seeded.length;
     if (K < 2) continue;

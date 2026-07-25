@@ -801,12 +801,15 @@ export default function ClubChampsView() {
 
   // ── Play-offs ────────────────────────────────────────────────────────
   // Toggle `enable_playoffs` on the champ record drives whether this UI
-  // shows at all. The button becomes enabled only once every group-stage
-  // match is completed (byes excluded) — then it seeds the position-based
-  // knockout described by the tooltip in the wizard.
+  // shows at all. Play-offs are seeded PROVISIONALLY as soon as the first
+  // group-stage result lands, then re-seeded automatically after every
+  // further result until the last group match is played — at which point
+  // the seeding becomes final. Completed play-off matches are never
+  // touched; only unplayed rows are re-seeded.
   const enablePlayoffs = !!(champ as any)?.enable_playoffs;
   const groupMatchesAll = (matches as any[]).filter((m) => (m.stage || "group") === "group" && !m.is_bye);
   const groupComplete = groupMatchesAll.length > 0 && groupMatchesAll.every((m: any) => m.status === "completed");
+  const groupResultsCount = groupMatchesAll.filter((m: any) => m.status === "completed").length;
   const playoffMatches = (matches as any[]).filter((m) => (m.stage || "group") !== "group");
   const playoffsExist = playoffMatches.length > 0;
 
@@ -814,7 +817,8 @@ export default function ClubChampsView() {
     mutationFn: async (opts?: { silent?: boolean }) => {
       if (!champ) throw new Error("Tournament not loaded");
       if (!enablePlayoffs) throw new Error("Play-offs are not enabled for this tournament");
-      if (!groupComplete) throw new Error("All group-stage matches must be completed first");
+      if (groupResultsCount === 0) throw new Error("At least one group-stage result is needed to seed play-offs");
+
 
       // Winner resolver for already-completed playoff rounds (SF → Final, etc.)
       const winnerOf = (m: any): string | null => {
@@ -971,9 +975,13 @@ export default function ClubChampsView() {
     },
     onSuccess: (n, vars) => {
       if (vars?.silent) {
-        toast.success(`Play-offs updated automatically — ${n} match${n === 1 ? "" : "es"} seeded.`);
+        toast.success(
+          groupComplete
+            ? `Play-offs finalised — ${n} match${n === 1 ? "" : "es"} seeded.`
+            : `Play-off seeding updated (provisional) — ${n} match${n === 1 ? "" : "es"}.`,
+        );
       } else {
-        toast.success(`Generated ${n} play-off match${n === 1 ? "" : "es"} (TBD slots). Use "Reschedule TBD" to place courts and times.`);
+        toast.success(`Generated ${n} play-off match${n === 1 ? "" : "es"}${groupComplete ? "" : " (provisional — will update as pool games finish)"}.`);
       }
       qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
     },
@@ -983,49 +991,27 @@ export default function ClubChampsView() {
     },
   });
 
-  // ── Auto-resolve play-offs ───────────────────────────────────────────
-  // As soon as the feeder matches for any unresolved play-off row are
-  // complete (group stage finished → first knockout round; QFs done → SFs;
-  // SFs done → Final / 3rd place), seed the names automatically instead of
-  // waiting for an admin to press "Generate play-offs". Runs once per
-  // distinct set of completed matches so it never loops.
+  // ── Live play-off seeding ────────────────────────────────────────────
+  // Seeds are recalculated after EVERY completed match — provisionally
+  // while pool games are still running, then locked in once the last pool
+  // game is played. Downstream rounds (SF → Final / 3rd) resolve the same
+  // way as their feeders complete. Runs once per distinct set of completed
+  // matches so it never loops.
   const autoPlayoffKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!canManage || !enablePlayoffs || !groupComplete) return;
+    if (!canManage || !enablePlayoffs) return;
     if (generatePlayoffs.isPending) return;
+    if (groupResultsCount === 0) return;
 
     const completed = (matches as any[]).filter((m: any) => m.status === "completed");
     const key = completed.map((m: any) => m.id).sort().join(",");
     if (autoPlayoffKeyRef.current === key) return;
-
-    // Is there anything new we can actually resolve?
-    const incomplete = playoffMatches.filter((m: any) => m.status !== "completed");
-    const unresolved = incomplete.filter((m: any) => !m.player_a_member_id || !m.player_b_member_id);
-    let shouldRun = !playoffsExist || unresolved.length === 0 ? !playoffsExist : false;
-
-    if (!shouldRun && unresolved.length > 0) {
-      const completedPlayoffs = playoffMatches.filter((m: any) => m.status === "completed");
-      const doneAt = (stage: string, bracket: any) =>
-        completedPlayoffs.filter(
-          (m: any) => m.stage === stage && (m.bracket_position ?? null) === (bracket ?? null),
-        ).length;
-      shouldRun = unresolved.some((row: any) => {
-        const bp = row.bracket_position ?? null;
-        if (row.stage === "playoff_final" || row.stage === "playoff_3rd") return doneAt("playoff_sf", bp) >= 2;
-        if (row.stage === "playoff_sf") return doneAt("playoff_qf", bp) >= 2;
-        // First knockout round — resolvable now that the group stage is done.
-        return true;
-      });
-    }
-
-    if (!shouldRun) {
-      autoPlayoffKeyRef.current = key;
-      return;
-    }
     autoPlayoffKeyRef.current = key;
+
     generatePlayoffs.mutate({ silent: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, enablePlayoffs, groupComplete, matches, playoffMatches, playoffsExist]);
+  }, [canManage, enablePlayoffs, groupResultsCount, matches]);
+
 
 
 
@@ -1157,16 +1143,25 @@ export default function ClubChampsView() {
                 variant={groupComplete ? "default" : "outline"}
                 size="sm"
                 onClick={() => generatePlayoffs.mutate({})}
-                disabled={!groupComplete || generatePlayoffs.isPending}
-                title={!groupComplete ? "Finish all group-stage matches first" : playoffsExist ? "Regenerate — fills in Finals whose semis are done" : "Seed the position-based knockout"}
+                disabled={groupResultsCount === 0 || generatePlayoffs.isPending}
+                title={
+                  groupResultsCount === 0
+                    ? "Play at least one group match first"
+                    : groupComplete
+                      ? "Final seeding — pool stage complete"
+                      : "Provisional seeding from current standings; updates automatically after every pool result"
+                }
               >
                 {generatePlayoffs.isPending ? (
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                 ) : (
                   <Trophy className="w-4 h-4 mr-1" />
                 )}
-                {playoffsExist ? "Regenerate play-offs" : "Generate play-offs"}
+                {playoffsExist
+                  ? groupComplete ? "Regenerate play-offs" : "Re-seed play-offs (provisional)"
+                  : "Generate play-offs"}
               </Button>
+
             )}
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="w-4 h-4 mr-1" /> Print / PDF

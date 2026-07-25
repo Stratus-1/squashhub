@@ -655,6 +655,11 @@ export default function Tournaments() {
           </span>
           <span className="text-muted-foreground shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
           <span className="font-medium text-xs sm:text-sm break-words basis-full sm:basis-auto sm:flex-1 sm:min-w-0">
+            {playoffHeading && (
+              <span className="block text-[10px] uppercase tracking-wide font-semibold text-primary mb-0.5 break-words">
+                {playoffHeading}
+              </span>
+            )}
             <span className={teamAClass}>{teamA}</span>
             <span className="text-muted-foreground"> vs </span>
             <span className={teamBClass}>{teamB}</span>

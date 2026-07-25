@@ -100,10 +100,11 @@ async function reflowCell(freed: Freed, depth: number, moved: any[]): Promise<vo
   // No-op if we would push the match later or leave it in place.
   if (fromStart <= toStart && fromCourt === toCourt) return;
 
+  // Preserve the originally-scheduled time in the schedule/standings view.
+  // We only reassign the court when it frees up early — the planned time stays
+  // intact so lists reflect what was actually planned.
   const table = freed.round_id ? "platform_league_fixtures" : "club_champs_matches";
-  const update = freed.round_id
-    ? { court_id: toCourt, start_time: toStart }
-    : { court_id: toCourt, scheduled_time: toStart };
+  const update = { court_id: toCourt };
   await admin.from(table).update(update).eq("id", candidate.id);
 
   await admin.from("court_reflow_log").insert({

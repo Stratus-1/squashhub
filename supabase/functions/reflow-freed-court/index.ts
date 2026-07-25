@@ -176,15 +176,22 @@ Deno.serve(async (req) => {
       sourceId = body.tournament_match_id;
       const { data: m } = await admin
         .from("club_champs_matches")
-        .select("id, court_id, match_date, start_time, tournament_id, club_id")
+        .select("id, court_id, scheduled_date, scheduled_time, champ_id")
         .eq("id", body.tournament_match_id)
         .maybeSingle();
       if (!m) return json({ skipped: "match_not_found" });
       freedCourtId = (m as any).court_id;
-      freedDate = (m as any).match_date;
-      sourceStart = hhmm((m as any).start_time);
-      tournamentId = (m as any).tournament_id;
-      if (!clubId) clubId = (m as any).club_id;
+      freedDate = (m as any).scheduled_date;
+      sourceStart = hhmm((m as any).scheduled_time);
+      tournamentId = (m as any).champ_id;
+      if (!clubId && (m as any).champ_id) {
+        const { data: cc } = await admin
+          .from("club_champs")
+          .select("club_id")
+          .eq("id", (m as any).champ_id)
+          .maybeSingle();
+        if (cc) clubId = (cc as any).club_id;
+      }
     } else {
       return json({ error: "fixture_id or tournament_match_id required" }, 400);
     }

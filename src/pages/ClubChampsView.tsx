@@ -801,12 +801,15 @@ export default function ClubChampsView() {
 
   // ── Play-offs ────────────────────────────────────────────────────────
   // Toggle `enable_playoffs` on the champ record drives whether this UI
-  // shows at all. The button becomes enabled only once every group-stage
-  // match is completed (byes excluded) — then it seeds the position-based
-  // knockout described by the tooltip in the wizard.
+  // shows at all. Play-offs are seeded PROVISIONALLY as soon as the first
+  // group-stage result lands, then re-seeded automatically after every
+  // further result until the last group match is played — at which point
+  // the seeding becomes final. Completed play-off matches are never
+  // touched; only unplayed rows are re-seeded.
   const enablePlayoffs = !!(champ as any)?.enable_playoffs;
   const groupMatchesAll = (matches as any[]).filter((m) => (m.stage || "group") === "group" && !m.is_bye);
   const groupComplete = groupMatchesAll.length > 0 && groupMatchesAll.every((m: any) => m.status === "completed");
+  const groupResultsCount = groupMatchesAll.filter((m: any) => m.status === "completed").length;
   const playoffMatches = (matches as any[]).filter((m) => (m.stage || "group") !== "group");
   const playoffsExist = playoffMatches.length > 0;
 
@@ -814,7 +817,8 @@ export default function ClubChampsView() {
     mutationFn: async (opts?: { silent?: boolean }) => {
       if (!champ) throw new Error("Tournament not loaded");
       if (!enablePlayoffs) throw new Error("Play-offs are not enabled for this tournament");
-      if (!groupComplete) throw new Error("All group-stage matches must be completed first");
+      if (groupResultsCount === 0) throw new Error("At least one group-stage result is needed to seed play-offs");
+
 
       // Winner resolver for already-completed playoff rounds (SF → Final, etc.)
       const winnerOf = (m: any): string | null => {

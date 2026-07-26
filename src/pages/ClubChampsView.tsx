@@ -322,40 +322,52 @@ export default function ClubChampsView() {
       };
     });
 
-    // Add substitutes — any member appearing in completed matches but not already represented by an entry
+    // Add any competitors who played but have no entry row (e.g. late replacements
+    // or visitor pairs added after the draw). They are full players, not "subs":
+    // rank them alongside everyone else. For doubles we pair them up so they show
+    // as a team rather than two single names, and we skip a player whose side
+    // partner already has an entry row (their results are counted there).
     const knownIds = new Set<string>();
     groupEntries.forEach((e: any) => {
       if (e.club_member_id) knownIds.add(e.club_member_id);
       if (e.partner_member_id) knownIds.add(e.partner_member_id);
     });
-    const subs = new Map<string, { name: string }>();
+
+    const extraRows = new Map<string, { ids: string[]; names: string[] }>();
     groupMatches.forEach((m: any) => {
-      const slots: Array<["player_a" | "player_b" | "partner_a" | "partner_b", any]> = [
-        ["player_a", m.player_a],
-        ["player_b", m.player_b],
-      ];
-      if (isDoubles) {
-        slots.push(["partner_a", m.partner_a]);
-        slots.push(["partner_b", m.partner_b]);
-      }
-      slots.forEach(([slot, p]) => {
-        const id = m[`${slot}_member_id`];
-        if (id && !knownIds.has(id) && !subs.has(id)) {
-          subs.set(id, { name: getPlayerName(p) });
+      const sides: Array<["a" | "b"]> = [["a"], ["b"]];
+      sides.forEach(([side]) => {
+        const pid = m[`player_${side}_member_id`];
+        const partId = isDoubles ? m[`partner_${side}_member_id`] : null;
+        const pObj = m[`player_${side}`];
+        const partObj = isDoubles ? m[`partner_${side}`] : null;
+
+        if (isDoubles) {
+          const pUnknown = pid && !knownIds.has(pid);
+          const partUnknown = partId && !knownIds.has(partId);
+          if (!pUnknown && !partUnknown) return;
+          // One of the two is an entered player — their team row already covers this match.
+          if (!pUnknown || !partUnknown) return;
+          const key = [pid, partId].sort().join("|");
+          if (!extraRows.has(key)) {
+            extraRows.set(key, { ids: [pid, partId], names: [getPlayerName(pObj), getPlayerName(partObj)] });
+          }
+        } else {
+          if (!pid || knownIds.has(pid)) return;
+          if (!extraRows.has(pid)) extraRows.set(pid, { ids: [pid], names: [getPlayerName(pObj)] });
         }
       });
     });
 
-    subs.forEach((info, id) => {
-      const stats = computeFor(id);
+    extraRows.forEach((info, key) => {
+      const stats = computeFor(info.ids[0]);
       if (stats.played === 0 && stats.byes === 0) return;
       rows.push({
-        id: `sub-${id}`,
-        club_member_id: id,
-        partner_member_id: null,
+        id: `extra-${key}`,
+        club_member_id: info.ids[0],
+        partner_member_id: info.ids[1] || null,
         ...buildRow(stats),
-        name: info.name,
-        isSubstitute: true,
+        name: info.names.join(" & "),
       } as any);
     });
 
@@ -363,10 +375,6 @@ export default function ClubChampsView() {
     // played), fall back to the player's actual league rank so the standings
     // mirror the league log (e.g. Terence = #1 in 7th League), then entry order.
     return rows.sort((a: any, b: any) => {
-      // Substitutes never compete for the pool title — always listed below.
-      const sa = a.isSubstitute ? 1 : 0;
-      const sb = b.isSubstitute ? 1 : 0;
-      if (sa !== sb) return sa - sb;
       const primary = tournamentFormat.rankStandings(a, b);
       if (primary !== 0) return primary;
       const ra = a.leaguePlayerRank ?? Number.MAX_SAFE_INTEGER;
@@ -376,14 +384,15 @@ export default function ClubChampsView() {
     });
   };
 
+
   // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
   const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
-    // Only real entries (not substitutes) compete for the pool title.
-    const competitors = standings.filter((s: any) => !s.isSubstitute);
+    // Everyone who played is a competitor.
+    const competitors = standings;
     const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
-    const firstSubIndex = standings.findIndex((s: any) => s.isSubstitute);
+
     return (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -418,21 +427,15 @@ export default function ClubChampsView() {
           <tbody>
             {standings.map((s: any, i: number) => {
               const isMe = highlightMe && myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
-              const rowStyle = s.isSubstitute ? undefined : getRankRowStyle(i, competitors.length);
-              const isWinner = allPlayed && !s.isSubstitute && i === 0;
-              const isLast = allPlayed && !s.isSubstitute && i === competitors.length - 1;
+              const rowStyle = getRankRowStyle(i, competitors.length);
+              const isWinner = allPlayed && i === 0;
+              const isLast = allPlayed && i === competitors.length - 1;
               return (
                 <Fragment key={s.id}>
-                {firstSubIndex === i && (
-                  <tr>
-                    <td colSpan={40} className="pt-3 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                      Substitutes (not ranked)
-                    </td>
-                  </tr>
-                )}
-                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", s.isSubstitute && "opacity-70", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
-                  <td className="py-2 text-muted-foreground">{s.isSubstitute ? "–" : i + 1}</td>
-                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}{isWinner && <Badge className="text-[9px] ml-1">🏆 Winner</Badge>}{isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}</td>
+                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
+                  <td className="py-2 text-muted-foreground">{i + 1}</td>
+                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && <Badge className="text-[9px] ml-1">🏆 Winner</Badge>}{isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}</td>
+
                   {isBells ? (
                     <>
                       <td className="py-2 text-center tabular-nums">{s.played}</td>

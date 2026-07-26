@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
@@ -422,7 +422,7 @@ export default function ClubChampsView() {
               const isWinner = allPlayed && !s.isSubstitute && i === 0;
               const isLast = allPlayed && !s.isSubstitute && i === competitors.length - 1;
               return (
-                <>
+                <Fragment key={s.id}>
                 {firstSubIndex === i && (
                   <tr key="subs-divider">
                     <td colSpan={40} className="pt-3 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">

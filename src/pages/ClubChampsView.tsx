@@ -322,40 +322,52 @@ export default function ClubChampsView() {
       };
     });
 
-    // Add substitutes — any member appearing in completed matches but not already represented by an entry
+    // Add any competitors who played but have no entry row (e.g. late replacements
+    // or visitor pairs added after the draw). They are full players, not "subs":
+    // rank them alongside everyone else. For doubles we pair them up so they show
+    // as a team rather than two single names, and we skip a player whose side
+    // partner already has an entry row (their results are counted there).
     const knownIds = new Set<string>();
     groupEntries.forEach((e: any) => {
       if (e.club_member_id) knownIds.add(e.club_member_id);
       if (e.partner_member_id) knownIds.add(e.partner_member_id);
     });
-    const subs = new Map<string, { name: string }>();
+
+    const extraRows = new Map<string, { ids: string[]; names: string[] }>();
     groupMatches.forEach((m: any) => {
-      const slots: Array<["player_a" | "player_b" | "partner_a" | "partner_b", any]> = [
-        ["player_a", m.player_a],
-        ["player_b", m.player_b],
-      ];
-      if (isDoubles) {
-        slots.push(["partner_a", m.partner_a]);
-        slots.push(["partner_b", m.partner_b]);
-      }
-      slots.forEach(([slot, p]) => {
-        const id = m[`${slot}_member_id`];
-        if (id && !knownIds.has(id) && !subs.has(id)) {
-          subs.set(id, { name: getPlayerName(p) });
+      const sides: Array<["a" | "b"]> = [["a"], ["b"]];
+      sides.forEach(([side]) => {
+        const pid = m[`player_${side}_member_id`];
+        const partId = isDoubles ? m[`partner_${side}_member_id`] : null;
+        const pObj = m[`player_${side}`];
+        const partObj = isDoubles ? m[`partner_${side}`] : null;
+
+        if (isDoubles) {
+          const pUnknown = pid && !knownIds.has(pid);
+          const partUnknown = partId && !knownIds.has(partId);
+          if (!pUnknown && !partUnknown) return;
+          // One of the two is an entered player — their team row already covers this match.
+          if (!pUnknown || !partUnknown) return;
+          const key = [pid, partId].sort().join("|");
+          if (!extraRows.has(key)) {
+            extraRows.set(key, { ids: [pid, partId], names: [getPlayerName(pObj), getPlayerName(partObj)] });
+          }
+        } else {
+          if (!pid || knownIds.has(pid)) return;
+          if (!extraRows.has(pid)) extraRows.set(pid, { ids: [pid], names: [getPlayerName(pObj)] });
         }
       });
     });
 
-    subs.forEach((info, id) => {
-      const stats = computeFor(id);
+    extraRows.forEach((info, key) => {
+      const stats = computeFor(info.ids[0]);
       if (stats.played === 0 && stats.byes === 0) return;
       rows.push({
-        id: `sub-${id}`,
-        club_member_id: id,
-        partner_member_id: null,
+        id: `extra-${key}`,
+        club_member_id: info.ids[0],
+        partner_member_id: info.ids[1] || null,
         ...buildRow(stats),
-        name: info.name,
-        isSubstitute: true,
+        name: info.names.join(" & "),
       } as any);
     });
 
@@ -363,10 +375,6 @@ export default function ClubChampsView() {
     // played), fall back to the player's actual league rank so the standings
     // mirror the league log (e.g. Terence = #1 in 7th League), then entry order.
     return rows.sort((a: any, b: any) => {
-      // Substitutes never compete for the pool title — always listed below.
-      const sa = a.isSubstitute ? 1 : 0;
-      const sb = b.isSubstitute ? 1 : 0;
-      if (sa !== sb) return sa - sb;
       const primary = tournamentFormat.rankStandings(a, b);
       if (primary !== 0) return primary;
       const ra = a.leaguePlayerRank ?? Number.MAX_SAFE_INTEGER;
@@ -375,6 +383,7 @@ export default function ClubChampsView() {
       return (a.order_index ?? 0) - (b.order_index ?? 0);
     });
   };
+
 
   // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
   const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean }) => {

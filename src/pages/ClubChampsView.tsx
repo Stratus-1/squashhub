@@ -380,6 +380,10 @@ export default function ClubChampsView() {
   const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
+    // Only real entries (not substitutes) compete for the pool title.
+    const competitors = standings.filter((s: any) => !s.isSubstitute);
+    const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
+    const firstSubIndex = standings.findIndex((s: any) => s.isSubstitute);
     return (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

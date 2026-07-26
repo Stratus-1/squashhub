@@ -461,6 +461,7 @@ export default function ClubChampsView() {
                     </>
                   )}
                 </tr>
+                </>
               );
             })}
           </tbody>

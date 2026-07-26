@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
@@ -363,6 +363,10 @@ export default function ClubChampsView() {
     // played), fall back to the player's actual league rank so the standings
     // mirror the league log (e.g. Terence = #1 in 7th League), then entry order.
     return rows.sort((a: any, b: any) => {
+      // Substitutes never compete for the pool title — always listed below.
+      const sa = a.isSubstitute ? 1 : 0;
+      const sb = b.isSubstitute ? 1 : 0;
+      if (sa !== sb) return sa - sb;
       const primary = tournamentFormat.rankStandings(a, b);
       if (primary !== 0) return primary;
       const ra = a.leaguePlayerRank ?? Number.MAX_SAFE_INTEGER;
@@ -376,6 +380,10 @@ export default function ClubChampsView() {
   const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
+    // Only real entries (not substitutes) compete for the pool title.
+    const competitors = standings.filter((s: any) => !s.isSubstitute);
+    const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
+    const firstSubIndex = standings.findIndex((s: any) => s.isSubstitute);
     return (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -410,11 +418,21 @@ export default function ClubChampsView() {
           <tbody>
             {standings.map((s: any, i: number) => {
               const isMe = highlightMe && myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
-              const rowStyle = getRankRowStyle(i, standings.length);
+              const rowStyle = s.isSubstitute ? undefined : getRankRowStyle(i, competitors.length);
+              const isWinner = allPlayed && !s.isSubstitute && i === 0;
+              const isLast = allPlayed && !s.isSubstitute && i === competitors.length - 1;
               return (
-                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
-                  <td className="py-2 text-muted-foreground">{i + 1}</td>
-                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}</td>
+                <Fragment key={s.id}>
+                {firstSubIndex === i && (
+                  <tr>
+                    <td colSpan={40} className="pt-3 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Substitutes (not ranked)
+                    </td>
+                  </tr>
+                )}
+                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", s.isSubstitute && "opacity-70", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
+                  <td className="py-2 text-muted-foreground">{s.isSubstitute ? "–" : i + 1}</td>
+                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}{isWinner && <Badge className="text-[9px] ml-1">🏆 Winner</Badge>}{isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}</td>
                   {isBells ? (
                     <>
                       <td className="py-2 text-center tabular-nums">{s.played}</td>
@@ -443,6 +461,7 @@ export default function ClubChampsView() {
                     </>
                   )}
                 </tr>
+                </Fragment>
               );
             })}
           </tbody>

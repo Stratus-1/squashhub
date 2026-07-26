@@ -363,6 +363,10 @@ export default function ClubChampsView() {
     // played), fall back to the player's actual league rank so the standings
     // mirror the league log (e.g. Terence = #1 in 7th League), then entry order.
     return rows.sort((a: any, b: any) => {
+      // Substitutes never compete for the pool title — always listed below.
+      const sa = a.isSubstitute ? 1 : 0;
+      const sb = b.isSubstitute ? 1 : 0;
+      if (sa !== sb) return sa - sb;
       const primary = tournamentFormat.rankStandings(a, b);
       if (primary !== 0) return primary;
       const ra = a.leaguePlayerRank ?? Number.MAX_SAFE_INTEGER;

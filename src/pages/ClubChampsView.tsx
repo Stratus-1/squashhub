@@ -418,11 +418,21 @@ export default function ClubChampsView() {
           <tbody>
             {standings.map((s: any, i: number) => {
               const isMe = highlightMe && myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
-              const rowStyle = getRankRowStyle(i, standings.length);
+              const rowStyle = s.isSubstitute ? undefined : getRankRowStyle(i, competitors.length);
+              const isWinner = allPlayed && !s.isSubstitute && i === 0;
+              const isLast = allPlayed && !s.isSubstitute && i === competitors.length - 1;
               return (
-                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
-                  <td className="py-2 text-muted-foreground">{i + 1}</td>
-                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}</td>
+                <>
+                {firstSubIndex === i && (
+                  <tr key="subs-divider">
+                    <td colSpan={40} className="pt-3 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Substitutes (not ranked)
+                    </td>
+                  </tr>
+                )}
+                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", s.isSubstitute && "opacity-70", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
+                  <td className="py-2 text-muted-foreground">{s.isSubstitute ? "–" : i + 1}</td>
+                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}{isWinner && <Badge className="text-[9px] ml-1">🏆 Winner</Badge>}{isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}</td>
                   {isBells ? (
                     <>
                       <td className="py-2 text-center tabular-nums">{s.played}</td>

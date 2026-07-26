@@ -424,7 +424,7 @@ export default function ClubChampsView() {
               return (
                 <Fragment key={s.id}>
                 {firstSubIndex === i && (
-                  <tr key="subs-divider">
+                  <tr>
                     <td colSpan={40} className="pt-3 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
                       Substitutes (not ranked)
                     </td>
@@ -461,7 +461,7 @@ export default function ClubChampsView() {
                     </>
                   )}
                 </tr>
-                </>
+                </Fragment>
               );
             })}
           </tbody>

@@ -1292,6 +1292,32 @@ function RoundCard({
               .limit(1);
             if (conflictErr) throw conflictErr;
             if (conflicts?.length) continue;
+            // Re-use a previously cancelled booking on this exact slot instead
+            // of inserting a new row — avoids silent unique-slot failures that
+            // would leave the fixture without a court booking.
+            const { data: reusable } = await supabase
+              .from("bookings")
+              .select("id")
+              .eq("court_id", f.court_id)
+              .eq("date", f.fixture_date || round.round_date)
+              .eq("start_time", `${startStr}:00`)
+              .eq("status", "cancelled")
+              .limit(1);
+            if (reusable?.length) {
+              const { error: reErr } = await supabase
+                .from("bookings")
+                .update({
+                  status: "active",
+                  booking_type: "league",
+                  end_time: `${endTime}:00`,
+                  guest_name: guestName,
+                })
+                .eq("id", reusable[0].id);
+              if (!reErr) {
+                await fromExt("platform_league_fixtures").update({ booking_id: reusable[0].id }).eq("id", f.id);
+                continue;
+              }
+            }
             const { data: booking, error: bErr } = await supabase
               .from("bookings")
               .insert({
@@ -1303,9 +1329,13 @@ function RoundCard({
                 source: "squashhub", booking_type: "league",
               })
               .select("id").single();
-            if (!bErr && booking) {
+            if (bErr) {
+              console.error("league booking create failed", bErr);
+              toast.error(`Court booking failed for ${guestName}: ${bErr.message}`);
+            } else if (booking) {
               await fromExt("platform_league_fixtures").update({ booking_id: booking.id }).eq("id", f.id);
             }
+
           }
         }
       }

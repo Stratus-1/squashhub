@@ -612,10 +612,12 @@ export default function Home() {
                     Smart court lights — included
                   </h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    SquashHub may integrate with your existing relay hardware, or pair with the affordable
-                    <strong className="text-foreground"> Shelly Pro 4PM</strong> system. Bookings <em>and</em> lights
-                    in one place — no separate booking system required.
+                    SquashHub may integrate with your existing relay hardware, or pair with affordable
+                    <strong className="text-foreground"> Shelly relays</strong> — the right model depends on your
+                    court count and the amps each court's lights draw. Bookings <em>and</em> lights in one place
+                    — no separate booking system required.
                   </p>
+
                   <div className="inline-flex items-center gap-1 text-amber-400 text-sm font-semibold pt-1 group-hover:gap-2 transition-all">
                     Learn more <ChevronRight className="w-4 h-4" />
                   </div>

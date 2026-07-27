@@ -200,6 +200,9 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? null);
   const [handOutFlash, setHandOutFlash] = useState<"a" | "b" | null>(null);
   const handOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pointFlash, setPointFlash] = useState<"a" | "b" | null>(null);
+  const pointFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   // Toss: must be explicitly decided before scoring starts. Old 0-0 saved sessions
   // did not include the prompt version, so force them to ask again instead of hiding it.
@@ -326,7 +329,13 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
     (scorer: "a" | "b") => {
       if (matchOver || resting || !tossDecided) return;
 
+      // Visual confirmation flash on the block that just won the point
+      if (pointFlashTimerRef.current) clearTimeout(pointFlashTimerRef.current);
+      setPointFlash(scorer);
+      pointFlashTimerRef.current = setTimeout(() => setPointFlash(null), 700);
+
       // English scoring: only server can score
+
       if (isEnglish && scorer !== server) {
         setServer(scorer);
         setServeSide("R");
@@ -618,24 +627,25 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           type="button"
           disabled={matchOver || resting || !tossDecided}
           className={cn(
-            "rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 min-h-[180px] select-none",
+            "relative rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all duration-150 active:scale-95 min-h-[180px] select-none",
             "bg-primary text-primary-foreground",
+            pointFlash === "a" && "scale-[1.03] ring-4 ring-[hsl(var(--win))] shadow-[0_0_0_6px_hsl(var(--win)/0.35)] brightness-125",
             matchOver && matchWinner === "a" && "ring-4 ring-[hsl(var(--win))]",
             (matchOver || resting || !tossDecided) && "opacity-60 cursor-default"
           )}
           onClick={() => awardPoint("a")}
         >
-          <div className="flex items-center gap-1.5 max-w-full">
+          <div className="flex items-center gap-2 max-w-full">
             {server === "a" && serveSide === "L" && (
               <Badge
-                className="text-base px-3 py-1.5 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-[hsl(var(--win))] text-black ring-2 ring-white shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >L</Badge>
             )}
             <p className="text-xs font-medium opacity-80 truncate">{playerAName}</p>
             {server === "a" && serveSide === "R" && (
               <Badge
-                className="text-base px-3 py-1.5 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-[hsl(var(--win))] text-black ring-2 ring-white shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >R</Badge>
             )}
@@ -656,24 +666,25 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           type="button"
           disabled={matchOver || resting || !tossDecided}
           className={cn(
-            "rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 min-h-[180px] select-none",
+            "relative rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all duration-150 active:scale-95 min-h-[180px] select-none",
             "bg-secondary text-secondary-foreground",
+            pointFlash === "b" && "scale-[1.03] ring-4 ring-[hsl(var(--win))] shadow-[0_0_0_6px_hsl(var(--win)/0.35)] brightness-125",
             matchOver && matchWinner === "b" && "ring-4 ring-[hsl(var(--win))]",
             (matchOver || resting || !tossDecided) && "opacity-60 cursor-default"
           )}
           onClick={() => awardPoint("b")}
         >
-          <div className="flex items-center gap-1.5 max-w-full">
+          <div className="flex items-center gap-2 max-w-full">
             {server === "b" && serveSide === "L" && (
               <Badge
-                className="text-base px-3 py-1.5 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-[hsl(var(--win))] text-black ring-2 ring-white shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >L</Badge>
             )}
             <p className="text-xs font-medium opacity-80 truncate">{playerBName}</p>
             {server === "b" && serveSide === "R" && (
               <Badge
-                className="text-base px-3 py-1.5 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-[hsl(var(--win))] text-black ring-2 ring-white shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >R</Badge>
             )}
@@ -689,6 +700,7 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           </div>
         </button>
       </div>
+
 
       {/* Serving direction + Hand-out flash */}
       <div

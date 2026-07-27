@@ -170,10 +170,14 @@ export function RosterPanel({
   if (!hasAny && !loading) return null;
   return (
     <div className="border border-border bg-card rounded-lg p-2 space-y-2">
-      <div className="flex items-center gap-2 text-[11px] text-card-foreground">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent" />
-        <span className="font-semibold">NSA Squad</span>
-        <span className="text-muted-foreground">— drag a player onto an H/V slot, or click to fill the next open spot.</span>
+      <div className="space-y-1 text-card-foreground">
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-accent" />
+          <span className="text-base font-bold">NSA Squad</span>
+        </div>
+        <p className="text-sm font-medium text-muted-foreground leading-snug">
+          Drag or tap a player to fill the next open position, from the top position down to the last.
+        </p>
       </div>
       <div className="flex flex-col sm:flex-row gap-3">
         <TeamColumn

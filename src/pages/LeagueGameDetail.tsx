@@ -266,6 +266,7 @@ export default function LeagueGameDetail() {
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const [nsaDialogOpen, setNsaDialogOpen] = useState(false);
+  const [nsaPromptOpen, setNsaPromptOpen] = useState(false);
   const [adminManualOpen, setAdminManualOpen] = useState(false);
   const [ladderPreviewOpen, setLadderPreviewOpen] = useState(false);
 

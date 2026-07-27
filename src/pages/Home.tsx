@@ -879,14 +879,36 @@ function ContactForm() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const subject = encodeURIComponent(`SquashHub enquiry from ${name || "website"}`);
-    const body = encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\nClub / Company: ${company}\n\n${message}`
-    );
-    window.location.href = `mailto:hello@squashhub.co.za?subject=${subject}&body=${body}`;
+    if (sending) return;
+    setSending(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "support-new-message",
+          recipientEmail: "support@squashhub.co.za",
+          idempotencyKey: `web-contact-${email}-${Date.now()}`,
+          templateData: {
+            subject: `Website enquiry${company ? ` — ${company}` : ""}`,
+            message: `Club / Company: ${company || "—"}\n\n${message}`,
+            fromName: name,
+            fromEmail: email,
+            isNewThread: true,
+          },
+        },
+      });
+      if (error) throw error;
+      toast.success("Message sent — we'll be in touch shortly.");
+      setName(""); setEmail(""); setCompany(""); setMessage("");
+    } catch (err) {
+      console.error("contact form send failed:", err);
+      toast.error("Could not send your message. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

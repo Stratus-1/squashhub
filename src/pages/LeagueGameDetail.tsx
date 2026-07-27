@@ -1847,6 +1847,12 @@ export default function LeagueGameDetail() {
       toast.success("League results submitted!");
       queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+      // NSA-affiliated fixture: prompt the captain to post the scorecard to NSA
+      // before leaving the page (results are locked once submitted).
+      if (nsaLive && activeMember?.id) {
+        setNsaPromptOpen(true);
+        return;
+      }
       if (window.history.length > 1) navigate(-1);
       else navigate("/league-games");
 

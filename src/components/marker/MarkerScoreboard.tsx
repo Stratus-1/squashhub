@@ -638,14 +638,14 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           <div className="flex items-center gap-2 max-w-full">
             {server === "a" && serveSide === "L" && (
               <Badge
-                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] ring-2 ring-[hsl(var(--accent))]/40 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-accent text-accent-foreground hover:bg-accent ring-2 ring-white/70 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >L</Badge>
             )}
             <p className="text-xs font-medium opacity-80 truncate">{playerAName}</p>
             {server === "a" && serveSide === "R" && (
               <Badge
-                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] ring-2 ring-[hsl(var(--accent))]/40 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-accent text-accent-foreground hover:bg-accent ring-2 ring-white/70 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >R</Badge>
             )}
@@ -677,14 +677,14 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           <div className="flex items-center gap-2 max-w-full">
             {server === "b" && serveSide === "L" && (
               <Badge
-                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] ring-2 ring-[hsl(var(--accent))]/40 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-accent text-accent-foreground hover:bg-accent ring-2 ring-white/70 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >L</Badge>
             )}
             <p className="text-xs font-medium opacity-80 truncate">{playerBName}</p>
             {server === "b" && serveSide === "R" && (
               <Badge
-                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] ring-2 ring-[hsl(var(--accent))]/40 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg bg-accent text-accent-foreground hover:bg-accent ring-2 ring-white/70 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >R</Badge>
             )}

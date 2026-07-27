@@ -168,13 +168,16 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   });
 
   const resultMap = useMemo(() => {
-    const map = new Map<string, { status: string; homePoints: number; awayPoints: number; winner: string | null }>();
+    const map = new Map<string, { status: string; homePoints: number; awayPoints: number; winner: string | null; hasSavedScore: boolean }>();
     for (const r of (existingResults || []) as any[]) {
+      const homePoints = r.home_total_points ?? 0;
+      const awayPoints = r.away_total_points ?? 0;
       map.set(r.fixture_id, {
         status: r.status,
-        homePoints: r.home_total_points ?? 0,
-        awayPoints: r.away_total_points ?? 0,
+        homePoints,
+        awayPoints,
         winner: r.winner,
+        hasSavedScore: homePoints > 0 || awayPoints > 0 || !!r.winner,
       });
     }
     return map;
@@ -529,7 +532,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                           <MapPin className="w-3 h-3" /> {f.venue_name}
                         </span>
                         <Badge variant="outline" className="text-[10px]">{f.division}</Badge>
-                        {result?.status === "submitted" && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
+                        {(result?.status === "submitted" || (result?.status === "draft" && result?.hasSavedScore)) && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
                         {result?.status === "confirmed" && <Badge className="bg-green-500/15 text-green-700 text-[10px]">Confirmed</Badge>}
                         {(!result || (result.status !== "submitted" && result.status !== "confirmed")) && f.fixture_date && f.fixture_date < todayStr && (
                           <Badge variant="destructive" className="text-[10px]">Overdue</Badge>
@@ -554,8 +557,9 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                       )}
                       {(() => {
                         const submitted = result?.status === "submitted" || result?.status === "confirmed";
+                        const hasSavedScore = !!result?.hasSavedScore;
                         const isPast = !!(f.fixture_date && f.fixture_date < todayStr);
-                        const needsAdminMode = !f.isTournament && (isPast || submitted);
+                        const needsAdminMode = !f.isTournament && (isPast || submitted || hasSavedScore);
                         const isCaptain = isCaptainOfFixture(f);
                         // NSA league captains can also enter/edit past or already-submitted results.
                         // Other associations (e.g. Nelspruit) still require club/super admin.
@@ -570,7 +574,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         const label = f.isTournament
                           ? "Tournament"
                           : needsAdminMode
-                            ? (submitted ? "Edit Results" : "Enter Results")
+                            ? ((submitted || hasSavedScore) ? "Edit Results" : "Enter Results")
                             : viewOnly
                               ? "View Game"
                               : "Set Up and Mark Game";

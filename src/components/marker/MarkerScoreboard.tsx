@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, type CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -115,6 +115,13 @@ function formatDuration(seconds: number): string {
 
 const REST_DURATION = 120; // seconds (90s warm-up + per-rules; using 2 minutes between games)
 const TOSS_PROMPT_VERSION = 1;
+const serveBadgeStyle: CSSProperties = {
+  backgroundColor: "hsl(var(--accent))",
+  backgroundImage: "none",
+  color: "hsl(var(--accent-foreground))",
+  borderColor: "hsl(var(--accent))",
+  boxShadow: "0 0 0 2px hsl(var(--background)), 0 10px 22px hsl(var(--accent) / 0.35)",
+};
 
 function hasScoringStarted(state: PersistedState | null): boolean {
   if (!state) return false;
@@ -638,16 +645,16 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           <div className="flex items-center gap-2 max-w-full">
             {server === "a" && serveSide === "L" && (
               <Badge
-                style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))", borderColor: "transparent" }}
-                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg ring-2 ring-white/80 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
+                style={serveBadgeStyle}
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg ring-0 animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >L</Badge>
             )}
             <p className="text-xs font-medium opacity-80 truncate">{playerAName}</p>
             {server === "a" && serveSide === "R" && (
               <Badge
-                style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))", borderColor: "transparent" }}
-                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg ring-2 ring-white/80 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
+                style={serveBadgeStyle}
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg ring-0 animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >R</Badge>
             )}
@@ -679,16 +686,16 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           <div className="flex items-center gap-2 max-w-full">
             {server === "b" && serveSide === "L" && (
               <Badge
-                style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))", borderColor: "transparent" }}
-                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg ring-2 ring-white/80 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
+                style={serveBadgeStyle}
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg ring-0 animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >L</Badge>
             )}
             <p className="text-xs font-medium opacity-80 truncate">{playerBName}</p>
             {server === "b" && serveSide === "R" && (
               <Badge
-                style={{ backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))", borderColor: "transparent" }}
-                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg ring-2 ring-white/80 shadow-lg animate-pulse cursor-pointer active:scale-95 transition-all"
+                style={serveBadgeStyle}
+                className="text-2xl font-extrabold leading-none px-4 py-2 rounded-lg ring-0 animate-pulse cursor-pointer active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >R</Badge>
             )}

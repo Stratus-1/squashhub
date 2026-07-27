@@ -3356,6 +3356,40 @@ export default function LeagueGameDetail() {
         />
       )}
 
+      <AlertDialog open={nsaPromptOpen} onOpenChange={setNsaPromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Post this scorecard to NSA?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Results are submitted to the standings. This is an NSA-affiliated fixture —
+              post the scorecard to NSA now. Once submitted the scorecard is locked, so if
+              you skip this you'll need an admin to re-open it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setNsaPromptOpen(false);
+                if (window.history.length > 1) navigate(-1);
+                else navigate("/league-games");
+              }}
+            >
+              Not now
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setNsaPromptOpen(false);
+                setNsaDialogOpen(true);
+              }}
+            >
+              <Send className="w-4 h-4 mr-1" /> Post to NSA
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
       {(isClubAdmin || isHomeCaptain || isAwayCaptain) && fixtureId && (
         <AdminManualScoreDialog
           open={adminManualOpen}

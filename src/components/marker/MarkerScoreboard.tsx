@@ -329,7 +329,13 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
     (scorer: "a" | "b") => {
       if (matchOver || resting || !tossDecided) return;
 
+      // Visual confirmation flash on the block that just won the point
+      if (pointFlashTimerRef.current) clearTimeout(pointFlashTimerRef.current);
+      setPointFlash(scorer);
+      pointFlashTimerRef.current = setTimeout(() => setPointFlash(null), 700);
+
       // English scoring: only server can score
+
       if (isEnglish && scorer !== server) {
         setServer(scorer);
         setServeSide("R");

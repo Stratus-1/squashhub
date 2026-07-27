@@ -3,7 +3,7 @@
  * for a fixture. Click a player to drop them into the next empty position
  * on their side of the scorecard, OR drag them onto a specific H / V slot.
  */
-import { Badge } from "@/components/ui/badge";
+
 import { cn } from "@/lib/utils";
 import type { NsaTeamPlayer } from "@/hooks/use-nsa";
 import { UserPlus, Check, GripVertical } from "lucide-react";
@@ -57,7 +57,7 @@ function PlayerRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "w-full flex items-center gap-1.5 px-2 py-1 rounded text-left text-[11px] border transition-colors select-none",
+        "w-full flex items-center gap-2 px-2 py-2 rounded text-left border transition-colors select-none",
         assigned
           ? "bg-muted/40 border-muted text-muted-foreground"
           : "bg-background border-border hover:bg-primary/5 hover:border-primary/40",
@@ -70,10 +70,10 @@ function PlayerRow({
           type="button"
           {...listeners}
           {...attributes}
-          className="shrink-0 cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground"
+          className="shrink-0 cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground p-1 -m-1"
           aria-label={`Drag ${fullName}`}
         >
-          <GripVertical className="w-3 h-3" />
+          <GripVertical className="w-4 h-4" />
         </button>
       )}
       <button
@@ -82,28 +82,23 @@ function PlayerRow({
         disabled={assigned}
         className="flex-1 flex items-center gap-2 min-w-0 disabled:cursor-not-allowed text-left"
       >
-        <span className="font-mono text-[10px] w-14 shrink-0 text-muted-foreground">
-          {player.code}
+        <span className="flex-1 min-w-0">
+          <span className="block text-[13px] font-semibold leading-tight break-words">{fullName}</span>
+          <span className="block font-mono text-[10px] text-muted-foreground leading-tight">
+            {player.code}
+            {played > 0 && <span className="ml-1 font-sans text-emerald-700">{won}W–{lost}L</span>}
+          </span>
         </span>
-        <span className="flex-1 truncate font-medium">{fullName}</span>
-        {played > 0 && (
-          <Badge
-            variant="outline"
-            className="text-[9px] px-1 py-0 h-4 font-mono border-emerald-300 text-emerald-700 shrink-0"
-            title={`${played} played this season`}
-          >
-            {won}W–{lost}L
-          </Badge>
-        )}
         {assigned ? (
-          <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
         ) : (
-          <UserPlus className="w-3 h-3 text-primary/60 shrink-0" />
+          <UserPlus className="w-4 h-4 text-primary/60 shrink-0" />
         )}
       </button>
     </div>
   );
 }
+
 
 function TeamColumn({
   label,
@@ -180,7 +175,7 @@ export function RosterPanel({
         <span className="font-semibold">NSA Squad</span>
         <span className="text-muted-foreground">— drag a player onto an H/V slot, or click to fill the next open spot.</span>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-3">
         <TeamColumn
           label="Home"
           teamCode={homeCode}
@@ -190,7 +185,8 @@ export function RosterPanel({
           onAssign={onAssign}
           loading={loading}
         />
-        <div className="w-px bg-emerald-200" />
+        <div className="hidden sm:block w-px bg-emerald-200" />
+
         <TeamColumn
           label="Visitors"
           teamCode={awayCode}

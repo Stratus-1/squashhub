@@ -52,8 +52,34 @@ export function RotateToggle({ className }: { className?: string }) {
     }
   };
 
-  // Always release orientation lock when the page unmounts.
-  useEffect(() => () => { void unlock(); }, []);
+  // Free the orientation as soon as this screen mounts, so the page follows
+  // the device sensor even if another screen left a lock behind, and release
+  // it again when the page unmounts.
+  useEffect(() => {
+    void (async () => {
+      try {
+        if (Capacitor.isNativePlatform()) {
+          const { ScreenOrientation } = await import("@capacitor/screen-orientation");
+          await ScreenOrientation.unlock();
+          const cur = await ScreenOrientation.orientation();
+          setLandscape(String(cur?.type || "").startsWith("landscape"));
+        } else if (typeof screen !== "undefined" && (screen.orientation as any)?.unlock) {
+          try { (screen.orientation as any).unlock(); } catch { /* noop */ }
+          setLandscape(String(screen.orientation?.type || "").startsWith("landscape"));
+        }
+      } catch { /* noop */ }
+    })();
+    return () => { void unlock(); };
+  }, []);
+
+  // Keep the label in sync when the user physically rotates the device.
+  useEffect(() => {
+    if (typeof screen === "undefined" || !screen.orientation) return;
+    const onChange = () => setLandscape(String(screen.orientation.type || "").startsWith("landscape"));
+    screen.orientation.addEventListener?.("change", onChange);
+    return () => screen.orientation.removeEventListener?.("change", onChange);
+  }, []);
+
 
   const toggle = () => (landscape ? unlock() : lock("landscape"));
 

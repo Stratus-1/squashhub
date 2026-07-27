@@ -33,6 +33,7 @@ import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
 import { TeamLogo } from "@/components/league-games/TeamLogo";
 import { DndContext, useDroppable, useDraggable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { RotateToggle } from "@/components/RotateToggle";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 /** Droppable wrapper that BECOMES the grid row. Adds drop highlight ring. */
 function DroppableSlotRow({

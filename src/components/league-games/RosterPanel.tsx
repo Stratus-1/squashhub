@@ -175,7 +175,7 @@ export function RosterPanel({
         <span className="font-semibold">NSA Squad</span>
         <span className="text-muted-foreground">— drag a player onto an H/V slot, or click to fill the next open spot.</span>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-3">
         <TeamColumn
           label="Home"
           teamCode={homeCode}
@@ -185,7 +185,8 @@ export function RosterPanel({
           onAssign={onAssign}
           loading={loading}
         />
-        <div className="w-px bg-emerald-200" />
+        <div className="hidden sm:block w-px bg-emerald-200" />
+
         <TeamColumn
           label="Visitors"
           teamCode={awayCode}

@@ -22,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import heroBg from "@/assets/hero-court.jpg";
 import featureImg from "@/assets/feature-woman-phone.png";
 import playerRacketImg from "@/assets/player-racket.jpg";

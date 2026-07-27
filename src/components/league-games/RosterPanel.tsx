@@ -3,7 +3,7 @@
  * for a fixture. Click a player to drop them into the next empty position
  * on their side of the scorecard, OR drag them onto a specific H / V slot.
  */
-import { Badge } from "@/components/ui/badge";
+
 import { cn } from "@/lib/utils";
 import type { NsaTeamPlayer } from "@/hooks/use-nsa";
 import { UserPlus, Check, GripVertical } from "lucide-react";

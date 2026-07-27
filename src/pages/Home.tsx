@@ -22,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import heroBg from "@/assets/hero-court.jpg";
 import featureImg from "@/assets/feature-woman-phone.png";
 import playerRacketImg from "@/assets/player-racket.jpg";
@@ -879,14 +880,36 @@ function ContactForm() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const subject = encodeURIComponent(`SquashHub enquiry from ${name || "website"}`);
-    const body = encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\nClub / Company: ${company}\n\n${message}`
-    );
-    window.location.href = `mailto:hello@squashhub.co.za?subject=${subject}&body=${body}`;
+    if (sending) return;
+    setSending(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "support-new-message",
+          recipientEmail: "support@squashhub.co.za",
+          idempotencyKey: `web-contact-${email}-${Date.now()}`,
+          templateData: {
+            subject: `Website enquiry${company ? ` — ${company}` : ""}`,
+            message: `Club / Company: ${company || "—"}\n\n${message}`,
+            fromName: name,
+            fromEmail: email,
+            isNewThread: true,
+          },
+        },
+      });
+      if (error) throw error;
+      toast.success("Message sent — we'll be in touch shortly.");
+      setName(""); setEmail(""); setCompany(""); setMessage("");
+    } catch (err) {
+      console.error("contact form send failed:", err);
+      toast.error("Could not send your message. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -916,9 +939,9 @@ function ContactForm() {
         />
       </div>
       <div className="flex justify-end">
-        <Button type="submit" size="lg" className="gap-2 rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
+        <Button type="submit" size="lg" disabled={sending} className="gap-2 rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
           <Mail className="w-4 h-4" />
-          Submit Message
+          {sending ? "Sending…" : "Submit Message"}
         </Button>
       </div>
     </form>

@@ -200,6 +200,9 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? null);
   const [handOutFlash, setHandOutFlash] = useState<"a" | "b" | null>(null);
   const handOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pointFlash, setPointFlash] = useState<"a" | "b" | null>(null);
+  const pointFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   // Toss: must be explicitly decided before scoring starts. Old 0-0 saved sessions
   // did not include the prompt version, so force them to ask again instead of hiding it.

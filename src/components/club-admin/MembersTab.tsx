@@ -14,7 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff } from "lucide-react";
+import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -209,6 +211,8 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
   onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
   isSuperAdmin?: boolean;
 }) {
+  const navigate = useNavigate();
+  const { switchMember } = useMemberContext();
   const displayName = m.name || m.profiles?.name || "—";
   const displayEmail = m.email || m.profiles?.email || "";
   const displayPhone = m.phone || m.profiles?.phone || "";
@@ -255,6 +259,20 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
             </Button>
           )}
           {isProtected && isAdmin && <ShieldCheck className="w-3 h-3 text-primary mx-1" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-primary"
+            title={`View the app as ${displayName}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              switchMember(m.id);
+              toast.success(`Now viewing as ${displayName}`);
+              navigate("/");
+            }}
+          >
+            <Eye className="w-3 h-3" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onEdit}><Edit2 className="w-3 h-3" /></Button>
           {!isProtected && (
             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={onDelete}><Trash2 className="w-3 h-3" /></Button>

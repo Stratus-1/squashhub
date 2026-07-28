@@ -134,6 +134,10 @@ Deno.serve(async (req) => {
         frequency: "monthly",
         debit_day: day,
         status: "pending",
+        // Charge Stitch takes the moment the payer authorises. Subscriptions
+        // carry the R20.00 card-verification charge; card consents take
+        // nothing up front.
+        initial_amount_cents: mandate_type === "subscription" ? 2000 : 0,
         fee_category_id,
       })
       .select()

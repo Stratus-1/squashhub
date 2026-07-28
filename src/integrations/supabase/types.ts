@@ -6515,6 +6515,8 @@ export type Database = {
           frequency: string
           gateway: string
           id: string
+          initial_amount_cents: number | null
+          initial_payment_tx_id: string | null
           last_collection_at: string | null
           mandate_type: string
           max_amount_cents: number
@@ -6538,6 +6540,8 @@ export type Database = {
           frequency?: string
           gateway?: string
           id?: string
+          initial_amount_cents?: number | null
+          initial_payment_tx_id?: string | null
           last_collection_at?: string | null
           mandate_type?: string
           max_amount_cents: number
@@ -6561,6 +6565,8 @@ export type Database = {
           frequency?: string
           gateway?: string
           id?: string
+          initial_amount_cents?: number | null
+          initial_payment_tx_id?: string | null
           last_collection_at?: string | null
           mandate_type?: string
           max_amount_cents?: number
@@ -7573,6 +7579,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      record_mandate_initial_payment: {
+        Args: { _mandate_id: string }
+        Returns: Json
       }
       request_account_delegation: {
         Args: {

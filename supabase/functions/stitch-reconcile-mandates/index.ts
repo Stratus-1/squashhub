@@ -122,6 +122,12 @@ Deno.serve(async (req) => {
       if (newStatus === "active") patch.authorised_at = new Date().toISOString();
       if (newStatus === "cancelled") patch.cancelled_at = new Date().toISOString();
       await admin.from("stitch_mandates").update(patch).eq("id", m.id);
+      if (newStatus === "active") {
+        // Book the up-front charge as a payment on the member's account,
+        // dated from the day the mandate came into effect.
+        const { error: recErr } = await admin.rpc("record_mandate_initial_payment", { _mandate_id: m.id });
+        if (recErr) console.error("initial payment record failed", m.id, recErr.message);
+      }
       updated++;
     } catch (e) {
       console.error("reconcile row failed", m.id, e);

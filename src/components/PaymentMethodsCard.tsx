@@ -194,9 +194,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   useEffect(() => {
     if (!selectedCategory || amountTouched) return;
     const n = Number(months);
-    const annual = Number(selectedCategory.annual_fee || 0);
+    const annual = annualFor(selectedCategory);
     if (n > 0 && annual > 0) setAmount((annual / n).toFixed(2));
-  }, [months, selectedCategory, amountTouched]);
+  }, [months, selectedCategory, amountTouched, fallbackAnnual]);
 
   if (paymentGateway !== "stitch") return null;
   
@@ -205,8 +205,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     setSelectedCategory(cat);
     const defaultMonths = 6;
     setMonths(String(defaultMonths));
-    const annual = Number(cat.annual_fee || 0);
+    const annual = annualFor(cat);
     setAmount(annual > 0 ? (annual / defaultMonths).toFixed(2) : "");
+
     setAmountTouched(false);
     setDebitDay("1");
     setSetupOpen(true);

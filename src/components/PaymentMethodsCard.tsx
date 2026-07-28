@@ -440,7 +440,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                 <SelectContent>
                   {[3, 4, 6, 10, 12].map((n) => (
                     <SelectItem key={n} value={String(n)}>
-                      {n} months {selectedCategory ? `· R${(Number(selectedCategory.annual_fee || 0) / n).toFixed(2)} / month` : ""}
+                      {n} months {annualFor(selectedCategory) > 0 ? `· ${money(annualFor(selectedCategory) / n)} / month` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

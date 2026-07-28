@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { startImpersonation } from "@/lib/impersonation";
+
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -263,16 +265,24 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
             variant="ghost"
             size="icon"
             className="h-6 w-6 text-muted-foreground hover:text-primary"
-            title={`View the app as ${displayName}`}
-            onClick={(e) => {
+            title={`Sign in as ${displayName}`}
+            onClick={async (e) => {
               e.stopPropagation();
-              switchMember(m.id);
-              toast.success(`Now viewing as ${displayName}`);
-              navigate("/");
+              if (!window.confirm(`Sign in as ${displayName}? You will be logged in as this member until you switch back.`)) return;
+              const t = toast.loading(`Signing in as ${displayName}…`);
+              try {
+                await startImpersonation(m.id, displayName);
+                toast.dismiss(t);
+                window.location.href = "/";
+              } catch (err: any) {
+                toast.dismiss(t);
+                toast.error(err?.message || "Could not sign in as this member");
+              }
             }}
           >
             <Eye className="w-3 h-3" />
           </Button>
+
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onEdit}><Edit2 className="w-3 h-3" /></Button>
           {!isProtected && (
             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={onDelete}><Trash2 className="w-3 h-3" /></Button>

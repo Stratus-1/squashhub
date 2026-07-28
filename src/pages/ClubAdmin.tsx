@@ -26,6 +26,7 @@ import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { SubscriptionTab } from "@/components/club-admin/SubscriptionTab";
+import { LeagueAwardsTab } from "@/components/club-admin/LeagueAwardsTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
@@ -55,6 +56,7 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
+  { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
   { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
 ];
@@ -152,6 +154,7 @@ export default function ClubAdmin() {
       case "champs": return <ClubChampsTab clubId={club.id} />;
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
+      case "awards": return <LeagueAwardsTab clubId={club.id} />;
       case "comms": return <CommunicationsTab clubId={club.id} />;
       case "subscription": return <SubscriptionTab clubId={club.id} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;

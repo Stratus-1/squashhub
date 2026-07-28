@@ -55,10 +55,10 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data } = await supabase
         .from("club_members")
-        .select("id, name, club_member_number")
+        .select("id, name, club_member_number, phone")
         .eq("club_id", clubId);
-      const map = new Map<string, { full_name: string | null; club_member_number: string | null }>();
-      (data || []).forEach((m: any) => map.set(m.id, { full_name: m.name, club_member_number: m.club_member_number }));
+      const map = new Map<string, { full_name: string | null; club_member_number: string | null; phone: string | null }>();
+      (data || []).forEach((m: any) => map.set(m.id, { full_name: m.name, club_member_number: m.club_member_number, phone: m.phone }));
       return map;
     },
   });

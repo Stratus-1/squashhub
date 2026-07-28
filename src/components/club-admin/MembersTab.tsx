@@ -259,6 +259,20 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
             </Button>
           )}
           {isProtected && isAdmin && <ShieldCheck className="w-3 h-3 text-primary mx-1" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-primary"
+            title={`View the app as ${displayName}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              switchMember(m.id);
+              toast.success(`Now viewing as ${displayName}`);
+              navigate("/dashboard");
+            }}
+          >
+            <Eye className="w-3 h-3" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onEdit}><Edit2 className="w-3 h-3" /></Button>
           {!isProtected && (
             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={onDelete}><Trash2 className="w-3 h-3" /></Button>

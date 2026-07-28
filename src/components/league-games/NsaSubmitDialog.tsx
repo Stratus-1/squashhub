@@ -265,7 +265,10 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
         setVerifying(false);
       }
     } catch (e: any) {
-      toast.error(e.message || "Submission failed");
+      const msg = e?.message || "Submission failed";
+      setFatalError(msg);
+      toast.error(msg.length > 140 ? msg.slice(0, 137) + "…" : msg, { duration: 10000 });
+
     } finally {
       setSubmitting(null);
     }

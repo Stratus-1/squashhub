@@ -86,6 +86,30 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     enabled: !!clubId,
   });
 
+  // Fallback annual amount: the member's own fee category (even if it isn't
+  // flagged debit-order eligible) and, failing that, their outstanding fees.
+  const { data: fallbackAnnual = 0 } = useQuery({
+    queryKey: ["debit-order-fallback-annual", clubMemberId, memberFeeCategoryId],
+    queryFn: async () => {
+      if (memberFeeCategoryId) {
+        const { data } = await supabase
+          .from("member_fee_categories")
+          .select("annual_fee")
+          .eq("id", memberFeeCategoryId)
+          .maybeSingle();
+        const annual = Number((data as any)?.annual_fee || 0);
+        if (annual > 0) return annual;
+      }
+      const { data: fees } = await supabase
+        .from("club_member_fee_payments")
+        .select("amount")
+        .eq("club_member_id", clubMemberId)
+        .eq("paid", false);
+      return (fees || []).reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
+    },
+    enabled: !!clubMemberId,
+  });
+
   // Every member must be able to set up a monthly recurring payment, even if
   // their fee category isn't flagged debit-order eligible (or they have none).
   const GENERAL_CATEGORY: FeeCategory = {
@@ -96,6 +120,12 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     debit_order_rail: "either",
   };
 
+  // Annual amount to split for a category — never 0 when we can infer one.
+  const annualFor = (cat: FeeCategory | null) => {
+    const own = Number(cat?.annual_fee || 0);
+    return own > 0 ? own : Number(fallbackAnnual || 0);
+  };
+
   const visibleCategories = useMemo(() => {
     const mine = memberFeeCategoryId
       ? categories.filter((c) => c.id === memberFeeCategoryId)
@@ -104,6 +134,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     return [...base, GENERAL_CATEGORY];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, memberFeeCategoryId]);
+
 
   const activeMandates = useMemo(
     () => mandates.filter((m) => m.status === "active" || m.status === "pending"),

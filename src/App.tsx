@@ -508,6 +508,7 @@ function AppRoutes() {
       {user && !isAdminRoute && !isTvRoute && <MobileOnlyBottomNav />}
       {user && !isTvRoute && <OfflineBanner />}
       {user && !isTvRoute && <LiveSessionBanner />}
+      {user && !isTvRoute && <ViewingAsBanner />}
       {user && <PushNotificationPrompt />}
       <InstallPrompt />
       {user && <NotificationListener />}

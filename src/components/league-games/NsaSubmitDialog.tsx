@@ -9,6 +9,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNsaFixtures, NSA_CURRENT_SEASON } from "@/hooks/use-nsa";
+import { readFunctionError, friendlyNsaMessage } from "@/lib/nsa-errors";
+
 
 interface NsaSubmitDialogProps {
   open: boolean;

@@ -24,6 +24,7 @@ import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { FeedbackFab } from "@/components/FeedbackFab";
 import { LiveSessionBanner } from "@/components/LiveSessionBanner";
+import { ViewingAsBanner } from "@/components/ViewingAsBanner";
 
 import { ClubBrandedBackground } from "@/components/ClubBrandedBackground";
 import Home from "./pages/Home";

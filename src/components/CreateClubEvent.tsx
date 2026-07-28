@@ -1130,7 +1130,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         </div>
       ) : (
         <Card className="p-4 text-center">
-          <p className="text-xs text-muted-foreground">No active club events. Create one to get started!</p>
+          <p className="text-xs text-muted-foreground">No active club events yet.</p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Use events for coaching sessions, weekly club nights, socials or training that need courts booked and members invited. Club tournaments are created under Tournaments.
+          </p>
+
         </Card>
       )}
 

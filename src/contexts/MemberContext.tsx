@@ -151,11 +151,9 @@ export function MemberProvider({ children }: { children: ReactNode }) {
   }, [club?.id, user?.id]);
 
   const resetToSelf = useCallback(() => {
-    if (selfMemberId) {
-      setActiveMemberId(selfMemberId);
-      if (club?.id && user?.id) {
-        localStorage.removeItem(`active_member_${club.id}_${user.id}`);
-      }
+    setActiveMemberId(selfMemberId);
+    if (club?.id && user?.id) {
+      localStorage.removeItem(`active_member_${club.id}_${user.id}`);
     }
   }, [selfMemberId, club?.id, user?.id]);
 

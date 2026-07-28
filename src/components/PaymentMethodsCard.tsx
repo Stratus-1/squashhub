@@ -168,7 +168,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   }, [months, selectedCategory, amountTouched]);
 
   if (paymentGateway !== "stitch") return null;
-  if (visibleCategories.length === 0 && activeMandates.length === 0) return null;
+  
 
   function openSetup(cat: FeeCategory) {
     setSelectedCategory(cat);
@@ -195,7 +195,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
         body: {
           club_id: clubId,
           club_member_id: clubMemberId,
-          fee_category_id: selectedCategory.id,
+          fee_category_id: selectedCategory.id === "__general__" ? null : selectedCategory.id,
           mandate_type: "subscription",
           max_amount: amt,
           debit_day: Number(debitDay) || 1,

@@ -92,7 +92,7 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
 
   const visible = useMemo(() => {
     if (hidden || !data || !data.eligible) return false;
-    return data.outstanding >= MIN_OUTSTANDING_RAND;
+    return true;
   }, [hidden, data]);
 
   if (!visible) return null;

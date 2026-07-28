@@ -419,6 +419,17 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
               </span>
             </div>
 
+            {fatalError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="w-4 h-4" />
+                <AlertDescription className="text-xs whitespace-pre-wrap break-words">
+                  <div className="font-medium mb-1">NSA could not accept this scorecard</div>
+                  {fatalError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+
             {result && (
               <Alert variant={result.ok ? "default" : "destructive"}>
                 {result.ok ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}

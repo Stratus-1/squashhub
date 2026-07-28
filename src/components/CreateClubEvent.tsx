@@ -9,7 +9,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { CalendarPlus, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft, Pencil } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarPlus, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft, Pencil, Info } from "lucide-react";
+
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -968,6 +970,29 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           <div className="flex items-center gap-2">
             <CalendarPlus className="w-4 h-4 text-primary" />
             <p className="text-xs font-semibold font-heading">Club Events</p>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" aria-label="What are club events?" className="text-muted-foreground hover:text-foreground">
+                  <Info className="w-3.5 h-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-72 text-xs space-y-2">
+                <p className="font-semibold text-sm font-heading">What belongs here?</p>
+                <p className="text-muted-foreground">
+                  Club events are activities that need <strong>court bookings</strong> and an <strong>open invite</strong> to members. Typical examples:
+                </p>
+                <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                  <li>Weekly coaching or junior clinics</li>
+                  <li>Club night / social play every week</li>
+                  <li>Ladies' or beginners' evening</li>
+                  <li>Fitness or training sessions</li>
+                  <li>Braai, prize-giving or AGM</li>
+                </ul>
+                <p className="text-muted-foreground">
+                  Club tournaments are <strong>not</strong> created here — set those up under Tournaments.
+                </p>
+              </PopoverContent>
+            </Popover>
           </div>
           {canCreateEvents && (
             <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => { resetForm(); setCreateOpen(true); }}>
@@ -976,6 +1001,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           )}
         </div>
       )}
+
 
       {eventsLoading ? (
         <div className="flex justify-center py-4">
@@ -1104,7 +1130,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         </div>
       ) : (
         <Card className="p-4 text-center">
-          <p className="text-xs text-muted-foreground">No active club events. Create one to get started!</p>
+          <p className="text-xs text-muted-foreground">No active club events yet.</p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Use events for coaching sessions, weekly club nights, socials or training that need courts booked and members invited. Club tournaments are created under Tournaments.
+          </p>
+
         </Card>
       )}
 

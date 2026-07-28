@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Banknote, X } from "lucide-react";
 
 const DISMISS_KEY = "sh.debit.prompt.dismissedUntil";
-const MIN_OUTSTANDING_RAND = 500;
 
 /**
  * Shows the "Switch to a monthly debit order" prompt only when:

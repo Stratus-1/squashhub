@@ -56,6 +56,7 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
+  { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
   { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
 ];

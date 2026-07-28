@@ -80,7 +80,16 @@ Deno.serve(async (req) => {
         ? { status: "active", authorised_at: new Date().toISOString() }
         : { status: "cancelled", cancelled_at: new Date().toISOString() };
       await admin.from("stitch_mandates").update(patch).eq("id", mandate.id);
-      return json({ ok: true, status: patch.status, manual: true });
+      let recorded: unknown = null;
+      if (action === "confirm") {
+        const { data: rec, error: recErr } = await admin.rpc(
+          "record_mandate_initial_payment",
+          { _mandate_id: mandate.id },
+        );
+        if (recErr) console.error("initial payment record failed", mandate.id, recErr.message);
+        recorded = rec ?? null;
+      }
+      return json({ ok: true, status: patch.status, manual: true, initial_payment: recorded });
     }
 
     if (!mandate.stitch_mandate_id) return json({ ok: true, status: mandate.status });

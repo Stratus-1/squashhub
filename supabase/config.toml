@@ -43,3 +43,16 @@ verify_jwt = false
 
 [functions.stitch-onboarding-submit]
 verify_jwt = true
+
+[functions.stitch-mandate-webhook]
+verify_jwt = false
+
+[functions.stitch-collection-webhook]
+verify_jwt = false
+
+[functions.stitch-webhook]
+verify_jwt = false
+
+[functions.stitch-reconcile-mandates]
+verify_jwt = false
+

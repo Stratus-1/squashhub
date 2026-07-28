@@ -389,10 +389,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   <div className="min-w-0">
                     <p className="text-xs font-medium truncate">{cat.name}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {Number(cat.annual_fee || 0) > 0
-                        ? `${money(Number(cat.annual_fee || 0))} / year`
+                      {annualFor(cat) > 0
+                        ? `${money(annualFor(cat))} / year`
                         : "You choose the monthly amount"}
                     </p>
+
                   </div>
                   <Button
                     size="sm"

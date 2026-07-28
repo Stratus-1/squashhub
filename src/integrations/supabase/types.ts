@@ -3461,6 +3461,33 @@ export type Database = {
         }
         Relationships: []
       }
+      impersonation_log: {
+        Row: {
+          admin_user_id: string
+          club_id: string | null
+          created_at: string
+          id: string
+          target_club_member_id: string | null
+          target_user_id: string
+        }
+        Insert: {
+          admin_user_id: string
+          club_id?: string | null
+          created_at?: string
+          id?: string
+          target_club_member_id?: string | null
+          target_user_id: string
+        }
+        Update: {
+          admin_user_id?: string
+          club_id?: string | null
+          created_at?: string
+          id?: string
+          target_club_member_id?: string | null
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       integrations_accounts: {
         Row: {
           connected_at: string

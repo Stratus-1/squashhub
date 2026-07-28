@@ -86,6 +86,30 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     enabled: !!clubId,
   });
 
+  // Fallback annual amount: the member's own fee category (even if it isn't
+  // flagged debit-order eligible) and, failing that, their outstanding fees.
+  const { data: fallbackAnnual = 0 } = useQuery({
+    queryKey: ["debit-order-fallback-annual", clubMemberId, memberFeeCategoryId],
+    queryFn: async () => {
+      if (memberFeeCategoryId) {
+        const { data } = await supabase
+          .from("member_fee_categories")
+          .select("annual_fee")
+          .eq("id", memberFeeCategoryId)
+          .maybeSingle();
+        const annual = Number((data as any)?.annual_fee || 0);
+        if (annual > 0) return annual;
+      }
+      const { data: fees } = await supabase
+        .from("club_member_fee_payments")
+        .select("amount")
+        .eq("club_member_id", clubMemberId)
+        .eq("paid", false);
+      return (fees || []).reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
+    },
+    enabled: !!clubMemberId,
+  });
+
   // Every member must be able to set up a monthly recurring payment, even if
   // their fee category isn't flagged debit-order eligible (or they have none).
   const GENERAL_CATEGORY: FeeCategory = {
@@ -96,6 +120,12 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     debit_order_rail: "either",
   };
 
+  // Annual amount to split for a category — never 0 when we can infer one.
+  const annualFor = (cat: FeeCategory | null) => {
+    const own = Number(cat?.annual_fee || 0);
+    return own > 0 ? own : Number(fallbackAnnual || 0);
+  };
+
   const visibleCategories = useMemo(() => {
     const mine = memberFeeCategoryId
       ? categories.filter((c) => c.id === memberFeeCategoryId)
@@ -104,6 +134,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     return [...base, GENERAL_CATEGORY];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, memberFeeCategoryId]);
+
 
   const activeMandates = useMemo(
     () => mandates.filter((m) => m.status === "active" || m.status === "pending"),
@@ -163,9 +194,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   useEffect(() => {
     if (!selectedCategory || amountTouched) return;
     const n = Number(months);
-    const annual = Number(selectedCategory.annual_fee || 0);
+    const annual = annualFor(selectedCategory);
     if (n > 0 && annual > 0) setAmount((annual / n).toFixed(2));
-  }, [months, selectedCategory, amountTouched]);
+  }, [months, selectedCategory, amountTouched, fallbackAnnual]);
 
   if (paymentGateway !== "stitch") return null;
   
@@ -174,8 +205,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     setSelectedCategory(cat);
     const defaultMonths = 6;
     setMonths(String(defaultMonths));
-    const annual = Number(cat.annual_fee || 0);
+    const annual = annualFor(cat);
     setAmount(annual > 0 ? (annual / defaultMonths).toFixed(2) : "");
+
     setAmountTouched(false);
     setDebitDay("1");
     setSetupOpen(true);
@@ -357,10 +389,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   <div className="min-w-0">
                     <p className="text-xs font-medium truncate">{cat.name}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {Number(cat.annual_fee || 0) > 0
-                        ? `${money(Number(cat.annual_fee || 0))} / year`
+                      {annualFor(cat) > 0
+                        ? `${money(annualFor(cat))} / year`
                         : "You choose the monthly amount"}
                     </p>
+
                   </div>
                   <Button
                     size="sm"
@@ -407,7 +440,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                 <SelectContent>
                   {[3, 4, 6, 10, 12].map((n) => (
                     <SelectItem key={n} value={String(n)}>
-                      {n} months {selectedCategory ? `· R${(Number(selectedCategory.annual_fee || 0) / n).toFixed(2)} / month` : ""}
+                      {n} months {annualFor(selectedCategory) > 0 ? `· ${money(annualFor(selectedCategory) / n)} / month` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -444,9 +477,14 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
             {selectedCategory && (
               <div className="space-y-1">
                 <p className="text-[11px] text-muted-foreground">
-                  Annual fee {money(Number(selectedCategory.annual_fee || 0))} ÷ {months} ={" "}
-                  {money(Number(selectedCategory.annual_fee || 0) / Math.max(Number(months) || 1, 1))} per month.
+                  {annualFor(selectedCategory) > 0 ? (
+                    <>
+                      Annual fee {money(annualFor(selectedCategory))} ÷ {months} ={" "}
+                      {money(annualFor(selectedCategory) / Math.max(Number(months) || 1, 1))} per month.{" "}
+                    </>
+                  ) : null}
                   You can override the monthly amount above. Cancel any time from this screen.
+
                 </p>
                 <p className="text-[11px] font-medium text-primary">
                   First monthly card charge: {formatDate(nextDebitDate(Number(debitDay) || 1))}

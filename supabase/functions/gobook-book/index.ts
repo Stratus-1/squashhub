@@ -1161,16 +1161,71 @@ Deno.serve(async (req) => {
           }
         }
         if (!targetRow) {
+          // Make sure we've also seen the combined grid before giving up — a
+          // court-specific tab can come back empty while "Any court" renders.
+          if (courtPref !== "any" && !gridAttempts.some((a) => a.label.startsWith("combined"))) {
+            const combined = await tryGrid("combined", "any");
+            const combinedRow = combined.rows.find((r) => r.startHour === startHour);
+            if (combinedRow) {
+              rows = combined.rows;
+              courtCount = combined.courtCount;
+              targetRow = combinedRow;
+            }
+          }
+        }
+        if (!targetRow) {
+          const allEmpty = gridAttempts.every((a) => a.grid.rows.length === 0);
+          const notice = gridAttempts
+            .map((a) => extractGobookNotice(a.grid.raw))
+            .find((n): n is string => !!n) ?? null;
+          console.warn("gobook-book empty grid", JSON.stringify({
+            date,
+            startHour,
+            courtPref,
+            gobook_username: row.gobook_username,
+            all_empty: allEmpty,
+            notice,
+            checked_grids: gridAttempts.map((a) => ({
+              label: a.label,
+              rows: a.grid.rows.length,
+              html_len: a.grid.raw.length,
+            })),
+            html_preview: gridAttempts[0]?.grid.raw
+              .replace(/<script[\s\S]*?<\/script>/gi, " ")
+              .replace(/<[^>]+>/g, " ")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 1200),
+          }).slice(0, 4000));
+
+          if (allEmpty) {
+            return json(
+              {
+                error: notice
+                  ? `GoBook didn't show any booking times for this account on ${date}. GoBook says: "${notice}"`
+                  : `GoBook didn't show any booking times for this account on ${date}. The login worked, but GoBook returned an empty booking sheet — that's an account-level block on gobook.co.za (unpaid fees, booking limit reached, membership not linked to CSIR squash, or the date is outside the booking window for this account). Please open gobook.co.za with this login and check the booking page there.`,
+                account_blocked: true,
+                gobook_notice: notice,
+                checked_grids: gridAttempts.map((a) => ({ label: a.label, rows: a.grid.rows.length })),
+              },
+              409,
+            );
+          }
+
           return json(
             {
               error:
-                `No grid row found for hour ${startHour}:00. GoBook returned ${rows.length} rows.`,
+                `GoBook has no ${startHour}:00 slot on the booking sheet for ${date}. Times GoBook offered: ${
+                  rows.map((r) => `${String(r.startHour).padStart(2, "0")}:00`).join(", ") || "none"
+                }.`,
               available_hours: rows.map((r) => r.startHour),
+              gobook_notice: notice,
               checked_grids: gridAttempts.map((a) => ({ label: a.label, rows: a.grid.rows.length, court_count: a.grid.courtCount })),
             },
             400,
           );
         }
+
         if (!chosen) {
           console.warn("gobook-book no live checkbox", JSON.stringify({
             date,

@@ -1096,6 +1096,7 @@ Deno.serve(async (req) => {
             }
           }
         }
+        let switchedFromCourt: number | null = null;
         if (!chosen && courtPref !== "any") {
           const combined = await tryGrid("combined", "any");
           const combinedRow = combined.rows.find((r) => r.startHour === startHour);
@@ -1105,8 +1106,24 @@ Deno.serve(async (req) => {
             courtCount = combined.courtCount;
             targetRow = combinedRow;
             chosen = { courtNumber: courtPref, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
-          } else if (!targetRow) {
-            targetRow = combinedRow;
+          } else {
+            // The requested court isn't bookable for this member, but another
+            // court at the same hour may well be. Fall back to any free court
+            // rather than telling the member "no court available".
+            const anyFree = combinedRow?.courts.find((c) => c.free && c.slotId);
+            if (anyFree) {
+              rows = combined.rows;
+              courtCount = combined.courtCount;
+              targetRow = combinedRow;
+              switchedFromCourt = courtPref as number;
+              chosen = {
+                courtNumber: anyFree.courtNumber,
+                slotId: anyFree.slotId!,
+                providerConsultantId: anyFree.providerConsultantId,
+              };
+            } else if (!targetRow) {
+              targetRow = combinedRow;
+            }
           }
         }
         if (!targetRow) {
@@ -1125,17 +1142,24 @@ Deno.serve(async (req) => {
             date,
             startHour,
             courtPref,
+            gobook_username: row.gobook_username,
             checked_grids: gridAttempts.map((a) => ({ label: a.label, rows: a.grid.rows.length, court_count: a.grid.courtCount })),
             row: targetRow,
           }).slice(0, 3000));
+          const busy = targetRow.courts
+            .filter((c) => !c.free)
+            .map((c) => `Court ${c.courtNumber}${c.bookerName ? ` (${c.bookerName})` : ""}`);
+          const detail = busy.length
+            ? ` GoBook shows these courts already taken at that hour: ${busy.join(", ")}.`
+            : "";
           return json({
-            error: `No free slot at ${startHour}:00 ${
-              courtPref === "any" ? "on any court" : `on Court #${courtPref}`
-            }`,
+            error: `GoBook has no bookable court at ${startHour}:00${
+              courtPref === "any" ? "" : ` (you asked for Court #${courtPref})`
+            }.${detail} If a court looks open on the grid, GoBook may be blocking it for your account — check your GoBook booking limit, outstanding fees, or how far ahead you're allowed to book.`,
             row: targetRow,
             court_count: courtCount,
             checked_grids: gridAttempts.map((a) => ({ label: a.label, rows: a.grid.rows.length, court_count: a.grid.courtCount })),
-            hint: "GoBook's grid did not expose a bookable checkbox for this slot. The slot may be locked/closed at this hour, already booked, or too close to the current time for online booking.",
+            hint: "GoBook's grid did not expose a bookable checkbox for this slot for this member's login.",
           }, 409);
         }
 
@@ -1189,6 +1213,7 @@ Deno.serve(async (req) => {
           ok: result.ok,
           status: result.status,
           court: chosen.courtNumber,
+          switched_from_court: switchedFromCourt,
           slot_id: chosen.slotId,
           gobook_response: result.bodyText.slice(0, 1000),
         }, result.ok ? 200 : 502);

@@ -477,9 +477,14 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
             {selectedCategory && (
               <div className="space-y-1">
                 <p className="text-[11px] text-muted-foreground">
-                  Annual fee {money(Number(selectedCategory.annual_fee || 0))} ÷ {months} ={" "}
-                  {money(Number(selectedCategory.annual_fee || 0) / Math.max(Number(months) || 1, 1))} per month.
+                  {annualFor(selectedCategory) > 0 ? (
+                    <>
+                      Annual fee {money(annualFor(selectedCategory))} ÷ {months} ={" "}
+                      {money(annualFor(selectedCategory) / Math.max(Number(months) || 1, 1))} per month.{" "}
+                    </>
+                  ) : null}
                   You can override the monthly amount above. Cancel any time from this screen.
+
                 </p>
                 <p className="text-[11px] font-medium text-primary">
                   First monthly card charge: {formatDate(nextDebitDate(Number(debitDay) || 1))}

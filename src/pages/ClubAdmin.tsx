@@ -26,6 +26,7 @@ import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { SubscriptionTab } from "@/components/club-admin/SubscriptionTab";
+import { LeagueAwardsTab } from "@/components/club-admin/LeagueAwardsTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";

@@ -264,23 +264,17 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
             variant="ghost"
             size="icon"
             className="h-6 w-6 text-muted-foreground hover:text-primary"
-            title={`Sign in as ${displayName}`}
-            onClick={async (e) => {
+            title={`View ${displayName}'s account`}
+            onClick={(e) => {
               e.stopPropagation();
-              if (!window.confirm(`Sign in as ${displayName}? You will be logged in as this member until you switch back.`)) return;
-              const t = toast.loading(`Signing in as ${displayName}…`);
-              try {
-                await startImpersonation(m.id, displayName);
-                toast.dismiss(t);
-                window.location.href = "/";
-              } catch (err: any) {
-                toast.dismiss(t);
-                toast.error(err?.message || "Could not sign in as this member");
-              }
+              switchMember(m.id);
+              toast.success(`Viewing as ${displayName}`);
+              navigate("/");
             }}
           >
             <Eye className="w-3 h-3" />
           </Button>
+
 
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onEdit}><Edit2 className="w-3 h-3" /></Button>
           {!isProtected && (

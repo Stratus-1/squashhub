@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Banknote, X } from "lucide-react";
 
 const DISMISS_KEY = "sh.debit.prompt.dismissedUntil";
-const MIN_OUTSTANDING_RAND = 500;
 
 /**
  * Shows the "Switch to a monthly debit order" prompt only when:
@@ -92,7 +91,7 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
 
   const visible = useMemo(() => {
     if (hidden || !data || !data.eligible) return false;
-    return data.outstanding >= MIN_OUTSTANDING_RAND;
+    return true;
   }, [hidden, data]);
 
   if (!visible) return null;
@@ -110,7 +109,9 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold">Switch to monthly card payment</div>
           <p className="text-xs text-muted-foreground">
-            You have R{data!.outstanding.toFixed(0)} outstanding on fees eligible for automatic monthly card charges via Stitch. Set it up once and never miss a fee again.
+            {data!.outstanding > 0
+              ? `You have R${data!.outstanding.toFixed(0)} outstanding. Set up automatic monthly card payments once and never miss a fee again.`
+              : "Set up automatic monthly card payments once and never miss a club fee again."}
           </p>
           <div className="mt-2 flex gap-2">
             <Button size="sm" className="h-7 text-xs" onClick={() => navigate("/account#payment-methods")}>Set up</Button>

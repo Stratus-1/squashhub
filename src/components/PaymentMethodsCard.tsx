@@ -86,10 +86,23 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     enabled: !!clubId,
   });
 
+  // Every member must be able to set up a monthly recurring payment, even if
+  // their fee category isn't flagged debit-order eligible (or they have none).
+  const GENERAL_CATEGORY: FeeCategory = {
+    id: "__general__",
+    name: "Monthly club fees",
+    annual_fee: 0,
+    debit_order_eligible: true,
+    debit_order_rail: "either",
+  };
+
   const visibleCategories = useMemo(() => {
-    if (!memberFeeCategoryId) return categories;
-    const mine = categories.filter((c) => c.id === memberFeeCategoryId);
-    return mine.length > 0 ? mine : categories;
+    const mine = memberFeeCategoryId
+      ? categories.filter((c) => c.id === memberFeeCategoryId)
+      : [];
+    const base = mine.length > 0 ? mine : categories;
+    return [...base, GENERAL_CATEGORY];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, memberFeeCategoryId]);
 
   const activeMandates = useMemo(
@@ -155,7 +168,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   }, [months, selectedCategory, amountTouched]);
 
   if (paymentGateway !== "stitch") return null;
-  if (visibleCategories.length === 0 && activeMandates.length === 0) return null;
+  
 
   function openSetup(cat: FeeCategory) {
     setSelectedCategory(cat);
@@ -182,7 +195,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
         body: {
           club_id: clubId,
           club_member_id: clubMemberId,
-          fee_category_id: selectedCategory.id,
+          fee_category_id: selectedCategory.id === "__general__" ? null : selectedCategory.id,
           mandate_type: "subscription",
           max_amount: amt,
           debit_day: Number(debitDay) || 1,
@@ -343,7 +356,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                 <div key={cat.id} className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs font-medium truncate">{cat.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{money(Number(cat.annual_fee || 0))} / month</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {Number(cat.annual_fee || 0) > 0
+                        ? `${money(Number(cat.annual_fee || 0))} / year`
+                        : "You choose the monthly amount"}
+                    </p>
                   </div>
                   <Button
                     size="sm"

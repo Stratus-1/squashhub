@@ -81,32 +81,21 @@ Deno.serve(async (req) => {
       if (newStatus === "cancelled") patch.cancelled_at = new Date().toISOString();
       await admin.from("stitch_mandates").update(patch).eq("id", mandate.id);
 
-      // When a `subscription` mandate first activates, Stitch has just captured
-      // an R20 verification charge from the payer's card. Record that as a
-      // confirmed wallet top-up so the member sees the R20 in their balance.
-      if (newStatus === "active" && mandate.mandate_type === "subscription") {
-        const { data: existing } = await admin
-          .from("member_credit_transactions")
-          .select("id")
-          .eq("reference", mandate.stitch_mandate_id)
-          .eq("method", "card")
-          .maybeSingle();
-        if (!existing) {
-          await admin.from("member_credit_transactions").insert({
-            user_id: mandate.user_id,
-            club_id: mandate.club_id,
-            club_member_id: mandate.club_member_id,
-            amount: 20,
-            type: "debit",
-            method: "card",
-            status: "confirmed",
-            description: "Recurring card setup verification (R20.00) [Stitch]",
-            reference: mandate.stitch_mandate_id,
-            confirmed_at: new Date().toISOString(),
-          });
-        }
+      // Stitch takes the first charge as soon as the payer authorises. Record
+      // it as a payment on the member's account, dated on the day the
+      // recurring arrangement came into effect. It settles the oldest
+      // outstanding fees it fully covers and the remainder sits as a payment
+      // on account — both post to the general ledger.
+      if (newStatus === "active") {
+        const { data: rec, error: recErr } = await admin.rpc(
+          "record_mandate_initial_payment",
+          { _mandate_id: mandate.id },
+        );
+        if (recErr) console.error("initial payment record failed", mandate.id, recErr.message);
+        else console.log("initial payment recorded", mandate.id, JSON.stringify(rec));
       }
     }
+
 
 
     return json({ ok: true, mandate_id: mandate.id, status: newStatus || mandate.status });

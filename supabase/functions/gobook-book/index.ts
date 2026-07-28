@@ -1213,6 +1213,7 @@ Deno.serve(async (req) => {
           ok: result.ok,
           status: result.status,
           court: chosen.courtNumber,
+          switched_from_court: switchedFromCourt,
           slot_id: chosen.slotId,
           gobook_response: result.bodyText.slice(0, 1000),
         }, result.ok ? 200 : 502);

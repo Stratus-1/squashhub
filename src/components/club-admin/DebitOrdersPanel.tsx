@@ -17,7 +17,9 @@ type Mandate = {
   consecutive_failures: number;
   suspended_at: string | null;
   last_collection_at: string | null;
-  club_members?: { full_name: string | null; club_member_number: string | null } | null;
+  auth_url: string | null;
+  created_at: string;
+  club_members?: { full_name: string | null; club_member_number: string | null; phone?: string | null } | null;
 };
 type Collection = {
   id: string;

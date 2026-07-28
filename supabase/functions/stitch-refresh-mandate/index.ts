@@ -39,11 +39,31 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const { data: mandate } = await admin
       .from("stitch_mandates")
-      .select("id, status, club_id, user_id, stitch_mandate_id, mandate_type")
+      .select("id, status, club_id, user_id, club_member_id, stitch_mandate_id, mandate_type")
       .eq("id", mandate_id)
       .maybeSingle();
     if (!mandate) return json({ error: "Mandate not found" }, 404);
-    if (mandate.user_id !== userId) return json({ error: "Not yours" }, 403);
+
+    // Allowed: the mandate owner, any member profile linked to the same login
+    // (shared family accounts), or a club admin of that club.
+    let allowed = mandate.user_id === userId;
+    if (!allowed && mandate.club_member_id) {
+      const { data: linked } = await admin
+        .from("club_members")
+        .select("id")
+        .eq("id", mandate.club_member_id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      allowed = !!linked;
+    }
+    if (!allowed) {
+      const { data: isAdmin } = await admin.rpc("is_club_admin", {
+        _user_id: userId,
+        _club_id: mandate.club_id,
+      });
+      allowed = isAdmin === true;
+    }
+    if (!allowed) return json({ error: "Not allowed to view this mandate" }, 403);
     if (!mandate.stitch_mandate_id) return json({ ok: true, status: mandate.status });
 
     const { data: secrets } = await admin

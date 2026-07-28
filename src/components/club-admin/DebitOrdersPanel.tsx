@@ -17,7 +17,9 @@ type Mandate = {
   consecutive_failures: number;
   suspended_at: string | null;
   last_collection_at: string | null;
-  club_members?: { full_name: string | null; club_member_number: string | null } | null;
+  auth_url: string | null;
+  created_at: string;
+  club_members?: { full_name: string | null; club_member_number: string | null; phone?: string | null } | null;
 };
 type Collection = {
   id: string;
@@ -53,10 +55,10 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data } = await supabase
         .from("club_members")
-        .select("id, name, club_member_number")
+        .select("id, name, club_member_number, phone")
         .eq("club_id", clubId);
-      const map = new Map<string, { full_name: string | null; club_member_number: string | null }>();
-      (data || []).forEach((m: any) => map.set(m.id, { full_name: m.name, club_member_number: m.club_member_number }));
+      const map = new Map<string, { full_name: string | null; club_member_number: string | null; phone: string | null }>();
+      (data || []).forEach((m: any) => map.set(m.id, { full_name: m.name, club_member_number: m.club_member_number, phone: m.phone }));
       return map;
     },
   });
@@ -111,6 +113,43 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
     toast.success("Submitted due collections");
     refresh();
   };
+
+  // --- Pending mandate helpers (admin can help members finish setup) ---
+  const checkMandate = async (id: string) => {
+    setBusy(`chk-${id}`);
+    const { data, error } = await supabase.functions.invoke("stitch-refresh-mandate", {
+      body: { mandate_id: id },
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    const payload = (data as any) || {};
+    if (payload.error === "MANDATE_NOT_FOUND") {
+      return toast.error("Stitch has no record yet — the member must complete the authorisation link.");
+    }
+    if (payload.error) return toast.error(String(payload.error));
+    if (payload.status === "active") toast.success("Mandate is now active");
+    else toast.info(`Still ${payload.status || "pending"} — authorisation not completed yet`);
+    refresh();
+  };
+
+  const copyAuthLink = async (m: Mandate) => {
+    if (!m.auth_url) return toast.error("No authorisation link on this mandate — ask the member to start setup again.");
+    await navigator.clipboard.writeText(m.auth_url);
+    toast.success("Authorisation link copied");
+  };
+
+  const whatsappAuthLink = (m: Mandate) => {
+    if (!m.auth_url) return toast.error("No authorisation link on this mandate.");
+    const name = m.club_members?.full_name || "there";
+    const msg = `Hi ${name}, please finish setting up your monthly club payment here: ${m.auth_url}`;
+    const raw = (m.club_members?.phone || "").replace(/[^0-9]/g, "");
+    const num = raw.startsWith("0") ? `27${raw.slice(1)}` : raw;
+    const url = num
+      ? `https://wa.me/${num}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+  };
+
 
   const approve = async (id: string) => {
     await supabase.from("stitch_collections").update({
@@ -168,9 +207,46 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
         </div>
       )}
 
+      {/* Pending mandate setups */}
+      {(mandates || []).some(m => m.status === "pending") && (
+        <div className="space-y-1">
+          <h4 className="text-xs font-medium flex items-center gap-1">
+            <Clock className="h-3 w-3" /> Awaiting authorisation ({(mandates || []).filter(m => m.status === "pending").length})
+          </h4>
+          <p className="text-[11px] text-muted-foreground">
+            These members started a monthly payment setup but haven't completed it at Stitch. Re-send their link or re-check the status.
+          </p>
+          <div className="border rounded divide-y text-xs">
+            {(mandates || []).filter(m => m.status === "pending").map(m => (
+              <div key={m.id} className="px-2 py-1.5 flex items-center gap-2 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{m.club_members?.full_name || "—"}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    max {fmt(m.max_amount_cents)} · day {m.debit_day ?? "—"} · started {new Date(m.created_at).toLocaleDateString("en-ZA")}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
+                  disabled={busy === `chk-${m.id}`} onClick={() => checkMandate(m.id)}>
+                  {busy === `chk-${m.id}` ? "Checking…" : "Check status"}
+                </Button>
+                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => whatsappAuthLink(m)}>
+                  WhatsApp link
+                </Button>
+                <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => copyAuthLink(m)}>
+                  Copy link
+                </Button>
+                <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => cancelMandate(m.id)}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mandates */}
       <div className="space-y-1">
-        <h4 className="text-xs font-medium">Active mandates ({(mandates || []).filter(m => m.status === "active").length})</h4>
+        <h4 className="text-xs font-medium">All mandates ({(mandates || []).filter(m => m.status === "active").length} active)</h4>
         {(mandates || []).length === 0 ? (
           <p className="text-[11px] text-muted-foreground italic">No mandates yet. Members set them up from My Account.</p>
         ) : (

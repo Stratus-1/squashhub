@@ -59,6 +59,8 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState<"check" | "commit" | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [fatalError, setFatalError] = useState<string | null>(null);
+
   const [result, setResult] = useState<{ ok: boolean; errors: string[]; notes: string[]; mode: string; title?: string | null } | null>(null);
   const [checkPassedAt, setCheckPassedAt] = useState<number | null>(null);
   const [verification, setVerification] = useState<{ ok: boolean; message: string } | null>(null);

@@ -54,7 +54,7 @@ export default function Dashboard() {
   const location = useLocation();
   const { user } = useAuth();
   const { club: contextClub, subdomain } = useClubContext();
-  const { linkedMembers, activeMember, switchMember, effectiveUserId } = useMemberContext();
+  const { linkedMembers, activeMember, switchMember, effectiveUserId, isViewingAs } = useMemberContext();
   const showFamilySwitcher = linkedMembers.length > 1;
   const { data: profile, isLoading } = useProfile();
   const { data: clubData, isLoading: isClubLoading } = useMyClub();
@@ -62,7 +62,9 @@ export default function Dashboard() {
   const effectiveClub = clubData?.club || contextClub;
   const isClubAdmin = useIsClubAdmin();
   const myPermissions = useMyPermissions();
-  const hasAnyAdminAccess = isClubAdmin || myPermissions.size > 0;
+  // While viewing as another member, show exactly what that member sees —
+  // never surface the viewer's own admin entry points.
+  const hasAnyAdminAccess = !isViewingAs && (isClubAdmin || myPermissions.size > 0);
   const myMemberId = activeMember?.id || null;
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(myMemberId || undefined);
   const clubId = effectiveClub?.id || clubData?.club?.id;

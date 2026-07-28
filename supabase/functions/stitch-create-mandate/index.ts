@@ -220,10 +220,11 @@ Deno.serve(async (req) => {
       return json({ error: "Stitch did not return an authorisation URL" }, 502);
     }
 
-    // Stitch hosted URLs require a whitelisted redirect_uri on the URL itself.
-    // The create-body redirect is retained, but the query param is what returns
-    // the payer to SquashHub after the hosted flow completes.
-    const authUrl = appendRedirectUri(stitchUrl, safeReturn);
+    // IMPORTANT: do NOT append a `redirect_url` query param to the hosted
+    // subscribe / card-consent link — Stitch Express returns 404 "page not
+    // found" when it is present. The redirect is already registered via
+    // `merchantRedirectUrl` in the create body above.
+    const authUrl = stitchUrl;
 
 
     await admin

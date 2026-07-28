@@ -181,8 +181,10 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
   };
   const cancelMandate = async (id: string) => {
     if (!confirm("Cancel this mandate? Future debits will stop.")) return;
-    const { error } = await supabase.functions.invoke("stitch-cancel-mandate", { body: { mandate_id: id } });
-    if (error) return toast.error(error.message);
+    const { data, error } = await supabase.functions.invoke("stitch-cancel-mandate", { body: { mandate_id: id } });
+    if (error || (data as any)?.error) {
+      return toast.error((data as any)?.error || error?.message || "Failed to cancel");
+    }
     refresh();
   };
 

@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!mandate) return json({ error: "Mandate not found" }, 404);
 
-    // Allow owner or club admin
+    // Allow owner, club admin, or platform super admin
     let allowed = mandate.user_id === userId;
     if (!allowed) {
       const { data: cm } = await admin
@@ -54,6 +54,10 @@ Deno.serve(async (req) => {
         .eq("user_id", userId)
         .maybeSingle();
       allowed = cm?.role === "admin";
+    }
+    if (!allowed) {
+      const { data: isPlatform } = await admin.rpc("is_platform_admin", { _user_id: userId });
+      allowed = isPlatform === true;
     }
     if (!allowed) return json({ error: "Not allowed" }, 403);
 

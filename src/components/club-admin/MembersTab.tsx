@@ -268,7 +268,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
               e.stopPropagation();
               switchMember(m.id);
               toast.success(`Now viewing as ${displayName}`);
-              navigate("/dashboard");
+              navigate("/");
             }}
           >
             <Eye className="w-3 h-3" />

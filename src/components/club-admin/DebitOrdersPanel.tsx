@@ -114,6 +114,43 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
     refresh();
   };
 
+  // --- Pending mandate helpers (admin can help members finish setup) ---
+  const checkMandate = async (id: string) => {
+    setBusy(`chk-${id}`);
+    const { data, error } = await supabase.functions.invoke("stitch-refresh-mandate", {
+      body: { mandate_id: id },
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    const payload = (data as any) || {};
+    if (payload.error === "MANDATE_NOT_FOUND") {
+      return toast.error("Stitch has no record yet — the member must complete the authorisation link.");
+    }
+    if (payload.error) return toast.error(String(payload.error));
+    if (payload.status === "active") toast.success("Mandate is now active");
+    else toast.info(`Still ${payload.status || "pending"} — authorisation not completed yet`);
+    refresh();
+  };
+
+  const copyAuthLink = async (m: Mandate) => {
+    if (!m.auth_url) return toast.error("No authorisation link on this mandate — ask the member to start setup again.");
+    await navigator.clipboard.writeText(m.auth_url);
+    toast.success("Authorisation link copied");
+  };
+
+  const whatsappAuthLink = (m: Mandate) => {
+    if (!m.auth_url) return toast.error("No authorisation link on this mandate.");
+    const name = m.club_members?.full_name || "there";
+    const msg = `Hi ${name}, please finish setting up your monthly club payment here: ${m.auth_url}`;
+    const raw = (m.club_members?.phone || "").replace(/[^0-9]/g, "");
+    const num = raw.startsWith("0") ? `27${raw.slice(1)}` : raw;
+    const url = num
+      ? `https://wa.me/${num}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+  };
+
+
   const approve = async (id: string) => {
     await supabase.from("stitch_collections").update({
       status: "approved", approved_at: new Date().toISOString(), approval_required: false,

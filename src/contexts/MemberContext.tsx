@@ -81,7 +81,13 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         // Captain is league-scoped only. Officer positions (chairman/secretary/club_captain)
         // are auto-assigned the matching permission role on the server, but that role can be
         // revoked or changed by an admin — so we no longer hardcode them as full admin here.
-        const adminRole = myMembership?.role === "admin";
+        let adminRole = myMembership?.role === "admin";
+        if (!adminRole) {
+          // Platform super-admins have no membership row at the club, but must
+          // still be able to view-as any member.
+          const { data: isPlatform } = await (supabase.rpc as any)("is_platform_admin", { _user_id: user.id });
+          if (isPlatform) adminRole = true;
+        }
         setIsAdmin(adminRole);
 
         let linked: LinkedMember[] = [];

@@ -237,11 +237,45 @@ function extractAvailableSlotId(cell: string): string | null {
 }
 
 /**
+ * GoBook renders account-level blocks (outstanding fees, booking limit reached,
+ * membership not linked to the provider, booking window not open yet) as a
+ * message panel INSTEAD of the time grid. When we parse zero rows, that panel
+ * is the only thing that explains why one member can book and another cannot,
+ * so pull whatever human-readable notice the page carries.
+ */
+function extractGobookNotice(html: string): string | null {
+  const patterns = [
+    /<div[^>]*class=["'][^"']*(?:validation-summary-errors|alert|message|error|warning|notice|panel-body)[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi,
+    /<span[^>]*class=["'][^"']*(?:field-validation-error|text-danger)[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,
+    /<p[^>]*class=["'][^"']*(?:error|message|notice)[^"']*["'][^>]*>([\s\S]*?)<\/p>/gi,
+    /<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi,
+  ];
+  const found: string[] = [];
+  for (const pattern of patterns) {
+    let m: RegExpExecArray | null;
+    while ((m = pattern.exec(html)) !== null) {
+      const text = m[1]
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;|&#160;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (text.length < 6 || text.length > 300) continue;
+      if (/^(bookings?|squash|gobook|home|logout|menu)$/i.test(text)) continue;
+      if (!found.includes(text)) found.push(text);
+    }
+    if (found.length >= 3) break;
+  }
+  return found.length ? found.slice(0, 3).join(" | ") : null;
+}
+
+/**
  * Fetch the booking grid for a date and parse rows. By default we hit the
  * "Any" court view (court=0) so we see all 4 courts in one shot. For a final
  * booking attempt we can fetch a court-specific view, which is more reliable
  * when GoBook's combined grid omits or shifts court cells.
  */
+
 async function fetchGrid(
   jar: Jar,
   yyyyMmDd: string,

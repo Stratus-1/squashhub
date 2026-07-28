@@ -192,7 +192,9 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
 
     setSubmitting(mode);
     setResult(null);
+    setFatalError(null);
     setVerification(null);
+
     try {
       const { data, error } = await supabase.functions.invoke("nsa-submit-result", {
         body: { action: "submit_result", club_member_id: clubMemberId, fixture_id: fixtureId, mode, matches },

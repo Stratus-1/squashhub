@@ -86,10 +86,23 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     enabled: !!clubId,
   });
 
+  // Every member must be able to set up a monthly recurring payment, even if
+  // their fee category isn't flagged debit-order eligible (or they have none).
+  const GENERAL_CATEGORY: FeeCategory = {
+    id: "__general__",
+    name: "Monthly club fees",
+    annual_fee: 0,
+    debit_order_eligible: true,
+    debit_order_rail: "either",
+  };
+
   const visibleCategories = useMemo(() => {
-    if (!memberFeeCategoryId) return categories;
-    const mine = categories.filter((c) => c.id === memberFeeCategoryId);
-    return mine.length > 0 ? mine : categories;
+    const mine = memberFeeCategoryId
+      ? categories.filter((c) => c.id === memberFeeCategoryId)
+      : [];
+    const base = mine.length > 0 ? mine : categories;
+    return [...base, GENERAL_CATEGORY];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, memberFeeCategoryId]);
 
   const activeMandates = useMemo(

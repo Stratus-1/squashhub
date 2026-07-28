@@ -968,6 +968,29 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           <div className="flex items-center gap-2">
             <CalendarPlus className="w-4 h-4 text-primary" />
             <p className="text-xs font-semibold font-heading">Club Events</p>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" aria-label="What are club events?" className="text-muted-foreground hover:text-foreground">
+                  <Info className="w-3.5 h-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-72 text-xs space-y-2">
+                <p className="font-semibold text-sm font-heading">What belongs here?</p>
+                <p className="text-muted-foreground">
+                  Club events are activities that need <strong>court bookings</strong> and an <strong>open invite</strong> to members. Typical examples:
+                </p>
+                <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                  <li>Weekly coaching or junior clinics</li>
+                  <li>Club night / social play every week</li>
+                  <li>Ladies' or beginners' evening</li>
+                  <li>Fitness or training sessions</li>
+                  <li>Braai, prize-giving or AGM</li>
+                </ul>
+                <p className="text-muted-foreground">
+                  Club tournaments are <strong>not</strong> created here — set those up under Tournaments.
+                </p>
+              </PopoverContent>
+            </Popover>
           </div>
           {canCreateEvents && (
             <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => { resetForm(); setCreateOpen(true); }}>
@@ -976,6 +999,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           )}
         </div>
       )}
+
 
       {eventsLoading ? (
         <div className="flex justify-center py-4">

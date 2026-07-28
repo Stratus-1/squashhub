@@ -211,6 +211,8 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
   onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
   isSuperAdmin?: boolean;
 }) {
+  const navigate = useNavigate();
+  const { switchMember } = useMemberContext();
   const displayName = m.name || m.profiles?.name || "—";
   const displayEmail = m.email || m.profiles?.email || "";
   const displayPhone = m.phone || m.profiles?.phone || "";

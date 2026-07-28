@@ -207,9 +207,46 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
         </div>
       )}
 
+      {/* Pending mandate setups */}
+      {(mandates || []).some(m => m.status === "pending") && (
+        <div className="space-y-1">
+          <h4 className="text-xs font-medium flex items-center gap-1">
+            <Clock className="h-3 w-3" /> Awaiting authorisation ({(mandates || []).filter(m => m.status === "pending").length})
+          </h4>
+          <p className="text-[11px] text-muted-foreground">
+            These members started a monthly payment setup but haven't completed it at Stitch. Re-send their link or re-check the status.
+          </p>
+          <div className="border rounded divide-y text-xs">
+            {(mandates || []).filter(m => m.status === "pending").map(m => (
+              <div key={m.id} className="px-2 py-1.5 flex items-center gap-2 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{m.club_members?.full_name || "—"}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    max {fmt(m.max_amount_cents)} · day {m.debit_day ?? "—"} · started {new Date(m.created_at).toLocaleDateString("en-ZA")}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
+                  disabled={busy === `chk-${m.id}`} onClick={() => checkMandate(m.id)}>
+                  {busy === `chk-${m.id}` ? "Checking…" : "Check status"}
+                </Button>
+                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => whatsappAuthLink(m)}>
+                  WhatsApp link
+                </Button>
+                <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => copyAuthLink(m)}>
+                  Copy link
+                </Button>
+                <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => cancelMandate(m.id)}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mandates */}
       <div className="space-y-1">
-        <h4 className="text-xs font-medium">Active mandates ({(mandates || []).filter(m => m.status === "active").length})</h4>
+        <h4 className="text-xs font-medium">All mandates ({(mandates || []).filter(m => m.status === "active").length} active)</h4>
         {(mandates || []).length === 0 ? (
           <p className="text-[11px] text-muted-foreground italic">No mandates yet. Members set them up from My Account.</p>
         ) : (

@@ -38,14 +38,30 @@ function mapStatus(raw: string): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const expected = Deno.env.get("MAINTENANCE_INTERNAL_SECRET") || Deno.env.get("PUSH_INTERNAL_SECRET") || "";
-  const got = req.headers.get("x-internal-secret") || "";
-  if (!expected || got !== expected) return json({ error: "Unauthorized" }, 401);
-
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  // The caller must present the shared cron key. It lives in app_settings so
+  // the pg_cron job and this function always read the same value (env secrets
+  // and the DB can otherwise drift out of sync).
+  const { data: keyRow } = await admin
+    .from("app_settings")
+    .select("value")
+    .eq("key", "stitch_private_internal_secret")
+    .maybeSingle();
+  const expected = (keyRow?.value as string | undefined)
+    || Deno.env.get("STITCH_INTERNAL_SECRET")
+    || Deno.env.get("MAINTENANCE_INTERNAL_SECRET")
+    || Deno.env.get("PUSH_INTERNAL_SECRET")
+    || "";
+  const got = req.headers.get("x-internal-secret") || "";
+  if (!expected || got !== expected) {
+    console.warn(`reconcile auth rejected: haveKey=${!!expected} haveHeader=${!!got}`);
+    return json({ error: "Unauthorized" }, 401);
+  }
+
 
   // Only sweep mandates that were created recently OR are still pending — the
   // Stitch record eventually expires, so ignore anything older than 30 days.

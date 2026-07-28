@@ -124,13 +124,31 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
     if (error) return toast.error(error.message);
     const payload = (data as any) || {};
     if (payload.error === "MANDATE_NOT_FOUND") {
-      return toast.error("Stitch has no record yet — the member must complete the authorisation link.");
+      return toast.error(
+        "Stitch can't confirm this one — its API has no lookup for Express authorisations. If the member says they finished, use \"Mark authorised\".",
+        { duration: 8000 },
+      );
     }
     if (payload.error) return toast.error(String(payload.error));
     if (payload.status === "active") toast.success("Mandate is now active");
     else toast.info(`Still ${payload.status || "pending"} — authorisation not completed yet`);
     refresh();
   };
+
+  const markMandate = async (id: string, action: "confirm" | "reject") => {
+    if (action === "confirm" && !confirm("Mark this mandate as authorised? Only do this once the member confirms they completed the Stitch flow (and the R20 verification charge went off).")) return;
+    setBusy(`mark-${id}`);
+    const { data, error } = await supabase.functions.invoke("stitch-refresh-mandate", {
+      body: { mandate_id: id, action },
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    const payload = (data as any) || {};
+    if (payload.error) return toast.error(String(payload.error));
+    toast.success(action === "confirm" ? "Marked as authorised" : "Mandate cancelled");
+    refresh();
+  };
+
 
   const copyAuthLink = async (m: Mandate) => {
     if (!m.auth_url) return toast.error("No authorisation link on this mandate — ask the member to start setup again.");
@@ -228,6 +246,10 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
                 <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
                   disabled={busy === `chk-${m.id}`} onClick={() => checkMandate(m.id)}>
                   {busy === `chk-${m.id}` ? "Checking…" : "Check status"}
+                </Button>
+                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
+                  disabled={busy === `mark-${m.id}`} onClick={() => markMandate(m.id, "confirm")}>
+                  {busy === `mark-${m.id}` ? "Saving…" : "Mark authorised"}
                 </Button>
                 <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => whatsappAuthLink(m)}>
                   WhatsApp link

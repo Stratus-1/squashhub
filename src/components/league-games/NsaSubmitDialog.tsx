@@ -9,6 +9,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNsaFixtures, NSA_CURRENT_SEASON } from "@/hooks/use-nsa";
+import { readFunctionError, friendlyNsaMessage } from "@/lib/nsa-errors";
+
 
 interface NsaSubmitDialogProps {
   open: boolean;
@@ -57,6 +59,8 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState<"check" | "commit" | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [fatalError, setFatalError] = useState<string | null>(null);
+
   const [result, setResult] = useState<{ ok: boolean; errors: string[]; notes: string[]; mode: string; title?: string | null } | null>(null);
   const [checkPassedAt, setCheckPassedAt] = useState<number | null>(null);
   const [verification, setVerification] = useState<{ ok: boolean; message: string } | null>(null);
@@ -188,25 +192,17 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
 
     setSubmitting(mode);
     setResult(null);
+    setFatalError(null);
     setVerification(null);
+
     try {
       const { data, error } = await supabase.functions.invoke("nsa-submit-result", {
         body: { action: "submit_result", club_member_id: clubMemberId, fixture_id: fixtureId, mode, matches },
       });
-      if (error) {
-        // supabase-js wraps non-2xx as a generic FunctionsHttpError; try to read the real message from the response body
-        let serverMsg: string | null = null;
-        try {
-          const ctx: any = (error as any).context;
-          if (ctx?.response && typeof ctx.response.text === "function") {
-            const t = await ctx.response.text();
-            try { serverMsg = JSON.parse(t)?.error ?? t; } catch { serverMsg = t; }
-          }
-        } catch { /* ignore */ }
-        throw new Error(serverMsg || error.message || "Edge Function error");
-      }
+      if (error) throw new Error(await readFunctionError(error, "Submission failed"));
       const r = data as any;
-      if (r?.error) throw new Error(r.error);
+      if (r?.error) throw new Error(friendlyNsaMessage(r.error, "Submission failed"));
+
       const okFlag = !!r.ok;
       setResult({ ok: okFlag, errors: r.errors || [], notes: r.notes || [], mode, title: r.title });
 
@@ -269,7 +265,10 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
         setVerifying(false);
       }
     } catch (e: any) {
-      toast.error(e.message || "Submission failed");
+      const msg = e?.message || "Submission failed";
+      setFatalError(msg);
+      toast.error(msg.length > 140 ? msg.slice(0, 137) + "…" : msg, { duration: 10000 });
+
     } finally {
       setSubmitting(null);
     }
@@ -419,6 +418,17 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
                 3. Confirmed {verification?.ok ? "✓" : ""}
               </span>
             </div>
+
+            {fatalError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="w-4 h-4" />
+                <AlertDescription className="text-xs whitespace-pre-wrap break-words">
+                  <div className="font-medium mb-1">NSA could not accept this scorecard</div>
+                  {fatalError}
+                </AlertDescription>
+              </Alert>
+            )}
+
 
             {result && (
               <Alert variant={result.ok ? "default" : "destructive"}>

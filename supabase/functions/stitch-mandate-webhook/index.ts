@@ -7,7 +7,7 @@ import {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-stitch-signature, stitch-signature",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-stitch-signature, stitch-signature, svix-id, svix-timestamp, svix-signature",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -31,25 +31,42 @@ Deno.serve(async (req) => {
     let body: any;
     try { body = JSON.parse(rawBody); } catch { return json({ error: "bad json" }, 400); }
 
-    // Stitch sends event envelopes with `data.node` for the resource
+    // Two payload shapes are possible:
+    //  1. Stitch Express / Svix flat: { id, status, type: "SUBSCRIPTION"|"CONSENT",
+    //     subscriptionId, consentId, linkId }
+    //  2. Legacy GraphQL envelope: { data: { node: { id, state: {...} } } }
     const node = body?.data?.node || body?.node || body;
-    const stitchId: string | undefined = node?.id;
-    const eventType: string = body?.type || node?.__typename || "";
-    const stateType: string = node?.state?.__typename || node?.status || "";
+    const candidates = [
+      body?.subscriptionId,
+      body?.consentId,
+      body?.linkId,
+      node?.subscriptionId,
+      node?.consentId,
+      node?.id,
+      body?.id,
+    ].filter((v: unknown): v is string => typeof v === "string" && v.length > 0);
 
-    if (!stitchId) {
+    const eventType: string = body?.type || node?.__typename || "";
+    const stateType: string = node?.state?.__typename || body?.status || node?.status || "";
+
+    if (candidates.length === 0) {
       console.warn("webhook: no stitch id in payload", JSON.stringify(body).slice(0, 500));
       return json({ ok: true, ignored: true });
     }
 
-    // Find mandate by stitch_mandate_id and the owning club so we can verify
-    // the signature against that club's stored signing secret.
+    // Find mandate by any of the candidate ids and the owning club so we can
+    // verify the signature against that club's stored signing secret.
     const { data: mandate } = await admin
       .from("stitch_mandates")
       .select("id, status, club_id, user_id, club_member_id, mandate_type, stitch_mandate_id")
-      .eq("stitch_mandate_id", stitchId)
+      .in("stitch_mandate_id", candidates)
       .maybeSingle();
-    if (!mandate) return json({ ok: true, unmatched: true });
+    if (!mandate) {
+      console.warn("webhook: unmatched stitch ids", candidates.join(","), "type", eventType, "status", stateType);
+      return json({ ok: true, unmatched: true });
+    }
+    const stitchId = mandate.stitch_mandate_id;
+
 
     const { data: secrets } = await admin.from("club_secrets")
       .select("payment_gateway_credentials").eq("club_id", mandate.club_id).maybeSingle();

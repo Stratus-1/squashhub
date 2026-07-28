@@ -360,10 +360,11 @@ Deno.serve(async (req) => {
           if (!editable.includes(fixtureId)) {
             return json({
               error: editable.length === 0
-                ? `NSA does not list ${row.nsa_username} as a captain for any fixture. Only the team's NSA-registered captain can post scorecards.`
-                : `NSA does not list ${row.nsa_username} as the captain for fixture ${fixtureId}. Captains they can post: ${editable.join(", ")}.`,
+                ? `NSA does not list ${row.nsa_username} as the registered captain for any fixture, so it will not accept this scorecard. Only the team's NSA-registered captain can post results.`
+                : `NSA does not list ${row.nsa_username} as the registered captain for fixture ${fixtureId}. Fixtures this login may post: ${editable.join(", ")}.`,
             }, 403);
           }
+
 
           const formBody = buildScorecardBody(matches, mode);
           const submit = await fetch(

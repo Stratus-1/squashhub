@@ -2797,6 +2797,8 @@ export type Database = {
           accepted_payment_methods: string[]
           address: string | null
           auto_number_existing_onboarding: boolean
+          booking_last_slot_time: string
+          booking_open_time: string
           booking_slot_minutes: number
           chairman_member_id: string | null
           challenge_levels_up: number | null
@@ -2877,6 +2879,8 @@ export type Database = {
           accepted_payment_methods?: string[]
           address?: string | null
           auto_number_existing_onboarding?: boolean
+          booking_last_slot_time?: string
+          booking_open_time?: string
           booking_slot_minutes?: number
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
@@ -2957,6 +2961,8 @@ export type Database = {
           accepted_payment_methods?: string[]
           address?: string | null
           auto_number_existing_onboarding?: boolean
+          booking_last_slot_time?: string
+          booking_open_time?: string
           booking_slot_minutes?: number
           chairman_member_id?: string | null
           challenge_levels_up?: number | null

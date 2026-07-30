@@ -361,6 +361,34 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             </div>
           </div>
 
+          {/* Booking hours */}
+          <div className="space-y-2 rounded-lg border p-3 bg-muted/30">
+            <Label className="text-xs font-semibold">Court booking hours</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">First slot (courts open)</Label>
+                <Input
+                  type="time"
+                  className="h-8 text-xs"
+                  value={rulesForm.booking_open_time}
+                  onChange={e => setRulesForm(p => ({ ...p, booking_open_time: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Last slot starts</Label>
+                <Input
+                  type="time"
+                  className="h-8 text-xs"
+                  value={rulesForm.booking_last_slot_time}
+                  onChange={e => setRulesForm(p => ({ ...p, booking_last_slot_time: e.target.value }))}
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Default 05:00–22:00. The booking grid shows slots from the first slot up to and including the last slot start time.
+            </p>
+          </div>
+
 
           {/* 2. Daily caps */}
           <div className="space-y-2 rounded-lg border p-3 bg-muted/30">

@@ -384,7 +384,11 @@ export default function Bookings() {
   const slotMinutes: 30 | 40 | 60 = (rawSlot === 60 ? 60 : rawSlot === 40 ? 40 : 30);
   const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));
   const maxBookingsPerDay = Math.max(1, Number((myClub as any)?.max_bookings_per_day ?? 4));
-  const dynamicTimeSlots = useMemo(() => buildTimeSlots(slotMinutes), [slotMinutes]);
+  const dynamicTimeSlots = useMemo(
+    () => buildTimeSlots(slotMinutes, (myClub as any)?.booking_open_time, (myClub as any)?.booking_last_slot_time),
+    [slotMinutes, (myClub as any)?.booking_open_time, (myClub as any)?.booking_last_slot_time],
+  );
+
 
   useEffect(() => {
     if (!user?.id) return;

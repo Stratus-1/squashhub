@@ -96,6 +96,8 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
 
   const [rulesForm, setRulesForm] = useState({
     booking_slot_minutes: club.booking_slot_minutes ?? 30,
+    booking_open_time: ((club as any).booking_open_time ?? "05:00:00").slice(0, 5),
+    booking_last_slot_time: ((club as any).booking_last_slot_time ?? "22:00:00").slice(0, 5),
     peak_weekday_start: (club.peak_weekday_start ?? "16:00:00").slice(0, 5),
     peak_weekday_end: (club.peak_weekday_end ?? "19:00:00").slice(0, 5),
     peak_weekend_start: (club.peak_weekend_start ?? "08:00:00").slice(0, 5),
@@ -108,6 +110,8 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   useEffect(() => {
     setRulesForm({
       booking_slot_minutes: club.booking_slot_minutes ?? 30,
+      booking_open_time: ((club as any).booking_open_time ?? "05:00:00").slice(0, 5),
+      booking_last_slot_time: ((club as any).booking_last_slot_time ?? "22:00:00").slice(0, 5),
       peak_weekday_start: (club.peak_weekday_start ?? "16:00:00").slice(0, 5),
       peak_weekday_end: (club.peak_weekday_end ?? "19:00:00").slice(0, 5),
       peak_weekend_start: (club.peak_weekend_start ?? "08:00:00").slice(0, 5),
@@ -116,13 +120,19 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       max_bookings_per_day: (club as any).max_bookings_per_day ?? 4,
       max_member_events_per_month: (club as any).max_member_events_per_month ?? 2,
     });
-  }, [club.id, club.booking_slot_minutes, club.peak_weekday_start, club.peak_weekday_end, club.peak_weekend_start, club.peak_weekend_end, club.max_peak_bookings_per_day, (club as any).max_bookings_per_day, (club as any).max_member_events_per_month]);
+  }, [club.id, club.booking_slot_minutes, (club as any).booking_open_time, (club as any).booking_last_slot_time, club.peak_weekday_start, club.peak_weekday_end, club.peak_weekend_start, club.peak_weekend_end, club.max_peak_bookings_per_day, (club as any).max_bookings_per_day, (club as any).max_member_events_per_month]);
 
   const handleSaveRules = async () => {
+    if (rulesForm.booking_last_slot_time <= rulesForm.booking_open_time) {
+      toast.error("Last booking time must be after the opening time");
+      return;
+    }
     try {
       await updateClub.mutateAsync({
         id: club.id,
         booking_slot_minutes: rulesForm.booking_slot_minutes,
+        booking_open_time: rulesForm.booking_open_time,
+        booking_last_slot_time: rulesForm.booking_last_slot_time,
         peak_weekday_start: rulesForm.peak_weekday_start,
         peak_weekday_end: rulesForm.peak_weekday_end,
         peak_weekend_start: rulesForm.peak_weekend_start,
@@ -136,6 +146,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       toast.error(err.message || "Failed to save");
     }
   };
+
 
   const [lightsForm, setLightsForm] = useState({
     lights_integration_enabled: club.lights_integration_enabled ?? false,

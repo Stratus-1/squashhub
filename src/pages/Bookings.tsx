@@ -118,19 +118,22 @@ function formatTimeDisplay(t: string) {
   return t;
 }
 
-function buildTimeSlots(stepMinutes: number) {
+function buildTimeSlots(stepMinutes: number, openTime?: string | null, lastSlotTime?: string | null) {
   const slots: string[] = [];
-  // 40-min slots start at 07:00 (per club ops). 30/60-min stay 05:00–22:00.
   const step = stepMinutes === 60 ? 60 : stepMinutes === 40 ? 40 : 30;
-  const start = step === 40 ? 7 * 60 : 5 * 60;
-  const end = 22 * 60;
-  for (let m = start; m < end; m += step) {
+  // Club-configurable window. Defaults: 05:00 first slot, 22:00 last slot start
+  // (40-min clubs historically start at 07:00 when no club setting exists).
+  const defaultStart = step === 40 ? 7 * 60 : 5 * 60;
+  const start = openTime ? timeToMinutes(String(openTime).slice(0, 5)) : defaultStart;
+  const last = lastSlotTime ? timeToMinutes(String(lastSlotTime).slice(0, 5)) : 22 * 60 - step;
+  for (let m = start; m <= last; m += step) {
     slots.push(minutesToTime(m));
   }
   return slots;
 }
 
 const timeSlots = buildTimeSlots(30);
+
 
 function isPeakSlot(date: Date, startTime: string, club: any | null | undefined) {
   if (!club) return false;

@@ -1169,11 +1169,21 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-[11px] text-muted-foreground">
-                      {counts ? `${counts.confirmed} confirmed · ${counts.invited} pending` : "Loading..."}
+                      {counts ? `${counts.confirmed} confirmed · ${counts.invited} pending` : "No RSVPs yet"}
                       {e.light_fee_split === "attendees" && (
                         <span className="ml-1">· Lights shared</span>
                       )}
+                      {(() => {
+                        const cov = bookingCoverage?.[e.id];
+                        if (!cov || cov.total === 0) return null;
+                        if (cov.booked === 0)
+                          return <span className="ml-1 text-destructive">· No courts booked</span>;
+                        if (cov.booked < cov.total)
+                          return <span className="ml-1 text-destructive">· {cov.booked}/{cov.total} courts booked</span>;
+                        return <span className="ml-1">· {cov.booked} court slots booked</span>;
+                      })()}
                     </div>
+
                     <div className="flex items-center gap-1">
                       {/* Show confirm/decline for each linked member with pending invite */}
                       {myRsvpList.filter(r => r.status === "invited").map(r => (

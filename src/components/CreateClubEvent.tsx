@@ -597,17 +597,19 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         if (bookingError) {
           // A single clashing slot fails the whole bulk insert — retry one by
           // one so the event still blocks every court it can.
-          let failed = 0;
+          const failures: BookingFailure[] = [];
           for (const row of bookingRows) {
             const { error: rowErr } = await supabase.from("bookings").insert(row as any);
-            if (rowErr) failed++;
+            if (rowErr) failures.push({ row, message: rowErr.message });
           }
-          if (failed === bookingRows.length) throw bookingError;
-          if (failed > 0) {
-            toast.warning(`${failed} of ${bookingRows.length} court slots could not be booked (already taken).`);
-          }
+          const courtNames = (courts || []).reduce(
+            (acc, c) => ({ ...acc, [c.id]: c.name }),
+            {} as Record<number, string>,
+          );
+          reportBookingFailures(failures, bookingRows.length, courtNames);
         }
       }
+
 
 
       // Push bookings to GoBook if the club uses it. This mirrors the per-slot

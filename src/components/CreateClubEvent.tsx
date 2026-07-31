@@ -829,23 +829,28 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
       // Cancel matching bookings for all instance dates and courts
       let cancelledCount = 0;
+      let cancelError: string | null = null;
       if (cancelBookings && evt && eventCourts?.length && instances?.length) {
         const courtIds = eventCourts.map((c: any) => c.court_id);
-        const dates = instances.map((i: any) => i.instance_date);
+        const dates = [...new Set(instances.map((i: any) => i.instance_date))];
 
         for (const date of dates) {
-          const { data: removed } = await supabase
+          // Overlap match: a booking counts if it starts before the event ends
+          // and ends after the event starts (handles per-hour split bookings).
+          const { data: removed, error: updErr } = await supabase
             .from("bookings")
             .update({ status: "cancelled" })
             .in("court_id", courtIds)
             .eq("date", date)
             .eq("status", "active")
-            .gte("start_time", evt.start_time)
-            .lte("end_time", evt.end_time)
+            .lt("start_time", evt.end_time)
+            .gt("end_time", evt.start_time)
             .select("id");
+          if (updErr) cancelError = updErr.message;
           cancelledCount += removed?.length || 0;
         }
       }
+
 
       // Cancel the event
       const { error } = await fromExt("club_events").update({ status: "cancelled" }).eq("id", eventId);

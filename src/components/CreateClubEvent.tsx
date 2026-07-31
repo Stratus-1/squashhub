@@ -108,6 +108,32 @@ function reportBookingFailures(
   }
 }
 
+/* ---------- Peak-hour helpers (mirror the Bookings page rules) ---------- */
+
+function timeToMin(t: string) {
+  const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function peakWindowFor(club: any, dateStr: string) {
+  const d = new Date(dateStr + "T00:00:00");
+  const weekend = d.getDay() === 0 || d.getDay() === 6;
+  const start = String(club?.[weekend ? "peak_weekend_start" : "peak_weekday_start"] ?? (weekend ? "08:00:00" : "16:00:00")).slice(0, 5);
+  const end = String(club?.[weekend ? "peak_weekend_end" : "peak_weekday_end"] ?? (weekend ? "12:00:00" : "19:00:00")).slice(0, 5);
+  return { ps: timeToMin(start), pe: timeToMin(end), label: `${start}–${end}` };
+}
+
+/** Minutes of the event window that fall inside / outside peak hours. */
+function splitPeakMinutes(club: any, dateStr: string, startT: string, endT: string) {
+  const s = timeToMin(startT);
+  const e = timeToMin(endT);
+  const { ps, pe, label } = peakWindowFor(club, dateStr);
+  const peak = Math.max(0, Math.min(e, pe) - Math.max(s, ps));
+  return { peak, offPeak: Math.max(0, e - s - peak), peakLabel: label };
+}
+
+
+
 
 export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
@@ -306,6 +332,44 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const rsvpCounts = rsvpData?.counts;
   const confirmedNames = rsvpData?.confirmedNames;
 
+  // How many of each event's court slots are actually booked (spot missing bookings)
+  const { data: bookingCoverage } = useQuery({
+    queryKey: ["club-event-booking-coverage", eventIds.join(",")],
+    queryFn: async () => {
+      const out: Record<string, { booked: number; total: number }> = {};
+      if (eventIds.length === 0) return out;
+      const { data: insts } = await fromExt("club_event_instances")
+        .select("event_id, instance_date")
+        .in("event_id", eventIds);
+      const dates = [...new Set((insts || []).map((i: any) => i.instance_date))];
+      if (dates.length === 0) return out;
+      const { data: bks } = await supabase
+        .from("bookings")
+        .select("court_id, date, start_time")
+        .in("date", dates as string[])
+        .eq("status", "active");
+      const key = (c: any, d: any, t: any) => `${c}|${d}|${String(t).slice(0, 5)}`;
+      const booked = new Set((bks || []).map((b: any) => key(b.court_id, b.date, b.start_time)));
+      for (const e of upcomingEvents as any[]) {
+        const courtIds = (e.club_event_courts || []).map((c: any) => c.court_id);
+        const ds = (insts || []).filter((i: any) => i.event_id === e.id).map((i: any) => i.instance_date);
+        let hit = 0;
+        let total = 0;
+        for (const d of ds) {
+          for (const c of courtIds) {
+            total++;
+            if (booked.has(key(c, d, e.start_time))) hit++;
+          }
+        }
+        out[e.id] = { booked: hit, total };
+      }
+      return out;
+    },
+    enabled: eventIds.length > 0,
+  });
+
+
+
   // My RSVPs — check all linked members (family accounts sharing email)
   const { linkedMembers } = useMemberContext();
   const linkedMemberIds = useMemo(() => linkedMembers.map(m => m.id), [linkedMembers]);
@@ -390,6 +454,41 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: form.court_ids.length > 0 && instanceDatesForCheck.length > 0 && step >= 2,
   });
 
+  /**
+   * Booking allowance.
+   * - Admins (or members with booking/event permissions): unlimited courts, any
+   *   time, any number of occurrences — booked under the club, free.
+   * - Ordinary members: 1 peak-hour court slot + 1 off-peak court slot per
+   *   occurrence, booked in their own name.
+   */
+  const bookingLimit = useMemo(() => {
+    if (adminBypass) return { ok: true as const, message: "" };
+    const split = splitPeakMinutes(club, form.event_date, form.start_time, form.end_time);
+    const courtsCount = form.court_ids.length;
+    if (courtsCount > 1) {
+      return {
+        ok: false as const,
+        message:
+          "Members can book 1 peak-hour and 1 off-peak court per event occurrence. Please select a single court, or ask a club admin to create this event.",
+      };
+    }
+    if (split.peak > 60) {
+      return {
+        ok: false as const,
+        message: `Peak hours are ${split.peakLabel}. Members may book a maximum of 1 hour during peak. Shorten the event or move it outside peak hours.`,
+      };
+    }
+    if (split.offPeak > 60) {
+      return {
+        ok: false as const,
+        message: "Members may book a maximum of 1 hour outside peak time. Shorten the event or ask a club admin to create it.",
+      };
+    }
+    return { ok: true as const, message: "" };
+  }, [adminBypass, club, form.event_date, form.start_time, form.end_time, form.court_ids.length]);
+
+
+
   // Determine members to invite based on scope
   const getInviteeIds = async (): Promise<string[]> => {
     if (!clubId) return [];
@@ -420,6 +519,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       if (!user || !clubId) throw new Error("Not authenticated");
       if (!form.title.trim()) throw new Error("Title is required");
       if (form.court_ids.length === 0) throw new Error("Select at least one court");
+      if (!bookingLimit.ok) throw new Error(bookingLimit.message);
+
 
       // Enforce per-member monthly event cap (admins exempt)
       if (!adminBypass && !editingEventId) {
@@ -456,7 +557,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         start_date: form.event_date,
         invite_scope: form.invite_scope,
         invite_scope_id: form.invite_scope_id || null,
-        is_club_booking: form.is_club_booking,
+        is_club_booking: adminBypass,
         booked_by_member_id: null,
         recurrence: form.recurrence,
         light_fee_split: form.light_fee_split,
@@ -519,78 +620,33 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         })();
       }
 
-      // Create court bookings for every event instance. Build one bulk insert
-      // instead of many per-booking requests so recurring events don't appear
-      // to hang after the first week/court.
-      const startMinutes = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
-      const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
-      const totalMinutes = endMinutes - startMinutes;
-
+      // Create court bookings for every event instance.
+      // Admin events are booked under the club (free). Member events are booked
+      // in the member's own name and are capped at 1 peak + 1 off-peak slot.
       const bookingRows: any[] = [];
-      // If no member names were picked, fall back to a club booking so the
-      // courts still get blocked (free — no member is charged).
-      const bookAsClub = form.is_club_booking || form.booking_member_ids.length === 0;
+      const bookAsClub = adminBypass;
       const eventBookingTitle = bookAsClub
         ? `${club?.name || "Club"} — ${form.title.trim()}`
         : form.title.trim();
 
-      if (bookAsClub) {
-        for (const date of instanceDates) {
-          for (const cid of form.court_ids) {
-            bookingRows.push({
-              court_id: cid,
-              date,
-              start_time: form.start_time + ":00",
-              end_time: form.end_time + ":00",
-              user_id: user.id,
-              guest_name: eventBookingTitle,
-              lights_requested: form.lights_auto_on,
-              status: "active",
-              club_id: clubId,
-              source: "club_event",
-            });
-          }
-        }
-      } else {
-        const hourSessionsPerCourt = Math.ceil(totalMinutes / 60);
-        const totalSessionsNeeded = hourSessionsPerCourt * form.court_ids.length;
-        const bookingMembers = form.booking_member_ids
-          .slice(0, totalSessionsNeeded)
-          .map((mid) => (members || []).find((m) => m.id === mid))
-          .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
-
-        if (bookingMembers.length > 0) {
-          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / hourSessionsPerCourt));
-          for (const date of instanceDates) {
-            let memberIdx = 0;
-            for (const cid of form.court_ids) {
-              let offsetMin = 0;
-              while (offsetMin < totalMinutes && memberIdx < bookingMembers.length) {
-                const bm = bookingMembers[memberIdx];
-                const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
-                const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
-                const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
-
-                bookingRows.push({
-                  court_id: cid,
-                  date,
-                  start_time: slotStartTime,
-                  end_time: slotEndTime,
-                  user_id: user.id,
-                  club_member_id: bm.id,
-                  guest_name: eventBookingTitle,
-                  lights_requested: form.lights_auto_on,
-                  status: "active",
-                  club_id: clubId,
-                  source: "club_event",
-                });
-                offsetMin = slotEnd;
-                memberIdx++;
-              }
-            }
-          }
+      for (const date of instanceDates) {
+        for (const cid of form.court_ids) {
+          bookingRows.push({
+            court_id: cid,
+            date,
+            start_time: form.start_time + ":00",
+            end_time: form.end_time + ":00",
+            user_id: user.id,
+            ...(bookAsClub ? {} : { club_member_id: activeMember?.id || null }),
+            guest_name: eventBookingTitle,
+            lights_requested: form.lights_auto_on,
+            status: "active",
+            club_id: clubId,
+            source: "club_event",
+          });
         }
       }
+
 
       if (bookingRows.length > 0) {
         const { error: bookingError } = await supabase.from("bookings").insert(bookingRows as any);
@@ -634,7 +690,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           let attempted = 0;
           const failures: string[] = [];
           for (const row of bookingRows) {
-            const memberIdForPush = form.is_club_booking
+            const memberIdForPush = adminBypass
               ? (activeMember?.id || null)
               : (row.club_member_id || null);
             if (!memberIdForPush) {
@@ -830,6 +886,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       if (!user || !clubId || !editingEventId) throw new Error("Not authenticated");
       if (!form.title.trim()) throw new Error("Title is required");
       if (form.court_ids.length === 0) throw new Error("Select at least one court");
+      if (!bookingLimit.ok) throw new Error(bookingLimit.message);
 
       const dayOfWeek = new Date(form.event_date + "T00:00:00").getDay();
 
@@ -854,7 +911,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         start_date: form.event_date,
         invite_scope: form.invite_scope,
         invite_scope_id: form.invite_scope_id || null,
-        is_club_booking: form.is_club_booking,
+        is_club_booking: adminBypass,
         recurrence: form.recurrence,
         light_fee_split: form.light_fee_split,
         reminder_hours: parseInt(form.reminder_hours),
@@ -877,7 +934,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
          oldEvent.end_time !== form.end_time + ":00" ||
          oldEvent.start_date !== form.event_date ||
          oldEvent.title !== form.title.trim() ||
-         oldEvent.is_club_booking !== form.is_club_booking);
+         oldEvent.is_club_booking !== adminBypass);
 
       if (timesChanged || courtsChanged) {
         // Get all instance dates
@@ -920,66 +977,29 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         const rebookDates: string[] = freshInstances?.length
           ? freshInstances.map((i: any) => i.instance_date)
           : [form.event_date];
-        const startMinutes = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
-        const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
         const rebookRows: any[] = [];
+        const rebookAsClub = adminBypass;
 
-        if (form.is_club_booking || form.booking_member_ids.length === 0) {
-          for (const date of rebookDates) {
-            for (const cid of form.court_ids) {
-              rebookRows.push({
-                court_id: cid,
-                date,
-                start_time: form.start_time + ":00",
-                end_time: form.end_time + ":00",
-                user_id: user.id,
-                guest_name: `${club?.name || "Club"} — ${form.title.trim()}`,
-                lights_requested: form.lights_auto_on,
-                status: "active",
-                club_id: clubId,
-                source: "club_event",
-              });
-            }
-          }
-        } else if (form.booking_member_ids.length > 0) {
-          const totalMinutes = endMinutes - startMinutes;
-          const hourSessionsPerCourt = Math.ceil(totalMinutes / 60);
-          const totalSessionsNeeded = hourSessionsPerCourt * form.court_ids.length;
-          const bookingMembers = form.booking_member_ids
-            .slice(0, totalSessionsNeeded)
-            .map((mid) => (members || []).find((m) => m.id === mid))
-            .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
-
-          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / hourSessionsPerCourt));
-          for (const date of rebookDates) {
-            let memberIdx = 0;
-            for (const cid of form.court_ids) {
-              let offsetMin = 0;
-              while (offsetMin < totalMinutes && memberIdx < bookingMembers.length) {
-                const bm = bookingMembers[memberIdx];
-                const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
-                const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
-                const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
-
-                rebookRows.push({
-                  court_id: cid,
-                  date,
-                  start_time: slotStartTime,
-                  end_time: slotEndTime,
-                  user_id: user.id,
-                  club_member_id: bm.id,
-                  guest_name: form.title.trim(),
-                  lights_requested: form.lights_auto_on,
-                  status: "active",
-                  club_id: clubId,
-                  source: "club_event",
-                });
-                offsetMin = slotEnd;
-                memberIdx++;
-              }
-            }
+        for (const date of rebookDates) {
+          for (const cid of form.court_ids) {
+            rebookRows.push({
+              court_id: cid,
+              date,
+              start_time: form.start_time + ":00",
+              end_time: form.end_time + ":00",
+              user_id: user.id,
+              ...(rebookAsClub ? {} : { club_member_id: activeMember?.id || null }),
+              guest_name: rebookAsClub
+                ? `${club?.name || "Club"} — ${form.title.trim()}`
+                : form.title.trim(),
+              lights_requested: form.lights_auto_on,
+              status: "active",
+              club_id: clubId,
+              source: "club_event",
+            });
           }
         }
+
 
         if (rebookRows.length > 0) {
           // Insert row-by-row so one clashing slot (unique index on
@@ -1061,7 +1081,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   };
 
   const canGoStep2 = form.event_date && form.start_time && form.end_time;
-  const canGoStep3 = form.title.trim() && form.court_ids.length > 0;
+  const canGoStep3 = !!form.title.trim() && form.court_ids.length > 0 && bookingLimit.ok;
 
   return (
     <div className="space-y-3">
@@ -1149,11 +1169,21 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-[11px] text-muted-foreground">
-                      {counts ? `${counts.confirmed} confirmed · ${counts.invited} pending` : "Loading..."}
+                      {counts ? `${counts.confirmed} confirmed · ${counts.invited} pending` : "No RSVPs yet"}
                       {e.light_fee_split === "attendees" && (
                         <span className="ml-1">· Lights shared</span>
                       )}
+                      {(() => {
+                        const cov = bookingCoverage?.[e.id];
+                        if (!cov || cov.total === 0) return null;
+                        if (cov.booked === 0)
+                          return <span className="ml-1 text-destructive">· No courts booked</span>;
+                        if (cov.booked < cov.total)
+                          return <span className="ml-1 text-destructive">· {cov.booked}/{cov.total} courts booked</span>;
+                        return <span className="ml-1">· {cov.booked} court slots booked</span>;
+                      })()}
                     </div>
+
                     <div className="flex items-center gap-1">
                       {/* Show confirm/decline for each linked member with pending invite */}
                       {myRsvpList.filter(r => r.status === "invited").map(r => (
@@ -1364,15 +1394,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 <Label className="text-xs">Event Type</Label>
                 <Select
                   value={form.event_type}
-                  onValueChange={(v) => {
-                    const isClubType = ["coaching", "training", "league"].includes(v);
-                    setForm((f) => ({
-                      ...f,
-                      event_type: v,
-                      is_club_booking: isClubType ? true : f.is_club_booking,
-                    }));
-                  }}
+                  onValueChange={(v) => setForm((f) => ({ ...f, event_type: v }))}
                 >
+
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {EVENT_TYPES.filter((t) => !t.adminOnly || isAdmin).map((t) => (
@@ -1398,7 +1422,20 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     </Button>
                   ))}
                 </div>
+                {adminBypass ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Booked under {club?.name || "the club"} — free, no booking limits.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Members may book 1 peak-hour and 1 off-peak court slot per occurrence.
+                  </p>
+                )}
+                {!bookingLimit.ok && (
+                  <p className="text-[11px] text-destructive">{bookingLimit.message}</p>
+                )}
               </div>
+
 
               </div>
           )}
@@ -1538,126 +1575,27 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </div>
               )}
 
-              {/* Court Booking Assignment */}
-              <div className="rounded-lg border border-border p-3 space-y-3">
-                <Label className="text-xs font-medium">Court Booking Names</Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Club rules limit 1 hour per member. Select members to split the booking across.
-                </p>
-
-                {adminBypass && (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium">Book under Club name (free)</p>
-                      <p className="text-[11px] text-muted-foreground">Court shows "{club?.name || "Club"} — {form.title || "Event"}"</p>
-                    </div>
-                    <Switch
-                      checked={form.is_club_booking}
-                      onCheckedChange={(v) => setForm((f) => ({ ...f, is_club_booking: v, booking_member_ids: [] }))}
-                    />
-                  </div>
-                )}
-
-                {!form.is_club_booking && form.booking_member_ids.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground italic">
-                    No member names selected — courts will be booked under the club name (free).
+              {/* Court booking summary — no toggles, the role decides */}
+              <div className="rounded-lg border border-border p-3 space-y-2">
+                <Label className="text-xs font-medium">Court booking</Label>
+                {adminBypass ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Courts are booked under <strong>{club?.name || "the club"}</strong> — free, any time, any number of
+                    courts and occurrences. The club carries any light fees.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Courts are booked in your name. Members may book <strong>1 peak-hour</strong> and{" "}
+                    <strong>1 off-peak</strong> court slot per occurrence.
                   </p>
                 )}
-
-
-                {!form.is_club_booking && (() => {
-                  const invitedMembers = form.invite_scope === "selected"
-                    ? (members || []).filter((m) => form.selected_member_ids.includes(m.id))
-                    : (members || []);
-
-                  const startMin = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
-                  const endMin = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
-                  const totalMin = endMin - startMin;
-                  const hourSessionsPerCourt = Math.ceil(totalMin / 60);
-                  const numCourts = form.court_ids.length || 1;
-                  const sessionsNeeded = hourSessionsPerCourt * numCourts;
-
-                  return (
-                    <div className="space-y-2">
-                      <p className="text-[11px] text-muted-foreground">
-                        {numCourts} court{numCourts !== 1 ? "s" : ""} × {hourSessionsPerCourt} hr session{hourSessionsPerCourt !== 1 ? "s" : ""} = {sessionsNeeded} booking{sessionsNeeded !== 1 ? "s" : ""} needed (max 1hr per member).
-                        First {sessionsNeeded} selected member{sessionsNeeded !== 1 ? "s" : ""} will have bookings in their name.
-                      </p>
-                      <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
-                        {invitedMembers.map((m) => {
-                          const isSelected = form.booking_member_ids.includes(m.id);
-                          const selIndex = form.booking_member_ids.indexOf(m.id);
-                          const isBookingName = isSelected && selIndex < sessionsNeeded;
-                          return (
-                            <label
-                              key={m.id}
-                              className={cn(
-                                "flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50 transition-colors text-sm",
-                                isSelected && "bg-accent",
-                              )}
-                            >
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => {
-                                  setForm((f) => ({
-                                    ...f,
-                                    booking_member_ids: isSelected
-                                      ? f.booking_member_ids.filter((id) => id !== m.id)
-                                      : [...f.booking_member_ids, m.id],
-                                  }));
-                                }}
-                              />
-                              <span className="text-xs">{m.name || "Unnamed"}</span>
-                              {isBookingName && (
-                                <Badge variant="secondary" className="text-[9px] ml-auto">Booking {selIndex + 1}</Badge>
-                              )}
-                            </label>
-                          );
-                        })}
-                      </div>
-                      {form.booking_member_ids.length > 0 && (
-                        <div className="text-[11px] text-muted-foreground space-y-0.5">
-                          <p className="font-medium text-foreground">Booking split preview:</p>
-                          {(() => {
-                            const bookingIds = form.booking_member_ids.slice(0, sessionsNeeded);
-                            const slotMin = Math.min(60, Math.ceil(totalMin / hourSessionsPerCourt));
-                            let memberIdx = 0;
-                            const courtList = form.court_ids.length > 0 ? form.court_ids : [0];
-                            const courtNames = (courts || []).reduce((acc, c) => ({ ...acc, [c.id]: c.name }), {} as Record<number, string>);
-                            return courtList.map((cid) => {
-                              let offset = 0;
-                              const slots: JSX.Element[] = [];
-                              while (offset < totalMin && memberIdx < bookingIds.length) {
-                                const mid = bookingIds[memberIdx];
-                                const m = invitedMembers.find((x) => x.id === mid);
-                                const slotEnd = Math.min(offset + slotMin, totalMin);
-                                const sTime = `${String(Math.floor((startMin + offset) / 60)).padStart(2, "0")}:${String((startMin + offset) % 60).padStart(2, "0")}`;
-                                const eTime = `${String(Math.floor((startMin + slotEnd) / 60)).padStart(2, "0")}:${String((startMin + slotEnd) % 60).padStart(2, "0")}`;
-                                slots.push(
-                                  <p key={`${cid}-${mid}`} className="pl-2">{m?.name || "Unnamed"}: {sTime}–{eTime}</p>
-                                );
-                                offset = slotEnd;
-                                memberIdx++;
-                              }
-                              return (
-                                <div key={cid}>
-                                  <p className="font-medium text-foreground">{courtNames[cid] || `Court ${cid}`}</p>
-                                  {slots}
-                                </div>
-                              );
-                            });
-                          })()}
-                          {form.booking_member_ids.length > sessionsNeeded && (
-                            <p className="text-muted-foreground italic">
-                              +{form.booking_member_ids.length - sessionsNeeded} more invited (no booking in their name)
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                {!bookingLimit.ok && (
+                  <div className="rounded-md border border-destructive/50 bg-destructive/5 p-2">
+                    <p className="text-[11px] text-destructive">{bookingLimit.message}</p>
+                  </div>
+                )}
               </div>
+
 
               {/* Light Fees */}
               <div className="rounded-lg border border-border p-3 space-y-2">
@@ -1712,7 +1650,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   Courts: {form.court_ids.length} · Lights: {form.light_fee_split === "attendees" ? "Shared" : "Creator pays"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Booked under: {form.is_club_booking || form.booking_member_ids.length === 0 ? `${club?.name || "Club"} (free)` : `${form.booking_member_ids.length} member(s)`}
+                  Booked under: {adminBypass ? `${club?.name || "Club"} (free)` : (activeMember?.name || "you")}
                 </p>
 
                 <p className="text-[11px] text-muted-foreground">
@@ -1743,7 +1681,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             ) : (
               <Button
                 onClick={() => editingEventId ? editMutation.mutate() : createMutation.mutate()}
-                disabled={editingEventId ? editMutation.isPending : createMutation.isPending}
+                disabled={!bookingLimit.ok || (editingEventId ? editMutation.isPending : createMutation.isPending)}
               >
                 {editingEventId
                   ? (editMutation.isPending ? "Saving..." : "Save Changes")

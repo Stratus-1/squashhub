@@ -1633,7 +1633,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             ) : (
               <Button
                 onClick={() => editingEventId ? editMutation.mutate() : createMutation.mutate()}
-                disabled={editingEventId ? editMutation.isPending : createMutation.isPending}
+                disabled={!bookingLimit.ok || (editingEventId ? editMutation.isPending : createMutation.isPending)}
               >
                 {editingEventId
                   ? (editMutation.isPending ? "Saving..." : "Save Changes")

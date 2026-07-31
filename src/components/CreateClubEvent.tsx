@@ -58,6 +58,57 @@ const REMINDER_OPTIONS = [
   { value: "72", label: "72 hours before" },
 ];
 
+type BookingFailure = { row: any; message: string };
+
+function describeSlot(row: any, courtNames: Record<number, string>) {
+  const court = courtNames[row.court_id] || `Court ${row.court_id}`;
+  return `${court} · ${row.date} · ${String(row.start_time).slice(0, 5)}–${String(row.end_time).slice(0, 5)}`;
+}
+
+function reasonFor(message: string) {
+  const m = (message || "").toLowerCase();
+  if (m.includes("duplicate") || m.includes("no_double_booking") || m.includes("unique"))
+    return "already booked by someone else";
+  if (m.includes("row-level security") || m.includes("permission") || m.includes("policy"))
+    return "not allowed for your account";
+  if (m.includes("peak") || m.includes("cap") || m.includes("limit"))
+    return "blocked by the club booking limit";
+  if (m.includes("suspend")) return "member is suspended";
+  return message || "unknown error";
+}
+
+/** Show a clear, actionable warning when court bookings could not be made. */
+function reportBookingFailures(
+  failures: BookingFailure[],
+  total: number,
+  courtNames: Record<number, string>,
+) {
+  if (failures.length === 0) return;
+  const lines = failures.slice(0, 6).map((f) => `• ${describeSlot(f.row, courtNames)} — ${reasonFor(f.message)}`);
+  if (failures.length > 6) lines.push(`• +${failures.length - 6} more slot(s)`);
+
+  const allFailed = failures.length === total;
+  const fix = [
+    "",
+    "What to do:",
+    "1. Open Bookings for those dates and cancel/move the clashing booking.",
+    "2. Or change the event time, or pick different courts.",
+    "3. Then edit the event and save again to re-book the courts.",
+  ].join("\n");
+
+  const description = [...lines, fix].join("\n");
+
+  if (allFailed) {
+    toast.error("No court bookings could be made", { description, duration: 30000 });
+  } else {
+    toast.warning(`${failures.length} of ${total} court slots could not be booked`, {
+      description,
+      duration: 30000,
+    });
+  }
+}
+
+
 export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
   const { club } = useClubContext();
@@ -546,17 +597,19 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         if (bookingError) {
           // A single clashing slot fails the whole bulk insert — retry one by
           // one so the event still blocks every court it can.
-          let failed = 0;
+          const failures: BookingFailure[] = [];
           for (const row of bookingRows) {
             const { error: rowErr } = await supabase.from("bookings").insert(row as any);
-            if (rowErr) failed++;
+            if (rowErr) failures.push({ row, message: rowErr.message });
           }
-          if (failed === bookingRows.length) throw bookingError;
-          if (failed > 0) {
-            toast.warning(`${failed} of ${bookingRows.length} court slots could not be booked (already taken).`);
-          }
+          const courtNames = (courts || []).reduce(
+            (acc, c) => ({ ...acc, [c.id]: c.name }),
+            {} as Record<number, string>,
+          );
+          reportBookingFailures(failures, bookingRows.length, courtNames);
         }
       }
+
 
 
       // Push bookings to GoBook if the club uses it. This mirrors the per-slot
@@ -931,15 +984,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         if (rebookRows.length > 0) {
           // Insert row-by-row so one clashing slot (unique index on
           // court/date/start_time) doesn't wipe out the whole rebooking.
-          let failed = 0;
+          const failures: BookingFailure[] = [];
           for (const row of rebookRows) {
             const { error: reErr } = await supabase.from("bookings").insert(row as any);
-            if (reErr) failed++;
+            if (reErr) failures.push({ row, message: reErr.message });
           }
-          if (failed > 0) {
-            toast.warning(`${failed} of ${rebookRows.length} court slots could not be booked (already taken).`);
-          }
+          const courtNames = (courts || []).reduce(
+            (acc, c) => ({ ...acc, [c.id]: c.name }),
+            {} as Record<number, string>,
+          );
+          reportBookingFailures(failures, rebookRows.length, courtNames);
         }
+
 
       }
 

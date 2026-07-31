@@ -1346,15 +1346,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 <Label className="text-xs">Event Type</Label>
                 <Select
                   value={form.event_type}
-                  onValueChange={(v) => {
-                    const isClubType = ["coaching", "training", "league"].includes(v);
-                    setForm((f) => ({
-                      ...f,
-                      event_type: v,
-                      is_club_booking: isClubType ? true : f.is_club_booking,
-                    }));
-                  }}
+                  onValueChange={(v) => setForm((f) => ({ ...f, event_type: v }))}
                 >
+
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {EVENT_TYPES.filter((t) => !t.adminOnly || isAdmin).map((t) => (

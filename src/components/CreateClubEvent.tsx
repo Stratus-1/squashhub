@@ -652,7 +652,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           let attempted = 0;
           const failures: string[] = [];
           for (const row of bookingRows) {
-            const memberIdForPush = form.is_club_booking
+            const memberIdForPush = adminBypass
               ? (activeMember?.id || null)
               : (row.club_member_id || null);
             if (!memberIdForPush) {

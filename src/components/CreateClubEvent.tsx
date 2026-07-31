@@ -476,11 +476,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       const totalMinutes = endMinutes - startMinutes;
 
       const bookingRows: any[] = [];
-      const eventBookingTitle = form.is_club_booking
+      // If no member names were picked, fall back to a club booking so the
+      // courts still get blocked (free — no member is charged).
+      const bookAsClub = form.is_club_booking || form.booking_member_ids.length === 0;
+      const eventBookingTitle = bookAsClub
         ? `${club?.name || "Club"} — ${form.title.trim()}`
         : form.title.trim();
 
-      if (form.is_club_booking) {
+      if (bookAsClub) {
         for (const date of instanceDates) {
           for (const cid of form.court_ids) {
             bookingRows.push({
@@ -868,7 +871,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
         const rebookRows: any[] = [];
 
-        if (form.is_club_booking) {
+        if (form.is_club_booking || form.booking_member_ids.length === 0) {
           for (const date of rebookDates) {
             for (const cid of form.court_ids) {
               rebookRows.push({
@@ -1499,6 +1502,13 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   </div>
                 )}
 
+                {!form.is_club_booking && form.booking_member_ids.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground italic">
+                    No member names selected — courts will be booked under the club name (free).
+                  </p>
+                )}
+
+
                 {!form.is_club_booking && (() => {
                   const invitedMembers = form.invite_scope === "selected"
                     ? (members || []).filter((m) => form.selected_member_ids.includes(m.id))
@@ -1646,8 +1656,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   Courts: {form.court_ids.length} · Lights: {form.light_fee_split === "attendees" ? "Shared" : "Creator pays"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Booked under: {form.is_club_booking ? `${club?.name || "Club"}` : `${form.booking_member_ids.length} member(s)`}
+                  Booked under: {form.is_club_booking || form.booking_member_ids.length === 0 ? `${club?.name || "Club"} (free)` : `${form.booking_member_ids.length} member(s)`}
                 </p>
+
                 <p className="text-[11px] text-muted-foreground">
                   Reminder: {form.reminder_hours}h before each occurrence
                 </p>

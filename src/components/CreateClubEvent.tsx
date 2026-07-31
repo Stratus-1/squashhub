@@ -332,6 +332,44 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const rsvpCounts = rsvpData?.counts;
   const confirmedNames = rsvpData?.confirmedNames;
 
+  // How many of each event's court slots are actually booked (spot missing bookings)
+  const { data: bookingCoverage } = useQuery({
+    queryKey: ["club-event-booking-coverage", eventIds.join(",")],
+    queryFn: async () => {
+      const out: Record<string, { booked: number; total: number }> = {};
+      if (eventIds.length === 0) return out;
+      const { data: insts } = await fromExt("club_event_instances")
+        .select("event_id, instance_date")
+        .in("event_id", eventIds);
+      const dates = [...new Set((insts || []).map((i: any) => i.instance_date))];
+      if (dates.length === 0) return out;
+      const { data: bks } = await supabase
+        .from("bookings")
+        .select("court_id, date, start_time")
+        .in("date", dates as string[])
+        .eq("status", "active");
+      const key = (c: any, d: any, t: any) => `${c}|${d}|${String(t).slice(0, 5)}`;
+      const booked = new Set((bks || []).map((b: any) => key(b.court_id, b.date, b.start_time)));
+      for (const e of upcomingEvents as any[]) {
+        const courtIds = (e.club_event_courts || []).map((c: any) => c.court_id);
+        const ds = (insts || []).filter((i: any) => i.event_id === e.id).map((i: any) => i.instance_date);
+        let hit = 0;
+        let total = 0;
+        for (const d of ds) {
+          for (const c of courtIds) {
+            total++;
+            if (booked.has(key(c, d, e.start_time))) hit++;
+          }
+        }
+        out[e.id] = { booked: hit, total };
+      }
+      return out;
+    },
+    enabled: eventIds.length > 0,
+  });
+
+
+
   // My RSVPs — check all linked members (family accounts sharing email)
   const { linkedMembers } = useMemberContext();
   const linkedMemberIds = useMemo(() => linkedMembers.map(m => m.id), [linkedMembers]);

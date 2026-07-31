@@ -832,7 +832,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       let cancelError: string | null = null;
       if (cancelBookings && evt && eventCourts?.length && instances?.length) {
         const courtIds = eventCourts.map((c: any) => c.court_id);
-        const dates: string[] = [...new Set(instances.map((i: any) => String(i.instance_date)))];
+        const dates: string[] = Array.from(
+          new Set((instances as any[]).map((i: any) => String(i.instance_date))),
+        );
 
         for (const date of dates) {
           // Overlap match: a booking counts if it starts before the event ends

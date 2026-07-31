@@ -857,12 +857,22 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       // Cancel the event
       const { error } = await fromExt("club_events").update({ status: "cancelled" }).eq("id", eventId);
       if (error) throw error;
-      return { cancelBookings, cancelledCount };
+      return { cancelBookings, cancelledCount, cancelError };
     },
-    onSuccess: ({ cancelBookings, cancelledCount }) => {
+    onSuccess: ({ cancelBookings, cancelledCount, cancelError }) => {
       queryClient.invalidateQueries({ queryKey: ["club-events"] });
       queryClient.invalidateQueries({ queryKey: ["club-events-list"] });
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-booking-coverage"] });
+      if (cancelBookings && cancelledCount === 0) {
+        toast.warning("Event deleted — no court bookings were cancelled", {
+          description:
+            cancelError ||
+            "No active bookings matched this event's courts, dates and times. Check the Bookings page and cancel them manually if needed.",
+          duration: 12000,
+        });
+        return;
+      }
       toast.success(
         cancelBookings
           ? `Event deleted — ${cancelledCount} court booking${cancelledCount === 1 ? "" : "s"} cancelled`

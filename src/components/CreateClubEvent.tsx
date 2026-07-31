@@ -848,6 +848,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       if (!user || !clubId || !editingEventId) throw new Error("Not authenticated");
       if (!form.title.trim()) throw new Error("Title is required");
       if (form.court_ids.length === 0) throw new Error("Select at least one court");
+      if (!bookingLimit.ok) throw new Error(bookingLimit.message);
 
       const dayOfWeek = new Date(form.event_date + "T00:00:00").getDay();
 

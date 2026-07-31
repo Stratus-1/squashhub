@@ -984,15 +984,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         if (rebookRows.length > 0) {
           // Insert row-by-row so one clashing slot (unique index on
           // court/date/start_time) doesn't wipe out the whole rebooking.
-          let failed = 0;
+          const failures: BookingFailure[] = [];
           for (const row of rebookRows) {
             const { error: reErr } = await supabase.from("bookings").insert(row as any);
-            if (reErr) failed++;
+            if (reErr) failures.push({ row, message: reErr.message });
           }
-          if (failed > 0) {
-            toast.warning(`${failed} of ${rebookRows.length} court slots could not be booked (already taken).`);
-          }
+          const courtNames = (courts || []).reduce(
+            (acc, c) => ({ ...acc, [c.id]: c.name }),
+            {} as Record<number, string>,
+          );
+          reportBookingFailures(failures, rebookRows.length, courtNames);
         }
+
 
       }
 

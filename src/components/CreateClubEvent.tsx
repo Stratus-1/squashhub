@@ -938,66 +938,29 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         const rebookDates: string[] = freshInstances?.length
           ? freshInstances.map((i: any) => i.instance_date)
           : [form.event_date];
-        const startMinutes = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
-        const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
         const rebookRows: any[] = [];
+        const rebookAsClub = adminBypass;
 
-        if (form.is_club_booking || form.booking_member_ids.length === 0) {
-          for (const date of rebookDates) {
-            for (const cid of form.court_ids) {
-              rebookRows.push({
-                court_id: cid,
-                date,
-                start_time: form.start_time + ":00",
-                end_time: form.end_time + ":00",
-                user_id: user.id,
-                guest_name: `${club?.name || "Club"} — ${form.title.trim()}`,
-                lights_requested: form.lights_auto_on,
-                status: "active",
-                club_id: clubId,
-                source: "club_event",
-              });
-            }
-          }
-        } else if (form.booking_member_ids.length > 0) {
-          const totalMinutes = endMinutes - startMinutes;
-          const hourSessionsPerCourt = Math.ceil(totalMinutes / 60);
-          const totalSessionsNeeded = hourSessionsPerCourt * form.court_ids.length;
-          const bookingMembers = form.booking_member_ids
-            .slice(0, totalSessionsNeeded)
-            .map((mid) => (members || []).find((m) => m.id === mid))
-            .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
-
-          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / hourSessionsPerCourt));
-          for (const date of rebookDates) {
-            let memberIdx = 0;
-            for (const cid of form.court_ids) {
-              let offsetMin = 0;
-              while (offsetMin < totalMinutes && memberIdx < bookingMembers.length) {
-                const bm = bookingMembers[memberIdx];
-                const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
-                const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
-                const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
-
-                rebookRows.push({
-                  court_id: cid,
-                  date,
-                  start_time: slotStartTime,
-                  end_time: slotEndTime,
-                  user_id: user.id,
-                  club_member_id: bm.id,
-                  guest_name: form.title.trim(),
-                  lights_requested: form.lights_auto_on,
-                  status: "active",
-                  club_id: clubId,
-                  source: "club_event",
-                });
-                offsetMin = slotEnd;
-                memberIdx++;
-              }
-            }
+        for (const date of rebookDates) {
+          for (const cid of form.court_ids) {
+            rebookRows.push({
+              court_id: cid,
+              date,
+              start_time: form.start_time + ":00",
+              end_time: form.end_time + ":00",
+              user_id: user.id,
+              ...(rebookAsClub ? {} : { club_member_id: activeMember?.id || null }),
+              guest_name: rebookAsClub
+                ? `${club?.name || "Club"} — ${form.title.trim()}`
+                : form.title.trim(),
+              lights_requested: form.lights_auto_on,
+              status: "active",
+              club_id: clubId,
+              source: "club_event",
+            });
           }
         }
+
 
         if (rebookRows.length > 0) {
           // Insert row-by-row so one clashing slot (unique index on

@@ -829,33 +829,50 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
       // Cancel matching bookings for all instance dates and courts
       let cancelledCount = 0;
+      let cancelError: string | null = null;
       if (cancelBookings && evt && eventCourts?.length && instances?.length) {
         const courtIds = eventCourts.map((c: any) => c.court_id);
-        const dates = instances.map((i: any) => i.instance_date);
+        const dates: string[] = Array.from(
+          new Set((instances as any[]).map((i: any) => String(i.instance_date))),
+        );
 
         for (const date of dates) {
-          const { data: removed } = await supabase
+          // Overlap match: a booking counts if it starts before the event ends
+          // and ends after the event starts (handles per-hour split bookings).
+          const { data: removed, error: updErr } = await supabase
             .from("bookings")
             .update({ status: "cancelled" })
             .in("court_id", courtIds)
             .eq("date", date)
             .eq("status", "active")
-            .gte("start_time", evt.start_time)
-            .lte("end_time", evt.end_time)
+            .lt("start_time", evt.end_time)
+            .gt("end_time", evt.start_time)
             .select("id");
+          if (updErr) cancelError = updErr.message;
           cancelledCount += removed?.length || 0;
         }
       }
 
+
       // Cancel the event
       const { error } = await fromExt("club_events").update({ status: "cancelled" }).eq("id", eventId);
       if (error) throw error;
-      return { cancelBookings, cancelledCount };
+      return { cancelBookings, cancelledCount, cancelError };
     },
-    onSuccess: ({ cancelBookings, cancelledCount }) => {
+    onSuccess: ({ cancelBookings, cancelledCount, cancelError }) => {
       queryClient.invalidateQueries({ queryKey: ["club-events"] });
       queryClient.invalidateQueries({ queryKey: ["club-events-list"] });
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-booking-coverage"] });
+      if (cancelBookings && cancelledCount === 0) {
+        toast.warning("Event deleted — no court bookings were cancelled", {
+          description:
+            cancelError ||
+            "No active bookings matched this event's courts, dates and times. Check the Bookings page and cancel them manually if needed.",
+          duration: 12000,
+        });
+        return;
+      }
       toast.success(
         cancelBookings
           ? `Event deleted — ${cancelledCount} court booking${cancelledCount === 1 ? "" : "s"} cancelled`

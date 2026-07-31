@@ -807,7 +807,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: async (eventId: string) => {
+    mutationFn: async ({ eventId, cancelBookings }: { eventId: string; cancelBookings: boolean }) => {
       // Get event details to find associated bookings
       const { data: evt } = await fromExt("club_events")
         .select("club_id, start_time, end_time, start_date")
@@ -825,31 +825,43 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         .eq("event_id", eventId);
 
       // Cancel matching bookings for all instance dates and courts
-      if (evt && eventCourts?.length && instances?.length) {
+      let cancelledCount = 0;
+      if (cancelBookings && evt && eventCourts?.length && instances?.length) {
         const courtIds = eventCourts.map((c: any) => c.court_id);
         const dates = instances.map((i: any) => i.instance_date);
 
         for (const date of dates) {
-          await supabase
+          const { data: removed } = await supabase
             .from("bookings")
             .update({ status: "cancelled" })
             .in("court_id", courtIds)
             .eq("date", date)
+            .eq("status", "active")
             .gte("start_time", evt.start_time)
-            .lte("end_time", evt.end_time);
+            .lte("end_time", evt.end_time)
+            .select("id");
+          cancelledCount += removed?.length || 0;
         }
       }
 
       // Cancel the event
       const { error } = await fromExt("club_events").update({ status: "cancelled" }).eq("id", eventId);
       if (error) throw error;
+      return { cancelBookings, cancelledCount };
     },
-    onSuccess: () => {
+    onSuccess: ({ cancelBookings, cancelledCount }) => {
       queryClient.invalidateQueries({ queryKey: ["club-events"] });
       queryClient.invalidateQueries({ queryKey: ["club-events-list"] });
-      toast.success("Event cancelled");
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      toast.success(
+        cancelBookings
+          ? `Event deleted — ${cancelledCount} court booking${cancelledCount === 1 ? "" : "s"} cancelled`
+          : "Event deleted — court bookings kept",
+      );
     },
+    onError: (err: any) => toast.error(err.message || "Failed to delete event"),
   });
+
 
   // Start editing an event — pre-fill form
   const startEdit = (e: any) => {

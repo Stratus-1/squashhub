@@ -1502,6 +1502,13 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   </div>
                 )}
 
+                {!form.is_club_booking && form.booking_member_ids.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground italic">
+                    No member names selected — courts will be booked under the club name (free).
+                  </p>
+                )}
+
+
                 {!form.is_club_booking && (() => {
                   const invitedMembers = form.invite_scope === "selected"
                     ? (members || []).filter((m) => form.selected_member_ids.includes(m.id))

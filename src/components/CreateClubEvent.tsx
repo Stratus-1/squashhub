@@ -580,78 +580,33 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         })();
       }
 
-      // Create court bookings for every event instance. Build one bulk insert
-      // instead of many per-booking requests so recurring events don't appear
-      // to hang after the first week/court.
-      const startMinutes = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
-      const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
-      const totalMinutes = endMinutes - startMinutes;
-
+      // Create court bookings for every event instance.
+      // Admin events are booked under the club (free). Member events are booked
+      // in the member's own name and are capped at 1 peak + 1 off-peak slot.
       const bookingRows: any[] = [];
-      // If no member names were picked, fall back to a club booking so the
-      // courts still get blocked (free — no member is charged).
-      const bookAsClub = form.is_club_booking || form.booking_member_ids.length === 0;
+      const bookAsClub = adminBypass;
       const eventBookingTitle = bookAsClub
         ? `${club?.name || "Club"} — ${form.title.trim()}`
         : form.title.trim();
 
-      if (bookAsClub) {
-        for (const date of instanceDates) {
-          for (const cid of form.court_ids) {
-            bookingRows.push({
-              court_id: cid,
-              date,
-              start_time: form.start_time + ":00",
-              end_time: form.end_time + ":00",
-              user_id: user.id,
-              guest_name: eventBookingTitle,
-              lights_requested: form.lights_auto_on,
-              status: "active",
-              club_id: clubId,
-              source: "club_event",
-            });
-          }
-        }
-      } else {
-        const hourSessionsPerCourt = Math.ceil(totalMinutes / 60);
-        const totalSessionsNeeded = hourSessionsPerCourt * form.court_ids.length;
-        const bookingMembers = form.booking_member_ids
-          .slice(0, totalSessionsNeeded)
-          .map((mid) => (members || []).find((m) => m.id === mid))
-          .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
-
-        if (bookingMembers.length > 0) {
-          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / hourSessionsPerCourt));
-          for (const date of instanceDates) {
-            let memberIdx = 0;
-            for (const cid of form.court_ids) {
-              let offsetMin = 0;
-              while (offsetMin < totalMinutes && memberIdx < bookingMembers.length) {
-                const bm = bookingMembers[memberIdx];
-                const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
-                const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
-                const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
-
-                bookingRows.push({
-                  court_id: cid,
-                  date,
-                  start_time: slotStartTime,
-                  end_time: slotEndTime,
-                  user_id: user.id,
-                  club_member_id: bm.id,
-                  guest_name: eventBookingTitle,
-                  lights_requested: form.lights_auto_on,
-                  status: "active",
-                  club_id: clubId,
-                  source: "club_event",
-                });
-                offsetMin = slotEnd;
-                memberIdx++;
-              }
-            }
-          }
+      for (const date of instanceDates) {
+        for (const cid of form.court_ids) {
+          bookingRows.push({
+            court_id: cid,
+            date,
+            start_time: form.start_time + ":00",
+            end_time: form.end_time + ":00",
+            user_id: user.id,
+            ...(bookAsClub ? {} : { club_member_id: activeMember?.id || null }),
+            guest_name: eventBookingTitle,
+            lights_requested: form.lights_auto_on,
+            status: "active",
+            club_id: clubId,
+            source: "club_event",
+          });
         }
       }
+
 
       if (bookingRows.length > 0) {
         const { error: bookingError } = await supabase.from("bookings").insert(bookingRows as any);

@@ -416,6 +416,41 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: form.court_ids.length > 0 && instanceDatesForCheck.length > 0 && step >= 2,
   });
 
+  /**
+   * Booking allowance.
+   * - Admins (or members with booking/event permissions): unlimited courts, any
+   *   time, any number of occurrences — booked under the club, free.
+   * - Ordinary members: 1 peak-hour court slot + 1 off-peak court slot per
+   *   occurrence, booked in their own name.
+   */
+  const bookingLimit = useMemo(() => {
+    if (adminBypass) return { ok: true as const, message: "" };
+    const split = splitPeakMinutes(club, form.event_date, form.start_time, form.end_time);
+    const courtsCount = form.court_ids.length;
+    if (courtsCount > 1) {
+      return {
+        ok: false as const,
+        message:
+          "Members can book 1 peak-hour and 1 off-peak court per event occurrence. Please select a single court, or ask a club admin to create this event.",
+      };
+    }
+    if (split.peak > 60) {
+      return {
+        ok: false as const,
+        message: `Peak hours are ${split.peakLabel}. Members may book a maximum of 1 hour during peak. Shorten the event or move it outside peak hours.`,
+      };
+    }
+    if (split.offPeak > 60) {
+      return {
+        ok: false as const,
+        message: "Members may book a maximum of 1 hour outside peak time. Shorten the event or ask a club admin to create it.",
+      };
+    }
+    return { ok: true as const, message: "" };
+  }, [adminBypass, club, form.event_date, form.start_time, form.end_time, form.court_ids.length]);
+
+
+
   // Determine members to invite based on scope
   const getInviteeIds = async (): Promise<string[]> => {
     if (!clubId) return [];

@@ -1043,7 +1043,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   };
 
   const canGoStep2 = form.event_date && form.start_time && form.end_time;
-  const canGoStep3 = form.title.trim() && form.court_ids.length > 0;
+  const canGoStep3 = !!form.title.trim() && form.court_ids.length > 0 && bookingLimit.ok;
 
   return (
     <div className="space-y-3">

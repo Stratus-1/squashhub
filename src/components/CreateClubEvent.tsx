@@ -108,6 +108,32 @@ function reportBookingFailures(
   }
 }
 
+/* ---------- Peak-hour helpers (mirror the Bookings page rules) ---------- */
+
+function timeToMin(t: string) {
+  const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function peakWindowFor(club: any, dateStr: string) {
+  const d = new Date(dateStr + "T00:00:00");
+  const weekend = d.getDay() === 0 || d.getDay() === 6;
+  const start = String(club?.[weekend ? "peak_weekend_start" : "peak_weekday_start"] ?? (weekend ? "08:00:00" : "16:00:00")).slice(0, 5);
+  const end = String(club?.[weekend ? "peak_weekend_end" : "peak_weekday_end"] ?? (weekend ? "12:00:00" : "19:00:00")).slice(0, 5);
+  return { ps: timeToMin(start), pe: timeToMin(end), label: `${start}–${end}` };
+}
+
+/** Minutes of the event window that fall inside / outside peak hours. */
+function splitPeakMinutes(club: any, dateStr: string, startT: string, endT: string) {
+  const s = timeToMin(startT);
+  const e = timeToMin(endT);
+  const { ps, pe, label } = peakWindowFor(club, dateStr);
+  const peak = Math.max(0, Math.min(e, pe) - Math.max(s, ps));
+  return { peak, offPeak: Math.max(0, e - s - peak), peakLabel: label };
+}
+
+
+
 
 export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();

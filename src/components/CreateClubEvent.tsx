@@ -1374,7 +1374,20 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     </Button>
                   ))}
                 </div>
+                {adminBypass ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Booked under {club?.name || "the club"} — free, no booking limits.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Members may book 1 peak-hour and 1 off-peak court slot per occurrence.
+                  </p>
+                )}
+                {!bookingLimit.ok && (
+                  <p className="text-[11px] text-destructive">{bookingLimit.message}</p>
+                )}
               </div>
+
 
               </div>
           )}

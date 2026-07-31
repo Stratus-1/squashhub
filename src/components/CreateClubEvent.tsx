@@ -1520,126 +1520,27 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </div>
               )}
 
-              {/* Court Booking Assignment */}
-              <div className="rounded-lg border border-border p-3 space-y-3">
-                <Label className="text-xs font-medium">Court Booking Names</Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Club rules limit 1 hour per member. Select members to split the booking across.
-                </p>
-
-                {adminBypass && (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium">Book under Club name (free)</p>
-                      <p className="text-[11px] text-muted-foreground">Court shows "{club?.name || "Club"} — {form.title || "Event"}"</p>
-                    </div>
-                    <Switch
-                      checked={form.is_club_booking}
-                      onCheckedChange={(v) => setForm((f) => ({ ...f, is_club_booking: v, booking_member_ids: [] }))}
-                    />
-                  </div>
-                )}
-
-                {!form.is_club_booking && form.booking_member_ids.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground italic">
-                    No member names selected — courts will be booked under the club name (free).
+              {/* Court booking summary — no toggles, the role decides */}
+              <div className="rounded-lg border border-border p-3 space-y-2">
+                <Label className="text-xs font-medium">Court booking</Label>
+                {adminBypass ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Courts are booked under <strong>{club?.name || "the club"}</strong> — free, any time, any number of
+                    courts and occurrences. The club carries any light fees.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Courts are booked in your name. Members may book <strong>1 peak-hour</strong> and{" "}
+                    <strong>1 off-peak</strong> court slot per occurrence.
                   </p>
                 )}
-
-
-                {!form.is_club_booking && (() => {
-                  const invitedMembers = form.invite_scope === "selected"
-                    ? (members || []).filter((m) => form.selected_member_ids.includes(m.id))
-                    : (members || []);
-
-                  const startMin = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
-                  const endMin = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
-                  const totalMin = endMin - startMin;
-                  const hourSessionsPerCourt = Math.ceil(totalMin / 60);
-                  const numCourts = form.court_ids.length || 1;
-                  const sessionsNeeded = hourSessionsPerCourt * numCourts;
-
-                  return (
-                    <div className="space-y-2">
-                      <p className="text-[11px] text-muted-foreground">
-                        {numCourts} court{numCourts !== 1 ? "s" : ""} × {hourSessionsPerCourt} hr session{hourSessionsPerCourt !== 1 ? "s" : ""} = {sessionsNeeded} booking{sessionsNeeded !== 1 ? "s" : ""} needed (max 1hr per member).
-                        First {sessionsNeeded} selected member{sessionsNeeded !== 1 ? "s" : ""} will have bookings in their name.
-                      </p>
-                      <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
-                        {invitedMembers.map((m) => {
-                          const isSelected = form.booking_member_ids.includes(m.id);
-                          const selIndex = form.booking_member_ids.indexOf(m.id);
-                          const isBookingName = isSelected && selIndex < sessionsNeeded;
-                          return (
-                            <label
-                              key={m.id}
-                              className={cn(
-                                "flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50 transition-colors text-sm",
-                                isSelected && "bg-accent",
-                              )}
-                            >
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => {
-                                  setForm((f) => ({
-                                    ...f,
-                                    booking_member_ids: isSelected
-                                      ? f.booking_member_ids.filter((id) => id !== m.id)
-                                      : [...f.booking_member_ids, m.id],
-                                  }));
-                                }}
-                              />
-                              <span className="text-xs">{m.name || "Unnamed"}</span>
-                              {isBookingName && (
-                                <Badge variant="secondary" className="text-[9px] ml-auto">Booking {selIndex + 1}</Badge>
-                              )}
-                            </label>
-                          );
-                        })}
-                      </div>
-                      {form.booking_member_ids.length > 0 && (
-                        <div className="text-[11px] text-muted-foreground space-y-0.5">
-                          <p className="font-medium text-foreground">Booking split preview:</p>
-                          {(() => {
-                            const bookingIds = form.booking_member_ids.slice(0, sessionsNeeded);
-                            const slotMin = Math.min(60, Math.ceil(totalMin / hourSessionsPerCourt));
-                            let memberIdx = 0;
-                            const courtList = form.court_ids.length > 0 ? form.court_ids : [0];
-                            const courtNames = (courts || []).reduce((acc, c) => ({ ...acc, [c.id]: c.name }), {} as Record<number, string>);
-                            return courtList.map((cid) => {
-                              let offset = 0;
-                              const slots: JSX.Element[] = [];
-                              while (offset < totalMin && memberIdx < bookingIds.length) {
-                                const mid = bookingIds[memberIdx];
-                                const m = invitedMembers.find((x) => x.id === mid);
-                                const slotEnd = Math.min(offset + slotMin, totalMin);
-                                const sTime = `${String(Math.floor((startMin + offset) / 60)).padStart(2, "0")}:${String((startMin + offset) % 60).padStart(2, "0")}`;
-                                const eTime = `${String(Math.floor((startMin + slotEnd) / 60)).padStart(2, "0")}:${String((startMin + slotEnd) % 60).padStart(2, "0")}`;
-                                slots.push(
-                                  <p key={`${cid}-${mid}`} className="pl-2">{m?.name || "Unnamed"}: {sTime}–{eTime}</p>
-                                );
-                                offset = slotEnd;
-                                memberIdx++;
-                              }
-                              return (
-                                <div key={cid}>
-                                  <p className="font-medium text-foreground">{courtNames[cid] || `Court ${cid}`}</p>
-                                  {slots}
-                                </div>
-                              );
-                            });
-                          })()}
-                          {form.booking_member_ids.length > sessionsNeeded && (
-                            <p className="text-muted-foreground italic">
-                              +{form.booking_member_ids.length - sessionsNeeded} more invited (no booking in their name)
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                {!bookingLimit.ok && (
+                  <div className="rounded-md border border-destructive/50 bg-destructive/5 p-2">
+                    <p className="text-[11px] text-destructive">{bookingLimit.message}</p>
+                  </div>
+                )}
               </div>
+
 
               {/* Light Fees */}
               <div className="rounded-lg border border-border p-3 space-y-2">

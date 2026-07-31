@@ -896,7 +896,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
          oldEvent.end_time !== form.end_time + ":00" ||
          oldEvent.start_date !== form.event_date ||
          oldEvent.title !== form.title.trim() ||
-         oldEvent.is_club_booking !== form.is_club_booking);
+         oldEvent.is_club_booking !== adminBypass);
 
       if (timesChanged || courtsChanged) {
         // Get all instance dates

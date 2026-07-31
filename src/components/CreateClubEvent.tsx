@@ -1238,7 +1238,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                         </Button>
                       )}
                       {(isCreator || isAdmin) && (
-                        <AlertDialog>
+                        <AlertDialog onOpenChange={(o) => { if (o) setDeleteBookings(true); }}>
                           <AlertDialogTrigger asChild>
                             <Button size="icon" variant="ghost" className="h-6 w-6">
                               <Trash2 className="w-3 h-3 text-destructive" />
@@ -1248,20 +1248,35 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Event</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will cancel "{e.title}" and all associated court bookings. This action cannot be undone.
+                                This will cancel "{e.title}". Choose whether the court bookings made for this event
+                                should be cancelled too. This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
+                            <label className="flex items-start gap-2 rounded-md border border-border p-2.5 cursor-pointer">
+                              <Checkbox
+                                checked={deleteBookings}
+                                onCheckedChange={(v) => setDeleteBookings(!!v)}
+                                className="mt-0.5"
+                              />
+                              <span className="text-xs">
+                                Also cancel the court bookings for this event
+                                <span className="block text-[11px] text-muted-foreground">
+                                  Leave unticked to free the event but keep the courts booked.
+                                </span>
+                              </span>
+                            </label>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Keep Event</AlertDialogCancel>
                               <AlertDialogAction
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                onClick={() => cancelMutation.mutate(e.id)}
+                                onClick={() => cancelMutation.mutate({ eventId: e.id, cancelBookings: deleteBookings })}
                               >
                                 Delete Event
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+
                       )}
                     </div>
                   </div>

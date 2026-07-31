@@ -1325,12 +1325,35 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             <div className="space-y-4 py-2">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Event Date</Label>
-                <Input
-                  type="date"
-                  value={form.event_date}
-                  onChange={(e) => setForm((f) => ({ ...f, event_date: e.target.value }))}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start font-normal"
+                    >
+                      <CalendarPlus className="w-4 h-4 mr-2 text-muted-foreground" />
+                      {form.event_date
+                        ? format(new Date(form.event_date + "T00:00:00"), "EEE d MMM yyyy")
+                        : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-0">
+                    <CalendarPicker
+                      mode="single"
+                      selected={form.event_date ? new Date(form.event_date + "T00:00:00") : undefined}
+                      defaultMonth={form.event_date ? new Date(form.event_date + "T00:00:00") : undefined}
+                      onSelect={(d) => {
+                        if (!d) return;
+                        setForm((f) => ({ ...f, event_date: format(d, "yyyy-MM-dd") }));
+                      }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
+
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">

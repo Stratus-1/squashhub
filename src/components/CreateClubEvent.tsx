@@ -871,7 +871,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
         const rebookRows: any[] = [];
 
-        if (form.is_club_booking) {
+        if (form.is_club_booking || form.booking_member_ids.length === 0) {
           for (const date of rebookDates) {
             for (const cid of form.court_ids) {
               rebookRows.push({

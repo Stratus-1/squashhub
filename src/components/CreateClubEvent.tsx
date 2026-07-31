@@ -476,11 +476,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       const totalMinutes = endMinutes - startMinutes;
 
       const bookingRows: any[] = [];
-      const eventBookingTitle = form.is_club_booking
+      // If no member names were picked, fall back to a club booking so the
+      // courts still get blocked (free — no member is charged).
+      const bookAsClub = form.is_club_booking || form.booking_member_ids.length === 0;
+      const eventBookingTitle = bookAsClub
         ? `${club?.name || "Club"} — ${form.title.trim()}`
         : form.title.trim();
 
-      if (form.is_club_booking) {
+      if (bookAsClub) {
         for (const date of instanceDates) {
           for (const cid of form.court_ids) {
             bookingRows.push({

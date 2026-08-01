@@ -31,6 +31,26 @@ Deno.serve(async (req) => {
     let body: any;
     try { body = JSON.parse(rawBody); } catch { return json({ error: "bad json" }, 400); }
 
+    // If this is an actual debit on a recurring arrangement (it carries an
+    // amount), the collection handler owns it — forward and stop.
+    const evAmount = Number(body?.amount || body?.data?.amount || 0);
+    const evStatus = String(body?.status || "").toUpperCase();
+    if (evAmount > 0 && /PAID|COMPLETE|COMPLETED|SETTLED|SUCCESS|FAILED|DECLINED|REJECTED/.test(evStatus)) {
+      const fwd = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/stitch-collection-webhook`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          "svix-id": req.headers.get("svix-id") || "",
+          "svix-timestamp": req.headers.get("svix-timestamp") || "",
+          "svix-signature": req.headers.get("svix-signature") || "",
+        },
+        body: rawBody,
+      });
+      return new Response(await fwd.text(), { status: fwd.status });
+    }
+
+
     // Two payload shapes are possible:
     //  1. Stitch Express / Svix flat: { id, status, type: "SUBSCRIPTION"|"CONSENT",
     //     subscriptionId, consentId, linkId }

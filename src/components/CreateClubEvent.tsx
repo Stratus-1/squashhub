@@ -969,14 +969,19 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
          oldEvent.is_club_booking !== adminBypass);
 
       if (timesChanged || courtsChanged) {
+        // Only ever touch today's and future occurrences — past bookings are history.
+        const todayStr = new Date().toLocaleDateString("en-CA");
+
         // Get all instance dates
         const { data: instances } = await fromExt("club_event_instances")
           .select("instance_date")
           .eq("event_id", editingEventId);
 
-        // Cancel old bookings on old courts/times
+        // Cancel old bookings on old courts/times (future dates only)
         if (oldEvent && oldCourtIds.length && instances?.length) {
-          const dates = instances.map((i: any) => i.instance_date);
+          const dates = instances
+            .map((i: any) => i.instance_date)
+            .filter((d: string) => d >= todayStr);
           for (const date of dates) {
             await supabase
               .from("bookings")
@@ -987,6 +992,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               .lte("end_time", oldEvent.end_time);
           }
         }
+
 
         // Update instance dates if start date changed
         if (oldEvent?.start_date !== form.event_date && instances?.length) {
@@ -1001,14 +1007,17 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           await fromExt("club_event_instances").insert(instanceRows);
         }
 
-        // Recreate bookings for EVERY instance date (not just the first) so
-        // recurring events keep their courts blocked.
+        // Recreate bookings for every UPCOMING instance date (never past dates)
+        // so recurring events keep their courts blocked.
         const { data: freshInstances } = await fromExt("club_event_instances")
           .select("instance_date")
           .eq("event_id", editingEventId);
-        const rebookDates: string[] = freshInstances?.length
-          ? freshInstances.map((i: any) => i.instance_date)
-          : [form.event_date];
+        const rebookDates: string[] = (
+          freshInstances?.length
+            ? freshInstances.map((i: any) => i.instance_date)
+            : [form.event_date]
+        ).filter((d: string) => d >= todayStr);
+
         const rebookRows: any[] = [];
         const rebookAsClub = adminBypass;
 

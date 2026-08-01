@@ -34,17 +34,35 @@ Deno.serve(async (req) => {
 
     // Forward CONSENT/SUBSCRIPTION events (recurring card) to the mandate handler.
     if (type === "CONSENT" || type === "SUBSCRIPTION") {
+      const hdrs = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        "svix-id": svixId, "svix-timestamp": svixTs, "svix-signature": svixSig,
+      };
+
+      // A recurring arrangement emits two kinds of events: authorisation status
+      // changes (handled by the mandate handler) and actual debits, which carry
+      // an amount. Debits must reach the collection handler so the money lands
+      // on the member's statement.
+      const amount = Number(payload?.amount || 0);
+      const isDebitEvent = amount > 0 &&
+        /PAID|COMPLETE|COMPLETED|SETTLED|SUCCESS|FAILED|DECLINED|REJECTED/.test(status);
+
+      if (isDebitEvent) {
+        const fwdCol = await fetch(`${SUPABASE_URL}/functions/v1/stitch-collection-webhook`, {
+          method: "POST", headers: hdrs, body: rawBody,
+        });
+        const colText = await fwdCol.text();
+        console.log("stitch-webhook: debit event routed to collection handler ->", colText.slice(0, 300));
+        return new Response(colText, { status: fwdCol.status });
+      }
+
       const fwd = await fetch(`${SUPABASE_URL}/functions/v1/stitch-mandate-webhook`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${SERVICE_KEY}`,
-          "svix-id": svixId, "svix-timestamp": svixTs, "svix-signature": svixSig,
-        },
-        body: rawBody,
+        method: "POST", headers: hdrs, body: rawBody,
       });
       return new Response(await fwd.text(), { status: fwd.status });
     }
+
 
     const candidates = [paymentId, linkId].filter(Boolean) as string[];
     if (candidates.length === 0) return new Response("no ids", { status: 400 });

@@ -154,8 +154,11 @@ Deno.serve(async (req) => {
           fee_payable_id: fee.id,
           amount_cents: amount,
           due_date: dueISO,
-          status: "queued",
-          approval_required: true,
+          // Auto-approved: no admin approval step. Admins can still cancel a
+          // collection before its due date from the Recurring Card Payments panel.
+          status: "approved",
+          approved_at: new Date().toISOString(),
+          approval_required: false,
           attempt_number: 1,
         });
         if (!insErr) { queued++; queuedForMandate++; budget -= amount; }

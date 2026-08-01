@@ -80,63 +80,89 @@ Deno.serve(async (req) => {
 
       const eligibleSet = eligibleByClub[mandate.club_id] || new Set<string>();
 
-      for (const fee of fees || []) {
-        // Enforce per-fee debit_order_eligible: skip unless the label matches an eligible source.
+      // Keep only fees this club marked as debit-order eligible.
+      const eligibleFees = (fees || []).filter((fee: any) => {
         const lbl = String(fee.fee_label || "").toLowerCase();
-        const isEligible = Array.from(eligibleSet).some((n) => lbl.includes(n));
-        if (!isEligible) { skippedIneligible++; continue; }
+        const ok = Array.from(eligibleSet).some((n) => lbl.includes(n));
+        if (!ok) skippedIneligible++;
+        return ok;
+      }).filter((fee: any) => Math.round(Number(fee.amount) * 100) > 0);
 
-        // Due date: use the invoice due date when set. Otherwise fall back to the
-        // mandate's debit day (next occurrence), so subscription mandates still
-        // collect even when the fee row has no explicit invoice due date.
-        let dueRaw = fee.invoice_due_date ? new Date(fee.invoice_due_date) : null;
-        if (!dueRaw) {
-          const day = Number(mandate.debit_day) || 1;
-          const candidate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-          const lastDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0)).getUTCDate();
-          candidate.setUTCDate(Math.min(day, lastDay));
-          if (candidate < new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))) {
-            const nm = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
-            const nmLast = new Date(Date.UTC(nm.getUTCFullYear(), nm.getUTCMonth() + 1, 0)).getUTCDate();
-            nm.setUTCDate(Math.min(day, nmLast));
-            dueRaw = nm;
-          } else {
-            dueRaw = candidate;
-          }
-        }
-        if (dueRaw > horizon) continue;
+      if (!eligibleFees.length) continue;
 
+      // This month's debit date, from the mandate's chosen debit day.
+      const day = Number(mandate.debit_day) || 1;
+      const lastDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0)).getUTCDate();
+      let dueRaw = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), Math.min(day, lastDay)));
+      const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+      if (dueRaw < todayUTC) {
+        const nm = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
+        const nmLast = new Date(Date.UTC(nm.getUTCFullYear(), nm.getUTCMonth() + 2, 0)).getUTCDate();
+        dueRaw = new Date(Date.UTC(nm.getUTCFullYear(), nm.getUTCMonth(), Math.min(day, nmLast)));
+      }
+      if (dueRaw > horizon) continue;
 
-        const cents = Math.round(Number(fee.amount) * 100);
-        if (!(cents > 0)) { skipped++; continue; }
-        if (mandate.max_amount_cents && cents > mandate.max_amount_cents) {
-          skipped++; continue;
-        }
+      const monthStart = new Date(Date.UTC(dueRaw.getUTCFullYear(), dueRaw.getUTCMonth(), 1))
+        .toISOString().slice(0, 10);
+      const monthEnd = new Date(Date.UTC(dueRaw.getUTCFullYear(), dueRaw.getUTCMonth() + 1, 0))
+        .toISOString().slice(0, 10);
 
-        // Skip if a collection already exists for this fee that isn't failed.
-        const { data: existing } = await admin
-          .from("stitch_collections")
-          .select("id, status")
-          .eq("fee_payable_id", fee.id)
-          .not("status", "in", "(failed,cancelled)")
-          .maybeSingle();
-        if (existing) continue;
+      // One instalment per mandate per calendar month.
+      const { data: already } = await admin
+        .from("stitch_collections")
+        .select("id")
+        .eq("mandate_id", mandate.id)
+        .gte("due_date", monthStart)
+        .lte("due_date", monthEnd)
+        .not("status", "in", "(failed,skipped)")
+        .limit(1);
+      if (already && already.length) continue;
 
-        const dueISO = dueRaw.toISOString().slice(0, 10);
+      // Amount still owing across eligible fees, minus anything already
+      // queued/submitted/paid against them (partial instalments).
+      const feeIds = eligibleFees.map((f: any) => f.id);
+      const { data: prior } = await admin
+        .from("stitch_collections")
+        .select("fee_payable_id, amount_cents, status")
+        .in("fee_payable_id", feeIds)
+        .not("status", "in", "(failed,skipped)");
+      const collectedByFee: Record<string, number> = {};
+      (prior || []).forEach((c: any) => {
+        if (!c.fee_payable_id) return;
+        collectedByFee[c.fee_payable_id] = (collectedByFee[c.fee_payable_id] || 0) + Number(c.amount_cents || 0);
+      });
+
+      // Oldest fee first so instalments settle one fee before moving on.
+      eligibleFees.sort((a: any, b: any) =>
+        String(a.invoice_due_date || "9999-12-31").localeCompare(String(b.invoice_due_date || "9999-12-31")));
+
+      let budget = Number(mandate.max_amount_cents) || 0;
+      if (!(budget > 0)) { skipped++; continue; }
+      const dueISO = dueRaw.toISOString().slice(0, 10);
+      let queuedForMandate = 0;
+
+      for (const fee of eligibleFees) {
+        if (budget <= 0) break;
+        const total = Math.round(Number(fee.amount) * 100);
+        const remaining = total - (collectedByFee[fee.id] || 0);
+        if (remaining <= 0) continue;
+        const amount = Math.min(remaining, budget);
         const { error: insErr } = await admin.from("stitch_collections").insert({
           club_id: mandate.club_id,
           mandate_id: mandate.id,
           club_member_id: mandate.club_member_id,
           fee_payable_id: fee.id,
-          amount_cents: cents,
+          amount_cents: amount,
           due_date: dueISO,
           status: "queued",
           approval_required: true,
           attempt_number: 1,
         });
-        if (!insErr) queued++;
+        if (!insErr) { queued++; queuedForMandate++; budget -= amount; }
       }
+      if (!queuedForMandate) skipped++;
     }
+
 
     return json({ ok: true, queued, skipped, skipped_ineligible: skippedIneligible, mandates_scanned: mandates?.length || 0 });
   } catch (e) {

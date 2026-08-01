@@ -86,9 +86,26 @@ Deno.serve(async (req) => {
         const isEligible = Array.from(eligibleSet).some((n) => lbl.includes(n));
         if (!isEligible) { skippedIneligible++; continue; }
 
-        const dueRaw = fee.invoice_due_date ? new Date(fee.invoice_due_date) : null;
-        if (!dueRaw) { skipped++; continue; }
+        // Due date: use the invoice due date when set. Otherwise fall back to the
+        // mandate's debit day (next occurrence), so subscription mandates still
+        // collect even when the fee row has no explicit invoice due date.
+        let dueRaw = fee.invoice_due_date ? new Date(fee.invoice_due_date) : null;
+        if (!dueRaw) {
+          const day = Number(mandate.debit_day) || 1;
+          const candidate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+          const lastDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0)).getUTCDate();
+          candidate.setUTCDate(Math.min(day, lastDay));
+          if (candidate < new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))) {
+            const nm = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
+            const nmLast = new Date(Date.UTC(nm.getUTCFullYear(), nm.getUTCMonth() + 1, 0)).getUTCDate();
+            nm.setUTCDate(Math.min(day, nmLast));
+            dueRaw = nm;
+          } else {
+            dueRaw = candidate;
+          }
+        }
         if (dueRaw > horizon) continue;
+
 
         const cents = Math.round(Number(fee.amount) * 100);
         if (!(cents > 0)) { skipped++; continue; }

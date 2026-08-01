@@ -121,6 +121,15 @@ Deno.serve(async (req) => {
     }
     const accessToken: string = tokenJson.data.accessToken;
 
+    // 1b. Supersede any earlier un-authorised attempts for this member so the
+    // admin list doesn't fill up with duplicate "pending" rows.
+    await admin
+      .from("stitch_mandates")
+      .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+      .eq("club_id", club_id)
+      .eq("club_member_id", club_member_id)
+      .eq("status", "pending");
+
     // 2. Insert pending mandate.
     const { data: mandate, error: mErr } = await admin
       .from("stitch_mandates")

@@ -7613,6 +7613,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      record_collection_payment: {
+        Args: { _collection_id: string }
+        Returns: Json
+      }
       record_mandate_initial_payment: {
         Args: { _mandate_id: string }
         Returns: Json

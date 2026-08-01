@@ -124,16 +124,18 @@ Deno.serve(async (req) => {
 
         if (mandateType === "subscription") {
           // Stitch charges automatically on its schedule — nothing to submit.
-          // Flag the row so it stops showing in the "due" queue and the webhook
-          // can finalise it when Stitch reports success/failure.
-          await admin.from("stitch_collections").update({
-            status: "auto",
+          // Mark as submitted so it leaves the "due" queue; the webhook
+          // finalises it to paid/failed when Stitch reports the outcome.
+          const { error: updErr } = await admin.from("stitch_collections").update({
+            status: "submitted",
             submitted_at: new Date().toISOString(),
             failed_reason: null,
           }).eq("id", r.id);
+          if (updErr) console.error("defer update failed", r.id, updErr.message);
           deferred++;
           continue;
         }
+
 
         // card_consent → charge via Express initiate-payment.
         if (!stitchRef) {

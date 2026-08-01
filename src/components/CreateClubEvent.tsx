@@ -1007,14 +1007,17 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           await fromExt("club_event_instances").insert(instanceRows);
         }
 
-        // Recreate bookings for EVERY instance date (not just the first) so
-        // recurring events keep their courts blocked.
+        // Recreate bookings for every UPCOMING instance date (never past dates)
+        // so recurring events keep their courts blocked.
         const { data: freshInstances } = await fromExt("club_event_instances")
           .select("instance_date")
           .eq("event_id", editingEventId);
-        const rebookDates: string[] = freshInstances?.length
-          ? freshInstances.map((i: any) => i.instance_date)
-          : [form.event_date];
+        const rebookDates: string[] = (
+          freshInstances?.length
+            ? freshInstances.map((i: any) => i.instance_date)
+            : [form.event_date]
+        ).filter((d: string) => d >= todayStr);
+
         const rebookRows: any[] = [];
         const rebookAsClub = adminBypass;
 

@@ -467,20 +467,41 @@ async function runCampaign(campaignId: string) {
   if (!campaign) return { sent: 0, failed: 0, remaining: 0, error: "not found" };
 
   const cap = Math.max(1, Math.min(500, Number(campaign.daily_cap) || 30));
+  const windowHours = Math.max(1, Math.min(168, Number(campaign.rate_window_hours) || 24));
   const delay = Math.max(0, Math.min(30000, Number(campaign.send_delay_ms) || 4000));
 
-  // Respect the daily cap across today's sends.
-  const startOfDay = new Date();
-  startOfDay.setUTCHours(0, 0, 0, 0);
-  const { count: sentToday } = await admin
+  // Rolling rate limit: at most `cap` emails per `windowHours` hours.
+  const windowStart = new Date(Date.now() - windowHours * 3600_000);
+  const { data: recentSends } = await admin
     .from("outreach_recipients")
-    .select("id", { count: "exact", head: true })
+    .select("sent_at")
     .eq("campaign_id", campaignId)
     .eq("send_status", "sent")
-    .gte("sent_at", startOfDay.toISOString());
+    .gte("sent_at", windowStart.toISOString())
+    .order("sent_at", { ascending: true });
 
-  const budget = cap - (sentToday ?? 0);
-  if (budget <= 0) return { sent: 0, failed: 0, remaining: -1, capped: true };
+  const sentInWindow = (recentSends ?? []).length;
+  const budget = cap - sentInWindow;
+  if (budget <= 0) {
+    // Stay in "sending" so the cron sweep resumes automatically once the
+    // oldest send in the window ages out.
+    const oldest = (recentSends ?? [])[0]?.sent_at;
+    const nextRunAt = oldest
+      ? new Date(new Date(oldest).getTime() + windowHours * 3600_000).toISOString()
+      : new Date(Date.now() + windowHours * 3600_000).toISOString();
+    const { count: stillQueued } = await admin
+      .from("outreach_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaignId)
+      .eq("send_status", "queued");
+    await admin.from("outreach_campaigns")
+      .update({ status: (stillQueued ?? 0) > 0 ? "sending" : "sent" })
+      .eq("id", campaignId);
+    return {
+      sent: 0, failed: 0, capped: true, remaining: stillQueued ?? 0,
+      cap, window_hours: windowHours, next_run_at: nextRunAt,
+    };
+  }
 
   const { data: queued } = await admin
     .from("outreach_recipients")

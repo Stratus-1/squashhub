@@ -185,18 +185,31 @@ async function prepare(campaign: any) {
   const { data: prospects, error } = await q;
   if (error) throw new Error(error.message);
   const ids = (prospects ?? []).map((p: any) => p.id);
-  if (!ids.length) return { added: 0, skipped: 0 };
 
-  const { data: contacts } = await admin
-    .from("outreach_contacts")
-    .select("id,prospect_id,email,name,role,opted_out,bounced")
-    .in("prospect_id", ids);
+  const { data: contacts } = ids.length
+    ? await admin
+        .from("outreach_contacts")
+        .select("id,prospect_id,email,name,role,opted_out,bounced")
+        .in("prospect_id", ids)
+    : { data: [] as any[] };
 
   const eligible = (contacts ?? []).filter(
     (c: any) => c.email && c.email.includes("@") && !c.opted_out && !c.bounced,
   );
   const skipped = (contacts ?? []).length - eligible.length;
-  if (!eligible.length) return { added: 0, skipped };
+
+  // Prune queued (not yet sent) recipients that no longer match the audience.
+  const keepIds = eligible.map((c: any) => c.id);
+  let pruneQ = admin
+    .from("outreach_recipients")
+    .delete()
+    .eq("campaign_id", campaign.id)
+    .eq("send_status", "queued");
+  if (keepIds.length) pruneQ = pruneQ.not("contact_id", "in", `(${keepIds.join(",")})`);
+  const { data: pruned } = await pruneQ.select("id");
+  const removed = (pruned ?? []).length;
+
+  if (!eligible.length) return { added: 0, skipped, removed };
 
   const rows = eligible.map((c: any) => ({
     campaign_id: campaign.id,
@@ -211,8 +224,9 @@ async function prepare(campaign: any) {
     .upsert(rows, { onConflict: "campaign_id,contact_id", ignoreDuplicates: true })
     .select("id");
 
-  return { added: (ins ?? []).length, skipped };
+  return { added: (ins ?? []).length, skipped, removed };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

@@ -557,13 +557,22 @@ export default function SuperAdminOutreachCampaignEditor() {
 
 
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-white/10">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-white/10">
               <div>
-                <Label className="text-xs">Daily cap (emails per day)</Label>
-                <Input type="number" value={c.daily_cap ?? 30}
+                <Label className="text-xs">Max emails per window</Label>
+                <Input type="number" min={1} max={500} value={c.daily_cap ?? 30}
                   onChange={(e) => setC({ ...c, daily_cap: Number(e.target.value) })} />
                 <p className="text-[11px] text-white/50 mt-1">
                   Keep it low (20–40) while the sending domain warms up.
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs">Window length (hours)</Label>
+                <Input type="number" min={1} max={168} value={c.rate_window_hours ?? 24}
+                  onChange={(e) => setC({ ...c, rate_window_hours: Number(e.target.value) })} />
+                <p className="text-[11px] text-white/50 mt-1">
+                  Sends up to {c.daily_cap ?? 30} emails per {c.rate_window_hours ?? 24} hour
+                  {(c.rate_window_hours ?? 24) === 1 ? "" : "s"}, then pauses and resumes on its own.
                 </p>
               </div>
               <div>

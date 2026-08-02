@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -42,11 +43,14 @@ export default function SuperAdminOutreachCampaignEditor() {
 
   const [c, setC] = useState<any>(null);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [allProspects, setAllProspects] = useState<any[]>([]);
   const [associations, setAssociations] = useState<string[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [testTo, setTestTo] = useState("");
+  const [testProspectId, setTestProspectId] = useState("sample");
+  const [clubSearch, setClubSearch] = useState("");
 
   const load = async () => {
     if (!id) return;
@@ -57,7 +61,10 @@ export default function SuperAdminOutreachCampaignEditor() {
         .select("*, outreach_prospects(club_name,status)")
         .eq("campaign_id", id)
         .order("sent_at", { ascending: false, nullsFirst: false }),
-      supabase.from("outreach_prospects").select("association,country,tags"),
+      supabase
+        .from("outreach_prospects")
+        .select("id,club_name,association,country,city,is_nsa,status,tags")
+        .order("club_name"),
     ]);
     if (error || !camp) {
       toast({ title: "Campaign not found", variant: "destructive" });
@@ -66,12 +73,14 @@ export default function SuperAdminOutreachCampaignEditor() {
     }
     setC(camp);
     setRecipients((recs ?? []) as any);
+    setAllProspects(prospects ?? []);
     setAssociations([...new Set((prospects ?? []).map((p: any) => p.association).filter(Boolean))].sort());
     setCountries([...new Set((prospects ?? []).map((p: any) => p.country).filter(Boolean))].sort());
     setTags([...new Set((prospects ?? []).flatMap((p: any) => p.tags ?? []))].sort());
   };
 
   useEffect(() => { load(); }, [id]);
+
 
   const filter = c?.audience_filter ?? {};
   const setFilter = (patch: Record<string, unknown>) =>
@@ -143,7 +152,10 @@ export default function SuperAdminOutreachCampaignEditor() {
 
   const sendTest = async () => {
     await save();
-    const res = await call("test", { to: testTo.trim() });
+    const res = await call("test", {
+      to: testTo.trim(),
+      prospect_id: testProspectId === "sample" ? undefined : testProspectId,
+    });
     if (res) toast({ title: `Test sent to ${res.sent_to}` });
   };
 
@@ -162,6 +174,11 @@ export default function SuperAdminOutreachCampaignEditor() {
   const insertField = (f: string) =>
     setC((p: any) => ({ ...p, body_html: `${p.body_html ?? ""}{{${f}}}` }));
 
+  const previewProspect = useMemo(
+    () => allProspects.find((p) => p.id === testProspectId),
+    [allProspects, testProspectId],
+  );
+
   const previewHtml = useMemo(() => {
     if (!c) return "";
     const vb = buildVideoBlock({
@@ -169,16 +186,18 @@ export default function SuperAdminOutreachCampaignEditor() {
       mobileUrl: c.video_mobile_url,
       thumbUrl: c.video_thumb_url,
     });
+    const p = previewProspect;
     return String(c.body_html ?? "")
       .replace(/{{\s*video_block\s*}}/g, vb)
-      .replace(/{{\s*club_name\s*}}/g, "Pretoria Squash Club")
+      .replace(/{{\s*club_name\s*}}/g, p?.club_name ?? "Pretoria Squash Club")
       .replace(/{{\s*contact_name\s*}}/g, "Test Chairman")
       .replace(/{{\s*first_name\s*}}/g, "Test")
-      .replace(/{{\s*association\s*}}/g, "Squash Northerns")
-      .replace(/{{\s*city\s*}}/g, "Pretoria")
-      .replace(/{{\s*country\s*}}/g, "South Africa")
+      .replace(/{{\s*association\s*}}/g, p?.association ?? "Squash Northerns")
+      .replace(/{{\s*city\s*}}/g, p?.city ?? "Pretoria")
+      .replace(/{{\s*country\s*}}/g, p?.country ?? "South Africa")
       .replace(/{{\s*role\s*}}/g, "Chairman");
-  }, [c]);
+  }, [c, previewProspect]);
+
 
   if (!c) return <p className="text-sm text-white/60">Loading…</p>;
 
@@ -287,10 +306,26 @@ export default function SuperAdminOutreachCampaignEditor() {
                 <Input placeholder="you@squashhub.co.za" value={testTo}
                   onChange={(e) => setTestTo(e.target.value)} />
               </div>
+              <div className="flex-1 min-w-[220px]">
+                <Label className="text-xs">Personalise the test as</Label>
+                <Select value={testProspectId} onValueChange={setTestProspectId}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    <SelectItem value="sample">Sample club (Pretoria Squash Club)</SelectItem>
+                    {allProspects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.club_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button variant="outline" onClick={sendTest} disabled={!!busy || !testTo.includes("@")}>
                 <Send className="h-4 w-4 mr-1" /> Send test
               </Button>
             </div>
+            <p className="text-[11px] text-white/50">
+              The test always goes to the address above — the club is only used to fill in the merge fields.
+            </p>
+
           </Card>
 
           <Card className="p-3 bg-white/5 border-white/10">
@@ -377,6 +412,71 @@ export default function SuperAdminOutreachCampaignEditor() {
                 </Select>
               </div>
             </div>
+
+            {(() => {
+              const selected: string[] = filter.prospect_ids ?? [];
+              const list = allProspects.filter((p) => {
+                if (filter.association && p.association !== filter.association) return false;
+                if (filter.country && p.country !== filter.country) return false;
+                if (typeof filter.is_nsa === "boolean" && p.is_nsa !== filter.is_nsa) return false;
+                if (filter.status && p.status !== filter.status) return false;
+                if (Array.isArray(filter.tags) && filter.tags.length &&
+                    !(p.tags ?? []).some((t: string) => filter.tags.includes(t))) return false;
+                if (clubSearch.trim() &&
+                    !String(p.club_name ?? "").toLowerCase().includes(clubSearch.trim().toLowerCase()))
+                  return false;
+                return true;
+              });
+              const toggle = (pid: string) => {
+                const next = selected.includes(pid)
+                  ? selected.filter((x) => x !== pid)
+                  : [...selected, pid];
+                setFilter({ prospect_ids: next.length ? next : undefined });
+              };
+              return (
+                <div className="pt-2 border-t border-white/10 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-xs">Specific clubs (optional)</Label>
+                      <p className="text-[11px] text-white/50">
+                        {selected.length
+                          ? `${selected.length} club${selected.length === 1 ? "" : "s"} selected — only these will be emailed.`
+                          : "Nothing ticked = every club matching the filters above."}
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                        onClick={() => setFilter({ prospect_ids: list.map((p) => p.id) })}>
+                        Select all shown
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-[11px]"
+                        onClick={() => setFilter({ prospect_ids: undefined })}>
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                  <Input placeholder="Search clubs…" value={clubSearch}
+                    onChange={(e) => setClubSearch(e.target.value)} />
+                  <div className="max-h-[280px] overflow-auto rounded-lg border border-white/10 divide-y divide-white/5">
+                    {!list.length && (
+                      <p className="p-3 text-xs text-white/50">No clubs match these filters.</p>
+                    )}
+                    {list.map((p) => (
+                      <label key={p.id}
+                        className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] cursor-pointer hover:bg-white/5">
+                        <Checkbox checked={selected.includes(p.id)} onCheckedChange={() => toggle(p.id)} />
+                        <span className="flex-1">{p.club_name}</span>
+                        <span className="text-[11px] text-white/40">
+                          {[p.association, p.country].filter(Boolean).join(" · ")}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-white/10">
               <div>

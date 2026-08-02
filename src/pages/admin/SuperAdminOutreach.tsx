@@ -12,6 +12,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ImportProspectsDialog } from "@/components/admin/outreach/ImportProspectsDialog";
 import { ProspectEditorDialog, type ProspectRecord } from "@/components/admin/outreach/ProspectEditorDialog";
+import { SendToClubDialog } from "@/components/admin/outreach/SendToClubDialog";
 import { PROSPECT_STATUSES, STATUS_LABEL } from "@/lib/outreach-templates";
 import { toCsv } from "@/lib/outreach-import";
 import {

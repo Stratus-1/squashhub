@@ -121,6 +121,34 @@ export default function SuperAdminOutreachCampaignEditor() {
     else toast({ title: "Campaign saved" });
   };
 
+  const uploadThumb = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please choose an image file", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Max 5 MB.", variant: "destructive" });
+      return;
+    }
+    setBusy("thumb");
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `outreach/${id}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("club-logos")
+      .upload(path, file, { cacheControl: "31536000", upsert: true, contentType: file.type });
+    if (error) {
+      setBusy(null);
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    const { data } = supabase.storage.from("club-logos").getPublicUrl(path);
+    setC((p: any) => ({ ...p, video_thumb_url: data.publicUrl }));
+    await supabase.from("outreach_campaigns").update({ video_thumb_url: data.publicUrl }).eq("id", id);
+    setBusy(null);
+    toast({ title: "Thumbnail uploaded" });
+  };
+
+
   const call = async (action: string, extra: Record<string, unknown> = {}) => {
     setBusy(action);
     try {

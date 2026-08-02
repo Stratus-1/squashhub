@@ -46,7 +46,28 @@ function renderMerge(tpl: string, vars: Record<string, string>) {
   );
 }
 
-function mergeVars(prospect: any, contact: any) {
+/** Clickable YouTube thumbnail block. We never attach an MP4. */
+function videoBlock(campaign: any) {
+  const desktopUrl = campaign?.video_desktop_url || "";
+  const mobileUrl = campaign?.video_mobile_url || "";
+  const thumbUrl = campaign?.video_thumb_url || "";
+  if (!desktopUrl && !mobileUrl) return "";
+  const primary = desktopUrl || mobileUrl;
+  const thumb = thumbUrl
+    ? `<a href="${primary}"><img src="${thumbUrl}" alt="Watch the SquashHub overview" width="560" style="display:block;width:100%;max-width:560px;border-radius:10px;border:1px solid #e2e8f0"></a>`
+    : "";
+  const mobileLine =
+    mobileUrl && desktopUrl
+      ? `<p style="margin:8px 0 0;font-size:13px;color:#64748b">Watching on your phone? <a href="${mobileUrl}" style="color:#1d4ed8">Here's the mobile walkthrough</a>.</p>`
+      : "";
+  return `<div style="margin:22px 0">
+${thumb}
+<p style="margin:12px 0 0"><a href="${primary}" style="display:inline-block;background:#0E1F35;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:bold">▶ Watch the 60-second overview</a></p>
+${mobileLine}
+</div>`;
+}
+
+function mergeVars(prospect: any, contact: any, campaign?: any) {
   const name = String(contact?.name || "").trim();
   return {
     club_name: String(prospect?.club_name || "your club"),
@@ -57,8 +78,10 @@ function mergeVars(prospect: any, contact: any) {
     city: String(prospect?.city || ""),
     country: String(prospect?.country || ""),
     email: String(contact?.email || ""),
+    video_block: videoBlock(campaign),
   };
 }
+
 
 async function getSettings() {
   const keys = [

@@ -102,6 +102,7 @@ SquashHub — HKFT Services<br>
   <li><strong>Court bookings</strong> from any phone, with clear rules for peak, off-peak, guests and members in arrears</li>
   <li><strong>Ladders and challenges</strong> — automatic rank movement, no manual updating</li>
   <li><strong>Leagues and club championships</strong> — fixtures, pools, playoffs and finals generated for you, spread across the dates you actually have courts</li>
+  <li><strong>Run your own tournaments</strong> — club or interclub events with ease: entries, pools, draws, scheduling and results, all handled for you</li>
   <li><strong>Live match marking</strong> — digital scorecards, spectators can follow along</li>
   <li><strong>Member management and fees</strong> — dues, invoices, statements, card payments and monthly debit orders</li>
   <li><strong>Smart court lighting and access control</strong> — lights and doors follow the booking, cutting your electricity bill</li>
@@ -111,6 +112,10 @@ SquashHub — HKFT Services<br>
 ${VIDEO_BLOCK_PLACEHOLDER}
 
 <p>Clubs are up and running in a matter of days — we import your existing member list for you.</p>
+
+<p style="background:#f1f5f9;border-left:4px solid #0E1F35;padding:14px 16px;margin:20px 0">
+<strong>Part of a regional league?</strong> If your club plays in a regional league (like NSA) where league results have to be submitted, just let us know and we'll add your league to SquashHub — your captains can then mark and submit results straight from the app.
+</p>
 
 <p><strong>You can test it for free.</strong> Visit our website and download the app — it's free for players, always. If {{club_name}} wants to try the full club functionality too, just let us know and we'll give your committee full admin rights to explore everything at no cost. A fee only becomes payable if the club decides to keep using the full admin features.</p>
 

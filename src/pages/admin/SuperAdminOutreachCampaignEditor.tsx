@@ -15,8 +15,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { buildVideoBlock, VIDEO_BLOCK_PLACEHOLDER, STATUS_LABEL } from "@/lib/outreach-templates";
 import {
-  ArrowLeft, Play, Save, Send, Users, MailOpen, MousePointerClick, RefreshCw, Video,
+  ArrowLeft, Play, Save, Send, Users, MailOpen, MousePointerClick, RefreshCw, Video, Upload,
 } from "lucide-react";
+
 
 const MERGE_FIELDS = [
   "club_name", "contact_name", "first_name", "role", "association", "city", "country",

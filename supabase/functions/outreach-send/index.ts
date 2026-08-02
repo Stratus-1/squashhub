@@ -338,7 +338,11 @@ async function runCampaign(campaignId: string) {
   const smtp = await makeTransport(s);
   if ("error" in smtp) throw new Error(smtp.error);
 
-  const linkMap = await buildLinkMap(campaignId, campaign.body_html || "");
+  const linkMap = await buildLinkMap(
+    campaignId,
+    String(campaign.body_html || "").replace(/{{\s*video_block\s*}}/g, videoBlock(campaign)),
+  );
+
 
   const prospectIds = [...new Set(queued.map((r: any) => r.prospect_id))];
   const contactIds = queued.map((r: any) => r.contact_id);

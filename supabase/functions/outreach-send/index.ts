@@ -483,7 +483,7 @@ async function runCampaign(campaignId: string) {
       });
       failed++;
     }
-    if (delay) await new Promise((res) => setTimeout(res, delay));
+    if (delay && Date.now() + delay < deadline) await new Promise((res) => setTimeout(res, delay));
   }
 
   const { count: remaining } = await admin
@@ -497,5 +497,5 @@ async function runCampaign(campaignId: string) {
     last_run_at: new Date().toISOString(),
   }).eq("id", campaignId);
 
-  return { sent, failed, skipped, remaining: remaining ?? 0 };
+  return { sent, failed, skipped, remaining: remaining ?? 0, partial: timedOut };
 }

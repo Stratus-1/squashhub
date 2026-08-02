@@ -112,6 +112,7 @@ export default function SuperAdminOutreachCampaignEditor() {
         video_thumb_url: c.video_thumb_url || null,
         audience_filter: c.audience_filter ?? {},
         daily_cap: Number(c.daily_cap) || 30,
+        rate_window_hours: Math.max(1, Math.min(168, Number(c.rate_window_hours) || 24)),
         send_delay_ms: Number(c.send_delay_ms) || 4000,
         updated_at: new Date().toISOString(),
       })

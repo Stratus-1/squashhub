@@ -48,6 +48,8 @@ export default function SuperAdminOutreach() {
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<ProspectRecord | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [sendTarget, setSendTarget] = useState<Row | null>(null);
+  const [sendOpen, setSendOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);

@@ -253,7 +253,9 @@ Deno.serve(async (req) => {
       const vars = mergeVars(
         { club_name: "Pretoria Squash Club", association: "Squash Northerns", city: "Pretoria", country: "South Africa" },
         { name: "Test Chairman", role: "Chairman", email: to },
+        campaign,
       );
+
       const html = applyTracking(renderMerge(campaign.body_html, vars), new Map(), "", false);
       await smtp.transporter.sendMail({
         from: smtp.from,

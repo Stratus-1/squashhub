@@ -12,6 +12,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ImportProspectsDialog } from "@/components/admin/outreach/ImportProspectsDialog";
 import { ProspectEditorDialog, type ProspectRecord } from "@/components/admin/outreach/ProspectEditorDialog";
+import { SendToClubDialog } from "@/components/admin/outreach/SendToClubDialog";
 import { PROSPECT_STATUSES, STATUS_LABEL } from "@/lib/outreach-templates";
 import { toCsv } from "@/lib/outreach-import";
 import {
@@ -48,6 +49,8 @@ export default function SuperAdminOutreach() {
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<ProspectRecord | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [sendTarget, setSendTarget] = useState<Row | null>(null);
+  const [sendOpen, setSendOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -337,6 +340,10 @@ export default function SuperAdminOutreach() {
                       )}
                     </td>
                     <td className="p-2.5 text-right whitespace-nowrap">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Send a campaign to this club"
+                        onClick={() => { setSendTarget(r); setSendOpen(true); }}>
+                        <Mail className="h-3.5 w-3.5 text-sky-300" />
+                      </Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7"
                         onClick={() => { setEditing(r); setEditorOpen(true); }}>
                         <Pencil className="h-3.5 w-3.5" />
@@ -390,6 +397,9 @@ export default function SuperAdminOutreach() {
       <ImportProspectsDialog open={importOpen} onOpenChange={setImportOpen} onImported={load} />
       <ProspectEditorDialog
         open={editorOpen} onOpenChange={setEditorOpen} prospect={editing} onSaved={load}
+      />
+      <SendToClubDialog
+        open={sendOpen} onOpenChange={setSendOpen} prospect={sendTarget} onSent={load}
       />
     </div>
   );

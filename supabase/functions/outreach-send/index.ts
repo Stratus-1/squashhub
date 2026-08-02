@@ -250,17 +250,38 @@ Deno.serve(async (req) => {
       const smtp = await makeTransport(s);
       if ("error" in smtp) return json({ error: smtp.error }, 400);
 
-      const vars = mergeVars(
-        { club_name: "Pretoria Squash Club", association: "Squash Northerns", city: "Pretoria", country: "South Africa" },
-        { name: "Test Chairman", role: "Chairman", email: to },
-        campaign,
-      );
+      // Optionally render the test using a real prospect's details.
+      let prospect: any = {
+        club_name: "Pretoria Squash Club", association: "Squash Northerns",
+        city: "Pretoria", country: "South Africa",
+      };
+      let contact: any = { name: "Test Chairman", role: "Chairman", email: to };
+
+      const prospectId = String(body.prospect_id || "").trim();
+      if (prospectId) {
+        const { data: p } = await admin
+          .from("outreach_prospects")
+          .select("id,club_name,association,city,country")
+          .eq("id", prospectId).maybeSingle();
+        if (p) {
+          prospect = p;
+          const { data: cts } = await admin
+            .from("outreach_contacts")
+            .select("name,role,email,is_primary")
+            .eq("prospect_id", prospectId);
+          const pick = (cts ?? []).find((x: any) => x.is_primary) ?? (cts ?? [])[0];
+          if (pick) contact = { ...pick, email: to };
+        }
+      }
+
+      const vars = mergeVars(prospect, contact, campaign);
+      const label = prospect?.club_name ? ` ${prospect.club_name}` : "";
 
       const html = applyTracking(renderMerge(campaign.body_html, vars), new Map(), "", false);
       await smtp.transporter.sendMail({
         from: smtp.from,
         to,
-        subject: `[TEST] ${renderMerge(campaign.subject, vars)}`,
+        subject: `[TEST${label}] ${renderMerge(campaign.subject, vars)}`,
         html,
         text: stripHtml(html),
       });

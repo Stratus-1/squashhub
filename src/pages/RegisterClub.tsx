@@ -246,7 +246,7 @@ export default function RegisterClub() {
               <Label htmlFor="phone">Club Phone</Label>
               <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} placeholder="+27..." />
             </div>
-            <Button type="submit" className="w-full" disabled={createClub.isPending}>
+            <Button type="submit" className="w-full" disabled={createClub.isPending || slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "checking"}>
               {createClub.isPending ? "Registering..." : "Register Club"}
             </Button>
           </form>

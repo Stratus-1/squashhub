@@ -214,12 +214,25 @@ export default function SuperAdminOutreachCampaignEditor() {
   };
 
   const run = async () => {
-    if (!confirm(`Send this campaign now? Up to ${c.daily_cap} emails will go out in this batch.`)) return;
+    const win = Number(c.rate_window_hours) || 24;
+    if (!confirm(
+      `Send this campaign now? Up to ${c.daily_cap} emails per ${win} hour${win === 1 ? "" : "s"}; ` +
+      `anything over that stays queued and goes out automatically in the next window.`,
+    )) return;
     const res = await call("run");
     if (res) {
+      const next = res.next_run_at
+        ? new Date(res.next_run_at).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })
+        : null;
       toast({
-        title: res.capped ? "Daily cap already reached" : `${res.sent ?? 0} emails sent`,
-        description: res.failed ? `${res.failed} failed` : undefined,
+        title: res.capped
+          ? "Rate limit reached — paused"
+          : `${res.sent ?? 0} emails sent`,
+        description: res.capped
+          ? `${res.remaining ?? 0} still queued. Sending resumes automatically${next ? ` around ${next}` : ""}.`
+          : [res.failed ? `${res.failed} failed` : null,
+             res.remaining ? `${res.remaining} still queued` : null]
+              .filter(Boolean).join(" · ") || undefined,
       });
       load();
     }

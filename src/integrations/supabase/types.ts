@@ -5916,6 +5916,7 @@ export type Database = {
           association: string | null
           city: string | null
           club_name: string
+          club_subdomain: string | null
           country: string
           courts: number | null
           created_at: string
@@ -5935,6 +5936,7 @@ export type Database = {
           association?: string | null
           city?: string | null
           club_name: string
+          club_subdomain?: string | null
           country?: string
           courts?: number | null
           created_at?: string
@@ -5954,6 +5956,7 @@ export type Database = {
           association?: string | null
           city?: string | null
           club_name?: string
+          club_subdomain?: string | null
           country?: string
           courts?: number | null
           created_at?: string

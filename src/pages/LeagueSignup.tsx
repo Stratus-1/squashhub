@@ -220,12 +220,19 @@ export default function LeagueSignup() {
           </h1>
           <div className="text-base md:text-lg text-white max-w-2xl mx-auto space-y-2 leading-relaxed">
             <p>
+              <span className="font-semibold">Your club is already live on SquashHub.</span> Just register with your NSA number (or your personal details) and you're in.
+            </p>
+            <p>
               View your fixtures, set up league teams for the week ahead, and mark and post league games directly to the NSA site.
             </p>
             <p className="text-base font-semibold text-primary">
               Completely free for every NSA league player.
             </p>
+            <p className="text-sm text-white/80">
+              Club committee member? Let us know and we'll switch on full admin access for you.
+            </p>
           </div>
+
         </div>
 
         <Card className="p-5 md:p-6 space-y-5">

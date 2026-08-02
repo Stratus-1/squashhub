@@ -160,8 +160,9 @@ export default function Clubs() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                NSA-affiliated clubs not yet fully set up on SquashHub. Clicking a club opens the league self-signup page.
+                These NSA-affiliated clubs are already live on SquashHub. Click your club to open its own site — NSA players can register there with their NSA number.
               </p>
+
               {nsaClubs.length === 0 ? (
                 <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">
                   No NSA clubs imported yet.
@@ -226,12 +227,10 @@ interface TenantRowProps {
 
 function TenantRow({ tenant, navigate, icon: Icon, nsaMode = false }: TenantRowProps) {
   const handleClick = () => {
-    if (nsaMode) {
-      const sub = tenant.subdomain ? `?club=${encodeURIComponent(tenant.subdomain)}` : "";
-      navigate(`/league${sub}`);
+    if (!tenant.subdomain) {
+      if (nsaMode) navigate("/league");
       return;
     }
-    if (!tenant.subdomain) return;
     const isPreview = window.location.hostname.includes("lovable");
     if (isPreview) {
       navigate(`/c/${tenant.subdomain}`);
@@ -259,15 +258,17 @@ function TenantRow({ tenant, navigate, icon: Icon, nsaMode = false }: TenantRowP
       )}
       <div className="min-w-0 flex-1">
         <h4 className="font-semibold text-primary-foreground text-sm truncate">{tenant.name}</h4>
-        {nsaMode ? (
-          <p className="text-[11px] text-amber-300 truncate font-medium">
-            NSA players → register here
-          </p>
-        ) : tenant.subdomain && (
+        {tenant.subdomain && (
           <p className="text-xs font-mono text-[hsl(var(--accent))] truncate">
             {tenant.subdomain}.squashhub.co.za
           </p>
         )}
+        {nsaMode && (
+          <p className="text-[11px] text-amber-300 truncate font-medium">
+            Live — NSA players register here
+          </p>
+        )}
+
         {tenant.address && (
           <p className="text-xs text-primary-foreground/70 truncate">{tenant.address}</p>
         )}

@@ -23,6 +23,7 @@ export interface ProspectRecord {
   country: string;
   courts: number | null;
   website: string | null;
+  club_subdomain: string | null;
   is_nsa: boolean;
   source: string | null;
   tags: string[];
@@ -44,7 +45,7 @@ interface ContactRow {
 
 const BLANK: Omit<ProspectRecord, "id"> = {
   club_name: "", association: "", city: "", country: "South Africa", courts: null,
-  website: "", is_nsa: false, source: "", tags: [], notes: "", status: "new", follow_up_date: null,
+  website: "", club_subdomain: "", is_nsa: false, source: "", tags: [], notes: "", status: "new", follow_up_date: null,
 };
 
 export function ProspectEditorDialog({
@@ -66,7 +67,7 @@ export function ProspectEditorDialog({
     setRemoved([]);
     if (prospect) {
       const { id, ...rest } = prospect;
-      setForm({ ...rest, association: rest.association ?? "", city: rest.city ?? "", website: rest.website ?? "", source: rest.source ?? "", notes: rest.notes ?? "" });
+      setForm({ ...rest, association: rest.association ?? "", city: rest.city ?? "", website: rest.website ?? "", club_subdomain: rest.club_subdomain ?? "", source: rest.source ?? "", notes: rest.notes ?? "" });
       supabase
         .from("outreach_contacts")
         .select("id,name,role,email,phone,is_primary,opted_out,bounced")
@@ -103,6 +104,7 @@ export function ProspectEditorDialog({
         country: form.country || "South Africa",
         courts: form.courts,
         website: form.website || null,
+        club_subdomain: form.club_subdomain?.trim() || null,
         is_nsa: form.is_nsa,
         source: form.source || null,
         tags: form.tags,
@@ -190,6 +192,19 @@ export function ProspectEditorDialog({
           <div>
             <Label className="text-xs">Website</Label>
             <Input value={form.website ?? ""} onChange={(e) => set("website", e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">SquashHub club slug</Label>
+            <Input
+              value={form.club_subdomain ?? ""}
+              onChange={(e) => set("club_subdomain", e.target.value.toLowerCase().trim())}
+              placeholder="e.g. csi"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {form.club_subdomain
+                ? `${form.club_subdomain}.squashhub.co.za — used by {{club_link}} / {{club_url}}`
+                : "Leave blank if the club isn't live yet."}
+            </p>
           </div>
           <div>
             <Label className="text-xs">Source</Label>

@@ -5728,6 +5728,7 @@ export type Database = {
           last_run_at: string | null
           name: string
           preheader: string | null
+          rate_window_hours: number
           send_delay_ms: number
           status: string
           subject: string
@@ -5746,6 +5747,7 @@ export type Database = {
           last_run_at?: string | null
           name: string
           preheader?: string | null
+          rate_window_hours?: number
           send_delay_ms?: number
           status?: string
           subject?: string
@@ -5764,6 +5766,7 @@ export type Database = {
           last_run_at?: string | null
           name?: string
           preheader?: string | null
+          rate_window_hours?: number
           send_delay_ms?: number
           status?: string
           subject?: string

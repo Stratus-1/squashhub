@@ -71,6 +71,11 @@ function mergeVars(prospect: any, contact: any, campaign?: any) {
   const name = String(contact?.name || "").trim();
   return {
     club_name: String(prospect?.club_name || "your club"),
+    club_subdomain: String(prospect?.club_subdomain || ""),
+    club_url: prospect?.club_subdomain ? `https://${prospect.club_subdomain}.squashhub.co.za` : "https://squashhub.co.za",
+    club_link: prospect?.club_subdomain
+      ? `<a href="https://${prospect.club_subdomain}.squashhub.co.za" style="color:#1d4ed8;font-weight:bold">${prospect.club_subdomain}.squashhub.co.za</a>`
+      : `<a href="https://squashhub.co.za" style="color:#1d4ed8;font-weight:bold">squashhub.co.za</a>`,
     contact_name: name || "there",
     first_name: name.split(/\s+/)[0] || "there",
     role: String(contact?.role || ""),
@@ -253,7 +258,7 @@ Deno.serve(async (req) => {
       // Optionally render the test using a real prospect's details.
       let prospect: any = {
         club_name: "Pretoria Squash Club", association: "Squash Northerns",
-        city: "Pretoria", country: "South Africa",
+        city: "Pretoria", country: "South Africa", club_subdomain: "pcc",
       };
       let contact: any = { name: "Test Chairman", role: "Chairman", email: to };
 
@@ -261,7 +266,7 @@ Deno.serve(async (req) => {
       if (prospectId) {
         const { data: p } = await admin
           .from("outreach_prospects")
-          .select("id,club_name,association,city,country")
+          .select("id,club_name,association,city,country,club_subdomain")
           .eq("id", prospectId).maybeSingle();
         if (p) {
           prospect = p;
@@ -368,7 +373,7 @@ async function runCampaign(campaignId: string) {
   const prospectIds = [...new Set(queued.map((r: any) => r.prospect_id))];
   const contactIds = queued.map((r: any) => r.contact_id);
   const [{ data: prospects }, { data: contacts }] = await Promise.all([
-    admin.from("outreach_prospects").select("id,club_name,association,city,country").in("id", prospectIds),
+    admin.from("outreach_prospects").select("id,club_name,association,city,country,club_subdomain").in("id", prospectIds),
     admin.from("outreach_contacts").select("id,name,role,email,opted_out,bounced").in("id", contactIds),
   ]);
   const pMap = new Map((prospects ?? []).map((p: any) => [p.id, p]));

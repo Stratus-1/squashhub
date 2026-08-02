@@ -337,6 +337,10 @@ export default function SuperAdminOutreach() {
                       )}
                     </td>
                     <td className="p-2.5 text-right whitespace-nowrap">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Send a campaign to this club"
+                        onClick={() => { setSendTarget(r); setSendOpen(true); }}>
+                        <Mail className="h-3.5 w-3.5 text-sky-300" />
+                      </Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7"
                         onClick={() => { setEditing(r); setEditorOpen(true); }}>
                         <Pencil className="h-3.5 w-3.5" />

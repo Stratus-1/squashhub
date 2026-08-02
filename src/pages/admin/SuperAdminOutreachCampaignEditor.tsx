@@ -42,11 +42,14 @@ export default function SuperAdminOutreachCampaignEditor() {
 
   const [c, setC] = useState<any>(null);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [allProspects, setAllProspects] = useState<any[]>([]);
   const [associations, setAssociations] = useState<string[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [testTo, setTestTo] = useState("");
+  const [testProspectId, setTestProspectId] = useState("sample");
+  const [clubSearch, setClubSearch] = useState("");
 
   const load = async () => {
     if (!id) return;
@@ -57,7 +60,10 @@ export default function SuperAdminOutreachCampaignEditor() {
         .select("*, outreach_prospects(club_name,status)")
         .eq("campaign_id", id)
         .order("sent_at", { ascending: false, nullsFirst: false }),
-      supabase.from("outreach_prospects").select("association,country,tags"),
+      supabase
+        .from("outreach_prospects")
+        .select("id,club_name,association,country,city,is_nsa,status,tags")
+        .order("club_name"),
     ]);
     if (error || !camp) {
       toast({ title: "Campaign not found", variant: "destructive" });
@@ -66,12 +72,14 @@ export default function SuperAdminOutreachCampaignEditor() {
     }
     setC(camp);
     setRecipients((recs ?? []) as any);
+    setAllProspects(prospects ?? []);
     setAssociations([...new Set((prospects ?? []).map((p: any) => p.association).filter(Boolean))].sort());
     setCountries([...new Set((prospects ?? []).map((p: any) => p.country).filter(Boolean))].sort());
     setTags([...new Set((prospects ?? []).flatMap((p: any) => p.tags ?? []))].sort());
   };
 
   useEffect(() => { load(); }, [id]);
+
 
   const filter = c?.audience_filter ?? {};
   const setFilter = (patch: Record<string, unknown>) =>

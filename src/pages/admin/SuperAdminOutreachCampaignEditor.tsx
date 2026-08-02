@@ -305,10 +305,26 @@ export default function SuperAdminOutreachCampaignEditor() {
                 <Input placeholder="you@squashhub.co.za" value={testTo}
                   onChange={(e) => setTestTo(e.target.value)} />
               </div>
+              <div className="flex-1 min-w-[220px]">
+                <Label className="text-xs">Personalise the test as</Label>
+                <Select value={testProspectId} onValueChange={setTestProspectId}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    <SelectItem value="sample">Sample club (Pretoria Squash Club)</SelectItem>
+                    {allProspects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.club_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button variant="outline" onClick={sendTest} disabled={!!busy || !testTo.includes("@")}>
                 <Send className="h-4 w-4 mr-1" /> Send test
               </Button>
             </div>
+            <p className="text-[11px] text-white/50">
+              The test always goes to the address above — the club is only used to fill in the merge fields.
+            </p>
+
           </Card>
 
           <Card className="p-3 bg-white/5 border-white/10">

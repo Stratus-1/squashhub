@@ -158,6 +158,15 @@ async function requireAdmin(req: Request) {
   const token = authHeader.replace(/^Bearer\s+/i, "");
   if (token && token === SERVICE_KEY) return { cron: true, userId: null as string | null };
 
+  // pg_cron sweep authenticates with a shared secret held in app_settings.
+  const cronSecret = req.headers.get("x-cron-secret") || "";
+  if (cronSecret) {
+    const { data: row } = await admin
+      .from("app_settings").select("value").eq("key", "outreach_cron_secret").maybeSingle();
+    const expected = String((row as any)?.value ?? "");
+    if (expected && cronSecret === expected) return { cron: true, userId: null as string | null };
+  }
+
   const userClient = createClient(
     SUPABASE_URL,
     Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "",

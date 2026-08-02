@@ -132,19 +132,38 @@ export default function RegisterClub() {
         navigate("/club-admin");
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to register club");
+      const msg = String(err?.message || "");
+      if (/duplicate key|clubs_subdomain_key|unique/i.test(msg)) {
+        setSlugStatus("taken");
+        toast.error(`The abbreviation "${form.subdomain}" is already taken — please choose another.`);
+      } else {
+        toast.error(msg || "Failed to register club");
+      }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error("Club name is required"); return; }
+    const slug = normaliseSlug(form.subdomain);
+    if (slug.length < 2) { toast.error("Abbreviation must be 2-5 letters or numbers"); return; }
+    if (slug !== form.subdomain) setForm(p => ({ ...p, subdomain: slug }));
+
+    // Final server-side availability check before creating.
+    const { data: clash } = await supabase.from("clubs").select("id").eq("subdomain", slug).maybeSingle();
+    if (clash) {
+      setSlugStatus("taken");
+      toast.error(`The abbreviation "${slug}" is already in use — please choose another.`);
+      return;
+    }
+
     if (seededMatches.length > 0) {
       setConfirmOpen(true);
       return;
     }
     doCreate();
   };
+
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [k]: e.target.value }));
 

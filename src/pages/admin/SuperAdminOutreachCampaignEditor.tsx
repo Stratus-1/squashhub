@@ -151,7 +151,10 @@ export default function SuperAdminOutreachCampaignEditor() {
 
   const sendTest = async () => {
     await save();
-    const res = await call("test", { to: testTo.trim() });
+    const res = await call("test", {
+      to: testTo.trim(),
+      prospect_id: testProspectId === "sample" ? undefined : testProspectId,
+    });
     if (res) toast({ title: `Test sent to ${res.sent_to}` });
   };
 
@@ -170,6 +173,11 @@ export default function SuperAdminOutreachCampaignEditor() {
   const insertField = (f: string) =>
     setC((p: any) => ({ ...p, body_html: `${p.body_html ?? ""}{{${f}}}` }));
 
+  const previewProspect = useMemo(
+    () => allProspects.find((p) => p.id === testProspectId),
+    [allProspects, testProspectId],
+  );
+
   const previewHtml = useMemo(() => {
     if (!c) return "";
     const vb = buildVideoBlock({
@@ -177,16 +185,18 @@ export default function SuperAdminOutreachCampaignEditor() {
       mobileUrl: c.video_mobile_url,
       thumbUrl: c.video_thumb_url,
     });
+    const p = previewProspect;
     return String(c.body_html ?? "")
       .replace(/{{\s*video_block\s*}}/g, vb)
-      .replace(/{{\s*club_name\s*}}/g, "Pretoria Squash Club")
+      .replace(/{{\s*club_name\s*}}/g, p?.club_name ?? "Pretoria Squash Club")
       .replace(/{{\s*contact_name\s*}}/g, "Test Chairman")
       .replace(/{{\s*first_name\s*}}/g, "Test")
-      .replace(/{{\s*association\s*}}/g, "Squash Northerns")
-      .replace(/{{\s*city\s*}}/g, "Pretoria")
-      .replace(/{{\s*country\s*}}/g, "South Africa")
+      .replace(/{{\s*association\s*}}/g, p?.association ?? "Squash Northerns")
+      .replace(/{{\s*city\s*}}/g, p?.city ?? "Pretoria")
+      .replace(/{{\s*country\s*}}/g, p?.country ?? "South Africa")
       .replace(/{{\s*role\s*}}/g, "Chairman");
-  }, [c]);
+  }, [c, previewProspect]);
+
 
   if (!c) return <p className="text-sm text-white/60">Loading…</p>;
 

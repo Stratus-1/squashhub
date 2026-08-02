@@ -68,13 +68,14 @@ No paper scorecards. No re-typing. No logging into the NSA site a second time af
 
 ${VIDEO_BLOCK_PLACEHOLDER}
 
-<p>I'd be glad to set {{club_name}} up with a live demo loaded with your own NSA member list, so your committee can see your actual roster and fixtures — not a sample club. It costs you nothing to look at.</p>
+<p><strong>You can test it for free.</strong> Have a look at our website and download the app — it's free for players, always. If {{club_name}} would like to try the full club functionality as well, just let us know and we'll give your committee full admin rights so you can explore everything at no cost. A fee only becomes payable if the club decides to carry on using the full admin features.</p>
 
-<p>Would a 15-minute call this week or next suit you?</p>
+<p>If you'd like more information, you're most welcome to contact us.</p>
 
 <p>Kind regards,<br><br>
 <strong>Willem Pretorius</strong><br>
 SquashHub — HKFT Services<br>
++27 83 375 9003<br>
 <a href="https://squashhub.co.za" style="color:#1d4ed8">squashhub.co.za</a></p>`),
   },
   {
@@ -103,11 +104,14 @@ ${VIDEO_BLOCK_PLACEHOLDER}
 
 <p>Clubs are up and running in a matter of days — we import your existing member list for you.</p>
 
-<p>Happy to give the committee at {{club_name}} a walkthrough at a time that suits you. Just reply and I'll set it up.</p>
+<p><strong>You can test it for free.</strong> Visit our website and download the app — it's free for players, always. If {{club_name}} wants to try the full club functionality too, just let us know and we'll give your committee full admin rights to explore everything at no cost. A fee only becomes payable if the club decides to keep using the full admin features.</p>
+
+<p>If you'd like more information, you're most welcome to contact us.</p>
 
 <p>Kind regards,<br><br>
 <strong>Willem Pretorius</strong><br>
 SquashHub — HKFT Services<br>
++27 83 375 9003<br>
 <a href="https://squashhub.co.za" style="color:#1d4ed8">squashhub.co.za</a></p>`),
   },
 ];

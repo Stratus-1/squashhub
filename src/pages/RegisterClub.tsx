@@ -54,11 +54,33 @@ export default function RegisterClub() {
 
   const [seededMatches, setSeededMatches] = useState<SeededMatch[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
 
   const generateSubdomain = (name: string) => {
     const words = name.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => !STOP_WORDS.has(w) && w.length > 0);
     return words.map(w => w.slice(0, 3)).join("").slice(0, 5) || name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
   };
+
+  const normaliseSlug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
+
+  // Live availability check for the club abbreviation / subdomain.
+  useEffect(() => {
+    const slug = form.subdomain.trim();
+    if (!slug) { setSlugStatus("idle"); return; }
+    if (!/^[a-z0-9]{2,5}$/.test(slug)) { setSlugStatus("invalid"); return; }
+    setSlugStatus("checking");
+    const handle = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("id")
+        .eq("subdomain", slug)
+        .maybeSingle();
+      if (error) { setSlugStatus("idle"); return; }
+      setSlugStatus(data ? "taken" : "available");
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [form.subdomain]);
+
 
   // Debounced lookup of NSA-seeded clubs whose name overlaps the user's input.
   useEffect(() => {
@@ -110,19 +132,38 @@ export default function RegisterClub() {
         navigate("/club-admin");
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to register club");
+      const msg = String(err?.message || "");
+      if (/duplicate key|clubs_subdomain_key|unique/i.test(msg)) {
+        setSlugStatus("taken");
+        toast.error(`The abbreviation "${form.subdomain}" is already taken — please choose another.`);
+      } else {
+        toast.error(msg || "Failed to register club");
+      }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error("Club name is required"); return; }
+    const slug = normaliseSlug(form.subdomain);
+    if (slug.length < 2) { toast.error("Abbreviation must be 2-5 letters or numbers"); return; }
+    if (slug !== form.subdomain) setForm(p => ({ ...p, subdomain: slug }));
+
+    // Final server-side availability check before creating.
+    const { data: clash } = await supabase.from("clubs").select("id").eq("subdomain", slug).maybeSingle();
+    if (clash) {
+      setSlugStatus("taken");
+      toast.error(`The abbreviation "${slug}" is already in use — please choose another.`);
+      return;
+    }
+
     if (seededMatches.length > 0) {
       setConfirmOpen(true);
       return;
     }
     doCreate();
   };
+
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [k]: e.target.value }));
 
@@ -177,10 +218,22 @@ export default function RegisterClub() {
             <div className="space-y-2">
               <Label htmlFor="subdomain">Abbreviation <span className="text-xs text-muted-foreground">(you can edit)</span></Label>
               <div className="flex items-center gap-2">
-                <Input id="subdomain" value={form.subdomain} onChange={set("subdomain")} placeholder="e.g. gbsq" maxLength={5} className="max-w-[120px]" />
+                <Input
+                  id="subdomain"
+                  value={form.subdomain}
+                  onChange={(e) => setForm(p => ({ ...p, subdomain: normaliseSlug(e.target.value) }))}
+                  placeholder="e.g. gbsq"
+                  maxLength={5}
+                  className={`max-w-[120px] ${slugStatus === "taken" || slugStatus === "invalid" ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                />
                 <span className="text-sm text-muted-foreground">.squashhub.app</span>
               </div>
+              {slugStatus === "checking" && <p className="text-xs text-muted-foreground">Checking availability…</p>}
+              {slugStatus === "available" && <p className="text-xs text-emerald-600 dark:text-emerald-400">"{form.subdomain}" is available</p>}
+              {slugStatus === "taken" && <p className="text-xs text-destructive">"{form.subdomain}" is already taken — please choose another.</p>}
+              {slugStatus === "invalid" && <p className="text-xs text-destructive">Use 2–5 letters or numbers, no spaces or symbols.</p>}
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>
               <Input id="address" value={form.address} onChange={set("address")} placeholder="Club address" />
@@ -193,7 +246,7 @@ export default function RegisterClub() {
               <Label htmlFor="phone">Club Phone</Label>
               <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} placeholder="+27..." />
             </div>
-            <Button type="submit" className="w-full" disabled={createClub.isPending}>
+            <Button type="submit" className="w-full" disabled={createClub.isPending || slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "checking"}>
               {createClub.isPending ? "Registering..." : "Register Club"}
             </Button>
           </form>

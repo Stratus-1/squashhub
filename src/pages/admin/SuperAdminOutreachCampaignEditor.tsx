@@ -112,6 +112,7 @@ export default function SuperAdminOutreachCampaignEditor() {
         video_thumb_url: c.video_thumb_url || null,
         audience_filter: c.audience_filter ?? {},
         daily_cap: Number(c.daily_cap) || 30,
+        rate_window_hours: Math.max(1, Math.min(168, Number(c.rate_window_hours) || 24)),
         send_delay_ms: Number(c.send_delay_ms) || 4000,
         updated_at: new Date().toISOString(),
       })
@@ -214,12 +215,25 @@ export default function SuperAdminOutreachCampaignEditor() {
   };
 
   const run = async () => {
-    if (!confirm(`Send this campaign now? Up to ${c.daily_cap} emails will go out in this batch.`)) return;
+    const win = Number(c.rate_window_hours) || 24;
+    if (!confirm(
+      `Send this campaign now? Up to ${c.daily_cap} emails per ${win} hour${win === 1 ? "" : "s"}; ` +
+      `anything over that stays queued and goes out automatically in the next window.`,
+    )) return;
     const res = await call("run");
     if (res) {
+      const next = res.next_run_at
+        ? new Date(res.next_run_at).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })
+        : null;
       toast({
-        title: res.capped ? "Daily cap already reached" : `${res.sent ?? 0} emails sent`,
-        description: res.failed ? `${res.failed} failed` : undefined,
+        title: res.capped
+          ? "Rate limit reached — paused"
+          : `${res.sent ?? 0} emails sent`,
+        description: res.capped
+          ? `${res.remaining ?? 0} still queued. Sending resumes automatically${next ? ` around ${next}` : ""}.`
+          : [res.failed ? `${res.failed} failed` : null,
+             res.remaining ? `${res.remaining} still queued` : null]
+              .filter(Boolean).join(" · ") || undefined,
       });
       load();
     }
@@ -557,13 +571,22 @@ export default function SuperAdminOutreachCampaignEditor() {
 
 
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-white/10">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-white/10">
               <div>
-                <Label className="text-xs">Daily cap (emails per day)</Label>
-                <Input type="number" value={c.daily_cap ?? 30}
+                <Label className="text-xs">Max emails per window</Label>
+                <Input type="number" min={1} max={500} value={c.daily_cap ?? 30}
                   onChange={(e) => setC({ ...c, daily_cap: Number(e.target.value) })} />
                 <p className="text-[11px] text-white/50 mt-1">
                   Keep it low (20–40) while the sending domain warms up.
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs">Window length (hours)</Label>
+                <Input type="number" min={1} max={168} value={c.rate_window_hours ?? 24}
+                  onChange={(e) => setC({ ...c, rate_window_hours: Number(e.target.value) })} />
+                <p className="text-[11px] text-white/50 mt-1">
+                  Sends up to {c.daily_cap ?? 30} emails per {c.rate_window_hours ?? 24} hour
+                  {(c.rate_window_hours ?? 24) === 1 ? "" : "s"}, then pauses and resumes on its own.
                 </p>
               </div>
               <div>

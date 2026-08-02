@@ -158,6 +158,15 @@ async function requireAdmin(req: Request) {
   const token = authHeader.replace(/^Bearer\s+/i, "");
   if (token && token === SERVICE_KEY) return { cron: true, userId: null as string | null };
 
+  // pg_cron sweep authenticates with a shared secret held in app_settings.
+  const cronSecret = req.headers.get("x-cron-secret") || "";
+  if (cronSecret) {
+    const { data: row } = await admin
+      .from("app_settings").select("value").eq("key", "outreach_cron_secret").maybeSingle();
+    const expected = String((row as any)?.value ?? "");
+    if (expected && cronSecret === expected) return { cron: true, userId: null as string | null };
+  }
+
   const userClient = createClient(
     SUPABASE_URL,
     Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "",
@@ -467,20 +476,41 @@ async function runCampaign(campaignId: string) {
   if (!campaign) return { sent: 0, failed: 0, remaining: 0, error: "not found" };
 
   const cap = Math.max(1, Math.min(500, Number(campaign.daily_cap) || 30));
+  const windowHours = Math.max(1, Math.min(168, Number(campaign.rate_window_hours) || 24));
   const delay = Math.max(0, Math.min(30000, Number(campaign.send_delay_ms) || 4000));
 
-  // Respect the daily cap across today's sends.
-  const startOfDay = new Date();
-  startOfDay.setUTCHours(0, 0, 0, 0);
-  const { count: sentToday } = await admin
+  // Rolling rate limit: at most `cap` emails per `windowHours` hours.
+  const windowStart = new Date(Date.now() - windowHours * 3600_000);
+  const { data: recentSends } = await admin
     .from("outreach_recipients")
-    .select("id", { count: "exact", head: true })
+    .select("sent_at")
     .eq("campaign_id", campaignId)
     .eq("send_status", "sent")
-    .gte("sent_at", startOfDay.toISOString());
+    .gte("sent_at", windowStart.toISOString())
+    .order("sent_at", { ascending: true });
 
-  const budget = cap - (sentToday ?? 0);
-  if (budget <= 0) return { sent: 0, failed: 0, remaining: -1, capped: true };
+  const sentInWindow = (recentSends ?? []).length;
+  const budget = cap - sentInWindow;
+  if (budget <= 0) {
+    // Stay in "sending" so the cron sweep resumes automatically once the
+    // oldest send in the window ages out.
+    const oldest = (recentSends ?? [])[0]?.sent_at;
+    const nextRunAt = oldest
+      ? new Date(new Date(oldest).getTime() + windowHours * 3600_000).toISOString()
+      : new Date(Date.now() + windowHours * 3600_000).toISOString();
+    const { count: stillQueued } = await admin
+      .from("outreach_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaignId)
+      .eq("send_status", "queued");
+    await admin.from("outreach_campaigns")
+      .update({ status: (stillQueued ?? 0) > 0 ? "sending" : "sent" })
+      .eq("id", campaignId);
+    return {
+      sent: 0, failed: 0, capped: true, remaining: stillQueued ?? 0,
+      cap, window_hours: windowHours, next_run_at: nextRunAt,
+    };
+  }
 
   const { data: queued } = await admin
     .from("outreach_recipients")

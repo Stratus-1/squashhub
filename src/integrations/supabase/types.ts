@@ -5717,6 +5717,348 @@ export type Database = {
         }
         Relationships: []
       }
+      outreach_campaigns: {
+        Row: {
+          audience_filter: Json
+          body_html: string
+          created_at: string
+          created_by: string | null
+          daily_cap: number
+          id: string
+          last_run_at: string | null
+          name: string
+          preheader: string | null
+          send_delay_ms: number
+          status: string
+          subject: string
+          updated_at: string
+          video_desktop_url: string | null
+          video_mobile_url: string | null
+          video_thumb_url: string | null
+        }
+        Insert: {
+          audience_filter?: Json
+          body_html?: string
+          created_at?: string
+          created_by?: string | null
+          daily_cap?: number
+          id?: string
+          last_run_at?: string | null
+          name: string
+          preheader?: string | null
+          send_delay_ms?: number
+          status?: string
+          subject?: string
+          updated_at?: string
+          video_desktop_url?: string | null
+          video_mobile_url?: string | null
+          video_thumb_url?: string | null
+        }
+        Update: {
+          audience_filter?: Json
+          body_html?: string
+          created_at?: string
+          created_by?: string | null
+          daily_cap?: number
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          preheader?: string | null
+          send_delay_ms?: number
+          status?: string
+          subject?: string
+          updated_at?: string
+          video_desktop_url?: string | null
+          video_mobile_url?: string | null
+          video_thumb_url?: string | null
+        }
+        Relationships: []
+      }
+      outreach_contacts: {
+        Row: {
+          bounced: boolean
+          created_at: string
+          email: string
+          id: string
+          is_primary: boolean
+          name: string | null
+          opted_out: boolean
+          phone: string | null
+          prospect_id: string
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          bounced?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          is_primary?: boolean
+          name?: string | null
+          opted_out?: boolean
+          phone?: string | null
+          prospect_id: string
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bounced?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          is_primary?: boolean
+          name?: string | null
+          opted_out?: boolean
+          phone?: string | null
+          prospect_id?: string
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_contacts_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_events: {
+        Row: {
+          campaign_id: string | null
+          contact_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          recipient_id: string | null
+          url: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          recipient_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          recipient_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_events_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_links: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          label: string | null
+          target_url: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          target_url: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          target_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_prospects: {
+        Row: {
+          association: string | null
+          city: string | null
+          club_name: string
+          country: string
+          courts: number | null
+          created_at: string
+          follow_up_date: string | null
+          id: string
+          is_nsa: boolean
+          last_contacted_at: string | null
+          notes: string | null
+          owner_user_id: string | null
+          source: string | null
+          status: string
+          tags: string[]
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          association?: string | null
+          city?: string | null
+          club_name: string
+          country?: string
+          courts?: number | null
+          created_at?: string
+          follow_up_date?: string | null
+          id?: string
+          is_nsa?: boolean
+          last_contacted_at?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          source?: string | null
+          status?: string
+          tags?: string[]
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          association?: string | null
+          city?: string | null
+          club_name?: string
+          country?: string
+          courts?: number | null
+          created_at?: string
+          follow_up_date?: string | null
+          id?: string
+          is_nsa?: boolean
+          last_contacted_at?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          source?: string | null
+          status?: string
+          tags?: string[]
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      outreach_recipients: {
+        Row: {
+          campaign_id: string
+          click_count: number
+          contact_id: string
+          created_at: string
+          email: string
+          error_message: string | null
+          first_clicked_at: string | null
+          first_opened_at: string | null
+          follow_up_date: string | null
+          id: string
+          last_opened_at: string | null
+          open_count: number
+          prospect_id: string
+          reply_note: string | null
+          reply_status: string | null
+          send_status: string
+          sent_at: string | null
+          unsubscribed_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          click_count?: number
+          contact_id: string
+          created_at?: string
+          email: string
+          error_message?: string | null
+          first_clicked_at?: string | null
+          first_opened_at?: string | null
+          follow_up_date?: string | null
+          id?: string
+          last_opened_at?: string | null
+          open_count?: number
+          prospect_id: string
+          reply_note?: string | null
+          reply_status?: string | null
+          send_status?: string
+          sent_at?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          click_count?: number
+          contact_id?: string
+          created_at?: string
+          email?: string
+          error_message?: string | null
+          first_clicked_at?: string | null
+          first_opened_at?: string | null
+          follow_up_date?: string | null
+          id?: string
+          last_opened_at?: string | null
+          open_count?: number
+          prospect_id?: string
+          reply_note?: string | null
+          reply_status?: string | null
+          send_status?: string
+          sent_at?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_recipients_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_recipients_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_league_associations: {
         Row: {
           created_at: string

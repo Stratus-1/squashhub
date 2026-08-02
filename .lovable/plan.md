@@ -1,65 +1,55 @@
-# Simplify club event creation
+# Outreach CRM — Super Admin
 
-## Roles and booking rules
+A new **Outreach** section at `/admin/outreach` for direct marketing to squash clubs (NSA Pretoria first, then the rest of SA and international), with sending, open/click tracking and reply logging.
 
-**Member (no special permission)**
-- Can create events.
-- Court bookings limited to **1 peak-hour slot + 1 non-peak slot** per event instance.
-- Recurrence allowed (weekly/monthly/yearly) — the per-instance limit applies to each occurrence.
-- If they exceed the limit, show a clear inline message before saving:
-  "Members can book 1 peak-hour and 1 off-peak court per event. Ask a club admin to create this event or to grant you unlimited booking permission."
+## What you get
 
-**Club admin (or member with `bookings_unlimited` / `events` permission)**
-- Any time, any number of courts, any number of occurrences.
-- Bookings are free — the club carries any light fees.
-- No "Book under club name" toggle needed; admin events are automatically club-funded.
+### 1. Prospect database
+Per club: club name, association/province, city, country, courts, website, NSA affiliated (yes/no), source, notes, status (New / Contacted / Opened / Clicked / Replied / Interested / Not interested / Bounced / Unsubscribed), owner, next follow-up date.
 
-## Proposed changes
+Per contact: name, role (Chairman / Secretary / League convener / Coach / Other), email, phone, primary contact flag, opt-out flag.
 
-### 1. Automatic booking identity — remove the toggle
-- Drop the "Book under Club name (free)" switch entirely.
-- Admin-created events: booked under the club, free, exempt from limits and light fees.
-- Member-created events: booked under the creating member, subject to the 1 peak + 1 off-peak rule and normal light-fee handling.
-- All event bookings tagged `source: 'club_event'`.
+Screens:
+- Table with search and filters on association, country, NSA yes/no, status, tag.
+- **Paste/CSV import** — paste a block from your ChatGPT research or upload a CSV. A mapping step shows the parsed rows, flags duplicates by email and club name, and lets you fix or skip rows before committing.
+- Add/edit a club or contact by hand.
+- Tags (`nsa-pretoria`, `wp`, `university`, `international`) for building send lists.
+- Export the filtered list back out as CSV.
 
-### 2. Peak-hour guard with clear messaging
-- Determine peak/off-peak per club settings for the chosen start time.
-- For non-privileged creators, validate the selected courts against the 1 peak + 1 off-peak allowance and block Save with an explanatory inline note (not a silent failure).
-- Privileged creators bypass the check completely — no warning noise.
+### 2. Campaign builder
+- Create a campaign: name, subject, HTML body, audience (saved filter or tag selection).
+- Two starter templates pre-loaded — **NSA clubs (Pretoria)** and **General / international** — editable in the console.
+- The NSA template leads with the approval and testing angle: SquashHub integrates directly with the NSA system *with NSA's approval and tested in live league play* — captains mark the scorecard on their phone in the NSA's own layout and submit the result straight to the NSA site from the app. No paper, no re-typing, no second login to NSA after the game, no Sunday-night emailing of scorecards to a convener.
+- Merge fields: `{{club_name}}`, `{{contact_name}}`, `{{role}}`, `{{association}}`, `{{city}}`.
+- **Video block**: paste your YouTube desktop-HD and mobile-HD URLs plus a thumbnail; the builder inserts a clickable thumbnail linked to the video (no MP4 attachment — it strips and hurts deliverability).
+- **Preview** against a real prospect, and **Send test to myself** before any real send.
+- **Throttled send**: emails per day and delay between sends, so a 200-club list drips out instead of burning your domain reputation. A daily job picks up where it left off.
+- Every recipient gets an unsubscribe link that sets the opt-out flag and blocks future campaigns to that address.
 
-### 3. Simpler single-step form
-- Collapse the wizard into one card: Title, Description, Type, Date, Start/End time, Recurrence, Courts.
-- Keep type/title/description exactly as they are today (no change requested).
-- Move invite scope, reminder hours, and lights auto-on into an "Advanced" section; default invite scope stays "all members".
-- Recurrence as a simple inline row: repeat weekly/monthly/yearly × N.
+### 3. Tracking
+- **Opens** — invisible pixel per recipient; first open, last open, open count. Labelled "indicative" since Apple/Gmail proxies distort it.
+- **Clicks** — every link rewritten to a logging redirect, so you see exactly which chairmen watched the video.
+- **Replies — logged by you.** On any recipient row: mark Replied / Interested / Not interested / Bounced, add a note, set a follow-up date. The prospect status updates automatically.
+- Bounces detected from SMTP failures mark the contact bounced and stop future sends.
 
-### 4. Clash and failure reporting (harden existing)
-- Never fail the whole series on one clash — book every other instance.
-- Persistent toast listing each failed slot (Court · Date · Time) with reason (already booked / peak limit / no permission) and a short "what to do" list.
+### 4. Dashboard
+Per campaign: sent, delivered, opened (unique + rate), clicked (unique + rate), replied, unsubscribed, bounced. A recipient table showing each club's status, open count, clicks and last activity — sortable and filterable, so "who opened and who didn't" is one click. Plus a **Needs follow-up** view listing everyone contacted 4+ days ago with no reply.
 
-### 5. Fix the edit path
-- On edit, rebook **every** instance date, not just the first.
-- Cancel bookings that no longer match the updated date/time/court set.
-- Tag all rebooked slots with `source: 'club_event'`.
-- Backfill missing court bookings for currently active events (e.g. School squash).
+## Technical notes
 
-### 6. Event list clarity
-- Replace the lingering "Loading…" placeholder with either "X courts booked" or a subtle "No courts booked" warning so admins spot problems immediately.
+**Sending** uses the platform SMTP already in Super Admin → Settings (`platform_smtp_host/port/user/pass`, `platform_sender_email/name` in `app_settings`) — same nodemailer pattern as `send-club-campaign`.
+
+**New tables** (platform-scoped, RLS restricted to `is_platform_admin()`, with GRANTs):
+- `outreach_prospects`, `outreach_contacts`, `outreach_campaigns`, `outreach_recipients` (per-contact send/open/click/reply state), `outreach_events` (append-only log), `outreach_links`
+
+**New edge functions:**
+- `outreach-send` — builds and sends a throttled batch, records per-recipient state (admin-authenticated)
+- `outreach-track` — public: pixel (`/open`), click redirect (`/click`), unsubscribe (`/u`)
+- Daily cron on `outreach-send` to continue drip campaigns
+
+**Routing:** `/admin/outreach`, `/admin/outreach/campaigns`, `/admin/outreach/campaigns/:id`, added to the Super Admin menu.
+
+**Deliverability guardrails:** daily send cap, duplicate-email blocking, suppression on unsubscribe/bounce, warning banner if SPF/DKIM aren't set on the sending domain.
 
 ## Out of scope
-- No schema changes beyond reading existing club peak-hour settings.
-- No change to `AdminEventEditor.tsx` (season/social events).
-- No change to event types, titles or descriptions — left exactly as they are.
-- No tournament scheduler changes.
-
-## Files to change
-- `src/components/CreateClubEvent.tsx` — main logic: role-aware limits, single-step form, rebooking on edit, clash reporting.
-- `src/pages/Events.tsx` — list badge / warning tweak.
-- Optionally a small helper `src/lib/event-booking.ts` for instance-date + rebooking logic.
-
-## Verification
-- Member creates a weekly event with 2 peak courts → blocked with the explanatory message.
-- Member creates 1 peak + 1 off-peak → saves, books all occurrences.
-- Admin creates 4 courts × 8 weeks at peak time → all book, free, no warnings.
-- Edit an event's time → old bookings cancelled, all new instance dates booked.
-- Force one clash → other instances still save, toast lists the failed slot.
+Automatic inbound reply capture (needs a mailbox/IMAP integration) — replies are logged manually for now.

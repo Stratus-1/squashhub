@@ -362,7 +362,7 @@ async function runCampaign(campaignId: string) {
       skipped++;
       continue;
     }
-    const vars = mergeVars(pMap.get(r.prospect_id), contact);
+    const vars = mergeVars(pMap.get(r.prospect_id), contact, campaign);
     const html = applyTracking(renderMerge(campaign.body_html || "", vars), linkMap, r.id, true);
     const subject = renderMerge(campaign.subject || "", vars);
 

@@ -218,10 +218,22 @@ export default function RegisterClub() {
             <div className="space-y-2">
               <Label htmlFor="subdomain">Abbreviation <span className="text-xs text-muted-foreground">(you can edit)</span></Label>
               <div className="flex items-center gap-2">
-                <Input id="subdomain" value={form.subdomain} onChange={set("subdomain")} placeholder="e.g. gbsq" maxLength={5} className="max-w-[120px]" />
+                <Input
+                  id="subdomain"
+                  value={form.subdomain}
+                  onChange={(e) => setForm(p => ({ ...p, subdomain: normaliseSlug(e.target.value) }))}
+                  placeholder="e.g. gbsq"
+                  maxLength={5}
+                  className={`max-w-[120px] ${slugStatus === "taken" || slugStatus === "invalid" ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                />
                 <span className="text-sm text-muted-foreground">.squashhub.app</span>
               </div>
+              {slugStatus === "checking" && <p className="text-xs text-muted-foreground">Checking availability…</p>}
+              {slugStatus === "available" && <p className="text-xs text-emerald-600 dark:text-emerald-400">"{form.subdomain}" is available</p>}
+              {slugStatus === "taken" && <p className="text-xs text-destructive">"{form.subdomain}" is already taken — please choose another.</p>}
+              {slugStatus === "invalid" && <p className="text-xs text-destructive">Use 2–5 letters or numbers, no spaces or symbols.</p>}
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>
               <Input id="address" value={form.address} onChange={set("address")} placeholder="Club address" />

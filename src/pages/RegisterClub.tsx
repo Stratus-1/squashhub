@@ -54,11 +54,33 @@ export default function RegisterClub() {
 
   const [seededMatches, setSeededMatches] = useState<SeededMatch[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
 
   const generateSubdomain = (name: string) => {
     const words = name.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => !STOP_WORDS.has(w) && w.length > 0);
     return words.map(w => w.slice(0, 3)).join("").slice(0, 5) || name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
   };
+
+  const normaliseSlug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
+
+  // Live availability check for the club abbreviation / subdomain.
+  useEffect(() => {
+    const slug = form.subdomain.trim();
+    if (!slug) { setSlugStatus("idle"); return; }
+    if (!/^[a-z0-9]{2,5}$/.test(slug)) { setSlugStatus("invalid"); return; }
+    setSlugStatus("checking");
+    const handle = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("id")
+        .eq("subdomain", slug)
+        .maybeSingle();
+      if (error) { setSlugStatus("idle"); return; }
+      setSlugStatus(data ? "taken" : "available");
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [form.subdomain]);
+
 
   // Debounced lookup of NSA-seeded clubs whose name overlaps the user's input.
   useEffect(() => {

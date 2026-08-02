@@ -412,6 +412,71 @@ export default function SuperAdminOutreachCampaignEditor() {
               </div>
             </div>
 
+            {(() => {
+              const selected: string[] = filter.prospect_ids ?? [];
+              const list = allProspects.filter((p) => {
+                if (filter.association && p.association !== filter.association) return false;
+                if (filter.country && p.country !== filter.country) return false;
+                if (typeof filter.is_nsa === "boolean" && p.is_nsa !== filter.is_nsa) return false;
+                if (filter.status && p.status !== filter.status) return false;
+                if (Array.isArray(filter.tags) && filter.tags.length &&
+                    !(p.tags ?? []).some((t: string) => filter.tags.includes(t))) return false;
+                if (clubSearch.trim() &&
+                    !String(p.club_name ?? "").toLowerCase().includes(clubSearch.trim().toLowerCase()))
+                  return false;
+                return true;
+              });
+              const toggle = (pid: string) => {
+                const next = selected.includes(pid)
+                  ? selected.filter((x) => x !== pid)
+                  : [...selected, pid];
+                setFilter({ prospect_ids: next.length ? next : undefined });
+              };
+              return (
+                <div className="pt-2 border-t border-white/10 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-xs">Specific clubs (optional)</Label>
+                      <p className="text-[11px] text-white/50">
+                        {selected.length
+                          ? `${selected.length} club${selected.length === 1 ? "" : "s"} selected — only these will be emailed.`
+                          : "Nothing ticked = every club matching the filters above."}
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                        onClick={() => setFilter({ prospect_ids: list.map((p) => p.id) })}>
+                        Select all shown
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-[11px]"
+                        onClick={() => setFilter({ prospect_ids: undefined })}>
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                  <Input placeholder="Search clubs…" value={clubSearch}
+                    onChange={(e) => setClubSearch(e.target.value)} />
+                  <div className="max-h-[280px] overflow-auto rounded-lg border border-white/10 divide-y divide-white/5">
+                    {!list.length && (
+                      <p className="p-3 text-xs text-white/50">No clubs match these filters.</p>
+                    )}
+                    {list.map((p) => (
+                      <label key={p.id}
+                        className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] cursor-pointer hover:bg-white/5">
+                        <Checkbox checked={selected.includes(p.id)} onCheckedChange={() => toggle(p.id)} />
+                        <span className="flex-1">{p.club_name}</span>
+                        <span className="text-[11px] text-white/40">
+                          {[p.association, p.country].filter(Boolean).join(" · ")}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-white/10">
               <div>
                 <Label className="text-xs">Daily cap (emails per day)</Label>

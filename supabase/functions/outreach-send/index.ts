@@ -340,6 +340,94 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---------- send this campaign to ONE prospect only ----------
+    if (action === "send_one") {
+      const prospectId = String(body.prospect_id || "").trim();
+      if (!prospectId) return json({ error: "prospect_id required" }, 400);
+
+      const { data: prospect } = await admin
+        .from("outreach_prospects")
+        .select("id,club_name,association,city,country,club_subdomain")
+        .eq("id", prospectId).maybeSingle();
+      if (!prospect) return json({ error: "Prospect not found" }, 404);
+
+      const { data: contacts } = await admin
+        .from("outreach_contacts")
+        .select("id,name,role,email,opted_out,bounced")
+        .eq("prospect_id", prospectId);
+
+      const onlyContactId = String(body.contact_id || "").trim();
+      const eligible = (contacts ?? []).filter((c: any) =>
+        c.email && c.email.includes("@") && !c.opted_out && !c.bounced &&
+        (!onlyContactId || c.id === onlyContactId));
+      if (!eligible.length) return json({ error: "No contactable email for this club" }, 400);
+
+      const s = await getSettings();
+      const smtp = await makeTransport(s);
+      if ("error" in smtp) return json({ error: smtp.error }, 400);
+
+      const linkMap = await buildLinkMap(
+        campaignId,
+        String(campaign.body_html || "").replace(/{{\s*video_block\s*}}/g, videoBlock(campaign)),
+      );
+
+      let sent = 0, failed = 0;
+      const errors: string[] = [];
+      for (const contact of eligible as any[]) {
+        // Ensure a recipient row exists (for tracking / dedupe).
+        await admin.from("outreach_recipients").upsert({
+          campaign_id: campaignId,
+          prospect_id: prospectId,
+          contact_id: contact.id,
+          email: contact.email,
+          send_status: "queued",
+        }, { onConflict: "campaign_id,contact_id", ignoreDuplicates: true });
+
+        const { data: rec } = await admin
+          .from("outreach_recipients").select("id,send_status")
+          .eq("campaign_id", campaignId).eq("contact_id", contact.id).maybeSingle();
+        if (!rec) { failed++; errors.push(`${contact.email}: could not queue`); continue; }
+        if ((rec as any).send_status === "sent" && !body.resend) {
+          errors.push(`${contact.email}: already sent (tick "resend" to send again)`);
+          continue;
+        }
+
+        const vars = mergeVars(prospect, contact, campaign);
+        const html = applyTracking(renderMerge(campaign.body_html || "", vars), linkMap, (rec as any).id, true);
+        try {
+          await smtp.transporter.sendMail({
+            from: smtp.from,
+            to: contact.email,
+            subject: renderMerge(campaign.subject || "", vars),
+            html,
+            text: stripHtml(html),
+            headers: {
+              "List-Unsubscribe": `<${TRACK_BASE}/u?r=${(rec as any).id}>`,
+              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
+          });
+          const now = new Date().toISOString();
+          await admin.from("outreach_recipients")
+            .update({ send_status: "sent", sent_at: now, error_message: null }).eq("id", (rec as any).id);
+          await admin.from("outreach_prospects")
+            .update({ status: "contacted", last_contacted_at: now })
+            .eq("id", prospectId).eq("status", "new");
+          await admin.from("outreach_events").insert({
+            recipient_id: (rec as any).id, campaign_id: campaignId, contact_id: contact.id, event_type: "sent",
+          });
+          sent++;
+        } catch (e) {
+          const msg = String((e as Error)?.message || e).slice(0, 500);
+          await admin.from("outreach_recipients")
+            .update({ send_status: "failed", error_message: msg }).eq("id", (rec as any).id);
+          errors.push(`${contact.email}: ${msg}`);
+          failed++;
+        }
+      }
+      if (!sent) return json({ error: errors.join("; ") || "Nothing sent" }, 502);
+      return json({ ok: true, sent, failed, errors });
+    }
+
     if (action === "run") {
       await admin.from("outreach_campaigns").update({ status: "sending" }).eq("id", campaignId);
       const res = await runCampaign(campaignId);

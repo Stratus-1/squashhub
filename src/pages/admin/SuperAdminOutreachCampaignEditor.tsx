@@ -15,8 +15,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { buildVideoBlock, VIDEO_BLOCK_PLACEHOLDER, STATUS_LABEL } from "@/lib/outreach-templates";
 import {
-  ArrowLeft, Play, Save, Send, Users, MailOpen, MousePointerClick, RefreshCw, Video,
+  ArrowLeft, Play, Save, Send, Users, MailOpen, MousePointerClick, RefreshCw, Video, Upload,
 } from "lucide-react";
+
 
 const MERGE_FIELDS = [
   "club_name", "contact_name", "first_name", "role", "association", "city", "country",
@@ -119,6 +120,34 @@ export default function SuperAdminOutreachCampaignEditor() {
     if (error) toast({ title: "Save failed", description: error.message, variant: "destructive" });
     else toast({ title: "Campaign saved" });
   };
+
+  const uploadThumb = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please choose an image file", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Max 5 MB.", variant: "destructive" });
+      return;
+    }
+    setBusy("thumb");
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `outreach/${id}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("club-logos")
+      .upload(path, file, { cacheControl: "31536000", upsert: true, contentType: file.type });
+    if (error) {
+      setBusy(null);
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    const { data } = supabase.storage.from("club-logos").getPublicUrl(path);
+    setC((p: any) => ({ ...p, video_thumb_url: data.publicUrl }));
+    await supabase.from("outreach_campaigns").update({ video_thumb_url: data.publicUrl }).eq("id", id);
+    setBusy(null);
+    toast({ title: "Thumbnail uploaded" });
+  };
+
 
   const call = async (action: string, extra: Record<string, unknown> = {}) => {
     setBusy(action);
@@ -279,9 +308,34 @@ export default function SuperAdminOutreachCampaignEditor() {
                   onChange={(e) => setC({ ...c, video_desktop_url: e.target.value })} />
                 <Input placeholder="YouTube mobile URL" value={c.video_mobile_url ?? ""}
                   onChange={(e) => setC({ ...c, video_mobile_url: e.target.value })} />
-                <Input placeholder="Thumbnail image URL" value={c.video_thumb_url ?? ""}
-                  onChange={(e) => setC({ ...c, video_thumb_url: e.target.value })} />
+                <div className="space-y-1.5">
+                  <Input placeholder="Thumbnail image URL" value={c.video_thumb_url ?? ""}
+                    onChange={(e) => setC({ ...c, video_thumb_url: e.target.value })} />
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="thumb-upload" type="file" accept="image/*" className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = "";
+                        if (f) uploadThumb(f);
+                      }}
+                    />
+                    <Button
+                      size="sm" variant="outline" className="h-7 px-2 text-[11px]"
+                      disabled={busy === "thumb"}
+                      onClick={() => document.getElementById("thumb-upload")?.click()}
+                    >
+                      <Upload className="h-3 w-3 mr-1" />
+                      {busy === "thumb" ? "Uploading…" : "Upload image"}
+                    </Button>
+                    {c.video_thumb_url ? (
+                      <img src={c.video_thumb_url} alt="Video thumbnail preview"
+                        className="h-7 w-12 object-cover rounded border border-white/10" />
+                    ) : null}
+                  </div>
+                </div>
               </div>
+
             </div>
 
             <div>

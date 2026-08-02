@@ -283,13 +283,19 @@ Deno.serve(async (req) => {
       const label = prospect?.club_name ? ` ${prospect.club_name}` : "";
 
       const html = applyTracking(renderMerge(campaign.body_html, vars), new Map(), "", false);
-      await smtp.transporter.sendMail({
-        from: smtp.from,
-        to,
-        subject: `[TEST${label}] ${renderMerge(campaign.subject, vars)}`,
-        html,
-        text: stripHtml(html),
-      });
+      try {
+        await smtp.transporter.sendMail({
+          from: smtp.from,
+          to,
+          subject: `[TEST${label}] ${renderMerge(campaign.subject, vars)}`,
+          html,
+          text: stripHtml(html),
+        });
+      } catch (e) {
+        const msg = (e as Error)?.message || String(e);
+        console.error("outreach-send test SMTP failure", msg);
+        return json({ error: `SMTP send failed: ${msg}` }, 502);
+      }
       return json({ ok: true, sent_to: to });
     }
 

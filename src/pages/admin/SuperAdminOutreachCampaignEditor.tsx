@@ -155,7 +155,20 @@ export default function SuperAdminOutreachCampaignEditor() {
       const { data, error } = await supabase.functions.invoke("outreach-send", {
         body: { action, campaign_id: id, ...extra },
       });
-      if (error) throw error;
+      if (error) {
+        // functions.invoke hides the response body on non-2xx — read it back.
+        let detail = error.message;
+        const ctx = (error as any)?.context;
+        if (ctx && typeof ctx.json === "function") {
+          try {
+            const j = await ctx.clone().json();
+            if (j?.error) detail = String(j.error);
+          } catch {
+            /* keep default message */
+          }
+        }
+        throw new Error(detail);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data as any;
     } catch (err) {

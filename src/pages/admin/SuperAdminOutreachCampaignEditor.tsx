@@ -198,7 +198,14 @@ export default function SuperAdminOutreachCampaignEditor() {
       to: testTo.trim(),
       prospect_id: testProspectId === "sample" ? undefined : testProspectId,
     });
-    if (res) toast({ title: `Test sent to ${res.sent_to}` });
+    if (res) {
+      toast({
+        title: `Test accepted for ${res.sent_to}`,
+        description: res.smtp_response
+          ? `Mail server said: ${res.smtp_response}`
+          : "Mail server accepted the message. Check spam/promotions if it doesn't arrive.",
+      });
+    }
   };
 
   const run = async () => {

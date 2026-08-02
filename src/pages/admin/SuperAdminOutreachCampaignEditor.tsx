@@ -187,10 +187,15 @@ export default function SuperAdminOutreachCampaignEditor() {
     await save();
     const res = await call("prepare");
     if (res) {
-      toast({ title: `${res.added} recipients queued`, description: res.skipped ? `${res.skipped} skipped (opted out or bounced)` : undefined });
+      const bits = [
+        res.skipped ? `${res.skipped} skipped (opted out or bounced)` : null,
+        res.removed ? `${res.removed} removed (no longer in audience)` : null,
+      ].filter(Boolean).join(" · ");
+      toast({ title: `${res.added} recipients queued`, description: bits || undefined });
       load();
     }
   };
+
 
   const sendTest = async () => {
     await save();

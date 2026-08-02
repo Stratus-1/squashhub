@@ -75,7 +75,7 @@ function splitLine(line: string, delim: string): string[] {
     if (ch === '"') {
       if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
       else inQuotes = !inQuotes;
-studio:    } else if (ch === delim && !inQuotes) {
+} else if (ch === delim && !inQuotes) {
       out.push(cur); cur = "";
     } else {
       cur += ch;

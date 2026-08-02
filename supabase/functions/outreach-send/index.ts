@@ -283,20 +283,47 @@ Deno.serve(async (req) => {
       const label = prospect?.club_name ? ` ${prospect.club_name}` : "";
 
       const html = applyTracking(renderMerge(campaign.body_html, vars), new Map(), "", false);
+      let info: any = null;
       try {
-        await smtp.transporter.sendMail({
+        try {
+          await smtp.transporter.verify();
+          console.log("outreach-send SMTP verify ok", { host: s.platform_smtp_host, port: s.platform_smtp_port });
+        } catch (ve) {
+          const vmsg = (ve as Error)?.message || String(ve);
+          console.error("outreach-send SMTP verify failed", vmsg);
+          return json({ error: `SMTP connection failed: ${vmsg}` }, 502);
+        }
+        info = await smtp.transporter.sendMail({
           from: smtp.from,
           to,
+          replyTo: s.platform_smtp_user || undefined,
           subject: `[TEST${label}] ${renderMerge(campaign.subject, vars)}`,
           html,
           text: stripHtml(html),
+        });
+        console.log("outreach-send test accepted by SMTP", {
+          to,
+          from: smtp.from,
+          messageId: info?.messageId,
+          accepted: info?.accepted,
+          rejected: info?.rejected,
+          response: info?.response,
         });
       } catch (e) {
         const msg = (e as Error)?.message || String(e);
         console.error("outreach-send test SMTP failure", msg);
         return json({ error: `SMTP send failed: ${msg}` }, 502);
       }
-      return json({ ok: true, sent_to: to });
+      if (info?.rejected?.length) {
+        return json({ error: `Server rejected recipient: ${info.rejected.join(", ")} — ${info?.response ?? ""}` }, 502);
+      }
+      return json({
+        ok: true,
+        sent_to: to,
+        smtp_response: info?.response ?? null,
+        message_id: info?.messageId ?? null,
+        accepted: info?.accepted ?? [],
+      });
     }
 
     if (action === "run") {

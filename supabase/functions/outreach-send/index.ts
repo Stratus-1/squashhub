@@ -427,7 +427,12 @@ async function runCampaign(campaignId: string) {
   const cMap = new Map((contacts ?? []).map((c: any) => [c.id, c]));
 
   let sent = 0, failed = 0, skipped = 0;
+  // Stay well inside the gateway's request ceiling: stop the batch after ~100s
+  // and report what's left so the caller can run again (the UI keeps polling).
+  const deadline = Date.now() + 100_000;
+  let timedOut = false;
   for (const r of queued as any[]) {
+    if (Date.now() > deadline) { timedOut = true; break; }
     const contact = cMap.get(r.contact_id);
     if (!contact || contact.opted_out || contact.bounced) {
       await admin.from("outreach_recipients")

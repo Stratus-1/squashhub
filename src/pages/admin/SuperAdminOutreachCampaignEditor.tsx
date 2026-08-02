@@ -279,9 +279,34 @@ export default function SuperAdminOutreachCampaignEditor() {
                   onChange={(e) => setC({ ...c, video_desktop_url: e.target.value })} />
                 <Input placeholder="YouTube mobile URL" value={c.video_mobile_url ?? ""}
                   onChange={(e) => setC({ ...c, video_mobile_url: e.target.value })} />
-                <Input placeholder="Thumbnail image URL" value={c.video_thumb_url ?? ""}
-                  onChange={(e) => setC({ ...c, video_thumb_url: e.target.value })} />
+                <div className="space-y-1.5">
+                  <Input placeholder="Thumbnail image URL" value={c.video_thumb_url ?? ""}
+                    onChange={(e) => setC({ ...c, video_thumb_url: e.target.value })} />
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="thumb-upload" type="file" accept="image/*" className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = "";
+                        if (f) uploadThumb(f);
+                      }}
+                    />
+                    <Button
+                      size="sm" variant="outline" className="h-7 px-2 text-[11px]"
+                      disabled={busy === "thumb"}
+                      onClick={() => document.getElementById("thumb-upload")?.click()}
+                    >
+                      <Upload className="h-3 w-3 mr-1" />
+                      {busy === "thumb" ? "Uploading…" : "Upload image"}
+                    </Button>
+                    {c.video_thumb_url ? (
+                      <img src={c.video_thumb_url} alt="Video thumbnail preview"
+                        className="h-7 w-12 object-cover rounded border border-white/10" />
+                    ) : null}
+                  </div>
+                </div>
               </div>
+
             </div>
 
             <div>

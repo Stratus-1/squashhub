@@ -160,8 +160,9 @@ export default function Clubs() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                NSA-affiliated clubs not yet fully set up on SquashHub. Clicking a club opens the league self-signup page.
+                These NSA-affiliated clubs are already live on SquashHub. Click your club to open its own site — NSA players can register there with their NSA number.
               </p>
+
               {nsaClubs.length === 0 ? (
                 <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">
                   No NSA clubs imported yet.

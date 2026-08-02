@@ -68,7 +68,15 @@ No paper scorecards. No re-typing. No logging into the NSA site a second time af
 
 ${VIDEO_BLOCK_PLACEHOLDER}
 
-<p><strong>You can test it for free.</strong> Have a look at our website and download the app — it's free for players, always. If {{club_name}} would like to try the full club functionality as well, just let us know and we'll give your committee full admin rights so you can explore everything at no cost. A fee only becomes payable if the club decides to carry on using the full admin features.</p>
+<p style="background:#ecfdf5;border-left:4px solid #059669;padding:14px 16px;margin:20px 0">
+<strong>{{club_name}} is already live on SquashHub.</strong><br><br>
+Your club site is up and waiting at {{club_link}} — your NSA roster, league numbers and fixtures are already loaded.<br><br>
+Your players simply open that link and register with their NSA number (or their personal details) — it takes 30 seconds and it's free for every player. Tell us who the committee members are and we'll switch on full admin access for them.
+</p>
+
+<p style="margin:20px 0"><a href="{{club_url}}" style="display:inline-block;background:#0E1F35;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:bold">Open {{club_name}} on SquashHub</a></p>
+
+<p><strong>You can test it for free.</strong> It's free for players, always. If {{club_name}} would like to try the full club functionality as well, just let us know and we'll give your committee full admin rights so you can explore everything at no cost. A fee only becomes payable if the club decides to carry on using the full admin features.</p>
 
 <p>If you'd like more information, you're most welcome to contact us.</p>
 
@@ -118,6 +126,9 @@ SquashHub — HKFT Services<br>
 
 export const MERGE_FIELDS = [
   "club_name",
+  "club_link",
+  "club_url",
+  "club_subdomain",
   "contact_name",
   "first_name",
   "role",

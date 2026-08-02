@@ -397,6 +397,9 @@ export default function SuperAdminOutreach() {
       <ProspectEditorDialog
         open={editorOpen} onOpenChange={setEditorOpen} prospect={editing} onSaved={load}
       />
+      <SendToClubDialog
+        open={sendOpen} onOpenChange={setSendOpen} prospect={sendTarget} onSent={load}
+      />
     </div>
   );
 }

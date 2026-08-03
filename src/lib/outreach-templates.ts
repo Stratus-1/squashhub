@@ -138,7 +138,7 @@ SquashHub — HKFT Services<br>
     key: "commercial",
     name: "Commercial squash centres / venues",
     audienceHint: "Pay-to-play venues, leisure centres, academies",
-    suggestedTags: ["europe-commercial"],
+    suggestedTags: ["commercial"],
     subject: "Fill your empty courts at {{club_name}}",
     preheader:
       "Online booking, automatic court lighting and in-house leagues that bring players back every week.",

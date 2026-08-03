@@ -89,6 +89,7 @@ export default function SuperAdminOutreachCampaigns() {
         subject: tpl?.subject ?? "",
         preheader: tpl?.preheader ?? null,
         body_html: tpl?.bodyHtml ?? "",
+        audience_filter: tpl?.suggestedTags?.length ? { tags: tpl.suggestedTags } : {},
       })
       .select("id")
       .single();

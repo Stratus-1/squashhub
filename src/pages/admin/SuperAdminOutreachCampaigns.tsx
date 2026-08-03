@@ -89,6 +89,7 @@ export default function SuperAdminOutreachCampaigns() {
         subject: tpl?.subject ?? "",
         preheader: tpl?.preheader ?? null,
         body_html: tpl?.bodyHtml ?? "",
+        audience_filter: tpl?.suggestedTags?.length ? { tags: tpl.suggestedTags } : {},
       })
       .select("id")
       .single();
@@ -126,10 +127,13 @@ export default function SuperAdminOutreachCampaigns() {
           <DropdownMenuTrigger asChild>
             <Button size="sm"><Plus className="h-4 w-4 mr-1" /> New campaign</Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-72">
             {OUTREACH_TEMPLATES.map((t) => (
-              <DropdownMenuItem key={t.key} onClick={() => create(t.key)}>
-                {t.name}
+              <DropdownMenuItem key={t.key} onClick={() => create(t.key)} className="flex-col items-start gap-0.5">
+                <span>{t.name}</span>
+                {t.audienceHint && (
+                  <span className="text-[11px] opacity-60">{t.audienceHint}</span>
+                )}
               </DropdownMenuItem>
             ))}
             <DropdownMenuItem onClick={() => create()}>Blank campaign</DropdownMenuItem>

@@ -36,6 +36,10 @@ export interface OutreachTemplate {
   subject: string;
   preheader: string;
   bodyHtml: string;
+  /** Prospect tags this template is written for — pre-selected as the audience. */
+  suggestedTags?: string[];
+  /** Short hint shown in the "New campaign" menu. */
+  audienceHint?: string;
 }
 
 export const OUTREACH_TEMPLATES: OutreachTemplate[] = [

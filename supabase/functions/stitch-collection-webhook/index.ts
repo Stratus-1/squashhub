@@ -148,24 +148,25 @@ Deno.serve(async (req) => {
     const isFailed = /fail|reject|expir|cancel/i.test(eventType);
 
     if (isPaid) {
-      const settledAt = new Date().toISOString();
+      // Gateways retry deliveries until they get an OK — never post twice.
+      const alreadyPosted = !!col.posted_at;
+      const settledAt = col.settled_at || new Date().toISOString();
+
       await admin.from("stitch_collections").update({
         status: "paid",
         settled_at: settledAt,
         stitch_collection_id: col.stitch_collection_id || (stitchId ?? null),
       }).eq("id", col.id);
 
-      if (col.fee_payable_id) {
-        await admin.from("club_member_fee_payments").update({
-          paid: true, paid_at: settledAt,
-        }).eq("id", col.fee_payable_id);
+      if (!alreadyPosted) {
+        // Posts the money to the member's account, settles the linked fee and
+        // stamps posted_at inside one transaction (idempotent).
+        const { error: postErr } = await admin.rpc("record_collection_payment", {
+          _collection_id: col.id,
+        });
+        if (postErr) console.error("record_collection_payment failed", col.id, postErr.message);
       }
 
-      // Post the money to the member's account / ledger (idempotent).
-      const { error: postErr } = await admin.rpc("record_collection_payment", {
-        _collection_id: col.id,
-      });
-      if (postErr) console.error("record_collection_payment failed", col.id, postErr.message);
 
       // Reset failure counter, refresh last_collection_at, clear suspension.
       await admin.from("stitch_mandates").update({

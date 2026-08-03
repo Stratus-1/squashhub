@@ -94,7 +94,8 @@ SquashHub — HKFT Services<br>
   },
   {
     key: "general",
-    name: "General / non-NSA / international",
+    name: "General clubs / non-NSA / international",
+    audienceHint: "Member-run clubs with a committee",
     subject: "Run all of {{club_name}} from one app",
     preheader:
       "Bookings, ladders, leagues, fees and lighting — one platform, one affordable price.",

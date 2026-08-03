@@ -1,55 +1,63 @@
-# Outreach CRM — Super Admin
+## Goal
 
-A new **Outreach** section at `/admin/outreach` for direct marketing to squash clubs (NSA Pretoria first, then the rest of SA and international), with sending, open/click tracking and reply logging.
+Grow the outreach prospect list with squash clubs that aren't already in the CRM, worldwide, keeping only clubs with a real, usable email address.
 
-## What you get
+## Current coverage (verified)
 
-### 1. Prospect database
-Per club: club name, association/province, city, country, courts, website, NSA affiliated (yes/no), source, notes, status (New / Contacted / Opened / Clicked / Replied / Interested / Not interested / Bounced / Unsubscribed), owner, next follow-up date.
+| Country | Prospects |
+| --- | --- |
+| South Africa | 63 |
+| Canada | 40 |
+| UK | 8 |
+| Australia | 7 |
+| New Zealand | 5 |
+| USA / Ireland | 4 each |
+| Singapore / Zimbabwe / Nigeria | 3 each |
+| Hong Kong | 2 |
+| Egypt / Namibia / Kenya | 1 each |
 
-Per contact: name, role (Chairman / Secretary / League convener / Coach / Other), email, phone, primary contact flag, opt-out flag.
+So the biggest gaps are UK, USA, Europe/Asia/Middle East, and the non-Gauteng SA provinces.
 
-Screens:
-- Table with search and filters on association, country, NSA yes/no, status, tag.
-- **Paste/CSV import** — paste a block from your ChatGPT research or upload a CSV. A mapping step shows the parsed rows, flags duplicates by email and club name, and lets you fix or skip rows before committing.
-- Add/edit a club or contact by hand.
-- Tags (`nsa-pretoria`, `wp`, `university`, `international`) for building send lists.
-- Export the filtered list back out as CSV.
+## Approach
 
-### 2. Campaign builder
-- Create a campaign: name, subject, HTML body, audience (saved filter or tag selection).
-- Two starter templates pre-loaded — **NSA clubs (Pretoria)** and **General / international** — editable in the console.
-- The NSA template leads with the approval and testing angle: SquashHub integrates directly with the NSA system *with NSA's approval and tested in live league play* — captains mark the scorecard on their phone in the NSA's own layout and submit the result straight to the NSA site from the app. No paper, no re-typing, no second login to NSA after the game, no Sunday-night emailing of scorecards to a convener.
-- Merge fields: `{{club_name}}`, `{{contact_name}}`, `{{role}}`, `{{association}}`, `{{city}}`.
-- **Video block**: paste your YouTube desktop-HD and mobile-HD URLs plus a thumbnail; the builder inserts a clickable thumbnail linked to the video (no MP4 attachment — it strips and hurts deliverability).
-- **Preview** against a real prospect, and **Send test to myself** before any real send.
-- **Throttled send**: emails per day and delay between sends, so a 200-club list drips out instead of burning your domain reputation. A daily job picks up where it left off.
-- Every recipient gets an unsubscribe link that sets the opt-out flag and blocks future campaigns to that address.
+**Round 1 — South Africa (all provinces)**
+Search provincial federation and club directories (Western Province Squash, KZN Squash, Eastern Province, Free State, Boland, Border, North West, Limpopo, Mpumalanga) plus Squash SA affiliate lists and club websites. Target: fill the provinces currently thin next to the 63 mostly-Gauteng records.
 
-### 3. Tracking
-- **Opens** — invisible pixel per recipient; first open, last open, open count. Labelled "indicative" since Apple/Gmail proxies distort it.
-- **Clicks** — every link rewritten to a logging redirect, so you see exactly which chairmen watched the video.
-- **Replies — logged by you.** On any recipient row: mark Replied / Interested / Not interested / Bounced, add a note, set a follow-up date. The prospect status updates automatically.
-- Bounces detected from SMTP failures mark the contact bounced and stop future sends.
+**Round 2 — Commonwealth / English-speaking**
+England Squash and county club finders, Scotland/Wales, Squash Ireland, US Squash club directory, Squash Canada provincial bodies, Squash Australia state bodies, Squash NZ districts.
 
-### 4. Dashboard
-Per campaign: sent, delivered, opened (unique + rate), clicked (unique + rate), replied, unsubscribed, bounced. A recipient table showing each club's status, open count, clicks and last activity — sortable and filterable, so "who opened and who didn't" is one click. Plus a **Needs follow-up** view listing everyone contacted 4+ days ago with no reply.
+**Round 3 — Rest of Africa**
+Namibia, Zimbabwe, Botswana, Zambia, Kenya, Tanzania, Uganda, Egypt, Nigeria, Ghana, Mauritius.
+
+**Round 4 — Everywhere else**
+Europe (Netherlands, Germany, Switzerland, France, Nordics), Middle East (UAE, Qatar, Kuwait), Asia (Malaysia, India, Japan, Hong Kong extras).
+
+Each round runs as parallel background research tasks so it doesn't take forever, pulling from federation directories and club sites and capturing:
+
+- Club name, city, country
+- Public email (mandatory — no email, no row)
+- Contact person + role where published
+- Website URL
+- Source URL for verification
+- Suggested tag (`sa-<province>`, `uk-clubs`, `us-clubs`, `africa`, `europe`, `asia`, etc.)
+
+## Filtering rules applied before you see anything
+
+- Drop any club with no discoverable email (contact-form-only or social-only clubs are excluded, as you chose).
+- Drop obvious duplicates by name similarity and by exact email against existing `outreach_prospects` / `outreach_contacts`.
+- Drop national federations themselves unless they're a genuine club (you already removed SSA and Northerns from a send, so governing bodies stay out by default).
+- Flag anything that looks like a generic aggregator or stale listing rather than adding it silently.
+
+## Review step
+
+Results come back to you in chat as a table per region — club, country, email, contact, source link — with a count per region and a note on anything skipped as a suspected duplicate. Nothing touches the database until you say go.
+
+## Import step (after your approval)
+
+Approved rows are inserted into `outreach_prospects` with status **New**, plus one row per contact in `outreach_contacts`, tagged by region so campaign targeting can filter them the same way NSA clubs are filtered today. Re-checked against existing records at insert time so a slow review can't create duplicates.
 
 ## Technical notes
 
-**Sending** uses the platform SMTP already in Super Admin → Settings (`platform_smtp_host/port/user/pass`, `platform_sender_email/name` in `app_settings`) — same nodemailer pattern as `send-club-campaign`.
-
-**New tables** (platform-scoped, RLS restricted to `is_platform_admin()`, with GRANTs):
-- `outreach_prospects`, `outreach_contacts`, `outreach_campaigns`, `outreach_recipients` (per-contact send/open/click/reply state), `outreach_events` (append-only log), `outreach_links`
-
-**New edge functions:**
-- `outreach-send` — builds and sends a throttled batch, records per-recipient state (admin-authenticated)
-- `outreach-track` — public: pixel (`/open`), click redirect (`/click`), unsubscribe (`/u`)
-- Daily cron on `outreach-send` to continue drip campaigns
-
-**Routing:** `/admin/outreach`, `/admin/outreach/campaigns`, `/admin/outreach/campaigns/:id`, added to the Super Admin menu.
-
-**Deliverability guardrails:** daily send cap, duplicate-email blocking, suppression on unsubscribe/bounce, warning banner if SPF/DKIM aren't set on the sending domain.
-
-## Out of scope
-Automatic inbound reply capture (needs a mailbox/IMAP integration) — replies are logged manually for now.
+- Research uses web search and page fetches only — read-only, no code changes in this phase.
+- Import is a single deduped SQL insert using `NOT EXISTS` on lower-cased club name and email, matching how the earlier international lists were loaded.
+- No changes to the outreach send engine, rate limiting, or templates.

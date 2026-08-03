@@ -46,6 +46,8 @@ export const OUTREACH_TEMPLATES: OutreachTemplate[] = [
   {
     key: "nsa",
     name: "NSA clubs (Pretoria / Squash Northerns)",
+    audienceHint: "Member clubs affiliated to NSA",
+    suggestedTags: ["nsa-pretoria"],
     subject: "{{club_name}}: submit your NSA league results straight from the app",
     preheader:
       "NSA-approved, tested in live league play — your captain marks and submits from his phone.",

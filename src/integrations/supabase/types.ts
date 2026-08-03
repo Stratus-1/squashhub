@@ -6816,6 +6816,7 @@ export type Database = {
           fee_payable_id: string | null
           id: string
           mandate_id: string
+          posted_at: string | null
           retry_of: string | null
           settled_at: string | null
           status: string
@@ -6837,6 +6838,7 @@ export type Database = {
           fee_payable_id?: string | null
           id?: string
           mandate_id: string
+          posted_at?: string | null
           retry_of?: string | null
           settled_at?: string | null
           status?: string
@@ -6858,6 +6860,7 @@ export type Database = {
           fee_payable_id?: string | null
           id?: string
           mandate_id?: string
+          posted_at?: string | null
           retry_of?: string | null
           settled_at?: string | null
           status?: string

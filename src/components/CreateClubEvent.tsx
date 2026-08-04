@@ -353,6 +353,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   });
   const rsvpCounts = rsvpData?.counts;
   const confirmedNames = rsvpData?.confirmedNames;
+  const declinedNames = rsvpData?.declinedNames;
+
 
   // How many of each event's court slots are actually booked (spot missing bookings)
   const { data: bookingCoverage } = useQuery({

@@ -232,19 +232,26 @@ export default function Notifications() {
 
                     {isTournamentInvite ? (
                       <TournamentInviteActions notification={notif} onResolved={onBackToList} />
-                    ) : srcDoc ? (
-                      <Card className="overflow-hidden">
-                        <iframe
-                          title="Message"
-                          sandbox="allow-popups allow-popups-to-escape-sandbox"
-                          className="w-full h-[55vh] bg-white"
-                          srcDoc={srcDoc}
-                        />
-                      </Card>
                     ) : (
-                      <Card className="p-3">
-                        <p className="text-sm whitespace-pre-wrap">{text}</p>
-                      </Card>
+                      <>
+                        {isEventInvite ? (
+                          <EventInviteActions notification={notif} onResolved={onBackToList} />
+                        ) : null}
+                        {srcDoc ? (
+                          <Card className="overflow-hidden">
+                            <iframe
+                              title="Message"
+                              sandbox="allow-popups allow-popups-to-escape-sandbox"
+                              className="w-full h-[55vh] bg-white"
+                              srcDoc={srcDoc}
+                            />
+                          </Card>
+                        ) : (
+                          <Card className="p-3">
+                            <p className="text-sm whitespace-pre-wrap">{text}</p>
+                          </Card>
+                        )}
+                      </>
                     )}
 
                     <div className="flex items-center justify-end gap-2">

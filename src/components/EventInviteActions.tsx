@@ -20,9 +20,7 @@ type NotificationLike = {
 export function isEventInviteNotification(notification?: NotificationLike | null) {
   if (!notification) return false;
   const eventId = notification.data?.event_id;
-  if (!eventId) return false;
-  const url = String(notification.url || "");
-  return notification.type === "event" || notification.type === "booking" || url.startsWith("/events");
+  return !!eventId;
 }
 
 /**

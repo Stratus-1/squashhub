@@ -194,6 +194,7 @@ export default function Notifications() {
                 const Icon = iconMap[notif.type] || Bell;
                 const navigation = getNotificationNavigation(notif);
                 const isTournamentInvite = isTournamentInviteNotification(notif);
+                const isEventInvite = !isTournamentInvite && isEventInviteNotification(notif);
                 const email = notif?.data?.email && typeof notif.data.email === "object" ? notif.data.email : null;
                 const htmlRaw = email && typeof email.html === "string" ? String(email.html) : "";
                 const textRaw = email && typeof email.text === "string" ? String(email.text) : "";

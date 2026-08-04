@@ -306,13 +306,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { data: rsvpData } = useQuery({
     queryKey: ["club-event-rsvps-data", eventIds.join(",")],
     queryFn: async () => {
-      if (eventIds.length === 0) return { counts: {}, confirmedNames: {} };
+      if (eventIds.length === 0) return { counts: {}, confirmedNames: {}, declinedNames: {} };
       const { data, error } = await fromExt("club_event_rsvps")
         .select("event_id, status, club_member_id")
         .in("event_id", eventIds);
       if (error) throw error;
       const counts: Record<string, { invited: number; confirmed: number; declined: number }> = {};
       const confirmedMemberIds: Record<string, string[]> = {};
+      const declinedMemberIds: Record<string, string[]> = {};
       for (const r of data || []) {
         if (!counts[r.event_id]) counts[r.event_id] = { invited: 0, confirmed: 0, declined: 0 };
         counts[r.event_id][r.status as "invited" | "confirmed" | "declined"]++;
@@ -320,9 +321,13 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           if (!confirmedMemberIds[r.event_id]) confirmedMemberIds[r.event_id] = [];
           confirmedMemberIds[r.event_id].push(r.club_member_id);
         }
+        if (r.status === "declined") {
+          if (!declinedMemberIds[r.event_id]) declinedMemberIds[r.event_id] = [];
+          declinedMemberIds[r.event_id].push(r.club_member_id);
+        }
       }
-      // Resolve member names for confirmed attendees
-      const allMemberIds = [...new Set(Object.values(confirmedMemberIds).flat())];
+      // Resolve member names for confirmed / declined attendees
+      const allMemberIds = [...new Set([...Object.values(confirmedMemberIds).flat(), ...Object.values(declinedMemberIds).flat()])];
       const nameMap: Record<string, string> = {};
       if (allMemberIds.length > 0) {
         const { data: memberData } = await supabase
@@ -337,7 +342,12 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       for (const [eventId, mids] of Object.entries(confirmedMemberIds)) {
         confirmedNames[eventId] = mids.map((mid) => nameMap[mid] || "Unknown");
       }
-      return { counts, confirmedNames };
+      const declinedNames: Record<string, string[]> = {};
+      for (const [eventId, mids] of Object.entries(declinedMemberIds)) {
+        declinedNames[eventId] = mids.map((mid) => nameMap[mid] || "Unknown");
+      }
+      return { counts, confirmedNames, declinedNames };
+
     },
     enabled: eventIds.length > 0,
   });

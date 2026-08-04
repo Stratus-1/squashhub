@@ -16,10 +16,24 @@ type NotificationLike = {
   data?: Record<string, any> | null;
 };
 
+function getNotificationData(notification?: NotificationLike | null): Record<string, any> {
+  const value = notification?.data;
+  if (!value) return {};
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return value;
+}
+
 /** True when the notification is a club-event invite that can be answered inline. */
 export function isEventInviteNotification(notification?: NotificationLike | null) {
   if (!notification) return false;
-  const eventId = notification.data?.event_id;
+  const eventId = getNotificationData(notification).event_id;
   return !!eventId;
 }
 
@@ -36,7 +50,7 @@ export function EventInviteActions({
 }) {
   const qc = useQueryClient();
   const { linkedMembers } = useMemberContext();
-  const eventId = String(notification.data?.event_id || "");
+  const eventId = String(getNotificationData(notification).event_id || "");
 
   const memberIds = useMemo(() => {
     const ids = new Set<string>();

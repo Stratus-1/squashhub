@@ -13,6 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { getNotificationNavigation } from "@/lib/notification-navigation";
 import { TournamentInviteActions, isTournamentInviteNotification } from "@/components/TournamentInviteActions";
+import { EventInviteActions, isEventInviteNotification } from "@/components/EventInviteActions";
 
 type NotificationRow = {
   id: string;
@@ -193,16 +194,22 @@ export function NotificationActionModal() {
     onError: (e: any) => toast.error(e?.message || "Could not save your response"),
   });
 
-  // Persistent invites (tournament invites) never get auto-marked-read on dismiss,
+  const isPersistentInvite = useCallback(
+    (notification: NotificationRow) =>
+      isTournamentInviteNotification(notification) || isEventInviteNotification(notification),
+    [],
+  );
+
+  // Persistent invites never get auto-marked-read on dismiss,
   // so they'd otherwise re-pop the modal forever. Only auto-show them while still fresh (<3 days).
   // Older ones remain accessible via the bell.
   const PERSISTENT_FRESH_MS = 3 * 24 * 60 * 60 * 1000;
   const notifications = (unreadNotifications || []).filter((n) => {
-    if (!isTournamentInviteNotification(n)) return true;
+    if (!isPersistentInvite(n)) return true;
     const age = Date.now() - new Date(n.created_at).getTime();
     return age <= PERSISTENT_FRESH_MS;
   });
-  const nonPersistentNotifications = notifications.filter((n) => !isTournamentInviteNotification(n));
+  const nonPersistentNotifications = notifications.filter((n) => !isPersistentInvite(n));
   const current = notifications[currentIndex] || null;
   const total = notifications.length;
   const isLast = currentIndex >= total - 1;
@@ -218,25 +225,25 @@ export function NotificationActionModal() {
 
   const handleAction = useCallback(() => {
     if (!current) return;
-    if (!isTournamentInviteNotification(current)) markRead.mutate(current.id);
+    if (!isPersistentInvite(current)) markRead.mutate(current.id);
     const url = current.url || "/notifications";
     const navigation = getNotificationNavigation(current);
     const shouldOpenDetail = navigation.shouldOpenDetail || current.type === "marketing" || url.startsWith("/notifications");
     setOpen(false);
     setDismissed(true);
     navigate(shouldOpenDetail ? navigation.targetUrl : url);
-  }, [current, markRead, navigate]);
+  }, [current, isPersistentInvite, markRead, navigate]);
 
   const handleDismiss = useCallback(() => {
     if (!current) return;
-    if (!isTournamentInviteNotification(current)) markRead.mutate(current.id);
+    if (!isPersistentInvite(current)) markRead.mutate(current.id);
     if (isLast) {
       setOpen(false);
       setDismissed(true);
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [current, isLast, markRead]);
+  }, [current, isLast, isPersistentInvite, markRead]);
 
   const handleDismissAll = useCallback(() => {
     // Mark all as read
@@ -309,6 +316,9 @@ export function NotificationActionModal() {
               {isTournamentInviteNotification(current) && (
                 <TournamentInviteActions notification={current} compact onResolved={advanceOrClose} />
               )}
+              {!isTournamentInviteNotification(current) && isEventInviteNotification(current) && (
+                <EventInviteActions notification={current} onResolved={advanceOrClose} />
+              )}
               {current.type === "league_availability" && current.data?.week_start_date && current.data?.club_member_id && (
                 <div className="flex gap-2">
                   <Button
@@ -344,7 +354,7 @@ export function NotificationActionModal() {
                   </Button>
                 </div>
               )}
-              {current.url && !current.url.startsWith("/notifications") && current.type !== "league_availability" && !isTournamentInviteNotification(current) && (
+              {current.url && !current.url.startsWith("/notifications") && current.type !== "league_availability" && !isPersistentInvite(current) && (
                 <Button className="w-full" onClick={handleAction}>
                   <ExternalLink className="w-4 h-4 mr-2" />
                   {getActionLabel(current.type)}

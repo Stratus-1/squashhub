@@ -386,6 +386,9 @@ export default function Notifications() {
                             {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
                           </span>
                         </div>
+                        {contextLine(notif) ? (
+                          <p className="text-[11px] font-medium text-primary mt-0.5 break-words">{contextLine(notif)}</p>
+                        ) : null}
                         <p className="text-xs text-muted-foreground mt-0.5">{notif.message}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0 mt-1">

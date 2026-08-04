@@ -306,13 +306,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { data: rsvpData } = useQuery({
     queryKey: ["club-event-rsvps-data", eventIds.join(",")],
     queryFn: async () => {
-      if (eventIds.length === 0) return { counts: {}, confirmedNames: {} };
+      if (eventIds.length === 0) return { counts: {}, confirmedNames: {}, declinedNames: {} };
       const { data, error } = await fromExt("club_event_rsvps")
         .select("event_id, status, club_member_id")
         .in("event_id", eventIds);
       if (error) throw error;
       const counts: Record<string, { invited: number; confirmed: number; declined: number }> = {};
       const confirmedMemberIds: Record<string, string[]> = {};
+      const declinedMemberIds: Record<string, string[]> = {};
       for (const r of data || []) {
         if (!counts[r.event_id]) counts[r.event_id] = { invited: 0, confirmed: 0, declined: 0 };
         counts[r.event_id][r.status as "invited" | "confirmed" | "declined"]++;
@@ -320,9 +321,13 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           if (!confirmedMemberIds[r.event_id]) confirmedMemberIds[r.event_id] = [];
           confirmedMemberIds[r.event_id].push(r.club_member_id);
         }
+        if (r.status === "declined") {
+          if (!declinedMemberIds[r.event_id]) declinedMemberIds[r.event_id] = [];
+          declinedMemberIds[r.event_id].push(r.club_member_id);
+        }
       }
-      // Resolve member names for confirmed attendees
-      const allMemberIds = [...new Set(Object.values(confirmedMemberIds).flat())];
+      // Resolve member names for confirmed / declined attendees
+      const allMemberIds = [...new Set([...Object.values(confirmedMemberIds).flat(), ...Object.values(declinedMemberIds).flat()])];
       const nameMap: Record<string, string> = {};
       if (allMemberIds.length > 0) {
         const { data: memberData } = await supabase
@@ -337,12 +342,19 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       for (const [eventId, mids] of Object.entries(confirmedMemberIds)) {
         confirmedNames[eventId] = mids.map((mid) => nameMap[mid] || "Unknown");
       }
-      return { counts, confirmedNames };
+      const declinedNames: Record<string, string[]> = {};
+      for (const [eventId, mids] of Object.entries(declinedMemberIds)) {
+        declinedNames[eventId] = mids.map((mid) => nameMap[mid] || "Unknown");
+      }
+      return { counts, confirmedNames, declinedNames };
+
     },
     enabled: eventIds.length > 0,
   });
   const rsvpCounts = rsvpData?.counts;
   const confirmedNames = rsvpData?.confirmedNames;
+  const declinedNames = rsvpData?.declinedNames;
+
 
   // How many of each event's court slots are actually booked (spot missing bookings)
   const { data: bookingCoverage } = useQuery({
@@ -1217,9 +1229,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     </div>
                   )}
 
+                  {/* Declined member names */}
+                  {declinedNames?.[e.id]?.length > 0 && (
+                    <div className="text-[11px] text-muted-foreground">
+                      <span className="font-medium text-destructive">Declined ({declinedNames[e.id].length}):</span>{" "}
+                      {declinedNames[e.id].join(", ")}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-[11px] text-muted-foreground">
-                      {counts ? `${counts.confirmed} confirmed · ${counts.invited} pending` : "No RSVPs yet"}
+                      {counts ? `${counts.confirmed} confirmed · ${counts.declined} declined · ${counts.invited} pending` : "No RSVPs yet"}
+
                       {e.light_fee_split === "attendees" && (
                         <span className="ml-1">· Lights shared</span>
                       )}

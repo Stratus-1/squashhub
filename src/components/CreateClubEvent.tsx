@@ -147,17 +147,26 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const canCreateEvents = isAdmin || isFullAdmin || canManageEvents;
   const adminBypass = isAdmin || isFullAdmin || canBypassBookingLimits || canBypassNonPeak;
   const { data: myClubData } = useQuery({
-    queryKey: ["my-club-fallback"],
+    queryKey: ["my-club-fallback", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data } = await (supabase as any).from("club_members").select("club_id").eq("user_id", user.id).limit(1).maybeSingle();
+      // Deterministic: earliest joined membership (matches useMyClub), so users
+      // who belong to more than one club always land on the same club context.
+      const { data } = await (supabase as any)
+        .from("club_members")
+        .select("club_id, joined_at")
+        .eq("user_id", user.id)
+        .order("joined_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
       return data?.club_id as string | null;
     },
-    enabled: !club?.id && !!user?.id,
+    enabled: !club?.id && !(activeMember as any)?.club_id && !!user?.id,
     staleTime: 5 * 60 * 1000,
   });
   const queryClient = useQueryClient();
-  const clubId = club?.id || myClubData || null;
+  const clubId = club?.id || (activeMember as any)?.club_id || myClubData || null;
+
 
   const [createOpen, setCreateOpen] = useState(!!onClose);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);

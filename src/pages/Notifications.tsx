@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { TournamentInviteActions, isTournamentInviteNotification } from "@/components/TournamentInviteActions";
+import { EventInviteActions, isEventInviteNotification } from "@/components/EventInviteActions";
 
 const iconMap: Record<string, typeof Bell> = {
   challenge: Swords,
@@ -193,6 +194,7 @@ export default function Notifications() {
                 const Icon = iconMap[notif.type] || Bell;
                 const navigation = getNotificationNavigation(notif);
                 const isTournamentInvite = isTournamentInviteNotification(notif);
+                const isEventInvite = !isTournamentInvite && isEventInviteNotification(notif);
                 const email = notif?.data?.email && typeof notif.data.email === "object" ? notif.data.email : null;
                 const htmlRaw = email && typeof email.html === "string" ? String(email.html) : "";
                 const textRaw = email && typeof email.text === "string" ? String(email.text) : "";
@@ -230,19 +232,26 @@ export default function Notifications() {
 
                     {isTournamentInvite ? (
                       <TournamentInviteActions notification={notif} onResolved={onBackToList} />
-                    ) : srcDoc ? (
-                      <Card className="overflow-hidden">
-                        <iframe
-                          title="Message"
-                          sandbox="allow-popups allow-popups-to-escape-sandbox"
-                          className="w-full h-[55vh] bg-white"
-                          srcDoc={srcDoc}
-                        />
-                      </Card>
                     ) : (
-                      <Card className="p-3">
-                        <p className="text-sm whitespace-pre-wrap">{text}</p>
-                      </Card>
+                      <>
+                        {isEventInvite ? (
+                          <EventInviteActions notification={notif} onResolved={onBackToList} />
+                        ) : null}
+                        {srcDoc ? (
+                          <Card className="overflow-hidden">
+                            <iframe
+                              title="Message"
+                              sandbox="allow-popups allow-popups-to-escape-sandbox"
+                              className="w-full h-[55vh] bg-white"
+                              srcDoc={srcDoc}
+                            />
+                          </Card>
+                        ) : (
+                          <Card className="p-3">
+                            <p className="text-sm whitespace-pre-wrap">{text}</p>
+                          </Card>
+                        )}
+                      </>
                     )}
 
                     <div className="flex items-center justify-end gap-2">

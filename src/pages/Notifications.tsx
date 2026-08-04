@@ -293,6 +293,9 @@ export default function Notifications() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold">{subject}</p>
+                          {contextLine(notif) ? (
+                            <p className="text-[11px] font-medium text-primary mt-0.5 break-words">{contextLine(notif)}</p>
+                          ) : null}
                           <p className="text-[11px] text-muted-foreground mt-0.5">
                             {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
                           </p>

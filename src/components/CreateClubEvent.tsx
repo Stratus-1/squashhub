@@ -1229,9 +1229,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     </div>
                   )}
 
+                  {/* Declined member names */}
+                  {declinedNames?.[e.id]?.length > 0 && (
+                    <div className="text-[11px] text-muted-foreground">
+                      <span className="font-medium text-destructive">Declined ({declinedNames[e.id].length}):</span>{" "}
+                      {declinedNames[e.id].join(", ")}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-[11px] text-muted-foreground">
-                      {counts ? `${counts.confirmed} confirmed · ${counts.invited} pending` : "No RSVPs yet"}
+                      {counts ? `${counts.confirmed} confirmed · ${counts.declined} declined · ${counts.invited} pending` : "No RSVPs yet"}
+
                       {e.light_fee_split === "attendees" && (
                         <span className="ml-1">· Lights shared</span>
                       )}

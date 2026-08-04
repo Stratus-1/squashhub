@@ -111,6 +111,76 @@ export default function Notifications() {
     },
   });
 
+  /** Club name + event title context so users always know which club an invite belongs to. */
+  const notifList = (notifications || []) as any[];
+  const contextKeys = useMemo(() => {
+    const memberIds = new Set<string>();
+    const eventIds = new Set<string>();
+    for (const n of notifList) {
+      if (n?.club_member_id) memberIds.add(String(n.club_member_id));
+      const eid = n?.data?.event_id;
+      if (eid) eventIds.add(String(eid));
+    }
+    return { memberIds: Array.from(memberIds).sort(), eventIds: Array.from(eventIds).sort() };
+  }, [notifList]);
+
+  const { data: notifContext } = useQuery({
+    queryKey: ["notification-context", contextKeys.memberIds.join(","), contextKeys.eventIds.join(",")],
+    queryFn: async () => {
+      const clubByMember: Record<string, string> = {};
+      const clubByEvent: Record<string, string> = {};
+      const titleByEvent: Record<string, string> = {};
+      const clubIds = new Set<string>();
+      const memberClub: Record<string, string> = {};
+      const eventClub: Record<string, string> = {};
+
+      if (contextKeys.memberIds.length > 0) {
+        const { data } = await supabase
+          .from("club_members")
+          .select("id, club_id")
+          .in("id", contextKeys.memberIds);
+        for (const m of data || []) {
+          if (!m.club_id) continue;
+          memberClub[m.id] = m.club_id;
+          clubIds.add(m.club_id);
+        }
+      }
+      if (contextKeys.eventIds.length > 0) {
+        const { data } = await supabase
+          .from("club_events")
+          .select("id, title, club_id")
+          .in("id", contextKeys.eventIds);
+        for (const e of data || []) {
+          titleByEvent[e.id] = e.title || "";
+          if (e.club_id) {
+            eventClub[e.id] = e.club_id;
+            clubIds.add(e.club_id);
+          }
+        }
+      }
+      if (clubIds.size > 0) {
+        const { data } = await supabase.from("clubs").select("id, name").in("id", Array.from(clubIds));
+        const nameById: Record<string, string> = {};
+        for (const c of data || []) nameById[c.id] = c.name || "";
+        for (const [mid, cid] of Object.entries(memberClub)) clubByMember[mid] = nameById[cid] || "";
+        for (const [eid, cid] of Object.entries(eventClub)) clubByEvent[eid] = nameById[cid] || "";
+      }
+      return { clubByMember, clubByEvent, titleByEvent };
+    },
+    enabled: contextKeys.memberIds.length > 0 || contextKeys.eventIds.length > 0,
+  });
+
+  /** "Club name · Event title" line for a notification (either part may be missing). */
+  const contextLine = (notif: any) => {
+    const eventId = notif?.data?.event_id ? String(notif.data.event_id) : "";
+    const club =
+      (eventId ? notifContext?.clubByEvent?.[eventId] : "") ||
+      (notif?.club_member_id ? notifContext?.clubByMember?.[String(notif.club_member_id)] : "") ||
+      "";
+    const eventTitle = eventId ? notifContext?.titleByEvent?.[eventId] || "" : "";
+    return [club, eventTitle].filter(Boolean).join(" · ");
+  };
+
   const notificationIdToOpen = useMemo(() => (searchParams.get("notificationId") || "").trim(), [searchParams]);
   useEffect(() => {
     if (!notificationIdToOpen) return;
@@ -223,6 +293,9 @@ export default function Notifications() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold">{subject}</p>
+                          {contextLine(notif) ? (
+                            <p className="text-[11px] font-medium text-primary mt-0.5 break-words">{contextLine(notif)}</p>
+                          ) : null}
                           <p className="text-[11px] text-muted-foreground mt-0.5">
                             {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
                           </p>
@@ -313,6 +386,9 @@ export default function Notifications() {
                             {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
                           </span>
                         </div>
+                        {contextLine(notif) ? (
+                          <p className="text-[11px] font-medium text-primary mt-0.5 break-words">{contextLine(notif)}</p>
+                        ) : null}
                         <p className="text-xs text-muted-foreground mt-0.5">{notif.message}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0 mt-1">

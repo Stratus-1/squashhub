@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { TournamentInviteActions, isTournamentInviteNotification } from "@/components/TournamentInviteActions";
+import { EventInviteActions, isEventInviteNotification } from "@/components/EventInviteActions";
 
 const iconMap: Record<string, typeof Bell> = {
   challenge: Swords,

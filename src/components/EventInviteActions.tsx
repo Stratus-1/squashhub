@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -51,12 +51,13 @@ export function EventInviteActions({
   const qc = useQueryClient();
   const { linkedMembers } = useMemberContext();
   const eventId = String(getNotificationData(notification).event_id || "");
+  const hasClosedAnsweredNotification = useRef(false);
 
   const memberIds = useMemo(() => {
-    const ids = new Set<string>();
-    if (notification.club_member_id) ids.add(String(notification.club_member_id));
-    for (const m of linkedMembers) if (m?.id) ids.add(m.id);
-    return Array.from(ids);
+    // A notification belongs to one member profile. Do not let an unanswered
+    // linked profile keep an already-answered notification alive.
+    if (notification.club_member_id) return [String(notification.club_member_id)];
+    return Array.from(new Set(linkedMembers.map((m) => m?.id).filter(Boolean))) as string[];
   }, [notification.club_member_id, linkedMembers]);
 
   const { data: event } = useQuery({
@@ -91,16 +92,49 @@ export function EventInviteActions({
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", rsvpId);
       if (error) throw error;
+
+      const { error: notificationError } = await fromExt("notifications")
+        .update({ read: true })
+        .eq("id", notification.id);
+      if (notificationError) throw notificationError;
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["event-invite-rsvps"] });
       qc.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
       qc.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
+      qc.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["notifications-unread-count"] });
       toast.success(vars.status === "confirmed" ? "You're confirmed — see you there!" : "RSVP declined");
       onResolved?.();
     },
     onError: (err: any) => toast.error(err?.message || "Could not update your RSVP"),
   });
+
+  const targetRsvp = notification.club_member_id
+    ? rsvps.find((r) => String(r.club_member_id) === String(notification.club_member_id))
+    : rsvps[0];
+  const targetStatus = String(targetRsvp?.status || "").toLowerCase();
+  const targetAnswered = targetStatus === "confirmed" || targetStatus === "declined";
+
+  // Repairs notifications that were previously reset to unread after the RSVP
+  // had already been recorded, and prevents them from returning on app focus.
+  useEffect(() => {
+    if (!targetAnswered || hasClosedAnsweredNotification.current) return;
+    hasClosedAnsweredNotification.current = true;
+    void fromExt("notifications")
+      .update({ read: true })
+      .eq("id", notification.id)
+      .then(({ error }) => {
+        if (error) {
+          hasClosedAnsweredNotification.current = false;
+          return;
+        }
+        qc.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
+        qc.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+        onResolved?.();
+      });
+  }, [notification.id, onResolved, qc, targetAnswered]);
 
   if (!eventId) return null;
 

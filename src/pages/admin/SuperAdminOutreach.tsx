@@ -20,8 +20,15 @@ import {
 } from "lucide-react";
 
 interface Row extends ProspectRecord {
-  contacts: { id: string; name: string | null; role: string | null; email: string; opted_out: boolean; bounced: boolean }[];
+  contacts: { id: string; name: string | null; role: string | null; email: string; phone: string | null; opted_out: boolean; bounced: boolean }[];
 }
+
+/** Pull any SA/international looking phone numbers out of free-text notes. */
+const phonesFromNotes = (notes?: string | null): string[] => {
+  if (!notes) return [];
+  const found = notes.match(/(\+?\d[\d\s().-]{7,}\d)/g) ?? [];
+  return [...new Set(found.map((p) => p.trim().replace(/\s{2,}/g, " ")))].slice(0, 3);
+};
 
 const STATUS_TONE: Record<string, string> = {
   new: "bg-slate-500/20 text-slate-200 border-slate-400/30",

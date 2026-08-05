@@ -153,12 +153,29 @@ Deno.serve(async (req) => {
   if (!lookup) return json({ error: "No league player found with that NSA number. Check the number or pick your club manually." }, 404);
 
   const member = lookup.club_members as any;
+
+  // ---------- 1b. Already claimed: allow the owner to sign in and (re)submit NSA captain details ----------
+  let existingAccountMode = false;
   if (member.user_id) {
-    return json({
-      error: "This NSA number is already registered. Please sign in instead.",
-      already_claimed: true,
-    }, 409);
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const anonClient = createClient(supaUrl, anonKey, { auth: { persistSession: false } });
+    const { data: signIn, error: signInErr } = await anonClient.auth.signInWithPassword({ email, password });
+
+    if (signInErr || !signIn?.user) {
+      return json({
+        error: "This NSA number is already registered. Sign in with the password of that account to continue (or reset your password first).",
+        already_claimed: true,
+      }, 409);
+    }
+    if (signIn.user.id !== member.user_id) {
+      return json({
+        error: "This NSA number belongs to a different SquashHub account. Please sign in with that account, or contact your club admin.",
+        already_claimed: true,
+      }, 409);
+    }
+    existingAccountMode = true;
   }
+
 
   // ---------- 2. Resolve club subdomain (needed for branded auth emails) ----------
   const { data: clubRow } = await admin

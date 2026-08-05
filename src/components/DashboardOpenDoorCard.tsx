@@ -195,7 +195,7 @@ export function DashboardOpenDoorCard() {
               GPS: {proximity.state}
               {proximity.distance != null && ` · ${Math.round(proximity.distance)} m from door`}
               {proximity.accuracy != null && ` · ±${Math.round(proximity.accuracy)} m accuracy`}
-              {` · radius ${club?.door_geofence_radius_m ?? 150} m`}
+              {` · radius ${club?.door_geofence_radius_m ?? 150} m · auto ${proximity.triggerRadiusM} m`}
             </p>
           )}
         </div>

@@ -651,11 +651,19 @@ export default function SuperAdminOutreachCampaignEditor() {
 
         <TabsContent value="tracking">
           <Card className="bg-white/5 border-white/10 overflow-x-auto">
-            <div className="flex items-center justify-between p-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5">
               <p className="text-xs text-white/60">Per-recipient delivery and engagement.</p>
-              <Button size="sm" variant="ghost" onClick={load}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
-              </Button>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={trackSearch}
+                  onChange={(e) => setTrackSearch(e.target.value)}
+                  placeholder="Search club, email, status…"
+                  className="h-8 w-56 text-xs"
+                />
+                <Button size="sm" variant="ghost" onClick={load}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
+                </Button>
+              </div>
             </div>
             <table className="w-full text-[13px]">
               <thead>
@@ -669,12 +677,15 @@ export default function SuperAdminOutreachCampaignEditor() {
                 </tr>
               </thead>
               <tbody>
-                {!recipients.length && (
+                {!filteredRecipients.length && (
                   <tr><td colSpan={6} className="p-6 text-center text-white/50">
-                    No recipients yet — set the audience and press Build audience.
+                    {recipients.length
+                      ? "No recipients match your search."
+                      : "No recipients yet — set the audience and press Build audience."}
                   </td></tr>
                 )}
-                {recipients.map((r) => (
+                {filteredRecipients.map((r) => (
+
                   <tr key={r.id} className="border-b border-white/5">
                     <td className="p-2.5">{r.outreach_prospects?.club_name ?? "—"}</td>
                     <td className="p-2.5 break-all">{r.email}</td>

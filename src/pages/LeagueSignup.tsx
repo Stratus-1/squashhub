@@ -293,19 +293,19 @@ export default function LeagueSignup() {
                 <motion.div
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`rounded-md border p-3 ${hit.already_claimed ? "border-destructive/30 bg-destructive/5" : "border-primary/30 bg-primary/5"}`}
+                  className={`rounded-md border p-3 ${hit.already_claimed ? "border-amber-500/40 bg-amber-500/5" : "border-primary/30 bg-primary/5"}`}
                 >
                   {hit.already_claimed ? (
                     <div className="text-sm">
-                      <div className="font-semibold text-destructive">Already registered</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {hit.masked_name} at {hit.club_name} has already claimed this NSA number.
+                      <div className="font-semibold flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-amber-500" /> You're already registered
                       </div>
-                      <Button asChild variant="outline" size="sm" className="mt-2 h-7 text-xs">
-                        <Link to={hit.club_subdomain ? `/c/${hit.club_subdomain}` : "/"}>Sign in instead</Link>
-                      </Button>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {hit.masked_name} at {hit.club_name} is linked to this NSA number. Sign in below to add or update your NSA captain login — we won't create a second account.
+                      </div>
                     </div>
                   ) : (
+
                     <div className="flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                       <div className="text-sm">

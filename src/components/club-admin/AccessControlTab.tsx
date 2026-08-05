@@ -198,7 +198,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           door_geofence_enabled: geofence.enabled,
           door_latitude: latNum,
           door_longitude: lngNum,
-          door_geofence_radius_m: Math.max(20, Math.min(2000, Number(geofence.radius) || 150)),
+          door_geofence_radius_m: Math.max(3, Math.min(2000, Number(geofence.radius) || 150)),
           door_auto_unlock_enabled: geofence.enabled && geofence.auto,
 
         } as any)
@@ -751,13 +751,13 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                   <Label>Unlock radius (metres)</Label>
                   <Input
                     type="number"
-                    min={20}
+                    min={3}
                     max={2000}
                     value={geofence.radius}
                     onChange={(e) => setGeofence((p) => ({ ...p, radius: e.target.value }))}
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Phone GPS is typically accurate to 20–50 m — 100–150 m works well for a clubhouse door.
+                    Tight values (4–10 m) mean the tile only appears right at the door; use 100–150 m if phone GPS is weak.
                   </p>
                 </div>
                 <Button type="button" variant="outline" size="sm" disabled={locating} onClick={useMyLocation} className="gap-1.5">

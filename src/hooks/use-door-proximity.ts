@@ -105,8 +105,9 @@ export function useDoorProximity(fence: DoorGeofence) {
       setDistance(d);
       setAccuracy(acc);
 
-      // Outer ring: forgive GPS error (capped) so the button appears reliably.
-      const slack = Math.min(acc, 75);
+      // Outer ring: forgive GPS error, but never by more than the ring itself
+      // (a 5 m fence must stay a 5 m fence, not silently become 80 m).
+      const slack = Math.min(acc, Math.max(5, fence.radiusM * 0.5), 75);
       const inOuter = d <= fence.radiusM + slack;
 
       // Inner ring: strict. Only a reasonably accurate fix counts, and the

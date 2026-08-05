@@ -27,7 +27,14 @@ const errorMessage = (e: unknown, fallback: string) =>
  */
 export function DashboardOpenDoorCard() {
   const { data: clubData } = useMyClub();
-  const club = clubData?.club as { id?: string; visitors_access_control?: boolean } | undefined;
+  const club = clubData?.club as {
+    id?: string;
+    visitors_access_control?: boolean;
+    door_geofence_enabled?: boolean;
+    door_latitude?: number | null;
+    door_longitude?: number | null;
+    door_geofence_radius_m?: number | null;
+  } | undefined;
   const { data: clubSecrets } = useClubSecrets(club?.id);
   const { data: accessPublic } = useQuery({
     enabled: !!club?.id,
@@ -44,7 +51,17 @@ export function DashboardOpenDoorCard() {
   const { activeMember } = useMemberContext();
   const { data: myBookings } = useMyBookings();
   const gate = useMemberAccessGate();
+  const isClubAdmin = useIsClubAdmin();
   const [loading, setLoading] = useState(false);
+
+  // GPS geofence — members must be near the door; admins/staff can override.
+  const proximity = useDoorProximity({
+    enabled: !!club?.door_geofence_enabled,
+    latitude: club?.door_latitude ?? null,
+    longitude: club?.door_longitude ?? null,
+    radiusM: club?.door_geofence_radius_m ?? 150,
+  });
+  const nearDoor = proximity.allowed || isClubAdmin;
 
   const merged: any = { ...(accessPublic || {}), ...(clubSecrets || {}) };
   const accessType = merged.access_control_type;

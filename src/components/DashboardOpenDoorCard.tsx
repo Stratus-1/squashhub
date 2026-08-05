@@ -40,6 +40,7 @@ export function DashboardOpenDoorCard() {
     door_latitude?: number | null;
     door_longitude?: number | null;
     door_geofence_radius_m?: number | null;
+    door_auto_unlock_radius_m?: number | null;
   } | undefined;
   const { data: clubSecrets } = useClubSecrets(club?.id);
   const { data: accessPublic } = useQuery({
@@ -66,6 +67,7 @@ export function DashboardOpenDoorCard() {
     latitude: club?.door_latitude ?? null,
     longitude: club?.door_longitude ?? null,
     radiusM: club?.door_geofence_radius_m ?? 150,
+    triggerRadiusM: club?.door_auto_unlock_radius_m ?? 5,
   });
   const nearDoor = proximity.allowed || isClubAdmin;
 
@@ -78,9 +80,10 @@ export function DashboardOpenDoorCard() {
   const isVisitorRole = String((activeMember as any)?.role || "").toLowerCase() === "visitor";
   const visitorBlocked = isVisitorRole && !club?.visitors_access_control;
 
-  // ---- Auto-unlock on arrival -------------------------------------------
-  // Fires once when the member walks into the geofence; re-arms only after
-  // they've clearly left it again (or after a 30 min cooldown).
+  // ---- Auto-unlock at the door ------------------------------------------
+  // The outer ring only arms the tile. The door pulses automatically once the
+  // member reaches the tight inner ring (default 5 m, right at the Shelly),
+  // and re-arms only after they've clearly left the outer ring (or 30 min).
   const autoEnabled =
     !!(club as any)?.door_auto_unlock_enabled &&
     !!club?.door_geofence_enabled &&
@@ -92,7 +95,7 @@ export function DashboardOpenDoorCard() {
 
   useEffect(() => {
     if (!autoEnabled || !club?.id) return;
-    if (proximity.state === "inside") {
+    if (proximity.atDoor) {
       if (autoUnlockFired(club.id, 30 * 60 * 1000)) return;
       markAutoUnlockFired(club.id);
       void openRef.current?.();
@@ -103,7 +106,7 @@ export function DashboardOpenDoorCard() {
     ) {
       rearmAutoUnlock(club.id);
     }
-  }, [autoEnabled, club?.id, proximity.state, proximity.distance, radiusM]);
+  }, [autoEnabled, club?.id, proximity.atDoor, proximity.state, proximity.distance, radiusM]);
 
   if (!club?.id || !doorEnabled || doorBlocked || visitorBlocked) return null;
 
@@ -192,7 +195,7 @@ export function DashboardOpenDoorCard() {
               GPS: {proximity.state}
               {proximity.distance != null && ` · ${Math.round(proximity.distance)} m from door`}
               {proximity.accuracy != null && ` · ±${Math.round(proximity.accuracy)} m accuracy`}
-              {` · radius ${club?.door_geofence_radius_m ?? 150} m`}
+              {` · radius ${club?.door_geofence_radius_m ?? 150} m · auto ${proximity.triggerRadiusM} m`}
             </p>
           )}
         </div>

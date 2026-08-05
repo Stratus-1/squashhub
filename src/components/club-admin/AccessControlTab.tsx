@@ -71,6 +71,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     lat: "",
     lng: "",
     radius: "150",
+    autoRadius: "5",
     auto: false,
   });
 
@@ -116,6 +117,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       lat: c?.door_latitude != null ? String(c.door_latitude) : "",
       lng: c?.door_longitude != null ? String(c.door_longitude) : "",
       radius: String(c?.door_geofence_radius_m ?? 150),
+      autoRadius: String(c?.door_auto_unlock_radius_m ?? 5),
       auto: !!c?.door_auto_unlock_enabled,
     });
   }, [club]);
@@ -199,6 +201,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           door_latitude: latNum,
           door_longitude: lngNum,
           door_geofence_radius_m: Math.max(3, Math.min(2000, Number(geofence.radius) || 150)),
+          door_auto_unlock_radius_m: Math.max(3, Math.min(500, Number(geofence.autoRadius) || 5)),
           door_auto_unlock_enabled: geofence.enabled && geofence.auto,
 
         } as any)
@@ -748,7 +751,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label>Unlock radius (metres)</Label>
+                  <Label>Button radius (metres)</Label>
                   <Input
                     type="number"
                     min={3}
@@ -757,7 +760,20 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                     onChange={(e) => setGeofence((p) => ({ ...p, radius: e.target.value }))}
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Tight values (4–10 m) mean the tile only appears right at the door; use 100–150 m if phone GPS is weak.
+                    How close a member must be for the "Open Door" tile to appear. 20–150 m works well.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label>Auto-unlock radius (metres)</Label>
+                  <Input
+                    type="number"
+                    min={3}
+                    max={500}
+                    value={geofence.autoRadius}
+                    onChange={(e) => setGeofence((p) => ({ ...p, autoRadius: e.target.value }))}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Tight ring right at the door (4–5 m) where the door opens by itself. Must be smaller than the button radius.
                   </p>
                 </div>
                 <Button type="button" variant="outline" size="sm" disabled={locating} onClick={useMyLocation} className="gap-1.5">
@@ -767,11 +783,11 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
 
                 <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">Auto-unlock on arrival</p>
+                    <p className="text-sm font-medium">Auto-unlock at the door</p>
                     <p className="text-xs text-muted-foreground">
-                      Open the door automatically the moment a member walks into the radius.
-                      It only fires once per visit — it re-arms after they leave the area
-                      (or 30 minutes later).
+                      Opens automatically only once the member reaches the auto-unlock
+                      radius — not on entering the wider button radius. Fires once per
+                      visit and re-arms after they leave the area (or 30 minutes later).
                     </p>
                   </div>
                   <Switch

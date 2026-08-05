@@ -32,6 +32,8 @@ import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } f
 import { DashboardDesktop } from "@/components/DashboardDesktop";
 import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityCard";
 import { DashboardTournamentInvitesCard } from "@/components/DashboardTournamentInvitesCard";
+import { LinkExistingMembershipCard } from "@/components/LinkExistingMembershipCard";
+
 import DebitOrderPromptCard from "@/components/DebitOrderPromptCard";
 import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
 import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
@@ -623,9 +625,11 @@ export default function Dashboard() {
         )}
 
         <div className="px-8 pt-3">
+          <div className="mb-3"><LinkExistingMembershipCard /></div>
           <DashboardTournamentInvitesCard />
           <div className="mt-3"><DebitOrderPromptCard clubMemberId={myMemberId} /></div>
         </div>
+
 
         <DashboardDesktop
           clubName={effectiveClub?.name || "SquashHub"}
@@ -698,9 +702,11 @@ export default function Dashboard() {
       )}
 
       <div className="px-4 mt-3">
+        <div className="mb-3"><LinkExistingMembershipCard /></div>
         <DashboardTournamentInvitesCard />
         <div className="mt-3"><DebitOrderPromptCard clubMemberId={myMemberId} /></div>
       </div>
+
 
       {/* Family Member Switcher */}
       {showFamilySwitcher && (

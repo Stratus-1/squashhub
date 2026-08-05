@@ -129,10 +129,16 @@ export default function LeagueSignup() {
     return () => clearTimeout(t);
   }, [nameQuery, presetClub]);
 
+  const existingAccount = !!hit?.already_claimed;
+
   const canSubmit = useMemo(() => {
-    if (!hit || hit.already_claimed) return false;
+    if (!hit) return false;
     if (!email.includes("@")) return false;
     if (password.length < 6) return false;
+    if (hit.already_claimed) {
+      // Existing account: they're here to add/refresh their NSA captain login.
+      return !!nsaUser.trim() && !!nsaPass.trim();
+    }
     if (!accept) return false;
     if (isCaptain && (!nsaUser.trim() || !nsaPass.trim())) return false;
     return true;
@@ -143,6 +149,7 @@ export default function LeagueSignup() {
     if (!canSubmit || !hit) return;
     setSubmitting(true);
     try {
+      const wantsCaptain = hit.already_claimed || isCaptain;
       const { data, error } = await supabase.functions.invoke("league-player-signup", {
         body: {
           nsa_number: nsaInput.trim(),
@@ -150,19 +157,20 @@ export default function LeagueSignup() {
           password,
           phone: phone.trim() || undefined,
           accept_terms: true,
-          captain: isCaptain ? { nsa_username: nsaUser.trim(), nsa_password: nsaPass } : undefined,
+          captain: wantsCaptain ? { nsa_username: nsaUser.trim(), nsa_password: nsaPass } : undefined,
         },
       });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
-      setDone({ captain_status: data.captain_status, club_subdomain: data.club_subdomain });
-      toast.success("Account created! Check your email to verify.");
+      setDone({ captain_status: data.captain_status, club_subdomain: data.club_subdomain, existing_account: !!data.existing_account });
+      toast.success(data.existing_account ? "NSA details saved" : "Account created! Check your email to verify.");
     } catch (err: any) {
       toast.error(err.message || "Signup failed");
     } finally {
       setSubmitting(false);
     }
   };
+
 
   if (done) {
     return (

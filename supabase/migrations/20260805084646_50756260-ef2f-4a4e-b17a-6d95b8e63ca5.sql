@@ -1,0 +1,1 @@
+ALTER TABLE public.league_rounds ADD COLUMN IF NOT EXISTS skip_dates date[] NOT NULL DEFAULT '{}'::date[];

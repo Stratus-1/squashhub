@@ -4136,6 +4136,7 @@ export type Database = {
           play_dows: number[]
           round_date: string
           round_number: number
+          skip_dates: string[]
           slot_minutes: number
           start_time: string
           status: string
@@ -4157,6 +4158,7 @@ export type Database = {
           play_dows?: number[]
           round_date: string
           round_number: number
+          skip_dates?: string[]
           slot_minutes?: number
           start_time?: string
           status?: string
@@ -4178,6 +4180,7 @@ export type Database = {
           play_dows?: number[]
           round_date?: string
           round_number?: number
+          skip_dates?: string[]
           slot_minutes?: number
           start_time?: string
           status?: string

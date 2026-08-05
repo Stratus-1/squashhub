@@ -72,7 +72,35 @@ export function DashboardOpenDoorCard() {
   const isVisitorRole = String((activeMember as any)?.role || "").toLowerCase() === "visitor";
   const visitorBlocked = isVisitorRole && !club?.visitors_access_control;
 
+  // ---- Auto-unlock on arrival -------------------------------------------
+  // Fires once when the member walks into the geofence; re-arms only after
+  // they've clearly left it again (or after a 30 min cooldown).
+  const autoEnabled =
+    !!(club as any)?.door_auto_unlock_enabled &&
+    !!club?.door_geofence_enabled &&
+    doorEnabled &&
+    !doorBlocked &&
+    !visitorBlocked;
+  const openRef = useRef<null | (() => Promise<void>)>(null);
+  const radiusM = club?.door_geofence_radius_m ?? 150;
+
+  useEffect(() => {
+    if (!autoEnabled || !club?.id) return;
+    if (proximity.state === "inside") {
+      if (autoUnlockFired(club.id, 30 * 60 * 1000)) return;
+      markAutoUnlockFired(club.id);
+      void openRef.current?.();
+    } else if (
+      proximity.state === "outside" &&
+      proximity.distance != null &&
+      proximity.distance > radiusM + 40
+    ) {
+      rearmAutoUnlock(club.id);
+    }
+  }, [autoEnabled, club?.id, proximity.state, proximity.distance, radiusM]);
+
   if (!club?.id || !doorEnabled || doorBlocked || visitorBlocked) return null;
+
 
   const handleOpenDoor = async () => {
     setLoading(true);

@@ -64,7 +64,7 @@ export default function SuperAdminOutreachCampaignEditor() {
         .order("sent_at", { ascending: false, nullsFirst: false }),
       supabase
         .from("outreach_prospects")
-        .select("id,club_name,association,country,city,is_nsa,status,tags")
+        .select("id,club_name,association,country,city,is_nsa,status,tags,outreach_contacts(email,phone)")
         .order("club_name"),
     ]);
     if (error || !camp) {
@@ -504,10 +504,36 @@ export default function SuperAdminOutreachCampaignEditor() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label className="text-xs">Contact details</Label>
+                <Select
+                  value={filter.contactability ?? "all"}
+                  onValueChange={(v) => setFilter({ contactability: v === "all" ? undefined : v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any contact details</SelectItem>
+                    <SelectItem value="has_email">Has email (can be emailed)</SelectItem>
+                    <SelectItem value="no_email">No email</SelectItem>
+                    <SelectItem value="phone_only">Phone only (no email)</SelectItem>
+                    <SelectItem value="has_phone">Has phone number</SelectItem>
+                    <SelectItem value="email_and_phone">Has email + phone</SelectItem>
+                    <SelectItem value="none">No contact details at all</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-white/50 mt-1">
+                  Only clubs with an email address can actually be sent to.
+                </p>
+              </div>
             </div>
+
 
             {(() => {
               const selected: string[] = filter.prospect_ids ?? [];
+              const hasEmail = (p: any) =>
+                (p.outreach_contacts ?? []).some((c: any) => c?.email && String(c.email).trim());
+              const hasPhone = (p: any) =>
+                (p.outreach_contacts ?? []).some((c: any) => c?.phone && String(c.phone).trim());
               const list = allProspects.filter((p) => {
                 if (filter.association && p.association !== filter.association) return false;
                 if (filter.country && p.country !== filter.country) return false;
@@ -515,11 +541,22 @@ export default function SuperAdminOutreachCampaignEditor() {
                 if (filter.status && p.status !== filter.status) return false;
                 if (Array.isArray(filter.tags) && filter.tags.length &&
                     !(p.tags ?? []).some((t: string) => filter.tags.includes(t))) return false;
+                const e = hasEmail(p), ph = hasPhone(p);
+                switch (filter.contactability) {
+                  case "has_email": if (!e) return false; break;
+                  case "no_email": if (e) return false; break;
+                  case "phone_only": if (e || !ph) return false; break;
+                  case "has_phone": if (!ph) return false; break;
+                  case "email_and_phone": if (!e || !ph) return false; break;
+                  case "none": if (e || ph) return false; break;
+                }
                 if (clubSearch.trim() &&
                     !String(p.club_name ?? "").toLowerCase().includes(clubSearch.trim().toLowerCase()))
                   return false;
                 return true;
               });
+              const emailable = list.filter(hasEmail).length;
+
               const toggle = (pid: string) => {
                 const next = selected.includes(pid)
                   ? selected.filter((x) => x !== pid)
@@ -536,11 +573,18 @@ export default function SuperAdminOutreachCampaignEditor() {
                           ? `${selected.length} club${selected.length === 1 ? "" : "s"} selected — only these will be emailed.`
                           : "Nothing ticked = every club matching the filters above."}
                       </p>
+                      <p className="text-[11px] text-white/40">
+                        {list.length} shown · {emailable} with an email · {list.length - emailable} without
+                      </p>
                     </div>
                     <div className="flex gap-1.5">
                       <Button size="sm" variant="outline" className="h-7 text-[11px]"
                         onClick={() => setFilter({ prospect_ids: list.map((p) => p.id) })}>
                         Select all shown
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                        onClick={() => setFilter({ prospect_ids: list.filter(hasEmail).map((p) => p.id) })}>
+                        Select emailable
                       </Button>
                       <Button size="sm" variant="ghost" className="h-7 text-[11px]"
                         onClick={() => setFilter({ prospect_ids: undefined })}>
@@ -559,6 +603,12 @@ export default function SuperAdminOutreachCampaignEditor() {
                         className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] cursor-pointer hover:bg-white/5">
                         <Checkbox checked={selected.includes(p.id)} onCheckedChange={() => toggle(p.id)} />
                         <span className="flex-1">{p.club_name}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${hasEmail(p) ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"}`}>
+                          {hasEmail(p) ? "email" : "no email"}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${hasPhone(p) ? "bg-sky-500/15 text-sky-300" : "bg-white/5 text-white/40"}`}>
+                          {hasPhone(p) ? "phone" : "no phone"}
+                        </span>
                         <span className="text-[11px] text-white/40">
                           {[p.association, p.country].filter(Boolean).join(" · ")}
                         </span>
@@ -566,6 +616,7 @@ export default function SuperAdminOutreachCampaignEditor() {
                     ))}
                   </div>
                 </div>
+
               );
             })()}
 

@@ -68,7 +68,7 @@ export default function LeagueSignup() {
   const [nsaPass, setNsaPass] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ captain_status: string; club_subdomain: string | null } | null>(null);
+  const [done, setDone] = useState<{ captain_status: string; club_subdomain: string | null; existing_account?: boolean } | null>(null);
 
   // Sign-in club picker
   const [signInOpen, setSignInOpen] = useState(false);

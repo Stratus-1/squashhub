@@ -66,6 +66,7 @@ export function useDoorProximity(fence: DoorGeofence) {
   );
   const [zone, setZone] = useState<ProximityZone>("unknown");
   const [distance, setDistance] = useState<number | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const watchId = useRef<number | null>(null);
   const samples = useRef<{ d: number; acc: number; t: number }[]>([]);

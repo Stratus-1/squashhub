@@ -67,6 +67,7 @@ export function DashboardOpenDoorCard() {
     latitude: club?.door_latitude ?? null,
     longitude: club?.door_longitude ?? null,
     radiusM: club?.door_geofence_radius_m ?? 150,
+    triggerRadiusM: club?.door_auto_unlock_radius_m ?? 5,
   });
   const nearDoor = proximity.allowed || isClubAdmin;
 

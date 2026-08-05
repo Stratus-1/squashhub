@@ -40,10 +40,10 @@ export default function LightsIntegration() {
               One app. <span className="text-amber-400">Bookings, lights &amp; door access.</span>
             </h1>
             <p className="text-lg text-white/70 leading-relaxed">
-              SquashHub talks directly to Shelly devices — like the <strong className="text-white">Shelly Pro 4PM</strong> smart
-              relay for court lighting and <strong className="text-white">Shelly 1 Mini / Plus 1</strong> relays on your door
-              strike or gate. Active members walk up, the door unlocks, the lights come on, and the session
-              is billed automatically — no keys, no fobs, no separate hardware app.
+              SquashHub talks directly to <strong className="text-white">Shelly devices</strong> — smart relays for
+              court lighting, and relays on your door strike or gate. Active members walk up, the door unlocks,
+              the lights come on, and the session is billed automatically — no keys, no fobs, no separate
+              hardware app.
             </p>
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
               <p className="text-sm text-white/85 leading-relaxed">
@@ -60,32 +60,32 @@ export default function LightsIntegration() {
               <FeatureChip icon={DoorOpen} label="Auto-unlock for members" />
               <FeatureChip icon={UserCheck} label="Hassle-free visitors" />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4 items-start">
-            <div className="relative">
-              <div className="absolute inset-0 bg-amber-500/20 blur-3xl rounded-full" />
+            <div className="flex items-center gap-3 pt-2">
               <img
                 src={shellyImg}
-                alt="Shelly Pro 4PM smart relay on DIN rail"
+                alt="Shelly smart relay on DIN rail"
                 width={512}
                 height={512}
-                className="relative rounded-xl border border-white/10 shadow-2xl bg-white w-full aspect-square object-cover"
+                className="w-20 h-20 rounded-lg border border-white/10 bg-white object-cover shrink-0"
               />
-              <p className="text-center text-[11px] text-white/50 mt-2 italic">Shelly Pro 4PM — controls 4 courts</p>
-            </div>
-            <div>
-              <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-[9/16]">
-                <iframe
-                  src="https://www.youtube.com/embed/atTVQQRayn4"
-                  title="Shelly relay — ready to install"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  className="w-full h-full block"
-                />
-              </div>
-              <p className="text-center text-[11px] text-white/50 mt-2 italic">Ready to install in your DB board</p>
+              <p className="text-[11px] text-white/50 italic">
+                Shelly smart relay — DIN-rail mounted in your DB board
+              </p>
             </div>
           </div>
+          <div className="max-w-[280px] w-full mx-auto md:mx-0 md:ml-auto">
+            <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-[9/16]">
+              <iframe
+                src="https://www.youtube.com/embed/atTVQQRayn4"
+                title="Shelly relay — ready to install"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="w-full h-full block"
+              />
+            </div>
+            <p className="text-center text-[11px] text-white/50 mt-2 italic">Ready to install in your DB board</p>
+          </div>
+
         </div>
       </section>
 

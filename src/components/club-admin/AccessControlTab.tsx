@@ -108,7 +108,38 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
 
   useEffect(() => {
     setFaceEnrolmentRequired(!!(club as any)?.face_enrolment_required);
+    const c = club as any;
+    setGeofence({
+      enabled: !!c?.door_geofence_enabled,
+      lat: c?.door_latitude != null ? String(c.door_latitude) : "",
+      lng: c?.door_longitude != null ? String(c.door_longitude) : "",
+      radius: String(c?.door_geofence_radius_m ?? 150),
+    });
   }, [club]);
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("This device can't report a location");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeofence((p) => ({
+          ...p,
+          lat: pos.coords.latitude.toFixed(6),
+          lng: pos.coords.longitude.toFixed(6),
+        }));
+        setLocating(false);
+        toast.success(`Pinned to your position (±${Math.round(pos.coords.accuracy)} m)`);
+      },
+      (err) => {
+        setLocating(false);
+        toast.error(err.code === err.PERMISSION_DENIED ? "Location permission denied" : "Couldn't get your location");
+      },
+      { enableHighAccuracy: true, timeout: 20000 }
+    );
+  };
 
   const generateSecret = () => {
     const arr = new Uint8Array(24);

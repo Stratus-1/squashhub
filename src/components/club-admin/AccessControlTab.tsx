@@ -199,6 +199,8 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           door_latitude: latNum,
           door_longitude: lngNum,
           door_geofence_radius_m: Math.max(20, Math.min(2000, Number(geofence.radius) || 150)),
+          door_auto_unlock_enabled: geofence.enabled && geofence.auto,
+
         } as any)
         .eq("id", clubId);
 

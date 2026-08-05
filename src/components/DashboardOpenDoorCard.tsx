@@ -107,6 +107,10 @@ export function DashboardOpenDoorCard() {
 
   if (!club?.id || !doorEnabled || doorBlocked || visitorBlocked) return null;
 
+  // Geofenced clubs: only surface the tile once the member is actually at the
+  // door (admins/staff keep remote access). Hides while locating / far away.
+  if (proximity.active && !nearDoor) return null;
+
 
   const handleOpenDoor = async () => {
     setLoading(true);

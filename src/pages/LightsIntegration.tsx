@@ -89,9 +89,41 @@ export default function LightsIntegration() {
         </div>
       </section>
 
-
-
-
+      {/* Geofenced door access demo */}
+      <section className="max-w-6xl mx-auto px-4 py-12">
+        <div className="grid md:grid-cols-2 gap-8 items-center">
+          <div className="space-y-3">
+            <h2 className="text-2xl md:text-3xl font-heading uppercase tracking-tight text-white">
+              Door access, only when you're there
+            </h2>
+            <p className="text-white/70 text-sm leading-relaxed">
+              A Shelly relay wired to the door strike lets members in without keys or tags. The
+              "Open door" button only appears once the member's phone is inside the club's geofence,
+              and an inner ring right at the door can pulse the lock automatically as they walk up —
+              so nobody can open the door from the couch at home.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <FeatureChip icon={DoorOpen} label="Geofenced unlock" />
+              <FeatureChip icon={UserCheck} label="Members only" />
+              <FeatureChip icon={Wifi} label="Shelly relay" />
+            </div>
+          </div>
+          <div className="mx-auto w-full max-w-[280px]">
+            <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-[9/16]">
+              <iframe
+                src="https://www.youtube.com/embed/RuQwhXLCzSQ"
+                title="SquashHub geofenced door access demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="w-full h-full block"
+              />
+            </div>
+            <p className="text-center text-[11px] text-white/50 mt-2 italic">
+              Walk up, door opens — GPS proximity in action
+            </p>
+          </div>
+        </div>
+      </section>
 
 
       {/* How it works */}

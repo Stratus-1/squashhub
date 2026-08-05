@@ -14,6 +14,7 @@ import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { useClubAnalytics } from "@/hooks/use-analytics";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
+import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
 
 interface DashboardDesktopProps {
   clubName: string;

@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS door_auto_unlock_enabled boolean NOT NULL DEFAULT false;

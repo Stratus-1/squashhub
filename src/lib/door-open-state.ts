@@ -42,3 +42,41 @@ export function wasDoorOpenedRecently(withinMs: number): boolean {
     return false;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Auto-unlock on arrival
+ * The door fires once when the member walks into the geofence. It only
+ * re-arms after they leave the fence again (or after a cooldown), so
+ * standing at the club doesn't pulse the relay over and over.
+ * ------------------------------------------------------------------ */
+
+const AUTO_KEY = (clubId: string) => `door_auto_unlock_${clubId}`;
+
+/** Auto-unlock already fired for the current visit? */
+export function autoUnlockFired(clubId: string, cooldownMs: number): boolean {
+  try {
+    const raw = localStorage.getItem(AUTO_KEY(clubId));
+    if (!raw) return false;
+    return Date.now() - Number(raw) < cooldownMs;
+  } catch {
+    return false;
+  }
+}
+
+export function markAutoUnlockFired(clubId: string) {
+  try {
+    localStorage.setItem(AUTO_KEY(clubId), String(Date.now()));
+  } catch {
+    // ignore
+  }
+}
+
+/** Called once the member has clearly left the fence — allows a new auto open. */
+export function rearmAutoUnlock(clubId: string) {
+  try {
+    localStorage.removeItem(AUTO_KEY(clubId));
+  } catch {
+    // ignore
+  }
+}
+

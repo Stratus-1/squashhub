@@ -71,7 +71,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     lat: "",
     lng: "",
     radius: "150",
+    auto: false,
   });
+
   const [locating, setLocating] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -114,6 +116,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       lat: c?.door_latitude != null ? String(c.door_latitude) : "",
       lng: c?.door_longitude != null ? String(c.door_longitude) : "",
       radius: String(c?.door_geofence_radius_m ?? 150),
+      auto: !!c?.door_auto_unlock_enabled,
     });
   }, [club]);
 
@@ -196,6 +199,8 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           door_latitude: latNum,
           door_longitude: lngNum,
           door_geofence_radius_m: Math.max(20, Math.min(2000, Number(geofence.radius) || 150)),
+          door_auto_unlock_enabled: geofence.enabled && geofence.auto,
+
         } as any)
         .eq("id", clubId);
 
@@ -759,6 +764,22 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                   <MapPin className="w-3.5 h-3.5" />
                   {locating ? "Getting location…" : "Use my current location (stand at the door)"}
                 </Button>
+
+                <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Auto-unlock on arrival</p>
+                    <p className="text-xs text-muted-foreground">
+                      Open the door automatically the moment a member walks into the radius.
+                      It only fires once per visit — it re-arms after they leave the area
+                      (or 30 minutes later).
+                    </p>
+                  </div>
+                  <Switch
+                    checked={geofence.auto}
+                    onCheckedChange={(v) => setGeofence((p) => ({ ...p, auto: v }))}
+                  />
+                </div>
+
               </div>
             )}
           </div>

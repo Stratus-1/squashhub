@@ -11,6 +11,8 @@ import { useMemberContext } from "@/contexts/MemberContext";
 type NotificationLike = {
   id: string;
   type?: string | null;
+  title?: string | null;
+  message?: string | null;
   url?: string | null;
   club_member_id?: string | null;
   data?: Record<string, any> | null;

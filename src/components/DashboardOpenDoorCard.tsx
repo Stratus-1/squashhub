@@ -40,6 +40,7 @@ export function DashboardOpenDoorCard() {
     door_latitude?: number | null;
     door_longitude?: number | null;
     door_geofence_radius_m?: number | null;
+    door_auto_unlock_radius_m?: number | null;
   } | undefined;
   const { data: clubSecrets } = useClubSecrets(club?.id);
   const { data: accessPublic } = useQuery({

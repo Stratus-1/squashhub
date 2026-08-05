@@ -116,6 +116,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       lat: c?.door_latitude != null ? String(c.door_latitude) : "",
       lng: c?.door_longitude != null ? String(c.door_longitude) : "",
       radius: String(c?.door_geofence_radius_m ?? 150),
+      auto: !!c?.door_auto_unlock_enabled,
+    });
+
     });
   }, [club]);
 

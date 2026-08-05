@@ -97,6 +97,19 @@ export default function SuperAdminOutreachCampaignEditor() {
     unsub: recipients.filter((r) => r.unsubscribed_at).length,
   }), [recipients]);
 
+  const [trackSearch, setTrackSearch] = useState("");
+  const filteredRecipients = useMemo(() => {
+    const q = trackSearch.trim().toLowerCase();
+    if (!q) return recipients;
+    return recipients.filter((r: any) => {
+      const status = r.unsubscribed_at ? "unsubscribed" : (r.send_status ?? "");
+      return [r.outreach_prospects?.club_name, r.email, status, r.error_message]
+        .some((v) => String(v ?? "").toLowerCase().includes(q));
+    });
+  }, [recipients, trackSearch]);
+
+
+
   const save = async () => {
     if (!c) return;
     setBusy("save");

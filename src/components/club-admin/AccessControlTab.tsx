@@ -185,6 +185,20 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         await fromExt("clubs").update({ face_enrolment_required: false }).eq("id", clubId);
       }
 
+      const latNum = geofence.lat.trim() === "" ? null : Number(geofence.lat);
+      const lngNum = geofence.lng.trim() === "" ? null : Number(geofence.lng);
+      if (geofence.enabled && (latNum == null || lngNum == null || Number.isNaN(latNum) || Number.isNaN(lngNum))) {
+        throw new Error("Pin the door location before enabling proximity unlock");
+      }
+      await fromExt("clubs")
+        .update({
+          door_geofence_enabled: geofence.enabled,
+          door_latitude: latNum,
+          door_longitude: lngNum,
+          door_geofence_radius_m: Math.max(20, Math.min(2000, Number(geofence.radius) || 150)),
+        } as any)
+        .eq("id", clubId);
+
       toast.success("Access control settings saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");

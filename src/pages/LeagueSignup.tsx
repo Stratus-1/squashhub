@@ -181,9 +181,11 @@ export default function LeagueSignup() {
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold font-heading">You're in!</h1>
+          <h1 className="text-2xl font-bold font-heading">{done.existing_account ? "All set!" : "You're in!"}</h1>
           <p className="text-sm text-muted-foreground">
-            Your account is active. Sign in with your email and password to access your league dashboard.
+            {done.existing_account
+              ? "Your NSA details are saved on your existing SquashHub account. Head to your club to carry on."
+              : "Your account is active. Sign in with your email and password to access your league dashboard."}
           </p>
           {done.captain_status === "verified" && (
             <div className="text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-md p-2 flex items-center gap-2 justify-center">

@@ -321,6 +321,54 @@ export default function LeagueSignup() {
               )}
             </div>
 
+            {/* Step 2 (existing account) — sign in and capture NSA captain login */}
+            {hit && hit.already_claimed && (
+              <>
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">2</span>
+                    Confirm it's you
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="ex-email">Your SquashHub email <span className="text-destructive">*</span></Label>
+                    <Input id="ex-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="ex-password">Your SquashHub password <span className="text-destructive">*</span></Label>
+                    <Input id="ex-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+                    <p className="text-[11px] text-muted-foreground">
+                      Forgot it? <Link to="/auth" className="underline">Reset your password</Link> and come back.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-2">
+                    <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px]">3</span>
+                    Your NSA login
+                  </div>
+                  <p className="text-[11px] text-muted-foreground -mt-1">
+                    Enter your NSA admin login so scorecards can be posted to the NSA site on your team's behalf.
+                  </p>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="ex-nsau" className="text-xs">NSA admin username</Label>
+                    <Input id="ex-nsau" value={nsaUser} onChange={(e) => setNsaUser(e.target.value)} placeholder="e.g. smithj" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ex-nsap" className="text-xs">NSA admin password</Label>
+                    <Input id="ex-nsap" type="password" value={nsaPass} onChange={(e) => setNsaPass(e.target.value)} />
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={!canSubmit || submitting}>
+                  {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : "Save NSA details & continue to my club"}
+                </Button>
+              </>
+            )}
+
+
+
             {/* Step 2 — basics (only when valid hit) */}
             {hit && !hit.already_claimed && (
               <>

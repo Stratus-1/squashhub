@@ -628,6 +628,16 @@ export default function Dashboard() {
           <div className="mb-3"><LinkExistingMembershipCard /></div>
           <DashboardTournamentInvitesCard />
           <div className="mt-3"><DebitOrderPromptCard clubMemberId={myMemberId} /></div>
+          {myPrimaryLeagueReg?.is_captain && myClubMember?.id && (
+            <div className="mt-3">
+              <CaptainInviteTeamCard clubMemberId={myClubMember.id} />
+            </div>
+          )}
+          {(isClubAdmin || isSuperAdmin) && clubId && (
+            <div className="mt-3">
+              <CaptainInviteTeamCard mode="admin" clubId={clubId} />
+            </div>
+          )}
         </div>
 
 

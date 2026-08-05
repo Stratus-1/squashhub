@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Loader2, Pencil, Camera, Trash2, ScanFace, CheckCircle2 } from "lucide-react";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { GoBookCredentialsCard } from "@/components/GoBookCredentialsCard";
+import { NsaCredentialsCard } from "@/components/NsaCredentialsCard";
+
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -858,9 +860,25 @@ function ViewMode({
         </Card>
       )}
 
+      {clubMember && (() => {
+        const nsaAff = activeAffs.find((a: any) =>
+          /nsa|northern/i.test(
+            `${a.association?.abbreviation || ""} ${a.association?.name || ""}`,
+          ) || /^NSF\d+$/i.test(a.league_association_number || ""),
+        );
+        if (!nsaAff) return null;
+        return (
+          <NsaCredentialsCard
+            clubMemberId={clubMember.id}
+            nsaNumber={nsaAff.league_association_number}
+          />
+        );
+      })()}
+
       {clubMember && ((club as any)?.club?.uses_gobook || /csir/i.test((club as any)?.club?.name || "")) && (
         <GoBookCredentialsCard clubMemberId={clubMember.id} />
       )}
+
 
       <DialogFooter>
         <Button variant="outline" onClick={close}>Done</Button>

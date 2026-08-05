@@ -139,6 +139,14 @@ export function DashboardOpenDoorCard() {
               ? "Unlock the main door"
               : proximity.hint}
           </p>
+          {proximity.active && (
+            <p className="text-[11px] text-muted-foreground/80 mt-0.5 tabular-nums">
+              GPS: {proximity.state}
+              {proximity.distance != null && ` · ${Math.round(proximity.distance)} m from door`}
+              {proximity.accuracy != null && ` · ±${Math.round(proximity.accuracy)} m accuracy`}
+              {` · radius ${club?.door_geofence_radius_m ?? 150} m`}
+            </p>
+          )}
         </div>
         <Button
           size="sm"

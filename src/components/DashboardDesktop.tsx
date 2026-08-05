@@ -106,6 +106,11 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
         </div>
 
 
+      {/* Open Door quick access (proximity-gated; admins always see it) */}
+      <div className="px-8">
+        <DashboardOpenDoorCard />
+      </div>
+
       {/* QUICK ACCESS TILES — categorised like the sidebar */}
       <div className="px-8 pb-2">
         <QuickAccess
@@ -115,6 +120,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
           navigate={navigate}
         />
       </div>
+
 
       <div className="px-8 pb-3">
         <ClubStatsCard clubId={props.clubId} />

@@ -20,8 +20,15 @@ import {
 } from "lucide-react";
 
 interface Row extends ProspectRecord {
-  contacts: { id: string; name: string | null; role: string | null; email: string; opted_out: boolean; bounced: boolean }[];
+  contacts: { id: string; name: string | null; role: string | null; email: string; phone: string | null; opted_out: boolean; bounced: boolean }[];
 }
+
+/** Pull any SA/international looking phone numbers out of free-text notes. */
+const phonesFromNotes = (notes?: string | null): string[] => {
+  if (!notes) return [];
+  const found = notes.match(/(\+?\d[\d\s().-]{7,}\d)/g) ?? [];
+  return [...new Set(found.map((p) => p.trim().replace(/\s{2,}/g, " ")))].slice(0, 3);
+};
 
 const STATUS_TONE: Record<string, string> = {
   new: "bg-slate-500/20 text-slate-200 border-slate-400/30",
@@ -46,6 +53,7 @@ export default function SuperAdminOutreach() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [nsaFilter, setNsaFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
+  const [emailFilter, setEmailFilter] = useState("all");
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<ProspectRecord | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -56,7 +64,7 @@ export default function SuperAdminOutreach() {
     setLoading(true);
     const { data, error } = await supabase
       .from("outreach_prospects")
-      .select("*, outreach_contacts(id,name,role,email,opted_out,bounced)")
+      .select("*, outreach_contacts(id,name,role,email,phone,opted_out,bounced)")
       .order("club_name");
     if (error) {
       toast({ title: "Could not load prospects", description: error.message, variant: "destructive" });
@@ -91,17 +99,24 @@ export default function SuperAdminOutreach() {
       if (nsaFilter === "yes" && !r.is_nsa) return false;
       if (nsaFilter === "no" && r.is_nsa) return false;
       if (tagFilter !== "all" && !(r.tags ?? []).includes(tagFilter)) return false;
+      const hasEmail = r.contacts.some((c) => !!c.email);
+      const hasPhone = r.contacts.some((c) => !!c.phone) || phonesFromNotes(r.notes).length > 0;
+      if (emailFilter === "with" && !hasEmail) return false;
+      if (emailFilter === "without" && hasEmail) return false;
+      if (emailFilter === "phone_only" && (hasEmail || !hasPhone)) return false;
+      if (emailFilter === "no_contact" && (hasEmail || hasPhone)) return false;
       if (!q) return true;
       return (
         r.club_name.toLowerCase().includes(q) ||
         (r.city ?? "").toLowerCase().includes(q) ||
         (r.association ?? "").toLowerCase().includes(q) ||
         r.contacts.some(
-          (c) => c.email.toLowerCase().includes(q) || (c.name ?? "").toLowerCase().includes(q),
+          (c) => c.email.toLowerCase().includes(q) || (c.name ?? "").toLowerCase().includes(q) ||
+            (c.phone ?? "").includes(q),
         )
       );
     });
-  }, [rows, search, assocFilter, countryFilter, statusFilter, nsaFilter, tagFilter]);
+  }, [rows, search, assocFilter, countryFilter, statusFilter, nsaFilter, tagFilter, emailFilter]);
 
   const followUps = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -115,8 +130,8 @@ export default function SuperAdminOutreach() {
     const contacts = rows.flatMap((r) => r.contacts);
     return {
       clubs: rows.length,
-      contacts: contacts.length,
-      nsa: rows.filter((r) => r.is_nsa).length,
+      withEmail: rows.filter((r) => r.contacts.some((c) => !!c.email)).length,
+      noEmail: rows.filter((r) => !r.contacts.some((c) => !!c.email)).length,
       contactable: contacts.filter((c) => !c.opted_out && !c.bounced).length,
       replied: rows.filter((r) => ["replied", "interested"].includes(r.status)).length,
     };
@@ -136,13 +151,15 @@ export default function SuperAdminOutreach() {
         tags: (r.tags ?? []).join("|"),
         contact_name: c?.name ?? "",
         role: c?.role ?? "",
+        has_email: c?.email ? "yes" : "no",
         email: c?.email ?? "",
+        phone: c?.phone ?? phonesFromNotes(r.notes).join(" / "),
         source: r.source ?? "",
       })),
     );
     const csv = toCsv(flat, [
       "club_name", "association", "city", "country", "courts", "website",
-      "nsa", "status", "tags", "contact_name", "role", "email", "source",
+      "nsa", "status", "tags", "contact_name", "role", "has_email", "email", "phone", "source",
     ]);
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a");
@@ -193,9 +210,9 @@ export default function SuperAdminOutreach() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {[
           { label: "Clubs", value: stats.clubs },
-          { label: "Contacts", value: stats.contacts },
+          { label: "With email", value: stats.withEmail },
+          { label: "No email yet", value: stats.noEmail },
           { label: "Contactable", value: stats.contactable },
-          { label: "NSA clubs", value: stats.nsa },
           { label: "Replied / interested", value: stats.replied },
         ].map((s) => (
           <Card key={s.label} className="p-3 bg-white/5 border-white/10">
@@ -249,13 +266,23 @@ export default function SuperAdminOutreach() {
                   ))}
                 </SelectContent>
               </Select>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Select value={nsaFilter} onValueChange={setNsaFilter}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">NSA: any</SelectItem>
                     <SelectItem value="yes">NSA only</SelectItem>
                     <SelectItem value="no">Non-NSA</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={emailFilter} onValueChange={setEmailFilter}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Email: any</SelectItem>
+                    <SelectItem value="with">Has email</SelectItem>
+                    <SelectItem value="without">No email</SelectItem>
+                    <SelectItem value="phone_only">Phone only</SelectItem>
+                    <SelectItem value="no_contact">No contact at all</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={tagFilter} onValueChange={setTagFilter}>
@@ -275,6 +302,8 @@ export default function SuperAdminOutreach() {
                 <tr className="text-left text-white/50 border-b border-white/10">
                   <th className="p-2.5">Club</th>
                   <th className="p-2.5">Contacts</th>
+                  <th className="p-2.5 w-24">Email?</th>
+                  <th className="p-2.5">Phone</th>
                   <th className="p-2.5">Tags</th>
                   <th className="p-2.5">Status</th>
                   <th className="p-2.5 w-20"></th>
@@ -282,15 +311,21 @@ export default function SuperAdminOutreach() {
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={5} className="p-6 text-center text-white/50">Loading…</td></tr>
+                  <tr><td colSpan={7} className="p-6 text-center text-white/50">Loading…</td></tr>
                 )}
                 {!loading && !filtered.length && (
-                  <tr><td colSpan={5} className="p-6 text-center text-white/50">
+                  <tr><td colSpan={7} className="p-6 text-center text-white/50">
                     No clubs yet — use Import to paste your list.
                   </td></tr>
                 )}
-                {filtered.map((r) => (
-                  <tr key={r.id} className="border-b border-white/5 hover:bg-white/5">
+                {filtered.map((r) => {
+                  const emails = r.contacts.filter((c) => !!c.email);
+                  const phones = [
+                    ...r.contacts.filter((c) => c.phone).map((c) => ({ label: c.name, value: c.phone as string })),
+                    ...phonesFromNotes(r.notes).map((p) => ({ label: null as string | null, value: p })),
+                  ];
+                  return (
+                  <tr key={r.id} className="border-b border-white/5 hover:bg-white/5 align-top">
                     <td className="p-2.5">
                       <div className="font-medium flex items-center gap-1.5">
                         {r.club_name}
@@ -314,6 +349,29 @@ export default function SuperAdminOutreach() {
                       {r.contacts.length > 3 && (
                         <div className="text-[11px] text-white/40">+{r.contacts.length - 3} more</div>
                       )}
+                    </td>
+                    <td className="p-2.5">
+                      {emails.length ? (
+                        <Badge className="h-4 px-1 text-[9px] bg-emerald-500/20 text-emerald-200 border-emerald-400/30">
+                          {emails.length === 1 ? "Yes" : `Yes · ${emails.length}`}
+                        </Badge>
+                      ) : (
+                        <Badge className="h-4 px-1 text-[9px] bg-red-500/15 text-red-200 border-red-400/30">No</Badge>
+                      )}
+                      {emails.slice(0, 2).map((c) => (
+                        <div key={c.id} className="text-[10px] text-white/50 break-all mt-0.5">{c.email}</div>
+                      ))}
+                    </td>
+                    <td className="p-2.5">
+                      {phones.length === 0 && <span className="text-white/40">—</span>}
+                      {phones.slice(0, 3).map((p, i) => (
+                        <div key={`${p.value}-${i}`} className="text-[11px] whitespace-nowrap">
+                          <a href={`tel:${p.value.replace(/[^\d+]/g, "")}`} className="text-white/80 hover:underline">
+                            {p.value}
+                          </a>
+                          {p.label && <span className="text-white/40"> · {p.label}</span>}
+                        </div>
+                      ))}
                     </td>
                     <td className="p-2.5">
                       <div className="flex flex-wrap gap-1">
@@ -354,7 +412,7 @@ export default function SuperAdminOutreach() {
                       </Button>
                     </td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
           </Card>

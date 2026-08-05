@@ -13,7 +13,7 @@ export default function LightsIntegration() {
     <div className="min-h-screen bg-gradient-to-b from-[hsl(220_45%_8%)] via-[hsl(220_40%_12%)] to-background text-foreground">
       <SEO
         title="Smart Court Lights & Access Control — Shelly Ready | SquashHub"
-        description="One app for bookings, court lights and door access. SquashHub is Shelly Pro 4PM + Shelly 1 Mini ready — automatic unlock for active members, fair per-minute lighting, and hassle-free visitor access."
+        description="One app for bookings, court lights and door access. SquashHub is Shelly-ready — automatic unlock for active members, fair per-minute lighting, and hassle-free visitor access."
       />
 
       {/* Header */}

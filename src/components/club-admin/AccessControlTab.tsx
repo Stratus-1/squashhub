@@ -71,6 +71,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     lat: "",
     lng: "",
     radius: "150",
+    autoRadius: "5",
     auto: false,
   });
 

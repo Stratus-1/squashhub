@@ -30,12 +30,26 @@ function getNotificationData(notification?: NotificationLike | null): Record<str
   return value;
 }
 
-/** True when the notification is a club-event invite that can be answered inline. */
+/**
+ * True only for an actual club-event *invitation* that can be answered inline.
+ * Reminders (type='reminder'), cancellations and RSVP-status updates sent to the
+ * organiser also carry data.event_id, but must NOT be treated as invites —
+ * otherwise they auto-dismiss before the member can read them.
+ */
 export function isEventInviteNotification(notification?: NotificationLike | null) {
   if (!notification) return false;
-  const eventId = getNotificationData(notification).event_id;
-  return !!eventId;
+  const data = getNotificationData(notification);
+  if (!data.event_id) return false;
+  // Reminder / cancellation notifications are informational only.
+  if ((notification.type || "") !== "booking") return false;
+  // RSVP-change notifications to the organiser carry rsvp_status.
+  if (data.rsvp_status) return false;
+  const title = String(notification.title || "").toLowerCase();
+  const message = String(notification.message || "").toLowerCase();
+  if (title.includes("cancel") || message.includes("has been cancelled")) return false;
+  return title.includes("invit") || message.includes("invited you");
 }
+
 
 /**
  * Inline Confirm / Decline buttons for a club event invitation, shown in the

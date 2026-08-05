@@ -25,6 +25,7 @@ export type RoundDraft = {
   end_time: string;
   slot_minutes: number;
   play_dows: number[];      // 0=Sun..6=Sat; empty = any day
+  skip_dates: string[];     // yyyy-MM-dd dates to skip (holidays / breaks)
   notes?: string | null;
   auto_create_bookings?: boolean;
 };
@@ -97,6 +98,7 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
     end_time: initial?.end_time ?? "20:00",
     slot_minutes: initial?.slot_minutes ?? 45,
     play_dows: initial?.play_dows ?? [],
+    skip_dates: (initial?.skip_dates ?? []).map((d) => String(d).slice(0, 10)),
     notes: initial?.notes ?? "",
     auto_create_bookings: initial?.auto_create_bookings ?? true,
     id: initial?.id,
@@ -160,6 +162,35 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
 
   const [saving, setSaving] = useState(false);
   const datesInvalid = draft.end_date < draft.round_date;
+
+  // Weekly matchday preview from the start date, honouring the selected play
+  // days. Admins untick holiday weeks; those land in `skip_dates`.
+  const upcomingPlayDates = (() => {
+    if (!draft.round_date) return [] as string[];
+    const allowed = draft.play_dows.length ? new Set(draft.play_dows) : null;
+    const [y, m, d] = draft.round_date.split("-").map(Number);
+    if (!y || !m || !d) return [] as string[];
+    let ms = Date.UTC(y, m - 1, d);
+    const out: string[] = [];
+    const limit = draft.end_date && draft.end_date > draft.round_date ? draft.end_date : null;
+    let guard = 0;
+    while (out.length < 16 && guard < 400) {
+      const dt = new Date(ms);
+      const iso = dt.toISOString().slice(0, 10);
+      if (limit && iso > limit) break;
+      if (!allowed || allowed.has(dt.getUTCDay())) out.push(iso);
+      ms += 86400000;
+      guard++;
+    }
+    return out;
+  })();
+
+  const formatPlayDate = (iso: string) => {
+    const [yy, mm, dd] = iso.split("-").map(Number);
+    return new Date(Date.UTC(yy, mm - 1, dd)).toLocaleDateString(undefined, {
+      weekday: "short", day: "numeric", month: "short", timeZone: "UTC",
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -285,6 +316,38 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">
               Select which weekdays fixtures may be scheduled on. Leave all unselected to allow any day.
+            </p>
+          </div>
+          <div>
+            <Label>Match days (untick holidays / breaks)</Label>
+            <div className="mt-1 rounded border p-2 grid grid-cols-2 gap-1.5 max-h-48 overflow-auto">
+              {upcomingPlayDates.length === 0 && (
+                <p className="text-xs text-muted-foreground col-span-2">Pick a start date (and play days) to see the weekly schedule.</p>
+              )}
+              {upcomingPlayDates.map((d) => {
+                const skipped = draft.skip_dates.includes(d);
+                return (
+                  <label key={d} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={!skipped}
+                      onCheckedChange={() =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          skip_dates: skipped
+                            ? prev.skip_dates.filter((x) => x !== d)
+                            : [...prev.skip_dates, d].sort(),
+                        }))
+                      }
+                    />
+                    <span className={skipped ? "line-through text-muted-foreground" : ""}>
+                      {formatPlayDate(d)}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Unticked dates are skipped when fixtures are generated — the schedule rolls on to the next available week.
             </p>
           </div>
           <div>

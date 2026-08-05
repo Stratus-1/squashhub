@@ -830,6 +830,7 @@ function RoundCard({
   const [tier, setTier] = useState<string>("__all__");
   const [reverseFromPrev, setReverseFromPrev] = useState<boolean>(false);
   const [showTeamGrid, setShowTeamGrid] = useState<boolean>(false);
+  const [postponeOpen, setPostponeOpen] = useState(false);
 
   // Prior rounds in the same association (read-only — never mutated).
   const { data: priorFixtures } = useQuery({
@@ -1636,6 +1637,15 @@ function RoundCard({
             <ReadOnlyFixtures fixtures={fixtures ?? []} courts={courts ?? []} teams={teams} fallbackDate={round.round_date} />
           )}
         </div>
+      )}
+      {isAdmin && (
+        <PostponeMatchdayDialog
+          open={postponeOpen}
+          onOpenChange={setPostponeOpen}
+          roundId={round.id}
+          roundName={round.name ?? "Round"}
+          onDone={() => { refetchFixtures(); }}
+        />
       )}
     </Card>
   );

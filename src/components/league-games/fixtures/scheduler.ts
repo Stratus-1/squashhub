@@ -334,6 +334,7 @@ export function allocatePairingsWithCourtFairness(
   endDate: string,
   playDows: number[] | undefined,
   priorUsage: CourtUsage,
+  skipDates?: string[],
 ): RoundRobinAllocation {
   if (!courtIds.length) return { slots: [], byes: [], error: "No courts assigned to this round." };
   const openEnded = !endDate || endDate === startDate;
@@ -492,6 +493,7 @@ export function allocateAcrossPools(
   startDate: string,
   endDate?: string,
   playDows?: number[],
+  skipDates?: string[],
 ): { slots: PoolSlotAssignment[]; error?: string } {
   const sharedCourts = Array.from(
     new Set(pools.flatMap((p) => p.courtIds)),

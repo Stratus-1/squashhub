@@ -152,7 +152,17 @@ export function DashboardOpenDoorCard() {
     }
   };
 
+  // Keep the auto-unlock effect pointed at the latest handler.
+  openRef.current = async () => {
+    try {
+      await handleOpenDoor();
+    } finally {
+      // handleOpenDoor toasts its own errors; nothing extra to do.
+    }
+  };
+
   const adminOverride = !proximity.allowed && isClubAdmin && proximity.active;
+
 
   return (
     <div className="px-4 mt-2">

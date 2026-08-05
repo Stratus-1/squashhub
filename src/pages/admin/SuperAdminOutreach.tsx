@@ -266,13 +266,23 @@ export default function SuperAdminOutreach() {
                   ))}
                 </SelectContent>
               </Select>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Select value={nsaFilter} onValueChange={setNsaFilter}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">NSA: any</SelectItem>
                     <SelectItem value="yes">NSA only</SelectItem>
                     <SelectItem value="no">Non-NSA</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={emailFilter} onValueChange={setEmailFilter}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Email: any</SelectItem>
+                    <SelectItem value="with">Has email</SelectItem>
+                    <SelectItem value="without">No email</SelectItem>
+                    <SelectItem value="phone_only">Phone only</SelectItem>
+                    <SelectItem value="no_contact">No contact at all</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={tagFilter} onValueChange={setTagFilter}>
@@ -292,6 +302,8 @@ export default function SuperAdminOutreach() {
                 <tr className="text-left text-white/50 border-b border-white/10">
                   <th className="p-2.5">Club</th>
                   <th className="p-2.5">Contacts</th>
+                  <th className="p-2.5 w-24">Email?</th>
+                  <th className="p-2.5">Phone</th>
                   <th className="p-2.5">Tags</th>
                   <th className="p-2.5">Status</th>
                   <th className="p-2.5 w-20"></th>
@@ -299,15 +311,21 @@ export default function SuperAdminOutreach() {
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={5} className="p-6 text-center text-white/50">Loading…</td></tr>
+                  <tr><td colSpan={7} className="p-6 text-center text-white/50">Loading…</td></tr>
                 )}
                 {!loading && !filtered.length && (
-                  <tr><td colSpan={5} className="p-6 text-center text-white/50">
+                  <tr><td colSpan={7} className="p-6 text-center text-white/50">
                     No clubs yet — use Import to paste your list.
                   </td></tr>
                 )}
-                {filtered.map((r) => (
-                  <tr key={r.id} className="border-b border-white/5 hover:bg-white/5">
+                {filtered.map((r) => {
+                  const emails = r.contacts.filter((c) => !!c.email);
+                  const phones = [
+                    ...r.contacts.filter((c) => c.phone).map((c) => ({ label: c.name, value: c.phone as string })),
+                    ...phonesFromNotes(r.notes).map((p) => ({ label: null as string | null, value: p })),
+                  ];
+                  return (
+                  <tr key={r.id} className="border-b border-white/5 hover:bg-white/5 align-top">
                     <td className="p-2.5">
                       <div className="font-medium flex items-center gap-1.5">
                         {r.club_name}
@@ -331,6 +349,29 @@ export default function SuperAdminOutreach() {
                       {r.contacts.length > 3 && (
                         <div className="text-[11px] text-white/40">+{r.contacts.length - 3} more</div>
                       )}
+                    </td>
+                    <td className="p-2.5">
+                      {emails.length ? (
+                        <Badge className="h-4 px-1 text-[9px] bg-emerald-500/20 text-emerald-200 border-emerald-400/30">
+                          {emails.length === 1 ? "Yes" : `Yes · ${emails.length}`}
+                        </Badge>
+                      ) : (
+                        <Badge className="h-4 px-1 text-[9px] bg-red-500/15 text-red-200 border-red-400/30">No</Badge>
+                      )}
+                      {emails.slice(0, 2).map((c) => (
+                        <div key={c.id} className="text-[10px] text-white/50 break-all mt-0.5">{c.email}</div>
+                      ))}
+                    </td>
+                    <td className="p-2.5">
+                      {phones.length === 0 && <span className="text-white/40">—</span>}
+                      {phones.slice(0, 3).map((p, i) => (
+                        <div key={`${p.value}-${i}`} className="text-[11px] whitespace-nowrap">
+                          <a href={`tel:${p.value.replace(/[^\d+]/g, "")}`} className="text-white/80 hover:underline">
+                            {p.value}
+                          </a>
+                          {p.label && <span className="text-white/40"> · {p.label}</span>}
+                        </div>
+                      ))}
                     </td>
                     <td className="p-2.5">
                       <div className="flex flex-wrap gap-1">

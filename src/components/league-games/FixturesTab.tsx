@@ -1644,7 +1644,7 @@ function RoundCard({
           onOpenChange={setPostponeOpen}
           roundId={round.id}
           roundName={round.name ?? "Round"}
-          onDone={() => { refetchFixtures(); }}
+          onDone={() => { refetch(); }}
         />
       )}
     </Card>

@@ -153,12 +153,29 @@ Deno.serve(async (req) => {
   if (!lookup) return json({ error: "No league player found with that NSA number. Check the number or pick your club manually." }, 404);
 
   const member = lookup.club_members as any;
+
+  // ---------- 1b. Already claimed: allow the owner to sign in and (re)submit NSA captain details ----------
+  let existingAccountMode = false;
   if (member.user_id) {
-    return json({
-      error: "This NSA number is already registered. Please sign in instead.",
-      already_claimed: true,
-    }, 409);
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const anonClient = createClient(supaUrl, anonKey, { auth: { persistSession: false } });
+    const { data: signIn, error: signInErr } = await anonClient.auth.signInWithPassword({ email, password });
+
+    if (signInErr || !signIn?.user) {
+      return json({
+        error: "This NSA number is already registered. Sign in with the password of that account to continue (or reset your password first).",
+        already_claimed: true,
+      }, 409);
+    }
+    if (signIn.user.id !== member.user_id) {
+      return json({
+        error: "This NSA number belongs to a different SquashHub account. Please sign in with that account, or contact your club admin.",
+        already_claimed: true,
+      }, 409);
+    }
+    existingAccountMode = true;
   }
+
 
   // ---------- 2. Resolve club subdomain (needed for branded auth emails) ----------
   const { data: clubRow } = await admin
@@ -169,84 +186,96 @@ Deno.serve(async (req) => {
 
   // ---------- 3. Create auth user (or reuse existing if email already in use) ----------
   const fullName = member.name || email.split("@")[0];
-  const { data: created, error: createErr } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true, // NSA league signups: skip email verification
-    user_metadata: {
-      name: fullName,
-      phone: phone || undefined,
-      club_subdomain: clubRow?.subdomain || null,
-      club_name: clubRow?.name || null,
-      terms_accepted_at: new Date().toISOString(),
-      privacy_accepted_at: new Date().toISOString(),
-    },
-  });
-
   let userId: string;
   let reusedExistingAccount = false;
 
-  if (createErr || !created?.user) {
-    const msg = createErr?.message || "Failed to create user";
-    const isDuplicate =
-      msg.toLowerCase().includes("already") ||
-      (createErr as any)?.code === "email_exists";
-
-    if (!isDuplicate) {
-      return json({ error: msg }, 400);
+  if (existingAccountMode) {
+    // Owner already verified via password sign-in above — no account creation, no relink.
+    userId = member.user_id as string;
+    reusedExistingAccount = true;
+    if (phone) {
+      await admin.from("club_members")
+        .update({ phone, updated_at: new Date().toISOString() })
+        .eq("id", member.id);
     }
-
-    // Email already exists — verify the supplied password belongs to that
-    // account, then link this NSA shell to the existing user instead of
-    // creating a duplicate. Uses the anon client so we go through the
-    // normal password check.
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const anonClient = createClient(supaUrl, anonKey, { auth: { persistSession: false } });
-    const { data: signIn, error: signInErr } = await anonClient.auth.signInWithPassword({
+  } else {
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,
       password,
+      email_confirm: true, // NSA league signups: skip email verification
+      user_metadata: {
+        name: fullName,
+        phone: phone || undefined,
+        club_subdomain: clubRow?.subdomain || null,
+        club_name: clubRow?.name || null,
+        terms_accepted_at: new Date().toISOString(),
+        privacy_accepted_at: new Date().toISOString(),
+      },
     });
-    if (signInErr || !signIn?.user) {
-      return json({
-        error:
-          "An account with this email already exists, but the password is wrong. Please use your existing password, or reset it and try again.",
-        already_claimed: true,
-      }, 409);
+
+    if (createErr || !created?.user) {
+      const msg = createErr?.message || "Failed to create user";
+      const isDuplicate =
+        msg.toLowerCase().includes("already") ||
+        (createErr as any)?.code === "email_exists";
+
+      if (!isDuplicate) {
+        return json({ error: msg }, 400);
+      }
+
+      // Email already exists — verify the supplied password belongs to that
+      // account, then link this NSA shell to the existing user instead of
+      // creating a duplicate. Uses the anon client so we go through the
+      // normal password check.
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const anonClient = createClient(supaUrl, anonKey, { auth: { persistSession: false } });
+      const { data: signIn, error: signInErr } = await anonClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInErr || !signIn?.user) {
+        return json({
+          error:
+            "An account with this email already exists, but the password is wrong. Please use your existing password, or reset it and try again.",
+          already_claimed: true,
+        }, 409);
+      }
+      userId = signIn.user.id;
+      reusedExistingAccount = true;
+    } else {
+      userId = created.user.id;
     }
-    userId = signIn.user.id;
-    reusedExistingAccount = true;
-  } else {
-    userId = created.user.id;
+
+    // ---------- 3b. Upsert profile ----------
+    await admin.from("profiles").upsert({
+      id: userId,
+      email,
+      name: fullName,
+      phone: phone || null,
+    }, { onConflict: "id" });
+
+    // ---------- 4. Link club_member ----------
+    const memberUpdate: Record<string, any> = {
+      user_id: userId,
+      email,
+      updated_at: new Date().toISOString(),
+    };
+    if (phone) memberUpdate.phone = phone;
+
+    const { error: linkErr } = await admin
+      .from("club_members")
+      .update(memberUpdate)
+      .eq("id", member.id);
+
+    if (linkErr) {
+      // Only roll back the auth user if WE created it in this request.
+      if (!reusedExistingAccount) {
+        await admin.auth.admin.deleteUser(userId);
+      }
+      return json({ error: "Failed to link membership: " + linkErr.message }, 500);
+    }
   }
 
-  // ---------- 3. Upsert profile ----------
-  await admin.from("profiles").upsert({
-    id: userId,
-    email,
-    name: fullName,
-    phone: phone || null,
-  }, { onConflict: "id" });
-
-  // ---------- 4. Link club_member ----------
-  const memberUpdate: Record<string, any> = {
-    user_id: userId,
-    email,
-    updated_at: new Date().toISOString(),
-  };
-  if (phone) memberUpdate.phone = phone;
-
-  const { error: linkErr } = await admin
-    .from("club_members")
-    .update(memberUpdate)
-    .eq("id", member.id);
-
-  if (linkErr) {
-    // Only roll back the auth user if WE created it in this request.
-    if (!reusedExistingAccount) {
-      await admin.auth.admin.deleteUser(userId);
-    }
-    return json({ error: "Failed to link membership: " + linkErr.message }, 500);
-  }
 
   // ---------- 5. Captain credential handling (soft fall-back) ----------
   let captainStatus: "verified" | "pending" | "none" = "none";
@@ -309,6 +338,7 @@ Deno.serve(async (req) => {
   // ---------- 6. Return response (clubRow already fetched above) ----------
   return json({
     ok: true,
+    existing_account: existingAccountMode,
     user_id: userId,
     club_member_id: member.id,
     club_subdomain: clubRow?.subdomain || null,

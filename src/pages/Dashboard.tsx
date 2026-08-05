@@ -38,7 +38,7 @@ import DebitOrderPromptCard from "@/components/DebitOrderPromptCard";
 import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
 import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMyPermissions } from "@/hooks/use-club-permissions";
+import { useMyPermissions, useMemberHasAdminAccess } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { format, parseISO } from "date-fns";

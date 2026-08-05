@@ -104,6 +104,7 @@ export function useDoorProximity(fence: DoorGeofence) {
       const d = median(samples.current.map((s) => s.d));
 
       setDistance(d);
+      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       setAccuracy(acc);
 
       // Outer ring: forgive GPS error, but never by more than the ring itself

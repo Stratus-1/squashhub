@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Wand2, CalendarPlus, Download, Share2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Wand2, CalendarPlus, CalendarClock, Download, Share2 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format, parseISO } from "date-fns";
@@ -16,6 +16,7 @@ import { RoundConfigDialog, type RoundDraft } from "./fixtures/RoundConfigDialog
 import { FixtureEditorTable, type EditableFixture } from "./fixtures/FixtureEditorTable";
 import { ConfirmDeleteDialog } from "./fixtures/ConfirmDeleteDialog";
 import { DuplicateRoundsDialog } from "./fixtures/DuplicateRoundsDialog";
+import { PostponeMatchdayDialog } from "./fixtures/PostponeMatchdayDialog";
 import {
   allocateRoundRobinByDate,
   allocatePairingsWithCourtFairness,
@@ -1476,6 +1477,16 @@ function RoundCard({
           )}
           {isAdmin && (
             <>
+              {(fixtureCount ?? 0) > 0 && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  title="Postpone a match day (holiday)"
+                  onClick={(e) => { e.stopPropagation(); setPostponeOpen(true); }}
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                </Button>
+              )}
               <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                 <Pencil className="h-3.5 w-3.5" />
               </Button>

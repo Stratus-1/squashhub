@@ -109,15 +109,9 @@ export function PostponeMatchdayDialog({ open, onOpenChange, roundId, roundName,
         return;
       }
 
-      const offsetDays = weeks === "custom"
-        ? (Date.UTC(...(newFirst.split("-").map(Number) as [number, number, number])) -
-           Date.UTC(...(fromDate.split("-").map(Number) as [number, number, number]))) / 86400000
-        : Number(weeks) * 7;
       const shiftDays = weeks === "custom"
-        ? Math.round(
-            (Date.parse(`${newFirst}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86400000,
-          )
-        : offsetDays;
+        ? Math.round((Date.parse(`${newFirst}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86400000)
+        : Number(weeks) * 7;
 
       let moved = 0;
       for (const f of movable) {

@@ -64,7 +64,7 @@ export default function SuperAdminOutreachCampaignEditor() {
         .order("sent_at", { ascending: false, nullsFirst: false }),
       supabase
         .from("outreach_prospects")
-        .select("id,club_name,association,country,city,is_nsa,status,tags")
+        .select("id,club_name,association,country,city,is_nsa,status,tags,outreach_contacts(email,phone)")
         .order("club_name"),
     ]);
     if (error || !camp) {

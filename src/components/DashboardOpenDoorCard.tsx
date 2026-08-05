@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DoorOpen, Loader2, MapPin } from "lucide-react";
@@ -10,7 +10,13 @@ import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { triggerShellyDoor } from "@/lib/shelly-door";
-import { markDoorOpened } from "@/lib/door-open-state";
+import {
+  markDoorOpened,
+  autoUnlockFired,
+  markAutoUnlockFired,
+  rearmAutoUnlock,
+} from "@/lib/door-open-state";
+
 import { useMyBookings } from "@/hooks/use-data";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { useDoorProximity } from "@/hooks/use-door-proximity";

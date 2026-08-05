@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Wand2, CalendarPlus, Download, Share2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Wand2, CalendarPlus, CalendarClock, Download, Share2 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format, parseISO } from "date-fns";
@@ -16,6 +16,7 @@ import { RoundConfigDialog, type RoundDraft } from "./fixtures/RoundConfigDialog
 import { FixtureEditorTable, type EditableFixture } from "./fixtures/FixtureEditorTable";
 import { ConfirmDeleteDialog } from "./fixtures/ConfirmDeleteDialog";
 import { DuplicateRoundsDialog } from "./fixtures/DuplicateRoundsDialog";
+import { PostponeMatchdayDialog } from "./fixtures/PostponeMatchdayDialog";
 import {
   allocateRoundRobinByDate,
   allocatePairingsWithCourtFairness,
@@ -66,16 +67,18 @@ const timeSlotsBetween = (startTime: string, endTime: string, slotMinutes: numbe
   return out;
 };
 
-const nextPlayDates = (startDate: string, count: number, playDows: number[] = []) => {
+const nextPlayDates = (startDate: string, count: number, playDows: number[] = [], skipDates: string[] = []) => {
   const out: string[] = [];
   const allowed = playDows.length ? new Set(playDows) : null;
+  const skip = new Set((skipDates ?? []).map((d) => String(d).slice(0, 10)));
   const [y, m, d] = startDate.split("-").map(Number);
   let ms = Date.UTC(y, m - 1, d);
   let guard = 0;
   while (out.length < count && guard < count * 14 + 366) {
     const dt = new Date(ms);
-    if (!allowed || allowed.has(dt.getUTCDay())) {
-      out.push(`${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`);
+    const iso = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+    if ((!allowed || allowed.has(dt.getUTCDay())) && !skip.has(iso)) {
+      out.push(iso);
     }
     ms += 86400000;
     guard++;
@@ -148,6 +151,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         end_time: r.end_time,
         slot_minutes: r.slot_minutes,
         play_dows: r.play_dows ?? [],
+        skip_dates: (r.skip_dates ?? []).map((d) => String(d).slice(0, 10)),
         notes: r.notes ?? null,
         auto_create_bookings: r.auto_create_bookings ?? false,
         created_by: activeMember?.id ?? null,
@@ -175,8 +179,11 @@ export function FixturesTab({ clubId, associationId }: Props) {
         const courtsChanged = !sameNumberSet(prevCourts, newCourts) || !sameNumberList(prevCourts, newCourts);
         const dateWindowChanged = prevRoundDate !== newRoundDate || (prev?.end_date ?? prevRoundDate) !== (r.end_date ?? newRoundDate);
         const playDaysChanged = !sameNumberList((prev as any)?.play_dows ?? [], r.play_dows ?? []);
+        const skipDatesChanged =
+          ((prev as any)?.skip_dates ?? []).map((d: any) => String(d).slice(0, 10)).sort().join(",") !==
+          (r.skip_dates ?? []).map((d) => String(d).slice(0, 10)).sort().join(",");
         const venueChanged = (prev?.venue_name ?? "") !== (r.venue_name ?? "");
-        const regenerateDatesAndTimes = timeChanged || dateWindowChanged || playDaysChanged;
+        const regenerateDatesAndTimes = timeChanged || dateWindowChanged || playDaysChanged || skipDatesChanged;
         const shouldRescheduleFixtures = true;
         // Build a court->venue map that covers both the round's selected
         // courts AND any courts already referenced by existing fixtures
@@ -317,7 +324,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
               if (!slotTimes.length) throw new Error("Check the round start/end time and slot length.");
               const matchesPerDay = Math.max(1, newCourts.length * slotTimes.length);
               const requiredDays = Math.max(1, Math.ceil(reschedulable.length / matchesPerDay));
-              const playDates = nextPlayDates(r.round_date, requiredDays, r.play_dows ?? []);
+              const playDates = nextPlayDates(r.round_date, requiredDays, r.play_dows ?? [], r.skip_dates ?? []);
               if (!playDates.length) throw new Error("Check the round start date and play days.");
               byeDates = playDates;
               reschedulable.forEach((f, idx) => {
@@ -823,6 +830,7 @@ function RoundCard({
   const [tier, setTier] = useState<string>("__all__");
   const [reverseFromPrev, setReverseFromPrev] = useState<boolean>(false);
   const [showTeamGrid, setShowTeamGrid] = useState<boolean>(false);
+  const [postponeOpen, setPostponeOpen] = useState(false);
 
   // Prior rounds in the same association (read-only — never mutated).
   const { data: priorFixtures } = useQuery({
@@ -893,6 +901,7 @@ function RoundCard({
     const teamSet = new Set(selectedTeams);
     const prior = priorFixtures ?? [];
     const priorUsage = buildPriorCourtUsage(prior, teamSet);
+    const skipDatesForRound = (((round as any).skip_dates ?? []) as any[]).map((d) => String(d).slice(0, 10));
 
     let allocation;
     if (reverseFromPrev) {
@@ -912,6 +921,7 @@ function RoundCard({
           round.end_date,
           (round as any).play_dows ?? [],
           priorUsage,
+          skipDatesForRound,
         );
       }
     }
@@ -930,6 +940,7 @@ function RoundCard({
           round.end_date,
           (round as any).play_dows ?? [],
           priorUsage,
+          skipDatesForRound,
         );
       } else {
         allocation = allocateRoundRobinByDate(
@@ -942,6 +953,7 @@ function RoundCard({
           round.end_date,
           (round as any).play_dows ?? [],
           false,
+          skipDatesForRound,
         );
       }
     }
@@ -1466,6 +1478,16 @@ function RoundCard({
           )}
           {isAdmin && (
             <>
+              {(fixtureCount ?? 0) > 0 && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  title="Postpone a match day (holiday)"
+                  onClick={(e) => { e.stopPropagation(); setPostponeOpen(true); }}
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                </Button>
+              )}
               <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
@@ -1615,6 +1637,15 @@ function RoundCard({
             <ReadOnlyFixtures fixtures={fixtures ?? []} courts={courts ?? []} teams={teams} fallbackDate={round.round_date} />
           )}
         </div>
+      )}
+      {isAdmin && (
+        <PostponeMatchdayDialog
+          open={postponeOpen}
+          onOpenChange={setPostponeOpen}
+          roundId={round.id}
+          roundName={round.name ?? "Round"}
+          onDone={() => { refetch(); }}
+        />
       )}
     </Card>
   );

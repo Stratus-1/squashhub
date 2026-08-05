@@ -750,6 +750,14 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                     />
                   </div>
                 </div>
+                {Number.isFinite(parseFloat(geofence.lat)) &&
+                  Number.isFinite(parseFloat(geofence.lng)) && (
+                    <p className="text-[11px] text-muted-foreground tabular-nums">
+                      {formatLatLngDM(parseFloat(geofence.lat), parseFloat(geofence.lng))}
+                      {" · "}
+                      {toDMS(parseFloat(geofence.lat), "lat")} {toDMS(parseFloat(geofence.lng), "lng")}
+                    </p>
+                  )}
                 <div className="space-y-1">
                   <Label>Button radius (metres)</Label>
                   <Input

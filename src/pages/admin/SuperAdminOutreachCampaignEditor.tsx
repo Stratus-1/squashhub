@@ -573,11 +573,18 @@ export default function SuperAdminOutreachCampaignEditor() {
                           ? `${selected.length} club${selected.length === 1 ? "" : "s"} selected — only these will be emailed.`
                           : "Nothing ticked = every club matching the filters above."}
                       </p>
+                      <p className="text-[11px] text-white/40">
+                        {list.length} shown · {emailable} with an email · {list.length - emailable} without
+                      </p>
                     </div>
                     <div className="flex gap-1.5">
                       <Button size="sm" variant="outline" className="h-7 text-[11px]"
                         onClick={() => setFilter({ prospect_ids: list.map((p) => p.id) })}>
                         Select all shown
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                        onClick={() => setFilter({ prospect_ids: list.filter(hasEmail).map((p) => p.id) })}>
+                        Select emailable
                       </Button>
                       <Button size="sm" variant="ghost" className="h-7 text-[11px]"
                         onClick={() => setFilter({ prospect_ids: undefined })}>
@@ -596,6 +603,12 @@ export default function SuperAdminOutreachCampaignEditor() {
                         className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] cursor-pointer hover:bg-white/5">
                         <Checkbox checked={selected.includes(p.id)} onCheckedChange={() => toggle(p.id)} />
                         <span className="flex-1">{p.club_name}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${hasEmail(p) ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"}`}>
+                          {hasEmail(p) ? "email" : "no email"}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${hasPhone(p) ? "bg-sky-500/15 text-sky-300" : "bg-white/5 text-white/40"}`}>
+                          {hasPhone(p) ? "phone" : "no phone"}
+                        </span>
                         <span className="text-[11px] text-white/40">
                           {[p.association, p.country].filter(Boolean).join(" · ")}
                         </span>
@@ -603,6 +616,7 @@ export default function SuperAdminOutreachCampaignEditor() {
                     ))}
                   </div>
                 </div>
+
               );
             })()}
 

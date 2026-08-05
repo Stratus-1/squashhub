@@ -530,6 +530,10 @@ export default function SuperAdminOutreachCampaignEditor() {
 
             {(() => {
               const selected: string[] = filter.prospect_ids ?? [];
+              const hasEmail = (p: any) =>
+                (p.outreach_contacts ?? []).some((c: any) => c?.email && String(c.email).trim());
+              const hasPhone = (p: any) =>
+                (p.outreach_contacts ?? []).some((c: any) => c?.phone && String(c.phone).trim());
               const list = allProspects.filter((p) => {
                 if (filter.association && p.association !== filter.association) return false;
                 if (filter.country && p.country !== filter.country) return false;
@@ -537,11 +541,22 @@ export default function SuperAdminOutreachCampaignEditor() {
                 if (filter.status && p.status !== filter.status) return false;
                 if (Array.isArray(filter.tags) && filter.tags.length &&
                     !(p.tags ?? []).some((t: string) => filter.tags.includes(t))) return false;
+                const e = hasEmail(p), ph = hasPhone(p);
+                switch (filter.contactability) {
+                  case "has_email": if (!e) return false; break;
+                  case "no_email": if (e) return false; break;
+                  case "phone_only": if (e || !ph) return false; break;
+                  case "has_phone": if (!ph) return false; break;
+                  case "email_and_phone": if (!e || !ph) return false; break;
+                  case "none": if (e || ph) return false; break;
+                }
                 if (clubSearch.trim() &&
                     !String(p.club_name ?? "").toLowerCase().includes(clubSearch.trim().toLowerCase()))
                   return false;
                 return true;
               });
+              const emailable = list.filter(hasEmail).length;
+
               const toggle = (pid: string) => {
                 const next = selected.includes(pid)
                   ? selected.filter((x) => x !== pid)

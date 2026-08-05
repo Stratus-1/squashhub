@@ -70,6 +70,14 @@ export function LiveSessionBanner() {
   const flussEnabled = accessType === "remote_trigger";
   const shellyEnabled = accessType === "shelly_relay";
   const accessGate = useMemberAccessGate();
+  const isClubAdminUser = useIsClubAdmin();
+  const doorProximity = useDoorProximity({
+    enabled: !!(club as any)?.door_geofence_enabled,
+    latitude: (club as any)?.door_latitude ?? null,
+    longitude: (club as any)?.door_longitude ?? null,
+    radiusM: (club as any)?.door_geofence_radius_m ?? 150,
+  });
+  const nearDoor = doorProximity.allowed || isClubAdminUser;
   const doorEnabled = (flussEnabled || shellyEnabled) && !accessGate.isBlocked("door");
   const { activeMember } = useMemberContext();
 

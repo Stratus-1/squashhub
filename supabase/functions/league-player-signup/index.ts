@@ -338,6 +338,7 @@ Deno.serve(async (req) => {
   // ---------- 6. Return response (clubRow already fetched above) ----------
   return json({
     ok: true,
+    existing_account: existingAccountMode,
     user_id: userId,
     club_member_id: member.id,
     club_subdomain: clubRow?.subdomain || null,

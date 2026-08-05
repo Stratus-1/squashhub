@@ -210,3 +210,29 @@ export function useDeletePermissionRole() {
     },
   });
 }
+
+/**
+ * Resolve whether a SPECIFIC member has any admin access of their own
+ * (club role = 'admin', full-admin flag, or any granted permission slug).
+ * Unlike useMyPermissions this never falls back to the viewer's own rights,
+ * so it is safe to use while "viewing as" another member.
+ */
+export function useMemberHasAdminAccess(memberId: string | undefined): boolean {
+  const { data: memberRow } = useQuery({
+    queryKey: ["member-role", memberId],
+    queryFn: async () => {
+      const { data } = await fromExt("club_members").select("role").eq("id", memberId!).single();
+      return data as { role: string } | null;
+    },
+    enabled: !!memberId,
+  });
+
+  const { data: perm } = useMemberPermission(memberId);
+
+  if (memberRow?.role === "admin") return true;
+  if (perm?.is_full_admin) return true;
+  if ((perm as any)?.club_permission_roles?.is_full_admin) return true;
+  if ((perm?.custom_permissions?.length ?? 0) > 0) return true;
+  if ((perm?.club_permission_roles?.permissions?.length ?? 0) > 0) return true;
+  return false;
+}

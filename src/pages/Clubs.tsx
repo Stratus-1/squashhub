@@ -36,16 +36,6 @@ export default function Clubs() {
     staleTime: 60_000,
   });
 
-  const { data: clubsWithAdmins } = useQuery({
-    queryKey: ["clubs-with-admins"],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_clubs_with_admins");
-      if (error) throw error;
-      return new Set<string>((data || []).map((r: { club_id: string }) => r.club_id));
-    },
-    staleTime: 60_000,
-  });
-
   const allClubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
   const byName = (a: TenantPublic, b: TenantPublic) => a.name.localeCompare(b.name);
   const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded").sort(byName);
@@ -54,8 +44,8 @@ export default function Clubs() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="Listed Clubs & Associations — SquashHub"
-        description="Browse every squash club, NSA-affiliated club, and league association on SquashHub. Sign in via your club portal or register as an NSA player."
+        title="Squash Club Directory — SquashHub"
+        description="Direct links to squash club portals on SquashHub. Open your club's site to sign in or register as an NSA player."
         path="/clubs"
       />
 

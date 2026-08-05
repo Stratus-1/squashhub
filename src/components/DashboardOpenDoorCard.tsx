@@ -21,6 +21,7 @@ import { useMyBookings } from "@/hooks/use-data";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { useDoorProximity } from "@/hooks/use-door-proximity";
 import { format } from "date-fns";
+import { formatLatLngDM } from "@/lib/geo-format";
 
 const errorMessage = (e: unknown, fallback: string) =>
   e instanceof Error ? e.message : fallback;
@@ -191,12 +192,24 @@ export function DashboardOpenDoorCard() {
               : proximity.hint}
           </p>
           {proximity.active && (
-            <p className="text-[11px] text-muted-foreground/80 mt-0.5 tabular-nums">
-              GPS: {proximity.state}
-              {proximity.distance != null && ` · ${Math.round(proximity.distance)} m from door`}
-              {proximity.accuracy != null && ` · ±${Math.round(proximity.accuracy)} m accuracy`}
-              {` · radius ${club?.door_geofence_radius_m ?? 150} m · auto ${proximity.triggerRadiusM} m`}
-            </p>
+            <>
+              <p className="text-[11px] text-muted-foreground/80 mt-0.5 tabular-nums">
+                GPS: {proximity.state}
+                {proximity.distance != null && ` · ${Math.round(proximity.distance)} m from door`}
+                {proximity.accuracy != null && ` · ±${Math.round(proximity.accuracy)} m accuracy`}
+                {` · radius ${club?.door_geofence_radius_m ?? 150} m · auto ${proximity.triggerRadiusM} m`}
+              </p>
+              {proximity.coords && (
+                <p className="text-[11px] text-muted-foreground/80 tabular-nums">
+                  You: {formatLatLngDM(proximity.coords.lat, proximity.coords.lng)}
+                </p>
+              )}
+              {club?.door_latitude != null && club?.door_longitude != null && (
+                <p className="text-[11px] text-muted-foreground/80 tabular-nums">
+                  Door: {formatLatLngDM(club.door_latitude, club.door_longitude)}
+                </p>
+              )}
+            </>
           )}
         </div>
         <Button

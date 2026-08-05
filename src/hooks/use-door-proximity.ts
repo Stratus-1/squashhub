@@ -66,6 +66,7 @@ export function useDoorProximity(fence: DoorGeofence) {
   );
   const [zone, setZone] = useState<ProximityZone>("unknown");
   const [distance, setDistance] = useState<number | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const watchId = useRef<number | null>(null);
   const samples = useRef<{ d: number; acc: number; t: number }[]>([]);
@@ -103,6 +104,7 @@ export function useDoorProximity(fence: DoorGeofence) {
       const d = median(samples.current.map((s) => s.d));
 
       setDistance(d);
+      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       setAccuracy(acc);
 
       // Outer ring: forgive GPS error, but never by more than the ring itself
@@ -144,6 +146,7 @@ export function useDoorProximity(fence: DoorGeofence) {
     state,
     zone,
     distance,
+    coords,
     accuracy,
     triggerRadiusM,
     /** At the door — auto-unlock territory. */

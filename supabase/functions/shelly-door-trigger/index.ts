@@ -16,6 +16,37 @@ function normalizeShellyServer(value?: string | null) {
   return extracted;
 }
 
+/**
+ * Ask the Shelly cloud whether the device is actually reachable.
+ * A pulse request can return 200 with an empty body even when the relay is
+ * offline, which used to surface as a false "Door opening…" toast.
+ */
+async function getDeviceStatus(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+}): Promise<{ online: boolean | null; raw: string; httpStatus: number }> {
+  const server = normalizeShellyServer(params.server);
+  try {
+    const res = await fetch(`${server}/device/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ auth_key: params.authKey, id: params.deviceId }),
+    });
+    const raw = (await res.text()).slice(0, 800);
+    let online: boolean | null = null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.isok === true) online = !!parsed?.data?.online;
+    } catch {
+      /* non-JSON — leave unknown */
+    }
+    return { online, raw, httpStatus: res.status };
+  } catch (e: any) {
+    return { online: null, raw: String(e?.message || e), httpStatus: 0 };
+  }
+}
+
 async function pulseShellyRelay(params: {
   server?: string | null;
   authKey: string;

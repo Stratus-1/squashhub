@@ -66,6 +66,13 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
 
 
   const [faceEnrolmentRequired, setFaceEnrolmentRequired] = useState(false);
+  const [geofence, setGeofence] = useState({
+    enabled: false,
+    lat: "",
+    lng: "",
+    radius: "150",
+  });
+  const [locating, setLocating] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
 

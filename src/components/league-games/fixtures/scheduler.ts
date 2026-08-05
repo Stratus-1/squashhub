@@ -73,15 +73,17 @@ function buildSlotTimes(startTime: string, endTime: string, slotMinutes: number)
   return slotTimes;
 }
 
-function eachDate(startDate: string, endDate: string, allowedDows?: number[]): string[] {
+function eachDate(startDate: string, endDate: string, allowedDows?: number[], skipDates?: string[]): string[] {
   const out: string[] = [];
   const s = parse(startDate, "yyyy-MM-dd", new Date());
   const e = parse(endDate || startDate, "yyyy-MM-dd", new Date());
   const filter = allowedDows && allowedDows.length > 0 ? new Set(allowedDows) : null;
+  const skip = new Set((skipDates ?? []).map((d) => String(d).slice(0, 10)));
   let cur = s;
   while (cur <= e) {
-    if (!filter || filter.has(cur.getDay())) {
-      out.push(format(cur, "yyyy-MM-dd"));
+    const iso = format(cur, "yyyy-MM-dd");
+    if ((!filter || filter.has(cur.getDay())) && !skip.has(iso)) {
+      out.push(iso);
     }
     cur = addMinutes(cur, 24 * 60);
   }
@@ -93,15 +95,17 @@ function eachDate(startDate: string, endDate: string, allowedDows?: number[]): s
  * honouring `allowedDows`. Used when no end date is supplied — the scheduler
  * walks forward week by week until it has enough matchdays.
  */
-function nextNPlayDates(startDate: string, count: number, allowedDows?: number[]): string[] {
+function nextNPlayDates(startDate: string, count: number, allowedDows?: number[], skipDates?: string[]): string[] {
   if (count <= 0) return [];
   const out: string[] = [];
   const filter = allowedDows && allowedDows.length > 0 ? new Set(allowedDows) : null;
+  const skip = new Set((skipDates ?? []).map((d) => String(d).slice(0, 10)));
   let cur = parse(startDate, "yyyy-MM-dd", new Date());
   const hardCap = count * 14 + 366;
   let steps = 0;
   while (out.length < count && steps < hardCap) {
-    if (!filter || filter.has(cur.getDay())) out.push(format(cur, "yyyy-MM-dd"));
+    const iso = format(cur, "yyyy-MM-dd");
+    if ((!filter || filter.has(cur.getDay())) && !skip.has(iso)) out.push(iso);
     cur = addMinutes(cur, 24 * 60);
     steps++;
   }
@@ -123,13 +127,14 @@ export function allocateSlots(
   startDate?: string,
   endDate?: string,
   playDows?: number[],
+  skipDates?: string[],
 ): SlotAssignment[] {
   if (!courtIds.length || !pairings.length) return [];
   const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
   if (!slotTimes.length) return [];
 
   const dates = startDate
-    ? eachDate(startDate, endDate || startDate, playDows)
+    ? eachDate(startDate, endDate || startDate, playDows, skipDates)
     : [format(new Date(), "yyyy-MM-dd")];
   if (!dates.length) return [];
 
@@ -189,6 +194,7 @@ export function allocateRoundRobinByDate(
   endDate?: string,
   playDows?: number[],
   rotateCourts: boolean = false,
+  skipDates?: string[],
 ): RoundRobinAllocation {
   const cleanTeams = [...new Set(teams.filter(Boolean))];
   if (cleanTeams.length < 2) return { slots: [], byes: [], error: "Select at least 2 teams to distribute." };
@@ -198,8 +204,8 @@ export function allocateRoundRobinByDate(
   const openEnded = !endDate || endDate === startDate;
   const dates = startDate
     ? (openEnded
-        ? nextNPlayDates(startDate, rounds.length, playDows)
-        : eachDate(startDate, endDate!, playDows))
+        ? nextNPlayDates(startDate, rounds.length, playDows, skipDates)
+        : eachDate(startDate, endDate!, playDows, skipDates))
     : [format(new Date(), "yyyy-MM-dd")];
   const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
   if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the start date, time window, and slot length." };
@@ -332,8 +338,8 @@ export function allocatePairingsWithCourtFairness(
   if (!courtIds.length) return { slots: [], byes: [], error: "No courts assigned to this round." };
   const openEnded = !endDate || endDate === startDate;
   const dates = openEnded
-    ? nextNPlayDates(startDate, pairingBatches.length, playDows)
-    : eachDate(startDate, endDate, playDows);
+    ? nextNPlayDates(startDate, pairingBatches.length, playDows, skipDates)
+    : eachDate(startDate, endDate, playDows, skipDates);
   const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
   if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the start date, time window, and slot length." };
   if (pairingBatches.length > dates.length) {
@@ -498,8 +504,8 @@ export function allocateAcrossPools(
     ? nextNPlayDates(startDate, Math.max(1, Math.ceil(
         pools.reduce((n, p) => n + p.pairings.length, 0) /
           Math.max(1, sharedCourts.length * Math.max(1, slotTimes.length)),
-      )), playDows)
-    : eachDate(startDate, endDate!, playDows);
+      )), playDows, skipDates)
+    : eachDate(startDate, endDate!, playDows, skipDates);
 
   if (!dates.length || !slotTimes.length) {
     return { slots: [], error: "Check the start date, time window, and slot length." };

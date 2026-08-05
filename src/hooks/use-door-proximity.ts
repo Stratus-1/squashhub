@@ -146,6 +146,7 @@ export function useDoorProximity(fence: DoorGeofence) {
     state,
     zone,
     distance,
+    coords,
     accuracy,
     triggerRadiusM,
     /** At the door — auto-unlock territory. */

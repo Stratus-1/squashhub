@@ -2809,6 +2809,7 @@ export type Database = {
           currency_code: string
           currency_symbol: string
           door_auto_unlock_enabled: boolean
+          door_auto_unlock_radius_m: number
           door_geofence_enabled: boolean
           door_geofence_radius_m: number
           door_latitude: number | null
@@ -2896,6 +2897,7 @@ export type Database = {
           currency_code?: string
           currency_symbol?: string
           door_auto_unlock_enabled?: boolean
+          door_auto_unlock_radius_m?: number
           door_geofence_enabled?: boolean
           door_geofence_radius_m?: number
           door_latitude?: number | null
@@ -2983,6 +2985,7 @@ export type Database = {
           currency_code?: string
           currency_symbol?: string
           door_auto_unlock_enabled?: boolean
+          door_auto_unlock_radius_m?: number
           door_geofence_enabled?: boolean
           door_geofence_radius_m?: number
           door_latitude?: number | null

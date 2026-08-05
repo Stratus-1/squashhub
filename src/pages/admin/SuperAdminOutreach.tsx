@@ -210,9 +210,9 @@ export default function SuperAdminOutreach() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {[
           { label: "Clubs", value: stats.clubs },
-          { label: "Contacts", value: stats.contacts },
+          { label: "With email", value: stats.withEmail },
+          { label: "No email yet", value: stats.noEmail },
           { label: "Contactable", value: stats.contactable },
-          { label: "NSA clubs", value: stats.nsa },
           { label: "Replied / interested", value: stats.replied },
         ].map((s) => (
           <Card key={s.label} className="p-3 bg-white/5 border-white/10">

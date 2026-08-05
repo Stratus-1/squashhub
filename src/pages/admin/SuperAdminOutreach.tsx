@@ -53,6 +53,7 @@ export default function SuperAdminOutreach() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [nsaFilter, setNsaFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
+  const [emailFilter, setEmailFilter] = useState("all");
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<ProspectRecord | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -63,7 +64,7 @@ export default function SuperAdminOutreach() {
     setLoading(true);
     const { data, error } = await supabase
       .from("outreach_prospects")
-      .select("*, outreach_contacts(id,name,role,email,opted_out,bounced)")
+      .select("*, outreach_contacts(id,name,role,email,phone,opted_out,bounced)")
       .order("club_name");
     if (error) {
       toast({ title: "Could not load prospects", description: error.message, variant: "destructive" });

@@ -312,6 +312,7 @@ export function LiveSessionBanner() {
     : 0;
   const doorPromptActive =
     doorEnabled &&
+    nearDoor &&
     !!currentBooking &&
     !wasDoorOpenedForBooking(currentBooking.id) &&
     now.getTime() <= startMs + 5 * 60 * 1000;

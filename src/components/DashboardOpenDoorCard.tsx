@@ -21,6 +21,7 @@ import { useMyBookings } from "@/hooks/use-data";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { useDoorProximity } from "@/hooks/use-door-proximity";
 import { format } from "date-fns";
+import { formatLatLngDM } from "@/lib/geo-format";
 
 const errorMessage = (e: unknown, fallback: string) =>
   e instanceof Error ? e.message : fallback;

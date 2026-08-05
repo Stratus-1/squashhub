@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Calendar, ChevronRight, Trophy, History, CalendarDays, Plus, Users, Timer, Activity,
-  Home, BarChart3, LayoutGrid, Crosshair, Wine, Wallet, ShieldCheck,
+  Home, BarChart3, LayoutGrid, Crosshair, Wine, Wallet, ShieldCheck, GraduationCap,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";

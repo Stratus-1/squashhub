@@ -99,17 +99,24 @@ export default function SuperAdminOutreach() {
       if (nsaFilter === "yes" && !r.is_nsa) return false;
       if (nsaFilter === "no" && r.is_nsa) return false;
       if (tagFilter !== "all" && !(r.tags ?? []).includes(tagFilter)) return false;
+      const hasEmail = r.contacts.some((c) => !!c.email);
+      const hasPhone = r.contacts.some((c) => !!c.phone) || phonesFromNotes(r.notes).length > 0;
+      if (emailFilter === "with" && !hasEmail) return false;
+      if (emailFilter === "without" && hasEmail) return false;
+      if (emailFilter === "phone_only" && (hasEmail || !hasPhone)) return false;
+      if (emailFilter === "no_contact" && (hasEmail || hasPhone)) return false;
       if (!q) return true;
       return (
         r.club_name.toLowerCase().includes(q) ||
         (r.city ?? "").toLowerCase().includes(q) ||
         (r.association ?? "").toLowerCase().includes(q) ||
         r.contacts.some(
-          (c) => c.email.toLowerCase().includes(q) || (c.name ?? "").toLowerCase().includes(q),
+          (c) => c.email.toLowerCase().includes(q) || (c.name ?? "").toLowerCase().includes(q) ||
+            (c.phone ?? "").includes(q),
         )
       );
     });
-  }, [rows, search, assocFilter, countryFilter, statusFilter, nsaFilter, tagFilter]);
+  }, [rows, search, assocFilter, countryFilter, statusFilter, nsaFilter, tagFilter, emailFilter]);
 
   const followUps = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -123,8 +130,8 @@ export default function SuperAdminOutreach() {
     const contacts = rows.flatMap((r) => r.contacts);
     return {
       clubs: rows.length,
-      contacts: contacts.length,
-      nsa: rows.filter((r) => r.is_nsa).length,
+      withEmail: rows.filter((r) => r.contacts.some((c) => !!c.email)).length,
+      noEmail: rows.filter((r) => !r.contacts.some((c) => !!c.email)).length,
       contactable: contacts.filter((c) => !c.opted_out && !c.bounced).length,
       replied: rows.filter((r) => ["replied", "interested"].includes(r.status)).length,
     };
@@ -144,13 +151,15 @@ export default function SuperAdminOutreach() {
         tags: (r.tags ?? []).join("|"),
         contact_name: c?.name ?? "",
         role: c?.role ?? "",
+        has_email: c?.email ? "yes" : "no",
         email: c?.email ?? "",
+        phone: c?.phone ?? phonesFromNotes(r.notes).join(" / "),
         source: r.source ?? "",
       })),
     );
     const csv = toCsv(flat, [
       "club_name", "association", "city", "country", "courts", "website",
-      "nsa", "status", "tags", "contact_name", "role", "email", "source",
+      "nsa", "status", "tags", "contact_name", "role", "has_email", "email", "phone", "source",
     ]);
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a");

@@ -90,22 +90,11 @@ export default function Clubs() {
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 pt-10 pb-8">
           <h1 className="text-3xl sm:text-4xl font-extrabold font-heading uppercase tracking-tight text-foreground">
-            Listed Clubs & Associations
+            Club Directory
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-2xl">
-            Every club, NSA-affiliated club, and league association currently on SquashHub.
+            Direct links to club sites on SquashHub. Click your club to open its own portal.
           </p>
-          <div className="flex flex-wrap gap-3 mt-5 text-xs text-white/80">
-            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10">
-              {liveClubs.length} Live Clubs
-            </span>
-            <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-100">
-              {nsaClubs.length} NSA Clubs
-            </span>
-            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10">
-              {associations.length} Associations
-            </span>
-          </div>
         </div>
       </section>
 
@@ -117,25 +106,6 @@ export default function Clubs() {
           </div>
         ) : (
           <>
-            {/* Live Clubs */}
-            <div>
-              <h2 className="text-lg font-extrabold font-heading uppercase tracking-tight mb-4 text-foreground">
-                Live Clubs
-              </h2>
-              {liveClubs.length === 0 ? (
-                <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">
-                  <Building2 className="w-8 h-8 mx-auto mb-2 opacity-60" />
-                  No clubs are fully live yet.
-                </CardContent></Card>
-              ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {liveClubs.map((t) => (
-                    <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} />
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* NSA Clubs */}
             <div>
               <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
@@ -151,57 +121,36 @@ export default function Clubs() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                These NSA-affiliated clubs are already live on SquashHub. Click your club to open its own site — NSA players can register there with their NSA number.
+                Click your club to open its own site — NSA players can register there with their NSA number.
               </p>
 
               {nsaClubs.length === 0 ? (
                 <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">
-                  No NSA clubs imported yet.
+                  <Building2 className="w-8 h-8 mx-auto mb-2 opacity-60" />
+                  No NSA clubs listed yet.
                 </CardContent></Card>
               ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {nsaClubs.map((t) => (
-                    <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} nsaMode />
+                    <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} />
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Non-NSA independent clubs (only if there are extras worth calling out) */}
-            {nonNsaClubs.length > 0 && (
+            {/* Other clubs */}
+            {otherClubs.length > 0 && (
               <div>
                 <h2 className="text-lg font-extrabold font-heading uppercase tracking-tight mb-4 text-foreground">
-                  Independent Clubs
+                  Other Clubs
                 </h2>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Clubs running on SquashHub outside the NSA roster.
-                </p>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {nonNsaClubs.map((t) => (
+                  {otherClubs.map((t) => (
                     <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} />
                   ))}
                 </div>
               </div>
             )}
-
-            {/* Associations */}
-            <div>
-              <h2 className="text-lg font-extrabold font-heading uppercase tracking-tight mb-4 text-foreground">
-                Leagues & Associations
-              </h2>
-              {associations.length === 0 ? (
-                <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">
-                  <Landmark className="w-8 h-8 mx-auto mb-2 opacity-60" />
-                  No associations registered yet.
-                </CardContent></Card>
-              ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {associations.map((t) => (
-                    <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Landmark} />
-                  ))}
-                </div>
-              )}
-            </div>
           </>
         )}
       </section>

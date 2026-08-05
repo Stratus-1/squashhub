@@ -449,6 +449,7 @@ function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigat
       ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine, color: "rose" } as Tile]
       : []),
     { title: "My Account",        url: "/my-account",   icon: Wallet,      color: "teal" },
+    { title: "Help & Tutorials",  url: "/help",         icon: GraduationCap, color: "sky" },
   ];
 
   const admin: Tile[] = hasAnyAdminAccess

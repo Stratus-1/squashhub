@@ -233,8 +233,19 @@ async function prepare(campaign: any) {
     .upsert(rows, { onConflict: "campaign_id,contact_id", ignoreDuplicates: true })
     .select("id");
 
-  return { added: (ins ?? []).length, skipped, removed };
+  // Re-queue previously failed recipients (e.g. mail-host rate limit) so a
+  // rebuild of the audience retries them instead of reporting "0 added".
+  const { data: requeued } = await admin
+    .from("outreach_recipients")
+    .update({ send_status: "queued", error_message: null })
+    .eq("campaign_id", campaign.id)
+    .eq("send_status", "failed")
+    .in("contact_id", keepIds)
+    .select("id");
+
+  return { added: (ins ?? []).length + (requeued ?? []).length, requeued: (requeued ?? []).length, skipped, removed };
 }
+
 
 
 Deno.serve(async (req) => {

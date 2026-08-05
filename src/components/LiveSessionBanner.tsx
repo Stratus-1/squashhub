@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyBookings } from "@/hooks/use-data";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
+import { useDoorProximity } from "@/hooks/use-door-proximity";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -70,6 +71,14 @@ export function LiveSessionBanner() {
   const flussEnabled = accessType === "remote_trigger";
   const shellyEnabled = accessType === "shelly_relay";
   const accessGate = useMemberAccessGate();
+  const isClubAdminUser = useIsClubAdmin();
+  const doorProximity = useDoorProximity({
+    enabled: !!(club as any)?.door_geofence_enabled,
+    latitude: (club as any)?.door_latitude ?? null,
+    longitude: (club as any)?.door_longitude ?? null,
+    radiusM: (club as any)?.door_geofence_radius_m ?? 150,
+  });
+  const nearDoor = doorProximity.allowed || isClubAdminUser;
   const doorEnabled = (flussEnabled || shellyEnabled) && !accessGate.isBlocked("door");
   const { activeMember } = useMemberContext();
 
@@ -303,6 +312,7 @@ export function LiveSessionBanner() {
     : 0;
   const doorPromptActive =
     doorEnabled &&
+    nearDoor &&
     !!currentBooking &&
     !wasDoorOpenedForBooking(currentBooking.id) &&
     now.getTime() <= startMs + 5 * 60 * 1000;

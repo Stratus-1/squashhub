@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen, Wifi, Bluetooth } from "lucide-react";
+import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen, Wifi, Bluetooth, MapPin } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
@@ -66,6 +66,13 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
 
 
   const [faceEnrolmentRequired, setFaceEnrolmentRequired] = useState(false);
+  const [geofence, setGeofence] = useState({
+    enabled: false,
+    lat: "",
+    lng: "",
+    radius: "150",
+  });
+  const [locating, setLocating] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
@@ -101,7 +108,38 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
 
   useEffect(() => {
     setFaceEnrolmentRequired(!!(club as any)?.face_enrolment_required);
+    const c = club as any;
+    setGeofence({
+      enabled: !!c?.door_geofence_enabled,
+      lat: c?.door_latitude != null ? String(c.door_latitude) : "",
+      lng: c?.door_longitude != null ? String(c.door_longitude) : "",
+      radius: String(c?.door_geofence_radius_m ?? 150),
+    });
   }, [club]);
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("This device can't report a location");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeofence((p) => ({
+          ...p,
+          lat: pos.coords.latitude.toFixed(6),
+          lng: pos.coords.longitude.toFixed(6),
+        }));
+        setLocating(false);
+        toast.success(`Pinned to your position (±${Math.round(pos.coords.accuracy)} m)`);
+      },
+      (err) => {
+        setLocating(false);
+        toast.error(err.code === err.PERMISSION_DENIED ? "Location permission denied" : "Couldn't get your location");
+      },
+      { enableHighAccuracy: true, timeout: 20000 }
+    );
+  };
 
   const generateSecret = () => {
     const arr = new Uint8Array(24);
@@ -146,6 +184,20 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       } else if ((club as any)?.face_enrolment_required) {
         await fromExt("clubs").update({ face_enrolment_required: false }).eq("id", clubId);
       }
+
+      const latNum = geofence.lat.trim() === "" ? null : Number(geofence.lat);
+      const lngNum = geofence.lng.trim() === "" ? null : Number(geofence.lng);
+      if (geofence.enabled && (latNum == null || lngNum == null || Number.isNaN(latNum) || Number.isNaN(lngNum))) {
+        throw new Error("Pin the door location before enabling proximity unlock");
+      }
+      await fromExt("clubs")
+        .update({
+          door_geofence_enabled: geofence.enabled,
+          door_latitude: latNum,
+          door_longitude: lngNum,
+          door_geofence_radius_m: Math.max(20, Math.min(2000, Number(geofence.radius) || 150)),
+        } as any)
+        .eq("id", clubId);
 
       toast.success("Access control settings saved");
     } catch (err: any) {
@@ -648,6 +700,67 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
             >
               Test open door
             </Button>
+          </div>
+        )}
+
+        {(isShelly || isFluss) && (
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  Proximity unlock (GPS)
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Only prompt members to open the door when their phone is near the club.
+                  Club admins can still unlock remotely.
+                </p>
+              </div>
+              <Switch
+                checked={geofence.enabled}
+                onCheckedChange={(v) => setGeofence((p) => ({ ...p, enabled: v }))}
+              />
+            </div>
+
+            {geofence.enabled && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Latitude</Label>
+                    <Input
+                      value={geofence.lat}
+                      onChange={(e) => setGeofence((p) => ({ ...p, lat: e.target.value }))}
+                      placeholder="-25.474"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Longitude</Label>
+                    <Input
+                      value={geofence.lng}
+                      onChange={(e) => setGeofence((p) => ({ ...p, lng: e.target.value }))}
+                      placeholder="30.970"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Unlock radius (metres)</Label>
+                  <Input
+                    type="number"
+                    min={20}
+                    max={2000}
+                    value={geofence.radius}
+                    onChange={(e) => setGeofence((p) => ({ ...p, radius: e.target.value }))}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Phone GPS is typically accurate to 20–50 m — 100–150 m works well for a clubhouse door.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" disabled={locating} onClick={useMyLocation} className="gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {locating ? "Getting location…" : "Use my current location (stand at the door)"}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

@@ -2808,6 +2808,10 @@ export type Database = {
           created_by: string | null
           currency_code: string
           currency_symbol: string
+          door_geofence_enabled: boolean
+          door_geofence_radius_m: number
+          door_latitude: number | null
+          door_longitude: number | null
           dynamic_court_reflow_enabled: boolean
           email: string | null
           email_disclaimer: string | null
@@ -2890,6 +2894,10 @@ export type Database = {
           created_by?: string | null
           currency_code?: string
           currency_symbol?: string
+          door_geofence_enabled?: boolean
+          door_geofence_radius_m?: number
+          door_latitude?: number | null
+          door_longitude?: number | null
           dynamic_court_reflow_enabled?: boolean
           email?: string | null
           email_disclaimer?: string | null
@@ -2972,6 +2980,10 @@ export type Database = {
           created_by?: string | null
           currency_code?: string
           currency_symbol?: string
+          door_geofence_enabled?: boolean
+          door_geofence_radius_m?: number
+          door_latitude?: number | null
+          door_longitude?: number | null
           dynamic_court_reflow_enabled?: boolean
           email?: string | null
           email_disclaimer?: string | null

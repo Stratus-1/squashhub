@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DoorOpen, Loader2 } from "lucide-react";
+import { DoorOpen, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
@@ -13,6 +13,7 @@ import { triggerShellyDoor } from "@/lib/shelly-door";
 import { markDoorOpened } from "@/lib/door-open-state";
 import { useMyBookings } from "@/hooks/use-data";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
+import { useDoorProximity } from "@/hooks/use-door-proximity";
 import { format } from "date-fns";
 
 const errorMessage = (e: unknown, fallback: string) =>
@@ -26,7 +27,14 @@ const errorMessage = (e: unknown, fallback: string) =>
  */
 export function DashboardOpenDoorCard() {
   const { data: clubData } = useMyClub();
-  const club = clubData?.club as { id?: string; visitors_access_control?: boolean } | undefined;
+  const club = clubData?.club as {
+    id?: string;
+    visitors_access_control?: boolean;
+    door_geofence_enabled?: boolean;
+    door_latitude?: number | null;
+    door_longitude?: number | null;
+    door_geofence_radius_m?: number | null;
+  } | undefined;
   const { data: clubSecrets } = useClubSecrets(club?.id);
   const { data: accessPublic } = useQuery({
     enabled: !!club?.id,
@@ -43,7 +51,17 @@ export function DashboardOpenDoorCard() {
   const { activeMember } = useMemberContext();
   const { data: myBookings } = useMyBookings();
   const gate = useMemberAccessGate();
+  const isClubAdmin = useIsClubAdmin();
   const [loading, setLoading] = useState(false);
+
+  // GPS geofence — members must be near the door; admins/staff can override.
+  const proximity = useDoorProximity({
+    enabled: !!club?.door_geofence_enabled,
+    latitude: club?.door_latitude ?? null,
+    longitude: club?.door_longitude ?? null,
+    radiusM: club?.door_geofence_radius_m ?? 150,
+  });
+  const nearDoor = proximity.allowed || isClubAdmin;
 
   const merged: any = { ...(accessPublic || {}), ...(clubSecrets || {}) };
   const accessType = merged.access_control_type;
@@ -100,19 +118,35 @@ export function DashboardOpenDoorCard() {
     }
   };
 
+  const adminOverride = !proximity.allowed && isClubAdmin && proximity.active;
+
   return (
     <div className="px-4 mt-2">
       <Card className="p-3 flex items-center gap-3 border-primary/30 bg-primary/5">
         <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/15 shrink-0">
-          <DoorOpen className="w-5 h-5 text-primary" />
+          {nearDoor ? (
+            <DoorOpen className="w-5 h-5 text-primary" />
+          ) : (
+            <MapPin className="w-5 h-5 text-muted-foreground" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">Club Access</p>
           <p className="text-xs text-muted-foreground">
-            Unlock the main door
+            {adminOverride
+              ? "Remote unlock (admin) — you're not at the club"
+              : nearDoor
+              ? "Unlock the main door"
+              : proximity.hint}
           </p>
         </div>
-        <Button size="sm" onClick={handleOpenDoor} disabled={loading} className="gap-1.5">
+        <Button
+          size="sm"
+          onClick={handleOpenDoor}
+          disabled={loading || !nearDoor}
+          variant={adminOverride ? "outline" : "default"}
+          className="gap-1.5"
+        >
           {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <DoorOpen className="w-3.5 h-3.5" />}
           Open Door
         </Button>

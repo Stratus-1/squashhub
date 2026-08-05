@@ -16,6 +16,37 @@ function normalizeShellyServer(value?: string | null) {
   return extracted;
 }
 
+/**
+ * Ask the Shelly cloud whether the device is actually reachable.
+ * A pulse request can return 200 with an empty body even when the relay is
+ * offline, which used to surface as a false "Door opening…" toast.
+ */
+async function getDeviceStatus(params: {
+  server?: string | null;
+  authKey: string;
+  deviceId: string;
+}): Promise<{ online: boolean | null; raw: string; httpStatus: number }> {
+  const server = normalizeShellyServer(params.server);
+  try {
+    const res = await fetch(`${server}/device/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ auth_key: params.authKey, id: params.deviceId }),
+    });
+    const raw = (await res.text()).slice(0, 800);
+    let online: boolean | null = null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.isok === true) online = !!parsed?.data?.online;
+    } catch {
+      /* non-JSON — leave unknown */
+    }
+    return { online, raw, httpStatus: res.status };
+  } catch (e: any) {
+    return { online: null, raw: String(e?.message || e), httpStatus: 0 };
+  }
+}
+
 async function pulseShellyRelay(params: {
   server?: string | null;
   authKey: string;
@@ -131,6 +162,26 @@ Deno.serve(async (req) => {
       .eq("user_id", userId)
       .maybeSingle();
 
+    // Confirm the relay is actually reachable before claiming success.
+    const status = await getDeviceStatus({
+      server: secrets.shelly_server_url,
+      authKey: secrets.shelly_auth_key,
+      deviceId,
+    });
+    if (status.online === false) {
+      await admin.from("access_events").insert({
+        club_id,
+        club_member_id: member?.id ?? null,
+        door_name,
+        event_type: "shelly_pulse_failed",
+        occurred_at: new Date().toISOString(),
+        raw: { device_id: deviceId, reason: "device_offline", status: status.raw },
+      });
+      throw new Error(
+        "Door controller is offline (Shelly cloud can't reach it) — check the relay's power and Wi-Fi.",
+      );
+    }
+
     const raw = await pulseShellyRelay({
       server: secrets.shelly_server_url,
       authKey: secrets.shelly_auth_key,
@@ -145,12 +196,19 @@ Deno.serve(async (req) => {
       door_name,
       event_type: "shelly_pulse",
       occurred_at: new Date().toISOString(),
-      raw: { device_id: deviceId, response: raw?.slice?.(0, 500) ?? null },
+      raw: {
+        device_id: deviceId,
+        channel: Number(secrets.shelly_door_channel ?? 0),
+        pulse_ms: Number(secrets.shelly_door_pulse_ms ?? 3000),
+        online: status.online,
+        response: raw?.slice?.(0, 500) ?? null,
+      },
     });
 
-    return new Response(JSON.stringify({ ok: true }), {
+    return new Response(JSON.stringify({ ok: true, online: status.online }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message || String(err) }), {
       status: 500,

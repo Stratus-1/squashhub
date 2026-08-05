@@ -71,7 +71,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     lat: "",
     lng: "",
     radius: "150",
+    auto: false,
   });
+
   const [locating, setLocating] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);

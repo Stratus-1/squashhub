@@ -504,7 +504,29 @@ export default function SuperAdminOutreachCampaignEditor() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label className="text-xs">Contact details</Label>
+                <Select
+                  value={filter.contactability ?? "all"}
+                  onValueChange={(v) => setFilter({ contactability: v === "all" ? undefined : v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any contact details</SelectItem>
+                    <SelectItem value="has_email">Has email (can be emailed)</SelectItem>
+                    <SelectItem value="no_email">No email</SelectItem>
+                    <SelectItem value="phone_only">Phone only (no email)</SelectItem>
+                    <SelectItem value="has_phone">Has phone number</SelectItem>
+                    <SelectItem value="email_and_phone">Has email + phone</SelectItem>
+                    <SelectItem value="none">No contact details at all</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-white/50 mt-1">
+                  Only clubs with an email address can actually be sent to.
+                </p>
+              </div>
             </div>
+
 
             {(() => {
               const selected: string[] = filter.prospect_ids ?? [];

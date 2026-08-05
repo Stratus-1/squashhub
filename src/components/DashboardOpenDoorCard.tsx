@@ -118,19 +118,35 @@ export function DashboardOpenDoorCard() {
     }
   };
 
+  const adminOverride = !proximity.allowed && isClubAdmin && proximity.active;
+
   return (
     <div className="px-4 mt-2">
       <Card className="p-3 flex items-center gap-3 border-primary/30 bg-primary/5">
         <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/15 shrink-0">
-          <DoorOpen className="w-5 h-5 text-primary" />
+          {nearDoor ? (
+            <DoorOpen className="w-5 h-5 text-primary" />
+          ) : (
+            <MapPin className="w-5 h-5 text-muted-foreground" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">Club Access</p>
           <p className="text-xs text-muted-foreground">
-            Unlock the main door
+            {adminOverride
+              ? "Remote unlock (admin) — you're not at the club"
+              : nearDoor
+              ? "Unlock the main door"
+              : proximity.hint}
           </p>
         </div>
-        <Button size="sm" onClick={handleOpenDoor} disabled={loading} className="gap-1.5">
+        <Button
+          size="sm"
+          onClick={handleOpenDoor}
+          disabled={loading || !nearDoor}
+          variant={adminOverride ? "outline" : "default"}
+          className="gap-1.5"
+        >
           {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <DoorOpen className="w-3.5 h-3.5" />}
           Open Door
         </Button>

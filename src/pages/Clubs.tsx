@@ -47,18 +47,9 @@ export default function Clubs() {
   });
 
   const allClubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
-  const adminSet = clubsWithAdmins ?? new Set<string>();
-  const liveClubs = allClubs
-    .filter((t) => t.tenant_type !== "nsa_seeded" || adminSet.has(t.id))
-    .sort((a, b) => {
-      const aAdmin = adminSet.has(a.id) ? 0 : 1;
-      const bAdmin = adminSet.has(b.id) ? 0 : 1;
-      if (aAdmin !== bAdmin) return aAdmin - bAdmin;
-      return a.name.localeCompare(b.name);
-    });
-  const nonNsaClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded");
-  const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded" && !adminSet.has(t.id));
-  const associations = tenants?.filter((t) => t.tenant_type === "association") ?? [];
+  const byName = (a: TenantPublic, b: TenantPublic) => a.name.localeCompare(b.name);
+  const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded").sort(byName);
+  const otherClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded").sort(byName);
 
   return (
     <div className="min-h-screen bg-background">

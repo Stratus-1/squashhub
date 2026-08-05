@@ -38,7 +38,7 @@ import DebitOrderPromptCard from "@/components/DebitOrderPromptCard";
 import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
 import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMyPermissions } from "@/hooks/use-club-permissions";
+import { useMyPermissions, useMemberHasAdminAccess } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { format, parseISO } from "date-fns";
@@ -64,9 +64,13 @@ export default function Dashboard() {
   const effectiveClub = clubData?.club || contextClub;
   const isClubAdmin = useIsClubAdmin();
   const myPermissions = useMyPermissions();
-  // While viewing as another member, show exactly what that member sees —
-  // never surface the viewer's own admin entry points.
-  const hasAnyAdminAccess = !isViewingAs && (isClubAdmin || myPermissions.size > 0);
+  // While viewing as another member, reflect THAT member's own admin rights
+  // (club role 'admin', full-admin flag, or granted permission slugs) instead
+  // of the viewer's — so you can verify what they actually see.
+  const viewedMemberHasAdmin = useMemberHasAdminAccess(isViewingAs ? activeMember?.id : undefined);
+  const hasAnyAdminAccess = isViewingAs
+    ? viewedMemberHasAdmin
+    : (isClubAdmin || myPermissions.size > 0);
   const myMemberId = activeMember?.id || null;
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(myMemberId || undefined);
   const clubId = effectiveClub?.id || clubData?.club?.id;

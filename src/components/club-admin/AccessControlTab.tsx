@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen, Wifi, Bluetooth, MapPin } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
+import { formatLatLngDM, toDMS } from "@/lib/geo-format";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { triggerShellyDoor } from "@/lib/shelly-door";

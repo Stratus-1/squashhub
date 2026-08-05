@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DoorOpen, Loader2 } from "lucide-react";
+import { DoorOpen, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
@@ -13,6 +13,7 @@ import { triggerShellyDoor } from "@/lib/shelly-door";
 import { markDoorOpened } from "@/lib/door-open-state";
 import { useMyBookings } from "@/hooks/use-data";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
+import { useDoorProximity } from "@/hooks/use-door-proximity";
 import { format } from "date-fns";
 
 const errorMessage = (e: unknown, fallback: string) =>

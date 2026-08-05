@@ -7663,6 +7663,10 @@ export type Database = {
         }
         Returns: string
       }
+      claim_unclaimed_membership: {
+        Args: { _member_id: string }
+        Returns: Json
+      }
       count_member_duplicate_hints: {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number
@@ -7683,6 +7687,19 @@ export type Database = {
       ensure_platform_association_for_league: {
         Args: { _association_id: string }
         Returns: string
+      }
+      find_unclaimed_memberships: {
+        Args: never
+        Returns: {
+          club_id: string
+          club_member_number: string
+          club_name: string
+          club_slug: string
+          league_numbers: string
+          match_reason: string
+          member_id: string
+          member_name: string
+        }[]
       }
       generate_all_clubs_renewal_invoices: { Args: never; Returns: Json }
       generate_member_renewal_invoices: {
@@ -7950,6 +7967,8 @@ export type Database = {
         Args: { _dow: number; _from: string }
         Returns: string
       }
+      norm_person_name: { Args: { _name: string }; Returns: string }
+      norm_phone_tail: { Args: { _phone: string }; Returns: string }
       post_journal: {
         Args: {
           p_club_id: string

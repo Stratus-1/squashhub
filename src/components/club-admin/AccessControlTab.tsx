@@ -118,8 +118,6 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       radius: String(c?.door_geofence_radius_m ?? 150),
       auto: !!c?.door_auto_unlock_enabled,
     });
-
-    });
   }, [club]);
 
   const useMyLocation = () => {

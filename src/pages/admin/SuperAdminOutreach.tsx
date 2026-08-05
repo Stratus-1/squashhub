@@ -412,7 +412,7 @@ export default function SuperAdminOutreach() {
                       </Button>
                     </td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
           </Card>

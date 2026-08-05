@@ -72,6 +72,16 @@ export function markAutoUnlockFired(clubId: string) {
 }
 
 /** Called once the member has clearly left the fence — allows a new auto open. */
+/** Timestamp (ms) of the last auto-unlock, or null. */
+export function autoUnlockLastFiredAt(clubId: string): number | null {
+  try {
+    const raw = localStorage.getItem(AUTO_KEY(clubId));
+    return raw ? Number(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function rearmAutoUnlock(clubId: string) {
   try {
     localStorage.removeItem(AUTO_KEY(clubId));

@@ -703,6 +703,67 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
+        {(isShelly || isFluss) && (
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  Proximity unlock (GPS)
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Only prompt members to open the door when their phone is near the club.
+                  Club admins can still unlock remotely.
+                </p>
+              </div>
+              <Switch
+                checked={geofence.enabled}
+                onCheckedChange={(v) => setGeofence((p) => ({ ...p, enabled: v }))}
+              />
+            </div>
+
+            {geofence.enabled && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Latitude</Label>
+                    <Input
+                      value={geofence.lat}
+                      onChange={(e) => setGeofence((p) => ({ ...p, lat: e.target.value }))}
+                      placeholder="-25.474"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Longitude</Label>
+                    <Input
+                      value={geofence.lng}
+                      onChange={(e) => setGeofence((p) => ({ ...p, lng: e.target.value }))}
+                      placeholder="30.970"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Unlock radius (metres)</Label>
+                  <Input
+                    type="number"
+                    min={20}
+                    max={2000}
+                    value={geofence.radius}
+                    onChange={(e) => setGeofence((p) => ({ ...p, radius: e.target.value }))}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Phone GPS is typically accurate to 20–50 m — 100–150 m works well for a clubhouse door.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" disabled={locating} onClick={useMyLocation} className="gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {locating ? "Getting location…" : "Use my current location (stand at the door)"}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
 
         {isOther && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">

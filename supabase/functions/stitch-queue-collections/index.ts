@@ -34,11 +34,22 @@ Deno.serve(async (req) => {
     // Pull all active mandates (optionally filtered by club).
     let mandatesQ = admin
       .from("stitch_mandates")
-      .select("id, club_id, club_member_id, max_amount_cents, debit_day, fee_category_id, status")
-      .eq("status", "active");
+      .select("id, club_id, club_member_id, max_amount_cents, debit_day, fee_category_id, status, created_at")
+      .eq("status", "active")
+      .order("created_at", { ascending: false });
     if (restrictClubId) mandatesQ = mandatesQ.eq("club_id", restrictClubId);
-    const { data: mandates, error: mErr } = await mandatesQ;
+    const { data: allMandates, error: mErr } = await mandatesQ;
     if (mErr) return json({ error: mErr.message }, 500);
+
+    // Safety net: only ever bill ONE mandate per member (the most recent active
+    // one). A DB trigger enforces this too, but legacy rows could still exist.
+    const seenMembers = new Set<string>();
+    const mandates = (allMandates || []).filter((m: any) => {
+      if (seenMembers.has(m.club_member_id)) return false;
+      seenMembers.add(m.club_member_id);
+      return true;
+    });
+
 
     // Build per-club eligible fee-label lookups: only fees with debit_order_eligible=true
     // are auto-queued. We match by fee_label (since club_member_fee_payments holds free-text
@@ -107,16 +118,18 @@ Deno.serve(async (req) => {
       const monthEnd = new Date(Date.UTC(dueRaw.getUTCFullYear(), dueRaw.getUTCMonth() + 1, 0))
         .toISOString().slice(0, 10);
 
-      // One instalment per mandate per calendar month.
+      // One instalment per MEMBER per calendar month (regardless of which
+      // mandate queued it) so duplicate mandates can never double-bill.
       const { data: already } = await admin
         .from("stitch_collections")
         .select("id")
-        .eq("mandate_id", mandate.id)
+        .eq("club_member_id", mandate.club_member_id)
         .gte("due_date", monthStart)
         .lte("due_date", monthEnd)
         .not("status", "in", "(failed,skipped)")
         .limit(1);
       if (already && already.length) continue;
+
 
       // Amount still owing across eligible fees, minus anything already
       // queued/submitted/paid against them (partial instalments).

@@ -395,7 +395,8 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   {m.status === "pending" && (
                     <div className="mt-1 space-y-1">
                       <p className="text-[11px] text-amber-700 leading-snug">
-                        Waiting for you to finish the authorisation at Stitch (including the once-off R20 card check).
+                        Waiting for you to finish the authorisation at Stitch. Your first monthly
+                        instalment is charged there and credited to your club account.
                         Don't start a new setup — reopen this one.
                       </p>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -477,11 +478,15 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-md border bg-amber-500/10 p-2 text-[11px] leading-snug">
-              <p className="font-medium text-amber-900">R20 authorisation charge</p>
+              <p className="font-medium text-amber-900">
+                First month ({money(Number(amount) || 0)}) is charged when you activate
+              </p>
               <p className="mt-0.5 text-amber-800">
-                Stitch will make a once-off R20 authorisation charge on your card now to verify it
-                and confirm consent. This is <strong>not</strong> your monthly fee.
-                Your first regular monthly card charge will run on the day you choose below.
+                When you approve the card authorisation, your <strong>first monthly instalment
+                of {money(Number(amount) || 0)}</strong> is charged straight away — nothing extra,
+                no separate verification fee. It is credited to your club account immediately and
+                settles your oldest outstanding fees. Thereafter the same amount is charged
+                automatically on your chosen day each month.
               </p>
             </div>
 
@@ -542,7 +547,8 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
 
                 </p>
                 <p className="text-[11px] font-medium text-primary">
-                  First monthly card charge: {formatDate(nextDebitDate(Number(debitDay) || 1))}
+                  Charged now on activation: {money(Number(amount) || 0)} · then {money(Number(amount) || 0)}{" "}
+                  on {formatDate(nextDebitDate(Number(debitDay) || 1))} and monthly thereafter
                 </p>
               </div>
             )}

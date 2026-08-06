@@ -2,37 +2,24 @@
 // local status to active/failed/cancelled. Runs unauthenticated but requires
 // x-internal-secret so only cron can trigger it.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  STITCH_BASE,
+  stitchExpressToken,
+  listStitchSubscriptions,
+  getStitchCardConsentStatus,
+  mapStitchMandateStatus,
+} from "../_shared/stitch-mandate-status.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const STITCH_BASE = "https://express.stitch.money/api/v1";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-}
-
-async function stitchToken(clientId: string, clientSecret: string) {
-  const resp = await fetch(`${STITCH_BASE}/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clientId, clientSecret, scope: "client_recurringpaymentconsentrequest" }),
-  });
-  const j = await resp.json().catch(() => ({}));
-  if (!resp.ok || !j?.data?.accessToken) throw new Error(`Stitch auth failed [${resp.status}]`);
-  return j.data.accessToken as string;
-}
-
-function mapStatus(raw: string): string | null {
-  const s = raw.toLowerCase();
-  if (/complete|authori[sz]ed|active|success|enabled/.test(s)) return "active";
-  if (/declin|fail|reject|expired/.test(s)) return "failed";
-  if (/cancel/.test(s)) return "cancelled";
-  return null;
 }
 
 Deno.serve(async (req) => {

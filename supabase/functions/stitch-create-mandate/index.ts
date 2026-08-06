@@ -144,9 +144,10 @@ Deno.serve(async (req) => {
         debit_day: day,
         status: "pending",
         // Charge Stitch takes the moment the payer authorises. Subscriptions
-        // carry the R20.00 card-verification charge; card consents take
+        // now collect the member's FULL first monthly amount up front (it is
+        // recorded as a real payment on their account); card consents take
         // nothing up front.
-        initial_amount_cents: mandate_type === "subscription" ? 2000 : 0,
+        initial_amount_cents: mandate_type === "subscription" ? amountCents : 0,
         fee_category_id,
       })
       .select()
@@ -195,11 +196,11 @@ Deno.serve(async (req) => {
       stitchUrl = j.data.url || j.data.link || null;
     } else {
       // POST /subscriptions — fixed monthly amount, Stitch auto-charges.
-      // Initial charge is a small R20 verification; recurring monthly amount
-      // begins on the selected byMonthDay.
+      // Initial charge is the full first month (posted to the member's
+      // account); recurring monthly amount begins on the selected byMonthDay.
       const subBody = {
         amount: amountCents,
-        initialAmount: 2000, // R20.00 verification charge
+        initialAmount: amountCents, // full first monthly instalment
         merchantReference,
         startDate: new Date().toISOString(),
         payerFullName,

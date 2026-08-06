@@ -189,6 +189,23 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mandates.length]);
 
+  // While a setup is pending, keep polling in the background for ~3 minutes.
+  // Stitch webhooks can be delayed, and members were re-starting the whole
+  // setup (creating duplicate mandates) because nothing changed on screen.
+  useEffect(() => {
+    const pendingIds = mandates.filter((m) => m.status === "pending").map((m) => m.id);
+    if (!pendingIds.length) return;
+    let ticks = 0;
+    const t = setInterval(() => {
+      ticks++;
+      pendingIds.forEach((id) => refreshMandate(id, true));
+      if (ticks >= 18) clearInterval(t);
+    }, 10000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mandates.map((m) => `${m.id}:${m.status}`).join(",")]);
+
+
   // Auto-recalculate monthly amount when months changes (unless user typed an override)
   // MUST be declared before any conditional early-return to satisfy Rules of Hooks.
   useEffect(() => {
@@ -201,7 +218,26 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   if (paymentGateway !== "stitch") return null;
   
 
+  const pendingMandate = mandates.find((m) => m.status === "pending") || null;
+
+  // Re-open the existing Stitch link instead of creating another mandate.
+  async function resumeSetup(m: Mandate) {
+    if (!m.auth_url) {
+      toast.error("This setup has no link left — cancel it and start again.");
+      return;
+    }
+    await refreshMandate(m.id, true);
+    await openStitchCheckout(normalizeAuthUrl(m.auth_url));
+  }
+
   function openSetup(cat: FeeCategory) {
+    // Guard: one setup at a time. Retrying with a new mandate is what caused
+    // members to end up with several half-finished authorisations.
+    if (pendingMandate) {
+      toast.info("You already have a setup waiting for authorisation — finishing that one instead.");
+      resumeSetup(pendingMandate);
+      return;
+    }
     setSelectedCategory(cat);
     const defaultMonths = 6;
     setMonths(String(defaultMonths));
@@ -213,14 +249,22 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     setSetupOpen(true);
   }
 
+
   async function submitSetup() {
     if (!selectedCategory) return;
+    if (pendingMandate) {
+      setSetupOpen(false);
+      toast.info("Finishing your existing setup instead of starting a new one.");
+      resumeSetup(pendingMandate);
+      return;
+    }
     const amt = Number(amount);
     if (!(amt > 0)) {
       toast.error("Enter a valid amount");
       return;
     }
     setSubmitting(true);
+
     try {
       const returnUrl = buildStitchReturnUrl("/my-account?mandate=pending");
       const { data, error } = await supabase.functions.invoke("stitch-create-mandate", {
@@ -349,21 +393,28 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   </p>
 
                   {m.status === "pending" && (
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {m.auth_url && (
-                        <a href={normalizeAuthUrl(m.auth_url)} className="text-[11px] text-primary underline">
-                          Complete authorisation →
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => refreshMandate(m.id)}
-                        className="text-[11px] text-muted-foreground underline"
-                      >
-                        Check status
-                      </button>
+                    <div className="mt-1 space-y-1">
+                      <p className="text-[11px] text-amber-700 leading-snug">
+                        Waiting for you to finish the authorisation at Stitch (including the once-off R20 card check).
+                        Don't start a new setup — reopen this one.
+                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {m.auth_url && (
+                          <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => resumeSetup(m)}>
+                            Finish authorisation
+                          </Button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => refreshMandate(m.id)}
+                          className="text-[11px] text-muted-foreground underline"
+                        >
+                          Check status
+                        </button>
+                      </div>
                     </div>
                   )}
+
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => cancelMandate(m.id)} className="h-7 px-2">
                   <X className="w-3.5 h-3.5" />
@@ -383,7 +434,10 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
               Set up monthly card payment
             </p>
             {visibleCategories.map((cat) => {
-              const has = activeMandates.some((m) => m.fee_category_id === cat.id);
+              const existing = activeMandates.find((m) => m.fee_category_id === cat.id
+                || (cat.id === "__general__" && !m.fee_category_id));
+              const isActive = existing?.status === "active";
+              const isPending = !!pendingMandate;
               return (
                 <div key={cat.id} className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -397,16 +451,17 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   </div>
                   <Button
                     size="sm"
-                    variant={has ? "outline" : "default"}
-                    disabled={has}
-                    onClick={() => openSetup(cat)}
+                    variant={isActive ? "outline" : isPending ? "secondary" : "default"}
+                    disabled={isActive}
+                    onClick={() => (isPending ? resumeSetup(pendingMandate!) : openSetup(cat))}
                     className="h-7 text-xs"
                   >
-                    {has ? "Active" : "Set up"}
+                    {isActive ? "Active" : isPending ? "Finish setup" : "Set up"}
                   </Button>
                 </div>
               );
             })}
+
           </div>
         )}
       </Card>

@@ -395,7 +395,8 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   {m.status === "pending" && (
                     <div className="mt-1 space-y-1">
                       <p className="text-[11px] text-amber-700 leading-snug">
-                        Waiting for you to finish the authorisation at Stitch (including the once-off R20 card check).
+                        Waiting for you to finish the authorisation at Stitch. Your first monthly
+                        instalment is charged there and credited to your club account.
                         Don't start a new setup — reopen this one.
                       </p>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -546,7 +547,8 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
 
                 </p>
                 <p className="text-[11px] font-medium text-primary">
-                  First monthly card charge: {formatDate(nextDebitDate(Number(debitDay) || 1))}
+                  Charged now on activation: {money(Number(amount) || 0)} · then {money(Number(amount) || 0)}{" "}
+                  on {formatDate(nextDebitDate(Number(debitDay) || 1))} and monthly thereafter
                 </p>
               </div>
             )}

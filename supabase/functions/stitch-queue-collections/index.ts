@@ -34,11 +34,22 @@ Deno.serve(async (req) => {
     // Pull all active mandates (optionally filtered by club).
     let mandatesQ = admin
       .from("stitch_mandates")
-      .select("id, club_id, club_member_id, max_amount_cents, debit_day, fee_category_id, status")
-      .eq("status", "active");
+      .select("id, club_id, club_member_id, max_amount_cents, debit_day, fee_category_id, status, created_at")
+      .eq("status", "active")
+      .order("created_at", { ascending: false });
     if (restrictClubId) mandatesQ = mandatesQ.eq("club_id", restrictClubId);
-    const { data: mandates, error: mErr } = await mandatesQ;
+    const { data: allMandates, error: mErr } = await mandatesQ;
     if (mErr) return json({ error: mErr.message }, 500);
+
+    // Safety net: only ever bill ONE mandate per member (the most recent active
+    // one). A DB trigger enforces this too, but legacy rows could still exist.
+    const seenMembers = new Set<string>();
+    const mandates = (allMandates || []).filter((m: any) => {
+      if (seenMembers.has(m.club_member_id)) return false;
+      seenMembers.add(m.club_member_id);
+      return true;
+    });
+
 
     // Build per-club eligible fee-label lookups: only fees with debit_order_eligible=true
     // are auto-queued. We match by fee_label (since club_member_fee_payments holds free-text

@@ -4,7 +4,14 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, LogOut, RefreshCw } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronLeft, LogOut, RefreshCw, User, Settings as SettingsIcon } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getBackFallback } from "@/lib/breadcrumbs";
@@ -135,7 +142,7 @@ export function PageHeader({
         )}
 
         {user && (
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5 shrink-0">
             <TenantSwitcher />
             <ThemeToggle />
             {isStandalonePWA() && (
@@ -143,7 +150,7 @@ export function PageHeader({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                className="hidden sm:inline-flex h-9 w-9 text-muted-foreground hover:text-foreground"
                 onClick={() => window.location.reload()}
                 aria-label="Refresh"
                 title="Refresh"
@@ -152,28 +159,55 @@ export function PageHeader({
               </Button>
             )}
             {showNotifications && <NotificationsDropdown />}
-            <button
-              type="button"
-              className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center gap-1.5"
-              onClick={() => {
-                if (profileTo === "/profile") {
-                  navigate(profileTo, { state: { backgroundLocation: location } });
-                  return;
-                }
-                navigate(profileTo);
-              }}
-              aria-label="Profile"
-            >
-              <PlayerAvatar initials={initials} avatarUrl={avatarUrl} size="sm" />
-              <span className="hidden md:inline text-xs font-medium text-muted-foreground max-w-[120px] truncate">
-                {playerName}
-              </span>
-            </button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center gap-1.5 shrink-0"
+                  aria-label="Account menu"
+                >
+                  <PlayerAvatar initials={initials} avatarUrl={avatarUrl} size="sm" />
+                  <span className="hidden md:inline text-xs font-medium text-muted-foreground max-w-[120px] truncate">
+                    {playerName}
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 z-[70] bg-popover">
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (profileTo === "/profile") {
+                      navigate(profileTo, { state: { backgroundLocation: location } });
+                      return;
+                    }
+                    navigate(profileTo);
+                  }}
+                >
+                  <User className="w-4 h-4 mr-2" /> Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <SettingsIcon className="w-4 h-4 mr-2" /> Settings
+                </DropdownMenuItem>
+                {isStandalonePWA() && (
+                  <DropdownMenuItem onClick={() => window.location.reload()}>
+                    <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => signOut()}
+                >
+                  <LogOut className="w-4 h-4 mr-2" /> Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-muted-foreground hover:text-destructive"
+              className="hidden md:inline-flex h-9 w-9 text-muted-foreground hover:text-destructive"
               onClick={() => signOut()}
               aria-label="Log out"
             >

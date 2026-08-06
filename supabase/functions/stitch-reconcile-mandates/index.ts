@@ -3,7 +3,6 @@
 // x-internal-secret so only cron can trigger it.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
-  STITCH_BASE,
   stitchExpressToken,
   listStitchSubscriptions,
   getStitchCardConsentStatus,

@@ -36,6 +36,7 @@ export function FinalizeTournamentSetupDialog({
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [pendingSwap, setPendingSwap] = useState<{ matchId: string; slot: Slot } | null>(null);
+  const [allowConflicts, setAllowConflicts] = useState(false);
 
   // Upcoming scheduled matches for this tournament
   const { data: matches = [], isLoading } = useQuery({

@@ -205,8 +205,6 @@ export function FinalizeTournamentSetupDialog({
             {filteredCandidates.length} club member{filteredCandidates.length === 1 ? "" : "s"} — anyone can be selected
           </div>
         </PopoverContent>
-
-        </PopoverContent>
       </Popover>
     );
   };

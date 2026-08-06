@@ -136,7 +136,7 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
   };
 
   const markMandate = async (id: string, action: "confirm" | "reject") => {
-    if (action === "confirm" && !confirm("Mark this mandate as authorised? Only do this once the member confirms they completed the Stitch flow (and the R20 verification charge went off).")) return;
+    if (action === "confirm" && !confirm("Mark this mandate as authorised? Only do this once the member confirms they completed the Stitch flow (and the first monthly charge went off their card).")) return;
     setBusy(`mark-${id}`);
     const { data, error } = await supabase.functions.invoke("stitch-refresh-mandate", {
       body: { mandate_id: id, action },

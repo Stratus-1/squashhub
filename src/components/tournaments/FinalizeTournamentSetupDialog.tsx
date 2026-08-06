@@ -146,7 +146,7 @@ export function FinalizeTournamentSetupDialog({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-0" align="start">
-          <div className="p-2 border-b">
+          <div className="p-2 border-b space-y-2">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -157,44 +157,55 @@ export function FinalizeTournamentSetupDialog({
                 className="pl-7 h-8 text-xs"
               />
             </div>
+            <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-3 w-3 accent-current"
+                checked={allowConflicts}
+                onChange={(e) => setAllowConflicts(e.target.checked)}
+              />
+              Allow players already playing at this time
+            </label>
           </div>
           <div className="max-h-[280px] overflow-y-auto divide-y">
             {filteredCandidates.length === 0 ? (
               <p className="text-xs text-center text-muted-foreground py-4">No players found</p>
             ) : (
-              filteredCandidates.map((c) => {
-                const isCurrent = c.id === current?.id;
-                // Conflict: already in this same match (opponent / partner / self)
-                const inThisMatch = inMatchIds.has(c.id) && !isCurrent;
-                // Conflict: booked in another match at the same date+time
-                const busy = matchSlotKey ? busyByMember.get(c.id) : undefined;
-                const otherBusy = !!(busy && busy.has(matchSlotKey!) && !inMatchIds.has(c.id));
-                const conflict = inThisMatch || otherBusy;
-                const reason = inThisMatch
-                  ? "in this match"
-                  : otherBusy
-                    ? "playing same time"
-                    : "";
-                return (
+              filteredCandidates
+                .map((c) => {
+                  const isCurrent = c.id === current?.id;
+                  const inThisMatch = inMatchIds.has(c.id) && !isCurrent;
+                  const busy = matchSlotKey ? busyByMember.get(c.id) : undefined;
+                  const otherBusy = !!(busy && busy.has(matchSlotKey!) && !inMatchIds.has(c.id));
+                  const reason = inThisMatch ? "in this match" : otherBusy ? "playing same time" : "";
+                  return { c, isCurrent, inThisMatch, otherBusy, reason };
+                })
+                // free players first, then those with a clash (still selectable)
+                .sort((a, b) => Number(!!a.reason) - Number(!!b.reason))
+                .map(({ c, isCurrent, inThisMatch, otherBusy, reason }) => (
                   <button
                     key={c.id}
-                    disabled={isCurrent || conflict}
+                    disabled={isCurrent || inThisMatch || (otherBusy && !allowConflicts)}
                     onClick={() => handleReplace(c.id, c.name)}
-                    title={conflict ? reason : undefined}
+                    title={reason || undefined}
                     className="w-full text-left px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between gap-2"
                   >
                     <span className="truncate">{c.name}</span>
                     {isCurrent && <Badge variant="secondary" className="text-[9px]">current</Badge>}
-                    {!isCurrent && conflict && (
+                    {!isCurrent && reason && (
                       <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40 shrink-0">
                         {reason}
                       </Badge>
                     )}
                   </button>
-                );
-              })
+                ))
             )}
           </div>
+          <div className="border-t px-3 py-1.5 text-[10px] text-muted-foreground">
+            {filteredCandidates.length} club member{filteredCandidates.length === 1 ? "" : "s"} — anyone can be selected
+          </div>
+        </PopoverContent>
+
         </PopoverContent>
       </Popover>
     );

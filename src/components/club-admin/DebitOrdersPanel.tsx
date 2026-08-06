@@ -188,6 +188,64 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
     refresh();
   };
 
+  // --- Duplicate mandate detection -------------------------------------
+  // A member should only ever have ONE live mandate. Extra ones (usually
+  // created when someone retried a failed setup) can cause double debits.
+  const duplicateGroups = (() => {
+    const byMember = new Map<string, Mandate[]>();
+    (mandates || []).forEach(m => {
+      const list = byMember.get(m.club_member_id) || [];
+      list.push(m);
+      byMember.set(m.club_member_id, list);
+    });
+    return Array.from(byMember.entries())
+      .filter(([, list]) => list.length > 1)
+      .map(([memberId, list]) => {
+        const sorted = [...list].sort((a, b) => {
+          // Prefer an active mandate, then the most recently created.
+          if ((a.status === "active") !== (b.status === "active")) return a.status === "active" ? -1 : 1;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        return { memberId, keep: sorted[0], extras: sorted.slice(1) };
+      });
+  })();
+
+  const cancelDuplicates = async (group: { keep: Mandate; extras: Mandate[] }) => {
+    const name = group.keep.club_members?.full_name || "this member";
+    if (!confirm(
+      `Cancel ${group.extras.length} duplicate mandate${group.extras.length > 1 ? "s" : ""} for ${name}?\n\n` +
+      `Keeping: ${group.keep.status} · max ${fmt(group.keep.max_amount_cents)} · day ${group.keep.debit_day ?? "—"} ` +
+      `(started ${new Date(group.keep.created_at).toLocaleDateString("en-ZA")}).`
+    )) return;
+    setBusy(`dup-${group.keep.club_member_id}`);
+    let ok = 0; let failed = 0;
+    for (const m of group.extras) {
+      const { data, error } = await supabase.functions.invoke("stitch-cancel-mandate", { body: { mandate_id: m.id } });
+      if (error || (data as any)?.error) failed++; else ok++;
+    }
+    setBusy(null);
+    if (ok) toast.success(`Cancelled ${ok} duplicate mandate${ok > 1 ? "s" : ""}`);
+    if (failed) toast.error(`${failed} could not be cancelled — try individually`);
+    refresh();
+  };
+
+  const cancelAllDuplicates = async () => {
+    const total = duplicateGroups.reduce((n, g) => n + g.extras.length, 0);
+    if (!confirm(`Cancel ${total} duplicate mandate(s) across ${duplicateGroups.length} member(s)? The newest active mandate for each member is kept.`)) return;
+    setBusy("dup-all");
+    let ok = 0; let failed = 0;
+    for (const g of duplicateGroups) {
+      for (const m of g.extras) {
+        const { data, error } = await supabase.functions.invoke("stitch-cancel-mandate", { body: { mandate_id: m.id } });
+        if (error || (data as any)?.error) failed++; else ok++;
+      }
+    }
+    setBusy(null);
+    if (ok) toast.success(`Cancelled ${ok} duplicate mandate(s)`);
+    if (failed) toast.error(`${failed} could not be cancelled — try individually`);
+    refresh();
+  };
+
   return (
     <Card className="p-4 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -207,6 +265,48 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
       <p className="text-[11px] text-muted-foreground">
         Cron auto-runs daily. Pending rows older than 2 days are auto-approved unless you cancel or edit them.
       </p>
+
+      {/* Duplicate mandate warning */}
+      {duplicateGroups.length > 0 && (
+        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 space-y-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h4 className="text-xs font-semibold flex items-center gap-1 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-3 w-3" />
+              Duplicate mandates ({duplicateGroups.length} member{duplicateGroups.length > 1 ? "s" : ""})
+            </h4>
+            {duplicateGroups.length > 1 && (
+              <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
+                disabled={busy !== null} onClick={cancelAllDuplicates}>
+                {busy === "dup-all" ? "Cleaning…" : "Cancel all duplicates"}
+              </Button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            These members have more than one live mandate — usually from retrying a failed setup. Only one should stay active, otherwise they can be debited twice.
+          </p>
+          <div className="border rounded divide-y text-xs bg-background">
+            {duplicateGroups.map(g => (
+              <div key={g.memberId} className="px-2 py-1.5 flex items-start gap-2 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{g.keep.club_members?.full_name || "—"}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Keep: <Badge variant="secondary" className={`px-1 py-0 text-[9px] ${statusTone[g.keep.status] || ""}`}>{g.keep.status}</Badge>{" "}
+                    max {fmt(g.keep.max_amount_cents)} · day {g.keep.debit_day ?? "—"} · {new Date(g.keep.created_at).toLocaleDateString("en-ZA")}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Cancel {g.extras.length}: {g.extras.map(e => `${e.status} ${new Date(e.created_at).toLocaleDateString("en-ZA")}`).join(", ")}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
+                  disabled={busy !== null} onClick={() => cancelDuplicates(g)}>
+                  {busy === `dup-${g.memberId}` ? "Cancelling…" : "Keep newest, cancel rest"}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       {/* Pending approvals */}
       {pending.length > 0 && (

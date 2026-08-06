@@ -420,7 +420,10 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
               Set up monthly card payment
             </p>
             {visibleCategories.map((cat) => {
-              const has = activeMandates.some((m) => m.fee_category_id === cat.id);
+              const existing = activeMandates.find((m) => m.fee_category_id === cat.id
+                || (cat.id === "__general__" && !m.fee_category_id));
+              const isActive = existing?.status === "active";
+              const isPending = !!pendingMandate;
               return (
                 <div key={cat.id} className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -434,16 +437,17 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   </div>
                   <Button
                     size="sm"
-                    variant={has ? "outline" : "default"}
-                    disabled={has}
-                    onClick={() => openSetup(cat)}
+                    variant={isActive ? "outline" : isPending ? "secondary" : "default"}
+                    disabled={isActive}
+                    onClick={() => (isPending ? resumeSetup(pendingMandate!) : openSetup(cat))}
                     className="h-7 text-xs"
                   >
-                    {has ? "Active" : "Set up"}
+                    {isActive ? "Active" : isPending ? "Finish setup" : "Set up"}
                   </Button>
                 </div>
               );
             })}
+
           </div>
         )}
       </Card>

@@ -189,6 +189,23 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mandates.length]);
 
+  // While a setup is pending, keep polling in the background for ~3 minutes.
+  // Stitch webhooks can be delayed, and members were re-starting the whole
+  // setup (creating duplicate mandates) because nothing changed on screen.
+  useEffect(() => {
+    const pendingIds = mandates.filter((m) => m.status === "pending").map((m) => m.id);
+    if (!pendingIds.length) return;
+    let ticks = 0;
+    const t = setInterval(() => {
+      ticks++;
+      pendingIds.forEach((id) => refreshMandate(id, true));
+      if (ticks >= 18) clearInterval(t);
+    }, 10000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mandates.map((m) => `${m.id}:${m.status}`).join(",")]);
+
+
   // Auto-recalculate monthly amount when months changes (unless user typed an override)
   // MUST be declared before any conditional early-return to satisfy Rules of Hooks.
   useEffect(() => {

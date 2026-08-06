@@ -370,7 +370,13 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
 
       {/* Mandates */}
       <div className="space-y-1">
-        <h4 className="text-xs font-medium">All mandates ({(mandates || []).filter(m => m.status === "active").length} active)</h4>
+        <h4 className="text-xs font-medium">
+          All mandates ({(mandates || []).filter(m => m.status === "active").length} active
+          {(mandates || []).filter(m => m.status === "pending").length > 0
+            ? `, ${(mandates || []).filter(m => m.status === "pending").length} pending`
+            : ""})
+        </h4>
+
         {(mandates || []).length === 0 ? (
           <p className="text-[11px] text-muted-foreground italic">No mandates yet. Members set them up from My Account.</p>
         ) : (

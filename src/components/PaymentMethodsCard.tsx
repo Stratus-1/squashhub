@@ -218,7 +218,26 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   if (paymentGateway !== "stitch") return null;
   
 
+  const pendingMandate = mandates.find((m) => m.status === "pending") || null;
+
+  // Re-open the existing Stitch link instead of creating another mandate.
+  async function resumeSetup(m: Mandate) {
+    if (!m.auth_url) {
+      toast.error("This setup has no link left — cancel it and start again.");
+      return;
+    }
+    await refreshMandate(m.id, true);
+    await openStitchCheckout(normalizeAuthUrl(m.auth_url));
+  }
+
   function openSetup(cat: FeeCategory) {
+    // Guard: one setup at a time. Retrying with a new mandate is what caused
+    // members to end up with several half-finished authorisations.
+    if (pendingMandate) {
+      toast.info("You already have a setup waiting for authorisation — finishing that one instead.");
+      resumeSetup(pendingMandate);
+      return;
+    }
     setSelectedCategory(cat);
     const defaultMonths = 6;
     setMonths(String(defaultMonths));
@@ -229,6 +248,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     setDebitDay("1");
     setSetupOpen(true);
   }
+
 
   async function submitSetup() {
     if (!selectedCategory) return;

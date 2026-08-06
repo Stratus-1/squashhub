@@ -252,12 +252,19 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
 
   async function submitSetup() {
     if (!selectedCategory) return;
+    if (pendingMandate) {
+      setSetupOpen(false);
+      toast.info("Finishing your existing setup instead of starting a new one.");
+      resumeSetup(pendingMandate);
+      return;
+    }
     const amt = Number(amount);
     if (!(amt > 0)) {
       toast.error("Enter a valid amount");
       return;
     }
     setSubmitting(true);
+
     try {
       const returnUrl = buildStitchReturnUrl("/my-account?mandate=pending");
       const { data, error } = await supabase.functions.invoke("stitch-create-mandate", {

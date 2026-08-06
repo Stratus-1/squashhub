@@ -50,13 +50,13 @@ Deno.serve(async (req) => {
   }
 
 
-  // Only sweep mandates that were created recently OR are still pending — the
-  // Stitch record eventually expires, so ignore anything older than 30 days.
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Sweep mandates that are still pending, plus recently-activated ones so a
+  // row that was marked active by hand gets corrected if Stitch disagrees.
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const { data: pending, error } = await admin
     .from("stitch_mandates")
     .select("id, club_id, stitch_mandate_id, mandate_type, status, created_at")
-    .eq("status", "pending")
+    .in("status", ["pending", "active"])
     .gte("created_at", cutoff)
     .not("stitch_mandate_id", "is", null);
   if (error) return json({ error: error.message }, 500);
@@ -64,9 +64,12 @@ Deno.serve(async (req) => {
   const rows = pending || [];
   if (rows.length === 0) return json({ ok: true, scanned: 0 });
 
-  // Cache tokens per club_id so we don't re-auth for each mandate
+  // Per-club token + subscription list cache. Stitch Express has no
+  // GET /subscriptions/{id}; the list endpoint is the only read path.
   const tokenCache = new Map<string, string | null>();
-  let updated = 0, unchanged = 0, failed = 0;
+  const subsCache = new Map<string, Map<string, string>>();
+  let updated = 0, unchanged = 0, failed = 0, notFound = 0;
+  const changes: Array<Record<string, unknown>> = [];
 
   for (const m of rows) {
     try {
@@ -84,7 +87,7 @@ Deno.serve(async (req) => {
           continue;
         }
         try {
-          token = await stitchToken(clientId, clientSecret);
+          token = await stitchExpressToken(clientId, clientSecret);
           tokenCache.set(m.club_id, token);
         } catch (e) {
           console.error("token failed for club", m.club_id, e);
@@ -94,21 +97,27 @@ Deno.serve(async (req) => {
       }
       if (!token) continue;
 
-      const path = m.mandate_type === "subscription" ? "subscriptions" : "card-consents";
-      const resp = await fetch(`${STITCH_BASE}/${path}/${m.stitch_mandate_id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const j = await resp.json().catch(() => ({}));
-      if (!resp.ok) { failed++; continue; }
-      const node = j?.data || j;
-      const raw = String(node?.status || node?.state?.__typename || node?.state || "");
-      const newStatus = mapStatus(raw);
+      let raw: string | null = null;
+      if (m.mandate_type === "subscription") {
+        let subs = subsCache.get(m.club_id);
+        if (!subs) {
+          subs = await listStitchSubscriptions(token);
+          subsCache.set(m.club_id, subs);
+        }
+        raw = subs.get(String(m.stitch_mandate_id)) ?? null;
+      } else {
+        raw = await getStitchCardConsentStatus(token, String(m.stitch_mandate_id));
+      }
+
+      if (!raw) { notFound++; continue; }
+      const newStatus = mapStitchMandateStatus(raw);
       if (!newStatus || newStatus === m.status) { unchanged++; continue; }
 
       const patch: Record<string, unknown> = { status: newStatus };
       if (newStatus === "active") patch.authorised_at = new Date().toISOString();
       if (newStatus === "cancelled") patch.cancelled_at = new Date().toISOString();
       await admin.from("stitch_mandates").update(patch).eq("id", m.id);
+      changes.push({ id: m.id, from: m.status, to: newStatus, raw });
       if (newStatus === "active") {
         // Book the up-front charge as a payment on the member's account,
         // dated from the day the mandate came into effect.
@@ -122,5 +131,6 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, scanned: rows.length, updated, unchanged, failed });
+  console.log(`reconcile: scanned=${rows.length} updated=${updated} unchanged=${unchanged} notFound=${notFound} failed=${failed}`, JSON.stringify(changes));
+  return json({ ok: true, scanned: rows.length, updated, unchanged, not_found: notFound, failed, changes });
 });

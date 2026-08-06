@@ -115,80 +115,52 @@ Deno.serve(async (req) => {
     }
     const accessToken = tokenJson.data.accessToken;
 
-    // Stitch Express exposes several read paths depending on how the
-    // authorisation was created (and some legacy rows have mandate_type
-    // mis-recorded). Probe them in order and use the first that answers 200.
-    const primaryPath = mandate.mandate_type === "subscription" ? "subscriptions" : "card-consents";
-    const altPath = primaryPath === "subscriptions" ? "card-consents" : "subscriptions";
-    const candidates = [primaryPath, altPath, "payments"];
+    // Stitch Express has NO `GET /subscriptions/{id}` — it 404s for every id.
+    // The only read path for subscriptions is the LIST endpoint. Card consents
+    // do support a by-id lookup.
+    let rawStatus: string | null = null;
+    if (mandate.mandate_type === "subscription") {
+      const subs = await listStitchSubscriptions(accessToken);
+      rawStatus = subs.get(String(mandate.stitch_mandate_id)) ?? null;
+      if (!rawStatus) {
+        // Maybe it's really a card consent recorded with the wrong type.
+        const alt = await getStitchCardConsentStatus(accessToken, String(mandate.stitch_mandate_id));
+        if (alt) {
+          rawStatus = alt;
+          await admin.from("stitch_mandates").update({ mandate_type: "card_consent" }).eq("id", mandate.id);
+        }
+      }
+    } else {
+      rawStatus = await getStitchCardConsentStatus(accessToken, String(mandate.stitch_mandate_id));
+      if (!rawStatus) {
+        const subs = await listStitchSubscriptions(accessToken);
+        const alt = subs.get(String(mandate.stitch_mandate_id));
+        if (alt) {
+          rawStatus = alt;
+          await admin.from("stitch_mandates").update({ mandate_type: "subscription" }).eq("id", mandate.id);
+        }
+      }
+    }
 
-    let resp: Response | null = null;
-    let j: any = {};
-    let usedPath = primaryPath;
-    const probe: Record<string, number> = {};
-
-    for (const path of candidates) {
-      const r = await fetch(`${STITCH_BASE}/${path}/${mandate.stitch_mandate_id}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+    if (!rawStatus) {
+      return json({
+        ok: false,
+        error: "MANDATE_NOT_FOUND",
+        status: mandate.status,
+        fallback: true,
       });
-      probe[path] = r.status;
-      const body = await r.json().catch(() => ({}));
-      if (r.ok) {
-        resp = r;
-        j = body;
-        usedPath = path;
-        break;
-      }
-      if (r.status !== 404) {
-        // Real error (401/403/5xx) — stop probing and surface it.
-        resp = r;
-        j = body;
-        usedPath = path;
-        break;
-      }
     }
 
-    if (resp?.ok && usedPath !== primaryPath && usedPath !== "payments") {
-      const correctedType = usedPath === "subscriptions" ? "subscription" : "card_consent";
-      await admin.from("stitch_mandates").update({ mandate_type: correctedType }).eq("id", mandate.id);
-    }
-
-    if (!resp || !resp.ok) {
-      console.error("stitch get failed", JSON.stringify(probe), usedPath, JSON.stringify(j));
-      if (!resp || resp.status === 404) {
-        // Every read path 404s. Stitch Express does not expose a lookup for
-        // Express-created recurring authorisations, so this tells us nothing
-        // about whether the payer completed the flow. Leave the row pending
-        // and let the webhook (or an admin override) settle it.
-        return json({
-          ok: false,
-          error: "MANDATE_NOT_FOUND",
-          status: mandate.status,
-          fallback: true,
-          probe,
-        });
-      }
-
-      return json({ error: `Stitch lookup failed [${resp.status}]` }, 502);
-    }
-
-
-
-    const node = j?.data || j;
-    const rawStatus = String(
-      node?.status || node?.state?.__typename || node?.state || ""
-    ).toLowerCase();
-
-    let newStatus: string | null = null;
-    if (/complete|authori[sz]ed|active|success|enabled/.test(rawStatus)) newStatus = "active";
-    else if (/declin|fail|reject|expired/.test(rawStatus)) newStatus = "failed";
-    else if (/cancel/.test(rawStatus)) newStatus = "cancelled";
-
+    const newStatus = mapStitchMandateStatus(rawStatus);
     if (newStatus && newStatus !== mandate.status) {
       const patch: Record<string, unknown> = { status: newStatus };
       if (newStatus === "active") patch.authorised_at = new Date().toISOString();
       if (newStatus === "cancelled") patch.cancelled_at = new Date().toISOString();
       await admin.from("stitch_mandates").update(patch).eq("id", mandate.id);
+      if (newStatus === "active") {
+        const { error: recErr } = await admin.rpc("record_mandate_initial_payment", { _mandate_id: mandate.id });
+        if (recErr) console.error("initial payment record failed", mandate.id, recErr.message);
+      }
     }
 
     return json({ ok: true, status: newStatus || mandate.status, raw: rawStatus });

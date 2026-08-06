@@ -4,6 +4,7 @@ import {
   getStitchSignature,
   verifyStitchSignature,
 } from "../_shared/stitch-signature.ts";
+import { Webhook } from "npm:svix@1.42.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -91,14 +92,26 @@ Deno.serve(async (req) => {
     const { data: secrets } = await admin.from("club_secrets")
       .select("payment_gateway_credentials").eq("club_id", mandate.club_id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
-    const signingSecret = creds.webhook_secret || creds.client_secret || "";
-    if (signingSecret && signature) {
+    const signingSecret = (creds.webhook_secret || Deno.env.get("STITCH_WEBHOOK_SIGNING_SECRET") || creds.client_secret || "").trim();
+    const svixId = req.headers.get("svix-id") || "";
+    const svixTs = req.headers.get("svix-timestamp") || "";
+    const svixSig = req.headers.get("svix-signature") || "";
+    if (signingSecret && svixId && svixTs && svixSig) {
+      try {
+        new Webhook(signingSecret).verify(rawBody, {
+          "svix-id": svixId, "svix-timestamp": svixTs, "svix-signature": svixSig,
+        });
+      } catch (err) {
+        console.error("stitch-mandate-webhook: Svix verify failed", (err as Error).message);
+        return json({ error: "invalid signature" }, 401);
+      }
+    } else if (signingSecret && signature) {
       const valid = await verifyStitchSignature(rawBody, signature, signingSecret);
       if (!valid) {
         console.error("stitch-mandate-webhook: invalid signature for mandate", stitchId);
         return json({ error: "invalid signature" }, 401);
       }
-    } else if (signature) {
+    } else if (signature || svixSig) {
       console.warn("stitch-mandate-webhook: signature present but no signing secret for club", mandate.club_id);
     }
 

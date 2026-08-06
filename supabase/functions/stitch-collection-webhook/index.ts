@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     const { data: secrets } = await admin.from("club_secrets")
       .select("payment_gateway_credentials").eq("club_id", col.club_id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
-    const signingSecret = (creds.webhook_secret || creds.client_secret || "").trim();
+    const signingSecret = (creds.webhook_secret || Deno.env.get("STITCH_COLLECTION_WEBHOOK_SIGNING_SECRET") || creds.client_secret || "").trim();
 
     if (signingSecret && svixId && svixTs && svixSig) {
       try {

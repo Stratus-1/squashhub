@@ -118,16 +118,18 @@ Deno.serve(async (req) => {
       const monthEnd = new Date(Date.UTC(dueRaw.getUTCFullYear(), dueRaw.getUTCMonth() + 1, 0))
         .toISOString().slice(0, 10);
 
-      // One instalment per mandate per calendar month.
+      // One instalment per MEMBER per calendar month (regardless of which
+      // mandate queued it) so duplicate mandates can never double-bill.
       const { data: already } = await admin
         .from("stitch_collections")
         .select("id")
-        .eq("mandate_id", mandate.id)
+        .eq("club_member_id", mandate.club_member_id)
         .gte("due_date", monthStart)
         .lte("due_date", monthEnd)
         .not("status", "in", "(failed,skipped)")
         .limit(1);
       if (already && already.length) continue;
+
 
       // Amount still owing across eligible fees, minus anything already
       // queued/submitted/paid against them (partial instalments).

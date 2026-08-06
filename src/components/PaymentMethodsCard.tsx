@@ -477,11 +477,15 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-md border bg-amber-500/10 p-2 text-[11px] leading-snug">
-              <p className="font-medium text-amber-900">R20 authorisation charge</p>
+              <p className="font-medium text-amber-900">
+                First month ({money(Number(amount) || 0)}) is charged when you activate
+              </p>
               <p className="mt-0.5 text-amber-800">
-                Stitch will make a once-off R20 authorisation charge on your card now to verify it
-                and confirm consent. This is <strong>not</strong> your monthly fee.
-                Your first regular monthly card charge will run on the day you choose below.
+                When you approve the card authorisation, your <strong>first monthly instalment
+                of {money(Number(amount) || 0)}</strong> is charged straight away — nothing extra,
+                no separate verification fee. It is credited to your club account immediately and
+                settles your oldest outstanding fees. Thereafter the same amount is charged
+                automatically on your chosen day each month.
               </p>
             </div>
 

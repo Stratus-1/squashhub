@@ -386,21 +386,28 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   </p>
 
                   {m.status === "pending" && (
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {m.auth_url && (
-                        <a href={normalizeAuthUrl(m.auth_url)} className="text-[11px] text-primary underline">
-                          Complete authorisation →
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => refreshMandate(m.id)}
-                        className="text-[11px] text-muted-foreground underline"
-                      >
-                        Check status
-                      </button>
+                    <div className="mt-1 space-y-1">
+                      <p className="text-[11px] text-amber-700 leading-snug">
+                        Waiting for you to finish the authorisation at Stitch (including the once-off R20 card check).
+                        Don't start a new setup — reopen this one.
+                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {m.auth_url && (
+                          <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => resumeSetup(m)}>
+                            Finish authorisation
+                          </Button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => refreshMandate(m.id)}
+                          className="text-[11px] text-muted-foreground underline"
+                        >
+                          Check status
+                        </button>
+                      </div>
                     </div>
                   )}
+
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => cancelMandate(m.id)} className="h-7 px-2">
                   <X className="w-3.5 h-3.5" />

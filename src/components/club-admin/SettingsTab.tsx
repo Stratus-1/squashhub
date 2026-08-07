@@ -219,6 +219,14 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold">Member Numbering</h3>
             <p className="text-sm text-muted-foreground">Configure how member numbers are generated (e.g. WRT-0001).</p>
+            <EditLock
+              editing={numberingLock.editing}
+              onEdit={numberingLock.edit}
+              onCancel={numberingLock.cancel}
+              onSave={() => handleSave(numberingLock.done)}
+              saving={updateClub.isPending || updateSecrets.isPending}
+              title="member numbering"
+            >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -274,10 +282,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 onCheckedChange={(v) => setForm(p => ({ ...p, auto_number_existing_onboarding: v }))}
               />
             </div>
+            </EditLock>
           </Card>
-          <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
-            {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
-          </Button>
         </TabsContent>
 
         <TabsContent value="email" className="space-y-4 mt-4">
@@ -312,6 +318,14 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 Credentials are stored encrypted in our secrets vault and only used to send emails on your club's behalf. Use the <strong>Send Test Email</strong> button below to verify your settings.
               </p>
             </div>
+            <EditLock
+              editing={emailLock.editing}
+              onEdit={emailLock.edit}
+              onCancel={emailLock.cancel}
+              onSave={() => handleSave(emailLock.done)}
+              saving={updateClub.isPending || updateSecrets.isPending}
+              title="email settings"
+            >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label>Sender Name</Label>
@@ -360,13 +374,11 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 {sendingTest ? "Sending..." : "Send Test Email"}
               </Button>
             </div>
+            </EditLock>
             <p className="text-xs text-muted-foreground">
               Sends a test email to verify your SMTP settings work.
             </p>
           </Card>
-          <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
-            {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
-          </Button>
         </TabsContent>
 
         <TabsContent value="signature" className="space-y-4 mt-4">
@@ -384,6 +396,14 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 {form.email_signature_html && <Button variant="ghost" size="sm" onClick={copySignature}>Copy HTML</Button>}
               </div>
             </div>
+            <EditLock
+              editing={signatureLock.editing}
+              onEdit={signatureLock.edit}
+              onCancel={signatureLock.cancel}
+              onSave={() => handleSave(signatureLock.done)}
+              saving={updateClub.isPending || updateSecrets.isPending}
+              title="email signature"
+            >
             <div className="space-y-1">
               <Label>Disclaimer</Label>
               <textarea
@@ -407,10 +427,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 Click <strong>Generate / Refresh</strong> to build a signature from your club info. Make sure your Club Info tab has the logo, contact person, phone, email, and address filled in first.
               </p>
             )}
+            </EditLock>
           </Card>
-          <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
-            {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
-          </Button>
         </TabsContent>
       </Tabs>
     </div>

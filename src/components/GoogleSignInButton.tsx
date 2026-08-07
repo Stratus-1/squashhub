@@ -25,7 +25,7 @@ interface Props {
  *  - Authorized redirect URI: https://bzbuppwzljadulwntjys.supabase.co/auth/v1/callback
  *  - Client ID + Secret pasted into Cloud → Auth Settings → Google provider.
  */
-export function GoogleSignInButton({ label = "Continue with Google", className, preserveClub = true }: Props) {
+export function GoogleSignInButton({ label = "Continue with Google", className, preserveClub = true, showHint = true }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {

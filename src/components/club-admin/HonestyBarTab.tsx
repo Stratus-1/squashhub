@@ -151,20 +151,18 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         </div>
       </Card>
 
-      <Tabs defaultValue="items" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-10">
-          <TabsTrigger value="items" className="text-xs sm:text-sm">Items</TabsTrigger>
-          <TabsTrigger value="stock-purchases" className="text-xs sm:text-sm">Stock Purchases</TabsTrigger>
-          <TabsTrigger value="member-sales" className="text-xs sm:text-sm">Member Sales</TabsTrigger>
-          <TabsTrigger value="card-sales" className="text-xs sm:text-sm">Card Sales</TabsTrigger>
-        </TabsList>
+      <SetupSteps steps={barSteps} value={step} onChange={setStep} />
 
-        <TabsContent value="items" className="mt-4 space-y-4">
+      {step === "items" && (
+        <div className="space-y-4">
           <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="stock-purchases" className="mt-4 space-y-4">
+      {step === "stock-purchases" && (
+        <div className="space-y-4">
           <PurchaseInvoice clubId={clubId} items={items} />
+
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold">Recent Stock Purchases</h3>
             <p className="text-sm text-muted-foreground">Recorded supplier invoices and stock restocking.</p>

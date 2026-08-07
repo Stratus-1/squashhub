@@ -263,8 +263,11 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               </p>
             </Card>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
+
+      <SetupStepNav steps={barSteps} value={step} onChange={setStep} />
+
     </div>
   );
 }

@@ -179,6 +179,17 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     teamNames: Record<number, string>;
     reservesName: string;
   }>(null);
+  const [step, setStep] = useState("affiliations");
+  const { data: clubFillDefault } = useQuery({
+    queryKey: ["club-fill-settings", clubId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clubs").select("fill_top_down_enabled, league_week_start_dow, fill_up_leagues_enabled").eq("id", clubId).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clubId,
+  });
+  const clubDefaultFillUp = clubFillDefault?.fill_up_leagues_enabled ?? true;
   const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
   const [reservesGroup, setReservesGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
   const qc = useQueryClient();
@@ -313,9 +324,17 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       return numA - numB;
     });
 
+  const steps: SetupStep[] = [
+    { id: "affiliations", label: "League affiliations", description: "Step one — link your club to its regional league(s) or add your own internal league, and set how each one behaves.", complete: associations.length > 0 },
+    { id: "create", label: "Create leagues", description: "Step two — create the league teams (Men's, Ladies, Mixed) inside each affiliation and allocate your players.", complete: leagues.length > 0 },
+  ];
+
   return (
     <div className="space-y-6 mt-4">
+      <SetupSteps steps={steps} value={step} onChange={setStep} />
+
       {/* Associations */}
+      {step === "affiliations" && (
       <div>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div>
@@ -348,6 +367,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 )}
               </div>
               <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
+                <AssocFillUpToggle assoc={a} clubDefault={clubDefaultFillUp} />
                 {a.scope === "internal" && (
                   <Button asChild size="sm" variant="outline">
                     <Link to={`/league-games?tab=rounds&assoc=${a.id}`}>
@@ -374,8 +394,10 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         </div>
         <FillTopDownSettings clubId={clubId} />
       </div>
+      )}
 
       {/* Leagues in two columns with inline players */}
+      {step === "create" && (
       <div>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div className="flex items-center gap-1.5">
@@ -475,6 +497,9 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           </div>
         )}
       </div>
+      )}
+
+      <SetupStepNav steps={steps} value={step} onChange={setStep} />
 
       {/* Allocate Players Dialog (per association+gender group) */}
       {allocateGroup && (

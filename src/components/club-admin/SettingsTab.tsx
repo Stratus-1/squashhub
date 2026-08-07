@@ -193,10 +193,11 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
   };
 
   const steps: SetupStep[] = [
-    { id: "arrears", label: "Arrears rules", description: "Decide when a member in arrears gets suspended, and see who is currently suspended.", complete: true },
     { id: "numbering", label: "Member numbering", description: "Set the prefix, length and starting number used to generate club member numbers.", complete: !!club.member_number_prefix },
     { id: "email", label: "Email sending", description: "Connect the club's own mail server so notifications come from your address, not the platform default.", complete: !!secrets?.smtp_host && !!secrets?.sender_email },
     { id: "signature", label: "Signature", description: "Build the signature and disclaimer that get appended to every club email.", complete: !!(club as any).email_signature_html },
+    { id: "arrears", label: "Arrears rules", description: "Decide when a member in arrears gets suspended, and see who is currently suspended.", complete: true },
+
   ];
 
   return (

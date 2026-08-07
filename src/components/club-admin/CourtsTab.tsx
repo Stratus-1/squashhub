@@ -326,15 +326,25 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             {updateClub.isPending ? "Saving..." : "Save Light Settings"}
           </Button>
         </Card>
+
+        {lightsEnabled && (
+          <CourtsSection clubId={clubId} mode="relays" relayDeviceType={lightsForm.relay_device_type} />
+        )}
       </div>
+      )}
 
-      <ExternalTournamentCourtsSection clubId={clubId} />
+      {step === "venues" && (
+        <div className="space-y-4">
+          <ExternalTournamentCourtsSection clubId={clubId} />
+          <ExternalBookingSection club={club} clubId={clubId} />
+        </div>
+      )}
 
-      <ExternalBookingSection club={club} clubId={clubId} />
-
+      {step === "rules" && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Booking Rules */}
         <Card className="p-4 space-y-4">
+
           <div>
             <h3 className="font-semibold text-sm">Booking Rules</h3>
             <p className="text-xs text-muted-foreground">Control slot length, peak hours, and how many courts each member can book per day.</p>

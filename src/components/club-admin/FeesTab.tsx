@@ -56,6 +56,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [tenantName, setTenantName] = useState<string>("");
+  const [step, setStep] = useState("receivable");
+
 
   // Fetch tenant (association) name to auto-fill league_affiliation fees
   useMemo(() => {

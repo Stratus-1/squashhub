@@ -217,9 +217,17 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     toast.success(`Resynced: ${updated} updated, ${created} created, ${skippedPaid} skipped (already paid)`);
   };
 
-  return (
-    <div className="space-y-6 mt-4">
+  const steps: SetupStep[] = [
+    { id: "receivable", label: "Fees payable to the club", description: "Fees your club charges members — membership, league and national body levies.", complete: fees.length > 0 },
+    { id: "payable", label: "Fees payable by the club", description: "What the club owes onward to associations and national bodies.", complete: true },
+  ];
 
+  return (
+    <div className="space-y-4 mt-4">
+      <SetupSteps steps={steps} value={step} onChange={setStep} />
+
+      {step === "receivable" && (
+      <>
       {/* Fees Receivable Schedule */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -231,6 +239,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
             <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
           </div>
         </div>
+
 
 
         <Card className="overflow-hidden">

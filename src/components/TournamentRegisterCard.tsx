@@ -9,7 +9,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Loader2, CreditCard, Check, Landmark, Copy } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Trophy, Loader2, CreditCard, Check, Landmark, Copy, Search } from "lucide-react";
 import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import {

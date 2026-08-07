@@ -29,6 +29,7 @@ import AssociationPenaltiesTab from "@/components/super-admin/league/Association
 import { Settings2, Send } from "lucide-react";
 import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog";
 import { ExportTeamsToNsaDialog } from "@/components/club-admin/ExportTeamsToNsaDialog";
+import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -59,10 +60,11 @@ function FillTopDownSettings({ clubId }: { clubId: string }) {
       {/* Show / hide the Fill Up Leagues tab entirely for this club's captains */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
-          <div className="text-sm font-medium">Show "Fill Up Leagues" tab in League Games</div>
+          <div className="text-sm font-medium">Club default: show "Fill Up Leagues" tab in League Games</div>
           <p className="text-xs text-muted-foreground mt-1">
             When on, your captains see the weekly Fill Up Leagues drag-and-drop board in League Games.
             Turn off if your club doesn't do weekly team planning (e.g. NIL / Lowveld style) — captains then place players directly on the scorecard instead.
+            Each league affiliation can override this with its own toggle below.
           </p>
         </div>
         <Switch
@@ -105,6 +107,36 @@ function FillTopDownSettings({ clubId }: { clubId: string }) {
         </div>
       )}
     </Card>
+  );
+}
+
+function AssocFillUpToggle({ assoc, clubDefault }: { assoc: any; clubDefault: boolean }) {
+  const qc = useQueryClient();
+  const value = assoc.fill_up_leagues_enabled ?? clubDefault;
+  const isOverride = assoc.fill_up_leagues_enabled !== null && assoc.fill_up_leagues_enabled !== undefined;
+
+  const set = async (v: boolean | null) => {
+    const { error } = await fromExt("league_associations").update({ fill_up_leagues_enabled: v }).eq("id", assoc.id);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["league-associations"] });
+    qc.invalidateQueries({ queryKey: ["league-associations-linked"] });
+    qc.invalidateQueries({ queryKey: ["league-associations-with-week"] });
+    toast.success("Saved");
+  };
+
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-1.5">
+      <div className="text-[11px] leading-tight">
+        <div className="font-medium">Fill Up Leagues board</div>
+        <div className="text-muted-foreground">
+          {isOverride ? (value ? "On for this league" : "Off for this league") : `Following club default (${clubDefault ? "on" : "off"})`}
+        </div>
+      </div>
+      <Switch checked={value} onCheckedChange={(v) => set(v)} />
+      {isOverride && (
+        <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]" onClick={() => set(null)}>Use default</Button>
+      )}
+    </div>
   );
 }
 

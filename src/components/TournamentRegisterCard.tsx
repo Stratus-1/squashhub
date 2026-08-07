@@ -35,6 +35,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const { format: fmtMoney } = useClubCurrency();
   const money = (n: number) => fmtMoney(n, 2);
   const [partnerId, setPartnerId] = useState<string>("");
+  const [partnerOpen, setPartnerOpen] = useState(false);
   const [showEft, setShowEft] = useState(false);
 
   const { data: bankDetails } = useQuery({

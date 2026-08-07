@@ -379,9 +379,12 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
               Sends a test email to verify your SMTP settings work.
             </p>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="signature" className="space-y-4 mt-4">
+      {step === "signature" && (
+        <div className="space-y-4">
+
           {/* Email Signature Generator */}
           <Card className="p-6 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">

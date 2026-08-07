@@ -512,25 +512,32 @@ export function MemberOnboardingWizard({
   }, [step, clubId, memberNumber, user?.id, isExistingMember]);
 
   const selectedCategory = feeCategories.find(c => c.id === feeCategoryId);
-  const dueMonth = (club as any)?.member_fee_due_month || 1;
+  // Renewal date comes from the fee category itself (falls back to the club default).
+  const dueMonth = (selectedCategory as any)?.due_month || (club as any)?.member_fee_due_month || 1;
+  const dueDay = (selectedCategory as any)?.due_day || 1;
 
   // Calculate fees
   const feeBreakdown = useMemo(() => {
-    const items: { label: string; amount: number; type: string }[] = [];
-    
+    const items: { label: string; amount: number; type: string; seasonYear?: number }[] = [];
+
     if (selectedCategory) {
       // Only pro-rate when the category explicitly opts in (club setting).
       // Default is true if the column is missing to preserve prior behaviour.
       const catProRate = (selectedCategory as any).pro_rate ?? true;
-      const amount = catProRate
-        ? proRateFee(selectedCategory.annual_fee, dueMonth)
-        : selectedCategory.annual_fee;
+      const calc = computeJoinFee(selectedCategory.annual_fee, dueMonth, dueDay, catProRate);
+      const suffix = calc.fullFee
+        ? (catProRate && calc.seasonYear > new Date().getFullYear() + (dueMonth >= new Date().getMonth() + 1 ? 0 : 1)
+            ? " — Full year (covers next season)"
+            : "")
+        : ` — Pro-rated ${calc.monthsCharged} month${calc.monthsCharged === 1 ? "" : "s"}`;
       items.push({
-        label: `Club Membership (${selectedCategory.name})${catProRate && amount < selectedCategory.annual_fee ? " — Pro-rated" : ""}`,
-        amount,
+        label: `Club Membership (${selectedCategory.name})${suffix}`,
+        amount: calc.amount,
         type: "club",
+        seasonYear: calc.seasonYear,
       });
     }
+
 
     // Registration fees (once-off for NEW members only).
     // Pre-existing members (admin-created, CSV-imported, founders) are NOT

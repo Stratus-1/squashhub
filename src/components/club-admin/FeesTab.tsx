@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { FeesPayableSchedule } from "./FeesPayableSchedule";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";

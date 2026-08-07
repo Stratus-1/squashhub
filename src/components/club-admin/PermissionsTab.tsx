@@ -22,13 +22,24 @@ import {
 } from "@/hooks/use-club-permissions";
 
 export function PermissionsTab({ clubId }: { clubId: string }) {
+  const [step, setStep] = useState("roles");
+  const { data: roles = [] } = usePermissionRoles(clubId);
+
+  const steps: SetupStep[] = [
+    { id: "roles", label: "Permission roles", description: "Create reusable roles like Treasurer or Committee, each with a preset list of what they may access.", complete: roles.length > 0 },
+    { id: "members", label: "Member permissions", description: "Assign a role — or individual permissions — to each member who helps run the club.", complete: roles.length > 0 },
+  ];
+
   return (
-    <div className="space-y-6 mt-4">
-      <RolesSection clubId={clubId} />
-      <MemberPermissionsSection clubId={clubId} />
+    <div className="space-y-4 mt-4">
+      <SetupSteps steps={steps} value={step} onChange={setStep} />
+      {step === "roles" && <RolesSection clubId={clubId} />}
+      {step === "members" && <MemberPermissionsSection clubId={clubId} />}
+      <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>
   );
 }
+
 
 /* ─── Roles Section ─── */
 

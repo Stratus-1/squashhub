@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
+import { EditLock, useEditLock } from "./setup/EditLock";
 
 const RELAY_DEVICES = [
   { value: "shelly", label: "Shelly", description: "Shelly Cloud smart relays — fully supported" },
@@ -124,7 +125,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     });
   }, [club.id, club.booking_slot_minutes, (club as any).booking_open_time, (club as any).booking_last_slot_time, club.peak_weekday_start, club.peak_weekday_end, club.peak_weekend_start, club.peak_weekend_end, club.max_peak_bookings_per_day, (club as any).max_bookings_per_day, (club as any).max_member_events_per_month]);
 
-  const handleSaveRules = async () => {
+  const handleSaveRules = async (onDone?: () => void) => {
     if (rulesForm.booking_last_slot_time <= rulesForm.booking_open_time) {
       toast.error("Last booking time must be after the opening time");
       return;
@@ -144,6 +145,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
         max_member_events_per_month: rulesForm.max_member_events_per_month,
       } as any);
       toast.success("Booking rules saved");
+      onDone?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }
@@ -177,7 +179,34 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   }, [secrets]);
 
-  const handleSaveLights = async () => {
+  const resetRules = () => {
+    setRulesForm({
+      booking_slot_minutes: club.booking_slot_minutes ?? 30,
+      booking_open_time: ((club as any).booking_open_time ?? "05:00:00").slice(0, 5),
+      booking_last_slot_time: ((club as any).booking_last_slot_time ?? "22:00:00").slice(0, 5),
+      peak_weekday_start: (club.peak_weekday_start ?? "16:00:00").slice(0, 5),
+      peak_weekday_end: (club.peak_weekday_end ?? "19:00:00").slice(0, 5),
+      peak_weekend_start: (club.peak_weekend_start ?? "08:00:00").slice(0, 5),
+      peak_weekend_end: (club.peak_weekend_end ?? "12:00:00").slice(0, 5),
+      max_peak_bookings_per_day: club.max_peak_bookings_per_day ?? 1,
+      max_bookings_per_day: (club as any).max_bookings_per_day ?? 4,
+      max_member_events_per_month: (club as any).max_member_events_per_month ?? 2,
+    });
+  };
+  const resetLights = () => {
+    setLightsForm({
+      lights_integration_enabled: club.lights_integration_enabled ?? false,
+      light_fee_per_hour: club.light_fee_per_hour ?? 0,
+      shelly_auth_key: secrets?.shelly_auth_key || "",
+      relay_device_type: ((secrets as any)?.relay_device_type || "shelly") as RelayDevice,
+      min_booking_balance: ((club as any).min_booking_balance ?? null) as number | null,
+    });
+  };
+  const rulesLock = useEditLock(resetRules);
+  const lightsLock = useEditLock(resetLights);
+  const balanceLock = useEditLock(resetLights);
+
+  const handleSaveLights = async (onDone?: () => void) => {
     try {
       await updateClub.mutateAsync({
         id: club.id,
@@ -193,6 +222,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
         } as any);
       }
       toast.success("Court light settings saved");
+      onDone?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }
@@ -225,6 +255,14 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
 
         {/* Court Lights */}
         <Card className="p-4 space-y-3">
+        <EditLock
+          editing={lightsLock.editing}
+          onEdit={lightsLock.edit}
+          onCancel={lightsLock.cancel}
+          onSave={() => handleSaveLights(lightsLock.done)}
+          saving={updateClub.isPending || updateSecrets.isPending}
+          title="light settings"
+        >
 
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -324,9 +362,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             </>
           )}
 
-          <Button size="sm" onClick={handleSaveLights} disabled={updateClub.isPending}>
-            {updateClub.isPending ? "Saving..." : "Save Light Settings"}
-          </Button>
+        </EditLock>
         </Card>
 
         {lightsEnabled && (
@@ -346,6 +382,14 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Booking Rules */}
         <Card className="p-4 space-y-4">
+        <EditLock
+          editing={rulesLock.editing}
+          onEdit={rulesLock.edit}
+          onCancel={rulesLock.cancel}
+          onSave={() => handleSaveRules(rulesLock.done)}
+          saving={updateClub.isPending}
+          title="booking rules"
+        >
 
           <div>
             <h3 className="font-semibold text-sm">Booking Rules</h3>
@@ -488,13 +532,27 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             <p className="text-[10px] text-muted-foreground">Set to 0 to block members from creating events (admins are always exempt).</p>
           </div>
 
-          <Button size="sm" onClick={handleSaveRules} disabled={updateClub.isPending}>
-            {updateClub.isPending ? "Saving..." : "Save Booking Rules"}
-          </Button>
+        </EditLock>
         </Card>
 
         {/* Minimum booking balance — independent of lights */}
         <Card className="p-4 space-y-3">
+        <EditLock
+          editing={balanceLock.editing}
+          onEdit={balanceLock.edit}
+          onCancel={balanceLock.cancel}
+          onSave={async () => {
+            try {
+              await updateClub.mutateAsync({ id: club.id, min_booking_balance: lightsForm.min_booking_balance } as any);
+              toast.success("Minimum balance saved");
+              balanceLock.done();
+            } catch (err: any) {
+              toast.error(err.message || "Failed to save");
+            }
+          }}
+          saving={updateClub.isPending}
+          title="minimum balance"
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="font-semibold text-sm">Minimum balance required to book a court</h3>
@@ -532,39 +590,9 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
                 balance as debt (plus this buffer). If short, they're prompted to top up before the booking
                 is confirmed.
               </p>
-              <Button
-                size="sm"
-                onClick={async () => {
-                  try {
-                    await updateClub.mutateAsync({ id: club.id, min_booking_balance: lightsForm.min_booking_balance } as any);
-                    toast.success("Minimum balance saved");
-                  } catch (err: any) {
-                    toast.error(err.message || "Failed to save");
-                  }
-                }}
-                disabled={updateClub.isPending}
-              >
-                Save Minimum Balance
-              </Button>
             </>
           )}
-          {lightsForm.min_booking_balance === null && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={async () => {
-                try {
-                  await updateClub.mutateAsync({ id: club.id, min_booking_balance: null } as any);
-                  toast.success("Minimum balance disabled");
-                } catch (err: any) {
-                  toast.error(err.message || "Failed to save");
-                }
-              }}
-              disabled={updateClub.isPending}
-            >
-              Save
-            </Button>
-          )}
+        </EditLock>
         </Card>
       </div>
       )}

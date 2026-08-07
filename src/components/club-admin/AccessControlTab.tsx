@@ -812,6 +812,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
 
 
         {isOther && (
+        {step === "location" && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
             <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div className="space-y-1">
@@ -823,6 +824,8 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
               </p>
             </div>
           </div>
+        )}
+
         )}
 
         {!isSimple && (

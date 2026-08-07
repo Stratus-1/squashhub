@@ -201,21 +201,34 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     }
   };
 
+  // Registers me (if needed) AND my partner in one go. Partner may be any eligible
+  // club member — they do not have to have registered themselves first.
   const choosePartner = useMutation({
     mutationFn: async () => {
-      if (!myReg) throw new Error("Register first");
       if (!partnerId) throw new Error("Pick a partner");
-      const { error } = await fromExt("club_champs_registrations")
-        .update({ partner_member_id: partnerId, partner_confirmed: true })
-        .eq("id", myReg.id);
+      const { error } = await (supabase as any).rpc("register_doubles_pair", {
+        _champ_id: champ.id,
+        _member_id: memberId,
+        _partner_member_id: partnerId,
+      });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Partner allocated"); setPartnerId(""); refetch(); },
+    onSuccess: async (_d, _v) => {
+      toast.success(
+        paymentRequired
+          ? "You and your partner are entered — each of you still needs to pay the entry fee."
+          : "You and your partner are entered!",
+      );
+      setPartnerId("");
+      setPartnerOpen(false);
+      await refetch();
+      qc.invalidateQueries({ queryKey: ["champ-registered-others", champ.id, memberId] });
+      qc.invalidateQueries({ queryKey: ["tournament-registrations", champ.id] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Registered players in this champ (excluding cancelled). Partners may only be picked
-  // from members who have already registered and are not already paired with someone else.
+  // Existing registrations, used to hide members who are already paired up.
   const { data: registeredOthers = [] } = useQuery({
     queryKey: ["champ-registered-others", champ.id, memberId],
     queryFn: async () => {
@@ -226,7 +239,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!champ?.id && !!myReg && champ?.match_type === "doubles" && champ?.partner_mode === "players",
+    enabled: !!champ?.id && champ?.match_type === "doubles" && champ?.partner_mode === "players",
   });
 
   const eligiblePartners = (() => {
@@ -238,12 +251,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         takenIds.add(r.partner_member_id);
       }
     });
-    const registeredIds = new Set(
-      registeredOthers
-        .filter((r: any) => r.club_member_id !== memberId && !takenIds.has(r.club_member_id))
-        .map((r: any) => r.club_member_id)
-    );
-    let list = members.filter((m: any) => m.id !== memberId && registeredIds.has(m.id));
+    let list = members.filter((m: any) => m.id !== memberId && !takenIds.has(m.id));
     if (g === "men") list = list.filter((m: any) => m.gender && ["men", "male", "m"].includes(m.gender.toLowerCase()));
     else if (g === "ladies") list = list.filter((m: any) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()));
     return list;

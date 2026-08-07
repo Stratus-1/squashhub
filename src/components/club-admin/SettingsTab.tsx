@@ -281,9 +281,12 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
             </div>
             </EditLock>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="email" className="space-y-4 mt-4">
+      {step === "email" && (
+        <div className="space-y-4">
+
           {/* Email Sender Settings */}
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold">Email Notifications</h3>

@@ -55,7 +55,7 @@ export function SetupSteps({
               >
                 {s.complete ? <Check className="w-2.5 h-2.5" /> : i + 1}
               </span>
-              {i + 1}. {s.label}
+              {s.label}
             </button>
           );
         })}

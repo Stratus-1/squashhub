@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ShieldAlert, Hash, Mail, PenLine } from "lucide-react";
 import { SuspensionRulesPanel } from "./SuspensionRulesPanel";
+import { EditLock, useEditLock } from "./setup/EditLock";
 import { SuspendedMembersPanel } from "./SuspendedMembersPanel";
 
 
@@ -58,13 +59,35 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   }, [secrets]);
 
+  const resetForm = () => {
+    setForm({
+      member_number_prefix: club.member_number_prefix || "",
+      member_number_length: club.member_number_length ?? 4,
+      member_number_start: club.member_number_start ?? 1,
+      auto_number_existing_onboarding: (club as any).auto_number_existing_onboarding ?? false,
+      challenge_levels_up: club.challenge_levels_up ?? 2,
+      sender_email: secrets?.sender_email || "",
+      sender_name: secrets?.sender_name || "",
+      smtp_host: secrets?.smtp_host || "",
+      smtp_port: (secrets?.smtp_port ?? "") as string | number,
+      smtp_user: secrets?.smtp_user || "",
+      smtp_pass: secrets?.smtp_pass || "",
+      email_signature_html: (club as any).email_signature_html || "",
+      email_disclaimer: (club as any).email_disclaimer || "This email and any attachments are confidential and intended solely for the addressee. If you are not the intended recipient, please notify the sender and delete this email.",
+    });
+  };
+
+  const numberingLock = useEditLock(resetForm);
+  const emailLock = useEditLock(resetForm);
+  const signatureLock = useEditLock(resetForm);
+
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }));
 
   const setNumber = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: parseInt(e.target.value) || 0 }));
 
-  const handleSave = async () => {
+  const handleSave = async (onDone?: () => void) => {
     try {
       // Save non-sensitive settings to clubs table
       await updateClub.mutateAsync({
@@ -90,6 +113,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
       } as any);
 
       toast.success("Settings saved");
+      onDone?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }

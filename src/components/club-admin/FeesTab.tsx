@@ -320,16 +320,6 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
         </Card>
       </div>
 
-      {/* Fees Payable Schedule */}
-      <FeesPayableSchedule clubId={clubId} />
-
-      {editFee && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
-      )}
-      {addOpen && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
-      )}
-
       <Card className="p-4 bg-muted/50 space-y-3">
         <div className="flex items-center gap-3">
           <Label className="whitespace-nowrap">Reminder days before due date:</Label>
@@ -339,7 +329,23 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
           <strong>Pro-rate:</strong> When enabled, self-registering members are charged a proportional fee based on months remaining.
         </p>
       </Card>
+      </>
+      )}
+
+      {step === "payable" && (
+        <FeesPayableSchedule clubId={clubId} />
+      )}
+
+      {editFee && (
+        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
+      )}
+      {addOpen && (
+        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
+      )}
+
+      <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>
+
   );
 }
 

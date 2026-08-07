@@ -16,6 +16,7 @@ import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees
 import { useClubCurrency } from "@/hooks/use-currency";
 import { LeagueParticipationPicker, applyLeagueSelections, LeagueSelection } from "@/components/LeagueParticipationPicker";
 import { fromExt } from "@/lib/supabase-ext";
+import { computeJoinFee } from "@/lib/fee-proration";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -83,19 +84,8 @@ function generateMemberNumber(
   return `${prefix}${padded}`;
 }
 
-/** Calculate pro-rated fee based on months remaining */
-function proRateFee(annualFee: number, dueMonth: number): number {
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1; // 1-12
-  let monthsRemaining: number;
-  if (currentMonth <= dueMonth) {
-    monthsRemaining = dueMonth - currentMonth;
-  } else {
-    monthsRemaining = 12 - currentMonth + dueMonth;
-  }
-  if (monthsRemaining === 0) return annualFee; // Full year if at due month
-  return Math.round((annualFee / 12) * monthsRemaining * 100) / 100;
-}
+// Pro-rata rules live in src/lib/fee-proration.ts (computeJoinFee).
+
 
 export function MemberOnboardingWizard({
   open,
@@ -523,25 +513,32 @@ export function MemberOnboardingWizard({
   }, [step, clubId, memberNumber, user?.id, isExistingMember]);
 
   const selectedCategory = feeCategories.find(c => c.id === feeCategoryId);
-  const dueMonth = (club as any)?.member_fee_due_month || 1;
+  // Renewal date comes from the fee category itself (falls back to the club default).
+  const dueMonth = (selectedCategory as any)?.due_month || (club as any)?.member_fee_due_month || 1;
+  const dueDay = (selectedCategory as any)?.due_day || 1;
 
   // Calculate fees
   const feeBreakdown = useMemo(() => {
-    const items: { label: string; amount: number; type: string }[] = [];
-    
+    const items: { label: string; amount: number; type: string; seasonYear?: number }[] = [];
+
     if (selectedCategory) {
       // Only pro-rate when the category explicitly opts in (club setting).
       // Default is true if the column is missing to preserve prior behaviour.
       const catProRate = (selectedCategory as any).pro_rate ?? true;
-      const amount = catProRate
-        ? proRateFee(selectedCategory.annual_fee, dueMonth)
-        : selectedCategory.annual_fee;
+      const calc = computeJoinFee(selectedCategory.annual_fee, dueMonth, dueDay, catProRate);
+      const suffix = !catProRate
+        ? ""
+        : calc.fullFee
+          ? " — Full year (covers next season)"
+          : ` — Pro-rated ${calc.monthsCharged} month${calc.monthsCharged === 1 ? "" : "s"}`;
       items.push({
-        label: `Club Membership (${selectedCategory.name})${catProRate && amount < selectedCategory.annual_fee ? " — Pro-rated" : ""}`,
-        amount,
+        label: `Club Membership (${selectedCategory.name})${suffix}`,
+        amount: calc.amount,
         type: "club",
+        seasonYear: calc.seasonYear,
       });
     }
+
 
     // Registration fees (once-off for NEW members only).
     // Pre-existing members (admin-created, CSV-imported, founders) are NOT
@@ -592,7 +589,7 @@ export function MemberOnboardingWizard({
     }
     
     return items;
-  }, [selectedCategory, playsLeague, leagueAssocs, leagueSelections, nationalFees, dueMonth, isExistingMember]);
+  }, [selectedCategory, playsLeague, leagueAssocs, leagueSelections, nationalFees, dueMonth, dueDay, isExistingMember]);
 
   const totalFees = feeBreakdown.reduce((sum, f) => sum + f.amount, 0);
 
@@ -834,7 +831,7 @@ export function MemberOnboardingWizard({
           fee_label: fee.label,
           fee_type: fee.type,
           amount: fee.amount,
-          season_year: currentYear,
+          season_year: (fee as any).seasonYear ?? currentYear,
           paid: false,
         }));
 

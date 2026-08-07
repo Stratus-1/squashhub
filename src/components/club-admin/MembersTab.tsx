@@ -1,3 +1,4 @@
+import { computeJoinFee } from "@/lib/fee-proration";
 import { useState, useRef, useEffect } from "react";
 import { toTitleCase, formatPhoneNumber } from "@/lib/input-formatting";
 import { useClubMembers, useFeeCategories, useLeagueAssociations, useNationalBodyFees, useMyClub, ClubMember, MemberFeeCategory, SKILL_LEVELS, getSkillLabel } from "@/hooks/use-club";
@@ -54,19 +55,12 @@ interface ExpectedFee {
   existing?: FeePaymentRow;
 }
 
-/** Calculate pro-rated club fee based on months remaining until fee_due_month */
+/** Calculate the joining club fee (full fee if joining within a month of renewal) */
 function proRateClubFee(annualFee: number, joinedAt: string, feeDueMonth: number): number {
   const joined = new Date(joinedAt);
-  const now = new Date();
-  let nextDue = new Date(now.getFullYear(), feeDueMonth - 1, 1);
-  if (nextDue <= now) nextDue = new Date(now.getFullYear() + 1, feeDueMonth - 1, 1);
-  const feeYearStart = new Date(nextDue.getFullYear() - 1, feeDueMonth - 1, 1);
-  if (joined <= feeYearStart) return annualFee;
-  const monthsRemaining = (nextDue.getFullYear() - joined.getFullYear()) * 12 + (nextDue.getMonth() - joined.getMonth());
-  if (monthsRemaining >= 12) return annualFee;
-  if (monthsRemaining <= 0) return 0;
-  return Math.round((annualFee / 12) * monthsRemaining);
+  return computeJoinFee(annualFee, feeDueMonth, 1, true, joined).amount;
 }
+
 
 /** Compute expected fees for a member.
  *  Only shows fees that have been explicitly allocated (existing payment record).

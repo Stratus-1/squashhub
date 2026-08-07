@@ -147,7 +147,10 @@ const GATEWAYS: GatewayDef[] = [
 ];
 
 // ─── Component ──────────────────────────────────────────────
+import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
+
 export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
+  const [step, setStep] = useState("methods");
   const updateClub = useUpdateClub();
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
@@ -333,9 +336,16 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
 
   const isSaving = updateClub.isPending || updateSecrets.isPending;
 
+  const steps: SetupStep[] = [
+    { id: "methods", label: "Payment methods", description: "Step one — tick the ways your members are allowed to pay: cash, EFT or online card payments.", complete: acceptedMethods.size > 0 },
+    { id: "bank", label: "Bank details", description: "The account members see when they choose EFT. Nothing here is charged automatically.", complete: !!bankForm.bank_account_number },
+    { id: "gateway", label: "Online payments", description: "Connect a payment gateway so members can pay by card and set up monthly debit orders.", complete: gateway !== "none" },
+  ];
+
   return (
     <div className="space-y-4 mt-4">
-      {/* Accepted Payment Methods */}
+      <SetupSteps steps={steps} value={step} onChange={setStep} />
+      {step === "methods" && (
       <Card className="p-4 space-y-3">
         <h3 className="text-sm font-semibold">Accepted Payment Methods</h3>
         <p className="text-xs text-muted-foreground">
@@ -365,9 +375,9 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
           ))}
         </div>
       </Card>
+      )}
 
-
-      {/* Bank Details */}
+      {step === "bank" && (
       <Card className="p-4 space-y-3">
         <h3 className="text-sm font-semibold">Bank Details</h3>
         <p className="text-xs text-muted-foreground">Shown to members for EFT payments.</p>
@@ -379,8 +389,9 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
           <div className="space-y-1"><Label className="text-xs">Payment Reference</Label><Input className="h-8 text-xs" value={bankForm.bank_reference} onChange={setBank("bank_reference")} placeholder="e.g. Club name + member number" /></div>
         </div>
       </Card>
+      )}
 
-      {/* Payment Gateway */}
+      {step === "gateway" && (<>
       <Card className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -567,6 +578,8 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         defaultContactName={(club as any).contact_person_name || null}
         defaultBoardMembers={boardMemberNames}
       />
+      </>)}
+      <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>
   );
 }

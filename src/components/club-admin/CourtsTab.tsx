@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
 const RELAY_DEVICES = [
   { value: "shelly", label: "Shelly", description: "Shelly Cloud smart relays — fully supported" },
@@ -93,6 +94,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
   const { symbol: currencySymbol } = useClubCurrency();
+  const [step, setStep] = useState("courts");
 
   const [rulesForm, setRulesForm] = useState({
     booking_slot_minutes: club.booking_slot_minutes ?? 30,
@@ -202,10 +204,24 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const isUnsupported = !isSupported && !isOther;
   const lightsEnabled = lightsForm.lights_integration_enabled;
 
+  const steps: SetupStep[] = [
+    { id: "courts", label: "List courts", description: "Step one — simply name the courts your club plays on. Nothing technical here.", complete: false },
+    { id: "rules", label: "Booking rules", description: "Set slot length, opening hours, peak times and how many bookings a member may make.", complete: true },
+    { id: "lights", label: "Lights & relays", description: "Turn on smart light control, then pick each court from your list and enter its Shelly relay details.", complete: !!club.lights_integration_enabled },
+    { id: "venues", label: "Other venues", description: "External tournament venues and any outside booking system your club also uses.", complete: true },
+  ];
+
   return (
     <div className="space-y-4 mt-4">
+      <SetupSteps steps={steps} value={step} onChange={setStep} />
+
+      {step === "courts" && (
+        <CourtsSection clubId={clubId} mode="list" relayDeviceType={lightsForm.relay_device_type} />
+      )}
+
+      {step === "lights" && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} lightsEnabled={lightsEnabled} />
+
 
         {/* Court Lights */}
         <Card className="p-4 space-y-3">
@@ -312,15 +328,25 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             {updateClub.isPending ? "Saving..." : "Save Light Settings"}
           </Button>
         </Card>
+
+        {lightsEnabled && (
+          <CourtsSection clubId={clubId} mode="relays" relayDeviceType={lightsForm.relay_device_type} />
+        )}
       </div>
+      )}
 
-      <ExternalTournamentCourtsSection clubId={clubId} />
+      {step === "venues" && (
+        <div className="space-y-4">
+          <ExternalTournamentCourtsSection clubId={clubId} />
+          <ExternalBookingSection club={club} clubId={clubId} />
+        </div>
+      )}
 
-      <ExternalBookingSection club={club} clubId={clubId} />
-
+      {step === "rules" && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Booking Rules */}
         <Card className="p-4 space-y-4">
+
           <div>
             <h3 className="font-semibold text-sm">Booking Rules</h3>
             <p className="text-xs text-muted-foreground">Control slot length, peak hours, and how many courts each member can book per day.</p>
@@ -541,11 +567,16 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
           )}
         </Card>
       </div>
+      )}
+
+      <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>
   );
 }
 
-function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: string; relayDeviceType: RelayDevice; lightsEnabled: boolean }) {
+function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; relayDeviceType: RelayDevice; mode: "list" | "relays" }) {
+
+  const showRelays = mode === "relays";
   const qc = useQueryClient();
   const [newCourt, setNewCourt] = useState("");
   const [editingRelay, setEditingRelay] = useState<Record<number, string>>({});
@@ -648,12 +679,14 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="font-semibold text-sm">Courts ({courts.length})</h3>
-      {lightsEnabled && (
-        <p className="text-[11px] text-muted-foreground">
-          💡 To enable automatic court lights, add the relay device ID for each court.
-        </p>
-      )}
+      <h3 className="font-semibold text-sm">
+        {showRelays ? `Relay settings per court (${courts.length})` : `Your courts (${courts.length})`}
+      </h3>
+      <p className="text-[11px] text-muted-foreground">
+        {showRelays
+          ? "Each court from your list is shown below — enter its Shelly relay details here. Court names are managed on step 1."
+          : "Just the names of the courts members can book. Lighting and relay hardware is set up on the Lights & relays step."}
+      </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {courts.map(c => {
           const courtId = c.id;
@@ -664,11 +697,13 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
             <div key={c.id} className="rounded-lg border p-2 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">{c.name}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => requestDelete(c)}>
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+                {!showRelays && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => requestDelete(c)}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
               </div>
-              {lightsEnabled && (
+              {showRelays && (
                 <div className="grid grid-cols-[1fr_76px_auto] gap-1 items-center">
                   <Input
                     value={relayValue}
@@ -710,7 +745,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                   )}
                 </div>
               )}
-              {lightsEnabled && (
+              {showRelays && (
                 <Input
                   value={serverValue}
                   onChange={e => setEditingServer(prev => ({ ...prev, [courtId]: e.target.value }))}
@@ -725,7 +760,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                   className="h-7 text-[11px] font-mono"
                 />
               )}
-              {lightsEnabled && (
+              {showRelays && (
                 <Input
                   defaultValue={(c as any).relay_ble_mac ?? ""}
                   onBlur={async (e) => {
@@ -744,7 +779,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                   className="h-7 text-[11px] font-mono"
                 />
               )}
-              {lightsEnabled && (c as any).relay_ble_mac && (
+              {showRelays && (c as any).relay_ble_mac && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -757,7 +792,7 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
                   {testingBle[courtId] ? "Pulsing…" : "Test BLE (3s)"}
                 </Button>
               )}
-              {lightsEnabled && c.relay_device_id && editingRelay[courtId] === undefined && (
+              {showRelays && c.relay_device_id && editingRelay[courtId] === undefined && (
                 <p className="text-[10px] text-muted-foreground">✅ Relay configured</p>
               )}
 
@@ -766,10 +801,12 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
         })}
         {courts.length === 0 && !isLoading && <p className="text-xs text-muted-foreground col-span-2">No courts added yet</p>}
       </div>
+      {!showRelays && (
       <div className="flex gap-2">
         <Input value={newCourt} onChange={e => setNewCourt(e.target.value)} placeholder="e.g. Court 1" className="flex-1 h-8 text-xs" onKeyDown={e => e.key === "Enter" && handleAdd()} />
         <Button size="sm" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" />Add</Button>
       </div>
+      )}
       <DeleteConfirmDialog
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}

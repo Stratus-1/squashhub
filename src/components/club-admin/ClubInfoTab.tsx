@@ -1,7 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Club, useUpdateClub, useClubMembers, ClubMember } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,16 +12,19 @@ import { toast } from "sonner";
 import { Upload, X, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CURRENCY_OPTIONS, getCurrencyOption } from "@/lib/currency";
-
-
+import { SetupSection } from "./setup/SetupSection";
+import { SetupField } from "./setup/SetupField";
+import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
 export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
   const { data: members = [] } = useClubMembers(clubId);
   const [uploading, setUploading] = useState(false);
+  const [step, setStep] = useState("identity");
+  const [editing, setEditing] = useState<Record<string, boolean>>({});
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState({
+  const initial = () => ({
     name: club.name || "",
     address: club.address || "",
     email: club.email || "",
@@ -37,8 +39,19 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     currency_symbol: ((club as any).currency_symbol || "R") as string,
   });
 
+  const [form, setForm] = useState(initial);
+
+  useEffect(() => {
+    setForm(initial());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [club.id]);
+
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }));
+
+  const isEditing = (k: string) => !!editing[k];
+  const startEdit = (k: string) => setEditing(p => ({ ...p, [k]: true }));
+  const cancelEdit = (k: string) => { setForm(initial()); setEditing(p => ({ ...p, [k]: false })); };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -63,15 +76,17 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   };
 
-  const handleSave = async () => {
+  const save = async (sectionKey: string, fields: string[]) => {
     try {
-      const payload: any = { ...form };
-      if (!payload.chairman_member_id) payload.chairman_member_id = null;
-      if (!payload.secretary_member_id) payload.secretary_member_id = null;
-      if (!payload.club_captain_member_id) payload.club_captain_member_id = null;
-      if (!payload.logo_url) payload.logo_url = null;
-      await updateClub.mutateAsync({ id: club.id, ...payload });
-      toast.success("Club info saved");
+      const payload: any = { id: club.id };
+      fields.forEach(f => {
+        let v = (form as any)[f];
+        if (typeof v === "string" && v.trim() === "") v = null;
+        payload[f] = v;
+      });
+      await updateClub.mutateAsync(payload);
+      setEditing(p => ({ ...p, [sectionKey]: false }));
+      toast.success("Saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }
@@ -82,14 +97,17 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     const phone = m.phone || m.profiles?.phone || "";
     return phone ? `${name} (${phone})` : name;
   };
+  const memberName = (id: string) => {
+    const m = members.find(x => x.id === id);
+    return m ? getMemberLabel(m) : "";
+  };
 
   const SearchableMemberSelect = ({ label, value, field }: { label: string; value: string; field: string }) => {
     const [open, setOpen] = useState(false);
     const selected = members.find(m => m.id === value);
-
     return (
       <div className="space-y-1">
-        <Label>{label}</Label>
+        <Label className="text-xs">{label}</Label>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal">
@@ -118,103 +136,177 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
             </Command>
           </PopoverContent>
         </Popover>
-        {selected && (
-          <p className="text-xs text-muted-foreground">
-            Tel: {selected.phone || selected.profiles?.phone || "N/A"}
-          </p>
-        )}
       </div>
     );
   };
 
+  const steps: SetupStep[] = [
+    { id: "identity", label: "Identity", description: "Give the club its name and upload the logo that appears on the app, invoices and emails.", complete: !!form.name && !!form.logo_url },
+    { id: "contact", label: "Contact details", description: "Where members and visitors reach the club — address, phone, email and who to speak to.", complete: !!form.address && !!form.email && !!form.phone },
+    { id: "bearers", label: "Office bearers", description: "Link the chairman, secretary and club captain to their member records, and choose whether they show on your public page.", complete: !!form.chairman_member_id || !!form.secretary_member_id || !!form.club_captain_member_id },
+    { id: "currency", label: "Currency", description: "Pick the currency used for every fee, invoice, statement and bar sale.", complete: !!form.currency_code },
+  ];
+
   return (
-    <div className="space-y-6 mt-4">
-      {/* Logo */}
+    <div className="space-y-4 mt-4">
+      <SetupSteps steps={steps} value={step} onChange={setStep} />
 
-
-
-      <Card className="p-6 space-y-4">
-        <h3 className="font-semibold">Club Logo</h3>
-        <div className="flex items-center gap-4">
-          {form.logo_url ? (
-            <div className="relative">
-              <img src={form.logo_url} alt="Club logo" className="w-20 h-20 object-contain rounded-md border" />
-              <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-destructive-foreground rounded-full" onClick={() => setForm(p => ({ ...p, logo_url: "" }))}>
-                <X className="w-3 h-3" />
-              </Button>
+      {step === "identity" && (
+        <SetupSection
+          title="Club name & logo"
+          description="This is how the club is identified everywhere in the app."
+          complete={!!form.name && !!form.logo_url}
+          editing={isEditing("identity")}
+          onEdit={() => startEdit("identity")}
+          onCancel={() => cancelEdit("identity")}
+          onSave={() => save("identity", ["name", "logo_url"])}
+          saving={updateClub.isPending}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            <SetupField label="Club Name" editing={isEditing("identity")} value={form.name}>
+              <Input value={form.name} onChange={set("name")} />
+            </SetupField>
+            <div className="space-y-1">
+              <Label className="text-xs">Club Logo</Label>
+              <div className="flex items-center gap-4">
+                {form.logo_url ? (
+                  <div className="relative">
+                    <img src={form.logo_url} alt="Club logo" className="w-20 h-20 object-contain rounded-md border" />
+                    {isEditing("identity") && (
+                      <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-destructive-foreground rounded-full" onClick={() => setForm(p => ({ ...p, logo_url: "" }))}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-md border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-muted-foreground/50" />
+                  </div>
+                )}
+                {isEditing("identity") && (
+                  <div>
+                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                    <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                      <Upload className="w-4 h-4 mr-1" />{uploading ? "Uploading..." : "Upload Logo"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">Max 2MB, JPG/PNG</p>
+                  </div>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="w-20 h-20 rounded-md border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-              <Upload className="w-6 h-6 text-muted-foreground/50" />
-            </div>
-          )}
-          <div>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-              <Upload className="w-4 h-4 mr-1" />{uploading ? "Uploading..." : "Upload Logo"}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-1">Max 2MB, JPG/PNG</p>
           </div>
-        </div>
-      </Card>
+        </SetupSection>
+      )}
 
-      {/* Club Information */}
-      <Card className="p-6 space-y-4">
-        <h3 className="font-semibold">Club Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1"><Label>Club Name</Label><Input value={form.name} onChange={set("name")} /></div>
-          <div className="space-y-1"><Label>Address</Label><Input value={form.address} onChange={set("address")} /></div>
-          <div className="space-y-1"><Label>Email</Label><Input type="email" value={form.email} onChange={set("email")} /></div>
-          <div className="space-y-1"><Label>Contact Person Name</Label><Input value={form.contact_person_name} onChange={set("contact_person_name")} placeholder="e.g. John Smith" /></div>
-          <div className="space-y-1"><Label>Phone</Label><Input type="tel" value={form.phone} onChange={set("phone")} /></div>
-          <div className="space-y-1">
-            <Label>Currency</Label>
-            <Select
-              value={form.currency_code}
-              onValueChange={(code) => {
-                const opt = getCurrencyOption(code);
-                setForm(p => ({ ...p, currency_code: opt.code, currency_symbol: opt.symbol }));
-              }}
+      {step === "contact" && (
+        <SetupSection
+          title="Contact details"
+          description="Shown on your club page, invoices and outgoing emails."
+          complete={!!form.address && !!form.email && !!form.phone}
+          editing={isEditing("contact")}
+          onEdit={() => startEdit("contact")}
+          onCancel={() => cancelEdit("contact")}
+          onSave={() => save("contact", ["address", "email", "phone", "contact_person_name"])}
+          saving={updateClub.isPending}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SetupField label="Address" editing={isEditing("contact")} value={form.address}>
+              <Input value={form.address} onChange={set("address")} />
+            </SetupField>
+            <SetupField label="Email" editing={isEditing("contact")} value={form.email}>
+              <Input type="email" value={form.email} onChange={set("email")} />
+            </SetupField>
+            <SetupField label="Phone" editing={isEditing("contact")} value={form.phone}>
+              <Input type="tel" value={form.phone} onChange={set("phone")} />
+            </SetupField>
+            <SetupField label="Contact Person Name" editing={isEditing("contact")} value={form.contact_person_name}>
+              <Input value={form.contact_person_name} onChange={set("contact_person_name")} placeholder="e.g. John Smith" />
+            </SetupField>
+          </div>
+        </SetupSection>
+      )}
+
+      {step === "bearers" && (
+        <SetupSection
+          title="Office bearers"
+          description="Chairman, secretary and club captain — pulled from your member list."
+          complete={!!form.chairman_member_id || !!form.secretary_member_id || !!form.club_captain_member_id}
+          editing={isEditing("bearers")}
+          onEdit={() => startEdit("bearers")}
+          onCancel={() => cancelEdit("bearers")}
+          onSave={() => save("bearers", ["chairman_member_id", "secretary_member_id", "club_captain_member_id", "show_delegates_on_landing"])}
+          saving={updateClub.isPending}
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {isEditing("bearers") ? (
+                <>
+                  <SearchableMemberSelect label="Chairman" value={form.chairman_member_id} field="chairman_member_id" />
+                  <SearchableMemberSelect label="Secretary" value={form.secretary_member_id} field="secretary_member_id" />
+                  <SearchableMemberSelect label="Club Captain" value={form.club_captain_member_id} field="club_captain_member_id" />
+                </>
+              ) : (
+                <>
+                  <SetupField label="Chairman" editing={false} value={memberName(form.chairman_member_id)}><span /></SetupField>
+                  <SetupField label="Secretary" editing={false} value={memberName(form.secretary_member_id)}><span /></SetupField>
+                  <SetupField label="Club Captain" editing={false} value={memberName(form.club_captain_member_id)}><span /></SetupField>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-delegates"
+                disabled={!isEditing("bearers")}
+                checked={form.show_delegates_on_landing}
+                onCheckedChange={(checked) => setForm(p => ({ ...p, show_delegates_on_landing: checked }))}
+              />
+              <Label htmlFor="show-delegates" className="text-xs font-normal cursor-pointer">
+                Show office bearers on the public club landing page
+              </Label>
+            </div>
+          </div>
+        </SetupSection>
+      )}
+
+      {step === "currency" && (
+        <SetupSection
+          title="Currency"
+          description="All fees, invoices, statements and bar sales display in this currency."
+          complete={!!form.currency_code}
+          editing={isEditing("currency")}
+          onEdit={() => startEdit("currency")}
+          onCancel={() => cancelEdit("currency")}
+          onSave={() => save("currency", ["currency_code", "currency_symbol"])}
+          saving={updateClub.isPending}
+        >
+          <div className="max-w-sm">
+            <SetupField
+              label="Currency"
+              editing={isEditing("currency")}
+              value={`${form.currency_symbol} — ${getCurrencyOption(form.currency_code).name} (${form.currency_code})`}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {CURRENCY_OPTIONS.map(o => (
-                  <SelectItem key={o.code} value={o.code}>
-                    {o.symbol} — {o.name} ({o.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">All fees, invoices, statements and bar sales will display in this currency.</p>
+              <Select
+                value={form.currency_code}
+                onValueChange={(code) => {
+                  const opt = getCurrencyOption(code);
+                  setForm(p => ({ ...p, currency_code: opt.code, currency_symbol: opt.symbol }));
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CURRENCY_OPTIONS.map(o => (
+                    <SelectItem key={o.code} value={o.code}>
+                      {o.symbol} — {o.name} ({o.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SetupField>
           </div>
-        </div>
-      </Card>
+        </SetupSection>
+      )}
 
-      {/* Office Bearers */}
-      <Card className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold">Office Bearers</h3>
-          <div className="flex items-center gap-2">
-            <Switch
-              id="show-delegates"
-              checked={form.show_delegates_on_landing}
-              onCheckedChange={(checked) => setForm(p => ({ ...p, show_delegates_on_landing: checked }))}
-            />
-            <Label htmlFor="show-delegates" className="text-xs font-normal cursor-pointer">
-              Show on landing page
-            </Label>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <SearchableMemberSelect label="Chairman" value={form.chairman_member_id} field="chairman_member_id" />
-          <SearchableMemberSelect label="Secretary" value={form.secretary_member_id} field="secretary_member_id" />
-          <SearchableMemberSelect label="Club Captain" value={form.club_captain_member_id} field="club_captain_member_id" />
-        </div>
-      </Card>
-
-      <Button onClick={handleSave} disabled={updateClub.isPending} className="w-full md:w-auto">
-        {updateClub.isPending ? "Saving..." : "Save Club Info"}
-      </Button>
+      <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>
   );
 }

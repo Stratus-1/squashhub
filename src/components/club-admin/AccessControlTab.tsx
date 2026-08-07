@@ -38,7 +38,10 @@ const FACE_PROVIDERS = [
   { value: "generic", label: "Generic / Manual", note: "Just track face enrolment in SquashHub. No automatic sync to a device." },
 ] as const;
 
+import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
+
 export function AccessControlTab({ club, clubId }: { club: Club; clubId: string }) {
+  const [step, setStep] = useState("method");
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
 
@@ -261,14 +264,18 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
   const providerInfo = FACE_PROVIDERS.find(p => p.value === form.access_provider);
 
 
-  return (
-    <div className="space-y-6 mt-4">
-      <Card className="p-6 space-y-4">
-        <h3 className="font-semibold">Court Access Control</h3>
-        <p className="text-sm text-muted-foreground">
-          Configure how members access the courts at your venue.
-        </p>
+  const steps: SetupStep[] = [
+    { id: "method", label: "Access method", description: "Step one — choose how members get into the venue: a key, a tap card, a PIN, face recognition or a smart relay on the door.", complete: form.access_control_type !== "none" },
+    { id: "device", label: "Device setup", description: "Enter the details of the hardware you chose — API keys, provider endpoint or the door relay's device ID.", complete: !isSimple },
+    { id: "location", label: "Door location", description: "Pin the door's GPS position so the Open Door tile only appears when a member is actually standing at the club.", complete: !!(club as any)?.door_latitude },
+  ];
 
+  return (
+    <div className="space-y-4 mt-4">
+      <SetupSteps steps={steps} value={step} onChange={setStep} />
+      <Card className="p-6 space-y-4">
+
+        {step === "method" && (
         <div className="space-y-1">
           <Label>Access Method</Label>
           <Select
@@ -292,8 +299,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </Select>
           <p className="text-xs text-muted-foreground">{selected?.description}</p>
         </div>
+        )}
 
-        {needsApi && (
+        {step === "device" && needsApi && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>API Endpoint URL</Label>
@@ -315,7 +323,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {isFaceRec && (
+        {step === "device" && isFaceRec && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <ScanFace className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -467,7 +475,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {isFluss && (
+        {step === "device" && isFluss && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <DoorOpen className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -530,7 +538,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {isShelly && (
+        {step === "device" && isShelly && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <Wifi className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -712,7 +720,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {(isShelly || isFluss) && (
+        {step === "location" && (isShelly || isFluss) && (
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
@@ -811,7 +819,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         )}
 
 
-        {isOther && (
+        {step === "device" && isOther && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
             <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div className="space-y-1">
@@ -837,6 +845,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </Button>
         )}
       </Card>
+      <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>
   );
 }

@@ -784,6 +784,22 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
+        {isOther && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
+            <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Custom Access System</p>
+              <p className="text-xs text-muted-foreground">
+                Using a system not listed here? Contact us at{" "}
+                <a href="mailto:support@squashhub.co.za" className="underline text-primary">support@squashhub.co.za</a>{" "}
+                with details about your hardware and we'll work with you to integrate it.
+              </p>
+            </div>
+          </div>
+        )}
+        </EditLock>
+        )}
+
         {step === "location" && (
         <EditLock
           editing={locationLock.editing}
@@ -890,21 +906,6 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
 
               </div>
             )}
-          </div>
-        )}
-
-
-        {isOther && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
-            <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Custom Access System</p>
-              <p className="text-xs text-muted-foreground">
-                Using a system not listed here? Contact us at{" "}
-                <a href="mailto:support@squashhub.co.za" className="underline text-primary">support@squashhub.co.za</a>{" "}
-                with details about your hardware and we'll work with you to integrate it.
-              </p>
-            </div>
           </div>
         )}
         </EditLock>

@@ -831,7 +831,7 @@ export function MemberOnboardingWizard({
           fee_label: fee.label,
           fee_type: fee.type,
           amount: fee.amount,
-          season_year: currentYear,
+          season_year: (fee as any).seasonYear ?? currentYear,
           paid: false,
         }));
 

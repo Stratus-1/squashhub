@@ -589,7 +589,7 @@ export function MemberOnboardingWizard({
     }
     
     return items;
-  }, [selectedCategory, playsLeague, leagueAssocs, leagueSelections, nationalFees, dueMonth, isExistingMember]);
+  }, [selectedCategory, playsLeague, leagueAssocs, leagueSelections, nationalFees, dueMonth, dueDay, isExistingMember]);
 
   const totalFees = feeBreakdown.reduce((sum, f) => sum + f.amount, 0);
 

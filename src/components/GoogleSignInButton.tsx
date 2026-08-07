@@ -10,6 +10,8 @@ interface Props {
   className?: string;
   /** If true, preserves the current club subdomain in the post-OAuth redirect. */
   preserveClub?: boolean;
+  /** Show the "Gmail users can sign in or register with Google" helper line. */
+  showHint?: boolean;
 }
 
 /**

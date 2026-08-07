@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon, AlertTriangle, PackagePlus, FileText, X, Upload, Sparkles, Loader2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -126,6 +126,16 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
   };
 
   const enabled = !!club.honesty_bar_enabled;
+  const [step, setStep] = useState("items");
+
+  const barSteps: SetupStep[] = [
+    { id: "items", label: "Items & prices", description: "List everything on sale at the bar with its selling price and current stock.", complete: items.length > 0 },
+    { id: "stock-purchases", label: "Stock purchases", description: "Record supplier invoices so stock levels and bar cost of sales stay accurate.", complete: stockPurchases.length > 0 },
+    { id: "member-sales", label: "Member sales", description: "Bar items charged to member accounts — and a way to add a charge on a member's behalf.", complete: enabled },
+    { id: "card-sales", label: "Card sales", description: "Visitor and walk-in sales paid on the card machine instead of a member account.", complete: enabled },
+  ];
+
+
 
   return (
     <div className="space-y-6 mt-4">
@@ -151,20 +161,18 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         </div>
       </Card>
 
-      <Tabs defaultValue="items" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-10">
-          <TabsTrigger value="items" className="text-xs sm:text-sm">Items</TabsTrigger>
-          <TabsTrigger value="stock-purchases" className="text-xs sm:text-sm">Stock Purchases</TabsTrigger>
-          <TabsTrigger value="member-sales" className="text-xs sm:text-sm">Member Sales</TabsTrigger>
-          <TabsTrigger value="card-sales" className="text-xs sm:text-sm">Card Sales</TabsTrigger>
-        </TabsList>
+      <SetupSteps steps={barSteps} value={step} onChange={setStep} />
 
-        <TabsContent value="items" className="mt-4 space-y-4">
+      {step === "items" && (
+        <div className="space-y-4">
           <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="stock-purchases" className="mt-4 space-y-4">
+      {step === "stock-purchases" && (
+        <div className="space-y-4">
           <PurchaseInvoice clubId={clubId} items={items} />
+
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold">Recent Stock Purchases</h3>
             <p className="text-sm text-muted-foreground">Recorded supplier invoices and stock restocking.</p>
@@ -188,9 +196,12 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               </div>
             )}
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="member-sales" className="mt-4 space-y-4">
+      {step === "member-sales" && (
+        <div className="space-y-4">
+
           {enabled ? (
             <>
               <Card className="p-6 space-y-4">
@@ -225,9 +236,12 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               </p>
             </Card>
           )}
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="card-sales" className="mt-4 space-y-4">
+      {step === "card-sales" && (
+        <div className="space-y-4">
+
           {enabled ? (
             <Card className="p-6 space-y-4">
               <h3 className="font-semibold">Recent Visitor / Direct Card Machine Sales</h3>
@@ -259,8 +273,11 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               </p>
             </Card>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
+
+      <SetupStepNav steps={barSteps} value={step} onChange={setStep} />
+
     </div>
   );
 }

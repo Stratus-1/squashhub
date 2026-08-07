@@ -202,10 +202,24 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const isUnsupported = !isSupported && !isOther;
   const lightsEnabled = lightsForm.lights_integration_enabled;
 
+  const steps: SetupStep[] = [
+    { id: "courts", label: "List courts", description: "Step one — simply name the courts your club plays on. Nothing technical here.", complete: false },
+    { id: "rules", label: "Booking rules", description: "Set slot length, opening hours, peak times and how many bookings a member may make.", complete: true },
+    { id: "lights", label: "Lights & relays", description: "Turn on smart light control, then pick each court from your list and enter its Shelly relay details.", complete: !!club.lights_integration_enabled },
+    { id: "venues", label: "Other venues", description: "External tournament venues and any outside booking system your club also uses.", complete: true },
+  ];
+
   return (
     <div className="space-y-4 mt-4">
+      <SetupSteps steps={steps} value={step} onChange={setStep} />
+
+      {step === "courts" && (
+        <CourtsSection clubId={clubId} mode="list" relayDeviceType={lightsForm.relay_device_type} />
+      )}
+
+      {step === "lights" && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} lightsEnabled={lightsEnabled} />
+
 
         {/* Court Lights */}
         <Card className="p-4 space-y-3">

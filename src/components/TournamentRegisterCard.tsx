@@ -266,6 +266,51 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
 
+  const partnerPicker = (ctaLabel: string) => (
+    <div className="flex items-center gap-2">
+      <Popover open={partnerOpen} onOpenChange={setPartnerOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" role="combobox" className="h-8 text-xs flex-1 justify-between font-normal">
+            <span className="truncate">
+              {partnerId ? getName(eligiblePartners.find((m: any) => m.id === partnerId)) : "Search club members…"}
+            </span>
+            <Search className="w-3 h-3 opacity-60 shrink-0" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[220px]" align="start">
+          <Command>
+            <CommandInput placeholder="Type a name…" className="h-9 text-xs" />
+            <CommandList>
+              <CommandEmpty className="py-4 text-xs text-center text-muted-foreground">No available member found.</CommandEmpty>
+              <CommandGroup>
+                {eligiblePartners.map((m: any) => (
+                  <CommandItem
+                    key={m.id}
+                    value={getName(m)}
+                    onSelect={() => { setPartnerId(m.id); setPartnerOpen(false); }}
+                    className="text-xs"
+                  >
+                    {getName(m)}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      <Button
+        size="sm"
+        className="h-8 text-xs shrink-0"
+        onClick={() => choosePartner.mutate()}
+        disabled={!partnerId || choosePartner.isPending}
+      >
+        {choosePartner.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
+        {ctaLabel}
+      </Button>
+    </div>
+  );
+
+
   if (champ?.registration_mode === "invite" && !myReg && !allowSelfSignup) return null;
 
   return (

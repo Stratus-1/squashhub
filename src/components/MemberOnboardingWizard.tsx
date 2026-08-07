@@ -525,11 +525,11 @@ export function MemberOnboardingWizard({
       // Default is true if the column is missing to preserve prior behaviour.
       const catProRate = (selectedCategory as any).pro_rate ?? true;
       const calc = computeJoinFee(selectedCategory.annual_fee, dueMonth, dueDay, catProRate);
-      const suffix = calc.fullFee
-        ? (catProRate && calc.seasonYear > new Date().getFullYear() + (dueMonth >= new Date().getMonth() + 1 ? 0 : 1)
-            ? " — Full year (covers next season)"
-            : "")
-        : ` — Pro-rated ${calc.monthsCharged} month${calc.monthsCharged === 1 ? "" : "s"}`;
+      const suffix = !catProRate
+        ? ""
+        : calc.fullFee
+          ? " — Full year (covers next season)"
+          : ` — Pro-rated ${calc.monthsCharged} month${calc.monthsCharged === 1 ? "" : "s"}`;
       items.push({
         label: `Club Membership (${selectedCategory.name})${suffix}`,
         amount: calc.amount,

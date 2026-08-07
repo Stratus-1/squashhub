@@ -336,19 +336,38 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       </div>
 
       {!myReg && (
-        <div className="flex items-center gap-2">
+        <div className="space-y-2">
           {notYetOpen ? (
             <p className="text-xs text-muted-foreground">Registration opens {opensAt?.toLocaleString()}</p>
           ) : isClosed ? (
             <p className="text-xs text-muted-foreground">Registration is closed</p>
           ) : (
-            <Button size="sm" className="text-xs h-8" onClick={() => register.mutate()} disabled={register.isPending}>
-              {register.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
-              {entryFee > 0 ? `Register · Pay ${money(entryFee)}` : "Register"}
-            </Button>
+            <>
+              <div className="flex items-center gap-2">
+                <Button size="sm" className="text-xs h-8" onClick={() => register.mutate()} disabled={register.isPending}>
+                  {register.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
+                  {entryFee > 0 ? `Register · Pay ${money(entryFee)}` : "Register"}
+                </Button>
+                {isDoubles && partnerByPlayers && (
+                  <span className="text-[11px] text-muted-foreground">on my own — pick a partner later</span>
+                )}
+              </div>
+              {isDoubles && partnerByPlayers && (
+                <div className="pt-1 border-t border-border/60">
+                  <p className="text-[11px] text-muted-foreground mb-1">Or enter as a pair — search any club member:</p>
+                  {partnerPicker("Enter both")}
+                  {entryFee > 0 && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Each player pays their own {money(entryFee)} entry fee.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
+
 
       {myReg && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
         <div className="space-y-2 mt-1">

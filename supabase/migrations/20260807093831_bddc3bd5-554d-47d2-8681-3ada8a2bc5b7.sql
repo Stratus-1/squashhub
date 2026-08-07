@@ -1,0 +1,1 @@
+ALTER TABLE public.league_associations ADD COLUMN IF NOT EXISTS fill_up_leagues_enabled boolean;

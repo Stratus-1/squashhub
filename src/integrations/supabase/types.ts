@@ -3736,6 +3736,7 @@ export type Database = {
           fee_due_month: number | null
           fee_payable_to: string | null
           fee_payment_details: string | null
+          fill_up_leagues_enabled: boolean | null
           id: string
           members_pay_directly: boolean
           name: string
@@ -3765,6 +3766,7 @@ export type Database = {
           fee_due_month?: number | null
           fee_payable_to?: string | null
           fee_payment_details?: string | null
+          fill_up_leagues_enabled?: boolean | null
           id?: string
           members_pay_directly?: boolean
           name: string
@@ -3794,6 +3796,7 @@ export type Database = {
           fee_due_month?: number | null
           fee_payable_to?: string | null
           fee_payment_details?: string | null
+          fill_up_leagues_enabled?: boolean | null
           id?: string
           members_pay_directly?: boolean
           name?: string

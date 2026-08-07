@@ -28,6 +28,7 @@ type AssocRow = {
   week_start_dow?: number | null;
   external_source?: string | null;
   external_club_id?: string | null;
+  fill_up_leagues_enabled?: boolean | null;
 };
 
 export default function LeagueGames() {
@@ -61,7 +62,7 @@ export default function LeagueGames() {
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await fromExt("league_associations")
-        .select("id, name, abbreviation, scope, platform_association_id, week_start_dow, external_source, external_club_id")
+        .select("id, name, abbreviation, scope, platform_association_id, week_start_dow, external_source, external_club_id, fill_up_leagues_enabled")
         .eq("club_id", clubId!);
       if (error) throw error;
       return (data || []) as AssocRow[];
@@ -199,9 +200,15 @@ export default function LeagueGames() {
 
   // Hide Fill-Up Leagues based on the CLUB's setting (Club Admin → Leagues).
   // Falls back to the legacy NIL hardcode only if the club row is still loading.
-  const hideFillUp = clubSettings
-    ? clubSettings.fill_up_leagues_enabled === false
-    : (selectedAssoc?.abbreviation || "").toUpperCase() === "NIL";
+  // Per-association override wins; otherwise fall back to the club default.
+  const assocFillUp = (selectedAssoc as any)?.fill_up_leagues_enabled as boolean | null | undefined;
+  const hideFillUp = assocFillUp === true
+    ? false
+    : assocFillUp === false
+      ? true
+      : clubSettings
+        ? clubSettings.fill_up_leagues_enabled === false
+        : (selectedAssoc?.abbreviation || "").toUpperCase() === "NIL";
 
   // If the active tab is Fill-Up but it's hidden for this association, fall back.
   useEffect(() => {

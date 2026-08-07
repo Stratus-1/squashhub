@@ -565,11 +565,15 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
           )}
         </Card>
       </div>
+      )}
+
+      <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>
   );
 }
 
-function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: string; relayDeviceType: RelayDevice; lightsEnabled: boolean }) {
+function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; relayDeviceType: RelayDevice; mode: "list" | "relays" }) {
+
   const qc = useQueryClient();
   const [newCourt, setNewCourt] = useState("");
   const [editingRelay, setEditingRelay] = useState<Record<number, string>>({});

@@ -15,7 +15,12 @@ export interface ProRataResult {
   amount: number;
   /** Whole months charged (12 when the full fee applies). */
   monthsCharged: number;
-  /** Fee year the payment belongs to (calendar year of the renewal it covers). */
+  /**
+   * Fee year the payment belongs to: the calendar year in which that fee
+   * year STARTS (i.e. the year of the renewal date that opens it). A pro-rata
+   * join belongs to the season already running, a full "close to renewal" fee
+   * belongs to the season starting at the upcoming renewal.
+   */
   seasonYear: number;
   /** True when the full fee was charged because the join is close to renewal. */
   fullFee: boolean;
@@ -49,18 +54,29 @@ export function computeJoinFee(
   const renewal = nextRenewalDate(dueMonth, dueDay, from);
   const months = monthsUntilRenewal(dueMonth, dueDay, from);
 
+  // The fee year currently running ends at the upcoming renewal, so it is
+  // identified by the year of the PREVIOUS renewal date.
+  const currentSeasonYear = renewal.getFullYear() - 1;
+  // The fee year that starts at the upcoming renewal.
+  const upcomingSeasonYear = renewal.getFullYear();
+
   if (!annualFee || annualFee <= 0) {
-    return { amount: 0, monthsCharged: 0, seasonYear: renewal.getFullYear(), fullFee: false };
+    return { amount: 0, monthsCharged: 0, seasonYear: currentSeasonYear, fullFee: false };
   }
 
-  // Within a month of renewal (or pro-rata disabled) → full fee, covers the
-  // fee year that starts at the upcoming renewal.
-  if (!proRate || months <= 1) {
-    const seasonYear = months <= 1 ? renewal.getFullYear() + 1 : renewal.getFullYear();
-    return { amount: annualFee, monthsCharged: 12, seasonYear, fullFee: true };
+  // Within a month of renewal → full fee that covers the fee year starting at
+  // the upcoming renewal (so that renewal invoice is skipped for them).
+  if (months <= 1) {
+    return { amount: annualFee, monthsCharged: 12, seasonYear: upcomingSeasonYear, fullFee: true };
+  }
+
+  // Pro-rata disabled → full fee for the fee year currently running; the member
+  // is invoiced again at the upcoming renewal.
+  if (!proRate) {
+    return { amount: annualFee, monthsCharged: 12, seasonYear: currentSeasonYear, fullFee: true };
   }
 
   const monthsCharged = Math.min(12, Math.max(1, Math.ceil(months)));
   const amount = Math.round((annualFee / 12) * monthsCharged * 100) / 100;
-  return { amount, monthsCharged, seasonYear: renewal.getFullYear(), fullFee: false };
+  return { amount, monthsCharged, seasonYear: currentSeasonYear, fullFee: false };
 }

@@ -39,6 +39,7 @@ const FACE_PROVIDERS = [
 ] as const;
 
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
+import { EditLock, useEditLock } from "./setup/EditLock";
 
 export function AccessControlTab({ club, clubId }: { club: Club; clubId: string }) {
   const [step, setStep] = useState("method");
@@ -126,6 +127,48 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     });
   }, [club]);
 
+  const resetSecretsForm = () => {
+    const s = (secrets || {}) as any;
+    setForm(p => ({
+      ...p,
+      access_control_type: (s.access_control_type || "none") as AccessType,
+      access_control_api_key: s.access_control_api_key || "",
+      access_control_api_url: s.access_control_api_url || "",
+      access_provider: s.access_provider || "zkbio",
+      zk_base_url: s.zk_base_url || "",
+      zk_username: s.zk_username || "",
+      zk_password: s.zk_password || "",
+      zk_area_id: s.zk_area_id || "",
+      zk_door_group: s.zk_door_group || "",
+      zk_webhook_secret: s.zk_webhook_secret || "",
+      fluss_api_token: s.fluss_api_token || "",
+      fluss_default_device_id: s.fluss_default_device_id || "",
+      shelly_auth_key: s.shelly_auth_key || "",
+      shelly_server_url: s.shelly_server_url || "",
+      shelly_door_device_id: s.shelly_door_device_id || "",
+      shelly_door_channel: String(s.shelly_door_channel ?? 0),
+      shelly_door_pulse_ms: String(s.shelly_door_pulse_ms ?? 3000),
+      ble_fallback_enabled: !!s.ble_fallback_enabled,
+      shelly_door_ble_mac: s.shelly_door_ble_mac || "",
+      shelly_ble_control_password: s.shelly_ble_control_password || "",
+    }));
+  };
+  const resetGeofence = () => {
+    const c = club as any;
+    setGeofence({
+      enabled: !!c?.door_geofence_enabled,
+      lat: c?.door_latitude != null ? String(c.door_latitude) : "",
+      lng: c?.door_longitude != null ? String(c.door_longitude) : "",
+      radius: String(c?.door_geofence_radius_m ?? 150),
+      autoRadius: String(c?.door_auto_unlock_radius_m ?? 5),
+      auto: !!c?.door_auto_unlock_enabled,
+    });
+  };
+
+  const methodLock = useEditLock(resetSecretsForm);
+  const deviceLock = useEditLock(resetSecretsForm);
+  const locationLock = useEditLock(resetGeofence);
+
   const useMyLocation = () => {
     if (!navigator.geolocation) {
       toast.error("This device can't report a location");
@@ -161,7 +204,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     ? `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.functions.supabase.co/access-zk-push?club_id=${clubId}&secret=${form.zk_webhook_secret}`
     : "";
 
-  const handleSave = async () => {
+  const handleSave = async (onDone?: () => void) => {
     try {
       await updateSecrets.mutateAsync({
         club_id: clubId,

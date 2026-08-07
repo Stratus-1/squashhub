@@ -144,7 +144,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
 </table>`;
 
     setForm(p => ({ ...p, email_signature_html: html }));
-    toast.success("Signature generated — review the preview and click Save Settings");
+    toast.success("Signature generated — review the preview and click Save");
   };
 
   const copySignature = async () => {
@@ -352,6 +352,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 <Input type="password" value={form.smtp_pass} onChange={set("smtp_pass")} placeholder="SMTP password" />
               </div>
             </div>
+            </EditLock>
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
               <div className="space-y-1 flex-1 w-full sm:w-auto">
                 <Label htmlFor="test-email-to">Send Test To</Label>
@@ -374,7 +375,6 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 {sendingTest ? "Sending..." : "Send Test Email"}
               </Button>
             </div>
-            </EditLock>
             <p className="text-xs text-muted-foreground">
               Sends a test email to verify your SMTP settings work.
             </p>
@@ -392,7 +392,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={generateSignature}>Generate / Refresh</Button>
+                <Button variant="outline" size="sm" onClick={generateSignature} disabled={!signatureLock.editing}>Generate / Refresh</Button>
                 {form.email_signature_html && <Button variant="ghost" size="sm" onClick={copySignature}>Copy HTML</Button>}
               </div>
             </div>

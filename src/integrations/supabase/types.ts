@@ -2361,6 +2361,7 @@ export type Database = {
           suspension_status: Database["public"]["Enums"]["member_suspension_status"]
           updated_at: string
           user_id: string | null
+          whatsapp_opt_out: boolean
         }
         Insert: {
           access_suspended_at?: string | null
@@ -2398,6 +2399,7 @@ export type Database = {
           suspension_status?: Database["public"]["Enums"]["member_suspension_status"]
           updated_at?: string
           user_id?: string | null
+          whatsapp_opt_out?: boolean
         }
         Update: {
           access_suspended_at?: string | null
@@ -2435,6 +2437,7 @@ export type Database = {
           suspension_status?: Database["public"]["Enums"]["member_suspension_status"]
           updated_at?: string
           user_id?: string | null
+          whatsapp_opt_out?: boolean
         }
         Relationships: [
           {
@@ -7350,6 +7353,70 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      whatsapp_send_log: {
+        Row: {
+          body: string | null
+          club_id: string | null
+          created_at: string
+          error: string | null
+          id: string
+          kind: string
+          member_id: string | null
+          provider_sid: string | null
+          sent_by: string | null
+          status: string
+          to_phone: string
+        }
+        Insert: {
+          body?: string | null
+          club_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          member_id?: string | null
+          provider_sid?: string | null
+          sent_by?: string | null
+          status?: string
+          to_phone: string
+        }
+        Update: {
+          body?: string | null
+          club_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          member_id?: string | null
+          provider_sid?: string | null
+          sent_by?: string | null
+          status?: string
+          to_phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_send_log_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_send_log_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_send_log_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       xp_events: {
         Row: {

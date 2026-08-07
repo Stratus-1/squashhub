@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { FeesPayableSchedule } from "./FeesPayableSchedule";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
+
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -54,6 +56,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [tenantName, setTenantName] = useState<string>("");
+  const [step, setStep] = useState("receivable");
+
 
   // Fetch tenant (association) name to auto-fill league_affiliation fees
   useMemo(() => {
@@ -217,9 +221,17 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     toast.success(`Resynced: ${updated} updated, ${created} created, ${skippedPaid} skipped (already paid)`);
   };
 
-  return (
-    <div className="space-y-6 mt-4">
+  const steps: SetupStep[] = [
+    { id: "receivable", label: "Fees payable to the club", description: "Fees your club charges members — membership, league and national body levies.", complete: fees.length > 0 },
+    { id: "payable", label: "Fees payable by the club", description: "What the club owes onward to associations and national bodies.", complete: true },
+  ];
 
+  return (
+    <div className="space-y-4 mt-4">
+      <SetupSteps steps={steps} value={step} onChange={setStep} />
+
+      {step === "receivable" && (
+      <>
       {/* Fees Receivable Schedule */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -231,6 +243,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
             <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
           </div>
         </div>
+
 
 
         <Card className="overflow-hidden">
@@ -311,16 +324,6 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
         </Card>
       </div>
 
-      {/* Fees Payable Schedule */}
-      <FeesPayableSchedule clubId={clubId} />
-
-      {editFee && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
-      )}
-      {addOpen && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
-      )}
-
       <Card className="p-4 bg-muted/50 space-y-3">
         <div className="flex items-center gap-3">
           <Label className="whitespace-nowrap">Reminder days before due date:</Label>
@@ -330,7 +333,23 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
           <strong>Pro-rate:</strong> When enabled, self-registering members are charged a proportional fee based on months remaining.
         </p>
       </Card>
+      </>
+      )}
+
+      {step === "payable" && (
+        <FeesPayableSchedule clubId={clubId} />
+      )}
+
+      {editFee && (
+        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
+      )}
+      {addOpen && (
+        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />
+      )}
+
+      <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>
+
   );
 }
 

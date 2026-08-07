@@ -8015,6 +8015,14 @@ export type Database = {
         Args: { _mandate_id: string }
         Returns: Json
       }
+      register_doubles_pair: {
+        Args: {
+          _champ_id: string
+          _member_id: string
+          _partner_member_id: string
+        }
+        Returns: Json
+      }
       request_account_delegation: {
         Args: {
           _delegate_cell: string

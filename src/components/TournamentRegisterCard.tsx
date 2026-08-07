@@ -9,7 +9,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Loader2, CreditCard, Check, Landmark, Copy } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Trophy, Loader2, CreditCard, Check, Landmark, Copy, Search } from "lucide-react";
 import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import {
@@ -35,6 +37,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const { format: fmtMoney } = useClubCurrency();
   const money = (n: number) => fmtMoney(n, 2);
   const [partnerId, setPartnerId] = useState<string>("");
+  const [partnerOpen, setPartnerOpen] = useState(false);
   const [showEft, setShowEft] = useState(false);
 
   const { data: bankDetails } = useQuery({
@@ -201,21 +204,34 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     }
   };
 
+  // Registers me (if needed) AND my partner in one go. Partner may be any eligible
+  // club member — they do not have to have registered themselves first.
   const choosePartner = useMutation({
     mutationFn: async () => {
-      if (!myReg) throw new Error("Register first");
       if (!partnerId) throw new Error("Pick a partner");
-      const { error } = await fromExt("club_champs_registrations")
-        .update({ partner_member_id: partnerId, partner_confirmed: true })
-        .eq("id", myReg.id);
+      const { error } = await (supabase as any).rpc("register_doubles_pair", {
+        _champ_id: champ.id,
+        _member_id: memberId,
+        _partner_member_id: partnerId,
+      });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Partner allocated"); setPartnerId(""); refetch(); },
+    onSuccess: async (_d, _v) => {
+      toast.success(
+        paymentRequired
+          ? "You and your partner are entered — each of you still needs to pay the entry fee."
+          : "You and your partner are entered!",
+      );
+      setPartnerId("");
+      setPartnerOpen(false);
+      await refetch();
+      qc.invalidateQueries({ queryKey: ["champ-registered-others", champ.id, memberId] });
+      qc.invalidateQueries({ queryKey: ["tournament-registrations", champ.id] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Registered players in this champ (excluding cancelled). Partners may only be picked
-  // from members who have already registered and are not already paired with someone else.
+  // Existing registrations, used to hide members who are already paired up.
   const { data: registeredOthers = [] } = useQuery({
     queryKey: ["champ-registered-others", champ.id, memberId],
     queryFn: async () => {
@@ -226,7 +242,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!champ?.id && !!myReg && champ?.match_type === "doubles" && champ?.partner_mode === "players",
+    enabled: !!champ?.id && champ?.match_type === "doubles" && champ?.partner_mode === "players",
   });
 
   const eligiblePartners = (() => {
@@ -238,12 +254,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         takenIds.add(r.partner_member_id);
       }
     });
-    const registeredIds = new Set(
-      registeredOthers
-        .filter((r: any) => r.club_member_id !== memberId && !takenIds.has(r.club_member_id))
-        .map((r: any) => r.club_member_id)
-    );
-    let list = members.filter((m: any) => m.id !== memberId && registeredIds.has(m.id));
+    let list = members.filter((m: any) => m.id !== memberId && !takenIds.has(m.id));
     if (g === "men") list = list.filter((m: any) => m.gender && ["men", "male", "m"].includes(m.gender.toLowerCase()));
     else if (g === "ladies") list = list.filter((m: any) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()));
     return list;
@@ -256,6 +267,51 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const isClosed = (closesAt && now > closesAt) || champ?.entries_locked;
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
+
+  const partnerPicker = (ctaLabel: string) => (
+    <div className="flex items-center gap-2">
+      <Popover open={partnerOpen} onOpenChange={setPartnerOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" role="combobox" className="h-8 text-xs flex-1 justify-between font-normal">
+            <span className="truncate">
+              {partnerId ? getName(eligiblePartners.find((m: any) => m.id === partnerId)) : "Search club members…"}
+            </span>
+            <Search className="w-3 h-3 opacity-60 shrink-0" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[220px]" align="start">
+          <Command>
+            <CommandInput placeholder="Type a name…" className="h-9 text-xs" />
+            <CommandList>
+              <CommandEmpty className="py-4 text-xs text-center text-muted-foreground">No available member found.</CommandEmpty>
+              <CommandGroup>
+                {eligiblePartners.map((m: any) => (
+                  <CommandItem
+                    key={m.id}
+                    value={getName(m)}
+                    onSelect={() => { setPartnerId(m.id); setPartnerOpen(false); }}
+                    className="text-xs"
+                  >
+                    {getName(m)}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      <Button
+        size="sm"
+        className="h-8 text-xs shrink-0"
+        onClick={() => choosePartner.mutate()}
+        disabled={!partnerId || choosePartner.isPending}
+      >
+        {choosePartner.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
+        {ctaLabel}
+      </Button>
+    </div>
+  );
+
 
   if (champ?.registration_mode === "invite" && !myReg && !allowSelfSignup) return null;
 
@@ -280,19 +336,38 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       </div>
 
       {!myReg && (
-        <div className="flex items-center gap-2">
+        <div className="space-y-2">
           {notYetOpen ? (
             <p className="text-xs text-muted-foreground">Registration opens {opensAt?.toLocaleString()}</p>
           ) : isClosed ? (
             <p className="text-xs text-muted-foreground">Registration is closed</p>
           ) : (
-            <Button size="sm" className="text-xs h-8" onClick={() => register.mutate()} disabled={register.isPending}>
-              {register.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
-              {entryFee > 0 ? `Register · Pay ${money(entryFee)}` : "Register"}
-            </Button>
+            <>
+              <div className="flex items-center gap-2">
+                <Button size="sm" className="text-xs h-8" onClick={() => register.mutate()} disabled={register.isPending}>
+                  {register.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
+                  {entryFee > 0 ? `Register · Pay ${money(entryFee)}` : "Register"}
+                </Button>
+                {isDoubles && partnerByPlayers && (
+                  <span className="text-[11px] text-muted-foreground">on my own — pick a partner later</span>
+                )}
+              </div>
+              {isDoubles && partnerByPlayers && (
+                <div className="pt-1 border-t border-border/60">
+                  <p className="text-[11px] text-muted-foreground mb-1">Or enter as a pair — search any club member:</p>
+                  {partnerPicker("Enter both")}
+                  {entryFee > 0 && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Each player pays their own {money(entryFee)} entry fee.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
+
 
       {myReg && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
         <div className="space-y-2 mt-1">
@@ -353,7 +428,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         </div>
       )}
 
-      {myReg && (myReg.status === "paid" || myReg.status === "waived") && isDoubles && partnerByPlayers && (
+      {myReg && isDoubles && partnerByPlayers && (
         <div className="mt-2">
           {myReg.partner ? (
             <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -361,19 +436,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
               Partner: <span className="font-medium text-foreground">{getName(myReg.partner)}</span>
             </p>
           ) : (
-            <div className="flex items-center gap-2">
-              <Select value={partnerId} onValueChange={setPartnerId} disabled={eligiblePartners.length === 0}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder={eligiblePartners.length === 0 ? "Waiting for partner to register…" : "Choose your partner"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {eligiblePartners.map((m: any) => (
-                    <SelectItem key={m.id} value={m.id}>{getName(m)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button size="sm" className="h-8 text-xs" onClick={() => choosePartner.mutate()} disabled={!partnerId || choosePartner.isPending}>Invite</Button>
-            </div>
+            partnerPicker("Add your partner")
           )}
         </div>
       )}

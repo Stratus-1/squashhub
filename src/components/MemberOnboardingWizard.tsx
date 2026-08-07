@@ -83,19 +83,8 @@ function generateMemberNumber(
   return `${prefix}${padded}`;
 }
 
-/** Calculate pro-rated fee based on months remaining */
-function proRateFee(annualFee: number, dueMonth: number): number {
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1; // 1-12
-  let monthsRemaining: number;
-  if (currentMonth <= dueMonth) {
-    monthsRemaining = dueMonth - currentMonth;
-  } else {
-    monthsRemaining = 12 - currentMonth + dueMonth;
-  }
-  if (monthsRemaining === 0) return annualFee; // Full year if at due month
-  return Math.round((annualFee / 12) * monthsRemaining * 100) / 100;
-}
+// Pro-rata rules live in src/lib/fee-proration.ts (computeJoinFee).
+
 
 export function MemberOnboardingWizard({
   open,

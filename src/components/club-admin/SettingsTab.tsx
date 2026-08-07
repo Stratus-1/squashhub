@@ -191,30 +191,27 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   };
 
+  const steps: SetupStep[] = [
+    { id: "arrears", label: "Arrears rules", description: "Decide when a member in arrears gets suspended, and see who is currently suspended.", complete: true },
+    { id: "numbering", label: "Member numbering", description: "Set the prefix, length and starting number used to generate club member numbers.", complete: !!club.member_number_prefix },
+    { id: "email", label: "Email sending", description: "Connect the club's own mail server so notifications come from your address, not the platform default.", complete: !!secrets?.smtp_host && !!secrets?.sender_email },
+    { id: "signature", label: "Signature", description: "Build the signature and disclaimer that get appended to every club email.", complete: !!(club as any).email_signature_html },
+  ];
+
   return (
     <div className="space-y-4 mt-4">
-      <Tabs defaultValue="arrears" className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto">
-          <TabsTrigger value="arrears" className="gap-1.5 text-xs md:text-sm">
-            <ShieldAlert className="w-3.5 h-3.5" /> Arrears
-          </TabsTrigger>
-          <TabsTrigger value="numbering" className="gap-1.5 text-xs md:text-sm">
-            <Hash className="w-3.5 h-3.5" /> Numbering
-          </TabsTrigger>
-          <TabsTrigger value="email" className="gap-1.5 text-xs md:text-sm">
-            <Mail className="w-3.5 h-3.5" /> Email
-          </TabsTrigger>
-          <TabsTrigger value="signature" className="gap-1.5 text-xs md:text-sm">
-            <PenLine className="w-3.5 h-3.5" /> Signature
-          </TabsTrigger>
-        </TabsList>
+      <SetupSteps steps={steps} value={step} onChange={setStep} />
 
-        <TabsContent value="arrears" className="space-y-6 mt-4">
+      {step === "arrears" && (
+        <div className="space-y-6">
           <SuspensionRulesPanel club={club} />
           <SuspendedMembersPanel clubId={clubId} />
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="numbering" className="space-y-4 mt-4">
+      {step === "numbering" && (
+        <div className="space-y-4">
+
           {/* Member Numbering */}
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold">Member Numbering</h3>

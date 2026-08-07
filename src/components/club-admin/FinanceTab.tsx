@@ -1823,6 +1823,8 @@ interface FinanceHubProps {
 
 function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, children }: FinanceHubProps) {
   const [view, setView] = useState<FinanceView>("");
+  const [hubStep, setHubStep] = useState("0");
+
 
   if (view) {
     return <>{children(view, (v) => setView(v as FinanceView))}</>;

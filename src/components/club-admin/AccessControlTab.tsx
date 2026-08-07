@@ -293,7 +293,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           <p className="text-xs text-muted-foreground">{selected?.description}</p>
         </div>
 
-        {needsApi && (
+        {step === "device" && needsApi && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>API Endpoint URL</Label>
@@ -315,7 +315,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {isFaceRec && (
+        {step === "device" && isFaceRec && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <ScanFace className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -467,7 +467,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {isFluss && (
+        {step === "device" && isFluss && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <DoorOpen className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -530,7 +530,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {isShelly && (
+        {step === "device" && isShelly && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <Wifi className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -712,7 +712,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {(isShelly || isFluss) && (
+        {step === "location" && (isShelly || isFluss) && (
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
@@ -811,8 +811,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         )}
 
 
-        {isOther && (
-        {step === "location" && (
+        {step === "device" && isOther && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
             <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div className="space-y-1">
@@ -824,8 +823,6 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
               </p>
             </div>
           </div>
-        )}
-
         )}
 
         {!isSimple && (

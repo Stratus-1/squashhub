@@ -1,4 +1,6 @@
 import { Club, useClubMembers } from "@/hooks/use-club";
+import { SetupSteps, SetupStepNav, type SetupStep } from "@/components/club-admin/setup/SetupSteps";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

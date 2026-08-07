@@ -362,7 +362,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         </div>
       )}
 
-      {myReg && (myReg.status === "paid" || myReg.status === "waived") && isDoubles && partnerByPlayers && (
+      {myReg && isDoubles && partnerByPlayers && (
         <div className="mt-2">
           {myReg.partner ? (
             <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -370,19 +370,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
               Partner: <span className="font-medium text-foreground">{getName(myReg.partner)}</span>
             </p>
           ) : (
-            <div className="flex items-center gap-2">
-              <Select value={partnerId} onValueChange={setPartnerId} disabled={eligiblePartners.length === 0}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder={eligiblePartners.length === 0 ? "Waiting for partner to register…" : "Choose your partner"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {eligiblePartners.map((m: any) => (
-                    <SelectItem key={m.id} value={m.id}>{getName(m)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button size="sm" className="h-8 text-xs" onClick={() => choosePartner.mutate()} disabled={!partnerId || choosePartner.isPending}>Invite</Button>
-            </div>
+            partnerPicker("Add your partner")
           )}
         </div>
       )}

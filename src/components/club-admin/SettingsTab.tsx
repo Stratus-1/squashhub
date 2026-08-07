@@ -432,8 +432,11 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
             )}
             </EditLock>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
+
+      <SetupStepNav steps={steps} value={step} onChange={setStep} />
+
     </div>
   );
 }

@@ -15,7 +15,12 @@ export interface ProRataResult {
   amount: number;
   /** Whole months charged (12 when the full fee applies). */
   monthsCharged: number;
-  /** Fee year the payment belongs to (calendar year of the renewal it covers). */
+  /**
+   * Fee year the payment belongs to: the calendar year in which that fee
+   * year STARTS (i.e. the year of the renewal date that opens it). A pro-rata
+   * join belongs to the season already running, a full "close to renewal" fee
+   * belongs to the season starting at the upcoming renewal.
+   */
   seasonYear: number;
   /** True when the full fee was charged because the join is close to renewal. */
   fullFee: boolean;

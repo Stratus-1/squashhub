@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ShieldAlert, Hash, Mail, PenLine } from "lucide-react";
 import { SuspensionRulesPanel } from "./SuspensionRulesPanel";
+import { EditLock, useEditLock } from "./setup/EditLock";
 import { SuspendedMembersPanel } from "./SuspendedMembersPanel";
 
 
@@ -58,13 +59,35 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   }, [secrets]);
 
+  const resetForm = () => {
+    setForm({
+      member_number_prefix: club.member_number_prefix || "",
+      member_number_length: club.member_number_length ?? 4,
+      member_number_start: club.member_number_start ?? 1,
+      auto_number_existing_onboarding: (club as any).auto_number_existing_onboarding ?? false,
+      challenge_levels_up: club.challenge_levels_up ?? 2,
+      sender_email: secrets?.sender_email || "",
+      sender_name: secrets?.sender_name || "",
+      smtp_host: secrets?.smtp_host || "",
+      smtp_port: (secrets?.smtp_port ?? "") as string | number,
+      smtp_user: secrets?.smtp_user || "",
+      smtp_pass: secrets?.smtp_pass || "",
+      email_signature_html: (club as any).email_signature_html || "",
+      email_disclaimer: (club as any).email_disclaimer || "This email and any attachments are confidential and intended solely for the addressee. If you are not the intended recipient, please notify the sender and delete this email.",
+    });
+  };
+
+  const numberingLock = useEditLock(resetForm);
+  const emailLock = useEditLock(resetForm);
+  const signatureLock = useEditLock(resetForm);
+
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }));
 
   const setNumber = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: parseInt(e.target.value) || 0 }));
 
-  const handleSave = async () => {
+  const handleSave = async (onDone?: () => void) => {
     try {
       // Save non-sensitive settings to clubs table
       await updateClub.mutateAsync({
@@ -90,6 +113,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
       } as any);
 
       toast.success("Settings saved");
+      onDone?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }
@@ -120,7 +144,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
 </table>`;
 
     setForm(p => ({ ...p, email_signature_html: html }));
-    toast.success("Signature generated — review the preview and click Save Settings");
+    toast.success("Signature generated — review the preview and click Save");
   };
 
   const copySignature = async () => {
@@ -195,6 +219,14 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold">Member Numbering</h3>
             <p className="text-sm text-muted-foreground">Configure how member numbers are generated (e.g. WRT-0001).</p>
+            <EditLock
+              editing={numberingLock.editing}
+              onEdit={numberingLock.edit}
+              onCancel={numberingLock.cancel}
+              onSave={() => handleSave(numberingLock.done)}
+              saving={updateClub.isPending || updateSecrets.isPending}
+              title="member numbering"
+            >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -250,10 +282,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 onCheckedChange={(v) => setForm(p => ({ ...p, auto_number_existing_onboarding: v }))}
               />
             </div>
+            </EditLock>
           </Card>
-          <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
-            {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
-          </Button>
         </TabsContent>
 
         <TabsContent value="email" className="space-y-4 mt-4">
@@ -288,6 +318,14 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 Credentials are stored encrypted in our secrets vault and only used to send emails on your club's behalf. Use the <strong>Send Test Email</strong> button below to verify your settings.
               </p>
             </div>
+            <EditLock
+              editing={emailLock.editing}
+              onEdit={emailLock.edit}
+              onCancel={emailLock.cancel}
+              onSave={() => handleSave(emailLock.done)}
+              saving={updateClub.isPending || updateSecrets.isPending}
+              title="email settings"
+            >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label>Sender Name</Label>
@@ -314,6 +352,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 <Input type="password" value={form.smtp_pass} onChange={set("smtp_pass")} placeholder="SMTP password" />
               </div>
             </div>
+            </EditLock>
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
               <div className="space-y-1 flex-1 w-full sm:w-auto">
                 <Label htmlFor="test-email-to">Send Test To</Label>
@@ -340,9 +379,6 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
               Sends a test email to verify your SMTP settings work.
             </p>
           </Card>
-          <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
-            {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
-          </Button>
         </TabsContent>
 
         <TabsContent value="signature" className="space-y-4 mt-4">
@@ -356,10 +392,18 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={generateSignature}>Generate / Refresh</Button>
+                <Button variant="outline" size="sm" onClick={generateSignature} disabled={!signatureLock.editing}>Generate / Refresh</Button>
                 {form.email_signature_html && <Button variant="ghost" size="sm" onClick={copySignature}>Copy HTML</Button>}
               </div>
             </div>
+            <EditLock
+              editing={signatureLock.editing}
+              onEdit={signatureLock.edit}
+              onCancel={signatureLock.cancel}
+              onSave={() => handleSave(signatureLock.done)}
+              saving={updateClub.isPending || updateSecrets.isPending}
+              title="email signature"
+            >
             <div className="space-y-1">
               <Label>Disclaimer</Label>
               <textarea
@@ -383,10 +427,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
                 Click <strong>Generate / Refresh</strong> to build a signature from your club info. Make sure your Club Info tab has the logo, contact person, phone, email, and address filled in first.
               </p>
             )}
+            </EditLock>
           </Card>
-          <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
-            {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
-          </Button>
         </TabsContent>
       </Tabs>
     </div>

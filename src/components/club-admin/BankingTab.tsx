@@ -148,6 +148,7 @@ const GATEWAYS: GatewayDef[] = [
 
 // ─── Component ──────────────────────────────────────────────
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
+import { EditLock, useEditLock } from "./setup/EditLock";
 
 export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const [step, setStep] = useState("methods");
@@ -307,7 +308,26 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
     setVisibleFields(new Set());
   };
 
-  const handleSave = async () => {
+  const resetBank = () => setBankForm({
+    bank_name: (secrets as any)?.bank_name || "",
+    bank_account_name: (secrets as any)?.bank_account_name || "",
+    bank_account_number: (secrets as any)?.bank_account_number || "",
+    bank_branch_code: (secrets as any)?.bank_branch_code || "",
+    bank_reference: (secrets as any)?.bank_reference || "",
+  });
+  const resetGateway = () => {
+    setGateway(club.payment_gateway || "");
+    const saved = (secrets as any)?.payment_gateway_credentials;
+    setCredentials(saved && typeof saved === "object" ? saved : {});
+  };
+  const resetMethods = () =>
+    setAcceptedMethods(new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"]));
+
+  const methodsLock = useEditLock(resetMethods);
+  const bankLock = useEditLock(resetBank);
+  const gatewayLock = useEditLock(resetGateway);
+
+  const handleSave = async (onDone?: () => void) => {
     try {
       // Save selected gateway to clubs table (non-sensitive)
       await updateClub.mutateAsync({
@@ -329,6 +349,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       } as any);
 
       toast.success("Banking settings saved");
+      onDone?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }
@@ -351,6 +372,14 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         <p className="text-xs text-muted-foreground">
           Choose which payment methods members can use to settle fees. Unchecked methods are hidden from member-facing payment screens.
         </p>
+        <EditLock
+          editing={methodsLock.editing}
+          onEdit={methodsLock.edit}
+          onCancel={methodsLock.cancel}
+          onSave={() => handleSave(methodsLock.done)}
+          saving={isSaving}
+          title="payment methods"
+        >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {[
             { key: "cash", label: "Cash", hint: "Admin records cash receipts manually." },
@@ -374,6 +403,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
             </label>
           ))}
         </div>
+        </EditLock>
       </Card>
       )}
 
@@ -381,6 +411,16 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       <Card className="p-4 space-y-3">
         <h3 className="text-sm font-semibold">Bank Details</h3>
         <p className="text-xs text-muted-foreground">Shown to members for EFT payments.</p>
+        <EditLock
+          editing={bankLock.editing}
+          onEdit={bankLock.edit}
+          onCancel={bankLock.cancel}
+          onSave={() => handleSave(bankLock.done)}
+          saving={isSaving}
+          locked={!acceptedMethods.has("eft")}
+          lockedHint="Tick “EFT / Bank Transfer” on step 1 before capturing bank details."
+          title="bank details"
+        >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1"><Label className="text-xs">Bank Name</Label><Input className="h-8 text-xs" value={bankForm.bank_name} onChange={setBank("bank_name")} /></div>
           <div className="space-y-1"><Label className="text-xs">Account Name</Label><Input className="h-8 text-xs" value={bankForm.bank_account_name} onChange={setBank("bank_account_name")} /></div>
@@ -388,6 +428,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
           <div className="space-y-1"><Label className="text-xs">Branch Code</Label><Input className="h-8 text-xs" value={bankForm.bank_branch_code} onChange={setBank("bank_branch_code")} /></div>
           <div className="space-y-1"><Label className="text-xs">Payment Reference</Label><Input className="h-8 text-xs" value={bankForm.bank_reference} onChange={setBank("bank_reference")} placeholder="e.g. Club name + member number" /></div>
         </div>
+        </EditLock>
       </Card>
       )}
 
@@ -401,6 +442,16 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
           Configure an online payment gateway for collecting membership fees, court light fees, and other payments from members.
         </p>
 
+        <EditLock
+          editing={gatewayLock.editing}
+          onEdit={gatewayLock.edit}
+          onCancel={gatewayLock.cancel}
+          onSave={() => handleSave(gatewayLock.done)}
+          saving={isSaving}
+          locked={!acceptedMethods.has("online")}
+          lockedHint="Tick “Online (Card / PayByBank)” on step 1 before setting up a gateway."
+          title="payment gateway"
+        >
         {/* Gateway Selector */}
         <div className="space-y-1">
           <Label className="text-xs">Gateway Provider</Label>
@@ -542,12 +593,10 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
             </div>
           </div>
         )}
+        </EditLock>
       </Card>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={handleSave} disabled={isSaving} size="sm" className="text-xs">
-          {isSaving ? "Saving..." : "Save Banking Settings"}
-        </Button>
         {(gateway === "yoco" || gateway === "stitch") && (
           <Button
             onClick={handleTestPayment}

@@ -47,6 +47,16 @@
 
     --radius: 0.75rem;
 
+
+    /* Numbered setup-step accents (distinct hue per step) */
+    --step-1: 220 65% 40%;
+    --step-2: 168 60% 33%;
+    --step-3: 38 92% 45%;
+    --step-4: 280 50% 48%;
+    --step-5: 12 75% 50%;
+    --step-6: 200 70% 40%;
+    --step-fg: 0 0% 100%;
+
     --court: 30 40% 75%;
     --court-line: 0 0% 95%;
     --win: 142 70% 45%;
@@ -67,6 +77,14 @@
   }
 
   .dark {
+
+    --step-1: 220 70% 62%;
+    --step-2: 168 55% 48%;
+    --step-3: 38 90% 58%;
+    --step-4: 280 55% 66%;
+    --step-5: 12 78% 62%;
+    --step-6: 200 70% 58%;
+    --step-fg: 220 40% 10%;
     --background: 220 25% 6%;
     --foreground: 40 15% 92%;
     --card: 220 15% 22%;

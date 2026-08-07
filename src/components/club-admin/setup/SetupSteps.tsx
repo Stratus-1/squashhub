@@ -30,23 +30,28 @@ export function SetupSteps({
       <div className="flex flex-wrap gap-1.5">
         {steps.map((s, i) => {
           const active = s.id === current?.id;
+          const hue = `var(--step-${(i % 6) + 1})`;
           return (
             <button
               key={s.id}
               type="button"
               onClick={() => onChange(s.id)}
+              style={{
+                backgroundColor: active ? `hsl(${hue})` : `hsl(${hue} / 0.10)`,
+                borderColor: active ? `hsl(${hue})` : `hsl(${hue} / 0.35)`,
+                color: active ? `hsl(var(--step-fg))` : `hsl(${hue})`,
+              }}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition-all",
+                active ? "shadow-sm" : "hover:opacity-80"
               )}
             >
               <span
-                className={cn(
-                  "inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold",
-                  active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
-                )}
+                className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold"
+                style={{
+                  backgroundColor: active ? `hsl(var(--step-fg) / 0.25)` : `hsl(${hue} / 0.18)`,
+                  color: active ? `hsl(var(--step-fg))` : `hsl(${hue})`,
+                }}
               >
                 {s.complete ? <Check className="w-2.5 h-2.5" /> : i + 1}
               </span>

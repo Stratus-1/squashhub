@@ -39,6 +39,7 @@ const FACE_PROVIDERS = [
 ] as const;
 
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
+import { EditLock, useEditLock } from "./setup/EditLock";
 
 export function AccessControlTab({ club, clubId }: { club: Club; clubId: string }) {
   const [step, setStep] = useState("method");
@@ -126,6 +127,48 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     });
   }, [club]);
 
+  const resetSecretsForm = () => {
+    const s = (secrets || {}) as any;
+    setForm(p => ({
+      ...p,
+      access_control_type: (s.access_control_type || "none") as AccessType,
+      access_control_api_key: s.access_control_api_key || "",
+      access_control_api_url: s.access_control_api_url || "",
+      access_provider: s.access_provider || "zkbio",
+      zk_base_url: s.zk_base_url || "",
+      zk_username: s.zk_username || "",
+      zk_password: s.zk_password || "",
+      zk_area_id: s.zk_area_id || "",
+      zk_door_group: s.zk_door_group || "",
+      zk_webhook_secret: s.zk_webhook_secret || "",
+      fluss_api_token: s.fluss_api_token || "",
+      fluss_default_device_id: s.fluss_default_device_id || "",
+      shelly_auth_key: s.shelly_auth_key || "",
+      shelly_server_url: s.shelly_server_url || "",
+      shelly_door_device_id: s.shelly_door_device_id || "",
+      shelly_door_channel: String(s.shelly_door_channel ?? 0),
+      shelly_door_pulse_ms: String(s.shelly_door_pulse_ms ?? 3000),
+      ble_fallback_enabled: !!s.ble_fallback_enabled,
+      shelly_door_ble_mac: s.shelly_door_ble_mac || "",
+      shelly_ble_control_password: s.shelly_ble_control_password || "",
+    }));
+  };
+  const resetGeofence = () => {
+    const c = club as any;
+    setGeofence({
+      enabled: !!c?.door_geofence_enabled,
+      lat: c?.door_latitude != null ? String(c.door_latitude) : "",
+      lng: c?.door_longitude != null ? String(c.door_longitude) : "",
+      radius: String(c?.door_geofence_radius_m ?? 150),
+      autoRadius: String(c?.door_auto_unlock_radius_m ?? 5),
+      auto: !!c?.door_auto_unlock_enabled,
+    });
+  };
+
+  const methodLock = useEditLock(resetSecretsForm);
+  const deviceLock = useEditLock(resetSecretsForm);
+  const locationLock = useEditLock(resetGeofence);
+
   const useMyLocation = () => {
     if (!navigator.geolocation) {
       toast.error("This device can't report a location");
@@ -161,7 +204,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     ? `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.functions.supabase.co/access-zk-push?club_id=${clubId}&secret=${form.zk_webhook_secret}`
     : "";
 
-  const handleSave = async () => {
+  const handleSave = async (onDone?: () => void) => {
     try {
       await updateSecrets.mutateAsync({
         club_id: clubId,
@@ -212,6 +255,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         .eq("id", clubId);
 
       toast.success("Access control settings saved");
+      onDone?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }
@@ -276,6 +320,14 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       <Card className="p-6 space-y-4">
 
         {step === "method" && (
+        <EditLock
+          editing={methodLock.editing}
+          onEdit={methodLock.edit}
+          onCancel={methodLock.cancel}
+          onSave={() => handleSave(methodLock.done)}
+          saving={updateSecrets.isPending}
+          title="access method"
+        >
         <div className="space-y-1">
           <Label>Access Method</Label>
           <Select
@@ -299,9 +351,21 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </Select>
           <p className="text-xs text-muted-foreground">{selected?.description}</p>
         </div>
+        </EditLock>
         )}
 
-        {step === "device" && needsApi && (
+        {step === "device" && (
+        <EditLock
+          editing={deviceLock.editing}
+          onEdit={deviceLock.edit}
+          onCancel={deviceLock.cancel}
+          onSave={() => handleSave(deviceLock.done)}
+          saving={updateSecrets.isPending}
+          locked={isSimple}
+          lockedHint="This access method needs no hardware setup — pick a card, PIN, face or relay method on step 1 to configure a device."
+          title="device settings"
+        >
+        {needsApi && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>API Endpoint URL</Label>
@@ -323,7 +387,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {step === "device" && isFaceRec && (
+        {isFaceRec && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <ScanFace className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -475,7 +539,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {step === "device" && isFluss && (
+        {isFluss && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <DoorOpen className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -538,7 +602,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {step === "device" && isShelly && (
+        {isShelly && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <Wifi className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -720,7 +784,34 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {step === "location" && (isShelly || isFluss) && (
+        {isOther && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
+            <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Custom Access System</p>
+              <p className="text-xs text-muted-foreground">
+                Using a system not listed here? Contact us at{" "}
+                <a href="mailto:support@squashhub.co.za" className="underline text-primary">support@squashhub.co.za</a>{" "}
+                with details about your hardware and we'll work with you to integrate it.
+              </p>
+            </div>
+          </div>
+        )}
+        </EditLock>
+        )}
+
+        {step === "location" && (
+        <EditLock
+          editing={locationLock.editing}
+          onEdit={locationLock.edit}
+          onCancel={locationLock.cancel}
+          onSave={() => handleSave(locationLock.done)}
+          saving={updateSecrets.isPending}
+          locked={!(isShelly || isFluss)}
+          lockedHint="Door location only applies to smart-relay doors (Shelly or Fluss). Choose one on step 1 first."
+          title="door location"
+        >
+        {(isShelly || isFluss) && (
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
@@ -817,33 +908,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
             )}
           </div>
         )}
-
-
-        {step === "device" && isOther && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
-            <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Custom Access System</p>
-              <p className="text-xs text-muted-foreground">
-                Using a system not listed here? Contact us at{" "}
-                <a href="mailto:support@squashhub.co.za" className="underline text-primary">support@squashhub.co.za</a>{" "}
-                with details about your hardware and we'll work with you to integrate it.
-              </p>
-            </div>
-          </div>
+        </EditLock>
         )}
 
-        {!isSimple && (
-          <Button onClick={handleSave} disabled={updateSecrets.isPending} className="w-full md:w-auto">
-            {updateSecrets.isPending ? "Saving..." : "Save Access Settings"}
-          </Button>
-        )}
-
-        {isSimple && form.access_control_type !== (secrets as any)?.access_control_type && (
-          <Button onClick={handleSave} disabled={updateSecrets.isPending} className="w-full md:w-auto">
-            {updateSecrets.isPending ? "Saving..." : "Save"}
-          </Button>
-        )}
       </Card>
       <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>

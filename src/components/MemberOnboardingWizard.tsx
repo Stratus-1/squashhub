@@ -16,6 +16,7 @@ import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees
 import { useClubCurrency } from "@/hooks/use-currency";
 import { LeagueParticipationPicker, applyLeagueSelections, LeagueSelection } from "@/components/LeagueParticipationPicker";
 import { fromExt } from "@/lib/supabase-ext";
+import { computeJoinFee } from "@/lib/fee-proration";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";

@@ -51,7 +51,18 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   const qc = useQueryClient();
   const club = clubData?.club;
   const { format: money, symbol: currencySymbol } = useClubCurrency();
-  const stitchEnabled = club?.payment_gateway === "stitch";
+  // Gateway must be read for the club being edited (not the viewer's own club),
+  // so the Stitch-only "Recurring Card" column stays hidden for non-Stitch clubs.
+  const { data: gatewayRow } = useQuery({
+    queryKey: ["club-gateway", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data } = await fromExt("clubs").select("payment_gateway").eq("id", clubId).maybeSingle();
+      return data as { payment_gateway?: string | null } | null;
+    },
+  });
+  const gateway = (gatewayRow?.payment_gateway ?? (club?.id === clubId ? club?.payment_gateway : null)) || "";
+  const stitchEnabled = String(gateway).toLowerCase() === "stitch";
   const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);

@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
 const RELAY_DEVICES = [
   { value: "shelly", label: "Shelly", description: "Shelly Cloud smart relays — fully supported" },
@@ -93,6 +94,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
   const { symbol: currencySymbol } = useClubCurrency();
+  const [step, setStep] = useState("courts");
 
   const [rulesForm, setRulesForm] = useState({
     booking_slot_minutes: club.booking_slot_minutes ?? 30,
@@ -574,6 +576,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
 
 function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; relayDeviceType: RelayDevice; mode: "list" | "relays" }) {
 
+  const showRelays = mode === "relays";
   const qc = useQueryClient();
   const [newCourt, setNewCourt] = useState("");
   const [editingRelay, setEditingRelay] = useState<Record<number, string>>({});
@@ -677,7 +680,7 @@ function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; rela
   return (
     <Card className="p-4 space-y-3">
       <h3 className="font-semibold text-sm">Courts ({courts.length})</h3>
-      {lightsEnabled && (
+      {showRelays && (
         <p className="text-[11px] text-muted-foreground">
           💡 To enable automatic court lights, add the relay device ID for each court.
         </p>
@@ -696,7 +699,7 @@ function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; rela
                   <Trash2 className="w-3 h-3" />
                 </Button>
               </div>
-              {lightsEnabled && (
+              {showRelays && (
                 <div className="grid grid-cols-[1fr_76px_auto] gap-1 items-center">
                   <Input
                     value={relayValue}
@@ -738,7 +741,7 @@ function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; rela
                   )}
                 </div>
               )}
-              {lightsEnabled && (
+              {showRelays && (
                 <Input
                   value={serverValue}
                   onChange={e => setEditingServer(prev => ({ ...prev, [courtId]: e.target.value }))}
@@ -753,7 +756,7 @@ function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; rela
                   className="h-7 text-[11px] font-mono"
                 />
               )}
-              {lightsEnabled && (
+              {showRelays && (
                 <Input
                   defaultValue={(c as any).relay_ble_mac ?? ""}
                   onBlur={async (e) => {
@@ -772,7 +775,7 @@ function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; rela
                   className="h-7 text-[11px] font-mono"
                 />
               )}
-              {lightsEnabled && (c as any).relay_ble_mac && (
+              {showRelays && (c as any).relay_ble_mac && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -785,7 +788,7 @@ function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; rela
                   {testingBle[courtId] ? "Pulsing…" : "Test BLE (3s)"}
                 </Button>
               )}
-              {lightsEnabled && c.relay_device_id && editingRelay[courtId] === undefined && (
+              {showRelays && c.relay_device_id && editingRelay[courtId] === undefined && (
                 <p className="text-[10px] text-muted-foreground">✅ Relay configured</p>
               )}
 

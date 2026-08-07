@@ -911,17 +911,6 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         </EditLock>
         )}
 
-        {false && (
-          <Button onClick={() => handleSave()} disabled={updateSecrets.isPending} className="w-full md:w-auto">
-            {updateSecrets.isPending ? "Saving..." : "Save Access Settings"}
-          </Button>
-        )}
-
-        {isSimple && form.access_control_type !== (secrets as any)?.access_control_type && (
-          <Button onClick={handleSave} disabled={updateSecrets.isPending} className="w-full md:w-auto">
-            {updateSecrets.isPending ? "Saving..." : "Save"}
-          </Button>
-        )}
       </Card>
       <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>

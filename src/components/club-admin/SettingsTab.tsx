@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ShieldAlert, Hash, Mail, PenLine } from "lucide-react";
 import { SuspensionRulesPanel } from "./SuspensionRulesPanel";
 import { EditLock, useEditLock } from "./setup/EditLock";
+import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { SuspendedMembersPanel } from "./SuspendedMembersPanel";
 
 

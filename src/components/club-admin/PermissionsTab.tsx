@@ -20,6 +20,7 @@ import {
   useUpsertMemberPermission,
   type PermissionRole,
 } from "@/hooks/use-club-permissions";
+import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
 export function PermissionsTab({ clubId }: { clubId: string }) {
   const [step, setStep] = useState("roles");

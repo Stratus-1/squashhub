@@ -267,7 +267,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
   const steps: SetupStep[] = [
     { id: "method", label: "Access method", description: "Step one — choose how members get into the venue: a key, a tap card, a PIN, face recognition or a smart relay on the door.", complete: form.access_control_type !== "none" },
     { id: "device", label: "Device setup", description: "Enter the details of the hardware you chose — API keys, provider endpoint or the door relay's device ID.", complete: !isSimple },
-    { id: "location", label: "Door location", description: "Pin the door's GPS position so the Open Door tile only appears when a member is actually standing at the club.", complete: !!(secrets as any)?.door_latitude },
+    { id: "location", label: "Door location", description: "Pin the door's GPS position so the Open Door tile only appears when a member is actually standing at the club.", complete: !!(club as any)?.door_latitude },
   ];
 
   return (

@@ -679,12 +679,14 @@ function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; rela
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="font-semibold text-sm">Courts ({courts.length})</h3>
-      {showRelays && (
-        <p className="text-[11px] text-muted-foreground">
-          💡 To enable automatic court lights, add the relay device ID for each court.
-        </p>
-      )}
+      <h3 className="font-semibold text-sm">
+        {showRelays ? `Relay settings per court (${courts.length})` : `Your courts (${courts.length})`}
+      </h3>
+      <p className="text-[11px] text-muted-foreground">
+        {showRelays
+          ? "Each court from your list is shown below — enter its Shelly relay details here. Court names are managed on step 1."
+          : "Just the names of the courts members can book. Lighting and relay hardware is set up on the Lights & relays step."}
+      </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {courts.map(c => {
           const courtId = c.id;
@@ -695,9 +697,11 @@ function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; rela
             <div key={c.id} className="rounded-lg border p-2 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">{c.name}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => requestDelete(c)}>
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+                {!showRelays && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => requestDelete(c)}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
               </div>
               {showRelays && (
                 <div className="grid grid-cols-[1fr_76px_auto] gap-1 items-center">
@@ -797,10 +801,12 @@ function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; rela
         })}
         {courts.length === 0 && !isLoading && <p className="text-xs text-muted-foreground col-span-2">No courts added yet</p>}
       </div>
+      {!showRelays && (
       <div className="flex gap-2">
         <Input value={newCourt} onChange={e => setNewCourt(e.target.value)} placeholder="e.g. Court 1" className="flex-1 h-8 text-xs" onKeyDown={e => e.key === "Enter" && handleAdd()} />
         <Button size="sm" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" />Add</Button>
       </div>
+      )}
       <DeleteConfirmDialog
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}

@@ -127,6 +127,16 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
   };
 
   const enabled = !!club.honesty_bar_enabled;
+  const [step, setStep] = useState("items");
+
+  const barSteps: SetupStep[] = [
+    { id: "items", label: "Items & prices", description: "List everything on sale at the bar with its selling price and current stock.", complete: items.length > 0 },
+    { id: "stock-purchases", label: "Stock purchases", description: "Record supplier invoices so stock levels and bar cost of sales stay accurate.", complete: stockPurchases.length > 0 },
+    { id: "member-sales", label: "Member sales", description: "Bar items charged to member accounts — and a way to add a charge on a member's behalf.", complete: enabled },
+    { id: "card-sales", label: "Card sales", description: "Visitor and walk-in sales paid on the card machine instead of a member account.", complete: enabled },
+  ];
+
+
 
   return (
     <div className="space-y-6 mt-4">

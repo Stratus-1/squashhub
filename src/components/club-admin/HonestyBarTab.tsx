@@ -186,9 +186,12 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               </div>
             )}
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="member-sales" className="mt-4 space-y-4">
+      {step === "member-sales" && (
+        <div className="space-y-4">
+
           {enabled ? (
             <>
               <Card className="p-6 space-y-4">

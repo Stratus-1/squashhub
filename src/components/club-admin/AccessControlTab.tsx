@@ -255,6 +255,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         .eq("id", clubId);
 
       toast.success("Access control settings saved");
+      onDone?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }
@@ -319,6 +320,14 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       <Card className="p-6 space-y-4">
 
         {step === "method" && (
+        <EditLock
+          editing={methodLock.editing}
+          onEdit={methodLock.edit}
+          onCancel={methodLock.cancel}
+          onSave={() => handleSave(methodLock.done)}
+          saving={updateSecrets.isPending}
+          title="access method"
+        >
         <div className="space-y-1">
           <Label>Access Method</Label>
           <Select
@@ -342,9 +351,21 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </Select>
           <p className="text-xs text-muted-foreground">{selected?.description}</p>
         </div>
+        </EditLock>
         )}
 
-        {step === "device" && needsApi && (
+        {step === "device" && (
+        <EditLock
+          editing={deviceLock.editing}
+          onEdit={deviceLock.edit}
+          onCancel={deviceLock.cancel}
+          onSave={() => handleSave(deviceLock.done)}
+          saving={updateSecrets.isPending}
+          locked={isSimple}
+          lockedHint="This access method needs no hardware setup — pick a card, PIN, face or relay method on step 1 to configure a device."
+          title="device settings"
+        >
+        {needsApi && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>API Endpoint URL</Label>
@@ -366,7 +387,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {step === "device" && isFaceRec && (
+        {isFaceRec && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <ScanFace className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -518,7 +539,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {step === "device" && isFluss && (
+        {isFluss && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <DoorOpen className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -581,7 +602,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {step === "device" && isShelly && (
+        {isShelly && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
               <Wifi className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -763,7 +784,18 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {step === "location" && (isShelly || isFluss) && (
+        {step === "location" && (
+        <EditLock
+          editing={locationLock.editing}
+          onEdit={locationLock.edit}
+          onCancel={locationLock.cancel}
+          onSave={() => handleSave(locationLock.done)}
+          saving={updateSecrets.isPending}
+          locked={!(isShelly || isFluss)}
+          lockedHint="Door location only applies to smart-relay doors (Shelly or Fluss). Choose one on step 1 first."
+          title="door location"
+        >
+        {(isShelly || isFluss) && (
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
@@ -862,7 +894,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         )}
 
 
-        {step === "device" && isOther && (
+        {isOther && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
             <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div className="space-y-1">
@@ -875,9 +907,11 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
             </div>
           </div>
         )}
+        </EditLock>
+        )}
 
-        {!isSimple && (
-          <Button onClick={handleSave} disabled={updateSecrets.isPending} className="w-full md:w-auto">
+        {false && (
+          <Button onClick={() => handleSave()} disabled={updateSecrets.isPending} className="w-full md:w-auto">
             {updateSecrets.isPending ? "Saving..." : "Save Access Settings"}
           </Button>
         )}

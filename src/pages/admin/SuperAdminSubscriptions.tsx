@@ -485,14 +485,13 @@ export default function SuperAdminSubscriptions() {
       trialEnd.setDate(trialEnd.getDate() + (plan?.trial_days || 30));
 
       const rawCount = club?.member_count || 0;
-      const billable = plan?.max_billable_members ? Math.min(rawCount, plan.max_billable_members) : rawCount;
       const { error } = await fromExt("club_subscriptions").upsert({
         club_id: clubId,
         plan_id: planId,
         status: "trial",
         trial_ends_at: trialEnd.toISOString(),
         member_count: rawCount,
-        amount_due: Math.max(billable * (plan?.price_per_member || 0), plan?.minimum_charge || 0),
+        amount_due: chargeFor(rawCount, (club as any)?.currency_code, cycleOf(plan)).total,
         current_period_start: new Date().toISOString(),
         current_period_end: trialEnd.toISOString(),
       }, { onConflict: "club_id" });
@@ -550,10 +549,7 @@ export default function SuperAdminSubscriptions() {
   const recalcAmount = (planId: string, memberCount: string) => {
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
-    const count = Number(memberCount) || 0;
-    const billable = plan.max_billable_members ? Math.min(count, plan.max_billable_members) : count;
-    const rate = rateForClub(plan, editSub?.clubs?.currency_code || "ZAR");
-    const calculated = Math.max(billable * rate, plan.minimum_charge);
+    const calculated = chargeFor(Number(memberCount) || 0, editSub?.clubs?.currency_code, cycleOf(plan)).total;
     setSubForm(f => ({ ...f, amount_due: String(calculated) }));
   };
 
@@ -765,22 +761,15 @@ export default function SuperAdminSubscriptions() {
                       <TableCell className="text-center">
                         {(() => {
                           const live = clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count;
-                          const plan = plans.find(p => p.id === sub.plan_id);
-                          const cap = plan?.max_billable_members ?? null;
-                          const billable = cap ? Math.min(live, cap) : live;
-                          const capped = cap && live > cap;
                           const stale = live !== sub.member_count;
                           return (
                             <Badge
                               variant="secondary"
                               className="text-[10px]"
-                              title={
-                                (capped ? `Billable capped at ${cap} (of ${live} live). ` : "") +
-                                (stale ? `Snapshot on record: ${sub.member_count}.` : "")
-                              }
+                              title={`Active members, visitors excluded.${stale ? ` Snapshot on record: ${sub.member_count}.` : ""}`}
                             >
                               <Users className="h-3 w-3 mr-0.5" />
-                              {capped ? `${billable}/${live}` : live}
+                              {live}
                               {stale && <span className="ml-1 text-amber-600">•</span>}
                             </Badge>
                           );
@@ -791,17 +780,22 @@ export default function SuperAdminSubscriptions() {
                           const live = clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count;
                           const plan = plans.find(p => p.id === sub.plan_id);
                           if (!plan) return fmtSubscriptionMoney(sub.amount_due);
-                          const billable = plan.max_billable_members ? Math.min(live, plan.max_billable_members) : live;
-                          const calc = Math.max(billable * plan.price_per_member, plan.minimum_charge);
-                          const stale = Math.abs(calc - Number(sub.amount_due)) > 0.001;
+                          const ccy = (sub.clubs?.currency_code || "ZAR").toUpperCase();
+                          const res = chargeFor(live, ccy, cycleOf(plan));
+                          const stale = Math.abs(res.total - Number(sub.amount_due)) > 0.001;
+                          const bands = res.rows.map(r => `${r.members} × ${ccySymbol(ccy)}${r.rate.toFixed(2)}`).join("  +  ");
                           return (
-                            <span title={stale ? `Stored: ${fmtSubscriptionMoney(sub.amount_due)}` : undefined}>
-                              {fmtSubscriptionMoney(calc)}
+                            <span
+                              title={`${bands || "No members"}${res.minApplied ? ` → minimum ${ccySymbol(ccy)}${res.min.toFixed(2)} applied` : ""}${res.months > 1 ? ` × 12 months` : ""}${stale ? `\nStored: ${fmtSubscriptionMoney(sub.amount_due)}` : ""}`}
+                            >
+                              {fmtSubscriptionMoney(res.total, ccySymbol(ccy))}
+                              {res.minApplied && <span className="ml-1 text-muted-foreground">min</span>}
                               {stale && <span className="ml-1 text-amber-600">•</span>}
                             </span>
                           );
                         })()}
                       </TableCell>
+
                       <TableCell className="text-xs text-muted-foreground">
                         {sub.trial_ends_at ? new Date(sub.trial_ends_at).toLocaleDateString() : "—"}
                       </TableCell>

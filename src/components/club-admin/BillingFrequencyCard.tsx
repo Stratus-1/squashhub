@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CalendarClock, Info } from "lucide-react";
+import { CalendarClock, Info, Send } from "lucide-react";
 import { toast } from "sonner";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -100,6 +100,23 @@ export function BillingFrequencyCard({
   const annualTotal = annual ? annual.subtotal * 12 : null;
   const saving12 = monthlyTotal != null && annualTotal != null ? monthlyTotal * 12 - annualTotal : null;
 
+  const [requestedAt, setRequestedAt] = useState<string | null>(c.annual_billing_requested_at ?? null);
+  const [requesting, setRequesting] = useState(false);
+
+  const handleRequestAnnual = async () => {
+    setRequesting(true);
+    try {
+      const now = new Date().toISOString();
+      await updateClub.mutateAsync({ id: club.id, annual_billing_requested_at: now } as any);
+      setRequestedAt(now);
+      toast.success("Request sent — SquashHub will review and enable annual billing.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send request");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -145,12 +162,14 @@ export function BillingFrequencyCard({
           </>
         ) : (
           <>
-            Your club is invoiced monthly in arrears, based on your member count at the time of each
-            invoice. Annual upfront billing is enabled by SquashHub once your roster has settled —
-            ask us if you&apos;d like it switched on.
+            Your club is invoiced monthly in advance, based on your member count at the time of each
+            invoice. Invoicing starts 1 September 2026. Prefer to settle a full year upfront? Request
+            annual payment below — SquashHub will review and enable it.
           </>
         )}
       </p>
+
+
 
 
       <RadioGroup
@@ -171,7 +190,7 @@ export function BillingFrequencyCard({
               <span className="text-[10px] font-normal text-muted-foreground"> / month</span>
             </div>
             <div className="text-xs text-muted-foreground">
-              Billed monthly in arrears
+              Billed monthly in advance
               {monthlyTotal != null && <> · {pricing.format(monthlyTotal * 12)} over 12 months</>}
             </div>
           </div>
@@ -201,6 +220,34 @@ export function BillingFrequencyCard({
           </label>
         )}
       </RadioGroup>
+
+      {!allowAnnual && (
+        <div className="rounded-md border p-3 space-y-2">
+          <div className="text-sm">
+            <div className="font-medium">Annual upfront</div>
+            <div className="text-lg font-bold text-foreground">
+              {annualTotal != null ? pricing.format(annualTotal) : "—"}
+              <span className="text-[10px] font-normal text-muted-foreground"> / year</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              One invoice, paid in advance
+              {annual && <> · ≈ {pricing.format(annual.subtotal)} / month</>}
+              {saving12 != null && saving12 > 0 && <> · saves {pricing.format(saving12)} a year</>}
+            </div>
+          </div>
+          {requestedAt ? (
+            <p className="text-[11px] text-muted-foreground">
+              Requested on {new Date(requestedAt).toLocaleDateString()} — awaiting SquashHub
+              approval. We&apos;ll switch you over once it&apos;s approved.
+            </p>
+          ) : (
+            <Button size="sm" variant="outline" onClick={handleRequestAnnual} disabled={requesting}>
+              <Send className="w-3.5 h-3.5 mr-1.5" />
+              {requesting ? "Sending…" : "Request annual payment"}
+            </Button>
+          )}
+        </div>
+      )}
 
       {allowAnnual && (
         <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">

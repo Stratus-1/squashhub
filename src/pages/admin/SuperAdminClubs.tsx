@@ -26,6 +26,7 @@ type Club = {
   created_at: string;
   booking_slot_minutes?: number | null;
   allow_annual_billing?: boolean | null;
+  annual_billing_requested_at?: string | null;
   member_count?: number;
 };
 
@@ -41,7 +42,7 @@ export default function SuperAdminClubs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at, booking_slot_minutes, allow_annual_billing")
+        .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at, booking_slot_minutes, allow_annual_billing, annual_billing_requested_at")
         .order("created_at", { ascending: false })
         .range(0, 49999);
       if (error) throw error;
@@ -285,6 +286,13 @@ export default function SuperAdminClubs() {
                   When off, this club can only be invoiced monthly. Turn on once their member roster
                   has settled, so a year paid upfront reflects realistic numbers.
                 </p>
+                {editClub?.annual_billing_requested_at && !editForm.allow_annual_billing && (
+                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mt-1.5">
+                    Requested by the club on{" "}
+                    {new Date(editClub.annual_billing_requested_at).toLocaleDateString()} — approve by
+                    turning this on.
+                  </p>
+                )}
               </div>
               <Switch
                 checked={editForm.allow_annual_billing}

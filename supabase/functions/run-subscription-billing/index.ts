@@ -219,6 +219,19 @@ Deno.serve(async (req) => {
 
   const yearStr = billingDate.getFullYear().toString()
 
+  // Platform go-live: subscription invoicing starts 1 September 2026. Runs before
+  // that date issue nothing (dry runs still preview normally).
+  const BILLING_GO_LIVE = '2026-09-01'
+  if (!dryRun && billingDate.toISOString().slice(0, 10) < BILLING_GO_LIVE) {
+    return json({
+      issued: 0,
+      skipped: (subs || []).length,
+      failed: 0,
+      results: [],
+      note: `Subscription invoicing starts ${BILLING_GO_LIVE}`,
+    })
+  }
+
   // Get current invoice count for this year to build sequential numbers
   const { count: existingCount } = await supabase
     .from('platform_subscription_invoices')

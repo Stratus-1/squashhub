@@ -135,14 +135,21 @@ export function BillingFrequencyCard({
             {new Date(annualCoverUntil!).toLocaleDateString()}. You can choose monthly or annual
             again when this period ends.
           </>
-        ) : (
+        ) : allowAnnual ? (
           <>
             Choose how you&apos;d like to be invoiced. While you&apos;re on monthly you can switch to
             annual upfront at any time — the option stays here every month. Annual upfront covers 12
             months in one invoice and works out cheaper per member.
           </>
+        ) : (
+          <>
+            Your club is invoiced monthly in arrears, based on your member count at the time of each
+            invoice. Annual upfront billing is enabled by SquashHub once your roster has settled —
+            ask us if you&apos;d like it switched on.
+          </>
         )}
       </p>
+
 
       <RadioGroup
         value={choice}

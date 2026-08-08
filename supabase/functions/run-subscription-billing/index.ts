@@ -37,7 +37,16 @@ Deno.serve(async (req) => {
       'saas_rate_eur_monthly', 'saas_rate_eur_annual',
       'saas_min_charge_monthly', 'saas_min_charge_annual',
       'fx_usd_to_zar', 'fx_eur_to_zar',
+      // Graduated ("sliding scale") pricing — when enabled these override the flat rates.
+      'saas_tiers_enabled',
+      'saas_tiers_zar_monthly', 'saas_tiers_zar_annual',
+      'saas_tiers_usd_monthly', 'saas_tiers_usd_annual',
+      'saas_tiers_eur_monthly', 'saas_tiers_eur_annual',
+      'saas_tier_min_zar_monthly', 'saas_tier_min_zar_annual',
+      'saas_tier_min_usd_monthly', 'saas_tier_min_usd_annual',
+      'saas_tier_min_eur_monthly', 'saas_tier_min_eur_annual',
     ])
+
   if (settingErr && settingErr.code !== 'PGRST116') {
     return json({ error: `Failed to load invoice settings: ${settingErr.message}` }, 500)
   }

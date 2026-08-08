@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
       // We always CHARGE in ZAR because Stitch only accepts ZAR — convert the local
       // total to ZAR via the configured FX rate.
       const displayCurrency = clubCurrencies.get(sub.club_id) || 'ZAR'
-      const cycle = (plan.billing_cycle === 'annual' ? 'annual' : 'monthly') as 'monthly' | 'annual'
+      const cycle = (clubCycles.get(sub.club_id) ?? (plan.billing_cycle === 'annual' ? 'annual' : 'monthly')) as 'monthly' | 'annual'
       const planPriceZar = +Number(plan.price_per_member).toFixed(2)
       const planMinZar = +Number(plan.minimum_charge || 0).toFixed(2)
       const flatRateLocal = +rateFor(displayCurrency, cycle, planPriceZar).toFixed(2)

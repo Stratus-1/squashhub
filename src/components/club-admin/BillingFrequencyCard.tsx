@@ -1,14 +1,17 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { useSaasPricing } from "@/hooks/use-saas-pricing";
 import { computeTieredCharge } from "@/lib/saas-tiers";
+
 
 type BillingOption = "monthly" | "annual_upfront";
 
@@ -59,16 +62,34 @@ export function BillingFrequencyCard({
     return ends.length ? ends[ends.length - 1] : null;
   })();
   const locked = !!annualCoverUntil;
+  const allowAnnual = c.allow_annual_billing === true;
 
+  // Live billable member count — the billing engine counts every club member.
+  const { data: memberCountData } = useQuery({
+    queryKey: ["club-billable-member-count", club.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("club_members")
+        .select("id", { count: "exact", head: true })
+        .eq("club_id", club.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
 
   const memberCount: number | null =
-    typeof c.active_member_count === "number" ? c.active_member_count : null;
+    typeof memberCountData === "number"
+      ? memberCountData
+      : typeof c.active_member_count === "number"
+        ? c.active_member_count
+        : null;
   const billable =
     memberCount === null
       ? null
       : pricing.cap && pricing.cap > 0
         ? Math.min(memberCount, pricing.cap)
         : memberCount;
+
 
   const monthly = billable !== null ? computeTieredCharge(billable, pricing.monthlyTiers, pricing.monthlyMin) : null;
   const annual = billable !== null ? computeTieredCharge(billable, pricing.annualTiers, pricing.annualMin) : null;
@@ -114,14 +135,21 @@ export function BillingFrequencyCard({
             {new Date(annualCoverUntil!).toLocaleDateString()}. You can choose monthly or annual
             again when this period ends.
           </>
-        ) : (
+        ) : allowAnnual ? (
           <>
             Choose how you&apos;d like to be invoiced. While you&apos;re on monthly you can switch to
             annual upfront at any time — the option stays here every month. Annual upfront covers 12
             months in one invoice and works out cheaper per member.
           </>
+        ) : (
+          <>
+            Your club is invoiced monthly in arrears, based on your member count at the time of each
+            invoice. Annual upfront billing is enabled by SquashHub once your roster has settled —
+            ask us if you&apos;d like it switched on.
+          </>
         )}
       </p>
+
 
       <RadioGroup
         value={choice}
@@ -147,28 +175,43 @@ export function BillingFrequencyCard({
           </div>
         </label>
 
-        <label
-          className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}
-        >
-          <RadioGroupItem value="annual_upfront" id="freq-annual" className="mt-0.5" disabled={locked} />
-          <div className="text-sm flex-1">
-            <div className="font-medium">Annual upfront</div>
-            <div className="text-lg font-bold text-foreground">
-              {annualTotal != null ? pricing.format(annualTotal) : "—"}
-              <span className="text-[10px] font-normal text-muted-foreground"> / year</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              One invoice, paid in advance
-              {annual && <> · ≈ {pricing.format(annual.subtotal)} / month</>}
-            </div>
-            {saving12 != null && saving12 > 0 && (
-              <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                Save {pricing.format(saving12)} per year
+        {allowAnnual && (
+          <label
+            className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}
+          >
+            <RadioGroupItem value="annual_upfront" id="freq-annual" className="mt-0.5" disabled={locked} />
+            <div className="text-sm flex-1">
+              <div className="font-medium">Annual upfront</div>
+              <div className="text-lg font-bold text-foreground">
+                {annualTotal != null ? pricing.format(annualTotal) : "—"}
+                <span className="text-[10px] font-normal text-muted-foreground"> / year</span>
               </div>
-            )}
-          </div>
-        </label>
+              <div className="text-xs text-muted-foreground">
+                One invoice, paid in advance
+                {annual && <> · ≈ {pricing.format(annual.subtotal)} / month</>}
+              </div>
+              {saving12 != null && saving12 > 0 && (
+                <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  Save {pricing.format(saving12)} per year
+                </div>
+              )}
+            </div>
+          </label>
+        )}
       </RadioGroup>
+
+      {allowAnnual && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
+          <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <span className="font-medium text-foreground">Annual true-up:</span> an annual invoice is
+            priced on your member count on the day it&apos;s issued. If your membership changes by
+            more than 10% during the year, the difference is reconciled on your next annual invoice
+            (or credited if members drop).
+          </p>
+        </div>
+      )}
+
 
       <div className="flex items-center gap-2 flex-wrap">
         <Button size="sm" onClick={handleSave} disabled={locked || saving || choice === current}>

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SEO } from "@/components/SEO";
+import { Switch } from "@/components/ui/switch";
 import { Building2, Search, Users, Pencil, Trash2, ExternalLink, Globe } from "lucide-react";
 
 type Club = {
@@ -24,6 +25,7 @@ type Club = {
   tenant_type: string;
   created_at: string;
   booking_slot_minutes?: number | null;
+  allow_annual_billing?: boolean | null;
   member_count?: number;
 };
 
@@ -31,7 +33,7 @@ export default function SuperAdminClubs() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [editClub, setEditClub] = useState<Club | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", subdomain: "", email: "", phone: "", address: "", booking_slot_minutes: 30 });
+  const [editForm, setEditForm] = useState({ name: "", subdomain: "", email: "", phone: "", address: "", booking_slot_minutes: 30, allow_annual_billing: false });
   const [deleteConfirm, setDeleteConfirm] = useState<Club | null>(null);
 
   const { data: clubs = [], isLoading } = useQuery({
@@ -39,7 +41,7 @@ export default function SuperAdminClubs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at, booking_slot_minutes")
+        .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at, booking_slot_minutes, allow_annual_billing")
         .order("created_at", { ascending: false })
         .range(0, 49999);
       if (error) throw error;
@@ -75,7 +77,7 @@ export default function SuperAdminClubs() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (club: { id: string; name: string; subdomain: string; email: string; phone: string; address: string; booking_slot_minutes: number }) => {
+    mutationFn: async (club: { id: string; name: string; subdomain: string; email: string; phone: string; address: string; booking_slot_minutes: number; allow_annual_billing: boolean }) => {
       const { error } = await supabase
         .from("clubs")
         .update({
@@ -85,6 +87,7 @@ export default function SuperAdminClubs() {
           phone: club.phone || null,
           address: club.address || null,
           booking_slot_minutes: club.booking_slot_minutes,
+          allow_annual_billing: club.allow_annual_billing,
         })
         .eq("id", club.id);
       if (error) throw error;
@@ -121,6 +124,7 @@ export default function SuperAdminClubs() {
       phone: club.phone || "",
       address: club.address || "",
       booking_slot_minutes: club.booking_slot_minutes ?? 30,
+      allow_annual_billing: club.allow_annual_billing === true,
     });
   };
 
@@ -273,6 +277,19 @@ export default function SuperAdminClubs() {
                   <SelectItem value="60">60-minute slots (full hours)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+              <div>
+                <Label>Allow annual upfront billing</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  When off, this club can only be invoiced monthly. Turn on once their member roster
+                  has settled, so a year paid upfront reflects realistic numbers.
+                </p>
+              </div>
+              <Switch
+                checked={editForm.allow_annual_billing}
+                onCheckedChange={(v) => setEditForm((f) => ({ ...f, allow_annual_billing: v }))}
+              />
             </div>
           </div>
           <DialogFooter>

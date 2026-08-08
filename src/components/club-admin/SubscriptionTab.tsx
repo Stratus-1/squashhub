@@ -240,7 +240,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
     <div className="space-y-6 mt-4">
       {club && <ClubParticipationCard club={club} />}
 
-      {club && <BillingFrequencyCard club={club} />}
+      {club && <BillingFrequencyCard club={club} invoices={invoices} />}
 
 
 

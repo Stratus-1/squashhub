@@ -85,21 +85,32 @@ export function DashboardWifiCard({ asTile = false }: { asTile?: boolean } = {})
 
   const locked = !!status?.charge_enabled && !status?.has_access;
 
-  // One-off announcement toast introducing paid club Wi-Fi
+  // Announcement toast introducing paid club Wi-Fi.
+  // Shown once per app session until the member actually opens the Wi-Fi dialog.
   useEffect(() => {
+    if (asTile) return; // avoid double toast when both tile + card are mounted
     if (!status?.wifi_enabled || !locked) return;
     const key = `sh.wifi.announced.${clubId ?? "x"}`;
     if (localStorage.getItem(key)) return;
-    localStorage.setItem(key, "1");
+    const sessionKey = `${key}.session`;
+    if (sessionStorage.getItem(sessionKey)) return;
+    sessionStorage.setItem(sessionKey, "1");
     const t = setTimeout(() => {
       toast("Club Wi-Fi is now available", {
         description: `Get the club Wi-Fi password on your phone for just ${format(Number(status?.monthly_fee || 0))} a month — tap the violet “Club Wi-Fi” tile on your dashboard to activate.`,
-        duration: 12000,
-        action: { label: "Open", onClick: () => setOpen(true) },
+        duration: 15000,
+        action: {
+          label: "Open",
+          onClick: () => {
+            localStorage.setItem(key, "1");
+            setOpen(true);
+          },
+        },
       });
-    }, 1200);
+    }, 1500);
     return () => clearTimeout(t);
-  }, [status?.wifi_enabled, status?.monthly_fee, locked, clubId, format]);
+  }, [asTile, status?.wifi_enabled, status?.monthly_fee, locked, clubId, format]);
+
 
   // Hidden entirely unless the club has switched Wi-Fi on in Access Control
   if (status && !status.wifi_enabled) return null;

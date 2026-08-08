@@ -233,11 +233,25 @@ Deno.serve(async (req) => {
       const cycle = (plan.billing_cycle === 'annual' ? 'annual' : 'monthly') as 'monthly' | 'annual'
       const planPriceZar = +Number(plan.price_per_member).toFixed(2)
       const planMinZar = +Number(plan.minimum_charge || 0).toFixed(2)
-      const pricePerMemberLocal = +rateFor(displayCurrency, cycle, planPriceZar).toFixed(2)
-      const minimumChargeLocal = +minChargeFor(cycle, planMinZar).toFixed(2)
+      const flatRateLocal = +rateFor(displayCurrency, cycle, planPriceZar).toFixed(2)
 
-      const grossLocal = billableMembers * pricePerMemberLocal
+      // Graduated bands take precedence when enabled and configured for the currency.
+      const tiers = tiersEnabled ? tiersFor(displayCurrency, cycle) : null
+      const tierMin = tiers ? tierMinFor(displayCurrency, cycle) : null
+      const minimumChargeLocal = +(tiers && tierMin != null
+        ? tierMin
+        : minChargeFor(cycle, planMinZar)
+      ).toFixed(2)
+
+      const grossLocal = tiers
+        ? graduatedTotal(billableMembers, tiers)
+        : billableMembers * flatRateLocal
       const subtotalLocal = +Math.max(grossLocal, minimumChargeLocal).toFixed(2)
+      // Effective (blended) per-member rate — what appears on the invoice line.
+      const pricePerMemberLocal = billableMembers > 0
+        ? +(subtotalLocal / billableMembers).toFixed(2)
+        : flatRateLocal
+
       const vatLocal = +(subtotalLocal * vatRate).toFixed(2)
       const displayTotal = +(subtotalLocal + vatLocal).toFixed(2)
 

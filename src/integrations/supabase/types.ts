@@ -2556,8 +2556,10 @@ export type Database = {
           smtp_port: number | null
           smtp_user: string | null
           updated_at: string
+          wifi_charge_enabled: boolean
           wifi_enabled: boolean
           wifi_hidden: boolean
+          wifi_monthly_fee: number
           wifi_notes: string | null
           wifi_password: string | null
           wifi_security: string
@@ -2603,8 +2605,10 @@ export type Database = {
           smtp_port?: number | null
           smtp_user?: string | null
           updated_at?: string
+          wifi_charge_enabled?: boolean
           wifi_enabled?: boolean
           wifi_hidden?: boolean
+          wifi_monthly_fee?: number
           wifi_notes?: string | null
           wifi_password?: string | null
           wifi_security?: string
@@ -2650,8 +2654,10 @@ export type Database = {
           smtp_port?: number | null
           smtp_user?: string | null
           updated_at?: string
+          wifi_charge_enabled?: boolean
           wifi_enabled?: boolean
           wifi_hidden?: boolean
+          wifi_monthly_fee?: number
           wifi_notes?: string | null
           wifi_password?: string | null
           wifi_security?: string
@@ -2812,6 +2818,73 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_wifi_subscriptions: {
+        Row: {
+          active: boolean
+          auto_renew: boolean
+          cancelled_at: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          current_period_end: string
+          id: string
+          last_billed_period: string | null
+          monthly_fee: number
+          started_at: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          auto_renew?: boolean
+          cancelled_at?: string | null
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          current_period_end?: string
+          id?: string
+          last_billed_period?: string | null
+          monthly_fee?: number
+          started_at?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          auto_renew?: boolean
+          cancelled_at?: string | null
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          current_period_end?: string
+          id?: string
+          last_billed_period?: string | null
+          monthly_fee?: number
+          started_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_wifi_subscriptions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_wifi_subscriptions_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_wifi_subscriptions_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]
@@ -7743,10 +7816,12 @@ export type Database = {
         Returns: undefined
       }
       auto_complete_past_tournaments: { Args: never; Returns: number }
+      bill_wifi_monthly: { Args: never; Returns: Json }
       can_mark_bells_match: {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
       }
+      cancel_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       captain_list_unclaimed_teammates: {
         Args: { _club_member_id: string }
         Returns: {
@@ -7983,6 +8058,18 @@ export type Database = {
           team_code: string
         }[]
       }
+      get_wifi_access_status: {
+        Args: { _club_member_id: string }
+        Returns: {
+          active: boolean
+          auto_renew: boolean
+          charge_enabled: boolean
+          current_period_end: string
+          has_access: boolean
+          monthly_fee: number
+          unpaid_amount: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -7990,6 +8077,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_wifi_access: { Args: { _club_member_id: string }; Returns: boolean }
       is_bells_participant_member: {
         Args: { _member_id: string }
         Returns: boolean
@@ -8161,6 +8249,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      request_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
       respond_league_week_availability: {
         Args: {

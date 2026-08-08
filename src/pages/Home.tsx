@@ -576,16 +576,16 @@ export default function Home() {
             <PricingCard
               icon={Building2}
               title="Clubs"
-              priceLabel="From R2.50"
-              intlLabel="per active member · sliding scale from R6 down to R2.50 · minimum R250 / month"
+              priceLabel={`From ${pricing.format(lowestRate)}`}
+              intlLabel={scaleLabel}
               perks={["All features included", "Billed only on active members", "Save ~15% paying annually in advance", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
             <PricingCard
               icon={Landmark}
               title="Associations"
-              priceLabel="From R2.50"
-              intlLabel="per active member · sliding scale from R6 down to R2.50 · minimum R250 / month"
+              priceLabel={`From ${pricing.format(lowestRate)}`}
+              intlLabel={scaleLabel}
               perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Save ~15% paying annually in advance", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
@@ -595,25 +595,27 @@ export default function Home() {
           <div className="max-w-3xl mx-auto mt-6 rounded-2xl border border-white/10 bg-[hsl(220_45%_8%/0.6)] backdrop-blur-md p-5">
             <h3 className="text-sm font-semibold text-foreground mb-3">How the sliding scale works</h3>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
-              {[
-                { band: "First 50", rate: "R6.00" },
-                { band: "51 – 150", rate: "R5.00" },
-                { band: "151 – 250", rate: "R4.00" },
-                { band: "251 – 500", rate: "R3.00" },
-                { band: "501+", rate: "R2.50" },
-              ].map((b) => (
-                <div key={b.band} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{b.band}</div>
-                  <div className="text-base font-bold text-foreground">{b.rate}</div>
-                  <div className="text-[10px] text-muted-foreground">/ member / month</div>
-                </div>
-              ))}
+              {pricing.monthlyTiers.map((t, i) => {
+                const from = i === 0 ? 1 : (pricing.monthlyTiers[i - 1].upTo ?? 0) + 1;
+                return (
+                  <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {pricing.bandLabel(from, t.upTo)}
+                    </div>
+                    <div className="text-base font-bold text-foreground">{pricing.format(t.rate)}</div>
+                    <div className="text-[10px] text-muted-foreground">/ member / month</div>
+                  </div>
+                );
+              })}
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              Example: a 197-member club pays about <strong className="text-foreground">R988 per month</strong> — roughly
-              R5.02 per member. Minimum charge R250 / month. International clubs are billed proportionally in USD or EUR.
+              Example: a 197-member club pays about{" "}
+              <strong className="text-foreground">{pricing.format(example.subtotal)} per month</strong> — roughly{" "}
+              {pricing.format(example.effectiveRate)} per member. Minimum charge {pricing.format(pricing.monthlyMin)} /
+              month. International clubs are billed proportionally in USD or EUR.
             </p>
           </div>
+
 
 
           {/* Lights integration teaser */}

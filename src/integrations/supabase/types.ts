@@ -2800,6 +2800,9 @@ export type Database = {
           accepted_payment_methods: string[]
           address: string | null
           allow_annual_billing: boolean
+          annual_billing_request_note: string | null
+          annual_billing_requested_at: string | null
+          annual_billing_requested_by: string | null
           auto_number_existing_onboarding: boolean
           booking_last_slot_time: string
           booking_open_time: string
@@ -2889,6 +2892,9 @@ export type Database = {
           accepted_payment_methods?: string[]
           address?: string | null
           allow_annual_billing?: boolean
+          annual_billing_request_note?: string | null
+          annual_billing_requested_at?: string | null
+          annual_billing_requested_by?: string | null
           auto_number_existing_onboarding?: boolean
           booking_last_slot_time?: string
           booking_open_time?: string
@@ -2978,6 +2984,9 @@ export type Database = {
           accepted_payment_methods?: string[]
           address?: string | null
           allow_annual_billing?: boolean
+          annual_billing_request_note?: string | null
+          annual_billing_requested_at?: string | null
+          annual_billing_requested_by?: string | null
           auto_number_existing_onboarding?: boolean
           booking_last_slot_time?: string
           booking_open_time?: string

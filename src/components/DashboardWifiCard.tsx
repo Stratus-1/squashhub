@@ -48,7 +48,7 @@ export function buildWifiQrPayload(w: ClubWifi) {
  * when the club allows it) who hold a current, paid-up monthly Wi-Fi pass when
  * the club charges for Wi-Fi.
  */
-export function DashboardWifiCard() {
+export function DashboardWifiCard({ asTile = false }: { asTile?: boolean } = {}) {
   const { data: clubData } = useMyClub();
   const clubId = (clubData?.club as { id?: string } | undefined)?.id;
   const { activeMember } = useMemberContext();
@@ -141,6 +141,16 @@ export function DashboardWifiCard() {
 
   return (
     <>
+      {asTile ? (
+        <Button
+          variant="outline"
+          className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-400 hover:bg-violet-500/20"
+          onClick={() => setOpen(true)}
+        >
+          {locked ? <Lock className="w-5 h-5" /> : <Wifi className="w-5 h-5" />}
+          <span className="text-xs font-medium leading-tight text-center">Club Wi-Fi</span>
+        </Button>
+      ) : (
       <Card
         role="button"
         tabIndex={0}
@@ -164,6 +174,7 @@ export function DashboardWifiCard() {
           </div>
         </div>
       </Card>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">

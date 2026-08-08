@@ -101,7 +101,11 @@ export function DashboardWifiCard() {
         _club_member_id: memberId,
       });
       if (error) throw error;
-      toast.success(`Wi-Fi access enabled — ${format(Number((data as any)?.amount || 0))} added to your account — repeats monthly`);
+      toast.success(
+        (data as any)?.prorata
+          ? `Wi-Fi access enabled — ${format(Number((data as any)?.amount || 0))} pro-rata for the rest of this month, then ${format(Number((data as any)?.monthly_fee || 0))} on the 1st of each month`
+          : `Wi-Fi access enabled — ${format(Number((data as any)?.amount || 0))} added to your account — repeats monthly`,
+      );
       qc.invalidateQueries({ queryKey: ["wifi-access-status", memberId] });
       qc.invalidateQueries({ queryKey: ["club-wifi", clubId] });
     } catch (e: any) {
@@ -161,8 +165,8 @@ export function DashboardWifiCard() {
             {status?.active ? "Reactivate Wi-Fi access" : "Activate Wi-Fi access"}
           </Button>
           <p className="text-[12px] text-muted-foreground">
-            {format(Number(status?.monthly_fee || 0))} is charged to your club account now and automatically every month
-            until you deactivate — no need to renew.
+            You're charged pro-rata for the days left this month, then {format(Number(status?.monthly_fee || 0))} on the
+            1st of every month until you deactivate — no need to renew.
           </p>
         </div>
       )}

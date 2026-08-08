@@ -252,11 +252,12 @@ Deno.serve(async (req) => {
 
   const yearStr = billingDate.getFullYear().toString()
 
-  // Billing starts the 1st of the month AFTER each club's trial ends.
-  // e.g. trial ends 31 Aug 2026 → first invoice issued 1 Sep 2026 covering 1–30 Sep.
-  const firstOfNextMonth = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))
+  // Billing starts the DAY AFTER each club's trial ends.
+  // e.g. trial ends 11 Aug 2026 → first invoice issued 12 Aug 2026 covering 12 Aug – 11 Sep.
+  const dayAfter = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1))
   const iso = (d: Date) => d.toISOString().slice(0, 10)
   const billingDay = iso(billingDate)
+
 
 
   // Get current invoice count for this year to build sequential numbers
@@ -323,11 +324,10 @@ Deno.serve(async (req) => {
       const vatAmount = +(vatLocal * fxRate).toFixed(2)
       const total = +(displayTotal * fxRate).toFixed(2)
 
-      // Billing periods are calendar-aligned. The first billable period starts on
-      // the 1st of the month AFTER the trial ends; afterwards we continue from the
-      // last invoiced period_end (also a 1st-of-month date).
+      // The first billable period starts the DAY AFTER the trial ends; afterwards
+      // we continue from the last invoiced period_end.
       const trialEnd = sub.trial_ends_at ? new Date(sub.trial_ends_at) : null
-      const firstBillableStart = trialEnd ? firstOfNextMonth(trialEnd) : null
+      const firstBillableStart = trialEnd ? dayAfter(trialEnd) : null
       let periodStart: Date
       const lastEnd = sub.current_period_end ? new Date(sub.current_period_end) : null
       if (firstBillableStart && (!lastEnd || lastEnd < firstBillableStart)) {
@@ -335,8 +335,9 @@ Deno.serve(async (req) => {
       } else if (lastEnd) {
         periodStart = new Date(Date.UTC(lastEnd.getUTCFullYear(), lastEnd.getUTCMonth(), lastEnd.getUTCDate()))
       } else {
-        periodStart = new Date(Date.UTC(billingDate.getUTCFullYear(), billingDate.getUTCMonth(), 1))
+        periodStart = new Date(Date.UTC(billingDate.getUTCFullYear(), billingDate.getUTCMonth(), billingDate.getUTCDate()))
       }
+
 
       // Nothing to bill until the period has actually started (invoiced in advance
       // ON the 1st, never before).

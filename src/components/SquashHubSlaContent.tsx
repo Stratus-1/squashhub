@@ -3,8 +3,8 @@
  * Update SLA_VERSION whenever the terms change materially so existing
  * acceptances can be flagged as needing re-acceptance.
  */
-export const SLA_VERSION = "1.1";
-export const SLA_EFFECTIVE_DATE = "25 May 2026";
+export const SLA_VERSION = "1.2";
+export const SLA_EFFECTIVE_DATE = "8 August 2026";
 
 
 export function SquashHubSlaContent() {
@@ -29,11 +29,23 @@ export function SquashHubSlaContent() {
           and annually (or monthly, depending on the chosen billing option) thereafter.
         </li>
         <li>
-          <strong>Monthly billing:</strong> R6.00 per active member per month (or USD 0.35 / EUR 0.32 for clubs invoiced in those currencies), billed monthly in arrears.
+          <strong>Sliding scale:</strong> Fees are charged on a graduated (sliding scale) basis
+          according to the Club&apos;s number of active members — each band of members is charged at
+          its own rate, so the average cost per member decreases as membership grows. The applicable
+          bands are those published by the Provider on the platform from time to time, and may be
+          adjusted by the Provider from time to time.
         </li>
         <li>
-          <strong>Annual upfront billing:</strong> R5.00 per active member per month (R60.00 per member per year), or USD 0.30 / EUR 0.27 for clubs invoiced in those currencies, payable annually in advance — a saving of one month's fee per member per year.
+          <strong>Minimum monthly fee:</strong> A minimum subscription fee of <strong>R250.00 per
+          month</strong> applies (or the equivalent published minimum for clubs invoiced in USD or
+          EUR), regardless of the number of active members.
         </li>
+        <li>
+          <strong>Billing options:</strong> Monthly (billed in arrears) or annual upfront (payable
+          in advance at the published annual band rates, which represent a saving of approximately
+          15% compared with monthly billing).
+        </li>
+
         <li>
           An &quot;active member&quot; is any member with an active status on the platform at the
           time of invoicing. Visitors, archived members and pending sign-ups are not billable.

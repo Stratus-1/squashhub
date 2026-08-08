@@ -90,6 +90,15 @@ const FAQS = [
 
 export default function Home() {
   const navigate = useNavigate();
+  const pricing = useSaasPricing("ZAR");
+  const lowestRate = pricing.monthlyTiers.length
+    ? Math.min(...pricing.monthlyTiers.map((t) => t.rate))
+    : 0;
+  const highestRate = pricing.monthlyTiers.length
+    ? Math.max(...pricing.monthlyTiers.map((t) => t.rate))
+    : 0;
+  const scaleLabel = `per active member · sliding scale from ${pricing.format(highestRate)} down to ${pricing.format(lowestRate)} · minimum ${pricing.format(pricing.monthlyMin)} / month`;
+  const example = computeTieredCharge(197, pricing.monthlyTiers, pricing.monthlyMin);
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 

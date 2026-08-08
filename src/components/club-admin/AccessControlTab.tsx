@@ -250,6 +250,13 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         ble_fallback_enabled: form.ble_fallback_enabled,
         shelly_door_ble_mac: form.shelly_door_ble_mac || null,
         shelly_ble_control_password: form.shelly_ble_control_password || null,
+        wifi_enabled: form.wifi_enabled,
+        wifi_ssid: form.wifi_ssid.trim() || null,
+        wifi_password: form.wifi_password || null,
+        wifi_security: form.wifi_security,
+        wifi_hidden: form.wifi_hidden,
+        wifi_notes: form.wifi_notes.trim() || null,
+        wifi_visitors_allowed: form.wifi_visitors_allowed,
       } as any);
 
 

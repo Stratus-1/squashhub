@@ -400,6 +400,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
     return "";
   });
   const [amount, setAmount] = useState(existing?.amount ?? 0);
+  const [billingPeriod, setBillingPeriod] = useState<"annual" | "monthly">(existing?.billingPeriod ?? "annual");
   const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" || feeType === "registration" || feeType === "league_affiliation" ? "club_income" : "pass_through"));
   const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership" || feeType === "league_affiliation"));
   const [feeDueMonth, setFeeDueMonth] = useState(existing?.dueMonth ?? 1);
@@ -461,7 +462,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
       : { debit_order_eligible: debitOrderEligible, debit_order_rail: debitOrderRail };
 
     if (table === "member_fee_categories") {
-      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay, ...debitFields };
+      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: billingPeriod === "monthly" ? false : proRate, due_month: feeDueMonth, due_day: feeDueDay, billing_period: billingPeriod, ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("member_fee_categories").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }

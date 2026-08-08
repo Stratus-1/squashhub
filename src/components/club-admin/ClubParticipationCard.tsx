@@ -135,7 +135,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         </Button>
       )}
 
-      <ShellyIntegrationSection club={club} />
+
 
 
       <Dialog open={open} onOpenChange={setOpen}>

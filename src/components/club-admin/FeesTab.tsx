@@ -298,8 +298,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   <TableCell>
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{money(fee.amount)}</TableCell>
-                  <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
+                  <TableCell className="text-right tabular-nums">{money(fee.amount)}{fee.billingPeriod === "monthly" ? <span className="text-[10px] text-muted-foreground">/mo</span> : null}</TableCell>
+                  <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : fee.billingPeriod === "monthly" ? <span className="text-muted-foreground">Monthly (day {fee.dueDay})</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-center">
                     <Switch checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />

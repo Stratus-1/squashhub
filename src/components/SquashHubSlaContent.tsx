@@ -41,10 +41,22 @@ export function SquashHubSlaContent() {
           EUR), regardless of the number of active members.
         </li>
         <li>
-          <strong>Billing options:</strong> Monthly (billed in arrears) or annual upfront (payable
+          <strong>Billing options:</strong> Monthly (billed in advance) or annual upfront (payable
           in advance at the published annual band rates, which represent a saving of approximately
           15% compared with monthly billing).
         </li>
+        <li>
+          <strong>Annual upfront reconciliation (10% variance):</strong> Where the Club has paid
+          annually in advance, the fee is calculated on the number of active members at the start of
+          that annual period. At the end of the annual period (or on renewal) the Provider will
+          compare that figure with the Club&apos;s actual active membership. If the variance is
+          <strong> more than 10%</strong> — whether higher or lower — the difference for the period
+          will be reconciled at the applicable sliding-scale rates: an increase of more than 10% is
+          <strong> payable by the Club</strong>, and a decrease of more than 10% is
+          <strong> refundable or creditable by the Provider</strong>. Variances of 10% or less are
+          disregarded, and any reconciliation remains subject to the applicable minimum fee.
+        </li>
+
 
         <li>
           An &quot;active member&quot; is any member with an active status on the platform at the

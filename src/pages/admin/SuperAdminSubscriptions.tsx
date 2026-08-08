@@ -572,9 +572,11 @@ export default function SuperAdminSubscriptions() {
           <Card className="p-4 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4" /> Flat rates (fallback)</h3>
+                <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4" /> Limits, trial &amp; FX</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5 max-w-2xl">
-                  Used only when the sliding scale above is switched <strong>off</strong>. Base rates are in <strong>ZAR</strong>; USD and EUR rates apply to clubs whose currency is set to that currency. Saving here also updates the underlying Standard Monthly and Standard Annual plans (base ZAR). Changes apply from the next billing run.
+                  All clubs are billed on the sliding scale above. These settings control the optional billing cap, the
+                  free trial, and the FX rates used to convert USD/EUR club pricing into the ZAR amount actually charged
+                  by Stitch. Changes apply from the next billing run.
                 </p>
               </div>
 
@@ -589,54 +591,7 @@ export default function SuperAdminSubscriptions() {
               </Button>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-4">
-              {/* ZAR base */}
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">ZAR rates (base)</p>
-                <div>
-                  <Label className="text-xs">Monthly (R / member / month)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_monthly} onChange={e => updateIntlField("saas_rate_zar_monthly", e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Annual upfront (R / member / month)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_zar_annual} onChange={e => updateIntlField("saas_rate_zar_annual", e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Min charge — Monthly</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_monthly} onChange={e => updateIntlField("saas_min_charge_monthly", e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Min charge — Annual</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_min_charge_annual} onChange={e => updateIntlField("saas_min_charge_annual", e.target.value)} />
-                </div>
-              </div>
-
-              {/* USD */}
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">USD rates (for USD clubs)</p>
-                <div>
-                  <Label className="text-xs">Monthly ($ / member / month)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_usd_monthly} onChange={e => updateIntlField("saas_rate_usd_monthly", e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Annual upfront ($ / member / month)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_usd_annual} onChange={e => updateIntlField("saas_rate_usd_annual", e.target.value)} />
-                </div>
-              </div>
-
-              {/* EUR */}
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">EUR rates (for EUR clubs)</p>
-                <div>
-                  <Label className="text-xs">Monthly (€ / member / month)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_eur_monthly} onChange={e => updateIntlField("saas_rate_eur_monthly", e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Annual upfront (€ / member / month)</Label>
-                  <Input className="h-8 text-xs" type="number" step="0.01" value={intlForm.saas_rate_eur_annual} onChange={e => updateIntlField("saas_rate_eur_annual", e.target.value)} />
-                </div>
-              </div>
-
+            <div className="grid gap-4 sm:grid-cols-2">
               {/* FX rates */}
               <div className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">FX rates → ZAR (Stitch charges in ZAR only)</p>
@@ -653,11 +608,11 @@ export default function SuperAdminSubscriptions() {
 
               {/* Cap / trial */}
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Limits & trial</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Limits &amp; trial</p>
                 <div>
                   <Label className="text-xs">Billing cap (max billable members)</Label>
-                  <Input className="h-8 text-xs" type="number" step="1" value={intlForm.saas_billing_cap} onChange={e => updateIntlField("saas_billing_cap", e.target.value)} placeholder="e.g. 150" />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Clubs are billed for at most this many members.</p>
+                  <Input className="h-8 text-xs" type="number" step="1" value={intlForm.saas_billing_cap} onChange={e => updateIntlField("saas_billing_cap", e.target.value)} placeholder="leave blank for no cap" />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Leave blank so the sliding scale applies to every member.</p>
                 </div>
                 <div>
                   <Label className="text-xs">Free trial (days)</Label>
@@ -665,32 +620,8 @@ export default function SuperAdminSubscriptions() {
                 </div>
               </div>
             </div>
-
-
-            {(() => {
-              const rows = [
-                { label: "Monthly (ZAR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_zar_monthly) || 0, "R") },
-                { label: "Annual upfront (ZAR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_zar_annual) || 0, "R") },
-                { label: "Monthly (USD)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_usd_monthly) || 0, "$") },
-                { label: "Annual upfront (USD)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_usd_annual) || 0, "$") },
-                { label: "Monthly (EUR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_eur_monthly) || 0, "€") },
-                { label: "Annual upfront (EUR)", val: fmtSubscriptionMoney(Number(intlForm.saas_rate_eur_annual) || 0, "€") },
-              ];
-              return (
-                <div className="rounded-md border border-border overflow-hidden">
-                  <div className="grid grid-cols-2 bg-muted/60 px-3 py-1.5 text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
-                    <span>Plan</span><span>Per-member rate</span>
-                  </div>
-                  {rows.map(r => (
-                    <div key={r.label} className="grid grid-cols-2 px-3 py-2 text-xs border-t">
-                      <span>{r.label}</span>
-                      <span className="font-mono text-primary">{r.val}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
           </Card>
+
 
         </TabsContent>
 

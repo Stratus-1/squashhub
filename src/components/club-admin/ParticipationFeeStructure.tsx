@@ -41,8 +41,6 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
     },
   });
 
-  // All clubs are billed on the graduated sliding scale.
-  const tiersEnabled = true;
   const rawCap = settings?.get("saas_billing_cap");
   const cap = rawCap == null || rawCap === "" ? null : Number(rawCap);
 

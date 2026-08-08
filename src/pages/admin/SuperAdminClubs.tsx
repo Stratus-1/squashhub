@@ -286,6 +286,13 @@ export default function SuperAdminClubs() {
                   When off, this club can only be invoiced monthly. Turn on once their member roster
                   has settled, so a year paid upfront reflects realistic numbers.
                 </p>
+                {editClub?.annual_billing_requested_at && !editForm.allow_annual_billing && (
+                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mt-1.5">
+                    Requested by the club on{" "}
+                    {new Date(editClub.annual_billing_requested_at).toLocaleDateString()} — approve by
+                    turning this on.
+                  </p>
+                )}
               </div>
               <Switch
                 checked={editForm.allow_annual_billing}

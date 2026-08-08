@@ -35,6 +35,7 @@ interface UnifiedFee {
   dueMonth: number; // 1-12
   dueDay: number; // 1-31
   showOnLanding?: boolean;
+  billingPeriod: "annual" | "monthly";
   debitOrderEligible: boolean;
   debitOrderRail: "debicheck" | "eft" | "either";
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
@@ -86,6 +87,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
       active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1, dueDay: (c as any).due_day ?? 1,
       showOnLanding: (c as any).show_on_landing ?? false,
+      billingPeriod: ((c as any).billing_period ?? "annual") as any,
       debitOrderEligible: (c as any).debit_order_eligible ?? false,
       debitOrderRail: ((c as any).debit_order_rail ?? "either") as any,
       source: "member_fee_categories", raw: c,
@@ -97,6 +99,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
         id: a.id, name: baseName + (a.abbreviation && a.name ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
         amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
         active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1, dueDay: (a as any).due_day ?? 1,
+        billingPeriod: "annual",
         debitOrderEligible: (a as any).debit_order_eligible ?? false,
         debitOrderRail: ((a as any).debit_order_rail ?? "either") as any,
         source: "league_associations", raw: a,
@@ -116,6 +119,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
         amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
         active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1, dueDay: (f as any).due_day ?? 1,
         showOnLanding: f.show_on_landing ?? false,
+        billingPeriod: ((f as any).billing_period ?? "annual") as any,
         debitOrderEligible: (f as any).debit_order_eligible ?? false,
         debitOrderRail: ((f as any).debit_order_rail ?? "either") as any,
         source: "national_body_fees", raw: f,

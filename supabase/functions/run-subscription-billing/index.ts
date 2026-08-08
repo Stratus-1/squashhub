@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
   let query = supabase
     .from('club_subscriptions')
     .select(
-      `id, club_id, plan_id, status, current_period_start, current_period_end, member_count,
+      `id, club_id, plan_id, status, trial_ends_at, current_period_start, current_period_end, member_count,
        clubs:club_id ( name, subdomain ),
        subscription_plans:plan_id ( name, price_per_member, billing_cycle, minimum_charge, max_billable_members )`,
     )
@@ -219,18 +219,12 @@ Deno.serve(async (req) => {
 
   const yearStr = billingDate.getFullYear().toString()
 
-  // Platform go-live: subscription invoicing starts 1 September 2026. Runs before
-  // that date issue nothing (dry runs still preview normally).
-  const BILLING_GO_LIVE = '2026-09-01'
-  if (!dryRun && billingDate.toISOString().slice(0, 10) < BILLING_GO_LIVE) {
-    return json({
-      issued: 0,
-      skipped: (subs || []).length,
-      failed: 0,
-      results: [],
-      note: `Subscription invoicing starts ${BILLING_GO_LIVE}`,
-    })
-  }
+  // Billing starts the 1st of the month AFTER each club's trial ends.
+  // e.g. trial ends 31 Aug 2026 → first invoice issued 1 Sep 2026 covering 1–30 Sep.
+  const firstOfNextMonth = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  const billingDay = iso(billingDate)
+
 
   // Get current invoice count for this year to build sequential numbers
   const { count: existingCount } = await supabase

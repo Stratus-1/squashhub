@@ -252,11 +252,12 @@ Deno.serve(async (req) => {
 
   const yearStr = billingDate.getFullYear().toString()
 
-  // Billing starts the 1st of the month AFTER each club's trial ends.
-  // e.g. trial ends 31 Aug 2026 → first invoice issued 1 Sep 2026 covering 1–30 Sep.
-  const firstOfNextMonth = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))
+  // Billing starts the DAY AFTER each club's trial ends.
+  // e.g. trial ends 11 Aug 2026 → first invoice issued 12 Aug 2026 covering 12 Aug – 11 Sep.
+  const dayAfter = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1))
   const iso = (d: Date) => d.toISOString().slice(0, 10)
   const billingDay = iso(billingDate)
+
 
 
   // Get current invoice count for this year to build sequential numbers

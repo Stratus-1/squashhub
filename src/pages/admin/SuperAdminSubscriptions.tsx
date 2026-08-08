@@ -688,7 +688,6 @@ export default function SuperAdminSubscriptions() {
             })()}
           </Card>
 
-          <SaasTierPricingCard />
         </TabsContent>
 
 

@@ -319,7 +319,7 @@ Deno.serve(async (req) => {
           subscription_id: sub.id,
           plan_id: sub.plan_id,
           plan_name: plan.name,
-          billing_cycle: plan.billing_cycle,
+          billing_cycle: cycle,
           period_start: periodStart.toISOString().slice(0, 10),
           period_end: periodEnd.toISOString().slice(0, 10),
           member_count: billableMembers,

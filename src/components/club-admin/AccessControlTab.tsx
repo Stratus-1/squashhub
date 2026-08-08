@@ -341,6 +341,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     { id: "method", label: "Access method", description: "Step one — choose how members get into the venue: a key, a tap card, a PIN, face recognition or a smart relay on the door.", complete: form.access_control_type !== "none" },
     { id: "device", label: "Device setup", description: "Enter the details of the hardware you chose — API keys, provider endpoint or the door relay's device ID.", complete: !isSimple },
     { id: "location", label: "Door location", description: "Pin the door's GPS position so the Open Door tile only appears when a member is actually standing at the club.", complete: !!(club as any)?.door_latitude },
+    { id: "wifi", label: "Club Wi-Fi", description: "Share the club's Wi-Fi network with members — they get a one-tap QR code instead of typing a password.", complete: !!(secrets as any)?.wifi_ssid },
   ];
 
   return (

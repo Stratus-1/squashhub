@@ -148,9 +148,9 @@ export function BillingFrequencyCard({
         </label>
 
         <label
-          className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${choice === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}
+          className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}
         >
-          <RadioGroupItem value="annual_upfront" id="freq-annual" className="mt-0.5" />
+          <RadioGroupItem value="annual_upfront" id="freq-annual" className="mt-0.5" disabled={locked} />
           <div className="text-sm flex-1">
             <div className="font-medium">Annual upfront</div>
             <div className="text-lg font-bold text-foreground">
@@ -171,9 +171,18 @@ export function BillingFrequencyCard({
       </RadioGroup>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" onClick={handleSave} disabled={saving || choice === current}>
-          {saving ? "Saving…" : choice === current ? "Current selection" : "Save billing frequency"}
+        <Button size="sm" onClick={handleSave} disabled={locked || saving || choice === current}>
+          {saving
+            ? "Saving…"
+            : locked
+              ? "Locked until annual period ends"
+              : choice === current
+                ? "Current selection"
+                : choice === "annual_upfront"
+                  ? "Switch to annual upfront"
+                  : "Switch to monthly"}
         </Button>
+
         <span className="text-[11px] text-muted-foreground">
           Estimates exclude VAT and are based on {memberCount ?? "your"} active member
           {memberCount === 1 ? "" : "s"}.

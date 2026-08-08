@@ -15,6 +15,7 @@ import { useClubAnalytics } from "@/hooks/use-analytics";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
+import { DashboardWifiCard } from "@/components/DashboardWifiCard";
 
 interface DashboardDesktopProps {
   clubName: string;
@@ -110,6 +111,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
       {/* Open Door quick access (proximity-gated; admins always see it) */}
       <div className="px-8">
         <DashboardOpenDoorCard />
+        <DashboardWifiCard />
       </div>
 
       {/* QUICK ACCESS TILES — categorised like the sidebar */}

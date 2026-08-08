@@ -174,16 +174,22 @@ Deno.serve(async (req) => {
   //    from clubs.currency_code (default ZAR).
   const clubEmails = new Map<string, string>()
   const clubCurrencies = new Map<string, string>()
+  const clubCycles = new Map<string, 'monthly' | 'annual'>()
   if (clubIds.length) {
     const { data: clubRows } = await supabase
       .from('clubs')
-      .select('id, email, currency_code')
+      .select('id, email, currency_code, sla_billing_option')
       .in('id', clubIds)
     for (const c of clubRows || []) {
       if (c.email && String(c.email).trim()) clubEmails.set(c.id, String(c.email).trim())
       clubCurrencies.set(c.id, String((c as any).currency_code || 'ZAR').toUpperCase())
+      // The club's chosen billing frequency wins over the plan default.
+      if ((c as any).sla_billing_option) {
+        clubCycles.set(c.id, (c as any).sla_billing_option === 'annual_upfront' ? 'annual' : 'monthly')
+      }
     }
   }
+
   const adminEmails = new Map<string, string>()
   if (clubIds.length) {
     const { data: admins } = await supabase
@@ -231,7 +237,7 @@ Deno.serve(async (req) => {
       // We always CHARGE in ZAR because Stitch only accepts ZAR — convert the local
       // total to ZAR via the configured FX rate.
       const displayCurrency = clubCurrencies.get(sub.club_id) || 'ZAR'
-      const cycle = (plan.billing_cycle === 'annual' ? 'annual' : 'monthly') as 'monthly' | 'annual'
+      const cycle = (clubCycles.get(sub.club_id) ?? (plan.billing_cycle === 'annual' ? 'annual' : 'monthly')) as 'monthly' | 'annual'
       const planPriceZar = +Number(plan.price_per_member).toFixed(2)
       const planMinZar = +Number(plan.minimum_charge || 0).toFixed(2)
       const flatRateLocal = +rateFor(displayCurrency, cycle, planPriceZar).toFixed(2)
@@ -244,14 +250,18 @@ Deno.serve(async (req) => {
         : minChargeFor(cycle, planMinZar)
       ).toFixed(2)
 
+      // Tier/flat rates are quoted per member per MONTH. An annual-upfront
+      // invoice covers 12 months, so multiply the monthly-equivalent by 12.
+      const months = cycle === 'annual' ? 12 : 1
       const grossLocal = tiers
         ? graduatedTotal(billableMembers, tiers)
         : billableMembers * flatRateLocal
-      const subtotalLocal = +Math.max(grossLocal, minimumChargeLocal).toFixed(2)
+      const monthlyEquivalent = +Math.max(grossLocal, minimumChargeLocal).toFixed(2)
+      const subtotalLocal = +(monthlyEquivalent * months).toFixed(2)
       // Effective (blended) per-member rate — what appears on the invoice line.
       const pricePerMemberLocal = billableMembers > 0
         ? +(subtotalLocal / billableMembers).toFixed(2)
-        : flatRateLocal
+        : +(flatRateLocal * months).toFixed(2)
 
       const vatLocal = +(subtotalLocal * vatRate).toFixed(2)
       const displayTotal = +(subtotalLocal + vatLocal).toFixed(2)
@@ -268,7 +278,7 @@ Deno.serve(async (req) => {
       // Determine billing period (next cycle after last period_end, or from billingDate)
       const periodStart = new Date(sub.current_period_end || billingDate)
       const periodEnd = new Date(periodStart)
-      if (plan.billing_cycle === 'annual') {
+      if (cycle === 'annual') {
         periodEnd.setFullYear(periodEnd.getFullYear() + 1)
       } else {
         periodEnd.setMonth(periodEnd.getMonth() + 1)
@@ -309,7 +319,7 @@ Deno.serve(async (req) => {
           subscription_id: sub.id,
           plan_id: sub.plan_id,
           plan_name: plan.name,
-          billing_cycle: plan.billing_cycle,
+          billing_cycle: cycle,
           period_start: periodStart.toISOString().slice(0, 10),
           period_end: periodEnd.toISOString().slice(0, 10),
           member_count: billableMembers,
@@ -375,7 +385,7 @@ Deno.serve(async (req) => {
               clubName: club?.name,
               invoiceNumber,
               planName: plan.name,
-              billingCycle: plan.billing_cycle,
+              billingCycle: cycle,
               periodStart: inv.period_start,
               periodEnd: inv.period_end,
               memberCount: billableMembers,

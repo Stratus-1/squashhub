@@ -10,6 +10,7 @@ import { Landmark, FileText, ExternalLink, Copy, Loader2, Printer, RefreshCw } f
 import { toast } from "sonner";
 import { useMyClub } from "@/hooks/use-club";
 import { ClubParticipationCard } from "@/components/club-admin/ClubParticipationCard";
+import { BillingFrequencyCard } from "@/components/club-admin/BillingFrequencyCard";
 import { openStitchCheckout, buildStitchReturnUrl } from "@/lib/stitch-checkout";
 
 interface Invoice {
@@ -238,6 +239,10 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
   return (
     <div className="space-y-6 mt-4">
       {club && <ClubParticipationCard club={club} />}
+
+      {club && <BillingFrequencyCard club={club} />}
+
+
 
       {/* Outstanding summary */}
       {outstanding.length > 0 && (

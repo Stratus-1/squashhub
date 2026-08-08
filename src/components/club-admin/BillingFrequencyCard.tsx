@@ -1,0 +1,132 @@
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CalendarClock } from "lucide-react";
+import { toast } from "sonner";
+import { useUpdateClub, type Club } from "@/hooks/use-club";
+import { useClubCurrency } from "@/hooks/use-currency";
+import { useSaasPricing } from "@/hooks/use-saas-pricing";
+import { computeTieredCharge } from "@/lib/saas-tiers";
+
+type BillingOption = "monthly" | "annual_upfront";
+
+/**
+ * Lets the club choose how it wants to be invoiced — monthly in arrears or
+ * annually upfront — quoting both amounts side by side. Future invoices are
+ * generated at the chosen frequency.
+ */
+export function BillingFrequencyCard({ club }: { club: Club }) {
+  const c = club as any;
+  const updateClub = useUpdateClub();
+  const { code: currencyCode } = useClubCurrency();
+  const pricing = useSaasPricing(currencyCode);
+
+  const current: BillingOption = c.sla_billing_option === "annual_upfront" ? "annual_upfront" : "monthly";
+  const [choice, setChoice] = useState<BillingOption>(current);
+  const [saving, setSaving] = useState(false);
+
+  const memberCount: number | null =
+    typeof c.active_member_count === "number" ? c.active_member_count : null;
+  const billable =
+    memberCount === null
+      ? null
+      : pricing.cap && pricing.cap > 0
+        ? Math.min(memberCount, pricing.cap)
+        : memberCount;
+
+  const monthly = billable !== null ? computeTieredCharge(billable, pricing.monthlyTiers, pricing.monthlyMin) : null;
+  const annual = billable !== null ? computeTieredCharge(billable, pricing.annualTiers, pricing.annualMin) : null;
+
+  const monthlyTotal = monthly ? monthly.subtotal : null;
+  const annualTotal = annual ? annual.subtotal * 12 : null;
+  const saving12 = monthlyTotal != null && annualTotal != null ? monthlyTotal * 12 - annualTotal : null;
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateClub.mutateAsync({ id: club.id, sla_billing_option: choice } as any);
+      toast.success(
+        choice === "annual_upfront"
+          ? "Set to annual upfront — your next invoice will cover 12 months."
+          : "Set to monthly — you'll be invoiced each month."
+      );
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save billing frequency");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <CalendarClock className="w-4 h-4 text-primary" />
+        <h3 className="font-semibold text-sm">Billing frequency</h3>
+        <Badge variant="outline" className="text-[10px]">
+          {current === "annual_upfront" ? "Annual upfront" : "Monthly"}
+        </Badge>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Choose how you'd like to be invoiced. Invoices are generated at the frequency you select —
+        annual upfront covers 12 months in one invoice and works out cheaper per member.
+      </p>
+
+      <RadioGroup
+        value={choice}
+        onValueChange={(v) => setChoice(v as BillingOption)}
+        className="grid grid-cols-1 md:grid-cols-2 gap-2"
+      >
+        <label
+          className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${choice === "monthly" ? "border-primary bg-primary/5" : ""}`}
+        >
+          <RadioGroupItem value="monthly" id="freq-monthly" className="mt-0.5" />
+          <div className="text-sm flex-1">
+            <div className="font-medium">Monthly</div>
+            <div className="text-lg font-bold text-foreground">
+              {monthlyTotal != null ? pricing.format(monthlyTotal) : "—"}
+              <span className="text-[10px] font-normal text-muted-foreground"> / month</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Billed monthly in arrears
+              {monthlyTotal != null && <> · {pricing.format(monthlyTotal * 12)} over 12 months</>}
+            </div>
+          </div>
+        </label>
+
+        <label
+          className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${choice === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}
+        >
+          <RadioGroupItem value="annual_upfront" id="freq-annual" className="mt-0.5" />
+          <div className="text-sm flex-1">
+            <div className="font-medium">Annual upfront</div>
+            <div className="text-lg font-bold text-foreground">
+              {annualTotal != null ? pricing.format(annualTotal) : "—"}
+              <span className="text-[10px] font-normal text-muted-foreground"> / year</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              One invoice, paid in advance
+              {annual && <> · ≈ {pricing.format(annual.subtotal)} / month</>}
+            </div>
+            {saving12 != null && saving12 > 0 && (
+              <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                Save {pricing.format(saving12)} per year
+              </div>
+            )}
+          </div>
+        </label>
+      </RadioGroup>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button size="sm" onClick={handleSave} disabled={saving || choice === current}>
+          {saving ? "Saving…" : choice === current ? "Current selection" : "Save billing frequency"}
+        </Button>
+        <span className="text-[11px] text-muted-foreground">
+          Estimates exclude VAT and are based on {memberCount ?? "your"} active member
+          {memberCount === 1 ? "" : "s"}.
+        </span>
+      </div>
+    </Card>
+  );
+}

@@ -101,21 +101,39 @@ export function BillingFrequencyCard({
         <Badge variant="outline" className="text-[10px]">
           {current === "annual_upfront" ? "Annual upfront" : "Monthly"}
         </Badge>
+        {locked && (
+          <Badge variant="secondary" className="text-[10px]">
+            Covered to {new Date(annualCoverUntil!).toLocaleDateString()}
+          </Badge>
+        )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Choose how you'd like to be invoiced. Invoices are generated at the frequency you select —
-        annual upfront covers 12 months in one invoice and works out cheaper per member.
+        {locked ? (
+          <>
+            You&apos;ve paid annually in advance — no further invoices until{" "}
+            {new Date(annualCoverUntil!).toLocaleDateString()}. You can choose monthly or annual
+            again when this period ends.
+          </>
+        ) : (
+          <>
+            Choose how you&apos;d like to be invoiced. While you&apos;re on monthly you can switch to
+            annual upfront at any time — the option stays here every month. Annual upfront covers 12
+            months in one invoice and works out cheaper per member.
+          </>
+        )}
       </p>
 
       <RadioGroup
         value={choice}
         onValueChange={(v) => setChoice(v as BillingOption)}
+        disabled={locked}
         className="grid grid-cols-1 md:grid-cols-2 gap-2"
       >
         <label
-          className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${choice === "monthly" ? "border-primary bg-primary/5" : ""}`}
+          className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "monthly" ? "border-primary bg-primary/5" : ""}`}
         >
-          <RadioGroupItem value="monthly" id="freq-monthly" className="mt-0.5" />
+          <RadioGroupItem value="monthly" id="freq-monthly" className="mt-0.5" disabled={locked} />
+
           <div className="text-sm flex-1">
             <div className="font-medium">Monthly</div>
             <div className="text-lg font-bold text-foreground">

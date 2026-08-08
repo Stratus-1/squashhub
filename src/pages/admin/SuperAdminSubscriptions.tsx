@@ -169,7 +169,7 @@ export default function SuperAdminSubscriptions() {
   const { data: clubs = [] } = useQuery({
     queryKey: ["sa-clubs-for-subs"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain").order("name").range(0, 49999);
+      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain, currency_code").order("name").range(0, 49999);
       if (error) throw error;
       // Billable member counts — active members only, visitors never billed.
       // Paginate to avoid PostgREST's 1000-row response cap.
@@ -531,7 +531,7 @@ export default function SuperAdminSubscriptions() {
       plan_id: sub.plan_id || "",
       status: sub.status,
       trial_ends_at: sub.trial_ends_at ? sub.trial_ends_at.split("T")[0] : "",
-      member_count: String(sub.member_count),
+      member_count: String(clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count),
       amount_due: String(sub.amount_due),
     });
   };

@@ -116,6 +116,13 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         ble_fallback_enabled: !!s.ble_fallback_enabled,
         shelly_door_ble_mac: s.shelly_door_ble_mac || "",
         shelly_ble_control_password: s.shelly_ble_control_password || "",
+        wifi_enabled: !!s.wifi_enabled,
+        wifi_ssid: s.wifi_ssid || "",
+        wifi_password: s.wifi_password || "",
+        wifi_security: s.wifi_security || "WPA",
+        wifi_hidden: !!s.wifi_hidden,
+        wifi_notes: s.wifi_notes || "",
+        wifi_visitors_allowed: s.wifi_visitors_allowed ?? true,
       });
 
     }

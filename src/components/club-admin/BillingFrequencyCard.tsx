@@ -12,12 +12,28 @@ import { computeTieredCharge } from "@/lib/saas-tiers";
 
 type BillingOption = "monthly" | "annual_upfront";
 
+export interface BillingFrequencyInvoice {
+  billing_cycle?: string | null;
+  status?: string | null;
+  period_end?: string | null;
+}
+
 /**
  * Lets the club choose how it wants to be invoiced — monthly in arrears or
  * annually upfront — quoting both amounts side by side. Future invoices are
  * generated at the chosen frequency.
+ *
+ * While on monthly, the switch-to-annual offer stays available every month.
+ * Once an annual invoice has been issued/paid, the choice is locked until that
+ * 12-month period ends (no invoices are raised in between).
  */
-export function BillingFrequencyCard({ club }: { club: Club }) {
+export function BillingFrequencyCard({
+  club,
+  invoices = [],
+}: {
+  club: Club;
+  invoices?: BillingFrequencyInvoice[];
+}) {
   const c = club as any;
   const updateClub = useUpdateClub();
   const { code: currencyCode } = useClubCurrency();
@@ -26,6 +42,24 @@ export function BillingFrequencyCard({ club }: { club: Club }) {
   const current: BillingOption = c.sla_billing_option === "annual_upfront" ? "annual_upfront" : "monthly";
   const [choice, setChoice] = useState<BillingOption>(current);
   const [saving, setSaving] = useState(false);
+
+  // Active annual cover = an annual invoice (not void) whose period is still running.
+  const annualCoverUntil = (() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const ends = invoices
+      .filter(
+        (i) =>
+          (i.billing_cycle || "").toLowerCase() === "annual" &&
+          (i.status || "").toLowerCase() !== "void" &&
+          i.period_end &&
+          i.period_end >= today
+      )
+      .map((i) => i.period_end as string)
+      .sort();
+    return ends.length ? ends[ends.length - 1] : null;
+  })();
+  const locked = !!annualCoverUntil;
+
 
   const memberCount: number | null =
     typeof c.active_member_count === "number" ? c.active_member_count : null;
@@ -67,21 +101,39 @@ export function BillingFrequencyCard({ club }: { club: Club }) {
         <Badge variant="outline" className="text-[10px]">
           {current === "annual_upfront" ? "Annual upfront" : "Monthly"}
         </Badge>
+        {locked && (
+          <Badge variant="secondary" className="text-[10px]">
+            Covered to {new Date(annualCoverUntil!).toLocaleDateString()}
+          </Badge>
+        )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Choose how you'd like to be invoiced. Invoices are generated at the frequency you select —
-        annual upfront covers 12 months in one invoice and works out cheaper per member.
+        {locked ? (
+          <>
+            You&apos;ve paid annually in advance — no further invoices until{" "}
+            {new Date(annualCoverUntil!).toLocaleDateString()}. You can choose monthly or annual
+            again when this period ends.
+          </>
+        ) : (
+          <>
+            Choose how you&apos;d like to be invoiced. While you&apos;re on monthly you can switch to
+            annual upfront at any time — the option stays here every month. Annual upfront covers 12
+            months in one invoice and works out cheaper per member.
+          </>
+        )}
       </p>
 
       <RadioGroup
         value={choice}
         onValueChange={(v) => setChoice(v as BillingOption)}
+        disabled={locked}
         className="grid grid-cols-1 md:grid-cols-2 gap-2"
       >
         <label
-          className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${choice === "monthly" ? "border-primary bg-primary/5" : ""}`}
+          className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "monthly" ? "border-primary bg-primary/5" : ""}`}
         >
-          <RadioGroupItem value="monthly" id="freq-monthly" className="mt-0.5" />
+          <RadioGroupItem value="monthly" id="freq-monthly" className="mt-0.5" disabled={locked} />
+
           <div className="text-sm flex-1">
             <div className="font-medium">Monthly</div>
             <div className="text-lg font-bold text-foreground">
@@ -96,9 +148,9 @@ export function BillingFrequencyCard({ club }: { club: Club }) {
         </label>
 
         <label
-          className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${choice === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}
+          className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}
         >
-          <RadioGroupItem value="annual_upfront" id="freq-annual" className="mt-0.5" />
+          <RadioGroupItem value="annual_upfront" id="freq-annual" className="mt-0.5" disabled={locked} />
           <div className="text-sm flex-1">
             <div className="font-medium">Annual upfront</div>
             <div className="text-lg font-bold text-foreground">
@@ -119,9 +171,18 @@ export function BillingFrequencyCard({ club }: { club: Club }) {
       </RadioGroup>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" onClick={handleSave} disabled={saving || choice === current}>
-          {saving ? "Saving…" : choice === current ? "Current selection" : "Save billing frequency"}
+        <Button size="sm" onClick={handleSave} disabled={locked || saving || choice === current}>
+          {saving
+            ? "Saving…"
+            : locked
+              ? "Locked until annual period ends"
+              : choice === current
+                ? "Current selection"
+                : choice === "annual_upfront"
+                  ? "Switch to annual upfront"
+                  : "Switch to monthly"}
         </Button>
+
         <span className="text-[11px] text-muted-foreground">
           Estimates exclude VAT and are based on {memberCount ?? "your"} active member
           {memberCount === 1 ? "" : "s"}.

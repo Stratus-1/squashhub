@@ -74,6 +74,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     wifi_hidden: false,
     wifi_notes: "",
     wifi_visitors_allowed: true,
+    wifi_charge_enabled: false,
+    wifi_monthly_fee: "",
+
   });
 
 
@@ -123,6 +126,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         wifi_hidden: !!s.wifi_hidden,
         wifi_notes: s.wifi_notes || "",
         wifi_visitors_allowed: s.wifi_visitors_allowed ?? true,
+        wifi_charge_enabled: !!(s as any).wifi_charge_enabled,
+        wifi_monthly_fee: (s as any).wifi_monthly_fee ? String((s as any).wifi_monthly_fee) : "",
+
       });
 
     }
@@ -172,6 +178,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       wifi_hidden: !!s.wifi_hidden,
       wifi_notes: s.wifi_notes || "",
       wifi_visitors_allowed: s.wifi_visitors_allowed ?? true,
+      wifi_charge_enabled: !!(s as any).wifi_charge_enabled,
+      wifi_monthly_fee: (s as any).wifi_monthly_fee ? String((s as any).wifi_monthly_fee) : "",
+
     }));
   };
   const resetGeofence = () => {
@@ -257,6 +266,9 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         wifi_hidden: form.wifi_hidden,
         wifi_notes: form.wifi_notes.trim() || null,
         wifi_visitors_allowed: form.wifi_visitors_allowed,
+        wifi_charge_enabled: form.wifi_charge_enabled,
+        wifi_monthly_fee: Number(form.wifi_monthly_fee || 0),
+
       } as any);
 
 
@@ -1035,6 +1047,38 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                 onCheckedChange={(v) => setForm(p => ({ ...p, wifi_visitors_allowed: v }))}
               />
             </div>
+
+            <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Charge a monthly Wi-Fi fee</p>
+                <p className="text-xs text-muted-foreground">
+                  Members must request access. The fee is levied to their club account every month
+                  until they cancel, and the Wi-Fi details lock if the month lapses or the fee stays unpaid.
+                </p>
+              </div>
+              <Switch
+                checked={form.wifi_charge_enabled}
+                onCheckedChange={(v) => setForm(p => ({ ...p, wifi_charge_enabled: v }))}
+              />
+            </div>
+
+            {form.wifi_charge_enabled && (
+              <div className="space-y-1.5">
+                <Label>Monthly Wi-Fi fee</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.wifi_monthly_fee}
+                  onChange={(e) => setForm(p => ({ ...p, wifi_monthly_fee: e.target.value }))}
+                  placeholder="10.00"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Billed monthly in advance to the member's account, like any other club fee.
+                </p>
+              </div>
+            )}
+
           </div>
         </EditLock>
         )}

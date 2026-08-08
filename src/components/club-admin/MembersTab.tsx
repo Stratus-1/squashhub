@@ -991,9 +991,19 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {(["Men", "Ladies"] as const).map(gender => {
-          const group = filtered.filter(m => m.gender === gender);
-          const unassigned = gender === "Men" ? filtered.filter(m => !m.gender) : [];
+          // Gender values are inconsistent in older/imported records ("male", "F", "female"…),
+          // so normalise before grouping — otherwise those members disappear from both columns.
+          const normalise = (g?: string | null) => {
+            const v = String(g || "").trim().toLowerCase();
+            if (!v) return null;
+            if (["men", "man", "male", "m", "boys"].includes(v)) return "Men";
+            if (["ladies", "lady", "female", "f", "women", "woman", "girls"].includes(v)) return "Ladies";
+            return null;
+          };
+          const group = filtered.filter(m => normalise(m.gender) === gender);
+          const unassigned = gender === "Men" ? filtered.filter(m => !normalise(m.gender)) : [];
           const all = [...group, ...unassigned];
+
           return (
             <div key={gender}>
               <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">

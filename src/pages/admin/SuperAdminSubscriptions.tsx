@@ -1226,18 +1226,27 @@ export default function SuperAdminSubscriptions() {
           {(() => {
             const clubCcy = (editSub?.clubs?.currency_code || "ZAR").toUpperCase();
             const sym = ccySymbol(clubCcy);
+            const selectedPlan = plans.find(p => p.id === subForm.plan_id);
+            const cycle = cycleOf(selectedPlan);
+            const liveCount = editSub ? (clubs.find(c => c.id === editSub.club_id)?.member_count ?? editSub.member_count) : 0;
+            const calc = chargeFor(Number(subForm.member_count) || 0, clubCcy, cycle);
             return (
           <div className="space-y-3 py-2">
             <div>
-              <Label className="text-xs">Subscription Plan ({clubCcy})</Label>
+              <Label className="text-xs">Billing Cycle ({clubCcy})</Label>
               <Select value={subForm.plan_id} onValueChange={v => { setSubForm(f => ({ ...f, plan_id: v })); recalcAmount(v, subForm.member_count); }}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select plan" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select cycle" /></SelectTrigger>
                 <SelectContent>
                   {plans.filter(p => p.active).map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name} — {fmtSubscriptionMoney(rateForClub(p, clubCcy), sym)}/member</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.billing_cycle === "annual" ? "Annual upfront" : "Monthly in advance"} — sliding scale
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Rates come from the sliding scale in Pricing — plans no longer carry a flat per-member rate.
+              </p>
             </div>
             <div>
               <Label className="text-xs">Status</Label>
@@ -1254,19 +1263,70 @@ export default function SuperAdminSubscriptions() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Member Count</Label>
+                <Label className="text-xs">Billable Members</Label>
                 <Input type="number" min="0" value={subForm.member_count} onChange={e => { setSubForm(f => ({ ...f, member_count: e.target.value })); recalcAmount(subForm.plan_id, e.target.value); }} className="h-8 text-xs font-mono" />
+                {liveCount !== Number(subForm.member_count) && (
+                  <button
+                    type="button"
+                    className="text-[10px] text-primary underline mt-1"
+                    onClick={() => { setSubForm(f => ({ ...f, member_count: String(liveCount) })); recalcAmount(subForm.plan_id, String(liveCount)); }}
+                  >
+                    Use live count ({liveCount}, visitors excluded)
+                  </button>
+                )}
               </div>
               <div>
                 <Label className="text-xs">Amount Due ({clubCcy})</Label>
                 <Input type="number" min="0" step="0.01" value={subForm.amount_due} onChange={e => setSubForm(f => ({ ...f, amount_due: e.target.value }))} className="h-8 text-xs font-mono" />
               </div>
             </div>
+
+            {/* Live sliding-scale breakdown */}
+            <div className="rounded-md border bg-muted/40 p-2 space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Sliding scale breakdown</p>
+              {calc.rows.length === 0 && <p className="text-[11px] text-muted-foreground">No billable members.</p>}
+              {calc.rows.map((r, i) => (
+                <div key={i} className="flex justify-between text-[11px] font-mono">
+                  <span>{r.from}–{r.to} ({r.members}) × {sym}{r.rate.toFixed(2)}</span>
+                  <span>{sym}{r.amount.toFixed(2)}</span>
+                </div>
+              ))}
+              {calc.minApplied && (
+                <div className="flex justify-between text-[11px] font-mono text-amber-600">
+                  <span>Minimum charge applied</span>
+                  <span>{sym}{calc.min.toFixed(2)}</span>
+                </div>
+              )}
+              {calc.months > 1 && (
+                <div className="flex justify-between text-[11px] font-mono">
+                  <span>× 12 months (annual upfront)</span>
+                  <span>{sym}{calc.total.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-[11px] font-semibold border-t pt-1">
+                <span>{cycle === "annual" ? "Annual total" : "Monthly total"}</span>
+                <span className="font-mono">{sym}{calc.total.toFixed(2)}</span>
+              </div>
+              {Number(subForm.amount_due) !== calc.total && (
+                <button
+                  type="button"
+                  className="text-[10px] text-primary underline"
+                  onClick={() => setSubForm(f => ({ ...f, amount_due: String(calc.total) }))}
+                >
+                  Apply calculated amount
+                </button>
+              )}
+            </div>
+
             <div>
               <Label className="text-xs">Trial Ends</Label>
               <Input type="date" value={subForm.trial_ends_at} onChange={e => setSubForm(f => ({ ...f, trial_ends_at: e.target.value }))} className="h-8 text-xs" />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                First invoice is issued on the 1st of the month after this date.
+              </p>
             </div>
           </div>
+
             );
           })()}
           <DialogFooter>

@@ -279,7 +279,12 @@ export function DashboardWifiCard({ asTile = false }: { asTile?: boolean } = {})
       )}
 
       {!locked && wifi?.password && (
+        <div className="space-y-1.5">
+        <p className="text-[12px] font-medium">
+          Wi-Fi password — tap the eye to reveal, then the copy icon to copy it
+        </p>
         <div className="flex items-center gap-2">
+
           <div className="flex-1 rounded-md border bg-background px-3 py-2 font-mono text-[13px] break-all">
             {showPassword ? wifi.password : "•".repeat(Math.min(wifi.password.length, 16))}
           </div>

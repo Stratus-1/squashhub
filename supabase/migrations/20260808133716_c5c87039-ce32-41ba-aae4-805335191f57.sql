@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS allow_annual_billing boolean NOT NULL DEFAULT false;

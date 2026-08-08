@@ -2799,6 +2799,7 @@ export type Database = {
         Row: {
           accepted_payment_methods: string[]
           address: string | null
+          allow_annual_billing: boolean
           auto_number_existing_onboarding: boolean
           booking_last_slot_time: string
           booking_open_time: string
@@ -2887,6 +2888,7 @@ export type Database = {
         Insert: {
           accepted_payment_methods?: string[]
           address?: string | null
+          allow_annual_billing?: boolean
           auto_number_existing_onboarding?: boolean
           booking_last_slot_time?: string
           booking_open_time?: string
@@ -2975,6 +2977,7 @@ export type Database = {
         Update: {
           accepted_payment_methods?: string[]
           address?: string | null
+          allow_annual_billing?: boolean
           auto_number_existing_onboarding?: boolean
           booking_last_slot_time?: string
           booking_open_time?: string

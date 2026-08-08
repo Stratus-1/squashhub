@@ -82,8 +82,9 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
 
 
       <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
-        Fees are first invoiced from <strong>September 2026</strong> for the current financial year, and annually
-        thereafter.
+        Fees are invoiced <strong>monthly in advance</strong>, with the first invoice issued on{" "}
+        <strong>1 September 2026</strong>. Annual upfront payment can be requested on the
+        Subscription tab.
       </p>
       <p className="text-xs text-muted-foreground italic">
         Invoiced in your club currency ({clubCurrencyName} · {clubCurrencyCode}).

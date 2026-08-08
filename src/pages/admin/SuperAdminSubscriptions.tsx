@@ -566,14 +566,18 @@ export default function SuperAdminSubscriptions() {
 
         {/* ─── FEE STRUCTURE TAB (unified) ─── */}
         <TabsContent value="plans" className="space-y-4 mt-4">
+          {/* Graduated sliding-scale pricing is the primary structure. */}
+          <SaasTierPricingCard />
+
           <Card className="p-4 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4" /> SaaS Fee Structure & International Pricing</h3>
+                <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4" /> Flat rates (fallback)</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5 max-w-2xl">
-                  Base rates are in <strong>ZAR</strong>. USD and EUR rates are used only for clubs whose currency is set to that currency. Saving here also updates the underlying Standard Monthly and Standard Annual plans (base ZAR). Changes apply from the next billing run.
+                  Used only when the sliding scale above is switched <strong>off</strong>. Base rates are in <strong>ZAR</strong>; USD and EUR rates apply to clubs whose currency is set to that currency. Saving here also updates the underlying Standard Monthly and Standard Annual plans (base ZAR). Changes apply from the next billing run.
                 </p>
               </div>
+
               <Button
                 size="sm"
                 className="h-7 text-xs"

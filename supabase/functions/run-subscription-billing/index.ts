@@ -250,14 +250,18 @@ Deno.serve(async (req) => {
         : minChargeFor(cycle, planMinZar)
       ).toFixed(2)
 
+      // Tier/flat rates are quoted per member per MONTH. An annual-upfront
+      // invoice covers 12 months, so multiply the monthly-equivalent by 12.
+      const months = cycle === 'annual' ? 12 : 1
       const grossLocal = tiers
         ? graduatedTotal(billableMembers, tiers)
         : billableMembers * flatRateLocal
-      const subtotalLocal = +Math.max(grossLocal, minimumChargeLocal).toFixed(2)
+      const monthlyEquivalent = +Math.max(grossLocal, minimumChargeLocal).toFixed(2)
+      const subtotalLocal = +(monthlyEquivalent * months).toFixed(2)
       // Effective (blended) per-member rate — what appears on the invoice line.
       const pricePerMemberLocal = billableMembers > 0
         ? +(subtotalLocal / billableMembers).toFixed(2)
-        : flatRateLocal
+        : +(flatRateLocal * months).toFixed(2)
 
       const vatLocal = +(subtotalLocal * vatRate).toFixed(2)
       const displayTotal = +(subtotalLocal + vatLocal).toFixed(2)

@@ -16,6 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { SEO } from "@/components/SEO";
 import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard, Save, FileText, Upload, X, Link2, Eye, EyeOff, Play, Receipt, Globe } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
+import { SaasTierPricingCard } from "@/components/admin/SaasTierPricingCard";
+
 
 type Plan = {
   id: string;
@@ -685,7 +687,10 @@ export default function SuperAdminSubscriptions() {
               );
             })()}
           </Card>
+
+          <SaasTierPricingCard />
         </TabsContent>
+
 
 
         {/* ─── CLUB SUBSCRIPTIONS TAB ─── */}

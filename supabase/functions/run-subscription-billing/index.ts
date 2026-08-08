@@ -37,7 +37,16 @@ Deno.serve(async (req) => {
       'saas_rate_eur_monthly', 'saas_rate_eur_annual',
       'saas_min_charge_monthly', 'saas_min_charge_annual',
       'fx_usd_to_zar', 'fx_eur_to_zar',
+      // Graduated ("sliding scale") pricing — when enabled these override the flat rates.
+      'saas_tiers_enabled',
+      'saas_tiers_zar_monthly', 'saas_tiers_zar_annual',
+      'saas_tiers_usd_monthly', 'saas_tiers_usd_annual',
+      'saas_tiers_eur_monthly', 'saas_tiers_eur_annual',
+      'saas_tier_min_zar_monthly', 'saas_tier_min_zar_annual',
+      'saas_tier_min_usd_monthly', 'saas_tier_min_usd_annual',
+      'saas_tier_min_eur_monthly', 'saas_tier_min_eur_annual',
     ])
+
   if (settingErr && settingErr.code !== 'PGRST116') {
     return json({ error: `Failed to load invoice settings: ${settingErr.message}` }, 500)
   }
@@ -77,6 +86,49 @@ Deno.serve(async (req) => {
     if (c === 'EUR') return num('fx_eur_to_zar', 20)
     return 1
   }
+
+  // --- Graduated ("sliding scale") pricing -------------------------------
+  // Bands work like tax brackets: the first N members are charged at band 1,
+  // the next block at band 2, etc. Currency bands are stored separately so
+  // USD/EUR pricing stays proportional to the ZAR structure.
+  const tiersEnabled = String(settingsMap.get('saas_tiers_enabled') || '') === 'true'
+  const tiersFor = (ccy: string, cycle: 'monthly' | 'annual'): Array<{ upTo: number | null; rate: number }> | null => {
+    const c = (ccy || 'ZAR').toUpperCase()
+    const key = `saas_tiers_${c.toLowerCase()}_${cycle}`
+    const raw = settingsMap.get(key)
+    if (!raw) return null
+    try {
+      const arr = JSON.parse(raw)
+      if (!Array.isArray(arr) || !arr.length) return null
+      return arr.map((t: any) => ({
+        upTo: t.upTo == null || t.upTo === '' ? null : Number(t.upTo),
+        rate: Number(t.rate) || 0,
+      }))
+    } catch {
+      return null
+    }
+  }
+  const tierMinFor = (ccy: string, cycle: 'monthly' | 'annual'): number | null => {
+    const c = (ccy || 'ZAR').toUpperCase()
+    const v = settingsMap.get(`saas_tier_min_${c.toLowerCase()}_${cycle}`)
+    const n = v == null ? NaN : Number(v)
+    return isFinite(n) ? n : null
+  }
+  const graduatedTotal = (members: number, tiers: Array<{ upTo: number | null; rate: number }>): number => {
+    let remaining = Math.max(0, Math.floor(members || 0))
+    let lower = 0
+    let total = 0
+    for (const t of tiers) {
+      if (remaining <= 0) break
+      const width = t.upTo == null ? remaining : Math.max(0, t.upTo - lower)
+      const take = Math.min(remaining, width)
+      total += take * t.rate
+      remaining -= take
+      lower = t.upTo == null ? lower + take : t.upTo
+    }
+    return +total.toFixed(2)
+  }
+
 
   if (!settings.company_name && !dryRun) {
     return json(
@@ -181,11 +233,25 @@ Deno.serve(async (req) => {
       const cycle = (plan.billing_cycle === 'annual' ? 'annual' : 'monthly') as 'monthly' | 'annual'
       const planPriceZar = +Number(plan.price_per_member).toFixed(2)
       const planMinZar = +Number(plan.minimum_charge || 0).toFixed(2)
-      const pricePerMemberLocal = +rateFor(displayCurrency, cycle, planPriceZar).toFixed(2)
-      const minimumChargeLocal = +minChargeFor(cycle, planMinZar).toFixed(2)
+      const flatRateLocal = +rateFor(displayCurrency, cycle, planPriceZar).toFixed(2)
 
-      const grossLocal = billableMembers * pricePerMemberLocal
+      // Graduated bands take precedence when enabled and configured for the currency.
+      const tiers = tiersEnabled ? tiersFor(displayCurrency, cycle) : null
+      const tierMin = tiers ? tierMinFor(displayCurrency, cycle) : null
+      const minimumChargeLocal = +(tiers && tierMin != null
+        ? tierMin
+        : minChargeFor(cycle, planMinZar)
+      ).toFixed(2)
+
+      const grossLocal = tiers
+        ? graduatedTotal(billableMembers, tiers)
+        : billableMembers * flatRateLocal
       const subtotalLocal = +Math.max(grossLocal, minimumChargeLocal).toFixed(2)
+      // Effective (blended) per-member rate — what appears on the invoice line.
+      const pricePerMemberLocal = billableMembers > 0
+        ? +(subtotalLocal / billableMembers).toFixed(2)
+        : flatRateLocal
+
       const vatLocal = +(subtotalLocal * vatRate).toFixed(2)
       const displayTotal = +(subtotalLocal + vatLocal).toFixed(2)
 

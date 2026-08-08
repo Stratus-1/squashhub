@@ -295,7 +295,12 @@ export function DashboardWifiCard({ asTile = false }: { asTile?: boolean } = {})
             <Copy className="h-4 w-4" />
           </Button>
         </div>
+        <p className="text-[12px] text-muted-foreground">
+          Or tap <span className="font-medium">Scan</span> above to show the QR code and join with your phone camera — no typing needed.
+        </p>
+        </div>
       )}
+
 
       {!locked && wifi?.notes && (
         <p className="text-[12px] text-muted-foreground break-words">{wifi.notes}</p>

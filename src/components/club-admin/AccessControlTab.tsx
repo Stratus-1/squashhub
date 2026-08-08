@@ -67,6 +67,13 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     ble_fallback_enabled: false,
     shelly_door_ble_mac: "",
     shelly_ble_control_password: "",
+    wifi_enabled: false,
+    wifi_ssid: "",
+    wifi_password: "",
+    wifi_security: "WPA",
+    wifi_hidden: false,
+    wifi_notes: "",
+    wifi_visitors_allowed: true,
   });
 
 

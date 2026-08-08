@@ -67,6 +67,13 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     ble_fallback_enabled: false,
     shelly_door_ble_mac: "",
     shelly_ble_control_password: "",
+    wifi_enabled: false,
+    wifi_ssid: "",
+    wifi_password: "",
+    wifi_security: "WPA",
+    wifi_hidden: false,
+    wifi_notes: "",
+    wifi_visitors_allowed: true,
   });
 
 
@@ -109,6 +116,13 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         ble_fallback_enabled: !!s.ble_fallback_enabled,
         shelly_door_ble_mac: s.shelly_door_ble_mac || "",
         shelly_ble_control_password: s.shelly_ble_control_password || "",
+        wifi_enabled: !!s.wifi_enabled,
+        wifi_ssid: s.wifi_ssid || "",
+        wifi_password: s.wifi_password || "",
+        wifi_security: s.wifi_security || "WPA",
+        wifi_hidden: !!s.wifi_hidden,
+        wifi_notes: s.wifi_notes || "",
+        wifi_visitors_allowed: s.wifi_visitors_allowed ?? true,
       });
 
     }
@@ -151,6 +165,13 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       ble_fallback_enabled: !!s.ble_fallback_enabled,
       shelly_door_ble_mac: s.shelly_door_ble_mac || "",
       shelly_ble_control_password: s.shelly_ble_control_password || "",
+      wifi_enabled: !!s.wifi_enabled,
+      wifi_ssid: s.wifi_ssid || "",
+      wifi_password: s.wifi_password || "",
+      wifi_security: s.wifi_security || "WPA",
+      wifi_hidden: !!s.wifi_hidden,
+      wifi_notes: s.wifi_notes || "",
+      wifi_visitors_allowed: s.wifi_visitors_allowed ?? true,
     }));
   };
   const resetGeofence = () => {
@@ -168,6 +189,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
   const methodLock = useEditLock(resetSecretsForm);
   const deviceLock = useEditLock(resetSecretsForm);
   const locationLock = useEditLock(resetGeofence);
+  const wifiLock = useEditLock(resetSecretsForm);
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
@@ -228,6 +250,13 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         ble_fallback_enabled: form.ble_fallback_enabled,
         shelly_door_ble_mac: form.shelly_door_ble_mac || null,
         shelly_ble_control_password: form.shelly_ble_control_password || null,
+        wifi_enabled: form.wifi_enabled,
+        wifi_ssid: form.wifi_ssid.trim() || null,
+        wifi_password: form.wifi_password || null,
+        wifi_security: form.wifi_security,
+        wifi_hidden: form.wifi_hidden,
+        wifi_notes: form.wifi_notes.trim() || null,
+        wifi_visitors_allowed: form.wifi_visitors_allowed,
       } as any);
 
 
@@ -312,6 +341,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     { id: "method", label: "Access method", description: "Step one — choose how members get into the venue: a key, a tap card, a PIN, face recognition or a smart relay on the door.", complete: form.access_control_type !== "none" },
     { id: "device", label: "Device setup", description: "Enter the details of the hardware you chose — API keys, provider endpoint or the door relay's device ID.", complete: !isSimple },
     { id: "location", label: "Door location", description: "Pin the door's GPS position so the Open Door tile only appears when a member is actually standing at the club.", complete: !!(club as any)?.door_latitude },
+    { id: "wifi", label: "Club Wi-Fi", description: "Share the club's Wi-Fi network with members — they get a one-tap QR code instead of typing a password.", complete: !!(secrets as any)?.wifi_ssid },
   ];
 
   return (
@@ -908,6 +938,104 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
             )}
           </div>
         )}
+        </EditLock>
+        )}
+
+        {step === "wifi" && (
+        <EditLock
+          editing={wifiLock.editing}
+          onEdit={wifiLock.edit}
+          onCancel={wifiLock.cancel}
+          onSave={() => handleSave(wifiLock.done)}
+          saving={updateSecrets.isPending}
+          title="club Wi-Fi"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Wifi className="w-4 h-4 text-primary" />
+                  Share Wi-Fi with members
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Members see a "Club Wi-Fi" tile on their dashboard with a scannable
+                  QR code that joins the network automatically. The password is stored
+                  in the club's protected settings and is never public.
+                </p>
+              </div>
+              <Switch
+                checked={form.wifi_enabled}
+                onCheckedChange={(v) => setForm(p => ({ ...p, wifi_enabled: v }))}
+              />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Network name (SSID)</Label>
+                <Input
+                  value={form.wifi_ssid}
+                  onChange={(e) => setForm(p => ({ ...p, wifi_ssid: e.target.value }))}
+                  placeholder="ZTE_B035D3"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Password</Label>
+                <Input
+                  value={form.wifi_password}
+                  onChange={(e) => setForm(p => ({ ...p, wifi_password: e.target.value }))}
+                  placeholder="Wi-Fi password"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Security</Label>
+                <Select
+                  value={form.wifi_security}
+                  onValueChange={(v) => setForm(p => ({ ...p, wifi_security: v }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WPA">WPA / WPA2 / WPA3</SelectItem>
+                    <SelectItem value="WEP">WEP (older routers)</SelectItem>
+                    <SelectItem value="nopass">Open — no password</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Notes for members (optional)</Label>
+                <Input
+                  value={form.wifi_notes}
+                  onChange={(e) => setForm(p => ({ ...p, wifi_notes: e.target.value }))}
+                  placeholder="Fair use please — limited data, max 16 devices."
+                />
+              </div>
+            </div>
+
+            <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Hidden network</p>
+                <p className="text-xs text-muted-foreground">
+                  Tick if the SSID isn't broadcast — the QR code then tells the phone to search for it.
+                </p>
+              </div>
+              <Switch
+                checked={form.wifi_hidden}
+                onCheckedChange={(v) => setForm(p => ({ ...p, wifi_hidden: v }))}
+              />
+            </div>
+
+            <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Show to registered visitors</p>
+                <p className="text-xs text-muted-foreground">
+                  Off means only club members (not visitor accounts) can see the Wi-Fi details.
+                </p>
+              </div>
+              <Switch
+                checked={form.wifi_visitors_allowed}
+                onCheckedChange={(v) => setForm(p => ({ ...p, wifi_visitors_allowed: v }))}
+              />
+            </div>
+          </div>
         </EditLock>
         )}
 

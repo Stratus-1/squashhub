@@ -2558,6 +2558,7 @@ export type Database = {
           updated_at: string
           wifi_charge_enabled: boolean
           wifi_enabled: boolean
+          wifi_fee_id: string | null
           wifi_hidden: boolean
           wifi_monthly_fee: number
           wifi_notes: string | null
@@ -2607,6 +2608,7 @@ export type Database = {
           updated_at?: string
           wifi_charge_enabled?: boolean
           wifi_enabled?: boolean
+          wifi_fee_id?: string | null
           wifi_hidden?: boolean
           wifi_monthly_fee?: number
           wifi_notes?: string | null
@@ -2656,6 +2658,7 @@ export type Database = {
           updated_at?: string
           wifi_charge_enabled?: boolean
           wifi_enabled?: boolean
+          wifi_fee_id?: string | null
           wifi_hidden?: boolean
           wifi_monthly_fee?: number
           wifi_notes?: string | null
@@ -5294,6 +5297,7 @@ export type Database = {
         Row: {
           active: boolean
           annual_fee: number
+          billing_period: string
           club_id: string
           created_at: string
           debit_order_eligible: boolean
@@ -5315,6 +5319,7 @@ export type Database = {
         Insert: {
           active?: boolean
           annual_fee?: number
+          billing_period?: string
           club_id: string
           created_at?: string
           debit_order_eligible?: boolean
@@ -5336,6 +5341,7 @@ export type Database = {
         Update: {
           active?: boolean
           annual_fee?: number
+          billing_period?: string
           club_id?: string
           created_at?: string
           debit_order_eligible?: boolean
@@ -5657,6 +5663,7 @@ export type Database = {
         Row: {
           abbreviation: string | null
           active: boolean
+          billing_period: string
           body_name: string
           club_id: string
           created_at: string
@@ -5677,6 +5684,7 @@ export type Database = {
         Insert: {
           abbreviation?: string | null
           active?: boolean
+          billing_period?: string
           body_name?: string
           club_id: string
           created_at?: string
@@ -5697,6 +5705,7 @@ export type Database = {
         Update: {
           abbreviation?: string | null
           active?: boolean
+          billing_period?: string
           body_name?: string
           club_id?: string
           created_at?: string
@@ -8400,6 +8409,13 @@ export type Database = {
           _viewer_user_id: string
         }
         Returns: boolean
+      }
+      wifi_fee_for_club: {
+        Args: { _club_id: string }
+        Returns: {
+          amount: number
+          label: string
+        }[]
       }
     }
     Enums: {

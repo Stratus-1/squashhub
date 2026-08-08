@@ -76,11 +76,22 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     wifi_visitors_allowed: true,
     wifi_charge_enabled: false,
     wifi_monthly_fee: "",
+    wifi_fee_id: "",
 
   });
 
 
   const [faceEnrolmentRequired, setFaceEnrolmentRequired] = useState(false);
+  const [monthlyFees, setMonthlyFees] = useState<any[]>([]);
+  useEffect(() => {
+    if (!club?.id) return;
+    fromExt("national_body_fees")
+      .select("id, body_name, fee_annual, billing_period, active")
+      .eq("club_id", club.id)
+      .eq("billing_period", "monthly")
+      .eq("active", true)
+      .then(({ data }: any) => setMonthlyFees(data || []));
+  }, [club?.id]);
   const [geofence, setGeofence] = useState({
     enabled: false,
     lat: "",
@@ -128,6 +139,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         wifi_visitors_allowed: s.wifi_visitors_allowed ?? true,
         wifi_charge_enabled: !!(s as any).wifi_charge_enabled,
         wifi_monthly_fee: (s as any).wifi_monthly_fee ? String((s as any).wifi_monthly_fee) : "",
+        wifi_fee_id: (s as any).wifi_fee_id || "",
 
       });
 
@@ -180,6 +192,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       wifi_visitors_allowed: s.wifi_visitors_allowed ?? true,
       wifi_charge_enabled: !!(s as any).wifi_charge_enabled,
       wifi_monthly_fee: (s as any).wifi_monthly_fee ? String((s as any).wifi_monthly_fee) : "",
+      wifi_fee_id: (s as any).wifi_fee_id || "",
 
     }));
   };
@@ -268,6 +281,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         wifi_visitors_allowed: form.wifi_visitors_allowed,
         wifi_charge_enabled: form.wifi_charge_enabled,
         wifi_monthly_fee: Number(form.wifi_monthly_fee || 0),
+        wifi_fee_id: form.wifi_fee_id || null,
 
       } as any);
 
@@ -1063,19 +1077,41 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
             </div>
 
             {form.wifi_charge_enabled && (
-              <div className="space-y-1.5">
-                <Label>Monthly Wi-Fi fee</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={form.wifi_monthly_fee}
-                  onChange={(e) => setForm(p => ({ ...p, wifi_monthly_fee: e.target.value }))}
-                  placeholder="10.00"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Billed monthly in advance to the member's account, like any other club fee.
-                </p>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>Link to a monthly fee (optional)</Label>
+                  <Select
+                    value={form.wifi_fee_id || "none"}
+                    onValueChange={(v) => setForm(p => ({ ...p, wifi_fee_id: v === "none" ? "" : v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Use the amount below" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Use the amount below</SelectItem>
+                      {monthlyFees.map((f: any) => (
+                        <SelectItem key={f.id} value={f.id}>{f.body_name} — {Number(f.fee_annual || 0).toFixed(2)}/mo</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Create a monthly fee under Finance → Fees (e.g. "Wifi per month") and pick it here — its name and amount are used when a member subscribes.
+                  </p>
+                </div>
+                {!form.wifi_fee_id && (
+                  <div className="space-y-1.5">
+                    <Label>Monthly Wi-Fi fee</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={form.wifi_monthly_fee}
+                      onChange={(e) => setForm(p => ({ ...p, wifi_monthly_fee: e.target.value }))}
+                      placeholder="10.00"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Billed monthly in advance to the member's account, like any other club fee.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

@@ -35,6 +35,7 @@ interface UnifiedFee {
   dueMonth: number; // 1-12
   dueDay: number; // 1-31
   showOnLanding?: boolean;
+  billingPeriod: "annual" | "monthly";
   debitOrderEligible: boolean;
   debitOrderRail: "debicheck" | "eft" | "either";
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
@@ -86,6 +87,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
       active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1, dueDay: (c as any).due_day ?? 1,
       showOnLanding: (c as any).show_on_landing ?? false,
+      billingPeriod: ((c as any).billing_period ?? "annual") as any,
       debitOrderEligible: (c as any).debit_order_eligible ?? false,
       debitOrderRail: ((c as any).debit_order_rail ?? "either") as any,
       source: "member_fee_categories", raw: c,
@@ -97,6 +99,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
         id: a.id, name: baseName + (a.abbreviation && a.name ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
         amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
         active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1, dueDay: (a as any).due_day ?? 1,
+        billingPeriod: "annual",
         debitOrderEligible: (a as any).debit_order_eligible ?? false,
         debitOrderRail: ((a as any).debit_order_rail ?? "either") as any,
         source: "league_associations", raw: a,
@@ -116,6 +119,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
         amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
         active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1, dueDay: (f as any).due_day ?? 1,
         showOnLanding: f.show_on_landing ?? false,
+        billingPeriod: ((f as any).billing_period ?? "annual") as any,
         debitOrderEligible: (f as any).debit_order_eligible ?? false,
         debitOrderRail: ((f as any).debit_order_rail ?? "either") as any,
         source: "national_body_fees", raw: f,
@@ -294,8 +298,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   <TableCell>
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{money(fee.amount)}</TableCell>
-                  <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
+                  <TableCell className="text-right tabular-nums">{money(fee.amount)}{fee.billingPeriod === "monthly" ? <span className="text-[10px] text-muted-foreground">/mo</span> : null}</TableCell>
+                  <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : fee.billingPeriod === "monthly" ? <span className="text-muted-foreground">Monthly (day {fee.dueDay})</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-center">
                     <Switch checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />
@@ -396,6 +400,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
     return "";
   });
   const [amount, setAmount] = useState(existing?.amount ?? 0);
+  const [billingPeriod, setBillingPeriod] = useState<"annual" | "monthly">(existing?.billingPeriod ?? "annual");
   const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" || feeType === "registration" || feeType === "league_affiliation" ? "club_income" : "pass_through"));
   const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership" || feeType === "league_affiliation"));
   const [feeDueMonth, setFeeDueMonth] = useState(existing?.dueMonth ?? 1);
@@ -457,7 +462,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
       : { debit_order_eligible: debitOrderEligible, debit_order_rail: debitOrderRail };
 
     if (table === "member_fee_categories") {
-      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay, ...debitFields };
+      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: billingPeriod === "monthly" ? false : proRate, due_month: feeDueMonth, due_day: feeDueDay, billing_period: billingPeriod, ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("member_fee_categories").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -475,7 +480,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType), ...debitFields };
+      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: billingPeriod === "monthly" ? false : proRate, fee_type: mapFeeTypeForDb(feeType), billing_period: billingPeriod, ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -558,24 +563,41 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
               <p className="text-[10px] text-muted-foreground">Once-off fee charged when a new member joins the club</p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <>
               <div className="space-y-1">
-                <Label>Annual Fee ({currencySymbol})</Label>
-                <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
+                <Label>Billing Frequency</Label>
+                <Select value={billingPeriod} onValueChange={v => setBillingPeriod(v as "annual" | "monthly")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="annual">Annual (once a year)</SelectItem>
+                    <SelectItem value="monthly">Monthly (every month)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-1">
-                <Label>Due Day</Label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueDay} onChange={e => setFeeDueDay(Number(e.target.value))}>
-                  {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
-                </select>
+              <div className={billingPeriod === "monthly" ? "grid grid-cols-2 gap-3" : "grid grid-cols-3 gap-3"}>
+                <div className="space-y-1">
+                  <Label>{billingPeriod === "monthly" ? "Monthly Fee" : "Annual Fee"} ({currencySymbol})</Label>
+                  <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Due Day</Label>
+                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueDay} onChange={e => setFeeDueDay(Number(e.target.value))}>
+                    {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+                  </select>
+                </div>
+                {billingPeriod !== "monthly" && (
+                  <div className="space-y-1">
+                    <Label>Due Month</Label>
+                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueMonth} onChange={e => setFeeDueMonth(Number(e.target.value))}>
+                      {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1">
-                <Label>Due Month</Label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueMonth} onChange={e => setFeeDueMonth(Number(e.target.value))}>
-                  {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                </select>
-              </div>
-            </div>
+              {billingPeriod === "monthly" && (
+                <p className="text-[10px] text-muted-foreground">Charged to the member's account every month on day {feeDueDay}. Pro-rate does not apply to monthly fees.</p>
+              )}
+            </>
           )}
 
           {/* Sort order (membership only) */}
@@ -601,7 +623,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
           )}
 
           {/* Pro-rate */}
-          {feeType !== "registration" && (
+          {feeType !== "registration" && billingPeriod !== "monthly" && (
             <div className="flex items-center gap-2 h-10">
               <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
               <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>

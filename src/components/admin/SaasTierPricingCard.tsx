@@ -76,7 +76,6 @@ export function SaasTierPricingCard() {
           if (m != null) next.mins[minKey(code, cy)] = m;
         }
       }
-      setEnabled(map.get(TIERS_ENABLED_KEY) === "true");
       setTiers(next.tiers);
       setMins(next.mins);
       setDirty(false);

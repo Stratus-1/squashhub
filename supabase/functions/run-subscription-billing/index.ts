@@ -385,7 +385,7 @@ Deno.serve(async (req) => {
               clubName: club?.name,
               invoiceNumber,
               planName: plan.name,
-              billingCycle: plan.billing_cycle,
+              billingCycle: cycle,
               periodStart: inv.period_start,
               periodEnd: inv.period_end,
               memberCount: billableMembers,

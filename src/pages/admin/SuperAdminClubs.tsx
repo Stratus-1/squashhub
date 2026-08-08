@@ -26,6 +26,7 @@ type Club = {
   created_at: string;
   booking_slot_minutes?: number | null;
   allow_annual_billing?: boolean | null;
+  annual_billing_requested_at?: string | null;
   member_count?: number;
 };
 

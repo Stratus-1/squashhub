@@ -101,11 +101,11 @@ export function DashboardWifiCard() {
         _club_member_id: memberId,
       });
       if (error) throw error;
-      toast.success(`Wi-Fi access enabled — ${format(Number((data as any)?.amount || 0))} added to your account`);
+      toast.success(`Wi-Fi access enabled — ${format(Number((data as any)?.amount || 0))} added to your account — repeats monthly`);
       qc.invalidateQueries({ queryKey: ["wifi-access-status", memberId] });
       qc.invalidateQueries({ queryKey: ["club-wifi", clubId] });
     } catch (e: any) {
-      toast.error(e.message || "Could not request Wi-Fi access");
+      toast.error(e.message || "Could not activate Wi-Fi access");
     } finally {
       setBusy(false);
     }
@@ -117,7 +117,7 @@ export function DashboardWifiCard() {
     try {
       const { error } = await (supabase as any).rpc("cancel_wifi_access", { _club_member_id: memberId });
       if (error) throw error;
-      toast.success("Monthly Wi-Fi renewal cancelled");
+      toast.success("Wi-Fi deactivated — no further monthly charges");
       qc.invalidateQueries({ queryKey: ["wifi-access-status", memberId] });
     } catch (e: any) {
       toast.error(e.message || "Could not cancel");

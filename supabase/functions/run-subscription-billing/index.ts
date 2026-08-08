@@ -87,6 +87,49 @@ Deno.serve(async (req) => {
     return 1
   }
 
+  // --- Graduated ("sliding scale") pricing -------------------------------
+  // Bands work like tax brackets: the first N members are charged at band 1,
+  // the next block at band 2, etc. Currency bands are stored separately so
+  // USD/EUR pricing stays proportional to the ZAR structure.
+  const tiersEnabled = String(settingsMap.get('saas_tiers_enabled') || '') === 'true'
+  const tiersFor = (ccy: string, cycle: 'monthly' | 'annual'): Array<{ upTo: number | null; rate: number }> | null => {
+    const c = (ccy || 'ZAR').toUpperCase()
+    const key = `saas_tiers_${c.toLowerCase()}_${cycle}`
+    const raw = settingsMap.get(key)
+    if (!raw) return null
+    try {
+      const arr = JSON.parse(raw)
+      if (!Array.isArray(arr) || !arr.length) return null
+      return arr.map((t: any) => ({
+        upTo: t.upTo == null || t.upTo === '' ? null : Number(t.upTo),
+        rate: Number(t.rate) || 0,
+      }))
+    } catch {
+      return null
+    }
+  }
+  const tierMinFor = (ccy: string, cycle: 'monthly' | 'annual'): number | null => {
+    const c = (ccy || 'ZAR').toUpperCase()
+    const v = settingsMap.get(`saas_tier_min_${c.toLowerCase()}_${cycle}`)
+    const n = v == null ? NaN : Number(v)
+    return isFinite(n) ? n : null
+  }
+  const graduatedTotal = (members: number, tiers: Array<{ upTo: number | null; rate: number }>): number => {
+    let remaining = Math.max(0, Math.floor(members || 0))
+    let lower = 0
+    let total = 0
+    for (const t of tiers) {
+      if (remaining <= 0) break
+      const width = t.upTo == null ? remaining : Math.max(0, t.upTo - lower)
+      const take = Math.min(remaining, width)
+      total += take * t.rate
+      remaining -= take
+      lower = t.upTo == null ? lower + take : t.upTo
+    }
+    return +total.toFixed(2)
+  }
+
+
   if (!settings.company_name && !dryRun) {
     return json(
       { error: 'Invoice details not configured. Set company_name in Super Admin → Subscriptions → Invoice Details.' },

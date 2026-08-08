@@ -100,6 +100,23 @@ export function BillingFrequencyCard({
   const annualTotal = annual ? annual.subtotal * 12 : null;
   const saving12 = monthlyTotal != null && annualTotal != null ? monthlyTotal * 12 - annualTotal : null;
 
+  const [requestedAt, setRequestedAt] = useState<string | null>(c.annual_billing_requested_at ?? null);
+  const [requesting, setRequesting] = useState(false);
+
+  const handleRequestAnnual = async () => {
+    setRequesting(true);
+    try {
+      const now = new Date().toISOString();
+      await updateClub.mutateAsync({ id: club.id, annual_billing_requested_at: now } as any);
+      setRequestedAt(now);
+      toast.success("Request sent — SquashHub will review and enable annual billing.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send request");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {

@@ -1,0 +1,2 @@
+UPDATE public.club_members SET gender = 'Men' WHERE lower(trim(gender)) IN ('male','man','m','men','boys') AND gender <> 'Men';
+UPDATE public.club_members SET gender = 'Ladies' WHERE lower(trim(gender)) IN ('female','woman','f','women','lady','ladies','girls') AND gender <> 'Ladies';

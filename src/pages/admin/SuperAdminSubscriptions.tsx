@@ -17,6 +17,16 @@ import { SEO } from "@/components/SEO";
 import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard, Save, FileText, Upload, X, Link2, Eye, EyeOff, Play, Receipt, Globe } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { SaasTierPricingCard } from "@/components/admin/SaasTierPricingCard";
+import {
+  DEFAULT_TIERS,
+  DEFAULT_MIN_CHARGE,
+  parseTiers,
+  normaliseCurrency,
+  tierSettingKey,
+  computeTieredCharge,
+  type SaasCycle,
+} from "@/lib/saas-tiers";
+import { saasMinKey } from "@/hooks/use-saas-pricing";
 
 
 type Plan = {
@@ -161,7 +171,8 @@ export default function SuperAdminSubscriptions() {
     queryFn: async () => {
       const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain").order("name").range(0, 49999);
       if (error) throw error;
-      // Get member counts — paginate to avoid PostgREST's 1000-row response cap.
+      // Billable member counts — active members only, visitors never billed.
+      // Paginate to avoid PostgREST's 1000-row response cap.
       const countMap = new Map<string, number>();
       const PAGE = 1000;
       let from = 0;
@@ -169,6 +180,8 @@ export default function SuperAdminSubscriptions() {
         const { data: members, error: mErr } = await supabase
           .from("club_members")
           .select("club_id")
+          .neq("role", "visitor")
+          .eq("status", "active")
           .range(from, from + PAGE - 1);
         if (mErr) throw mErr;
         (members || []).forEach((m: any) => countMap.set(m.club_id, (countMap.get(m.club_id) || 0) + 1));
@@ -178,6 +191,36 @@ export default function SuperAdminSubscriptions() {
       return (data || []).map((c: any) => ({ ...c, member_count: countMap.get(c.id) || 0 }));
     },
   });
+
+  // --- Live sliding-scale pricing (single source of truth: app_settings) ---
+  const { data: tierSettings } = useQuery({
+    queryKey: ["sa-saas-tier-settings"],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const keys = (["ZAR", "USD", "EUR"] as const).flatMap((c) => [
+        tierSettingKey(c, "monthly"),
+        tierSettingKey(c, "annual"),
+        saasMinKey(c, "monthly"),
+        saasMinKey(c, "annual"),
+      ]);
+      const { data, error } = await supabase.from("app_settings").select("key, value").in("key", keys);
+      if (error) throw error;
+      return new Map((data || []).map((r: any) => [r.key, r.value as string]));
+    },
+  });
+
+  /** Graduated charge for a club — mirrors the billing engine exactly. */
+  const chargeFor = (members: number, ccy?: string | null, cycle: SaasCycle = "monthly") => {
+    const c = normaliseCurrency(ccy);
+    const tiers = parseTiers(tierSettings?.get(tierSettingKey(c, cycle))) || DEFAULT_TIERS[c][cycle];
+    const min = Number(tierSettings?.get(saasMinKey(c, cycle)) ?? DEFAULT_MIN_CHARGE[c][cycle]) || 0;
+    const res = computeTieredCharge(Math.max(0, Math.floor(members || 0)), tiers, min);
+    // Annual-upfront invoices cover 12 months of the monthly-equivalent charge.
+    const months = cycle === "annual" ? 12 : 1;
+    return { ...res, total: +(res.subtotal * months).toFixed(2), min, months };
+  };
+  const cycleOf = (plan?: Plan | null): SaasCycle => (plan?.billing_cycle === "annual" ? "annual" : "monthly");
+
 
   // --- Invoice settings (platform / head-office) ---
   useQuery({

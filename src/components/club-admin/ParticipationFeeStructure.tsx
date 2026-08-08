@@ -1,55 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { FileText, Printer, Layers } from "lucide-react";
 import { useClubCurrency } from "@/hooks/use-currency";
-import {
-  DEFAULT_TIERS,
-  DEFAULT_MIN_CHARGE,
-  computeTieredCharge,
-  parseTiers,
-  normaliseCurrency,
-  tierSettingKey,
-  type SaasCycle,
-} from "@/lib/saas-tiers";
-
-const SYMBOL: Record<string, string> = { ZAR: "R", USD: "$", EUR: "€" };
-const minKey = (c: string, cycle: SaasCycle) => `saas_tier_min_${c.toLowerCase()}_${cycle}`;
+import { computeTieredCharge } from "@/lib/saas-tiers";
+import { useSaasPricing } from "@/hooks/use-saas-pricing";
 
 /**
  * Tenant-facing fee structure. Mirrors the platform's graduated ("sliding
- * scale") pricing, which applies to every club.
+ * scale") pricing, which applies to every club. All values are read live from
+ * the platform pricing settings managed in Super Admin.
  */
 export function ParticipationFeeStructure({ memberCount }: { memberCount?: number | null }) {
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
-  const ccy = normaliseCurrency(clubCurrencyCode);
-  const symbol = SYMBOL[ccy] || "R";
+  const { monthlyTiers, annualTiers, monthlyMin, annualMin, cap, format: fmt } =
+    useSaasPricing(clubCurrencyCode);
 
-  const { data: settings } = useQuery({
-    queryKey: ["saas-pricing-public", ccy],
-    queryFn: async () => {
-      const keys = [
-              "saas_billing_cap",
-        tierSettingKey(ccy, "monthly"),
-        tierSettingKey(ccy, "annual"),
-        minKey(ccy, "monthly"),
-        minKey(ccy, "annual"),
-      ];
-      const { data, error } = await supabase.from("app_settings").select("key, value").in("key", keys);
-      if (error) throw error;
-      return new Map((data || []).map((r: any) => [r.key, r.value as string]));
-    },
-  });
-
-  const rawCap = settings?.get("saas_billing_cap");
-  const cap = rawCap == null || rawCap === "" ? null : Number(rawCap);
-
-  const monthlyTiers = parseTiers(settings?.get(tierSettingKey(ccy, "monthly"))) || DEFAULT_TIERS[ccy].monthly;
-  const annualTiers = parseTiers(settings?.get(tierSettingKey(ccy, "annual"))) || DEFAULT_TIERS[ccy].annual;
-  const monthlyMin = Number(settings?.get(minKey(ccy, "monthly")) ?? DEFAULT_MIN_CHARGE[ccy].monthly) || 0;
-  const annualMin = Number(settings?.get(minKey(ccy, "annual")) ?? DEFAULT_MIN_CHARGE[ccy].annual) || 0;
-
-  const fmt = (n: number) => `${symbol}${Number(n || 0).toFixed(2)}`;
   const billable =
     typeof memberCount === "number"
       ? cap && cap > 0
@@ -62,6 +26,7 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
 
   const bandLabel = (from: number, to: number | null) =>
     to == null ? `${from}+ members` : from === 1 ? `First ${to} members` : `Members ${from}–${to}`;
+
 
   return (
     <div className="rounded-md border bg-muted/30 p-4 text-sm space-y-3">

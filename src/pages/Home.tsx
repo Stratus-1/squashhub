@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
+import { useSaasPricing } from "@/hooks/use-saas-pricing";
+import { computeTieredCharge } from "@/lib/saas-tiers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,7 +83,7 @@ const BENEFITS = [
 const FAQS = [
   { q: "What is SquashHub?", a: "A squash club management platform for bookings, leagues, members, and payments." },
   { q: "Who is it for?", a: "Clubs and associations across South Africa." },
-  { q: "Is it free?", a: "Yes, completely free until September 2026. After that, pricing is on a sliding scale: R6 per active member per month for the first 50, R5 for 51–150, R4 for 151–250, R3 for 251–500 and R2.50 beyond that, with a minimum of R250 per month. Paying annually in advance saves about 15%. International clubs are billed proportionally in USD or EUR." },
+  { q: "Is it free?", a: "Yes, completely free until September 2026. After that, pricing is on a sliding scale — each band of active members is charged at its own rate, so the bigger your club, the lower your average cost per member. The current bands and minimum monthly charge are shown in the Pricing section above. Paying annually in advance saves about 15%, and international clubs are billed proportionally in USD or EUR." },
   { q: "How long does setup take?", a: "Setting up your club on the platform is quick and easy — usually under 2 minutes. Onboarding your existing members is the more involved part, but our team will assist you to migrate them across seamlessly. Depending on the size of your club, this may take a bit of time." },
   { q: "Do members need accounts?", a: "Members don't sign up to SquashHub directly — the club creates its own platform on SquashHub, and its members join under the club. Every member has an account with their club, where bookings, participation, and any outstanding fees or payments are reflected." },
   { q: "Can associations use it?", a: "Yes. League associations in smaller or rural areas often don't have a dedicated administrative platform. SquashHub can provide a full association management platform at a small fee, and members affiliated to that league are automatically linked through to the clubs where they play." },
@@ -90,6 +92,15 @@ const FAQS = [
 
 export default function Home() {
   const navigate = useNavigate();
+  const pricing = useSaasPricing("ZAR");
+  const lowestRate = pricing.monthlyTiers.length
+    ? Math.min(...pricing.monthlyTiers.map((t) => t.rate))
+    : 0;
+  const highestRate = pricing.monthlyTiers.length
+    ? Math.max(...pricing.monthlyTiers.map((t) => t.rate))
+    : 0;
+  const scaleLabel = `per active member · sliding scale from ${pricing.format(highestRate)} down to ${pricing.format(lowestRate)} · minimum ${pricing.format(pricing.monthlyMin)} / month`;
+  const example = computeTieredCharge(197, pricing.monthlyTiers, pricing.monthlyMin);
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -576,16 +587,16 @@ export default function Home() {
             <PricingCard
               icon={Building2}
               title="Clubs"
-              priceLabel="From R2.50"
-              intlLabel="per active member · sliding scale from R6 down to R2.50 · minimum R250 / month"
+              priceLabel={`From ${pricing.format(lowestRate)}`}
+              intlLabel={scaleLabel}
               perks={["All features included", "Billed only on active members", "Save ~15% paying annually in advance", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
             <PricingCard
               icon={Landmark}
               title="Associations"
-              priceLabel="From R2.50"
-              intlLabel="per active member · sliding scale from R6 down to R2.50 · minimum R250 / month"
+              priceLabel={`From ${pricing.format(lowestRate)}`}
+              intlLabel={scaleLabel}
               perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Save ~15% paying annually in advance", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
@@ -595,25 +606,27 @@ export default function Home() {
           <div className="max-w-3xl mx-auto mt-6 rounded-2xl border border-white/10 bg-[hsl(220_45%_8%/0.6)] backdrop-blur-md p-5">
             <h3 className="text-sm font-semibold text-foreground mb-3">How the sliding scale works</h3>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
-              {[
-                { band: "First 50", rate: "R6.00" },
-                { band: "51 – 150", rate: "R5.00" },
-                { band: "151 – 250", rate: "R4.00" },
-                { band: "251 – 500", rate: "R3.00" },
-                { band: "501+", rate: "R2.50" },
-              ].map((b) => (
-                <div key={b.band} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{b.band}</div>
-                  <div className="text-base font-bold text-foreground">{b.rate}</div>
-                  <div className="text-[10px] text-muted-foreground">/ member / month</div>
-                </div>
-              ))}
+              {pricing.monthlyTiers.map((t, i) => {
+                const from = i === 0 ? 1 : (pricing.monthlyTiers[i - 1].upTo ?? 0) + 1;
+                return (
+                  <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {pricing.bandLabel(from, t.upTo)}
+                    </div>
+                    <div className="text-base font-bold text-foreground">{pricing.format(t.rate)}</div>
+                    <div className="text-[10px] text-muted-foreground">/ member / month</div>
+                  </div>
+                );
+              })}
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              Example: a 197-member club pays about <strong className="text-foreground">R988 per month</strong> — roughly
-              R5.02 per member. Minimum charge R250 / month. International clubs are billed proportionally in USD or EUR.
+              Example: a 197-member club pays about{" "}
+              <strong className="text-foreground">{pricing.format(example.subtotal)} per month</strong> — roughly{" "}
+              {pricing.format(example.effectiveRate)} per member. Minimum charge {pricing.format(pricing.monthlyMin)} /
+              month. International clubs are billed proportionally in USD or EUR.
             </p>
           </div>
+
 
 
           {/* Lights integration teaser */}

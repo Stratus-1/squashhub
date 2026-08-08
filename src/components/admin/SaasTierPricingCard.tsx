@@ -49,7 +49,6 @@ function buildDefaults(): { tiers: TierState; mins: MinState } {
 export function SaasTierPricingCard() {
   const qc = useQueryClient();
   const seed = buildDefaults();
-  const [enabled, setEnabled] = useState(false);
   const [tiers, setTiers] = useState<TierState>(seed.tiers);
   const [mins, setMins] = useState<MinState>(seed.mins);
   const [dirty, setDirty] = useState(false);
@@ -88,7 +87,7 @@ export function SaasTierPricingCard() {
   const save = useMutation({
     mutationFn: async () => {
       const rows: { key: string; value: string }[] = [
-        { key: TIERS_ENABLED_KEY, value: enabled ? "true" : "false" },
+        { key: TIERS_ENABLED_KEY, value: "true" },
       ];
       for (const { code } of CURRENCIES) {
         for (const cy of ["monthly", "annual"] as SaasCycle[]) {
@@ -160,23 +159,15 @@ export function SaasTierPricingCard() {
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Layers className="w-4 h-4" /> Sliding Scale (Graduated Bands)
-            {enabled ? (
-              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">Active</Badge>
-            ) : (
-              <Badge variant="secondary">Off — flat rates in use</Badge>
-            )}
+            <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">Active</Badge>
           </h3>
           <p className="text-[11px] text-muted-foreground mt-0.5 max-w-2xl">
             Bands work like tax brackets: the first block of members is charged at band 1, the next block at band 2, and so on.
-            USD and EUR bands are seeded proportionally to the ZAR structure. When active, these bands override the flat
-            per-member rates above.
+            USD and EUR bands are seeded proportionally to the ZAR structure. Every club is billed on this scale — there is no
+            flat per-member rate.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Switch checked={enabled} onCheckedChange={(v) => { setEnabled(v); setDirty(true); }} />
-            <Label className="text-xs">Enable</Label>
-          </div>
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={resetToDefaults}>Reset defaults</Button>
           <Button size="sm" className="h-7 text-xs" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>
             <Save className="w-3.5 h-3.5 mr-1" />{save.isPending ? "Saving..." : "Save"}

@@ -91,7 +91,8 @@ Deno.serve(async (req) => {
   // Bands work like tax brackets: the first N members are charged at band 1,
   // the next block at band 2, etc. Currency bands are stored separately so
   // USD/EUR pricing stays proportional to the ZAR structure.
-  const tiersEnabled = String(settingsMap.get('saas_tiers_enabled') || '') === 'true'
+  // Sliding scale is the only pricing model — always on.
+  const tiersEnabled = true
   const tiersFor = (ccy: string, cycle: 'monthly' | 'annual'): Array<{ upTo: number | null; rate: number }> | null => {
     const c = (ccy || 'ZAR').toUpperCase()
     const key = `saas_tiers_${c.toLowerCase()}_${cycle}`

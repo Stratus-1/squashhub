@@ -173,16 +173,18 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 4) Determine invoice recipient + billing currency per club: prefer clubs.email
-  //    (tenant billing email), fall back to the first admin's email. Currency comes
-  //    from clubs.currency_code (default ZAR).
+  // 4) Determine invoice recipients + billing currency per club. Invoices go to the
+  //    club billing email (clubs.email), every club admin, and the office bearers
+  //    (chairman, secretary, club captain). Currency comes from clubs.currency_code.
   const clubEmails = new Map<string, string>()
   const clubCurrencies = new Map<string, string>()
   const clubCycles = new Map<string, 'monthly' | 'annual'>()
+  const officerMemberIds: string[] = []
+  const clubOfficerIds = new Map<string, string[]>()
   if (clubIds.length) {
     const { data: clubRows } = await supabase
       .from('clubs')
-      .select('id, email, currency_code, sla_billing_option, allow_annual_billing')
+      .select('id, email, currency_code, sla_billing_option, allow_annual_billing, chairman_member_id, secretary_member_id, club_captain_member_id')
       .in('id', clubIds)
     for (const c of clubRows || []) {
       if (c.email && String(c.email).trim()) clubEmails.set(c.id, String(c.email).trim())
@@ -194,23 +196,54 @@ Deno.serve(async (req) => {
         const annualAllowed = (c as any).allow_annual_billing === true
         clubCycles.set(c.id, wantsAnnual && annualAllowed ? 'annual' : 'monthly')
       }
+      const ids = [
+        (c as any).chairman_member_id,
+        (c as any).secretary_member_id,
+        (c as any).club_captain_member_id,
+      ].filter(Boolean) as string[]
+      clubOfficerIds.set(c.id, ids)
+      officerMemberIds.push(...ids)
     }
-
   }
 
-  const adminEmails = new Map<string, string>()
+  // Club admins (all of them) + office bearers, per club.
+  const clubRecipients = new Map<string, Set<string>>()
+  const addRecipient = (clubId: string, email?: string | null) => {
+    const e = String(email || '').trim().toLowerCase()
+    if (!e || !e.includes('@')) return
+    if (!clubRecipients.has(clubId)) clubRecipients.set(clubId, new Set())
+    clubRecipients.get(clubId)!.add(e)
+  }
   if (clubIds.length) {
     const { data: admins } = await supabase
       .from('club_members')
       .select('club_id, email')
       .in('club_id', clubIds)
       .eq('role', 'admin')
+      .eq('status', 'active')
       .not('email', 'is', null)
-    for (const a of admins || []) {
-      if (!adminEmails.has(a.club_id)) adminEmails.set(a.club_id, a.email)
-    }
+    for (const a of admins || []) addRecipient(a.club_id, a.email)
   }
-  const recipientFor = (clubId: string) => clubEmails.get(clubId) || adminEmails.get(clubId) || null
+  if (officerMemberIds.length) {
+    const { data: officers } = await supabase
+      .from('club_members')
+      .select('id, club_id, email')
+      .in('id', Array.from(new Set(officerMemberIds)))
+      .not('email', 'is', null)
+    for (const o of officers || []) addRecipient(o.club_id, o.email)
+  }
+  for (const [clubId, email] of clubEmails) addRecipient(clubId, email)
+
+  /** Primary "To" address — the club billing email when set, else any admin/officer. */
+  const recipientFor = (clubId: string) => {
+    const billing = clubEmails.get(clubId)
+    if (billing) return billing.trim().toLowerCase()
+    const set = clubRecipients.get(clubId)
+    return set && set.size ? Array.from(set)[0] : null
+  }
+  /** Everyone who should receive a copy of this club's invoice. */
+  const recipientsFor = (clubId: string) => Array.from(clubRecipients.get(clubId) || [])
+
 
   const results: any[] = []
   let issued = 0

@@ -623,7 +623,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
           )}
 
           {/* Pro-rate */}
-          {feeType !== "registration" && (
+          {feeType !== "registration" && billingPeriod !== "monthly" && (
             <div className="flex items-center gap-2 h-10">
               <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
               <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>

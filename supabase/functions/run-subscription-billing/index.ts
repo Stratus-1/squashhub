@@ -444,54 +444,67 @@ Deno.serve(async (req) => {
         console.warn('Stitch pay link failed for', invoiceNumber, (e as any)?.message)
       }
 
-      // Email admin
+      // Email the invoice to the club billing address, all club admins and the
+      // office bearers (chairman, secretary, club captain). One send per recipient,
+      // each with its own idempotency key so retries never duplicate.
       const recipient = recipientFor(sub.club_id)
+      const recipients = recipientsFor(sub.club_id)
       let emailStatus: string | null = null
-      if (recipient) {
-        const { error: sendErr } = await supabase.functions.invoke('send-transactional-email', {
-          body: {
-            templateName: 'subscription-invoice',
-            recipientEmail: recipient,
-            idempotencyKey: `sub-invoice-${inv.id}`,
-            templateData: {
-              clubName: club?.name,
-              invoiceNumber,
-              planName: plan.name,
-              billingCycle: cycle,
-              periodStart: inv.period_start,
-              periodEnd: inv.period_end,
-              memberCount: billableMembers,
-              pricePerMember: pricePerMemberZar,
-              minimumCharge: minimumChargeZar,
-              subtotal,
-              vatAmount,
-              total,
-              currency: billingCurrency,
-              displayCurrency,
-              displayPricePerMember: pricePerMemberLocal,
-              displayTotal,
-              fxRateToZar: fxRate,
-              dueDate: inv.due_date,
-              companyName: settings.company_name,
-              tradingAs: settings.trading_as,
-              vatNumber: settings.vat_number,
-              registrationNumber: settings.registration_number,
-              billingEmail: settings.email,
-              billingPhone: settings.phone,
-              address: settings.address,
-              bankName: settings.bank_name,
-              bankAccountName: settings.bank_account_name,
-              bankAccountNumber: settings.bank_account_number,
-              bankBranchCode: settings.bank_branch_code,
-              bankSwift: settings.bank_swift,
-              logoUrl: settings.logo_url,
-              invoiceFooter: settings.invoice_footer,
-              payLink: payLink || undefined,
-              manageUrl,
+      if (recipients.length) {
+        const templateData = {
+          clubName: club?.name,
+          invoiceNumber,
+          planName: plan.name,
+          billingCycle: cycle,
+          periodStart: inv.period_start,
+          periodEnd: inv.period_end,
+          memberCount: billableMembers,
+          pricePerMember: pricePerMemberZar,
+          minimumCharge: minimumChargeZar,
+          subtotal,
+          vatAmount,
+          total,
+          currency: billingCurrency,
+          displayCurrency,
+          displayPricePerMember: pricePerMemberLocal,
+          displayTotal,
+          fxRateToZar: fxRate,
+          dueDate: inv.due_date,
+          companyName: settings.company_name,
+          tradingAs: settings.trading_as,
+          vatNumber: settings.vat_number,
+          registrationNumber: settings.registration_number,
+          billingEmail: settings.email,
+          billingPhone: settings.phone,
+          address: settings.address,
+          bankName: settings.bank_name,
+          bankAccountName: settings.bank_account_name,
+          bankAccountNumber: settings.bank_account_number,
+          bankBranchCode: settings.bank_branch_code,
+          bankSwift: settings.bank_swift,
+          logoUrl: settings.logo_url,
+          invoiceFooter: settings.invoice_footer,
+          payLink: payLink || undefined,
+          manageUrl,
+        }
+        let ok = 0
+        const failures: string[] = []
+        for (const to of recipients) {
+          const slug = to.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+          const { error: sendErr } = await supabase.functions.invoke('send-transactional-email', {
+            body: {
+              templateName: 'subscription-invoice',
+              recipientEmail: to,
+              idempotencyKey: `sub-invoice-${inv.id}-${slug}`,
+              templateData,
             },
-          },
-        })
-        emailStatus = sendErr ? `failed: ${sendErr.message}` : 'queued'
+          })
+          if (sendErr) failures.push(`${to}: ${sendErr.message}`)
+          else ok++
+        }
+        emailStatus = failures.length
+          ? `queued ${ok}/${recipients.length}; failed: ${failures.join(' | ')}`.slice(0, 500)
+          : `queued to ${ok} recipient${ok === 1 ? '' : 's'}`
       } else {
         emailStatus = 'no-recipient-email'
       }
@@ -500,6 +513,7 @@ Deno.serve(async (req) => {
         .from('platform_subscription_invoices')
         .update({ email_sent_at: recipient ? new Date().toISOString() : null, email_status: emailStatus })
         .eq('id', inv.id)
+
 
       // Advance the subscription period
       await supabase

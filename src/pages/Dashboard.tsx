@@ -846,6 +846,7 @@ export default function Dashboard() {
             <Settings className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Profile</span>
           </Button>
+          <DashboardWifiCard asTile />
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-400 hover:bg-sky-500/20" onClick={() => navigate("/help")}>
             <GraduationCap className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Help &amp; Tutorials</span>
@@ -883,7 +884,6 @@ export default function Dashboard() {
 
       {/* Open Door quick access (shown when club uses SquashHub-controlled access) */}
       <DashboardOpenDoorCard />
-      <DashboardWifiCard />
 
 
 

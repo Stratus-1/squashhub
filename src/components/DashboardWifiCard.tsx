@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyClub } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { useCurrency } from "@/hooks/use-currency";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { QRCodeSVG } from "qrcode.react";
 
 type ClubWifi = {
@@ -50,7 +50,7 @@ export function DashboardWifiCard() {
   const clubId = (clubData?.club as { id?: string } | undefined)?.id;
   const { activeMember } = useMemberContext();
   const memberId = activeMember?.id;
-  const { format } = useCurrency();
+  const { format } = useClubCurrency();
   const qc = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [showQr, setShowQr] = useState(false);

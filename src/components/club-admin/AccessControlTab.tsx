@@ -1063,19 +1063,41 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
             </div>
 
             {form.wifi_charge_enabled && (
-              <div className="space-y-1.5">
-                <Label>Monthly Wi-Fi fee</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={form.wifi_monthly_fee}
-                  onChange={(e) => setForm(p => ({ ...p, wifi_monthly_fee: e.target.value }))}
-                  placeholder="10.00"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Billed monthly in advance to the member's account, like any other club fee.
-                </p>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>Link to a monthly fee (optional)</Label>
+                  <Select
+                    value={form.wifi_fee_id || "none"}
+                    onValueChange={(v) => setForm(p => ({ ...p, wifi_fee_id: v === "none" ? "" : v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Use the amount below" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Use the amount below</SelectItem>
+                      {monthlyFees.map((f: any) => (
+                        <SelectItem key={f.id} value={f.id}>{f.body_name} — {Number(f.fee_annual || 0).toFixed(2)}/mo</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Create a monthly fee under Finance → Fees (e.g. "Wifi per month") and pick it here — its name and amount are used when a member subscribes.
+                  </p>
+                </div>
+                {!form.wifi_fee_id && (
+                  <div className="space-y-1.5">
+                    <Label>Monthly Wi-Fi fee</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={form.wifi_monthly_fee}
+                      onChange={(e) => setForm(p => ({ ...p, wifi_monthly_fee: e.target.value }))}
+                      placeholder="10.00"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Billed monthly in advance to the member's account, like any other club fee.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

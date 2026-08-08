@@ -178,16 +178,20 @@ Deno.serve(async (req) => {
   if (clubIds.length) {
     const { data: clubRows } = await supabase
       .from('clubs')
-      .select('id, email, currency_code, sla_billing_option')
+      .select('id, email, currency_code, sla_billing_option, allow_annual_billing')
       .in('id', clubIds)
     for (const c of clubRows || []) {
       if (c.email && String(c.email).trim()) clubEmails.set(c.id, String(c.email).trim())
       clubCurrencies.set(c.id, String((c as any).currency_code || 'ZAR').toUpperCase())
-      // The club's chosen billing frequency wins over the plan default.
+      // The club's chosen billing frequency wins over the plan default, but annual
+      // upfront only applies when the platform has enabled it for that club.
       if ((c as any).sla_billing_option) {
-        clubCycles.set(c.id, (c as any).sla_billing_option === 'annual_upfront' ? 'annual' : 'monthly')
+        const wantsAnnual = (c as any).sla_billing_option === 'annual_upfront'
+        const annualAllowed = (c as any).allow_annual_billing === true
+        clubCycles.set(c.id, wantsAnnual && annualAllowed ? 'annual' : 'monthly')
       }
     }
+
   }
 
   const adminEmails = new Map<string, string>()

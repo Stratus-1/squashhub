@@ -941,6 +941,104 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         </EditLock>
         )}
 
+        {step === "wifi" && (
+        <EditLock
+          editing={wifiLock.editing}
+          onEdit={wifiLock.edit}
+          onCancel={wifiLock.cancel}
+          onSave={() => handleSave(wifiLock.done)}
+          saving={updateSecrets.isPending}
+          title="club Wi-Fi"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Wifi className="w-4 h-4 text-primary" />
+                  Share Wi-Fi with members
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Members see a "Club Wi-Fi" tile on their dashboard with a scannable
+                  QR code that joins the network automatically. The password is stored
+                  in the club's protected settings and is never public.
+                </p>
+              </div>
+              <Switch
+                checked={form.wifi_enabled}
+                onCheckedChange={(v) => setForm(p => ({ ...p, wifi_enabled: v }))}
+              />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Network name (SSID)</Label>
+                <Input
+                  value={form.wifi_ssid}
+                  onChange={(e) => setForm(p => ({ ...p, wifi_ssid: e.target.value }))}
+                  placeholder="ZTE_B035D3"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Password</Label>
+                <Input
+                  value={form.wifi_password}
+                  onChange={(e) => setForm(p => ({ ...p, wifi_password: e.target.value }))}
+                  placeholder="Wi-Fi password"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Security</Label>
+                <Select
+                  value={form.wifi_security}
+                  onValueChange={(v) => setForm(p => ({ ...p, wifi_security: v }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WPA">WPA / WPA2 / WPA3</SelectItem>
+                    <SelectItem value="WEP">WEP (older routers)</SelectItem>
+                    <SelectItem value="nopass">Open — no password</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Notes for members (optional)</Label>
+                <Input
+                  value={form.wifi_notes}
+                  onChange={(e) => setForm(p => ({ ...p, wifi_notes: e.target.value }))}
+                  placeholder="Fair use please — limited data, max 16 devices."
+                />
+              </div>
+            </div>
+
+            <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Hidden network</p>
+                <p className="text-xs text-muted-foreground">
+                  Tick if the SSID isn't broadcast — the QR code then tells the phone to search for it.
+                </p>
+              </div>
+              <Switch
+                checked={form.wifi_hidden}
+                onCheckedChange={(v) => setForm(p => ({ ...p, wifi_hidden: v }))}
+              />
+            </div>
+
+            <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Show to registered visitors</p>
+                <p className="text-xs text-muted-foreground">
+                  Off means only club members (not visitor accounts) can see the Wi-Fi details.
+                </p>
+              </div>
+              <Switch
+                checked={form.wifi_visitors_allowed}
+                onCheckedChange={(v) => setForm(p => ({ ...p, wifi_visitors_allowed: v }))}
+              />
+            </div>
+          </div>
+        </EditLock>
+        )}
+
       </Card>
       <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>

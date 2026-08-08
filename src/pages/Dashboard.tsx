@@ -638,10 +638,14 @@ export default function Dashboard() {
             </div>
           )}
           {(isClubAdmin || isSuperAdmin) && clubId && (
+            <div className="mt-3"><SubscriptionDuePrompt clubId={clubId} /></div>
+          )}
+          {(isClubAdmin || isSuperAdmin) && clubId && (
             <div className="mt-3">
               <CaptainInviteTeamCard mode="admin" clubId={clubId} />
             </div>
           )}
+
         </div>
 
 
@@ -1109,9 +1113,20 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
+          <SubscriptionDuePrompt clubId={clubId} />
+        </motion.div>
+      )}
+
+      {(isClubAdmin || isSuperAdmin) && clubId && (
+        <motion.div
+          className="px-4 mt-3"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
           <CaptainInviteTeamCard mode="admin" clubId={clubId} />
         </motion.div>
       )}
+
 
       {/* Scheduled Matches */}
       {myScheduledMatches && myScheduledMatches.length > 0 && (

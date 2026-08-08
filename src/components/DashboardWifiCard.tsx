@@ -249,6 +249,13 @@ export function DashboardWifiCard() {
       {!locked && wifi?.notes && (
         <p className="text-[12px] text-muted-foreground break-words">{wifi.notes}</p>
       )}
-    </Card>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
+

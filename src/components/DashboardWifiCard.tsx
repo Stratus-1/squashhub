@@ -86,30 +86,34 @@ export function DashboardWifiCard({ asTile = false }: { asTile?: boolean } = {})
   const locked = !!status?.charge_enabled && !status?.has_access;
 
   // Announcement toast introducing paid club Wi-Fi.
-  // Shown once per app session until the member actually opens the Wi-Fi dialog.
+  // Shown at most once per day until the member actually opens the Wi-Fi dialog.
   useEffect(() => {
-    // sessionStorage guard below prevents a duplicate toast if both variants mount
-    if (!status?.wifi_enabled || !locked) return;
+    if (asTile === false && window.innerWidth < 768) return; // avoid double-fire across variants
+    if (!status?.wifi_enabled) return;
+    if (status?.active) return; // already on Wi-Fi — nothing to announce
     const key = `sh.wifi.announced.${clubId ?? "x"}`;
-    if (localStorage.getItem(key)) return;
-    const sessionKey = `${key}.session`;
-    if (sessionStorage.getItem(sessionKey)) return;
-    sessionStorage.setItem(sessionKey, "1");
+    if (localStorage.getItem(key) === "done") return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem(`${key}.day`) === today) return;
+    localStorage.setItem(`${key}.day`, today);
     const t = setTimeout(() => {
       toast("Club Wi-Fi is now available", {
-        description: `Get the club Wi-Fi password on your phone for just ${format(Number(status?.monthly_fee || 0))} a month — tap the violet “Club Wi-Fi” tile on your dashboard to activate.`,
+        description: status?.charge_enabled
+          ? `Get the club Wi-Fi password on your phone for just ${format(Number(status?.monthly_fee || 0))} a month — tap the violet “Club Wi-Fi” tile on your dashboard to activate.`
+          : "Tap the violet “Club Wi-Fi” tile on your dashboard to get the password or scan the QR code.",
         duration: 15000,
         action: {
           label: "Open",
           onClick: () => {
-            localStorage.setItem(key, "1");
+            localStorage.setItem(key, "done");
             setOpen(true);
           },
         },
       });
     }, 1500);
     return () => clearTimeout(t);
-  }, [asTile, status?.wifi_enabled, status?.monthly_fee, locked, clubId, format]);
+  }, [asTile, status?.wifi_enabled, status?.active, status?.charge_enabled, status?.monthly_fee, clubId, format]);
+
 
 
   // Hidden entirely unless the club has switched Wi-Fi on in Access Control

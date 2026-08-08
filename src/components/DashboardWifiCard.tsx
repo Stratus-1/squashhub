@@ -85,8 +85,25 @@ export function DashboardWifiCard({ asTile = false }: { asTile?: boolean } = {})
 
   const locked = !!status?.charge_enabled && !status?.has_access;
 
+  // One-off announcement toast introducing paid club Wi-Fi
+  useEffect(() => {
+    if (!status?.wifi_enabled || !locked) return;
+    const key = `sh.wifi.announced.${clubId ?? "x"}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
+    const t = setTimeout(() => {
+      toast("Club Wi-Fi is now available", {
+        description: `Get the club Wi-Fi password on your phone for just ${format(Number(status?.monthly_fee || 0))} a month — tap the violet “Club Wi-Fi” tile on your dashboard to activate.`,
+        duration: 12000,
+        action: { label: "Open", onClick: () => setOpen(true) },
+      });
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [status?.wifi_enabled, status?.monthly_fee, locked, clubId, format]);
+
   // Hidden entirely unless the club has switched Wi-Fi on in Access Control
   if (status && !status.wifi_enabled) return null;
+
 
   // Nothing to show: no Wi-Fi configured and nothing to buy
   if (!wifi?.ssid && !locked) return null;

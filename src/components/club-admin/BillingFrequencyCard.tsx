@@ -173,7 +173,7 @@ export function BillingFrequencyCard({
               <span className="text-[10px] font-normal text-muted-foreground"> / month</span>
             </div>
             <div className="text-xs text-muted-foreground">
-              Billed monthly in arrears
+              Billed monthly in advance
               {monthlyTotal != null && <> · {pricing.format(monthlyTotal * 12)} over 12 months</>}
             </div>
           </div>

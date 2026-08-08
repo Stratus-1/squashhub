@@ -159,10 +159,14 @@ Deno.serve(async (req) => {
   const memberCounts = new Map<string, number>()
   if (clubIds.length) {
     // Fetch billing admin email per club too
+    // Billable = active members only. Visitors (tournament/guest records) are
+    // never charged for.
     const { data: members } = await supabase
       .from('club_members')
       .select('club_id, email, role')
       .in('club_id', clubIds)
+      .neq('role', 'visitor')
+      .eq('status', 'active')
       .range(0, 99999)
     for (const m of members || []) {
       memberCounts.set(m.club_id, (memberCounts.get(m.club_id) || 0) + 1)

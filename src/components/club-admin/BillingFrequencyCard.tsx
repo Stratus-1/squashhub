@@ -64,14 +64,16 @@ export function BillingFrequencyCard({
   const locked = !!annualCoverUntil;
   const allowAnnual = c.allow_annual_billing === true;
 
-  // Live billable member count — the billing engine counts every club member.
+  // Live billable member count — active members only, visitors are never billed.
   const { data: memberCountData } = useQuery({
     queryKey: ["club-billable-member-count", club.id],
     queryFn: async () => {
       const { count, error } = await supabase
         .from("club_members")
         .select("id", { count: "exact", head: true })
-        .eq("club_id", club.id);
+        .eq("club_id", club.id)
+        .eq("status", "active")
+        .neq("role", "visitor");
       if (error) throw error;
       return count ?? 0;
     },

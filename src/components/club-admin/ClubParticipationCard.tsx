@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -31,7 +33,21 @@ export function ClubParticipationCard({ club }: { club: Club }) {
   const [agreed, setAgreed] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const memberCount = (c as any).active_member_count;
+  // Billable = active members only; visitors are never charged for.
+  const { data: liveMemberCount } = useQuery({
+    queryKey: ["club-billable-member-count", club.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("club_members")
+        .select("id", { count: "exact", head: true })
+        .eq("club_id", club.id)
+        .eq("status", "active")
+        .neq("role", "visitor");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  const memberCount = typeof liveMemberCount === "number" ? liveMemberCount : (c as any).active_member_count;
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
   
 

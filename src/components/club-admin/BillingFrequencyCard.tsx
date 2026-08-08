@@ -62,16 +62,34 @@ export function BillingFrequencyCard({
     return ends.length ? ends[ends.length - 1] : null;
   })();
   const locked = !!annualCoverUntil;
+  const allowAnnual = c.allow_annual_billing === true;
 
+  // Live billable member count — the billing engine counts every club member.
+  const { data: memberCountData } = useQuery({
+    queryKey: ["club-billable-member-count", club.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("club_members")
+        .select("id", { count: "exact", head: true })
+        .eq("club_id", club.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
 
   const memberCount: number | null =
-    typeof c.active_member_count === "number" ? c.active_member_count : null;
+    typeof memberCountData === "number"
+      ? memberCountData
+      : typeof c.active_member_count === "number"
+        ? c.active_member_count
+        : null;
   const billable =
     memberCount === null
       ? null
       : pricing.cap && pricing.cap > 0
         ? Math.min(memberCount, pricing.cap)
         : memberCount;
+
 
   const monthly = billable !== null ? computeTieredCharge(billable, pricing.monthlyTiers, pricing.monthlyMin) : null;
   const annual = billable !== null ? computeTieredCharge(billable, pricing.annualTiers, pricing.annualMin) : null;

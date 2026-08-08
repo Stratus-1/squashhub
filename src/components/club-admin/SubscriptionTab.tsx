@@ -239,6 +239,10 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
     <div className="space-y-6 mt-4">
       {club && <ClubParticipationCard club={club} />}
 
+      {club && <BillingFrequencyCard club={club} />}
+
+
+
       {/* Outstanding summary */}
       {outstanding.length > 0 && (
         <Card className="p-4 border-amber-300/60 bg-amber-50/60 dark:bg-amber-950/20">

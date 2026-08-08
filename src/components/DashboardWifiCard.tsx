@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
 import { Wifi, Copy, QrCode, Eye, EyeOff, Lock } from "lucide-react";
 import { toast } from "sonner";
@@ -54,6 +56,7 @@ export function DashboardWifiCard() {
   const qc = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const { data: status } = useQuery({
@@ -133,8 +136,42 @@ export function DashboardWifiCard() {
   const periodEnd = status?.current_period_end ? new Date(status.current_period_end) : null;
 
   return (
-    <Card className="p-4 space-y-3">
+    <>
+      <Card
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(true); } }}
+        className="p-4 cursor-pointer transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-primary/10 p-2 text-primary">
+            {locked ? <Lock className="h-5 w-5" /> : <Wifi className="h-5 w-5" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-tight">Club Wi-Fi</p>
+            <p className="text-[13px] text-muted-foreground break-words">
+              {locked
+                ? `Tap to activate — ${format(Number(status?.monthly_fee || 0))} per month`
+                : status?.charge_enabled && !status?.auto_renew
+                  ? "Tap to view or reactivate"
+                  : `${wifi?.ssid ?? "Tap to view"} · tap for password & QR`}
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {locked ? <Lock className="h-4 w-4" /> : <Wifi className="h-4 w-4" />}
+              Club Wi-Fi
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
       <div className="flex items-start gap-3">
+
         <div className="rounded-lg bg-primary/10 p-2 text-primary">
           {locked ? <Lock className="h-5 w-5" /> : <Wifi className="h-5 w-5" />}
         </div>
@@ -215,6 +252,13 @@ export function DashboardWifiCard() {
       {!locked && wifi?.notes && (
         <p className="text-[12px] text-muted-foreground break-words">{wifi.notes}</p>
       )}
-    </Card>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
+

@@ -1,14 +1,17 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { useSaasPricing } from "@/hooks/use-saas-pricing";
 import { computeTieredCharge } from "@/lib/saas-tiers";
+
 
 type BillingOption = "monthly" | "annual_upfront";
 

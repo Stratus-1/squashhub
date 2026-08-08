@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { SquashHubSlaContent, SLA_VERSION } from "@/components/SquashHubSlaContent";
+import { ParticipationFeeStructure } from "@/components/club-admin/ParticipationFeeStructure";
 
 type BillingOption = "monthly" | "annual_upfront";
 

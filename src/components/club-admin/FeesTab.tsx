@@ -563,24 +563,41 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
               <p className="text-[10px] text-muted-foreground">Once-off fee charged when a new member joins the club</p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <>
               <div className="space-y-1">
-                <Label>Annual Fee ({currencySymbol})</Label>
-                <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
+                <Label>Billing Frequency</Label>
+                <Select value={billingPeriod} onValueChange={v => setBillingPeriod(v as "annual" | "monthly")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="annual">Annual (once a year)</SelectItem>
+                    <SelectItem value="monthly">Monthly (every month)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-1">
-                <Label>Due Day</Label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueDay} onChange={e => setFeeDueDay(Number(e.target.value))}>
-                  {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
-                </select>
+              <div className={billingPeriod === "monthly" ? "grid grid-cols-2 gap-3" : "grid grid-cols-3 gap-3"}>
+                <div className="space-y-1">
+                  <Label>{billingPeriod === "monthly" ? "Monthly Fee" : "Annual Fee"} ({currencySymbol})</Label>
+                  <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Due Day</Label>
+                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueDay} onChange={e => setFeeDueDay(Number(e.target.value))}>
+                    {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+                  </select>
+                </div>
+                {billingPeriod !== "monthly" && (
+                  <div className="space-y-1">
+                    <Label>Due Month</Label>
+                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueMonth} onChange={e => setFeeDueMonth(Number(e.target.value))}>
+                      {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1">
-                <Label>Due Month</Label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueMonth} onChange={e => setFeeDueMonth(Number(e.target.value))}>
-                  {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                </select>
-              </div>
-            </div>
+              {billingPeriod === "monthly" && (
+                <p className="text-[10px] text-muted-foreground">Charged to the member's account every month on day {feeDueDay}. Pro-rate does not apply to monthly fees.</p>
+              )}
+            </>
           )}
 
           {/* Sort order (membership only) */}

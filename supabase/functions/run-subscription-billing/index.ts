@@ -324,11 +324,10 @@ Deno.serve(async (req) => {
       const vatAmount = +(vatLocal * fxRate).toFixed(2)
       const total = +(displayTotal * fxRate).toFixed(2)
 
-      // Billing periods are calendar-aligned. The first billable period starts on
-      // the 1st of the month AFTER the trial ends; afterwards we continue from the
-      // last invoiced period_end (also a 1st-of-month date).
+      // The first billable period starts the DAY AFTER the trial ends; afterwards
+      // we continue from the last invoiced period_end.
       const trialEnd = sub.trial_ends_at ? new Date(sub.trial_ends_at) : null
-      const firstBillableStart = trialEnd ? firstOfNextMonth(trialEnd) : null
+      const firstBillableStart = trialEnd ? dayAfter(trialEnd) : null
       let periodStart: Date
       const lastEnd = sub.current_period_end ? new Date(sub.current_period_end) : null
       if (firstBillableStart && (!lastEnd || lastEnd < firstBillableStart)) {
@@ -336,8 +335,9 @@ Deno.serve(async (req) => {
       } else if (lastEnd) {
         periodStart = new Date(Date.UTC(lastEnd.getUTCFullYear(), lastEnd.getUTCMonth(), lastEnd.getUTCDate()))
       } else {
-        periodStart = new Date(Date.UTC(billingDate.getUTCFullYear(), billingDate.getUTCMonth(), 1))
+        periodStart = new Date(Date.UTC(billingDate.getUTCFullYear(), billingDate.getUTCMonth(), billingDate.getUTCDate()))
       }
+
 
       // Nothing to bill until the period has actually started (invoiced in advance
       // ON the 1st, never before).

@@ -10,7 +10,6 @@ import {
   parseTiers,
   normaliseCurrency,
   tierSettingKey,
-  TIERS_ENABLED_KEY,
   type SaasCycle,
 } from "@/lib/saas-tiers";
 
@@ -19,8 +18,7 @@ const minKey = (c: string, cycle: SaasCycle) => `saas_tier_min_${c.toLowerCase()
 
 /**
  * Tenant-facing fee structure. Mirrors the platform's graduated ("sliding
- * scale") pricing when it is enabled, and falls back to the legacy flat rate
- * otherwise.
+ * scale") pricing, which applies to every club.
  */
 export function ParticipationFeeStructure({ memberCount }: { memberCount?: number | null }) {
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
@@ -31,8 +29,7 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
     queryKey: ["saas-pricing-public", ccy],
     queryFn: async () => {
       const keys = [
-        TIERS_ENABLED_KEY,
-        "saas_billing_cap",
+              "saas_billing_cap",
         tierSettingKey(ccy, "monthly"),
         tierSettingKey(ccy, "annual"),
         minKey(ccy, "monthly"),
@@ -44,7 +41,8 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
     },
   });
 
-  const tiersEnabled = settings?.get(TIERS_ENABLED_KEY) === "true";
+  // All clubs are billed on the graduated sliding scale.
+  const tiersEnabled = true;
   const rawCap = settings?.get("saas_billing_cap");
   const cap = rawCap == null || rawCap === "" ? null : Number(rawCap);
 
@@ -64,26 +62,17 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
   const monthly = billable !== null ? computeTieredCharge(billable, monthlyTiers, monthlyMin) : null;
   const annual = billable !== null ? computeTieredCharge(billable, annualTiers, annualMin) : null;
 
-  // Legacy flat-rate fallback (used when graduated pricing is switched off).
-  const FLAT: Record<string, { monthly: number; annual: number; savings: string }> = {
-    ZAR: { monthly: 6.0, annual: 5.0, savings: "R12" },
-    USD: { monthly: 0.35, annual: 0.3, savings: "$0.60" },
-    EUR: { monthly: 0.32, annual: 0.27, savings: "€0.60" },
-  };
-  const flat = FLAT[ccy];
-
   const bandLabel = (from: number, to: number | null) =>
     to == null ? `${from}+ members` : from === 1 ? `First ${to} members` : `Members ${from}–${to}`;
 
   return (
     <div className="rounded-md border bg-muted/30 p-4 text-sm space-y-3">
       <div className="flex items-center gap-2 font-medium text-foreground">
-        {tiersEnabled && <Layers className="w-4 h-4 text-primary" />}
+        <Layers className="w-4 h-4 text-primary" />
         Fee structure
       </div>
 
-      {tiersEnabled ? (
-        <>
+      <>
           <p className="text-xs text-muted-foreground">
             Pricing is on a <strong className="text-foreground">sliding scale</strong> — like tax bands, each block of
             members is charged at its own rate, so the more members you have the lower your average cost per member.
@@ -126,8 +115,7 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
               </li>
             )}
           </ul>
-        </>
-      )}
+      </>
 
 
       <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
@@ -154,10 +142,10 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
             <div>
               <div className="text-muted-foreground">Estimated monthly</div>
               <div className="font-semibold text-foreground">
-                {fmt(tiersEnabled ? monthly!.subtotal : billable * flat.monthly)}{" "}
+                {fmt(monthly!.subtotal)}{" "}
                 <span className="text-[10px] font-normal text-muted-foreground">/ month</span>
               </div>
-              {tiersEnabled && billable > 0 && (
+              {billable > 0 && (
                 <div className="text-[10px] text-muted-foreground">
                   ≈ {fmt(monthly!.effectiveRate)} / member{monthly!.minApplied ? " (minimum applied)" : ""}
                 </div>
@@ -166,10 +154,10 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
             <div>
               <div className="text-muted-foreground">Estimated annual (upfront)</div>
               <div className="font-semibold text-foreground">
-                {fmt(tiersEnabled ? annual!.subtotal * 12 : billable * flat.annual * 12)}{" "}
+                {fmt(annual!.subtotal * 12)}{" "}
                 <span className="text-[10px] font-normal text-muted-foreground">/ year</span>
               </div>
-              {tiersEnabled && billable > 0 && (
+              {billable > 0 && (
                 <div className="text-[10px] text-muted-foreground">≈ {fmt(annual!.subtotal)} / month</div>
               )}
             </div>

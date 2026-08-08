@@ -168,6 +168,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
   const methodLock = useEditLock(resetSecretsForm);
   const deviceLock = useEditLock(resetSecretsForm);
   const locationLock = useEditLock(resetGeofence);
+  const wifiLock = useEditLock(resetSecretsForm);
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {

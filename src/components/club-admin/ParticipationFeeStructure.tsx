@@ -127,24 +127,8 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
             )}
           </ul>
         </>
-      ) : (
-        <ul className="list-disc pl-5 text-muted-foreground space-y-1">
-          <li>
-            <strong className="text-foreground">{fmt(flat.monthly)}</strong> per active member per month (billed
-            monthly), or
-          </li>
-          <li>
-            <strong className="text-foreground">{fmt(flat.annual)}</strong> per active member per month if paid{" "}
-            <strong className="text-foreground">annually in advance</strong> (save {flat.savings} / member / year)
-          </li>
-          {cap && cap > 0 && (
-            <li>
-              Billing is <strong className="text-foreground">capped at {cap} active members</strong> per club —
-              additional members are free.
-            </li>
-          )}
-        </ul>
       )}
+
 
       <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
         Fees are first invoiced from <strong>September 2026</strong> for the current financial year, and annually

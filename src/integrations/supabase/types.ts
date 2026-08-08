@@ -2556,6 +2556,13 @@ export type Database = {
           smtp_port: number | null
           smtp_user: string | null
           updated_at: string
+          wifi_enabled: boolean
+          wifi_hidden: boolean
+          wifi_notes: string | null
+          wifi_password: string | null
+          wifi_security: string
+          wifi_ssid: string | null
+          wifi_visitors_allowed: boolean
           zk_area_id: string | null
           zk_base_url: string | null
           zk_door_group: string | null
@@ -2596,6 +2603,13 @@ export type Database = {
           smtp_port?: number | null
           smtp_user?: string | null
           updated_at?: string
+          wifi_enabled?: boolean
+          wifi_hidden?: boolean
+          wifi_notes?: string | null
+          wifi_password?: string | null
+          wifi_security?: string
+          wifi_ssid?: string | null
+          wifi_visitors_allowed?: boolean
           zk_area_id?: string | null
           zk_base_url?: string | null
           zk_door_group?: string | null
@@ -2636,6 +2650,13 @@ export type Database = {
           smtp_port?: number | null
           smtp_user?: string | null
           updated_at?: string
+          wifi_enabled?: boolean
+          wifi_hidden?: boolean
+          wifi_notes?: string | null
+          wifi_password?: string | null
+          wifi_security?: string
+          wifi_ssid?: string | null
+          wifi_visitors_allowed?: boolean
           zk_area_id?: string | null
           zk_base_url?: string | null
           zk_door_group?: string | null
@@ -7849,6 +7870,16 @@ export type Database = {
         }[]
       }
       get_club_member_count: { Args: { _club_id: string }; Returns: number }
+      get_club_wifi: {
+        Args: { _club_id: string }
+        Returns: {
+          hidden: boolean
+          notes: string
+          password: string
+          security: string
+          ssid: string
+        }[]
+      }
       get_clubs_with_admins: {
         Args: never
         Returns: {

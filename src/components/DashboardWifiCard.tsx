@@ -88,7 +88,7 @@ export function DashboardWifiCard({ asTile = false }: { asTile?: boolean } = {})
   // Announcement toast introducing paid club Wi-Fi.
   // Shown once per app session until the member actually opens the Wi-Fi dialog.
   useEffect(() => {
-    if (asTile) return; // avoid double toast when both tile + card are mounted
+    // sessionStorage guard below prevents a duplicate toast if both variants mount
     if (!status?.wifi_enabled || !locked) return;
     const key = `sh.wifi.announced.${clubId ?? "x"}`;
     if (localStorage.getItem(key)) return;

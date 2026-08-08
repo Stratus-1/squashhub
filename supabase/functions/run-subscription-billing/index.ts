@@ -290,14 +290,38 @@ Deno.serve(async (req) => {
       const vatAmount = +(vatLocal * fxRate).toFixed(2)
       const total = +(displayTotal * fxRate).toFixed(2)
 
-      // Determine billing period (next cycle after last period_end, or from billingDate)
-      const periodStart = new Date(sub.current_period_end || billingDate)
-      const periodEnd = new Date(periodStart)
-      if (cycle === 'annual') {
-        periodEnd.setFullYear(periodEnd.getFullYear() + 1)
+      // Billing periods are calendar-aligned. The first billable period starts on
+      // the 1st of the month AFTER the trial ends; afterwards we continue from the
+      // last invoiced period_end (also a 1st-of-month date).
+      const trialEnd = sub.trial_ends_at ? new Date(sub.trial_ends_at) : null
+      const firstBillableStart = trialEnd ? firstOfNextMonth(trialEnd) : null
+      let periodStart: Date
+      const lastEnd = sub.current_period_end ? new Date(sub.current_period_end) : null
+      if (firstBillableStart && (!lastEnd || lastEnd < firstBillableStart)) {
+        periodStart = firstBillableStart
+      } else if (lastEnd) {
+        periodStart = new Date(Date.UTC(lastEnd.getUTCFullYear(), lastEnd.getUTCMonth(), lastEnd.getUTCDate()))
       } else {
-        periodEnd.setMonth(periodEnd.getMonth() + 1)
+        periodStart = new Date(Date.UTC(billingDate.getUTCFullYear(), billingDate.getUTCMonth(), 1))
       }
+
+      // Nothing to bill until the period has actually started (invoiced in advance
+      // ON the 1st, never before).
+      if (!dryRun && billingDay < iso(periodStart)) {
+        skipped++
+        results.push({
+          subscription_id: sub.id,
+          club: club?.name,
+          status: 'skipped',
+          reason: `Billing starts ${iso(periodStart)}`,
+        })
+        continue
+      }
+
+      const periodEnd = cycle === 'annual'
+        ? new Date(Date.UTC(periodStart.getUTCFullYear() + 1, periodStart.getUTCMonth(), periodStart.getUTCDate()))
+        : new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1, periodStart.getUTCDate()))
+
       const dueDate = new Date(billingDate)
       dueDate.setDate(dueDate.getDate() + 14)
 

@@ -76,6 +76,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     wifi_visitors_allowed: true,
     wifi_charge_enabled: false,
     wifi_monthly_fee: "",
+    wifi_fee_id: "",
 
   });
 
@@ -128,6 +129,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         wifi_visitors_allowed: s.wifi_visitors_allowed ?? true,
         wifi_charge_enabled: !!(s as any).wifi_charge_enabled,
         wifi_monthly_fee: (s as any).wifi_monthly_fee ? String((s as any).wifi_monthly_fee) : "",
+        wifi_fee_id: (s as any).wifi_fee_id || "",
 
       });
 
@@ -180,6 +182,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       wifi_visitors_allowed: s.wifi_visitors_allowed ?? true,
       wifi_charge_enabled: !!(s as any).wifi_charge_enabled,
       wifi_monthly_fee: (s as any).wifi_monthly_fee ? String((s as any).wifi_monthly_fee) : "",
+      wifi_fee_id: (s as any).wifi_fee_id || "",
 
     }));
   };
@@ -268,6 +271,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         wifi_visitors_allowed: form.wifi_visitors_allowed,
         wifi_charge_enabled: form.wifi_charge_enabled,
         wifi_monthly_fee: Number(form.wifi_monthly_fee || 0),
+        wifi_fee_id: form.wifi_fee_id || null,
 
       } as any);
 

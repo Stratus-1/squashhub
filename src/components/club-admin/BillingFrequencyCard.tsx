@@ -175,28 +175,43 @@ export function BillingFrequencyCard({
           </div>
         </label>
 
-        <label
-          className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}
-        >
-          <RadioGroupItem value="annual_upfront" id="freq-annual" className="mt-0.5" disabled={locked} />
-          <div className="text-sm flex-1">
-            <div className="font-medium">Annual upfront</div>
-            <div className="text-lg font-bold text-foreground">
-              {annualTotal != null ? pricing.format(annualTotal) : "—"}
-              <span className="text-[10px] font-normal text-muted-foreground"> / year</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              One invoice, paid in advance
-              {annual && <> · ≈ {pricing.format(annual.subtotal)} / month</>}
-            </div>
-            {saving12 != null && saving12 > 0 && (
-              <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                Save {pricing.format(saving12)} per year
+        {allowAnnual && (
+          <label
+            className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}
+          >
+            <RadioGroupItem value="annual_upfront" id="freq-annual" className="mt-0.5" disabled={locked} />
+            <div className="text-sm flex-1">
+              <div className="font-medium">Annual upfront</div>
+              <div className="text-lg font-bold text-foreground">
+                {annualTotal != null ? pricing.format(annualTotal) : "—"}
+                <span className="text-[10px] font-normal text-muted-foreground"> / year</span>
               </div>
-            )}
-          </div>
-        </label>
+              <div className="text-xs text-muted-foreground">
+                One invoice, paid in advance
+                {annual && <> · ≈ {pricing.format(annual.subtotal)} / month</>}
+              </div>
+              {saving12 != null && saving12 > 0 && (
+                <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  Save {pricing.format(saving12)} per year
+                </div>
+              )}
+            </div>
+          </label>
+        )}
       </RadioGroup>
+
+      {allowAnnual && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
+          <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <span className="font-medium text-foreground">Annual true-up:</span> an annual invoice is
+            priced on your member count on the day it&apos;s issued. If your membership changes by
+            more than 10% during the year, the difference is reconciled on your next annual invoice
+            (or credited if members drop).
+          </p>
+        </div>
+      )}
+
 
       <div className="flex items-center gap-2 flex-wrap">
         <Button size="sm" onClick={handleSave} disabled={locked || saving || choice === current}>

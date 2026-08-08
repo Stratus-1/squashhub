@@ -16,6 +16,7 @@ import { MyChallenges } from "@/components/MyChallenges";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
 import { CaptainInviteTeamCard } from "@/components/CaptainInviteTeamCard";
+import { SubscriptionDuePrompt } from "@/components/club-admin/SubscriptionDuePrompt";
 import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { ClubStatsCard } from "@/components/ClubStatsCard";

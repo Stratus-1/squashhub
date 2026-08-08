@@ -158,27 +158,30 @@ export function DashboardWifiCard() {
             </p>
           )}
           <Button size="sm" className="w-full" disabled={busy} onClick={request}>
-            {status?.active ? "Renew Wi-Fi access for this month" : "Request Wi-Fi access"}
+            {status?.active ? "Reactivate Wi-Fi access" : "Activate Wi-Fi access"}
           </Button>
           <p className="text-[12px] text-muted-foreground">
-            The fee is added to your club account and repeats monthly until you cancel.
+            {format(Number(status?.monthly_fee || 0))} is charged to your club account now and automatically every month
+            until you deactivate — no need to renew.
           </p>
         </div>
       )}
 
       {!locked && status?.charge_enabled && (
         <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2">
-          <p className="text-[12px] text-muted-foreground">
-            {status.auto_renew ? "Renews" : "Access ends"}{" "}
-            {periodEnd ? periodEnd.toLocaleDateString() : "—"} · {format(Number(status.monthly_fee || 0))}/month
+          <p className="text-[12px] text-muted-foreground break-words">
+            {status.auto_renew
+              ? `Active · ${format(Number(status.monthly_fee || 0))}/month charged automatically${periodEnd ? ` · next ${periodEnd.toLocaleDateString()}` : ""}`
+              : `Deactivated · access ends ${periodEnd ? periodEnd.toLocaleDateString() : "—"}`}
           </p>
           {status.auto_renew && (
             <Button size="sm" variant="ghost" disabled={busy} onClick={cancel}>
-              Cancel
+              Deactivate
             </Button>
           )}
         </div>
       )}
+
 
       {!locked && showQr && wifi && (
         <div className="flex flex-col items-center gap-2 rounded-lg bg-muted/40 p-4">

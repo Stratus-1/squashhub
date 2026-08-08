@@ -480,7 +480,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType), ...debitFields };
+      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: billingPeriod === "monthly" ? false : proRate, fee_type: mapFeeTypeForDb(feeType), billing_period: billingPeriod, ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }

@@ -21,6 +21,7 @@ type ClubWifi = {
 };
 
 type WifiStatus = {
+  wifi_enabled: boolean;
   charge_enabled: boolean;
   monthly_fee: number;
   has_access: boolean;
@@ -83,6 +84,9 @@ export function DashboardWifiCard() {
   });
 
   const locked = !!status?.charge_enabled && !status?.has_access;
+
+  // Hidden entirely unless the club has switched Wi-Fi on in Access Control
+  if (status && !status.wifi_enabled) return null;
 
   // Nothing to show: no Wi-Fi configured and nothing to buy
   if (!wifi?.ssid && !locked) return null;

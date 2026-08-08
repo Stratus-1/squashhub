@@ -8077,6 +8077,7 @@ export type Database = {
           has_access: boolean
           monthly_fee: number
           unpaid_amount: number
+          wifi_enabled: boolean
         }[]
       }
       has_role: {

@@ -56,6 +56,7 @@ export function DashboardWifiCard() {
   const qc = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const { data: status } = useQuery({

@@ -22,18 +22,31 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
     queryFn: async () => {
       if (!clubId) return null;
 
-      // Exclude synthetic role='visitor' shadow member rows (created by the
-      // tournament wizard to satisfy FKs) from the real member headcounts.
-      // Visitors are counted from `club_visitors` only — every shadow member
-      // is created from a `club_visitors` row, so counting both double-counts.
-      const [totalRes, activeRes, suspendedRes, resignedRes, leagueRes, visitorsRes] = await Promise.all([
+      // Exclude synthetic role='visitor' shadow member rows from the real
+      // member headcounts. Visitors are counted as the union of `club_visitors`
+      // and those shadow member rows (tournament imports create shadow members
+      // without a matching club_visitors row), de-duplicated by name.
+      const [totalRes, activeRes, suspendedRes, resignedRes, leagueRes, visitorRowsRes, visitorMembersRes] = await Promise.all([
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).neq("role", "visitor"),
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "active").neq("role", "visitor"),
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "suspended").neq("role", "visitor"),
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "resigned").neq("role", "visitor"),
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("plays_league", true).neq("role", "visitor"),
-        supabase.from("club_visitors").select("*", { count: "exact", head: true }).eq("club_id", clubId),
+        supabase.from("club_visitors").select("first_name, last_name").eq("club_id", clubId),
+        supabase.from("club_members").select("full_name").eq("club_id", clubId).eq("role", "visitor"),
       ]);
+
+      const norm = (s?: string | null) =>
+        (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+      const visitorNames = new Set<string>();
+      (visitorRowsRes.data || []).forEach((v: any) => {
+        const n = norm(`${v.first_name ?? ""} ${v.last_name ?? ""}`);
+        if (n) visitorNames.add(n);
+      });
+      (visitorMembersRes.data || []).forEach((m: any) => {
+        const n = norm(m.full_name);
+        if (n) visitorNames.add(n);
+      });
 
       return {
         total: totalRes.count ?? 0,
@@ -41,8 +54,9 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
         suspended: suspendedRes.count ?? 0,
         resigned: resignedRes.count ?? 0,
         league: leagueRes.count ?? 0,
-        visitors: visitorsRes.count ?? 0,
+        visitors: visitorNames.size,
       };
+
     },
   });
 

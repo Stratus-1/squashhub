@@ -3,7 +3,7 @@
  * Update SLA_VERSION whenever the terms change materially so existing
  * acceptances can be flagged as needing re-acceptance.
  */
-export const SLA_VERSION = "1.2";
+export const SLA_VERSION = "1.3";
 export const SLA_EFFECTIVE_DATE = "8 August 2026";
 
 

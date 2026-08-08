@@ -567,7 +567,8 @@ export default function Home() {
               Free until September 2026
             </p>
             <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-              Only pay for active members. No hidden costs. No credit card required.
+              A sliding scale — like tax bands, each block of members is charged at its own rate, so the bigger your
+              club, the lower your average cost per member. Only active members count.
             </p>
           </div>
 
@@ -575,20 +576,45 @@ export default function Home() {
             <PricingCard
               icon={Building2}
               title="Clubs"
-              priceLabel="From R5"
-              intlLabel="per active member · $0.30 USD / €0.27 EUR for international clubs"
-              perks={["All features included", "Billed only on active members", "Free until September 2026"]}
+              priceLabel="From R2"
+              intlLabel="per active member · sliding scale from R8 down to R2 · minimum R250 / month"
+              perks={["All features included", "Billed only on active members", "Save ~15% paying annually in advance", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
             <PricingCard
               icon={Landmark}
               title="Associations"
-              priceLabel="From R5"
-              intlLabel="per active member · $0.30 USD / €0.27 EUR for international clubs"
-              perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Free until September 2026"]}
+              priceLabel="From R2"
+              intlLabel="per active member · sliding scale from R8 down to R2 · minimum R250 / month"
+              perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Save ~15% paying annually in advance", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
           </div>
+
+          {/* Sliding scale bands */}
+          <div className="max-w-3xl mx-auto mt-6 rounded-2xl border border-white/10 bg-[hsl(220_45%_8%/0.6)] backdrop-blur-md p-5">
+            <h3 className="text-sm font-semibold text-foreground mb-3">How the sliding scale works</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+              {[
+                { band: "First 50", rate: "R8.00" },
+                { band: "51 – 100", rate: "R5.00" },
+                { band: "101 – 200", rate: "R3.00" },
+                { band: "201 – 400", rate: "R2.50" },
+                { band: "401+", rate: "R2.00" },
+              ].map((b) => (
+                <div key={b.band} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{b.band}</div>
+                  <div className="text-base font-bold text-foreground">{b.rate}</div>
+                  <div className="text-[10px] text-muted-foreground">/ member / month</div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Example: a 197-member club pays about <strong className="text-foreground">R941 per month</strong> — roughly
+              R4.78 per member. Minimum charge R250 / month. International clubs are billed proportionally in USD or EUR.
+            </p>
+          </div>
+
 
           {/* Lights integration teaser */}
           <div className="max-w-4xl mx-auto mt-8">

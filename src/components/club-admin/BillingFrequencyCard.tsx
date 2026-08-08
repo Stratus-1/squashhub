@@ -12,12 +12,28 @@ import { computeTieredCharge } from "@/lib/saas-tiers";
 
 type BillingOption = "monthly" | "annual_upfront";
 
+export interface BillingFrequencyInvoice {
+  billing_cycle?: string | null;
+  status?: string | null;
+  period_end?: string | null;
+}
+
 /**
  * Lets the club choose how it wants to be invoiced — monthly in arrears or
  * annually upfront — quoting both amounts side by side. Future invoices are
  * generated at the chosen frequency.
+ *
+ * While on monthly, the switch-to-annual offer stays available every month.
+ * Once an annual invoice has been issued/paid, the choice is locked until that
+ * 12-month period ends (no invoices are raised in between).
  */
-export function BillingFrequencyCard({ club }: { club: Club }) {
+export function BillingFrequencyCard({
+  club,
+  invoices = [],
+}: {
+  club: Club;
+  invoices?: BillingFrequencyInvoice[];
+}) {
   const c = club as any;
   const updateClub = useUpdateClub();
   const { code: currencyCode } = useClubCurrency();
@@ -26,6 +42,24 @@ export function BillingFrequencyCard({ club }: { club: Club }) {
   const current: BillingOption = c.sla_billing_option === "annual_upfront" ? "annual_upfront" : "monthly";
   const [choice, setChoice] = useState<BillingOption>(current);
   const [saving, setSaving] = useState(false);
+
+  // Active annual cover = an annual invoice (not void) whose period is still running.
+  const annualCoverUntil = (() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const ends = invoices
+      .filter(
+        (i) =>
+          (i.billing_cycle || "").toLowerCase() === "annual" &&
+          (i.status || "").toLowerCase() !== "void" &&
+          i.period_end &&
+          i.period_end >= today
+      )
+      .map((i) => i.period_end as string)
+      .sort();
+    return ends.length ? ends[ends.length - 1] : null;
+  })();
+  const locked = !!annualCoverUntil;
+
 
   const memberCount: number | null =
     typeof c.active_member_count === "number" ? c.active_member_count : null;

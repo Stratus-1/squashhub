@@ -145,12 +145,14 @@ export function BillingFrequencyCard({
           </>
         ) : (
           <>
-            Your club is invoiced monthly in arrears, based on your member count at the time of each
-            invoice. Annual upfront billing is enabled by SquashHub once your roster has settled —
-            ask us if you&apos;d like it switched on.
+            Your club is invoiced monthly in advance, based on your member count at the time of each
+            invoice. Invoicing starts 1 September 2026. Prefer to settle a full year upfront? Request
+            annual payment below — SquashHub will review and enable it.
           </>
         )}
       </p>
+
+
 
 
       <RadioGroup

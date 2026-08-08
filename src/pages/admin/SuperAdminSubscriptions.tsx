@@ -17,6 +17,16 @@ import { SEO } from "@/components/SEO";
 import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard, Save, FileText, Upload, X, Link2, Eye, EyeOff, Play, Receipt, Globe } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { SaasTierPricingCard } from "@/components/admin/SaasTierPricingCard";
+import {
+  DEFAULT_TIERS,
+  DEFAULT_MIN_CHARGE,
+  parseTiers,
+  normaliseCurrency,
+  tierSettingKey,
+  computeTieredCharge,
+  type SaasCycle,
+} from "@/lib/saas-tiers";
+import { saasMinKey } from "@/hooks/use-saas-pricing";
 
 
 type Plan = {
@@ -159,9 +169,10 @@ export default function SuperAdminSubscriptions() {
   const { data: clubs = [] } = useQuery({
     queryKey: ["sa-clubs-for-subs"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain").order("name").range(0, 49999);
+      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain, currency_code").order("name").range(0, 49999);
       if (error) throw error;
-      // Get member counts — paginate to avoid PostgREST's 1000-row response cap.
+      // Billable member counts — active members only, visitors never billed.
+      // Paginate to avoid PostgREST's 1000-row response cap.
       const countMap = new Map<string, number>();
       const PAGE = 1000;
       let from = 0;
@@ -169,6 +180,8 @@ export default function SuperAdminSubscriptions() {
         const { data: members, error: mErr } = await supabase
           .from("club_members")
           .select("club_id")
+          .neq("role", "visitor")
+          .eq("status", "active")
           .range(from, from + PAGE - 1);
         if (mErr) throw mErr;
         (members || []).forEach((m: any) => countMap.set(m.club_id, (countMap.get(m.club_id) || 0) + 1));
@@ -178,6 +191,36 @@ export default function SuperAdminSubscriptions() {
       return (data || []).map((c: any) => ({ ...c, member_count: countMap.get(c.id) || 0 }));
     },
   });
+
+  // --- Live sliding-scale pricing (single source of truth: app_settings) ---
+  const { data: tierSettings } = useQuery({
+    queryKey: ["sa-saas-tier-settings"],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const keys = (["ZAR", "USD", "EUR"] as const).flatMap((c) => [
+        tierSettingKey(c, "monthly"),
+        tierSettingKey(c, "annual"),
+        saasMinKey(c, "monthly"),
+        saasMinKey(c, "annual"),
+      ]);
+      const { data, error } = await supabase.from("app_settings").select("key, value").in("key", keys);
+      if (error) throw error;
+      return new Map((data || []).map((r: any) => [r.key, r.value as string]));
+    },
+  });
+
+  /** Graduated charge for a club — mirrors the billing engine exactly. */
+  const chargeFor = (members: number, ccy?: string | null, cycle: SaasCycle = "monthly") => {
+    const c = normaliseCurrency(ccy);
+    const tiers = parseTiers(tierSettings?.get(tierSettingKey(c, cycle))) || DEFAULT_TIERS[c][cycle];
+    const min = Number(tierSettings?.get(saasMinKey(c, cycle)) ?? DEFAULT_MIN_CHARGE[c][cycle]) || 0;
+    const res = computeTieredCharge(Math.max(0, Math.floor(members || 0)), tiers, min);
+    // Annual-upfront invoices cover 12 months of the monthly-equivalent charge.
+    const months = cycle === "annual" ? 12 : 1;
+    return { ...res, total: +(res.subtotal * months).toFixed(2), min, months };
+  };
+  const cycleOf = (plan?: Plan | null): SaasCycle => (plan?.billing_cycle === "annual" ? "annual" : "monthly");
+
 
   // --- Invoice settings (platform / head-office) ---
   useQuery({
@@ -442,14 +485,13 @@ export default function SuperAdminSubscriptions() {
       trialEnd.setDate(trialEnd.getDate() + (plan?.trial_days || 30));
 
       const rawCount = club?.member_count || 0;
-      const billable = plan?.max_billable_members ? Math.min(rawCount, plan.max_billable_members) : rawCount;
       const { error } = await fromExt("club_subscriptions").upsert({
         club_id: clubId,
         plan_id: planId,
         status: "trial",
         trial_ends_at: trialEnd.toISOString(),
         member_count: rawCount,
-        amount_due: Math.max(billable * (plan?.price_per_member || 0), plan?.minimum_charge || 0),
+        amount_due: chargeFor(rawCount, (club as any)?.currency_code, cycleOf(plan)).total,
         current_period_start: new Date().toISOString(),
         current_period_end: trialEnd.toISOString(),
       }, { onConflict: "club_id" });
@@ -489,7 +531,7 @@ export default function SuperAdminSubscriptions() {
       plan_id: sub.plan_id || "",
       status: sub.status,
       trial_ends_at: sub.trial_ends_at ? sub.trial_ends_at.split("T")[0] : "",
-      member_count: String(sub.member_count),
+      member_count: String(clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count),
       amount_due: String(sub.amount_due),
     });
   };
@@ -507,10 +549,7 @@ export default function SuperAdminSubscriptions() {
   const recalcAmount = (planId: string, memberCount: string) => {
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
-    const count = Number(memberCount) || 0;
-    const billable = plan.max_billable_members ? Math.min(count, plan.max_billable_members) : count;
-    const rate = rateForClub(plan, editSub?.clubs?.currency_code || "ZAR");
-    const calculated = Math.max(billable * rate, plan.minimum_charge);
+    const calculated = chargeFor(Number(memberCount) || 0, editSub?.clubs?.currency_code, cycleOf(plan)).total;
     setSubForm(f => ({ ...f, amount_due: String(calculated) }));
   };
 
@@ -722,22 +761,15 @@ export default function SuperAdminSubscriptions() {
                       <TableCell className="text-center">
                         {(() => {
                           const live = clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count;
-                          const plan = plans.find(p => p.id === sub.plan_id);
-                          const cap = plan?.max_billable_members ?? null;
-                          const billable = cap ? Math.min(live, cap) : live;
-                          const capped = cap && live > cap;
                           const stale = live !== sub.member_count;
                           return (
                             <Badge
                               variant="secondary"
                               className="text-[10px]"
-                              title={
-                                (capped ? `Billable capped at ${cap} (of ${live} live). ` : "") +
-                                (stale ? `Snapshot on record: ${sub.member_count}.` : "")
-                              }
+                              title={`Active members, visitors excluded.${stale ? ` Snapshot on record: ${sub.member_count}.` : ""}`}
                             >
                               <Users className="h-3 w-3 mr-0.5" />
-                              {capped ? `${billable}/${live}` : live}
+                              {live}
                               {stale && <span className="ml-1 text-amber-600">•</span>}
                             </Badge>
                           );
@@ -748,17 +780,22 @@ export default function SuperAdminSubscriptions() {
                           const live = clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count;
                           const plan = plans.find(p => p.id === sub.plan_id);
                           if (!plan) return fmtSubscriptionMoney(sub.amount_due);
-                          const billable = plan.max_billable_members ? Math.min(live, plan.max_billable_members) : live;
-                          const calc = Math.max(billable * plan.price_per_member, plan.minimum_charge);
-                          const stale = Math.abs(calc - Number(sub.amount_due)) > 0.001;
+                          const ccy = (sub.clubs?.currency_code || "ZAR").toUpperCase();
+                          const res = chargeFor(live, ccy, cycleOf(plan));
+                          const stale = Math.abs(res.total - Number(sub.amount_due)) > 0.001;
+                          const bands = res.rows.map(r => `${r.members} × ${ccySymbol(ccy)}${r.rate.toFixed(2)}`).join("  +  ");
                           return (
-                            <span title={stale ? `Stored: ${fmtSubscriptionMoney(sub.amount_due)}` : undefined}>
-                              {fmtSubscriptionMoney(calc)}
+                            <span
+                              title={`${bands || "No members"}${res.minApplied ? ` → minimum ${ccySymbol(ccy)}${res.min.toFixed(2)} applied` : ""}${res.months > 1 ? ` × 12 months` : ""}${stale ? `\nStored: ${fmtSubscriptionMoney(sub.amount_due)}` : ""}`}
+                            >
+                              {fmtSubscriptionMoney(res.total, ccySymbol(ccy))}
+                              {res.minApplied && <span className="ml-1 text-muted-foreground">min</span>}
                               {stale && <span className="ml-1 text-amber-600">•</span>}
                             </span>
                           );
                         })()}
                       </TableCell>
+
                       <TableCell className="text-xs text-muted-foreground">
                         {sub.trial_ends_at ? new Date(sub.trial_ends_at).toLocaleDateString() : "—"}
                       </TableCell>
@@ -1189,18 +1226,27 @@ export default function SuperAdminSubscriptions() {
           {(() => {
             const clubCcy = (editSub?.clubs?.currency_code || "ZAR").toUpperCase();
             const sym = ccySymbol(clubCcy);
+            const selectedPlan = plans.find(p => p.id === subForm.plan_id);
+            const cycle = cycleOf(selectedPlan);
+            const liveCount = editSub ? (clubs.find(c => c.id === editSub.club_id)?.member_count ?? editSub.member_count) : 0;
+            const calc = chargeFor(Number(subForm.member_count) || 0, clubCcy, cycle);
             return (
           <div className="space-y-3 py-2">
             <div>
-              <Label className="text-xs">Subscription Plan ({clubCcy})</Label>
+              <Label className="text-xs">Billing Cycle ({clubCcy})</Label>
               <Select value={subForm.plan_id} onValueChange={v => { setSubForm(f => ({ ...f, plan_id: v })); recalcAmount(v, subForm.member_count); }}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select plan" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select cycle" /></SelectTrigger>
                 <SelectContent>
                   {plans.filter(p => p.active).map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name} — {fmtSubscriptionMoney(rateForClub(p, clubCcy), sym)}/member</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.billing_cycle === "annual" ? "Annual upfront" : "Monthly in advance"} — sliding scale
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Rates come from the sliding scale in Pricing — plans no longer carry a flat per-member rate.
+              </p>
             </div>
             <div>
               <Label className="text-xs">Status</Label>
@@ -1217,19 +1263,70 @@ export default function SuperAdminSubscriptions() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Member Count</Label>
+                <Label className="text-xs">Billable Members</Label>
                 <Input type="number" min="0" value={subForm.member_count} onChange={e => { setSubForm(f => ({ ...f, member_count: e.target.value })); recalcAmount(subForm.plan_id, e.target.value); }} className="h-8 text-xs font-mono" />
+                {liveCount !== Number(subForm.member_count) && (
+                  <button
+                    type="button"
+                    className="text-[10px] text-primary underline mt-1"
+                    onClick={() => { setSubForm(f => ({ ...f, member_count: String(liveCount) })); recalcAmount(subForm.plan_id, String(liveCount)); }}
+                  >
+                    Use live count ({liveCount}, visitors excluded)
+                  </button>
+                )}
               </div>
               <div>
                 <Label className="text-xs">Amount Due ({clubCcy})</Label>
                 <Input type="number" min="0" step="0.01" value={subForm.amount_due} onChange={e => setSubForm(f => ({ ...f, amount_due: e.target.value }))} className="h-8 text-xs font-mono" />
               </div>
             </div>
+
+            {/* Live sliding-scale breakdown */}
+            <div className="rounded-md border bg-muted/40 p-2 space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Sliding scale breakdown</p>
+              {calc.rows.length === 0 && <p className="text-[11px] text-muted-foreground">No billable members.</p>}
+              {calc.rows.map((r, i) => (
+                <div key={i} className="flex justify-between text-[11px] font-mono">
+                  <span>{r.from}–{r.to} ({r.members}) × {sym}{r.rate.toFixed(2)}</span>
+                  <span>{sym}{r.amount.toFixed(2)}</span>
+                </div>
+              ))}
+              {calc.minApplied && (
+                <div className="flex justify-between text-[11px] font-mono text-amber-600">
+                  <span>Minimum charge applied</span>
+                  <span>{sym}{calc.min.toFixed(2)}</span>
+                </div>
+              )}
+              {calc.months > 1 && (
+                <div className="flex justify-between text-[11px] font-mono">
+                  <span>× 12 months (annual upfront)</span>
+                  <span>{sym}{calc.total.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-[11px] font-semibold border-t pt-1">
+                <span>{cycle === "annual" ? "Annual total" : "Monthly total"}</span>
+                <span className="font-mono">{sym}{calc.total.toFixed(2)}</span>
+              </div>
+              {Number(subForm.amount_due) !== calc.total && (
+                <button
+                  type="button"
+                  className="text-[10px] text-primary underline"
+                  onClick={() => setSubForm(f => ({ ...f, amount_due: String(calc.total) }))}
+                >
+                  Apply calculated amount
+                </button>
+              )}
+            </div>
+
             <div>
               <Label className="text-xs">Trial Ends</Label>
               <Input type="date" value={subForm.trial_ends_at} onChange={e => setSubForm(f => ({ ...f, trial_ends_at: e.target.value }))} className="h-8 text-xs" />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                First invoice is issued on the 1st of the month after this date.
+              </p>
             </div>
           </div>
+
             );
           })()}
           <DialogFooter>

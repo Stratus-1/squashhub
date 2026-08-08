@@ -685,7 +685,10 @@ export default function SuperAdminSubscriptions() {
               );
             })()}
           </Card>
+
+          <SaasTierPricingCard />
         </TabsContent>
+
 
 
         {/* ─── CLUB SUBSCRIPTIONS TAB ─── */}

@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
       // Determine billing period (next cycle after last period_end, or from billingDate)
       const periodStart = new Date(sub.current_period_end || billingDate)
       const periodEnd = new Date(periodStart)
-      if (plan.billing_cycle === 'annual') {
+      if (cycle === 'annual') {
         periodEnd.setFullYear(periodEnd.getFullYear() + 1)
       } else {
         periodEnd.setMonth(periodEnd.getMonth() + 1)

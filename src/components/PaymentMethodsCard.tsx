@@ -337,7 +337,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       });
       if (error) throw error;
       if (data?.auth_url) {
-        await openStitchCheckout(data.auth_url);
+        setSetupOpen(false);
+        setAwaitingDone(false);
+        setAwaitingUrl(data.auth_url);
+        setAwaitingId(data.mandate_id || null);
+        await openStitchMandateWindow(data.auth_url);
         return;
       }
       toast.success("Mandate created — awaiting authorisation");

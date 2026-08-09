@@ -2825,6 +2825,74 @@ export type Database = {
           },
         ]
       }
+      club_whatsapp_invoices: {
+        Row: {
+          club_id: string
+          created_at: string
+          currency: string
+          id: string
+          issued_at: string
+          marketing_count: number
+          message_count: number
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          service_count: number
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+          utility_count: number
+          vat_amount: number
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          issued_at?: string
+          marketing_count?: number
+          message_count?: number
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          service_count?: number
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          utility_count?: number
+          vat_amount?: number
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          issued_at?: string
+          marketing_count?: number
+          message_count?: number
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          service_count?: number
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          utility_count?: number
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_whatsapp_invoices_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_wifi_subscriptions: {
         Row: {
           active: boolean
@@ -2984,6 +3052,10 @@ export type Database = {
           visitor_booking_fee: number
           visitors_access_control: boolean
           visitors_can_book: boolean
+          whatsapp_enabled: boolean
+          whatsapp_opted_in_at: string | null
+          whatsapp_opted_in_by: string | null
+          whatsapp_rate_override: number | null
         }
         Insert: {
           accepted_payment_methods?: string[]
@@ -3076,6 +3148,10 @@ export type Database = {
           visitor_booking_fee?: number
           visitors_access_control?: boolean
           visitors_can_book?: boolean
+          whatsapp_enabled?: boolean
+          whatsapp_opted_in_at?: string | null
+          whatsapp_opted_in_by?: string | null
+          whatsapp_rate_override?: number | null
         }
         Update: {
           accepted_payment_methods?: string[]
@@ -3168,6 +3244,10 @@ export type Database = {
           visitor_booking_fee?: number
           visitors_access_control?: boolean
           visitors_can_book?: boolean
+          whatsapp_enabled?: boolean
+          whatsapp_opted_in_at?: string | null
+          whatsapp_opted_in_by?: string | null
+          whatsapp_rate_override?: number | null
         }
         Relationships: [
           {
@@ -7471,43 +7551,55 @@ export type Database = {
       }
       whatsapp_send_log: {
         Row: {
+          billable: boolean
           body: string | null
+          category: string
           club_id: string | null
           created_at: string
           error: string | null
           id: string
+          invoice_id: string | null
           kind: string
           member_id: string | null
           provider_sid: string | null
           sent_by: string | null
           status: string
           to_phone: string
+          unit_cost: number
         }
         Insert: {
+          billable?: boolean
           body?: string | null
+          category?: string
           club_id?: string | null
           created_at?: string
           error?: string | null
           id?: string
+          invoice_id?: string | null
           kind?: string
           member_id?: string | null
           provider_sid?: string | null
           sent_by?: string | null
           status?: string
           to_phone: string
+          unit_cost?: number
         }
         Update: {
+          billable?: boolean
           body?: string | null
+          category?: string
           club_id?: string | null
           created_at?: string
           error?: string | null
           id?: string
+          invoice_id?: string | null
           kind?: string
           member_id?: string | null
           provider_sid?: string | null
           sent_by?: string | null
           status?: string
           to_phone?: string
+          unit_cost?: number
         }
         Relationships: [
           {
@@ -7907,6 +7999,10 @@ export type Database = {
         }[]
       }
       generate_all_clubs_renewal_invoices: { Args: never; Returns: Json }
+      generate_club_whatsapp_invoice: {
+        Args: { _club_id: string; _period_start: string }
+        Returns: string
+      }
       generate_member_renewal_invoices: {
         Args: {
           p_category_ids?: string[]
@@ -7954,6 +8050,16 @@ export type Database = {
         }[]
       }
       get_club_member_count: { Args: { _club_id: string }; Returns: number }
+      get_club_whatsapp_usage: {
+        Args: { _club_id: string; _period_end: string; _period_start: string }
+        Returns: {
+          marketing_count: number
+          message_count: number
+          service_count: number
+          subtotal: number
+          utility_count: number
+        }[]
+      }
       get_club_wifi: {
         Args: { _club_id: string }
         Returns: {
@@ -8410,6 +8516,10 @@ export type Database = {
           _viewer_user_id: string
         }
         Returns: boolean
+      }
+      whatsapp_rate: {
+        Args: { _category?: string; _club_id: string }
+        Returns: number
       }
       wifi_fee_for_club: {
         Args: { _club_id: string }

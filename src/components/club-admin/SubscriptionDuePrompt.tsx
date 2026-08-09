@@ -20,7 +20,7 @@ export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
         .from("platform_subscription_invoices")
         .select("id, invoice_number, total, currency, due_date, status, stitch_payment_link")
         .eq("club_id", clubId!)
-        .in("status", ["unpaid", "pending", "overdue", "past_due"])
+        .in("status", ["issued", "unpaid", "pending", "overdue", "past_due"])
         .order("due_date", { ascending: true });
       if (error) throw error;
       return data || [];

@@ -33,7 +33,7 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "resigned").neq("role", "visitor"),
         supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("plays_league", true).neq("role", "visitor"),
         supabase.from("club_visitors").select("first_name, last_name").eq("club_id", clubId),
-        supabase.from("club_members").select("full_name").eq("club_id", clubId).eq("role", "visitor"),
+        supabase.from("club_members").select("name").eq("club_id", clubId).eq("role", "visitor"),
       ]);
 
       const norm = (s?: string | null) =>
@@ -44,7 +44,7 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
         if (n) visitorNames.add(n);
       });
       (visitorMembersRes.data || []).forEach((m: any) => {
-        const n = norm(m.full_name);
+        const n = norm(m.name);
         if (n) visitorNames.add(n);
       });
 

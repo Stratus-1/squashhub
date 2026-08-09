@@ -987,6 +987,32 @@ function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
     </Card>
   );
 }
+function CourtsBookingSystemList({ clubId, systemLabel }: { clubId: string; systemLabel: string }) {
+  const { data: courts = [] } = useQuery({
+    queryKey: ["club-courts", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("courts").select("id, name").eq("club_id", clubId).eq("is_external", false).order("name");
+      if (error) throw error;
+      return data as { id: number; name: string }[];
+    },
+  });
+
+  if (courts.length === 0) {
+    return <p className="text-[11px] text-muted-foreground">Add your courts above first — the booking system you pick applies to all of them.</p>;
+  }
+
+  return (
+    <div className="rounded-lg border divide-y">
+      {courts.map((c) => (
+        <div key={c.id} className="flex items-center justify-between px-2 py-1.5">
+          <span className="text-xs font-medium">{c.name}</span>
+          <span className="text-[10px] rounded-full bg-primary/10 text-primary px-2 py-0.5">{systemLabel}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
 const EXTERNAL_PROVIDERS = [
   { value: "none", label: "None (use SquashHub bookings)" },

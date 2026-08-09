@@ -168,6 +168,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   });
   const queryClient = useQueryClient();
   const clubId = club?.id || (activeMember as any)?.club_id || myClubData || null;
+  const whatsappEnabled = useWhatsAppEnabled(clubId);
 
 
   const [createOpen, setCreateOpen] = useState(!!onClose);

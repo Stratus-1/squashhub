@@ -87,13 +87,8 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
 
 
 export async function openStitchCheckout(url: string, _sessionId?: string, _returnPath?: string) {
-  // Redirect the current tab directly to Stitch. Previously we routed
-  // express.stitch.money URLs through an intermediate /pay/stitch bridge
-  // page that polled for completion, but the bridge only opened Stitch on
-  // an explicit second click — members saw a "Waiting for Stitch payment…"
-  // screen and thought payment was already underway. Direct redirect
-  // matches the v2 payment-request flow and the pre-regression behavior;
-  // verification runs when Stitch redirects the user back.
+  // Same-tab redirect. Kept as the fallback for when a new tab/window cannot be
+  // opened (popup blockers) — see openStitchPaymentWindow below.
   if (Capacitor.isNativePlatform()) {
     const { Browser } = await import("@capacitor/browser");
     await Browser.open({ url });
@@ -107,6 +102,43 @@ export async function openStitchCheckout(url: string, _sessionId?: string, _retu
   } catch { /* cross-origin frame */ }
   window.location.assign(url);
 }
+
+/**
+ * Once-off / top-up payment (payment-request) launch.
+ *
+ * Stitch Express hosted pages do not honour our redirect back to the app — the
+ * payer is parked on Stitch's own completion screen. So we keep the app tab
+ * alive: Stitch opens in a separate tab / in-app browser and the caller polls
+ * stitch-verify-payment for the result.
+ *
+ * Returns true when the app tab survived (caller should poll), false when we
+ * had to fall back to a same-tab redirect.
+ *
+ * NOTE: this is the ONCE-OFF flow. The recurring mandate flow has its own
+ * separate helper (openStitchMandateWindow) — do not merge them.
+ */
+export async function openStitchPaymentWindow(url: string): Promise<boolean> {
+  if (Capacitor.isNativePlatform()) {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.open({ url });
+    return true;
+  }
+  try {
+    const win = window.open(url, "_blank", "noopener,noreferrer");
+    if (win) return true;
+  } catch { /* popup blocked */ }
+  await openStitchCheckout(url);
+  return false;
+}
+
+export async function closeStitchPaymentWindow() {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.close();
+  } catch { /* already closed */ }
+}
+
 
 
 /**

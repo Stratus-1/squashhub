@@ -248,11 +248,12 @@ Deno.serve(async (req) => {
       return json({ error: "Stitch did not return an authorisation URL" }, 502);
     }
 
-    // IMPORTANT: do NOT append a `redirect_url` query param to the hosted
-    // subscribe / card-consent link — Stitch Express returns 404 "page not
-    // found" when it is present. The redirect is already registered via
-    // `merchantRedirectUrl` in the create body above.
-    const authUrl = stitchUrl;
+    // Proven on the once-off flow (9 Aug 2026): Stitch Express DOES honour a
+    // `redirect_url` query param on a fresh hosted link, provided the host is
+    // the club's whitelisted tenant subdomain (apex/`www` → 404 after paying).
+    // Body-level redirect keys are silently dropped, so append it here too.
+    const authUrl = appendExpressRedirectUrl(stitchUrl, safeReturn);
+
 
 
     await admin

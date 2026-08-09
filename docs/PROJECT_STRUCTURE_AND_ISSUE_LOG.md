@@ -457,3 +457,9 @@ Express fallback path is always the one in use for this club.
    links return misleading statuses.
 4. Once-off and recurring stay separate (see Core memory) — this restoration touched the once-off
    path only.
+
+## 2026-08-09 — 3-month free trial for new tenants
+- **Change:** New clubs/associations now get a 90-day free trial (was 30).
+- **Where:** `subscription_plans.trial_days = 90`, `app_settings.saas_trial_days = 90`, fallback in `supabase/functions/create-club/index.ts` and defaults in `SuperAdminSubscriptions.tsx`.
+- **Existing clubs:** their current `trial_ends_at` values were NOT changed — no retroactive extensions.
+- **Copy:** Home marketing page, RegisterClub page, and SLA v1.4 (new §1 "Free Trial Period"; billing starts the day after trial ends, not before 1 Sep 2026).

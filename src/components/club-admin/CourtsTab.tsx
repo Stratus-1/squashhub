@@ -246,8 +246,12 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       <SetupSteps steps={steps} value={step} onChange={setStep} />
 
       {step === "courts" && (
-        <CourtsSection clubId={clubId} mode="list" relayDeviceType={lightsForm.relay_device_type} />
+        <div className="space-y-4">
+          <CourtsSection clubId={clubId} mode="list" relayDeviceType={lightsForm.relay_device_type} />
+          <ExternalBookingSection club={club} clubId={clubId} />
+        </div>
       )}
+
 
       {step === "lights" && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">

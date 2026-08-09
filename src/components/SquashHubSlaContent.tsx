@@ -47,7 +47,7 @@ export function SquashHubSlaContent() {
         </li>
       </ul>
 
-      <h2>3. Subscription &amp; Fees</h2>
+      <h2>2. Subscription &amp; Fees</h2>
       <ul>
         <li>
           <strong>Billing commencement:</strong> Subscription fees are first invoiced the day after
@@ -98,7 +98,7 @@ export function SquashHubSlaContent() {
       </ul>
 
 
-      <h2>2. Service Availability</h2>
+      <h2>3. Service Availability</h2>
       <p>
         The Provider will use commercially reasonable efforts to maintain monthly uptime of
         <strong> 99.5%</strong>, measured outside of scheduled maintenance windows. Scheduled

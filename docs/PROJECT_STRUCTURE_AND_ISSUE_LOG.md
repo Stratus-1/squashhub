@@ -88,6 +88,32 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-09 · Account statement listed oldest transaction first
+- **Symptom:** My Account statement showed the oldest entry at the top; members had to scroll to
+  find the newest one.
+- **Finding:** `statementLines` was rendered in the same chronological order used to accumulate the
+  running balance.
+- **Fix:** `MyAccount.tsx` now keeps `statementLinesChrono` (oldest → newest) for the running
+  balance and `netOwing`, and renders a reversed copy so the newest line is first.
+- **Guard:** balance still derives from the chronological array — never reverse before accumulating.
+
+### 2026-08-09 · Once-off top-up also stranded payers on Stitch's completion page
+- **Symptom:** after paying a top-up, the member ended on Stitch's "payment complete" screen and
+  never returned to the app; the app showed nothing until the page was reopened.
+- **Finding:** same root cause as the mandate flow — Stitch Express hosted pages ignore the
+  merchant redirect. The once-off flow navigated the current tab away, so nothing was left alive to
+  detect completion.
+- **Fix (once-off flow only):** `openStitchPaymentWindow` / `closeStitchPaymentWindow` added to
+  `stitch-checkout.ts`; `startClubCheckout` returns `keptOpen`; new `pollStitchPayment()` in
+  `club-payments.ts` polls `stitch-verify-payment` every 4s for up to 10 min. `MyAccount.tsx` shows
+  a "Waiting for your payment…" banner while polling; `TournamentRegisterCard.tsx` polls the same
+  way for entry fees.
+- **Guard:** mandate helpers left untouched (separate functions by design — see §3). Same-tab
+  redirect remains the popup-blocked fallback, and the existing background reconcile loop stays as
+  a second backstop.
+
+
+
 ### 2026-08-09 · Top-up "Pay by card" link opened a 404 page
 - **Symptom:** member tapped the once-off top-up link and immediately hit Stitch's *Page Not Found*.
 - **Finding:** `stitch-create-payment` appended `?redirect_url=…` to the hosted

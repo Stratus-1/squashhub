@@ -168,12 +168,15 @@ Deno.serve(async (req) => {
     };
 
     const postPayment = async (body: Record<string, unknown>) => {
+      console.log("[stitch-express] POST /payments request:", JSON.stringify(body));
       const resp = await fetch(`${STITCH_BASE}/payments`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      return { resp, j: await resp.json().catch(() => ({})) };
+      const j = await resp.json().catch(() => ({}));
+      console.log("[stitch-express] POST /payments response:", resp.status, JSON.stringify(j));
+      return { resp, j };
     };
 
     let { resp: plResp, j: plJson } = await postPayment(plBody);
@@ -183,6 +186,7 @@ Deno.serve(async (req) => {
       const { merchantRedirectUrl: _a, redirectUrl: _b, ...bare } = plBody as any;
       ({ resp: plResp, j: plJson } = await postPayment(bare));
     }
+
     if (!plResp.ok || !plJson?.success || !plJson?.data?.payment?.link) {
       console.error("Stitch Express payment-link error", plResp.status, JSON.stringify(plJson));
       await admin.from("stitch_payment_sessions").update({ status: "failed" }).eq("id", session.id);

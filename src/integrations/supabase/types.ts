@@ -7549,6 +7549,76 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_interactions: {
+        Row: {
+          club_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          kind: string
+          member_id: string | null
+          phone: string
+          prompt: string | null
+          responded_at: string | null
+          response: string | null
+          status: string
+          target_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kind: string
+          member_id?: string | null
+          phone: string
+          prompt?: string | null
+          responded_at?: string | null
+          response?: string | null
+          status?: string
+          target_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kind?: string
+          member_id?: string | null
+          phone?: string
+          prompt?: string | null
+          responded_at?: string | null
+          response?: string | null
+          status?: string
+          target_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_interactions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_interactions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_interactions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_send_log: {
         Row: {
           billable: boolean
@@ -7556,11 +7626,14 @@ export type Database = {
           category: string
           club_id: string | null
           created_at: string
+          direction: string
           error: string | null
+          from_phone: string | null
           id: string
           invoice_id: string | null
           kind: string
           member_id: string | null
+          payload: Json | null
           provider_sid: string | null
           sent_by: string | null
           status: string
@@ -7573,11 +7646,14 @@ export type Database = {
           category?: string
           club_id?: string | null
           created_at?: string
+          direction?: string
           error?: string | null
+          from_phone?: string | null
           id?: string
           invoice_id?: string | null
           kind?: string
           member_id?: string | null
+          payload?: Json | null
           provider_sid?: string | null
           sent_by?: string | null
           status?: string
@@ -7590,11 +7666,14 @@ export type Database = {
           category?: string
           club_id?: string | null
           created_at?: string
+          direction?: string
           error?: string | null
+          from_phone?: string | null
           id?: string
           invoice_id?: string | null
           kind?: string
           member_id?: string | null
+          payload?: Json | null
           provider_sid?: string | null
           sent_by?: string | null
           status?: string

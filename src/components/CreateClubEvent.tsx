@@ -169,6 +169,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const queryClient = useQueryClient();
   const clubId = club?.id || (activeMember as any)?.club_id || myClubData || null;
   const whatsappEnabled = useWhatsAppEnabled(clubId);
+  // Club-billed WhatsApp is an admin-only channel. Ordinary members can still
+  // invite over WhatsApp, but from their own number via a wa.me share link.
+  const canUseClubWhatsApp = whatsappEnabled && adminBypass;
 
 
   const [createOpen, setCreateOpen] = useState(!!onClose);

@@ -88,6 +88,71 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-09 · ✅ CONFIRMED WORKING — canonical recurring / mandate payment flow (DO NOT CHANGE)
+
+Verified end-to-end on 9 Aug 2026 (≈14:00 SAST): mandate authorised, first instalment collected
+once, and the payer was redirected back into the club app. This is the known-good reference
+implementation for recurring payments. It is a **separate flow** from once-off top-ups (§3) —
+never edit one while fixing the other.
+
+**Symptom that led here:** the mandate activated and the money collected, but the payer stayed on
+Stitch's completion page and never came back to GB Squash.
+
+**Finding:** `stitch-create-mandate` deliberately did **not** append `redirect_url` to the hosted
+`express.stitch.money/subscribe/<id>` link (based on the since-disproved "Express 404s on query
+strings" theory), and relied on body-level `merchantRedirectUrl`/`redirectUrl` aliases — which
+Express silently drops. Its `sanitizeReturnUrl` also folded every squashhub host onto the **apex**
+`/pay/return`, which is exactly the host Stitch rejects for this club's credentials.
+
+**Fix (recurring flow only):**
+- `sanitizeReturnUrl()` in `stitch-create-mandate` now mirrors the once-off version: `www.` → apex,
+  then apex/preview hosts → the club's validated **tenant subdomain** (e.g. `gb.squashhub.co.za`),
+  default path `/my-account`.
+- Added `appendExpressRedirectUrl()` and applied it to the subscribe link, so the auth URL is
+  `https://express.stitch.money/subscribe/<id>?redirect_url=https://gb.squashhub.co.za/my-account`.
+- Body-level redirect aliases left in place (harmless), polling left in place as the backstop.
+
+**The flow, step by step**
+
+1. Member sets up a debit order in `PaymentMethodsCard.tsx` / `DebitOrdersPanel.tsx`.
+2. `stitch-create-mandate` creates the subscription, collecting the **full first monthly
+   instalment** (not a token R20), writes a `stitch_mandates` row as `pending`, and returns
+   `auth_url` with the tenant `redirect_url` appended.
+3. Client opens the auth URL via `openStitchMandateWindow()` in `src/lib/stitch-checkout.ts`
+   (separate tab / Capacitor browser) — the app tab stays alive.
+4. App polls `stitch-refresh-mandate` every 4s and on focus/visibility; on success it closes the
+   Stitch window, toasts, and refreshes the card.
+5. Stitch also redirects the payer back to the tenant `/my-account` (this is what was just fixed).
+6. `record_mandate_initial_payment` links the first charge to the existing Stitch collection —
+   idempotent, so webhook + poll cannot double-post (see the 9 Aug duplicate-R10 entry).
+7. `stitch-reconcile-mandates` sweeps every 5 minutes as a final backstop
+   (`pending → active` when Stitch reports `AUTHORISED`).
+
+**Non-negotiables**
+
+- Redirect host MUST be the club subdomain — apex and `www.` produce a 404 after paying.
+- `redirect_url` IS appended to the Express subscribe link; body-level redirect keys are ignored.
+- One active mandate per member, enforced by the `enforce_single_active_mandate` trigger.
+- Every money-writing path stays idempotent against the Stitch collection reference.
+- Only test hosted-link behaviour against a freshly created, unauthorised link.
+
+**Files that own this flow** (once-off files are separate — never edit them for a mandate bug):
+- `supabase/functions/stitch-create-mandate/index.ts` (`sanitizeReturnUrl`,
+  `appendExpressRedirectUrl`)
+- `supabase/functions/stitch-refresh-mandate/index.ts`,
+  `supabase/functions/stitch-reconcile-mandates/index.ts`,
+  `supabase/functions/stitch-mandate-webhook/index.ts`,
+  `supabase/functions/stitch-collection-webhook/index.ts`
+- `src/components/PaymentMethodsCard.tsx`, `src/components/club-admin/DebitOrdersPanel.tsx`
+- `src/lib/stitch-checkout.ts` (`openStitchMandateWindow`, `buildStitchReturnUrl`)
+- DB: `stitch_mandates`, `stitch_collections`, `record_mandate_initial_payment`,
+  `enforce_single_active_mandate`
+
+**Guard:** before changing anything here, check the last authorised mandate's `auth_url` in
+`stitch_mandates` — that string is the record of what works. Match it.
+
+
+
 ### 2026-08-09 · ✅ CONFIRMED WORKING — canonical once-off / top-up payment flow (DO NOT CHANGE)
 
 Verified end-to-end by Daniel on 9 Aug 2026 (13:40 SAST). This is the known-good reference

@@ -6,6 +6,8 @@ import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFrom
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { useClubMembers, useIsSuperAdmin, type ClubMember } from "@/hooks/use-club";
+import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
+import { sendWhatsApp } from "@/lib/whatsapp-send";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -309,6 +311,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data: members = [] } = useClubMembers(clubId);
+  const whatsappEnabled = useWhatsAppEnabled(clubId);
   const isSuperAdmin = useIsSuperAdmin();
 
   // Club-level payment config — drives the "Accepted payment methods" picker on the Registration step.
@@ -514,7 +517,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // no invite-list management) and the admin directly seeds the roster on the
   // Players step. Default true to match existing behaviour.
   const [registrationRequired, setRegistrationRequired] = useState<boolean>(true);
-  const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email">>(new Set(["app"]));
+  const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email" | "whatsapp">>(new Set(["app"]));
   // Controls WHEN invites go out: 'manual' (admin clicks Send later — default),
   // 'now' (prompt on save), or 'scheduled' (admin gets a reminder for the chosen date).
   const [inviteTiming, setInviteTiming] = useState<"manual" | "now" | "scheduled">("manual");
@@ -6592,7 +6595,7 @@ function InvitePreviewDialog({
   onOpenChange: (v: boolean) => void;
   tournamentName: string;
   description: string;
-  methods: Set<"app" | "email">;
+  methods: Set<"app" | "email" | "whatsapp">;
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;

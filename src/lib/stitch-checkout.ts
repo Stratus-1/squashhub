@@ -63,14 +63,16 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
   // /pay/return bridge, which Stitch can treat as a different unapproved URL.
   let originHere = "https://squashhub.co.za";
   if (typeof window !== "undefined" && window.location?.origin) {
-    const host = window.location.hostname;
+    // `www.` is not served on the apex — a return URL pointing there 404s the
+    // payer after a successful payment. Fold it back to the bare apex.
+    const host = window.location.hostname.replace(/^www\./, "");
     if (
       host === "squashhub.co.za" ||
       host.endsWith(".squashhub.co.za") ||
       host.endsWith(".lovable.app") ||
       host === "localhost"
     ) {
-      originHere = window.location.origin.replace(/\/+$/, "");
+      originHere = `${window.location.protocol}//${host}${window.location.port ? `:${window.location.port}` : ""}`;
     }
   }
 

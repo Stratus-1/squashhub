@@ -810,7 +810,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       // WhatsApp invites — opt-in channel, billed per message to the club.
       // Each recipient gets a Yes/No question whose reply is written back into
       // club_event_rsvps by the whatsapp-inbound webhook.
-      if (inviteeIds.length > 0 && form.notify_whatsapp && clubId) {
+      // Only club admins may spend club WhatsApp credit; members share from
+      // their own number via the wa.me link instead.
+      if (inviteeIds.length > 0 && form.notify_whatsapp && canUseClubWhatsApp && clubId) {
         (async () => {
           try {
             const whenText = form.recurrence === "once"

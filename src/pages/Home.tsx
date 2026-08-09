@@ -422,10 +422,15 @@ export default function Home() {
             >
               <div className="relative">
                 <div className="absolute inset-0 bg-amber-500/30 blur-3xl rounded-full" />
-                <img
-                  src={shellyImg}
-                  alt="Shelly Pro 4PM smart relay for court lighting"
-                  className="relative w-64 h-64 sm:w-72 sm:h-72 object-contain rounded-2xl bg-white p-4 border border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
+                <video
+                  src={lightsAccessVideo.url}
+                  poster={shellyImg}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  aria-label="Court lights switching on and club door unlocking from the SquashHub app"
+                  className="relative w-64 h-64 sm:w-80 sm:h-80 object-cover rounded-2xl border border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
                 />
               </div>
             </motion.div>

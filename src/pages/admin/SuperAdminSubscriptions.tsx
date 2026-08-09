@@ -111,7 +111,7 @@ type StitchSettings = typeof EMPTY_STITCH_SETTINGS;
 export default function SuperAdminSubscriptions() {
   const qc = useQueryClient();
   const [planDialog, setPlanDialog] = useState<Plan | "new" | null>(null);
-  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: MONTHLY_RATE_ZAR, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "30", is_default: false, active: true });
+  const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: MONTHLY_RATE_ZAR, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "90", is_default: false, active: true });
   const [editSub, setEditSub] = useState<ClubSub | null>(null);
   const [subForm, setSubForm] = useState({ plan_id: "", status: "", trial_ends_at: "", member_count: "0", amount_due: "0" });
   const [invoiceForm, setInvoiceForm] = useState<InvoiceSettings>(EMPTY_INVOICE_SETTINGS);
@@ -133,7 +133,7 @@ export default function SuperAdminSubscriptions() {
     saas_min_charge_monthly: MIN_CHARGE,
     saas_min_charge_annual: MIN_CHARGE,
     saas_billing_cap: "150",
-    saas_trial_days: "30",
+    saas_trial_days: "90",
     fx_usd_to_zar: "18.50",
     fx_eur_to_zar: "20.00",
   });
@@ -284,7 +284,7 @@ export default function SuperAdminSubscriptions() {
         saas_min_charge_monthly: map.get("saas_min_charge_monthly") || (monthlyPlan ? String(monthlyPlan.minimum_charge) : MIN_CHARGE),
         saas_min_charge_annual: map.get("saas_min_charge_annual") || (annualPlan ? String(annualPlan.minimum_charge) : MIN_CHARGE),
         saas_billing_cap: map.get("saas_billing_cap") || (anyPlan?.max_billable_members != null ? String(anyPlan.max_billable_members) : "150"),
-        saas_trial_days: map.get("saas_trial_days") || (anyPlan ? String(anyPlan.trial_days) : "30"),
+        saas_trial_days: map.get("saas_trial_days") || (anyPlan ? String(anyPlan.trial_days) : "90"),
         fx_usd_to_zar: map.get("fx_usd_to_zar") || "18.50",
         fx_eur_to_zar: map.get("fx_eur_to_zar") || "20.00",
       };
@@ -482,7 +482,7 @@ export default function SuperAdminSubscriptions() {
       const plan = plans.find(p => p.id === planId);
       const club = clubs.find((c: any) => c.id === clubId);
       const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + (plan?.trial_days || 30));
+      trialEnd.setDate(trialEnd.getDate() + (plan?.trial_days || 90));
 
       const rawCount = club?.member_count || 0;
       const { error } = await fromExt("club_subscriptions").upsert({
@@ -555,7 +555,7 @@ export default function SuperAdminSubscriptions() {
 
   const openPlanDialog = (plan: Plan | "new") => {
     if (plan === "new") {
-      setPlanForm({ name: "", description: "", price_per_member: MONTHLY_RATE_ZAR, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "30", is_default: false, active: true });
+      setPlanForm({ name: "", description: "", price_per_member: MONTHLY_RATE_ZAR, billing_cycle: "monthly", minimum_charge: MIN_CHARGE, max_billable_members: "", trial_days: "90", is_default: false, active: true });
     } else {
       setPlanForm({
         name: plan.name,

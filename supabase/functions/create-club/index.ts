@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (defaultPlan) {
-        const trialDays = Number(defaultPlan.trial_days ?? 30);
+        const trialDays = Number(defaultPlan.trial_days ?? 90);
         const now = new Date();
         const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
         const memberCount = 1; // founder

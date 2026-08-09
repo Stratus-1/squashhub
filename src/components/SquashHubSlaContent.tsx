@@ -21,12 +21,39 @@ export function SquashHubSlaContent() {
         financial management platform (the &quot;<strong>Service</strong>&quot;).
       </p>
 
-      <h2>1. Subscription &amp; Fees</h2>
+      <h2>1. Free Trial Period</h2>
       <ul>
         <li>
-          <strong>Billing commencement:</strong> Subscription fees are first invoiced from
-          <strong> 1 September 2026</strong>, covering the remainder of the 2026/2027 financial year,
-          and annually (or monthly, depending on the chosen billing option) thereafter.
+          Every <strong>newly registered club or association</strong> receives a
+          <strong> three (3) month free trial</strong>, starting on the date of registration on the
+          platform. No payment details are required to begin the trial.
+        </li>
+        <li>
+          The trial is intended for onboarding: importing or capturing member data, registering
+          members as users, configuring fees, leagues, ladders and courts, and addressing the
+          Club&apos;s specific requirements.
+        </li>
+        <li>
+          <strong>Billing commences the day after the trial ends.</strong> The first invoice covers
+          the first billing period following the trial end date.
+        </li>
+        <li>
+          Clubs already on a trial at the effective date of this version continue on their existing
+          trial end date; the three-month trial applies to clubs registering from that date onward.
+        </li>
+        <li>
+          The Club may cancel at any time during the trial at no cost. Trials are not automatically
+          extended, although the Provider may grant an extension at its sole discretion in writing.
+        </li>
+      </ul>
+
+      <h2>2. Subscription &amp; Fees</h2>
+      <ul>
+        <li>
+          <strong>Billing commencement:</strong> Subscription fees are first invoiced the day after
+          the Club&apos;s three-month free trial ends, and no earlier than
+          <strong> 1 September 2026</strong>, and are then charged monthly or annually in advance
+          depending on the chosen billing option.
         </li>
         <li>
           <strong>Sliding scale:</strong> Fees are charged on a graduated (sliding scale) basis

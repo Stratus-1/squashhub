@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,
-  clearPendingClubSession, startClubCheckout, verifyClubCheckout,
+  clearPendingClubSession, startClubCheckout, verifyClubCheckout, pollStitchPayment,
   type GatewayId,
 } from "@/lib/club-payments";
 

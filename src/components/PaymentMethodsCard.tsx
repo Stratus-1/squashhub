@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { buildStitchReturnUrl, openStitchCheckout } from "@/lib/stitch-checkout";
+import { buildStitchReturnUrl, openStitchCheckout, openStitchMandateWindow, closeStitchMandateWindow } from "@/lib/stitch-checkout";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
 
@@ -57,6 +57,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   const [amountTouched, setAmountTouched] = useState(false);
   const [debitDay, setDebitDay] = useState("1");
   const [submitting, setSubmitting] = useState(false);
+  // Stitch parks payers on its own "complete" page and never redirects back,
+  // so we keep this tab open and watch the mandate until it activates.
+  const [awaitingId, setAwaitingId] = useState<string | null>(null);
+  const [awaitingUrl, setAwaitingUrl] = useState<string | null>(null);
+  const [awaitingDone, setAwaitingDone] = useState(false);
 
   const { data: mandates = [], isLoading: mandatesLoading } = useQuery({
     queryKey: ["stitch-mandates", clubMemberId],
@@ -205,6 +210,55 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mandates.map((m) => `${m.id}:${m.status}`).join(",")]);
 
+  // Active watch while the payer is authorising in the Stitch tab. Stitch's
+  // hosted card-consent / subscribe pages ignore merchantRedirectUrl and leave
+  // the payer on express.stitch.money/card-consent/complete, so the app tab
+  // does the returning instead: poll every 4s for up to ~8 minutes.
+  useEffect(() => {
+    if (!awaitingId || awaitingDone) return;
+    let stopped = false;
+    let ticks = 0;
+    const tick = async () => {
+      ticks++;
+      try {
+        const { data } = await supabase.functions.invoke("stitch-refresh-mandate", {
+          body: { mandate_id: awaitingId },
+        });
+        const status = String((data as any)?.status || "");
+        if (stopped) return;
+        if (status === "active") {
+          setAwaitingDone(true);
+          void closeStitchMandateWindow();
+          qc.invalidateQueries({ queryKey: ["stitch-mandates", clubMemberId] });
+          qc.invalidateQueries({ queryKey: ["member-credit-transactions"] });
+          toast.success("Recurring card payment activated");
+          return;
+        }
+        if (["failed", "cancelled"].includes(status)) {
+          setAwaitingDone(true);
+          qc.invalidateQueries({ queryKey: ["stitch-mandates", clubMemberId] });
+          return;
+        }
+      } catch { /* keep waiting */ }
+      if (!stopped && ticks < 120) setTimeout(tick, 4000);
+    };
+    void tick();
+    return () => { stopped = true; };
+  }, [awaitingId, awaitingDone, clubMemberId, qc]);
+
+  // Re-check as soon as the member switches back to the app tab.
+  useEffect(() => {
+    if (!awaitingId || awaitingDone) return;
+    const onFocus = () => { void refreshMandate(awaitingId, true); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingId, awaitingDone]);
+
 
   // Auto-recalculate monthly amount when months changes (unless user typed an override)
   // MUST be declared before any conditional early-return to satisfy Rules of Hooks.
@@ -227,7 +281,10 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       return;
     }
     await refreshMandate(m.id, true);
-    await openStitchCheckout(normalizeAuthUrl(m.auth_url));
+    setAwaitingDone(false);
+    setAwaitingUrl(normalizeAuthUrl(m.auth_url));
+    setAwaitingId(m.id);
+    await openStitchMandateWindow(normalizeAuthUrl(m.auth_url));
   }
 
   function openSetup(cat: FeeCategory) {
@@ -280,7 +337,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       });
       if (error) throw error;
       if (data?.auth_url) {
-        await openStitchCheckout(data.auth_url);
+        setSetupOpen(false);
+        setAwaitingDone(false);
+        setAwaitingUrl(data.auth_url);
+        setAwaitingId(data.mandate_id || null);
+        await openStitchMandateWindow(data.auth_url);
         return;
       }
       toast.success("Mandate created — awaiting authorisation");

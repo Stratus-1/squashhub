@@ -49,6 +49,8 @@ const SETUP_TABS: AdminTab[] = [
   { value: "leagues", label: "Leagues Setup/Creation", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
   { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose", noStatus: true },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
+  { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
+  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true },
 ];
 
 const OPERATIONS_TABS: AdminTab[] = [
@@ -59,8 +61,6 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
   { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
-  { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
-  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true },
 ];
 
 const ADMIN_TABS: AdminTab[] = [...SETUP_TABS, ...OPERATIONS_TABS];

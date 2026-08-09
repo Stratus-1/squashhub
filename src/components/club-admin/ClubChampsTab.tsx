@@ -5443,7 +5443,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   />
                   Email
                 </label>
-                {whatsappEnabled && (
+                {whatsappEnabled ? (
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox
                       checked={inviteMethods.has("whatsapp")}
@@ -5456,11 +5456,28 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     />
                     WhatsApp
                   </label>
+                ) : (
+                  <span
+                    className="flex items-center gap-2 text-sm text-muted-foreground"
+                    title="WhatsApp messaging is not activated for your club. Activate it in Club Admin → WhatsApp."
+                  >
+                    <Checkbox checked={false} disabled />
+                    WhatsApp
+                    <a
+                      href="/club-admin?tab=whatsapp"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs underline text-primary"
+                    >
+                      Activate
+                    </a>
+                  </span>
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
                 Choose how invited members are notified. Pick more than one for maximum reach.
                 {inviteMethods.has("whatsapp") && " WhatsApp invites let members reply YES/NO to enter — billed to your club."}
+                {!whatsappEnabled && " WhatsApp is inactive — activate WhatsApp messaging in your admin setup to invite members via WhatsApp."}
               </p>
             </div>
 

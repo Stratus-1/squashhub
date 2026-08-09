@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
+import { sendWhatsApp } from "@/lib/whatsapp-send";
+import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -166,6 +168,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   });
   const queryClient = useQueryClient();
   const clubId = club?.id || (activeMember as any)?.club_id || myClubData || null;
+  const whatsappEnabled = useWhatsAppEnabled(clubId);
 
 
   const [createOpen, setCreateOpen] = useState(!!onClose);
@@ -188,6 +191,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     selected_member_ids: [] as string[],
     notify_push: true,
     notify_email: true,
+    notify_whatsapp: false,
     light_fee_split: "creator",
     is_club_booking: false,
     booking_member_ids: [] as string[],
@@ -803,6 +807,32 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         })();
       }
 
+      // WhatsApp invites — opt-in channel, billed per message to the club.
+      // Each recipient gets a Yes/No question whose reply is written back into
+      // club_event_rsvps by the whatsapp-inbound webhook.
+      if (inviteeIds.length > 0 && form.notify_whatsapp && clubId) {
+        (async () => {
+          try {
+            const whenText = form.recurrence === "once"
+              ? `on ${format(new Date(form.event_date), "EEE d MMM")}`
+              : `${form.recurrence} from ${format(new Date(form.event_date), "EEE d MMM")}`;
+            await sendWhatsApp({
+              clubId,
+              recipients: inviteeIds.map((id) => ({ member_id: id })),
+              kind: "event_invite",
+              category: "utility",
+              body: `You're invited to "${form.title}" ${whenText} at ${form.start_time}.\n\nReply YES to confirm or NO to decline.`,
+              interaction: {
+                kind: "event_rsvp",
+                targetId: eventId,
+                prompt: `RSVP for ${form.title}`,
+              },
+            });
+          } catch (waErr) {
+            console.warn("[CreateClubEvent] WhatsApp invite failed (non-blocking):", waErr);
+          }
+        })();
+      }
 
       return eventId;
     },
@@ -923,6 +953,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       selected_member_ids: [],
       notify_push: true,
       notify_email: true,
+      notify_whatsapp: false,
       light_fee_split: e.light_fee_split || "creator",
       is_club_booking: e.is_club_booking || false,
       booking_member_ids: [],
@@ -1113,6 +1144,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       selected_member_ids: selfId ? [selfId] : [],
       notify_push: true,
       notify_email: true,
+      notify_whatsapp: false,
       light_fee_split: "creator",
       is_club_booking: false,
       booking_member_ids: selfId ? [selfId] : [],
@@ -1592,9 +1624,26 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       onCheckedChange={(v) => setForm((f) => ({ ...f, notify_email: v }))}
                     />
                   </div>
-                  {!form.notify_push && !form.notify_email && (
+                  {whatsappEnabled && (
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="notify-whatsapp" className="text-xs font-normal cursor-pointer">
+                        WhatsApp invite <span className="text-muted-foreground">(Yes/No reply)</span>
+                      </Label>
+                      <Switch
+                        id="notify-whatsapp"
+                        checked={form.notify_whatsapp}
+                        onCheckedChange={(v) => setForm((f) => ({ ...f, notify_whatsapp: v }))}
+                      />
+                    </div>
+                  )}
+                  {!form.notify_push && !form.notify_email && !form.notify_whatsapp && (
                     <p className="text-[11px] text-muted-foreground">
                       Invitees will still see the event in-app but won't be notified.
+                    </p>
+                  )}
+                  {form.notify_whatsapp && (
+                    <p className="text-[11px] text-muted-foreground">
+                      WhatsApp messages are billed to your club. Replies update the RSVP automatically.
                     </p>
                   )}
                 </div>

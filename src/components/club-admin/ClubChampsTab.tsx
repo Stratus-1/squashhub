@@ -6,6 +6,8 @@ import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFrom
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { useClubMembers, useIsSuperAdmin, type ClubMember } from "@/hooks/use-club";
+import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
+import { sendWhatsApp } from "@/lib/whatsapp-send";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -309,6 +311,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data: members = [] } = useClubMembers(clubId);
+  const whatsappEnabled = useWhatsAppEnabled(clubId);
   const isSuperAdmin = useIsSuperAdmin();
 
   // Club-level payment config — drives the "Accepted payment methods" picker on the Registration step.
@@ -514,7 +517,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // no invite-list management) and the admin directly seeds the roster on the
   // Players step. Default true to match existing behaviour.
   const [registrationRequired, setRegistrationRequired] = useState<boolean>(true);
-  const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email">>(new Set(["app"]));
+  const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email" | "whatsapp">>(new Set(["app"]));
   // Controls WHEN invites go out: 'manual' (admin clicks Send later — default),
   // 'now' (prompt on save), or 'scheduled' (admin gets a reminder for the chosen date).
   const [inviteTiming, setInviteTiming] = useState<"manual" | "now" | "scheduled">("manual");
@@ -3156,6 +3159,28 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       await fromExt("club_champs_registrations")
         .update({ invited_by_admin: true })
         .in("id", rows.map((r: any) => r.id));
+
+      // WhatsApp channel — members reply YES/NO and the whatsapp-inbound
+      // webhook writes the entry back into club_champs_registrations.
+      if (methods.includes("whatsapp")) {
+        try {
+          await sendWhatsApp({
+            clubId,
+            recipients: rows.map((r: any) => ({ member_id: r.club_member_id })),
+            kind: "champ_invite",
+            category: "utility",
+            body: `${msg}\n\nReply YES to enter or NO to decline.\n${inviteUrl}`,
+            interaction: {
+              kind: "champ_entry",
+              targetId: champId,
+              prompt: `Entry for ${champName || "tournament"}`,
+            },
+          });
+        } catch (waErr: any) {
+          toast.warning(`WhatsApp invites failed: ${waErr?.message || "unknown error"}`);
+        }
+      }
+
       toast.success(`Sent invites to ${rows.length} member${rows.length === 1 ? "" : "s"}.`);
     } catch (e: any) {
       toast.error(e?.message || "Failed to send invites");
@@ -5418,9 +5443,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   />
                   Email
                 </label>
+                {whatsappEnabled && (
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={inviteMethods.has("whatsapp")}
+                      onCheckedChange={(c) => {
+                        const next = new Set(inviteMethods);
+                        c ? next.add("whatsapp") : next.delete("whatsapp");
+                        if (next.size === 0) next.add("app");
+                        setInviteMethods(next);
+                      }}
+                    />
+                    WhatsApp
+                  </label>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Choose how invited members are notified. Pick both for maximum reach.
+                Choose how invited members are notified. Pick more than one for maximum reach.
+                {inviteMethods.has("whatsapp") && " WhatsApp invites let members reply YES/NO to enter — billed to your club."}
               </p>
             </div>
 
@@ -6592,7 +6632,7 @@ function InvitePreviewDialog({
   onOpenChange: (v: boolean) => void;
   tournamentName: string;
   description: string;
-  methods: Set<"app" | "email">;
+  methods: Set<"app" | "email" | "whatsapp">;
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;

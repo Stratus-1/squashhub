@@ -6,10 +6,10 @@ import {
   getPendingYocoSession, clearPendingYocoSession,
 } from "@/lib/yoco-native-checkout";
 import {
-  buildStitchReturnUrl, openStitchCheckout, openStitchPaymentWindow, closeStitchPaymentWindow,
-  prepareStitchPaymentWindow, discardPreparedStitchPaymentWindow,
+  buildStitchReturnUrl, openStitchCheckout, closeStitchPaymentWindow,
   rememberPendingStitchSession, getPendingStitchSession, clearPendingStitchSession,
 } from "@/lib/stitch-checkout";
+
 
 
 

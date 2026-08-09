@@ -237,22 +237,30 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
 }
 
 function appendRedirectUri(link: string, returnUrl: string) {
-  // `redirect_url` is honoured on Stitch's payment-request hosted pages
-  // (`redirect_uri` is silently ignored there).
-  // PROVEN 2026-08-09 by curling a live link: express.stitch.money/pay/<id>
-  // returns 200 bare and 404 with ANY query string appended. So never append
-  // to an express link — its return URL must go in the create body instead,
-  // and the app keeps its own tab open and polls for the result.
+  // Stitch hosted flows honour `redirect_url`; `redirect_uri` is silently
+  // ignored and leaves the payer stranded on Stitch's completion screen.
   try {
     const url = new URL(link);
-    if (url.hostname === "express.stitch.money") return link;
     url.searchParams.delete("redirect_uri");
     url.searchParams.set("redirect_url", returnUrl);
     return url.toString();
   } catch {
-    return link;
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
 }
+
+function appendExpressRedirectUrl(link: string, returnUrl: string) {
+  try {
+    const url = new URL(link);
+    url.searchParams.set("redirect_url", returnUrl);
+    return url.toString();
+  } catch {
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
+  }
+}
+
 
 function appendSessionParams(returnUrl: string, _sessionId: string, _clubSubdomain = "") {
   // Stitch Express appears to validate the return URL as an exact whitelist

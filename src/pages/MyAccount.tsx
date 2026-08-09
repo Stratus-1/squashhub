@@ -729,7 +729,23 @@ export default function MyAccount() {
         />
       )}
 
+      {awaitingPayment && (
+        <div className="px-4 mt-3">
+          <Card className="p-3 flex items-start gap-2 border-primary/30 bg-primary/5">
+            <Loader2 className="w-4 h-4 animate-spin text-primary mt-0.5 shrink-0" />
+            <div className="text-xs">
+              <p className="font-medium">Waiting for your payment…</p>
+              <p className="text-muted-foreground">
+                Finish paying in the payment tab. Once it's done you can close that tab — this page
+                updates on its own, even if the payment page doesn't send you back.
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Account Statement */}
+
       <motion.div
         className="px-4 mt-4 mb-4"
         initial={{ opacity: 0, y: 8 }}

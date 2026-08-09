@@ -67,6 +67,10 @@ export default function MyAccount() {
   const [viewAsMemberId, setViewAsMemberId] = useState<string | null>(null);
   const isPayingForOther = !!viewAsMemberId && viewAsMemberId !== selfMemberId;
 
+  // True while a once-off Stitch payment is open in another tab and we're polling for it.
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
+
+
   // Names for the dropdown
   const managedIds = (managedDelegations || []).map((d: any) => d.grantor_member_id);
   const { data: managedMembers } = useQuery({

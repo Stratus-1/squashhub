@@ -1083,11 +1083,14 @@ function ExternalBookingSection({ club, clubId }: { club: Club; clubId: string }
   return (
     <Card className="p-4 space-y-3">
       <div>
-        <h3 className="font-semibold text-sm">External Booking System</h3>
+        <h3 className="font-semibold text-sm">Booking System</h3>
         <p className="text-xs text-muted-foreground">
-          If your club already uses a third-party court booking website (GoBook, Court Manager, etc.), select it here. Members tapping a court slot will be sent there to book using their existing credentials.
+          Choose how members book the courts listed above: use SquashHub's own booking grid, or send them to an external booking website (GoBook, Court Manager, etc.) where they book with their existing credentials.
         </p>
       </div>
+
+      <CourtsBookingSystemList clubId={clubId} systemLabel={enabled ? (form.provider === "other" ? (form.label.trim() || "External system") : (selected?.label ?? "External system")) : "SquashHub bookings"} />
+
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">

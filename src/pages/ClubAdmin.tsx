@@ -187,7 +187,8 @@ export default function ClubAdmin() {
                   return <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">{done}/{total} complete</span>;
                 })()}
               </div>
-              <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-[repeat(13,minmax(0,1fr))] gap-1.5 md:gap-2">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2 md:gap-2.5">
+
 
                 {visibleSetup.map((tab) => {
                   const Icon = tab.icon;
@@ -201,7 +202,7 @@ export default function ClubAdmin() {
                       onClick={() => setActiveTab(tab.value)}
                       title={showStatus ? (isComplete ? "Complete" : "Please complete") : undefined}
                       className={cn(
-                        "relative flex flex-col items-center justify-center gap-1 rounded-lg border p-1.5 md:p-2 transition-colors text-center min-h-[56px] md:min-h-[62px]",
+                        "relative flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
                         isActive
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
                           : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
@@ -214,8 +215,9 @@ export default function ClubAdmin() {
                           <AlertCircle className="absolute top-1 right-1 w-3 h-3 md:w-3.5 md:h-3.5 text-amber-600 dark:text-amber-400 fill-background" />
                         )
                       )}
-                      <Icon className="w-4 h-4" />
-                      <span className="text-[9px] md:text-[10px] font-semibold leading-tight">{tab.label}</span>
+                      <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                      <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
+
 
                       {showStatus && (
                         <span className={cn(

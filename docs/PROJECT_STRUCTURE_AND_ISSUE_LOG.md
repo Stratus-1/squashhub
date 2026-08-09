@@ -264,3 +264,31 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
 4. **Fix the category, not the instance** — if one query used the wrong column, grep for siblings.
 5. **Verify before declaring done** — re-run the query or the call that showed the failure.
 6. **Append to §4.**
+
+---
+
+## 7. Verified: Stitch test-mode keys are Express-only (09 Aug 2026)
+
+**Symptom** — Test keys pasted into Club Admin → Payment gateway with Test mode ticked; top-up
+still ends on the Stitch "payment complete" page instead of returning to SquashHub.
+
+**Probe run against the live stored credentials** (temporary edge function, since deleted):
+
+| Call | Result |
+| --- | --- |
+| `POST https://express.stitch.money/api/v1/token` (Express) | **200, token issued** |
+| `POST https://express.stitch.money/api/v1/payments` with `merchantRedirectUrl` **and** `redirectUrl` | **200** — response contains only `id`, `link`, `status`, `amount`, `merchantReference`. **No redirect field is echoed back; Stitch silently drops both.** |
+| `POST https://secure.stitch.money/connect/token` (`grant_type=client_credentials`, `scope=client_paymentrequest`) | **400 `invalid_client`** |
+
+**Conclusion** — The `test-…` client id/secret pair is a **Stitch Express** credential. It cannot
+mint a Payment Request API v2 token, so `stitch-create-payment` always falls back to the Express
+path, and the Express hosted link has no redirect capability at all (appending `?redirect_url=`
+returns 404 — see §4). This is a Stitch product limitation, not a SquashHub bug.
+
+**Resolution in product** — keep the prepared-window + polling flow: SquashHub opens the Express
+link in a reserved tab, polls `stitch-verify-payment`, then closes the Stitch tab and refreshes
+the account. The payer never has to press Back.
+
+**To get a true redirect** the club must request **Payment Request API** access from Stitch and
+paste that client id/secret. `createPaymentRequestV2()` already handles it — once the token
+exchange succeeds, `redirect_mode: "direct"` is returned and the same-tab redirect is used.

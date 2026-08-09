@@ -210,6 +210,55 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mandates.map((m) => `${m.id}:${m.status}`).join(",")]);
 
+  // Active watch while the payer is authorising in the Stitch tab. Stitch's
+  // hosted card-consent / subscribe pages ignore merchantRedirectUrl and leave
+  // the payer on express.stitch.money/card-consent/complete, so the app tab
+  // does the returning instead: poll every 4s for up to ~8 minutes.
+  useEffect(() => {
+    if (!awaitingId || awaitingDone) return;
+    let stopped = false;
+    let ticks = 0;
+    const tick = async () => {
+      ticks++;
+      try {
+        const { data } = await supabase.functions.invoke("stitch-refresh-mandate", {
+          body: { mandate_id: awaitingId },
+        });
+        const status = String((data as any)?.status || "");
+        if (stopped) return;
+        if (status === "active") {
+          setAwaitingDone(true);
+          void closeStitchMandateWindow();
+          qc.invalidateQueries({ queryKey: ["stitch-mandates", clubMemberId] });
+          qc.invalidateQueries({ queryKey: ["member-credit-transactions"] });
+          toast.success("Recurring card payment activated");
+          return;
+        }
+        if (["failed", "cancelled"].includes(status)) {
+          setAwaitingDone(true);
+          qc.invalidateQueries({ queryKey: ["stitch-mandates", clubMemberId] });
+          return;
+        }
+      } catch { /* keep waiting */ }
+      if (!stopped && ticks < 120) setTimeout(tick, 4000);
+    };
+    void tick();
+    return () => { stopped = true; };
+  }, [awaitingId, awaitingDone, clubMemberId, qc]);
+
+  // Re-check as soon as the member switches back to the app tab.
+  useEffect(() => {
+    if (!awaitingId || awaitingDone) return;
+    const onFocus = () => { void refreshMandate(awaitingId, true); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingId, awaitingDone]);
+
 
   // Auto-recalculate monthly amount when months changes (unless user typed an override)
   // MUST be declared before any conditional early-return to satisfy Rules of Hooks.

@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { useMyClub } from "@/hooks/use-club";
 import { ClubParticipationCard } from "@/components/club-admin/ClubParticipationCard";
 import { BillingFrequencyCard } from "@/components/club-admin/BillingFrequencyCard";
-import { WhatsAppBillingCard } from "@/components/club-admin/WhatsAppBillingCard";
 import { openStitchCheckout, buildStitchReturnUrl } from "@/lib/stitch-checkout";
 
 interface Invoice {

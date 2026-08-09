@@ -110,11 +110,21 @@ Deno.serve(async (req) => {
     // so they are recorded at the (cheaper) service rate.
     let unitCost = 0;
     if (clubId) {
-      const { data: rate } = await admin.rpc("whatsapp_rate", {
-        _club_id: clubId,
-        _category: "service",
-      });
-      unitCost = Number(rate ?? 0);
+      // Clubs on their own WhatsApp Business account are billed by their own
+      // provider, never by SquashHub.
+      const { data: clubRow } = await admin
+        .from("clubs")
+        .select("whatsapp_sender_mode")
+        .eq("id", clubId)
+        .maybeSingle();
+      const ownMode = clubRow?.whatsapp_sender_mode === "own";
+      if (!ownMode) {
+        const { data: rate } = await admin.rpc("whatsapp_rate", {
+          _club_id: clubId,
+          _category: "service",
+        });
+        unitCost = Number(rate ?? 0);
+      }
       await admin.from("whatsapp_send_log").insert({
         club_id: clubId,
         member_id: memberId,
@@ -124,7 +134,7 @@ Deno.serve(async (req) => {
         kind: buttonPayload ? "button_reply" : "reply",
         category: "service",
         unit_cost: unitCost,
-        billable: true,
+        billable: !ownMode,
         body: buttonPayload || text,
         provider_sid: sid,
         status: "received",

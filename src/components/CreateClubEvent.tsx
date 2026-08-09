@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
+import { sendWhatsApp } from "@/lib/whatsapp-send";
+import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

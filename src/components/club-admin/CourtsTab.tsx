@@ -235,10 +235,11 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const lightsEnabled = lightsForm.lights_integration_enabled;
 
   const steps: SetupStep[] = [
-    { id: "courts", label: "List courts", description: "Step one — simply name the courts your club plays on. Nothing technical here.", complete: false },
+    { id: "courts", label: "List courts", description: "Step one — name the courts your club plays on and choose which booking system those courts use.", complete: false },
     { id: "rules", label: "Booking rules", description: "Set slot length, opening hours, peak times and how many bookings a member may make.", complete: true },
     { id: "lights", label: "Lights & relays", description: "Turn on smart light control, then pick each court from your list and enter its Shelly relay details.", complete: !!club.lights_integration_enabled },
-    { id: "venues", label: "Other venues", description: "External tournament venues and any outside booking system your club also uses.", complete: true },
+    { id: "venues", label: "Other venues", description: "External tournament venues at other clubs.", complete: true },
+
   ];
 
   return (
@@ -246,8 +247,12 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       <SetupSteps steps={steps} value={step} onChange={setStep} />
 
       {step === "courts" && (
-        <CourtsSection clubId={clubId} mode="list" relayDeviceType={lightsForm.relay_device_type} />
+        <div className="space-y-4">
+          <CourtsSection clubId={clubId} mode="list" relayDeviceType={lightsForm.relay_device_type} />
+          <ExternalBookingSection club={club} clubId={clubId} />
+        </div>
       )}
+
 
       {step === "lights" && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -374,9 +379,9 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       {step === "venues" && (
         <div className="space-y-4">
           <ExternalTournamentCourtsSection clubId={clubId} />
-          <ExternalBookingSection club={club} clubId={clubId} />
         </div>
       )}
+
 
       {step === "rules" && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -982,9 +987,35 @@ function ExternalTournamentCourtsSection({ clubId }: { clubId: string }) {
     </Card>
   );
 }
+function CourtsBookingSystemList({ clubId, systemLabel }: { clubId: string; systemLabel: string }) {
+  const { data: courts = [] } = useQuery({
+    queryKey: ["club-courts", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("courts").select("id, name").eq("club_id", clubId).eq("is_external", false).order("name");
+      if (error) throw error;
+      return data as { id: number; name: string }[];
+    },
+  });
+
+  if (courts.length === 0) {
+    return <p className="text-[11px] text-muted-foreground">Add your courts above first — the booking system you pick applies to all of them.</p>;
+  }
+
+  return (
+    <div className="rounded-lg border divide-y">
+      {courts.map((c) => (
+        <div key={c.id} className="flex items-center justify-between px-2 py-1.5">
+          <span className="text-xs font-medium">{c.name}</span>
+          <span className="text-[10px] rounded-full bg-primary/10 text-primary px-2 py-0.5">{systemLabel}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
 const EXTERNAL_PROVIDERS = [
-  { value: "none", label: "None (use SquashHub bookings)" },
+  { value: "none", label: "SquashHub bookings (this app)" },
   { value: "gobook", label: "GoBook", placeholder: "https://gobook.co.za/yourclub" },
   { value: "courtmanager", label: "Court Manager (self-hosted)", placeholder: "http://yourclub.mywire.org/yourclub/index.php" },
   { value: "sportyhq", label: "SportyHQ", placeholder: "https://www.sportyhq.com/club/yourclub" },
@@ -1078,11 +1109,14 @@ function ExternalBookingSection({ club, clubId }: { club: Club; clubId: string }
   return (
     <Card className="p-4 space-y-3">
       <div>
-        <h3 className="font-semibold text-sm">External Booking System</h3>
+        <h3 className="font-semibold text-sm">Booking System</h3>
         <p className="text-xs text-muted-foreground">
-          If your club already uses a third-party court booking website (GoBook, Court Manager, etc.), select it here. Members tapping a court slot will be sent there to book using their existing credentials.
+          Choose how members book the courts listed above: use SquashHub's own booking grid, or send them to an external booking website (GoBook, Court Manager, etc.) where they book with their existing credentials.
         </p>
       </div>
+
+      <CourtsBookingSystemList clubId={clubId} systemLabel={enabled ? (form.provider === "other" ? (form.label.trim() || "External system") : (selected?.label ?? "External system")) : "SquashHub bookings"} />
+
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">

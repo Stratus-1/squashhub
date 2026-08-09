@@ -804,6 +804,32 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         })();
       }
 
+      // WhatsApp invites — opt-in channel, billed per message to the club.
+      // Each recipient gets a Yes/No question whose reply is written back into
+      // club_event_rsvps by the whatsapp-inbound webhook.
+      if (inviteeIds.length > 0 && form.notify_whatsapp && clubId) {
+        (async () => {
+          try {
+            const whenText = form.recurrence === "once"
+              ? `on ${format(new Date(form.event_date), "EEE d MMM")}`
+              : `${form.recurrence} from ${format(new Date(form.event_date), "EEE d MMM")}`;
+            await sendWhatsApp({
+              clubId,
+              recipients: inviteeIds.map((id) => ({ member_id: id })),
+              kind: "event_invite",
+              category: "utility",
+              body: `You're invited to "${form.title}" ${whenText} at ${form.start_time}.\n\nReply YES to confirm or NO to decline.`,
+              interaction: {
+                kind: "event_rsvp",
+                targetId: eventId,
+                prompt: `RSVP for ${form.title}`,
+              },
+            });
+          } catch (waErr) {
+            console.warn("[CreateClubEvent] WhatsApp invite failed (non-blocking):", waErr);
+          }
+        })();
+      }
 
       return eventId;
     },

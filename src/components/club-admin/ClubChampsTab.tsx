@@ -3159,6 +3159,28 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       await fromExt("club_champs_registrations")
         .update({ invited_by_admin: true })
         .in("id", rows.map((r: any) => r.id));
+
+      // WhatsApp channel — members reply YES/NO and the whatsapp-inbound
+      // webhook writes the entry back into club_champs_registrations.
+      if (methods.includes("whatsapp")) {
+        try {
+          await sendWhatsApp({
+            clubId,
+            recipients: rows.map((r: any) => ({ member_id: r.club_member_id })),
+            kind: "champ_invite",
+            category: "utility",
+            body: `${msg}\n\nReply YES to enter or NO to decline.\n${inviteUrl}`,
+            interaction: {
+              kind: "champ_entry",
+              targetId: champId,
+              prompt: `Entry for ${champName || "tournament"}`,
+            },
+          });
+        } catch (waErr: any) {
+          toast.warning(`WhatsApp invites failed: ${waErr?.message || "unknown error"}`);
+        }
+      }
+
       toast.success(`Sent invites to ${rows.length} member${rows.length === 1 ? "" : "s"}.`);
     } catch (e: any) {
       toast.error(e?.message || "Failed to send invites");

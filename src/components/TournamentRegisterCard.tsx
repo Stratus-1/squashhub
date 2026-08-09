@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,
-  clearPendingClubSession, startClubCheckout, verifyClubCheckout,
+  clearPendingClubSession, startClubCheckout, verifyClubCheckout, pollStitchPayment,
   type GatewayId,
 } from "@/lib/club-payments";
 
@@ -192,13 +192,29 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       if (!isSupportedGateway(paymentGateway)) {
         throw new Error("No supported online payment gateway is configured for this club.");
       }
-      await startClubCheckout(paymentGateway as GatewayId, {
+      const res = await startClubCheckout(paymentGateway as GatewayId, {
         clubId, clubMemberId: memberId,
         amount: entryFee, purpose: "tournament",
         champ_registration_id: regId,
         description: `${champ.name} entry fee`,
         returnPath: `${window.location.pathname}?ctx=tournament`,
       });
+      // Stitch leaves the payer on its own completion page, so poll from here.
+      if (paymentGateway === "stitch" && (res as any)?.keptOpen && res.session_id) {
+        toast.info("Complete the payment in the Stitch tab — this page will update automatically.");
+        const status = await pollStitchPayment(res.session_id);
+        if (status === "completed") {
+          clearPendingClubSession("stitch", res.session_id);
+          toast.success("Entry fee paid — you're in!");
+          qc.invalidateQueries({ queryKey: ["my-champ-reg", champ.id, memberId] });
+          qc.invalidateQueries({ queryKey: ["tournament-registrations", champ.id] });
+
+        } else if (status === "failed" || status === "expired" || status === "cancelled") {
+          clearPendingClubSession("stitch", res.session_id);
+          toast.error("The entry fee payment did not go through. No money was taken.");
+        }
+      }
+
     } catch (e: any) {
       toast.error(e.message || "Could not start payment");
     }

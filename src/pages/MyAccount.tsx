@@ -29,9 +29,10 @@ import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,
-  clearPendingClubSession, startClubCheckout, verifyClubCheckout,
+  clearPendingClubSession, startClubCheckout, verifyClubCheckout, pollStitchPayment,
   type GatewayId,
 } from "@/lib/club-payments";
+
 import { SharedAccessCard } from "@/components/SharedAccessCard";
 import PaymentMethodsCard from "@/components/PaymentMethodsCard";
 
@@ -65,6 +66,10 @@ export default function MyAccount() {
 
   const [viewAsMemberId, setViewAsMemberId] = useState<string | null>(null);
   const isPayingForOther = !!viewAsMemberId && viewAsMemberId !== selfMemberId;
+
+  // True while a once-off Stitch payment is open in another tab and we're polling for it.
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
+
 
   // Names for the dropdown
   const managedIds = (managedDelegations || []).map((d: any) => d.grantor_member_id);
@@ -195,10 +200,12 @@ export default function MyAccount() {
 
   // Light sessions no longer needed separately — light fees come through member_credit_transactions
 
-  // Build statement lines from the GL control accounts, sorted chronologically.
+  // Build statement lines from the GL control accounts.
+  // Running balance is computed chronologically (oldest → newest), then the list is
+  // reversed for display so the newest transaction appears first.
   // Balance: debits − credits. Positive = member owes, negative = member in credit.
   type StatementLine = { id: string; date: string; description: string; debit: number; credit: number; balance: number; status: string };
-  const statementLines: StatementLine[] = (() => {
+  const statementLinesChrono: StatementLine[] = (() => {
     const lines: Omit<StatementLine, "balance">[] = [];
 
     for (const entry of (journalEntries || [])) {
@@ -215,7 +222,7 @@ export default function MyAccount() {
       });
     }
 
-    // Sort oldest first
+    // Sort oldest first so the running balance accumulates correctly
     lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     // Running balance: debits − credits. Positive = owes money, negative = in credit.
@@ -228,12 +235,16 @@ export default function MyAccount() {
     });
   })();
 
+  // Newest first for display
+  const statementLines: StatementLine[] = [...statementLinesChrono].reverse();
+
   // `creditBalance` name kept for downstream code. Semantics: positive = in credit,
   // negative = owes money — the inverse of the debit/credit running balance above.
   const netOwing = (() => {
-    if (statementLines.length === 0) return 0;
-    return statementLines[statementLines.length - 1]?.balance || 0;
+    if (statementLinesChrono.length === 0) return 0;
+    return statementLinesChrono[statementLinesChrono.length - 1]?.balance || 0;
   })();
+
   const creditBalance = -netOwing;
 
   // Available "cash" in wallet (top-ups minus confirmed account charges),
@@ -344,13 +355,40 @@ export default function MyAccount() {
     if (!isSupportedGateway(gw)) {
       throw new Error("No supported online payment gateway is configured for this club.");
     }
-    await startClubCheckout(gw as GatewayId, {
+    const res = await startClubCheckout(gw as GatewayId, {
       clubId, clubMemberId,
       amount: opts.amount, purpose: opts.purpose,
       fee_ids: opts.fee_ids, description: opts.description,
       returnPath: "/my-account",
     });
+
+    // Stitch parks the payer on its own completion page and never redirects
+    // back, so this tab stays open and polls for the result instead.
+    if (gw === "stitch" && (res as any)?.keptOpen && res.session_id) {
+      setAwaitingPayment(true);
+      const status = await pollStitchPayment(res.session_id);
+      setAwaitingPayment(false);
+      if (status === "completed") {
+        clearPendingClubSession("stitch", res.session_id);
+        toast.success("Payment received — thank you!");
+        queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+        queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
+      } else if (status === "failed") {
+        clearPendingClubSession("stitch", res.session_id);
+        toast.error("The payment did not go through. No money was taken — please try again.", { duration: 10000 });
+      } else if (status === "expired") {
+        clearPendingClubSession("stitch", res.session_id);
+        toast.error("Payment expired. No charge was made.");
+      } else if (status === "cancelled") {
+        clearPendingClubSession("stitch", res.session_id);
+        toast.info("Payment cancelled.");
+      } else {
+        toast.info("Payment still processing. I'll keep checking in the background.");
+      }
+    }
   };
+
 
 
   // Top-up mutation
@@ -691,7 +729,23 @@ export default function MyAccount() {
         />
       )}
 
+      {awaitingPayment && (
+        <div className="px-4 mt-3">
+          <Card className="p-3 flex items-start gap-2 border-primary/30 bg-primary/5">
+            <Loader2 className="w-4 h-4 animate-spin text-primary mt-0.5 shrink-0" />
+            <div className="text-xs">
+              <p className="font-medium">Waiting for your payment…</p>
+              <p className="text-muted-foreground">
+                Finish paying in the payment tab. Once it's done you can close that tab — this page
+                updates on its own, even if the payment page doesn't send you back.
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Account Statement */}
+
       <motion.div
         className="px-4 mt-4 mb-4"
         initial={{ opacity: 0, y: 8 }}

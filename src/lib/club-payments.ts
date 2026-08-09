@@ -6,9 +6,11 @@ import {
   getPendingYocoSession, clearPendingYocoSession,
 } from "@/lib/yoco-native-checkout";
 import {
-  buildStitchReturnUrl, openStitchCheckout, rememberPendingStitchSession,
-  getPendingStitchSession, clearPendingStitchSession,
+  buildStitchReturnUrl, openStitchPaymentWindow, closeStitchPaymentWindow,
+  rememberPendingStitchSession, getPendingStitchSession, clearPendingStitchSession,
 } from "@/lib/stitch-checkout";
+
+
 
 export type GatewayId = "yoco" | "stitch";
 export const SUPPORTED_GATEWAYS: GatewayId[] = ["yoco", "stitch"];
@@ -64,8 +66,10 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
     const redirect = (data as any)?.redirect_url;
     if (!redirect) throw new Error("Stitch did not return a redirect URL");
     rememberPendingStitchSession((data as any).session_id, opts.returnPath);
-    await openStitchCheckout(redirect, (data as any).session_id, opts.returnPath);
-    return { session_id: (data as any).session_id as string };
+    // Stitch Express never redirects the payer back to us, so keep this tab
+    // alive and open Stitch alongside it. Caller polls with pollStitchPayment().
+    const keptOpen = await openStitchPaymentWindow(redirect);
+    return { session_id: (data as any).session_id as string, keptOpen };
   }
   throw new Error(`Unsupported gateway: ${gateway}`);
 }
@@ -74,6 +78,37 @@ export async function verifyClubCheckout(gateway: GatewayId, sessionId: string |
   const fnName = gateway === "stitch" ? "stitch-verify-payment" : "yoco-verify-checkout";
   return supabase.functions.invoke(fnName, { body: sessionId ? { session_id: sessionId } : {} });
 }
+
+/**
+ * Poll a once-off Stitch payment until it reaches a final state.
+ * Used when the payer completes on Stitch's own page and never comes back.
+ * Resolves with the final status ("completed" | "failed" | "expired" |
+ * "cancelled" | "" when it timed out while still processing).
+ */
+export async function pollStitchPayment(
+  sessionId: string,
+  opts: { intervalMs?: number; timeoutMs?: number; signal?: () => boolean } = {},
+): Promise<string> {
+  const interval = opts.intervalMs ?? 4000;
+  const deadline = Date.now() + (opts.timeoutMs ?? 10 * 60 * 1000);
+  let status = "";
+  while (Date.now() < deadline) {
+    if (opts.signal?.()) return status;
+    try {
+      const { data } = await verifyClubCheckout("stitch", sessionId);
+      status = (data as any)?.status || "";
+      if (["completed", "failed", "expired", "cancelled"].includes(status)) {
+        await closeStitchPaymentWindow();
+        return status;
+      }
+    } catch {
+      // transient — keep polling
+    }
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  return status;
+}
+
 
 /**
  * Reads return-URL params for either Yoco or Stitch and returns whichever has

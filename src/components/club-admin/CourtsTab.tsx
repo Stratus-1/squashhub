@@ -374,9 +374,9 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       {step === "venues" && (
         <div className="space-y-4">
           <ExternalTournamentCourtsSection clubId={clubId} />
-          <ExternalBookingSection club={club} clubId={clubId} />
         </div>
       )}
+
 
       {step === "rules" && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">

@@ -1,11 +1,13 @@
 // Platform-wide WhatsApp sender.
 //
-// One shared SquashHub WhatsApp sender number is used for every club; the club
-// name is carried in the message itself (and in the template variables), so no
-// club needs its own verified number.
+// Two sender modes per club (clubs.whatsapp_sender_mode):
+//   'platform' — the shared SquashHub sender number via the Twilio connector
+//                gateway. Messages are metered and billed to the club.
+//   'own'      — the club's own WhatsApp Business (Twilio) account, with
+//                credentials in club_secrets. Nothing is billed by SquashHub;
+//                the club is invoiced directly by their provider.
 //
-// Sending goes through the Twilio connector gateway. Callers must be a club
-// admin of the club they are sending for (or a platform admin).
+// Clubs must opt in (clubs.whatsapp_enabled) before anything is sent.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
@@ -27,12 +29,23 @@ type Payload = {
   content_sid?: string;
   content_variables?: Record<string, string>;
   kind?: string;
+  /** Message category — drives the per-message rate charged to the club. */
+  category?: "utility" | "service" | "marketing";
+  /**
+   * Ask a question whose reply (Yes/No button or text) should be written back
+   * into the app. e.g. { kind: 'event_rsvp', target_id: '<event id>' }
+   */
+  interaction?: {
+    kind: "event_rsvp" | "champ_entry" | "generic";
+    target_id?: string | null;
+    prompt?: string | null;
+  };
 };
 
 /** Normalise to E.164 digits (no +). Defaults to South Africa. */
 function normalisePhone(raw?: string | null, defaultCc = "27"): string | null {
   if (!raw) return null;
-  let s = String(raw).trim().replace(/[^\d+]/g, "");
+  let s = String(raw).replace(/^whatsapp:/i, "").trim().replace(/[^\d+]/g, "");
   if (s.startsWith("+")) s = s.slice(1);
   else if (s.startsWith("00")) s = s.slice(2);
   else if (s.startsWith("0")) s = defaultCc + s.slice(1);
@@ -55,7 +68,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     const twilioKey = Deno.env.get("TWILIO_API_KEY");
-    const from = normalisePhone(Deno.env.get("WHATSAPP_FROM"));
+    const platformFrom = normalisePhone(Deno.env.get("WHATSAPP_FROM"));
 
     const authHeader = req.headers.get("Authorization") ?? "";
     if (!authHeader) return json({ error: "Not authenticated" }, 401);
@@ -78,6 +91,7 @@ Deno.serve(async (req) => {
     if (!payload.body && !payload.content_sid) {
       return json({ error: "Either body or content_sid is required" }, 400);
     }
+    const category = payload.category ?? (payload.content_sid ? "utility" : "service");
 
     // Authorisation: club admin of this club, or platform admin.
     const [{ data: isClubAdmin }, { data: isPlatformAdmin }] = await Promise.all([
@@ -88,28 +102,71 @@ Deno.serve(async (req) => {
       return json({ error: "You need club admin rights to send WhatsApp messages" }, 403);
     }
 
-    if (!lovableKey || !twilioKey) {
-      return json(
-        {
-          error:
-            "WhatsApp sending is not connected yet. Ask the platform administrator to link the Twilio connector.",
-        },
-        503,
-      );
-    }
-    if (!from) {
-      return json(
-        { error: "No WhatsApp sender number configured (WHATSAPP_FROM)." },
-        503,
-      );
-    }
-
     const { data: club } = await admin
       .from("clubs")
-      .select("name")
+      .select("name, whatsapp_enabled, whatsapp_sender_mode")
       .eq("id", clubId)
       .maybeSingle();
     const clubName = club?.name ?? "SquashHub";
+
+    if (!club?.whatsapp_enabled) {
+      return json(
+        {
+          error:
+            "WhatsApp messaging is switched off for this club. Enable it under Club Admin → Subscription → WhatsApp messaging.",
+        },
+        403,
+      );
+    }
+
+    // ---- Resolve the sender -------------------------------------------------
+    const ownMode = club.whatsapp_sender_mode === "own";
+    let from = platformFrom;
+    let ownAuth: string | null = null;
+    let ownAccountSid: string | null = null;
+
+    if (ownMode) {
+      const { data: secrets } = await admin
+        .from("club_secrets")
+        .select("whatsapp_account_sid, whatsapp_auth_token, whatsapp_from")
+        .eq("club_id", clubId)
+        .maybeSingle();
+      from = normalisePhone(secrets?.whatsapp_from);
+      ownAccountSid = secrets?.whatsapp_account_sid ?? null;
+      if (!from || !ownAccountSid || !secrets?.whatsapp_auth_token) {
+        return json(
+          {
+            error:
+              "This club is set to use its own WhatsApp Business account, but the account SID, auth token or sender number is missing.",
+          },
+          503,
+        );
+      }
+      ownAuth = "Basic " + btoa(`${ownAccountSid}:${secrets.whatsapp_auth_token}`);
+    } else {
+      if (!lovableKey || !twilioKey) {
+        return json(
+          {
+            error:
+              "WhatsApp sending is not connected yet. Ask the platform administrator to link the Twilio connector.",
+          },
+          503,
+        );
+      }
+      if (!from) {
+        return json({ error: "No WhatsApp sender number configured (WHATSAPP_FROM)." }, 503);
+      }
+    }
+
+    // Clubs on their own account are never billed by SquashHub.
+    let unitCost = 0;
+    if (!ownMode) {
+      const { data: rate } = await admin.rpc("whatsapp_rate", {
+        _club_id: clubId,
+        _category: category,
+      });
+      unitCost = Number(rate ?? 0);
+    }
 
     // Resolve phones + honour opt-outs.
     const memberIds = recipients.map((r) => r.member_id).filter(Boolean) as string[];
@@ -159,15 +216,18 @@ Deno.serve(async (req) => {
       let error: string | null = null;
 
       try {
-        const resp = await fetch(`${GATEWAY_URL}/Messages.json`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${lovableKey}`,
-            "X-Connection-Api-Key": twilioKey,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: form,
-        });
+        const url = ownMode
+          ? `https://api.twilio.com/2010-04-01/Accounts/${ownAccountSid}/Messages.json`
+          : `${GATEWAY_URL}/Messages.json`;
+        const headers: Record<string, string> = ownMode
+          ? { Authorization: ownAuth!, "Content-Type": "application/x-www-form-urlencoded" }
+          : {
+              Authorization: `Bearer ${lovableKey}`,
+              "X-Connection-Api-Key": twilioKey!,
+              "Content-Type": "application/x-www-form-urlencoded",
+            };
+
+        const resp = await fetch(url, { method: "POST", headers, body: form });
         const text = await resp.text();
         if (!resp.ok) {
           status = "failed";
@@ -189,7 +249,12 @@ Deno.serve(async (req) => {
         club_id: clubId,
         member_id: r.member_id ?? null,
         to_phone: to,
+        from_phone: from,
+        direction: "out",
         kind: payload.kind ?? (payload.content_sid ? "template" : "freeform"),
+        category,
+        unit_cost: status === "sent" ? unitCost : 0,
+        billable: status === "sent" && !ownMode,
         body: logBody,
         provider_sid: sid,
         status,
@@ -197,11 +262,24 @@ Deno.serve(async (req) => {
         sent_by: userId,
       });
 
+      // Register the pending question so the member's Yes/No reply can be
+      // routed back into the app by the whatsapp-inbound webhook.
+      if (status === "sent" && payload.interaction) {
+        await admin.from("whatsapp_interactions").insert({
+          club_id: clubId,
+          member_id: r.member_id ?? null,
+          phone: to,
+          kind: payload.interaction.kind,
+          target_id: payload.interaction.target_id ?? null,
+          prompt: payload.interaction.prompt ?? payload.body ?? null,
+        });
+      }
+
       results.push({ member_id: r.member_id, to, status, sid, error });
     }
 
     const sent = results.filter((r) => r.status === "sent").length;
-    return json({ sent, total: results.length, results });
+    return json({ sent, total: results.length, results, unit_cost: unitCost, billed: !ownMode });
   } catch (e) {
     console.error("send-whatsapp error", e);
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);

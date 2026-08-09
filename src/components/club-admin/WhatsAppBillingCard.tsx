@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Receipt } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -28,13 +30,38 @@ export function WhatsAppBillingCard({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, whatsapp_enabled, whatsapp_opted_in_at, whatsapp_rate_override")
+        .select("id, whatsapp_enabled, whatsapp_opted_in_at, whatsapp_rate_override, whatsapp_sender_mode")
         .eq("id", clubId)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
   });
+
+  const ownMode = club?.whatsapp_sender_mode === "own";
+
+  const { data: secrets } = useQuery({
+    queryKey: ["club-whatsapp-secrets", clubId],
+    enabled: !!club?.whatsapp_enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("club_secrets")
+        .select("whatsapp_account_sid, whatsapp_from, whatsapp_auth_token")
+        .eq("club_id", clubId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const [sid, setSid] = useState("");
+  const [token, setToken] = useState("");
+  const [senderNumber, setSenderNumber] = useState("");
+  useEffect(() => {
+    setSid(secrets?.whatsapp_account_sid ?? "");
+    setSenderNumber(secrets?.whatsapp_from ?? "");
+    setToken("");
+  }, [secrets?.whatsapp_account_sid, secrets?.whatsapp_from]);
 
   const { data: rates } = useQuery({
     queryKey: ["whatsapp-rates"],
@@ -97,6 +124,37 @@ export function WhatsAppBillingCard({ clubId }: { clubId: string }) {
     onError: (e: Error) => toast({ title: "Could not update", description: e.message, variant: "destructive" }),
   });
 
+  const setMode = useMutation({
+    mutationFn: async (mode: "platform" | "own") => {
+      const { error } = await supabase.from("clubs").update({ whatsapp_sender_mode: mode }).eq("id", clubId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["club-whatsapp-settings", clubId] });
+      toast({ title: "Sender updated" });
+    },
+    onError: (e: Error) => toast({ title: "Could not update", description: e.message, variant: "destructive" }),
+  });
+
+  const saveOwn = useMutation({
+    mutationFn: async () => {
+      const patch = {
+        club_id: clubId,
+        whatsapp_account_sid: sid.trim() || null,
+        whatsapp_from: senderNumber.trim() || null,
+        ...(token.trim() ? { whatsapp_auth_token: token.trim() } : {}),
+      };
+      const { error } = await supabase.from("club_secrets").upsert([patch], { onConflict: "club_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setToken("");
+      qc.invalidateQueries({ queryKey: ["club-whatsapp-secrets", clubId] });
+      toast({ title: "WhatsApp account saved" });
+    },
+    onError: (e: Error) => toast({ title: "Could not save", description: e.message, variant: "destructive" }),
+  });
+
   const rate = club?.whatsapp_rate_override ?? rates?.whatsapp_rate_utility ?? 0.45;
   const subtotal = Number(usage?.subtotal ?? 0);
   const vat = subtotal * 0.15;
@@ -109,8 +167,8 @@ export function WhatsAppBillingCard({ clubId }: { clubId: string }) {
           <div>
             <p className="text-sm font-semibold">WhatsApp messaging</p>
             <p className="text-xs text-muted-foreground">
-              Send fee reminders, fixture notices and tournament pairings straight to members on WhatsApp.
-              Messages are metered and billed to your club at the end of each month.
+              Send fee reminders, event invites and tournament entries straight to members on WhatsApp — they
+              reply with a Yes/No button and the answer lands back in the app automatically.
             </p>
           </div>
         </div>
@@ -127,20 +185,84 @@ export function WhatsAppBillingCard({ clubId }: { clubId: string }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 text-xs">
-        <div className="rounded border border-border p-2">
-          <p className="text-muted-foreground">Notice / reminder</p>
-          <p className="font-semibold">{money(club?.whatsapp_rate_override ?? rates?.whatsapp_rate_utility ?? 0.45)}</p>
+      {club?.whatsapp_enabled && (
+        <div className="rounded border border-border p-2 space-y-2">
+          <p className="text-xs font-semibold">Which number do messages come from?</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setMode.mutate("platform")}
+              className={`text-left rounded border p-2 text-xs ${!ownMode ? "border-primary bg-primary/5" : "border-border"}`}
+            >
+              <span className="font-semibold block">Shared SquashHub number</span>
+              <span className="text-muted-foreground">Nothing to set up. Billed per message below.</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode.mutate("own")}
+              className={`text-left rounded border p-2 text-xs ${ownMode ? "border-primary bg-primary/5" : "border-border"}`}
+            >
+              <span className="font-semibold block">Our own WhatsApp Business</span>
+              <span className="text-muted-foreground">Your own number and provider bill. No SquashHub fee.</span>
+            </button>
+          </div>
+
+          {ownMode && (
+            <div className="space-y-2 pt-1">
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div>
+                  <Label className="text-[11px]">Account SID</Label>
+                  <Input value={sid} onChange={(e) => setSid(e.target.value)} placeholder="AC…" className="h-8 text-xs" />
+                </div>
+                <div>
+                  <Label className="text-[11px]">Auth token</Label>
+                  <Input
+                    type="password"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder={secrets?.whatsapp_auth_token ? "•••••• (saved)" : "Auth token"}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px]">WhatsApp sender number</Label>
+                  <Input
+                    value={senderNumber}
+                    onChange={(e) => setSenderNumber(e.target.value)}
+                    placeholder="+27…"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] text-muted-foreground">
+                  Point your provider's inbound webhook at SquashHub so Yes/No replies still reach the app.
+                </p>
+                <Button size="sm" className="h-7 text-xs" onClick={() => saveOwn.mutate()} disabled={saveOwn.isPending}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="rounded border border-border p-2">
-          <p className="text-muted-foreground">Reply (24h window)</p>
-          <p className="font-semibold">{money(club?.whatsapp_rate_override ?? rates?.whatsapp_rate_service ?? 0.15)}</p>
+      )}
+
+      {!ownMode && (
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="rounded border border-border p-2">
+            <p className="text-muted-foreground">Notice / reminder</p>
+            <p className="font-semibold">{money(club?.whatsapp_rate_override ?? rates?.whatsapp_rate_utility ?? 0.45)}</p>
+          </div>
+          <div className="rounded border border-border p-2">
+            <p className="text-muted-foreground">Reply (24h window)</p>
+            <p className="font-semibold">{money(club?.whatsapp_rate_override ?? rates?.whatsapp_rate_service ?? 0.15)}</p>
+          </div>
+          <div className="rounded border border-border p-2">
+            <p className="text-muted-foreground">Promotional</p>
+            <p className="font-semibold">{money(club?.whatsapp_rate_override ?? rates?.whatsapp_rate_marketing ?? 0.8)}</p>
+          </div>
         </div>
-        <div className="rounded border border-border p-2">
-          <p className="text-muted-foreground">Promotional</p>
-          <p className="font-semibold">{money(club?.whatsapp_rate_override ?? rates?.whatsapp_rate_marketing ?? 0.8)}</p>
-        </div>
-      </div>
+      )}
 
       {club?.whatsapp_enabled && (
         <div className="rounded border border-border p-2 space-y-1">
@@ -156,12 +278,20 @@ export function WhatsAppBillingCard({ clubId }: { clubId: string }) {
               {usage?.marketing_count ?? 0} promotional
             </span>
             <span className="font-semibold text-foreground">
-              {money(subtotal + vat)} <span className="text-muted-foreground font-normal">incl. VAT</span>
+              {ownMode ? (
+                "Billed by your provider"
+              ) : (
+                <>
+                  {money(subtotal + vat)} <span className="text-muted-foreground font-normal">incl. VAT</span>
+                </>
+              )}
             </span>
           </div>
-          <p className="text-[10px] text-muted-foreground">
-            Estimated at {money(rate)} per notice. Final amount is confirmed on your month-end invoice.
-          </p>
+          {!ownMode && (
+            <p className="text-[10px] text-muted-foreground">
+              Estimated at {money(rate)} per notice. Final amount is confirmed on your month-end invoice.
+            </p>
+          )}
         </div>
       )}
 

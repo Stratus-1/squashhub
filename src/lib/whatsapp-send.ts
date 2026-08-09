@@ -25,6 +25,17 @@ export type SendWhatsAppOptions = {
   contentSid?: string;
   contentVariables?: Record<string, string>;
   kind?: string;
+  /** Drives the per-message rate billed to the club. */
+  category?: "utility" | "service" | "marketing";
+  /**
+   * Ask a Yes/No question whose reply is written back into the app by the
+   * whatsapp-inbound webhook.
+   */
+  interaction?: {
+    kind: "event_rsvp" | "champ_entry" | "generic";
+    targetId?: string | null;
+    prompt?: string | null;
+  };
 };
 
 export type SendWhatsAppResult = {
@@ -48,8 +59,17 @@ export async function sendWhatsApp(opts: SendWhatsAppOptions): Promise<SendWhats
       content_sid: opts.contentSid,
       content_variables: opts.contentVariables,
       kind: opts.kind,
+      category: opts.category,
+      interaction: opts.interaction
+        ? {
+            kind: opts.interaction.kind,
+            target_id: opts.interaction.targetId ?? null,
+            prompt: opts.interaction.prompt ?? null,
+          }
+        : undefined,
     },
   });
+
 
   if (error) {
     let detail = error.message;

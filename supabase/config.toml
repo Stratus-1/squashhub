@@ -56,3 +56,6 @@ verify_jwt = false
 [functions.stitch-reconcile-mandates]
 verify_jwt = false
 
+
+[functions.whatsapp-inbound]
+verify_jwt = false

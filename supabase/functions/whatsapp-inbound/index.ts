@@ -79,6 +79,19 @@ Deno.serve(async (req) => {
     let clubId = interaction?.club_id ?? null;
     let memberId = interaction?.member_id ?? null;
     if (!clubId) {
+      // Club running its own WhatsApp Business account: match on the number
+      // the member wrote to.
+      const to = normalisePhone(params.To);
+      if (to) {
+        const { data: owner } = await admin
+          .from("club_secrets")
+          .select("club_id")
+          .eq("whatsapp_from", params.To?.replace(/^whatsapp:/i, "") ?? to)
+          .maybeSingle();
+        clubId = owner?.club_id ?? null;
+      }
+    }
+    if (!clubId) {
       const { data: lastOut } = await admin
         .from("whatsapp_send_log")
         .select("club_id, member_id")
@@ -97,11 +110,21 @@ Deno.serve(async (req) => {
     // so they are recorded at the (cheaper) service rate.
     let unitCost = 0;
     if (clubId) {
-      const { data: rate } = await admin.rpc("whatsapp_rate", {
-        _club_id: clubId,
-        _category: "service",
-      });
-      unitCost = Number(rate ?? 0);
+      // Clubs on their own WhatsApp Business account are billed by their own
+      // provider, never by SquashHub.
+      const { data: clubRow } = await admin
+        .from("clubs")
+        .select("whatsapp_sender_mode")
+        .eq("id", clubId)
+        .maybeSingle();
+      const ownMode = clubRow?.whatsapp_sender_mode === "own";
+      if (!ownMode) {
+        const { data: rate } = await admin.rpc("whatsapp_rate", {
+          _club_id: clubId,
+          _category: "service",
+        });
+        unitCost = Number(rate ?? 0);
+      }
       await admin.from("whatsapp_send_log").insert({
         club_id: clubId,
         member_id: memberId,
@@ -111,7 +134,7 @@ Deno.serve(async (req) => {
         kind: buttonPayload ? "button_reply" : "reply",
         category: "service",
         unit_cost: unitCost,
-        billable: true,
+        billable: !ownMode,
         body: buttonPayload || text,
         provider_sid: sid,
         status: "received",

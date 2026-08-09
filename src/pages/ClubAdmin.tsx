@@ -54,12 +54,12 @@ const SETUP_TABS: AdminTab[] = [
 ];
 
 const OPERATIONS_TABS: AdminTab[] = [
-  { value: "leagues", label: "Leagues Setup/Creation", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
   { value: "members", label: "Members", icon: Users, permission: "members", color: "indigo" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
-  { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
+  { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
+  { value: "leagues", label: "Leagues Setup/Creation", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
   { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
 ];

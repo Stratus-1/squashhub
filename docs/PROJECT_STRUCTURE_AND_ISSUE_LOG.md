@@ -88,6 +88,19 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-09 · Express payment still replaced app and ended on Complete page
+- **Symptom:** a successful once-off/top-up payment left the payer on Stitch Express's completion
+  page even though the frontend polling fallback had been added.
+- **Finding:** the popup was opened only after the asynchronous payment-session request and used
+  `noopener`. Popup blockers therefore rejected it (and `noopener` can return no controllable
+  `Window`), causing `openStitchPaymentWindow` to fall back to a same-tab redirect. Once the app
+  tab was replaced, no frontend remained to poll or return the member.
+- **Fix (once-off only):** reserve a blank payment tab synchronously when checkout starts, retain a
+  safe local reference, navigate it to the exact bare Express URL after session creation, then close
+  it and focus the still-open app when `stitch-verify-payment` reports completion.
+- **Guard:** recurring mandate launchers remain untouched; never delay the initial `window.open`
+  until after a network request, and never append parameters to an Express payment link.
+
 ### 2026-08-09 · Account statement listed oldest transaction first
 - **Symptom:** My Account statement showed the oldest entry at the top; members had to scroll to
   find the newest one.

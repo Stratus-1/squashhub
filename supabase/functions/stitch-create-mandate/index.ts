@@ -248,11 +248,12 @@ Deno.serve(async (req) => {
       return json({ error: "Stitch did not return an authorisation URL" }, 502);
     }
 
-    // IMPORTANT: do NOT append a `redirect_url` query param to the hosted
-    // subscribe / card-consent link — Stitch Express returns 404 "page not
-    // found" when it is present. The redirect is already registered via
-    // `merchantRedirectUrl` in the create body above.
-    const authUrl = stitchUrl;
+    // Proven on the once-off flow (9 Aug 2026): Stitch Express DOES honour a
+    // `redirect_url` query param on a fresh hosted link, provided the host is
+    // the club's whitelisted tenant subdomain (apex/`www` → 404 after paying).
+    // Body-level redirect keys are silently dropped, so append it here too.
+    const authUrl = appendExpressRedirectUrl(stitchUrl, safeReturn);
+
 
 
     await admin
@@ -267,24 +268,52 @@ Deno.serve(async (req) => {
   }
 });
 
+function appendExpressRedirectUrl(link: string, returnUrl: string) {
+  try {
+    const url = new URL(link);
+    url.searchParams.set("redirect_url", returnUrl);
+    return url.toString();
+  } catch {
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
+  }
+}
+
 function sanitizeReturnUrl(raw: string, clubSubdomain = ""): string {
   const canonicalReturnUrl = `${PUBLIC_APP_ORIGIN}/pay/return`;
   try {
     const u = new URL(raw);
-    if (u.hostname.endsWith(".supabase.co")) {
-      return canonicalReturnUrl;
+    if (u.protocol === "gbsquash:") return raw;
+    if (u.hostname.endsWith(".supabase.co")) return canonicalReturnUrl;
+
+    // `www.squashhub.co.za` is not served — fold onto the apex first.
+    if (u.hostname.toLowerCase() === "www.squashhub.co.za") u.hostname = "squashhub.co.za";
+
+    // Stitch Express validates the redirect host against the club tenant that
+    // owns the credentials: apex → 404, tenant subdomain → 200. Restore the
+    // proven tenant host when the request arrives from the apex or a preview.
+    const normalizedSubdomain = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    const incomingHost = u.hostname.toLowerCase();
+    if (normalizedSubdomain && (incomingHost === "squashhub.co.za" || incomingHost.endsWith(".lovable.app"))) {
+      u.protocol = "https:";
+      u.hostname = `${normalizedSubdomain}.squashhub.co.za`;
+      u.port = "";
     }
-    if (u.origin === PUBLIC_APP_ORIGIN || u.hostname.endsWith("squashhub.co.za") || u.hostname.endsWith("lovable.app") || u.hostname === "localhost") {
-      u.search = "";
-      u.hash = "";
-      if (u.hostname === "squashhub.co.za" || u.hostname.endsWith(".squashhub.co.za")) {
-        return canonicalReturnUrl;
-      }
-      if (u.pathname === "/" || u.pathname === "") u.pathname = "/pay/return";
-      return u.toString();
-    }
-    return canonicalReturnUrl;
+
+    const host = u.hostname.toLowerCase();
+    const allowed =
+      host === "squashhub.co.za" ||
+      host.endsWith(".squashhub.co.za") ||
+      host.endsWith(".lovable.app") ||
+      host === "localhost";
+    if (!allowed) return canonicalReturnUrl;
+
+    u.search = "";
+    u.hash = "";
+    if (u.pathname === "/" || u.pathname === "") u.pathname = "/my-account";
+    return u.toString();
   } catch {
     return canonicalReturnUrl;
   }
 }
+

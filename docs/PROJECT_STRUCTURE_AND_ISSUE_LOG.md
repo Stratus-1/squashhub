@@ -267,28 +267,65 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
 ---
 
-## 7. Verified: Stitch test-mode keys are Express-only (09 Aug 2026)
+## 7. Stitch top-up redirect regression — root cause and restoration (09 Aug 2026)
 
-**Symptom** — Test keys pasted into Club Admin → Payment gateway with Test mode ticked; top-up
-still ends on the Stitch "payment complete" page instead of returning to SquashHub.
+**User report:** "It worked before." Correct — it did. This was a self-inflicted regression, not a
+Stitch change.
 
-**Probe run against the live stored credentials** (temporary edge function, since deleted):
+### How it worked (last known-good, commit `458c20657`, 19 Jul 2026)
 
-| Call | Result |
-| --- | --- |
-| `POST https://express.stitch.money/api/v1/token` (Express) | **200, token issued** |
-| `POST https://express.stitch.money/api/v1/payments` with `merchantRedirectUrl` **and** `redirectUrl` | **200** — response contains only `id`, `link`, `status`, `amount`, `merchantReference`. **No redirect field is echoed back; Stitch silently drops both.** |
-| `POST https://secure.stitch.money/connect/token` (`grant_type=client_credentials`, `scope=client_paymentrequest`) | **400 `invalid_client`** |
+1. `buildStitchReturnUrl()` returned the **current tenant origin**, e.g.
+   `https://gb.squashhub.co.za/my-account`.
+2. `stitch-create-payment` created the Express payment, then called
+   `appendExpressRedirectUrl(payment.link, safeReturnUrl)` — i.e. it appended
+   **`?redirect_url=<tenant URL>`** to `https://express.stitch.money/pay/<id>`.
+3. The client did a plain **same-tab** `window.location.assign(link)`.
+4. Stitch redirected the payer back to the tenant URL; `/my-account` verified the session.
 
-**Conclusion** — The `test-…` client id/secret pair is a **Stitch Express** credential. It cannot
-mint a Payment Request API v2 token, so `stitch-create-payment` always falls back to the Express
-path, and the Express hosted link has no redirect capability at all (appending `?redirect_url=`
-returns 404 — see §4). This is a Stitch product limitation, not a SquashHub bug.
+Evidence in the data: session `c8a18aad` (08 Aug, R60) stored
+`https://express.stitch.money/pay/kgZHbT2DL14PtQZhCPuoQe?redirect_url=https%3A%2F%2Fgb.squashhub.co.za%2Fmy-account`
+and completed normally.
 
-**Resolution in product** — keep the prepared-window + polling flow: SquashHub opens the Express
-link in a reserved tab, polls `stitch-verify-payment`, then closes the Stitch tab and refreshes
-the account. The payer never has to press Back.
+### How it broke (09 Aug 2026, commits `ed6020805` → `2ee573670`)
 
-**To get a true redirect** the club must request **Payment Request API** access from Stitch and
-paste that client id/secret. `createPaymentRequestV2()` already handles it — once the token
-exchange succeeds, `redirect_mode: "direct"` is returned and the same-tab redirect is used.
+| Step | Change | Effect |
+| --- | --- | --- |
+| 10:35 | Return URL began resolving to `https://www.squashhub.co.za/...` | `www.` is not served → payer hit a **404 after paying**. The 404 was caused by the *host*, not by the query param. |
+| ~10:50 | Misdiagnosed the 404 as "Express 404s on any query string" and **stripped `redirect_url` from the Express link** | Redirect died. Payers now stranded on Stitch's `/pay/complete`. |
+| 10:50–11:11 | Compensated with body-level `merchantRedirectUrl`/`redirectUrl`, a prepared-tab + polling launcher, and apex folding | Layered workarounds on top of the real break; none restored the redirect, because Express drops body-level redirect keys. |
+
+The "Express 404s on query strings" curl evidence was **wrong**: that test hit an already
+consumed/expired link. Re-verified 09 Aug against a fresh link:
+
+```
+/pay/<id>                                   -> 200
+/pay/<id>?redirect_url=https%3A%2F%2Fgb...  -> 200
+/pay/<id>?redirect_uri=https%3A%2F%2Fgb...  -> 200
+```
+
+Also confirmed the club's `test-…` keys are Express credentials: Express token 200, but
+`secure.stitch.money/connect/token` (Payment Request API v2) returns `invalid_client`, so the
+Express fallback path is always the one in use for this club.
+
+### The fix (restoration)
+
+- `supabase/functions/stitch-create-payment/index.ts` — restored
+  `appendExpressRedirectUrl(payment.link, safeReturnWithSession)`; removed the body-level
+  `merchantRedirectUrl`/`redirectUrl` keys and the 400-retry; `appendRedirectUri()` no longer
+  short-circuits express hosts. Response now returns `redirect_mode: "direct"`.
+- `src/lib/club-payments.ts` — removed the prepared-window + polling launcher; back to a single
+  same-tab `openStitchCheckout(redirect)`.
+- `src/lib/stitch-checkout.ts` — kept the `www.` → apex fold (that part was a genuine fix) and the
+  tenant-origin return URL. Window/polling helpers remain exported but unused by the once-off flow.
+
+### Rules learned
+
+1. **Do not "fix" a symptom by removing a parameter that has working evidence in the database.**
+   Check `stitch_payment_sessions.stitch_redirect_url` on a *successful* older session first — it
+   is the record of what worked.
+2. **A 404 after payment is a host problem first** (`www.` vs apex, wrong subdomain), a query-param
+   problem last.
+3. **Only test hosted-link behaviour against a freshly created, unpaid link.** Expired/consumed
+   links return misleading statuses.
+4. Once-off and recurring stay separate (see Core memory) — this restoration touched the once-off
+   path only.

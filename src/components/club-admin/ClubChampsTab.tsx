@@ -5421,9 +5421,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   />
                   Email
                 </label>
+                {whatsappEnabled && (
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={inviteMethods.has("whatsapp")}
+                      onCheckedChange={(c) => {
+                        const next = new Set(inviteMethods);
+                        c ? next.add("whatsapp") : next.delete("whatsapp");
+                        if (next.size === 0) next.add("app");
+                        setInviteMethods(next);
+                      }}
+                    />
+                    WhatsApp
+                  </label>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Choose how invited members are notified. Pick both for maximum reach.
+                Choose how invited members are notified. Pick more than one for maximum reach.
+                {inviteMethods.has("whatsapp") && " WhatsApp invites let members reply YES/NO to enter — billed to your club."}
               </p>
             </div>
 

@@ -51,50 +51,29 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
     return { session_id: (data as any).session_id as string };
   }
   if (gateway === "stitch") {
-    // Reserve the tab synchronously, before the network request loses the
-    // payment-button user gesture. Express itself does not redirect home.
-    const preparedWindow = prepareStitchPaymentWindow();
+    // RESTORED to the pre-09-Aug-2026 behaviour: Stitch (both the payment-request
+    // and the Express hosted link) redirects the payer back to `return_url`, so
+    // we simply hand the current tab over. No prepared window, no polling.
     const return_url = buildStitchReturnUrl(opts.returnPath);
-    let data: unknown;
-    try {
-      const response = await supabase.functions.invoke("stitch-create-payment", {
-        body: {
-          club_id: opts.clubId, club_member_id: opts.clubMemberId,
-          amount: opts.amount, purpose: opts.purpose,
-          method: opts.method || "paybybank",
-          fee_ids: opts.fee_ids || [],
-          champ_registration_id: opts.champ_registration_id ?? null,
-          description: opts.description, return_url,
-        },
-      });
-      data = response.data;
-      if (response.error) throw new Error(response.error.message || "Could not start Stitch checkout");
-      if ((data as any)?.error) throw new Error((data as any).error);
-    } catch (error) {
-      if (preparedWindow) discardPreparedStitchPaymentWindow();
-      throw error;
-    }
+    const { data, error } = await supabase.functions.invoke("stitch-create-payment", {
+      body: {
+        club_id: opts.clubId, club_member_id: opts.clubMemberId,
+        amount: opts.amount, purpose: opts.purpose,
+        method: opts.method || "paybybank",
+        fee_ids: opts.fee_ids || [],
+        champ_registration_id: opts.champ_registration_id ?? null,
+        description: opts.description, return_url,
+      },
+    });
+    if (error) throw new Error(error.message || "Could not start Stitch checkout");
+    if ((data as any)?.error) throw new Error((data as any).error);
     const redirect = (data as any)?.redirect_url;
-    if (!redirect) {
-      if (preparedWindow) discardPreparedStitchPaymentWindow();
-      throw new Error("Stitch did not return a redirect URL");
-    }
+    if (!redirect) throw new Error("Stitch did not return a redirect URL");
     rememberPendingStitchSession((data as any).session_id, opts.returnPath);
-    // Stitch has two hosted surfaces for once-off payments:
-    //  - Payment Request (redirect_mode "direct") DOES honour our redirect_uri
-    //    and sends the payer straight back to the app. Keep the original
-    //    same-tab redirect for it — no polling needed.
-    //  - Express payment links do NOT redirect back, so for those we keep this
-    //    tab alive, open Stitch alongside it, and the caller polls with
-    //    pollStitchPayment().
-    if ((data as any)?.redirect_mode === "direct") {
-      if (preparedWindow) discardPreparedStitchPaymentWindow();
-      await openStitchCheckout(redirect);
-      return { session_id: (data as any).session_id as string, keptOpen: false };
-    }
-    const keptOpen = await openStitchPaymentWindow(redirect);
-    return { session_id: (data as any).session_id as string, keptOpen };
+    await openStitchCheckout(redirect, (data as any).session_id, opts.returnPath);
+    return { session_id: (data as any).session_id as string, keptOpen: false };
   }
+
   throw new Error(`Unsupported gateway: ${gateway}`);
 }
 

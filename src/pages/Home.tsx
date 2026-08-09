@@ -30,6 +30,7 @@ import featureImg from "@/assets/feature-woman-phone.png";
 import playerRacketImg from "@/assets/player-racket.jpg";
 import playersMatchImg from "@/assets/players-match.jpg";
 import shellyImg from "@/assets/shelly-pro-4pm.jpg";
+import lightsAccessVideo from "@/assets/lights-access-demo.mp4.asset.json";
 import shLogoFull from "@/assets/shub-logo-white.png";
 import featuresCourtBg from "@/assets/features-court-bg.jpg";
 

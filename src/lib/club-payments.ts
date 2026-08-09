@@ -6,9 +6,10 @@ import {
   getPendingYocoSession, clearPendingYocoSession,
 } from "@/lib/yoco-native-checkout";
 import {
-  buildStitchReturnUrl, openStitchCheckout, rememberPendingStitchSession,
-  getPendingStitchSession, clearPendingStitchSession,
+  buildStitchReturnUrl, openStitchCheckout, openStitchPaymentWindow, closeStitchPaymentWindow,
+  rememberPendingStitchSession, getPendingStitchSession, clearPendingStitchSession,
 } from "@/lib/stitch-checkout";
+
 
 export type GatewayId = "yoco" | "stitch";
 export const SUPPORTED_GATEWAYS: GatewayId[] = ["yoco", "stitch"];

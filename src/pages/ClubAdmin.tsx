@@ -49,6 +49,8 @@ const SETUP_TABS: AdminTab[] = [
   { value: "leagues", label: "Leagues Setup/Creation", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
   { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose", noStatus: true },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
+  { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
+  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true },
 ];
 
 const OPERATIONS_TABS: AdminTab[] = [
@@ -59,8 +61,6 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
   { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
-  { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
-  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true },
 ];
 
 const ADMIN_TABS: AdminTab[] = [...SETUP_TABS, ...OPERATIONS_TABS];
@@ -186,7 +186,8 @@ export default function ClubAdmin() {
                   return <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">{done}/{total} complete</span>;
                 })()}
               </div>
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
+              <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-[repeat(13,minmax(0,1fr))] gap-1.5 md:gap-2">
+
                 {visibleSetup.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.value;
@@ -199,7 +200,7 @@ export default function ClubAdmin() {
                       onClick={() => setActiveTab(tab.value)}
                       title={showStatus ? (isComplete ? "Complete" : "Please complete") : undefined}
                       className={cn(
-                        "relative flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
+                        "relative flex flex-col items-center justify-center gap-1 rounded-lg border p-1.5 md:p-2 transition-colors text-center min-h-[56px] md:min-h-[62px]",
                         isActive
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
                           : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
@@ -212,8 +213,9 @@ export default function ClubAdmin() {
                           <AlertCircle className="absolute top-1 right-1 w-3 h-3 md:w-3.5 md:h-3.5 text-amber-600 dark:text-amber-400 fill-background" />
                         )
                       )}
-                      <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                      <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
+                      <Icon className="w-4 h-4" />
+                      <span className="text-[9px] md:text-[10px] font-semibold leading-tight">{tab.label}</span>
+
                       {showStatus && (
                         <span className={cn(
                           "text-[8px] md:text-[9px] font-medium leading-none uppercase tracking-wide",

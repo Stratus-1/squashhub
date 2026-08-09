@@ -97,23 +97,23 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
   balance and `netOwing`, and renders a reversed copy so the newest line is first.
 - **Guard:** balance still derives from the chronological array — never reverse before accumulating.
 
-### 2026-08-09 · CORRECTION: the once-off redirect was never broken by Stitch
-- **Symptom:** payers on a top-up ended on Stitch's completion page instead of back in the app.
-- **Finding (verified against `stitch_payment_sessions`):** every historical successful top-up link
-  carried `?redirect_url=...` and DID bounce the payer back. The earlier "404 the instant they tap
-  Pay" diagnosis was wrong — the 404 was the *return* page: the URL had drifted to
-  `www.squashhub.co.za/my-account`, and `www.` is not served. Stripping `redirect_url` to "fix" the
-  404 is what actually killed the working redirect (session at 10:44 has no param and stranded the
-  payer).
-- **Fix:** restored `appendRedirectUri` for `express.stitch.money/pay` links; `sanitizeReturnUrl`
-  and `buildStitchReturnUrl` now fold `www.squashhub.co.za` back onto the apex host. Once-off
-  checkout again uses the direct redirect when the function reports `redirect_mode: "direct"`;
-  the new-tab + polling path is kept only as the fallback for links that genuinely do not return.
-- **Guard:** before changing redirect behaviour, check `stitch_payment_sessions.stitch_redirect_url`
-  for links that previously completed — do not remove a param that working sessions carried.
-  Never point a return URL at a `www.` host.
+### 2026-08-09 · Top-up 404 — SETTLED WITH EVIDENCE
+- **Test:** curled a live link both ways.
+  `https://express.stitch.money/pay/<id>` → **200**.
+  Same link + `?redirect_url=...` → **404**.
+- **Conclusion:** express.stitch.money/pay links 404 on ANY query string. The redirect param must
+  never be appended to them; the return URL goes in the create body only, and the app keeps its own
+  tab open and polls `stitch-verify-payment`.
+- **Separate real bug found:** return URLs had drifted to `www.squashhub.co.za`, which is not
+  served. `sanitizeReturnUrl` (server) and `buildStitchReturnUrl` (client) now fold `www.` onto the
+  apex.
+- **Payment-request path is different:** when Stitch payment-request credentials are valid the
+  function returns `redirect_mode: "direct"` and that hosted page DOES honour `redirect_url`, so
+  the app uses a plain same-tab redirect. TEST credentials currently fail this token exchange
+  (`invalid_client`), so test mode always lands on the Express fallback + polling path.
+- **Guard:** do not "restore" the redirect param on express links — it is proven to 404.
 
-### 2026-08-09 · (superseded) Once-off top-up stranded payers on Stitch's completion page
+### 2026-08-09 · Once-off top-up stranded payers on Stitch's completion page
 - **Symptom:** after paying a top-up, the member ended on Stitch's "payment complete" screen and
   never returned to the app; the app showed nothing until the page was reopened.
 - **Finding:** same root cause as the mandate flow — Stitch Express hosted pages ignore the

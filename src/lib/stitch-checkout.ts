@@ -2,6 +2,7 @@ import { Capacitor } from "@capacitor/core";
 
 const APP_SCHEME = "gbsquash";
 const PENDING_STITCH_SESSION_KEY = "gbsquash.pendingStitchSession";
+let stitchPaymentWindow: Window | null = null;
 
 type PendingStitchSession = {
   sessionId: string;
@@ -106,6 +107,38 @@ export async function openStitchCheckout(url: string, _sessionId?: string, _retu
 }
 
 /**
+ * Reserve a browser tab while the payment button still has a user gesture.
+ * Waiting for the Edge Function response before calling window.open causes
+ * mobile and desktop popup blockers to reject it, which previously forced the
+ * once-off flow to replace the app tab with Stitch.
+ */
+export function prepareStitchPaymentWindow(): boolean {
+  if (Capacitor.isNativePlatform() || typeof window === "undefined") return false;
+  try {
+    const paymentWindow = window.open("about:blank", "_blank");
+    if (!paymentWindow) return false;
+    // Prevent the hosted payment page from controlling the SquashHub tab while
+    // retaining our local Window reference so it can be closed after polling.
+    paymentWindow.opener = null;
+    paymentWindow.document.title = "Opening secure payment…";
+    paymentWindow.document.body.textContent = "Opening secure payment…";
+    stitchPaymentWindow = paymentWindow;
+    return true;
+  } catch {
+    stitchPaymentWindow = null;
+    return false;
+  }
+}
+
+export function discardPreparedStitchPaymentWindow() {
+  if (!stitchPaymentWindow) return;
+  try {
+    if (!stitchPaymentWindow.closed) stitchPaymentWindow.close();
+  } catch { /* already closed */ }
+  stitchPaymentWindow = null;
+}
+
+/**
  * Once-off / top-up payment (payment-request) launch.
  *
  * Stitch Express hosted pages do not honour our redirect back to the app — the
@@ -125,16 +158,33 @@ export async function openStitchPaymentWindow(url: string): Promise<boolean> {
     await Browser.open({ url });
     return true;
   }
+  if (stitchPaymentWindow && !stitchPaymentWindow.closed) {
+    try {
+      stitchPaymentWindow.location.replace(url);
+      return true;
+    } catch {
+      discardPreparedStitchPaymentWindow();
+    }
+  }
   try {
-    const win = window.open(url, "_blank", "noopener,noreferrer");
-    if (win) return true;
+    const paymentWindow = window.open("about:blank", "_blank");
+    if (paymentWindow) {
+      paymentWindow.opener = null;
+      stitchPaymentWindow = paymentWindow;
+      paymentWindow.location.replace(url);
+      return true;
+    }
   } catch { /* popup blocked */ }
   await openStitchCheckout(url);
   return false;
 }
 
 export async function closeStitchPaymentWindow() {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!Capacitor.isNativePlatform()) {
+    discardPreparedStitchPaymentWindow();
+    try { window.focus(); } catch { /* focus not available */ }
+    return;
+  }
   try {
     const { Browser } = await import("@capacitor/browser");
     await Browser.close();

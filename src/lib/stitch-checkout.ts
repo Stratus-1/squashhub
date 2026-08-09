@@ -109,6 +109,40 @@ export async function openStitchCheckout(url: string, _sessionId?: string, _retu
 }
 
 
+/**
+ * Mandate (card-consent / subscription) authorisation.
+ *
+ * Stitch Express ignores `merchantRedirectUrl` for hosted card-consent and
+ * subscribe pages — payers are parked on
+ * express.stitch.money/card-consent/complete and never bounce back. So we do
+ * NOT navigate the current tab away: Stitch opens in a separate tab/in-app
+ * browser and the app tab stays alive to poll for authorisation.
+ *
+ * Returns true when the app tab survived (so the caller should poll), false
+ * when we had to fall back to a same-tab redirect (popup blocked).
+ */
+export async function openStitchMandateWindow(url: string): Promise<boolean> {
+  if (Capacitor.isNativePlatform()) {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.open({ url });
+    return true;
+  }
+  try {
+    const win = window.open(url, "_blank", "noopener,noreferrer");
+    if (win) return true;
+  } catch { /* popup blocked */ }
+  await openStitchCheckout(url);
+  return false;
+}
+
+export async function closeStitchMandateWindow() {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.close();
+  } catch { /* already closed */ }
+}
+
 export function rememberPendingStitchSession(sessionId: string, returnPath: string) {
   if (!sessionId) return;
   localStorage.setItem(

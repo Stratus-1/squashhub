@@ -235,10 +235,11 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const lightsEnabled = lightsForm.lights_integration_enabled;
 
   const steps: SetupStep[] = [
-    { id: "courts", label: "List courts", description: "Step one — simply name the courts your club plays on. Nothing technical here.", complete: false },
+    { id: "courts", label: "List courts", description: "Step one — name the courts your club plays on and choose which booking system those courts use.", complete: false },
     { id: "rules", label: "Booking rules", description: "Set slot length, opening hours, peak times and how many bookings a member may make.", complete: true },
     { id: "lights", label: "Lights & relays", description: "Turn on smart light control, then pick each court from your list and enter its Shelly relay details.", complete: !!club.lights_integration_enabled },
-    { id: "venues", label: "Other venues", description: "External tournament venues and any outside booking system your club also uses.", complete: true },
+    { id: "venues", label: "Other venues", description: "External tournament venues at other clubs.", complete: true },
+
   ];
 
   return (

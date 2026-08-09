@@ -2556,6 +2556,9 @@ export type Database = {
           smtp_port: number | null
           smtp_user: string | null
           updated_at: string
+          whatsapp_account_sid: string | null
+          whatsapp_auth_token: string | null
+          whatsapp_from: string | null
           wifi_charge_enabled: boolean
           wifi_enabled: boolean
           wifi_fee_id: string | null
@@ -2606,6 +2609,9 @@ export type Database = {
           smtp_port?: number | null
           smtp_user?: string | null
           updated_at?: string
+          whatsapp_account_sid?: string | null
+          whatsapp_auth_token?: string | null
+          whatsapp_from?: string | null
           wifi_charge_enabled?: boolean
           wifi_enabled?: boolean
           wifi_fee_id?: string | null
@@ -2656,6 +2662,9 @@ export type Database = {
           smtp_port?: number | null
           smtp_user?: string | null
           updated_at?: string
+          whatsapp_account_sid?: string | null
+          whatsapp_auth_token?: string | null
+          whatsapp_from?: string | null
           wifi_charge_enabled?: boolean
           wifi_enabled?: boolean
           wifi_fee_id?: string | null
@@ -3056,6 +3065,7 @@ export type Database = {
           whatsapp_opted_in_at: string | null
           whatsapp_opted_in_by: string | null
           whatsapp_rate_override: number | null
+          whatsapp_sender_mode: string
         }
         Insert: {
           accepted_payment_methods?: string[]
@@ -3152,6 +3162,7 @@ export type Database = {
           whatsapp_opted_in_at?: string | null
           whatsapp_opted_in_by?: string | null
           whatsapp_rate_override?: number | null
+          whatsapp_sender_mode?: string
         }
         Update: {
           accepted_payment_methods?: string[]
@@ -3248,6 +3259,7 @@ export type Database = {
           whatsapp_opted_in_at?: string | null
           whatsapp_opted_in_by?: string | null
           whatsapp_rate_override?: number | null
+          whatsapp_sender_mode?: string
         }
         Relationships: [
           {

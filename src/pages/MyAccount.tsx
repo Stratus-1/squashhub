@@ -350,13 +350,40 @@ export default function MyAccount() {
     if (!isSupportedGateway(gw)) {
       throw new Error("No supported online payment gateway is configured for this club.");
     }
-    await startClubCheckout(gw as GatewayId, {
+    const res = await startClubCheckout(gw as GatewayId, {
       clubId, clubMemberId,
       amount: opts.amount, purpose: opts.purpose,
       fee_ids: opts.fee_ids, description: opts.description,
       returnPath: "/my-account",
     });
+
+    // Stitch parks the payer on its own completion page and never redirects
+    // back, so this tab stays open and polls for the result instead.
+    if (gw === "stitch" && (res as any)?.keptOpen && res.session_id) {
+      setAwaitingPayment(true);
+      const status = await pollStitchPayment(res.session_id);
+      setAwaitingPayment(false);
+      if (status === "completed") {
+        clearPendingClubSession("stitch", res.session_id);
+        toast.success("Payment received — thank you!");
+        queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+        queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
+      } else if (status === "failed") {
+        clearPendingClubSession("stitch", res.session_id);
+        toast.error("The payment did not go through. No money was taken — please try again.", { duration: 10000 });
+      } else if (status === "expired") {
+        clearPendingClubSession("stitch", res.session_id);
+        toast.error("Payment expired. No charge was made.");
+      } else if (status === "cancelled") {
+        clearPendingClubSession("stitch", res.session_id);
+        toast.info("Payment cancelled.");
+      } else {
+        toast.info("Payment still processing. I'll keep checking in the background.");
+      }
+    }
   };
+
 
 
   // Top-up mutation

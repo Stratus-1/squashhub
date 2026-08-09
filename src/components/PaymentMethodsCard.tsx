@@ -57,6 +57,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   const [amountTouched, setAmountTouched] = useState(false);
   const [debitDay, setDebitDay] = useState("1");
   const [submitting, setSubmitting] = useState(false);
+  // Stitch parks payers on its own "complete" page and never redirects back,
+  // so we keep this tab open and watch the mandate until it activates.
+  const [awaitingId, setAwaitingId] = useState<string | null>(null);
+  const [awaitingUrl, setAwaitingUrl] = useState<string | null>(null);
+  const [awaitingDone, setAwaitingDone] = useState(false);
 
   const { data: mandates = [], isLoading: mandatesLoading } = useQuery({
     queryKey: ["stitch-mandates", clubMemberId],

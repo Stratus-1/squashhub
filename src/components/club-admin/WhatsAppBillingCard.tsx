@@ -138,13 +138,13 @@ export function WhatsAppBillingCard({ clubId }: { clubId: string }) {
 
   const saveOwn = useMutation({
     mutationFn: async () => {
-      const patch: Record<string, string | null> = {
+      const patch = {
         club_id: clubId,
         whatsapp_account_sid: sid.trim() || null,
         whatsapp_from: senderNumber.trim() || null,
+        ...(token.trim() ? { whatsapp_auth_token: token.trim() } : {}),
       };
-      if (token.trim()) patch.whatsapp_auth_token = token.trim();
-      const { error } = await supabase.from("club_secrets").upsert(patch, { onConflict: "club_id" });
+      const { error } = await supabase.from("club_secrets").upsert([patch], { onConflict: "club_id" });
       if (error) throw error;
     },
     onSuccess: () => {

@@ -164,29 +164,14 @@ Deno.serve(async (req) => {
       payerPhoneNumber: member.phone || undefined,
       payerEmailAddress: member.email || undefined,
       merchantReference,
-      merchantRedirectUrl: safeReturnWithSession,
-      redirectUrl: safeReturnWithSession,
     };
 
-    const postPayment = async (body: Record<string, unknown>) => {
-      console.log("[stitch-express] POST /payments request:", JSON.stringify(body));
-      const resp = await fetch(`${STITCH_BASE}/payments`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const j = await resp.json().catch(() => ({}));
-      console.log("[stitch-express] POST /payments response:", resp.status, JSON.stringify(j));
-      return { resp, j };
-    };
-
-    let { resp: plResp, j: plJson } = await postPayment(plBody);
-    if (!plResp.ok && plResp.status === 400) {
-      // Some Express tenants reject unknown redirect keys — retry bare.
-      console.warn("Stitch /payments rejected redirect fields — retrying without them");
-      const { merchantRedirectUrl: _a, redirectUrl: _b, ...bare } = plBody as any;
-      ({ resp: plResp, j: plJson } = await postPayment(bare));
-    }
+    const plResp = await fetch(`${STITCH_BASE}/payments`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(plBody),
+    });
+    const plJson = await plResp.json().catch(() => ({}));
 
     if (!plResp.ok || !plJson?.success || !plJson?.data?.payment?.link) {
       console.error("Stitch Express payment-link error", plResp.status, JSON.stringify(plJson));
@@ -196,16 +181,16 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // Use the express link exactly as Stitch returned it — appending anything
-    // 404s it. Return path is handled by the app polling stitch-verify-payment.
-    const redirectUrl = payment.link as string;
-
+    // Restored: attach the return URL to the hosted link. This is the exact
+    // behaviour that worked before 09 Aug 2026.
+    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
     }).eq("id", session.id);
 
-    return json({ session_id: session.id, redirect_url: redirectUrl, request_id: payment.id });
+    return json({ session_id: session.id, redirect_url: redirectUrl, request_id: payment.id, redirect_mode: "direct" });
+
   } catch (e: any) {
     console.error("stitch-create-payment error:", e);
     return json({ error: e?.message || "Unexpected error" }, 200);

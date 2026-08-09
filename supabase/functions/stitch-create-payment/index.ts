@@ -138,9 +138,11 @@ Deno.serve(async (req) => {
       console.warn("Stitch payment-request fallback to Express link:", (err as Error)?.message || err);
     }
 
-    // 3. Fallback for Stitch Express tenants. Express expects the return URL
-    // on the hosted link as `redirect_url`; body-level redirect fields are not
-    // consistently honoured and can leave payers on Stitch's /pay/complete.
+    // 3. Fallback for Stitch Express tenants. IMPORTANT: never append a
+    // `redirect_url` query param to the hosted express.stitch.money/pay link —
+    // Stitch answers 404 for any /pay link carrying extra query params (that is
+    // what members saw as "page not found" the instant they tapped Pay).
+    // The return URL must be supplied in the create body instead.
     const tokenResp = await fetch(`${STITCH_BASE}/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -161,14 +163,26 @@ Deno.serve(async (req) => {
       payerPhoneNumber: member.phone || undefined,
       payerEmailAddress: member.email || undefined,
       merchantReference,
+      merchantRedirectUrl: safeReturnWithSession,
+      redirectUrl: safeReturnWithSession,
     };
 
-    const plResp = await fetch(`${STITCH_BASE}/payments`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify(plBody),
-    });
-    const plJson = await plResp.json().catch(() => ({}));
+    const postPayment = async (body: Record<string, unknown>) => {
+      const resp = await fetch(`${STITCH_BASE}/payments`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return { resp, j: await resp.json().catch(() => ({})) };
+    };
+
+    let { resp: plResp, j: plJson } = await postPayment(plBody);
+    if (!plResp.ok && plResp.status === 400) {
+      // Some Express tenants reject unknown redirect keys — retry bare.
+      console.warn("Stitch /payments rejected redirect fields — retrying without them");
+      const { merchantRedirectUrl: _a, redirectUrl: _b, ...bare } = plBody as any;
+      ({ resp: plResp, j: plJson } = await postPayment(bare));
+    }
     if (!plResp.ok || !plJson?.success || !plJson?.data?.payment?.link) {
       console.error("Stitch Express payment-link error", plResp.status, JSON.stringify(plJson));
       await admin.from("stitch_payment_sessions").update({ status: "failed" }).eq("id", session.id);
@@ -177,7 +191,8 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
+    // Use the hosted link exactly as Stitch returned it (see note above).
+    const redirectUrl = payment.link as string;
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -226,27 +241,17 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
 }
 
 function appendRedirectUri(link: string, returnUrl: string) {
-  // Stitch hosted flows honour `redirect_url`; `redirect_uri` is silently
-  // ignored and leaves the payer stranded on Stitch's completion screen.
+  // Stitch hosted payment-request flows honour `redirect_url`; `redirect_uri`
+  // is silently ignored. NEVER do this for express.stitch.money links — that
+  // host 404s on any extra query param.
   try {
     const url = new URL(link);
+    if (url.hostname === "express.stitch.money") return link;
     url.searchParams.delete("redirect_uri");
     url.searchParams.set("redirect_url", returnUrl);
     return url.toString();
   } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
-  }
-}
-
-function appendExpressRedirectUrl(link: string, returnUrl: string) {
-  try {
-    const url = new URL(link);
-    url.searchParams.set("redirect_url", returnUrl);
-    return url.toString();
-  } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
+    return link;
   }
 }
 

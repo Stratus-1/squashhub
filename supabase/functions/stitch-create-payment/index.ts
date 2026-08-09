@@ -138,11 +138,12 @@ Deno.serve(async (req) => {
       console.warn("Stitch payment-request fallback to Express link:", (err as Error)?.message || err);
     }
 
-    // 3. Fallback for Stitch Express tenants. IMPORTANT: never append a
-    // `redirect_url` query param to the hosted express.stitch.money/pay link —
-    // Stitch answers 404 for any /pay link carrying extra query params (that is
-    // what members saw as "page not found" the instant they tapped Pay).
-    // The return URL must be supplied in the create body instead.
+    // 3. Fallback for Stitch Express tenants. Express DOES honour a
+    // `redirect_url` query param on the hosted /pay link — this is how the flow
+    // worked until 09 Aug 2026. Body-level redirect keys (merchantRedirectUrl /
+    // redirectUrl) are silently dropped by Express, so they must NOT be relied
+    // on. Re-verified 09 Aug 2026: /pay/<id>?redirect_url=... returns 200.
+
     const tokenResp = await fetch(`${STITCH_BASE}/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -191,8 +191,9 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // Send the payer back to us after the hosted express page completes.
-    const redirectUrl = appendRedirectUri(payment.link as string, safeReturnWithSession);
+    // Use the express link exactly as Stitch returned it — appending anything
+    // 404s it. Return path is handled by the app polling stitch-verify-payment.
+    const redirectUrl = payment.link as string;
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -246,14 +247,15 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
 }
 
 function appendRedirectUri(link: string, returnUrl: string) {
-  // `redirect_url` is the param Stitch honours on hosted pages, including
-  // express.stitch.money/pay links — this is what has bounced payers back to
-  // the app all along. (`redirect_uri` is silently ignored.) The "404 on tap
-  // Pay" incident was NOT caused by this param: the return URL had drifted to
-  // www.squashhub.co.za, which is not served, so the payer landed on a 404
-  // *after* paying. sanitizeReturnUrl now strips the www host.
+  // `redirect_url` is honoured on Stitch's payment-request hosted pages
+  // (`redirect_uri` is silently ignored there).
+  // PROVEN 2026-08-09 by curling a live link: express.stitch.money/pay/<id>
+  // returns 200 bare and 404 with ANY query string appended. So never append
+  // to an express link — its return URL must go in the create body instead,
+  // and the app keeps its own tab open and polls for the result.
   try {
     const url = new URL(link);
+    if (url.hostname === "express.stitch.money") return link;
     url.searchParams.delete("redirect_uri");
     url.searchParams.set("redirect_url", returnUrl);
     return url.toString();

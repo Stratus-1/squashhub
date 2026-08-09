@@ -195,10 +195,12 @@ export default function MyAccount() {
 
   // Light sessions no longer needed separately — light fees come through member_credit_transactions
 
-  // Build statement lines from the GL control accounts, sorted chronologically.
+  // Build statement lines from the GL control accounts.
+  // Running balance is computed chronologically (oldest → newest), then the list is
+  // reversed for display so the newest transaction appears first.
   // Balance: debits − credits. Positive = member owes, negative = member in credit.
   type StatementLine = { id: string; date: string; description: string; debit: number; credit: number; balance: number; status: string };
-  const statementLines: StatementLine[] = (() => {
+  const statementLinesChrono: StatementLine[] = (() => {
     const lines: Omit<StatementLine, "balance">[] = [];
 
     for (const entry of (journalEntries || [])) {
@@ -215,7 +217,7 @@ export default function MyAccount() {
       });
     }
 
-    // Sort oldest first
+    // Sort oldest first so the running balance accumulates correctly
     lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     // Running balance: debits − credits. Positive = owes money, negative = in credit.
@@ -228,12 +230,16 @@ export default function MyAccount() {
     });
   })();
 
+  // Newest first for display
+  const statementLines: StatementLine[] = [...statementLinesChrono].reverse();
+
   // `creditBalance` name kept for downstream code. Semantics: positive = in credit,
   // negative = owes money — the inverse of the debit/credit running balance above.
   const netOwing = (() => {
-    if (statementLines.length === 0) return 0;
-    return statementLines[statementLines.length - 1]?.balance || 0;
+    if (statementLinesChrono.length === 0) return 0;
+    return statementLinesChrono[statementLinesChrono.length - 1]?.balance || 0;
   })();
+
   const creditBalance = -netOwing;
 
   // Available "cash" in wallet (top-ups minus confirmed account charges),

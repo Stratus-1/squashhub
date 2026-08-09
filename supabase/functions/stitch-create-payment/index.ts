@@ -191,8 +191,8 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // Use the hosted link exactly as Stitch returned it (see note above).
-    const redirectUrl = payment.link as string;
+    // Send the payer back to us after the hosted express page completes.
+    const redirectUrl = appendRedirectUri(payment.link as string, safeReturnWithSession);
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -216,6 +216,11 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
     if (parsed.protocol === "gbsquash:") return raw;
     if (parsed.hostname.endsWith(".supabase.co")) {
       return canonicalReturnUrl;
+    }
+    // `www.squashhub.co.za` is not served — it produced the "404 after paying"
+    // reports. Always fold it back onto the apex host.
+    if (parsed.hostname.toLowerCase() === "www.squashhub.co.za") {
+      parsed.hostname = "squashhub.co.za";
     }
     const host = parsed.hostname.toLowerCase();
     const allowed =
@@ -241,12 +246,14 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
 }
 
 function appendRedirectUri(link: string, returnUrl: string) {
-  // Stitch hosted payment-request flows honour `redirect_url`; `redirect_uri`
-  // is silently ignored. NEVER do this for express.stitch.money links — that
-  // host 404s on any extra query param.
+  // `redirect_url` is the param Stitch honours on hosted pages, including
+  // express.stitch.money/pay links — this is what has bounced payers back to
+  // the app all along. (`redirect_uri` is silently ignored.) The "404 on tap
+  // Pay" incident was NOT caused by this param: the return URL had drifted to
+  // www.squashhub.co.za, which is not served, so the payer landed on a 404
+  // *after* paying. sanitizeReturnUrl now strips the www host.
   try {
     const url = new URL(link);
-    if (url.hostname === "express.stitch.money") return link;
     url.searchParams.delete("redirect_uri");
     url.searchParams.set("redirect_url", returnUrl);
     return url.toString();

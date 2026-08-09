@@ -6,7 +6,7 @@ import {
   getPendingYocoSession, clearPendingYocoSession,
 } from "@/lib/yoco-native-checkout";
 import {
-  buildStitchReturnUrl, openStitchPaymentWindow, closeStitchPaymentWindow,
+  buildStitchReturnUrl, openStitchCheckout, openStitchPaymentWindow, closeStitchPaymentWindow,
   rememberPendingStitchSession, getPendingStitchSession, clearPendingStitchSession,
 } from "@/lib/stitch-checkout";
 
@@ -66,8 +66,17 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
     const redirect = (data as any)?.redirect_url;
     if (!redirect) throw new Error("Stitch did not return a redirect URL");
     rememberPendingStitchSession((data as any).session_id, opts.returnPath);
-    // Stitch Express never redirects the payer back to us, so keep this tab
-    // alive and open Stitch alongside it. Caller polls with pollStitchPayment().
+    // Stitch has two hosted surfaces for once-off payments:
+    //  - Payment Request (redirect_mode "direct") DOES honour our redirect_uri
+    //    and sends the payer straight back to the app. Keep the original
+    //    same-tab redirect for it — no polling needed.
+    //  - Express payment links do NOT redirect back, so for those we keep this
+    //    tab alive, open Stitch alongside it, and the caller polls with
+    //    pollStitchPayment().
+    if ((data as any)?.redirect_mode === "direct") {
+      await openStitchCheckout(redirect);
+      return { session_id: (data as any).session_id as string, keptOpen: false };
+    }
     const keptOpen = await openStitchPaymentWindow(redirect);
     return { session_id: (data as any).session_id as string, keptOpen };
   }

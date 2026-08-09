@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     const out: Record<string, unknown> = { clientIdPrefix: clientId.slice(0, 5) };
 
     // A) Express token
-    const tr = await fetch("https://api.stitch.money/token", {
+    const tr = await fetch("https://express.stitch.money/api/v1/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientId, clientSecret }),
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
         merchantRedirectUrl: ret,
         redirectUrl: ret,
       };
-      const pr = await fetch("https://api.stitch.money/payments", {
+      const pr = await fetch("https://express.stitch.money/api/v1/payments", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),

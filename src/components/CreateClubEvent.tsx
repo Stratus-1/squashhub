@@ -1623,9 +1623,26 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       onCheckedChange={(v) => setForm((f) => ({ ...f, notify_email: v }))}
                     />
                   </div>
-                  {!form.notify_push && !form.notify_email && (
+                  {whatsappEnabled && (
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="notify-whatsapp" className="text-xs font-normal cursor-pointer">
+                        WhatsApp invite <span className="text-muted-foreground">(Yes/No reply)</span>
+                      </Label>
+                      <Switch
+                        id="notify-whatsapp"
+                        checked={form.notify_whatsapp}
+                        onCheckedChange={(v) => setForm((f) => ({ ...f, notify_whatsapp: v }))}
+                      />
+                    </div>
+                  )}
+                  {!form.notify_push && !form.notify_email && !form.notify_whatsapp && (
                     <p className="text-[11px] text-muted-foreground">
                       Invitees will still see the event in-app but won't be notified.
+                    </p>
+                  )}
+                  {form.notify_whatsapp && (
+                    <p className="text-[11px] text-muted-foreground">
+                      WhatsApp messages are billed to your club. Replies update the RSVP automatically.
                     </p>
                   )}
                 </div>

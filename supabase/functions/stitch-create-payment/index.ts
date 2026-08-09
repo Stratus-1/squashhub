@@ -167,12 +167,22 @@ Deno.serve(async (req) => {
       redirectUrl: safeReturnWithSession,
     };
 
-    const plResp = await fetch(`${STITCH_BASE}/payments`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify(plBody),
-    });
-    const plJson = await plResp.json().catch(() => ({}));
+    const postPayment = async (body: Record<string, unknown>) => {
+      const resp = await fetch(`${STITCH_BASE}/payments`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return { resp, j: await resp.json().catch(() => ({})) };
+    };
+
+    let { resp: plResp, j: plJson } = await postPayment(plBody);
+    if (!plResp.ok && plResp.status === 400) {
+      // Some Express tenants reject unknown redirect keys — retry bare.
+      console.warn("Stitch /payments rejected redirect fields — retrying without them");
+      const { merchantRedirectUrl: _a, redirectUrl: _b, ...bare } = plBody as any;
+      ({ resp: plResp, j: plJson } = await postPayment(bare));
+    }
     if (!plResp.ok || !plJson?.success || !plJson?.data?.payment?.link) {
       console.error("Stitch Express payment-link error", plResp.status, JSON.stringify(plJson));
       await admin.from("stitch_payment_sessions").update({ status: "failed" }).eq("id", session.id);

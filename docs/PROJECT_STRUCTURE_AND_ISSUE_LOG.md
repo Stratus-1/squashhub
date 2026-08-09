@@ -88,6 +88,57 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-09 · ✅ CONFIRMED WORKING — canonical once-off / top-up payment flow (DO NOT CHANGE)
+
+Verified end-to-end by Daniel on 9 Aug 2026 (13:40 SAST). This is the known-good reference
+implementation for once-off/top-up payments. Any future change to top-ups must reproduce this
+exactly; if a top-up breaks, restore this shape first before investigating anything else.
+
+**The flow, step by step**
+
+1. Member taps "Pay by card" (My Account top-up, or `TournamentRegisterCard` entry fee).
+2. Client `startClubCheckout()` in `src/lib/club-payments.ts` builds the return URL via
+   `buildStitchReturnUrl()` in `src/lib/stitch-checkout.ts` — current **tenant origin**, `www.`
+   folded to apex, path `/my-account`.
+3. Edge Function `stitch-create-payment`:
+   - `sanitizeReturnUrl()` rewrites apex/preview/`www` hosts to the **club's validated tenant
+     subdomain** (e.g. `gb.squashhub.co.za`) — this is the part Stitch's whitelist matches on.
+   - Creates the Stitch Express payment, then `appendExpressRedirectUrl(payment.link,
+     safeReturnWithSession)` appends `?redirect_url=<tenant URL>&stitch_session=<id>`.
+   - Returns `redirect_mode: "direct"`.
+4. Client does a plain **same-tab** `openStitchCheckout(redirect)` — no popup, no prepared tab,
+   no polling on this path.
+5. Stitch redirects the payer back to the tenant URL; `/my-account` calls
+   `stitch-verify-payment` with the session id and posts the credit.
+
+**Non-negotiables**
+
+- The redirect host MUST be the club subdomain. Apex (`squashhub.co.za`) → 404 after paying;
+  `www.` → 404; tenant subdomain → 200. Proven by curl against a *fresh* link on 9 Aug.
+- `redirect_url` IS appended to the Express link as a query param. It works. The earlier
+  "Express 404s on any query string" conclusion was wrong (tested on a consumed link).
+- Redirect values in the POST **body** (`merchantRedirectUrl`, `redirectUrl`, `successUrl`) are
+  silently dropped by Express — do not add them back.
+- Only test hosted-link behaviour against a freshly created, unpaid link.
+- Test-mode keys for this club are Express credentials; `secure.stitch.money/connect/token`
+  returns `invalid_client`, so the Express path is always the live path here.
+
+**Files that own this flow** (recurring/mandate files are separate — never edit them for a top-up
+bug, see §3):
+- `supabase/functions/stitch-create-payment/index.ts` (`sanitizeReturnUrl`,
+  `appendExpressRedirectUrl`, `appendRedirectUri`)
+- `supabase/functions/stitch-verify-payment/index.ts`
+- `src/lib/club-payments.ts` (`startClubCheckout`, `openStitchCheckout`)
+- `src/lib/stitch-checkout.ts` (`buildStitchReturnUrl`, apex/`www` fold)
+- `src/pages/MyAccount.tsx`, `src/components/TournamentRegisterCard.tsx`, `src/pages/PayReturn.tsx`
+- Tables: `stitch_payment_sessions`, `stitch_collections`
+
+**Guard:** before "fixing" a top-up, query
+`select stitch_redirect_url from stitch_payment_sessions where status='completed' order by created_at desc limit 5;`
+— that is the record of what works. Match it.
+
+
+
 ### 2026-08-09 · Fresh restored top-up link still returned 404 — tenant host confirmed
 - **Symptom:** Daniel's 11:30 test top-up immediately opened a Stitch 404 after the old redirect
   behaviour had been restored.

@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { buildStitchReturnUrl, openStitchCheckout } from "@/lib/stitch-checkout";
+import { buildStitchReturnUrl, openStitchCheckout, openStitchMandateWindow, closeStitchMandateWindow } from "@/lib/stitch-checkout";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
 

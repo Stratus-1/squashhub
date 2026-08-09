@@ -1629,7 +1629,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       onCheckedChange={(v) => setForm((f) => ({ ...f, notify_email: v }))}
                     />
                   </div>
-                  {whatsappEnabled ? (
+                  {canUseClubWhatsApp ? (
                     <div className="flex items-center justify-between">
                       <Label htmlFor="notify-whatsapp" className="text-xs font-normal cursor-pointer">
                         WhatsApp invite <span className="text-muted-foreground">(Yes/No reply)</span>
@@ -1640,7 +1640,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                         onCheckedChange={(v) => setForm((f) => ({ ...f, notify_whatsapp: v }))}
                       />
                     </div>
-                  ) : (
+                  ) : adminBypass ? (
                     <div
                       className="flex items-center justify-between"
                       title="WhatsApp messaging is not activated for your club. Activate it in Club Admin → WhatsApp."
@@ -1658,10 +1658,29 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       </span>
                       <Switch checked={false} disabled />
                     </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-normal text-muted-foreground">
+                        WhatsApp invite <span className="text-[11px]">(from your own number)</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="text-xs underline text-primary shrink-0"
+                        onClick={() => window.open(buildOwnWhatsAppShareUrl(), "_blank", "noopener")}
+                      >
+                        Share
+                      </button>
+                    </div>
                   )}
                   {!form.notify_push && !form.notify_email && !form.notify_whatsapp && (
                     <p className="text-[11px] text-muted-foreground">
                       Invitees will still see the event in-app but won't be notified.
+                    </p>
+                  )}
+                  {!adminBypass && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Club-billed WhatsApp invites are admin-only. "Share" opens WhatsApp on your device so
+                      you can send the invite yourself — no cost to the club.
                     </p>
                   )}
                   {form.notify_whatsapp && (

@@ -1624,7 +1624,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       onCheckedChange={(v) => setForm((f) => ({ ...f, notify_email: v }))}
                     />
                   </div>
-                  {whatsappEnabled && (
+                  {whatsappEnabled ? (
                     <div className="flex items-center justify-between">
                       <Label htmlFor="notify-whatsapp" className="text-xs font-normal cursor-pointer">
                         WhatsApp invite <span className="text-muted-foreground">(Yes/No reply)</span>
@@ -1634,6 +1634,24 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                         checked={form.notify_whatsapp}
                         onCheckedChange={(v) => setForm((f) => ({ ...f, notify_whatsapp: v }))}
                       />
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center justify-between"
+                      title="WhatsApp messaging is not activated for your club. Activate it in Club Admin → WhatsApp."
+                    >
+                      <span className="text-xs font-normal text-muted-foreground">
+                        WhatsApp invite{" "}
+                        <a
+                          href="/club-admin?tab=whatsapp"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline text-primary"
+                        >
+                          Activate
+                        </a>
+                      </span>
+                      <Switch checked={false} disabled />
                     </div>
                   )}
                   {!form.notify_push && !form.notify_email && !form.notify_whatsapp && (

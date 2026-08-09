@@ -169,23 +169,47 @@ Deno.serve(async (req) => {
     let stitchId: string | null = null;
     let stitchUrl: string | null = null;
 
+    // Stitch Express has used a few different names for the "send the payer
+    // back here when they're done" field. If we only send `merchantRedirectUrl`
+    // and their hosted flow ignores it, the payer is stranded on
+    // express.stitch.money/card-consent/complete. Send every known alias, and
+    // if Stitch rejects the unknown keys, retry with the canonical one only.
+    const redirectAliases = {
+      merchantRedirectUrl: safeReturn,
+      redirectUrl: safeReturn,
+      successUrl: safeReturn,
+      cancelUrl: safeReturn,
+    };
+
+    const postWithRedirect = async (path: string, base: Record<string, unknown>) => {
+      let resp = await fetch(`${STITCH_BASE}${path}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...base, ...redirectAliases }),
+      });
+      let j = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        console.warn(`Stitch ${path} rejected redirect aliases [${resp.status}] — retrying`, JSON.stringify(j));
+        resp = await fetch(`${STITCH_BASE}${path}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ...base, merchantRedirectUrl: safeReturn }),
+        });
+        j = await resp.json().catch(() => ({}));
+      }
+      return { resp, j } as { resp: Response; j: any };
+    };
+
     if (mandate_type === "card_consent") {
       // POST /card-consents — payer authorises a card that we can later charge
       // any amount up to `amount` via /card-consents/{id}/initiate-payment.
-      const consentBody = {
+      const { resp, j } = await postWithRedirect("/card-consents", {
         amount: amountCents, // cap
         merchantReference,
         payerFullName,
         email: payerEmail,
         payerId: member.id,
-        merchantRedirectUrl: safeReturn,
-      };
-      const resp = await fetch(`${STITCH_BASE}/card-consents`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify(consentBody),
       });
-      const j = await resp.json().catch(() => ({}));
       if (!resp.ok || !j?.success || !j?.data) {
         console.error("Stitch Express card-consent error", resp.status, JSON.stringify(j));
         await admin.from("stitch_mandates").update({ status: "failed" }).eq("id", mandate.id);
@@ -198,7 +222,7 @@ Deno.serve(async (req) => {
       // POST /subscriptions — fixed monthly amount, Stitch auto-charges.
       // Initial charge is the full first month (posted to the member's
       // account); recurring monthly amount begins on the selected byMonthDay.
-      const subBody = {
+      const { resp, j } = await postWithRedirect("/subscriptions", {
         amount: amountCents,
         initialAmount: amountCents, // full first monthly instalment
         merchantReference,
@@ -206,15 +230,8 @@ Deno.serve(async (req) => {
         payerFullName,
         email: payerEmail,
         payerId: member.id,
-        merchantRedirectUrl: safeReturn,
         recurrence: { frequency: "MONTHLY", interval: 1, byMonthDay: day },
-      };
-      const resp = await fetch(`${STITCH_BASE}/subscriptions`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify(subBody),
       });
-      const j = await resp.json().catch(() => ({}));
       if (!resp.ok || !j?.success || !j?.data?.url) {
         console.error("Stitch Express subscription error", resp.status, JSON.stringify(j));
         await admin.from("stitch_mandates").update({ status: "failed" }).eq("id", mandate.id);
@@ -224,6 +241,7 @@ Deno.serve(async (req) => {
       stitchId = j.data.id;
       stitchUrl = j.data.url;
     }
+
 
     if (!stitchUrl) {
       await admin.from("stitch_mandates").update({ status: "failed" }).eq("id", mandate.id);

@@ -29,9 +29,10 @@ import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,
-  clearPendingClubSession, startClubCheckout, verifyClubCheckout,
+  clearPendingClubSession, startClubCheckout, verifyClubCheckout, pollStitchPayment,
   type GatewayId,
 } from "@/lib/club-payments";
+
 import { SharedAccessCard } from "@/components/SharedAccessCard";
 import PaymentMethodsCard from "@/components/PaymentMethodsCard";
 

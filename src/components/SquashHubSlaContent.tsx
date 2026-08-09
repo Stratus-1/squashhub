@@ -47,7 +47,7 @@ export function SquashHubSlaContent() {
         </li>
       </ul>
 
-      <h2>2. Subscription &amp; Fees</h2>
+      <h2>3. Subscription &amp; Fees</h2>
       <ul>
         <li>
           <strong>Billing commencement:</strong> Subscription fees are first invoiced the day after
@@ -106,7 +106,7 @@ export function SquashHubSlaContent() {
         hours (08:00–17:00 SAST, Monday to Friday) and announced at least 48 hours in advance.
       </p>
 
-      <h2>3. Maintenance &amp; Updates</h2>
+      <h2>4. Maintenance &amp; Updates</h2>
       <ul>
         <li>Routine security patches and platform updates are included at no additional cost.</li>
         <li>New features released on the SquashHub platform are made available to the Club automatically.</li>
@@ -116,14 +116,14 @@ export function SquashHubSlaContent() {
         </li>
       </ul>
 
-      <h2>4. Support</h2>
+      <h2>5. Support</h2>
       <ul>
         <li>Email and in-app support: response within <strong>1 business day</strong>.</li>
         <li>Critical incidents (platform unavailable): acknowledged within <strong>4 business hours</strong>.</li>
         <li>Self-service knowledge base and in-app help available 24/7.</li>
       </ul>
 
-      <h2>5. Data Protection &amp; Security</h2>
+      <h2>6. Data Protection &amp; Security</h2>
       <ul>
         <li>Customer data is encrypted in transit (TLS 1.2+) and at rest using industry-standard AES-256 encryption.</li>
         <li>
@@ -141,14 +141,14 @@ export function SquashHubSlaContent() {
         </li>
       </ul>
 
-      <h2>6. Data Ownership</h2>
+      <h2>7. Data Ownership</h2>
       <p>
         All Club data — including member records, match results, ladder positions, financial
         transactions and uploaded documents — remains the sole property of the Club. The Provider
         claims no ownership over, and will not sell, license or use Club data for marketing purposes.
       </p>
 
-      <h2>7. Term, Renewal &amp; Termination</h2>
+      <h2>8. Term, Renewal &amp; Termination</h2>
       <ul>
         <li>This SLA commences on the date of acceptance and remains in force for the chosen billing cycle.</li>
         <li>
@@ -159,7 +159,7 @@ export function SquashHubSlaContent() {
         <li>Paid subscription fees are non-refundable except where required by law.</li>
       </ul>
 
-      <h2>8. Data Export &amp; Deletion on Termination</h2>
+      <h2>9. Data Export &amp; Deletion on Termination</h2>
       <ul>
         <li>
           Upon termination, the Club may, within <strong>30 days</strong>, export all member,
@@ -174,7 +174,7 @@ export function SquashHubSlaContent() {
         <li>A written confirmation of deletion will be provided on request.</li>
       </ul>
 
-      <h2>9. Limitation of Liability</h2>
+      <h2>10. Limitation of Liability</h2>
       <p>
         To the maximum extent permitted by law, the Provider&apos;s total liability arising out of
         or in connection with the Service is limited to the fees paid by the Club in the 12 months
@@ -182,19 +182,19 @@ export function SquashHubSlaContent() {
         incidental, special or consequential damages.
       </p>
 
-      <h2>10. Acceptable Use</h2>
+      <h2>11. Acceptable Use</h2>
       <p>
         The Club agrees not to use the Service to store or transmit unlawful content, to interfere
         with platform security, or to misrepresent member numbers in order to reduce billable fees.
       </p>
 
-      <h2>11. Changes to this SLA</h2>
+      <h2>12. Changes to this SLA</h2>
       <p>
         Material changes to this SLA will be communicated at least 30 days in advance. Continued use
         of the Service after the effective date constitutes acceptance of the revised SLA.
       </p>
 
-      <h2>12. Governing Law</h2>
+      <h2>13. Governing Law</h2>
       <p>
         This SLA is governed by the laws of the Republic of South Africa. Disputes will be resolved
         in the courts of competent jurisdiction in South Africa.

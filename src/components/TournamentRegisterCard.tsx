@@ -192,13 +192,28 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       if (!isSupportedGateway(paymentGateway)) {
         throw new Error("No supported online payment gateway is configured for this club.");
       }
-      await startClubCheckout(paymentGateway as GatewayId, {
+      const res = await startClubCheckout(paymentGateway as GatewayId, {
         clubId, clubMemberId: memberId,
         amount: entryFee, purpose: "tournament",
         champ_registration_id: regId,
         description: `${champ.name} entry fee`,
         returnPath: `${window.location.pathname}?ctx=tournament`,
       });
+      // Stitch leaves the payer on its own completion page, so poll from here.
+      if (paymentGateway === "stitch" && (res as any)?.keptOpen && res.session_id) {
+        toast.info("Complete the payment in the Stitch tab — this page will update automatically.");
+        const status = await pollStitchPayment(res.session_id);
+        if (status === "completed") {
+          clearPendingClubSession("stitch", res.session_id);
+          toast.success("Entry fee paid — you're in!");
+          queryClient.invalidateQueries({ queryKey: ["champ-registrations"] });
+          queryClient.invalidateQueries({ queryKey: ["my-champ-registration"] });
+        } else if (status === "failed" || status === "expired" || status === "cancelled") {
+          clearPendingClubSession("stitch", res.session_id);
+          toast.error("The entry fee payment did not go through. No money was taken.");
+        }
+      }
+
     } catch (e: any) {
       toast.error(e.message || "Could not start payment");
     }

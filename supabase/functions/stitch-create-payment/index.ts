@@ -138,9 +138,11 @@ Deno.serve(async (req) => {
       console.warn("Stitch payment-request fallback to Express link:", (err as Error)?.message || err);
     }
 
-    // 3. Fallback for Stitch Express tenants. Express expects the return URL
-    // on the hosted link as `redirect_url`; body-level redirect fields are not
-    // consistently honoured and can leave payers on Stitch's /pay/complete.
+    // 3. Fallback for Stitch Express tenants. IMPORTANT: never append a
+    // `redirect_url` query param to the hosted express.stitch.money/pay link —
+    // Stitch answers 404 for any /pay link carrying extra query params (that is
+    // what members saw as "page not found" the instant they tapped Pay).
+    // The return URL must be supplied in the create body instead.
     const tokenResp = await fetch(`${STITCH_BASE}/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -161,6 +163,8 @@ Deno.serve(async (req) => {
       payerPhoneNumber: member.phone || undefined,
       payerEmailAddress: member.email || undefined,
       merchantReference,
+      merchantRedirectUrl: safeReturnWithSession,
+      redirectUrl: safeReturnWithSession,
     };
 
     const plResp = await fetch(`${STITCH_BASE}/payments`, {
@@ -177,7 +181,8 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
+    // Use the hosted link exactly as Stitch returned it (see note above).
+    const redirectUrl = payment.link as string;
 
 
     await admin.from("stitch_payment_sessions").update({
@@ -231,17 +236,6 @@ function appendRedirectUri(link: string, returnUrl: string) {
   try {
     const url = new URL(link);
     url.searchParams.delete("redirect_uri");
-    url.searchParams.set("redirect_url", returnUrl);
-    return url.toString();
-  } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
-  }
-}
-
-function appendExpressRedirectUrl(link: string, returnUrl: string) {
-  try {
-    const url = new URL(link);
     url.searchParams.set("redirect_url", returnUrl);
     return url.toString();
   } catch {

@@ -83,7 +83,7 @@ const BENEFITS = [
 const FAQS = [
   { q: "What is SquashHub?", a: "A squash club management platform for bookings, leagues, members, and payments." },
   { q: "Who is it for?", a: "Clubs and associations across South Africa." },
-  { q: "Is it free?", a: "Yes, completely free until September 2026. After that, pricing is on a sliding scale — each band of active members is charged at its own rate, so the bigger your club, the lower your average cost per member. The current bands and minimum monthly charge are shown in the Pricing section above. Paying annually in advance saves about 15%, and international clubs are billed proportionally in USD or EUR." },
+  { q: "Is it free?", a: "Every new club gets a 3-month free trial from the day it registers — time to load members, sort out your data and set the club up exactly how you want it. No credit card is needed, and billing only starts the day after the trial ends. After that, pricing is on a sliding scale — each band of active members is charged at its own rate, so the bigger your club, the lower your average cost per member. The current bands and minimum monthly charge are shown in the Pricing section above. Paying annually in advance saves about 15%, and international clubs are billed proportionally in USD or EUR." },
   { q: "How long does setup take?", a: "Setting up your club on the platform is quick and easy — usually under 2 minutes. Onboarding your existing members is the more involved part, but our team will assist you to migrate them across seamlessly. Depending on the size of your club, this may take a bit of time." },
   { q: "Do members need accounts?", a: "Members don't sign up to SquashHub directly — the club creates its own platform on SquashHub, and its members join under the club. Every member has an account with their club, where bookings, participation, and any outstanding fees or payments are reflected." },
   { q: "Can associations use it?", a: "Yes. League associations in smaller or rural areas often don't have a dedicated administrative platform. SquashHub can provide a full association management platform at a small fee, and members affiliated to that league are automatically linked through to the clubs where they play." },
@@ -487,7 +487,7 @@ export default function Home() {
                   </Button>
                 </div>
                 <p className="text-xs text-white/80 drop-shadow">
-                  Free until September 2026 · No credit card required
+                  3-month free trial for new clubs · No credit card required
                 </p>
               </div>
             </div>
@@ -575,7 +575,7 @@ export default function Home() {
               Pricing
             </h2>
             <p className="text-base sm:text-lg text-primary font-semibold">
-              Free until September 2026
+              3 months free for every new club
             </p>
             <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
               A sliding scale — like tax bands, each block of members is charged at its own rate, so the bigger your
@@ -589,7 +589,7 @@ export default function Home() {
               title="Clubs"
               priceLabel={`From ${pricing.format(lowestRate)}`}
               intlLabel={scaleLabel}
-              perks={["All features included", "Billed only on active members", "Save ~15% paying annually in advance", "Free until September 2026"]}
+              perks={["All features included", "Billed only on active members", "Save ~15% paying annually in advance", "3 months free to get set up"]}
               onGetStarted={() => navigate("/auth")}
             />
             <PricingCard
@@ -597,7 +597,7 @@ export default function Home() {
               title="Associations"
               priceLabel={`From ${pricing.format(lowestRate)}`}
               intlLabel={scaleLabel}
-              perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Save ~15% paying annually in advance", "Free until September 2026"]}
+              perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Save ~15% paying annually in advance", "3 months free to get set up"]}
               onGetStarted={() => navigate("/auth")}
             />
           </div>
@@ -710,7 +710,7 @@ export default function Home() {
               Register Your Club
             </Button>
             <p className="text-xs text-muted-foreground">
-              Free until September 2026 · No credit card required
+              3-month free trial for new clubs · No credit card required
             </p>
           </div>
         </div>

@@ -186,7 +186,7 @@ export default function ClubAdmin() {
                   return <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">{done}/{total} complete</span>;
                 })()}
               </div>
-              <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-13 xl:grid-cols-13 gap-1.5 md:gap-2">
+              <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-[repeat(13,minmax(0,1fr))] gap-1.5 md:gap-2">
 
                 {visibleSetup.map((tab) => {
                   const Icon = tab.icon;

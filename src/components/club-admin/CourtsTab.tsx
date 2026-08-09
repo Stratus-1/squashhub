@@ -1015,7 +1015,7 @@ function CourtsBookingSystemList({ clubId, systemLabel }: { clubId: string; syst
 
 
 const EXTERNAL_PROVIDERS = [
-  { value: "none", label: "None (use SquashHub bookings)" },
+  { value: "none", label: "SquashHub bookings (this app)" },
   { value: "gobook", label: "GoBook", placeholder: "https://gobook.co.za/yourclub" },
   { value: "courtmanager", label: "Court Manager (self-hosted)", placeholder: "http://yourclub.mywire.org/yourclub/index.php" },
   { value: "sportyhq", label: "SportyHQ", placeholder: "https://www.sportyhq.com/club/yourclub" },

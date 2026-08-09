@@ -175,6 +175,7 @@ export default function RegisterClub() {
           <div>
             <h1 className="text-2xl font-bold font-heading">Register Your Club</h1>
             <p className="text-sm text-muted-foreground">Set up your squash club as a tenant. You'll become the club captain with full admin rights.</p>
+            <p className="text-sm font-medium text-primary">Includes a 3-month free trial — no credit card required. Billing only starts the day after your trial ends.</p>
           </div>
         </div>
 

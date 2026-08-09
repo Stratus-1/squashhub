@@ -79,6 +79,19 @@ Deno.serve(async (req) => {
     let clubId = interaction?.club_id ?? null;
     let memberId = interaction?.member_id ?? null;
     if (!clubId) {
+      // Club running its own WhatsApp Business account: match on the number
+      // the member wrote to.
+      const to = normalisePhone(params.To);
+      if (to) {
+        const { data: owner } = await admin
+          .from("club_secrets")
+          .select("club_id")
+          .eq("whatsapp_from", params.To?.replace(/^whatsapp:/i, "") ?? to)
+          .maybeSingle();
+        clubId = owner?.club_id ?? null;
+      }
+    }
+    if (!clubId) {
       const { data: lastOut } = await admin
         .from("whatsapp_send_log")
         .select("club_id, member_id")

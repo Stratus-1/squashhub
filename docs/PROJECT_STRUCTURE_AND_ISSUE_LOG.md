@@ -78,15 +78,27 @@ This has caused repeated regressions. They share a provider (Stitch) and *nothin
 that flow's files. Do not "harmonise" the other one, and do not refactor a flow that is confirmed
 working.
 
-**Hard constraint:** never append query params (e.g. `?redirect_url=`) to hosted
-`express.stitch.money` links — Stitch answers **404**. Pass return URLs in the create request body
-(`merchantRedirectUrl` + `redirectUrl`), with a bare retry if Stitch rejects unknown keys.
+**Hard constraint:** Express returns depend on the exact whitelisted tenant host. Append
+`?redirect_url=` using the club subdomain (for example `gb.squashhub.co.za`), never the apex or
+`www` host. Body-level redirect fields are ignored by Express.
 
 ---
 
 ## 4. Issue log
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
+
+### 2026-08-09 · Fresh restored top-up link still returned 404 — tenant host confirmed
+- **Symptom:** Daniel's 11:30 test top-up immediately opened a Stitch 404 after the old redirect
+  behaviour had been restored.
+- **Finding:** session `ba2f65cd` stored an apex return URL. The same fresh payment link returned
+  **404** with `redirect_url=https://squashhub.co.za/my-account`, **200** without a redirect, and
+  **200** with `redirect_url=https://gb.squashhub.co.za/my-account`. The query parameter is valid;
+  the exact whitelisted redirect **host** determines whether Stitch accepts the link.
+- **Fix (once-off only):** `sanitizeReturnUrl` now replaces apex/preview hosts with the club's
+  validated tenant subdomain before appending `redirect_url` to the Express link.
+- **Guard:** always test the same fresh link with bare, apex, and tenant return variants. Preserve
+  the club subdomain; never generalise a successful tenant URL to the apex.
 
 ### 2026-08-09 · Express payment still replaced app and ended on Complete page
 - **Symptom:** a successful once-off/top-up payment left the payer on Stitch Express's completion
@@ -110,7 +122,7 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
   balance and `netOwing`, and renders a reversed copy so the newest line is first.
 - **Guard:** balance still derives from the chronological array — never reverse before accumulating.
 
-### 2026-08-09 · Top-up 404 — SETTLED WITH EVIDENCE
+### 2026-08-09 · Top-up 404 — SUPERSEDED by tenant-host test above
 - **Test:** curled a live link both ways.
   `https://express.stitch.money/pay/<id>` → **200**.
   Same link + `?redirect_url=...` → **404**.

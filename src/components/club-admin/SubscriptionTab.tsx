@@ -243,7 +243,6 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
 
       {club && <BillingFrequencyCard club={club} invoices={invoices} />}
 
-      <WhatsAppBillingCard clubId={clubId} />
 
 
 

@@ -206,8 +206,9 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         if (status === "completed") {
           clearPendingClubSession("stitch", res.session_id);
           toast.success("Entry fee paid — you're in!");
-          queryClient.invalidateQueries({ queryKey: ["champ-registrations"] });
-          queryClient.invalidateQueries({ queryKey: ["my-champ-registration"] });
+          qc.invalidateQueries({ queryKey: ["my-champ-reg", champ.id, memberId] });
+          qc.invalidateQueries({ queryKey: ["tournament-registrations", champ.id] });
+
         } else if (status === "failed" || status === "expired" || status === "cancelled") {
           clearPendingClubSession("stitch", res.session_id);
           toast.error("The entry fee payment did not go through. No money was taken.");

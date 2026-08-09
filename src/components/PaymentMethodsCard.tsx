@@ -281,7 +281,10 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       return;
     }
     await refreshMandate(m.id, true);
-    await openStitchCheckout(normalizeAuthUrl(m.auth_url));
+    setAwaitingDone(false);
+    setAwaitingUrl(normalizeAuthUrl(m.auth_url));
+    setAwaitingId(m.id);
+    await openStitchMandateWindow(normalizeAuthUrl(m.auth_url));
   }
 
   function openSetup(cat: FeeCategory) {

@@ -213,6 +213,21 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
     if (parsed.hostname.toLowerCase() === "www.squashhub.co.za") {
       parsed.hostname = "squashhub.co.za";
     }
+    // Stitch Express validates the redirect host against the club tenant that
+    // owns the credentials. An apex return URL makes a fresh GB payment link
+    // return 404, while the same link with gb.squashhub.co.za returns 200.
+    // Restore the proven tenant host whenever checkout arrives from the apex
+    // or a preview host (the latter cannot be whitelisted by Stitch).
+    const normalizedSubdomain = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    const incomingHost = parsed.hostname.toLowerCase();
+    if (
+      normalizedSubdomain &&
+      (incomingHost === "squashhub.co.za" || incomingHost.endsWith(".lovable.app"))
+    ) {
+      parsed.protocol = "https:";
+      parsed.hostname = `${normalizedSubdomain}.squashhub.co.za`;
+      parsed.port = "";
+    }
     const host = parsed.hostname.toLowerCase();
     const allowed =
       host === "squashhub.co.za" ||

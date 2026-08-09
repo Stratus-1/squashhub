@@ -173,6 +173,21 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   // invite over WhatsApp, but from their own number via a wa.me share link.
   const canUseClubWhatsApp = whatsappEnabled && adminBypass;
 
+  /** wa.me draft a member sends from their own number (no club cost). */
+  const buildOwnWhatsAppShareUrl = () => {
+    const when = form.event_date
+      ? format(new Date(form.event_date), "EEE d MMM")
+      : "";
+    const lines = [
+      `You're invited to "${form.title || "a squash event"}"`,
+      [when, form.start_time].filter(Boolean).join(" at "),
+      club?.name ? `at ${club.name}` : "",
+      "",
+      "Open the SquashHub app to RSVP.",
+    ].filter(Boolean);
+    return `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
+  };
+
 
   const [createOpen, setCreateOpen] = useState(!!onClose);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);

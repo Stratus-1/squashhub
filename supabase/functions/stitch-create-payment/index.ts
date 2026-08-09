@@ -241,16 +241,17 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
 }
 
 function appendRedirectUri(link: string, returnUrl: string) {
-  // Stitch hosted flows honour `redirect_url`; `redirect_uri` is silently
-  // ignored and leaves the payer stranded on Stitch's completion screen.
+  // Stitch hosted payment-request flows honour `redirect_url`; `redirect_uri`
+  // is silently ignored. NEVER do this for express.stitch.money links — that
+  // host 404s on any extra query param.
   try {
     const url = new URL(link);
+    if (url.hostname === "express.stitch.money") return link;
     url.searchParams.delete("redirect_uri");
     url.searchParams.set("redirect_url", returnUrl);
     return url.toString();
   } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
+    return link;
   }
 }
 

@@ -336,7 +336,21 @@ export default function Home() {
 
             </motion.div>
           </div>
+          <motion.div
+            {...fadeUp}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="flex justify-center lg:justify-end"
+          >
+            <img
+              src={appHomePhoneImg.url}
+              alt="SquashHub member home screen on a phone showing club stats, quick actions and door access"
+              loading="eager"
+              className="w-full max-w-[300px] rounded-2xl drop-shadow-[0_20px_40px_rgba(0,0,0,0.55)]"
+            />
+          </motion.div>
+          </div>
         </div>
+
       </section>
 
       {/* ─── Problem Section ─── */}

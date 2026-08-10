@@ -43,6 +43,15 @@ function isIos(): boolean {
   return /iPhone|iPad|iPod/i.test(ua) || (/Mac/i.test(ua) && "ontouchend" in document);
 }
 
+// iOS can only "Add to Home Screen" from Safari — showing the hint inside
+// Chrome/Firefox/Instagram/Facebook in-app browsers just confuses people.
+function isIosSafari(): boolean {
+  if (!isIos()) return false;
+  const ua = navigator.userAgent || "";
+  return !/CriOS|FxiOS|EdgiOS|OPiOS|Instagram|FBAN|FBAV|Line\//i.test(ua);
+}
+
+
 export function InstallPrompt() {
   const { subdomain } = useClubContext();
   const { pathname } = useLocation();

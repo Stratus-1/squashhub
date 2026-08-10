@@ -279,7 +279,9 @@ export default function Home() {
         </header>
 
         <div className="relative max-w-6xl mx-auto px-4 pt-12 pb-20">
+          <div className="grid lg:grid-cols-[1.5fr_1fr] gap-10 items-center">
           <div className="max-w-3xl space-y-6">
+
             <motion.h1
               {...fadeUp}
               transition={{ duration: 0.5 }}

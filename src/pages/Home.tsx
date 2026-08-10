@@ -422,9 +422,20 @@ export default function Home() {
             <motion.div
               {...fadeUp}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="hidden lg:flex justify-center"
+              className="flex flex-col items-center gap-4"
             >
-              <div className="relative">
+              <figure className="relative w-full max-w-md">
+                <img
+                  src={doorAccessImg.url}
+                  alt="Member unlocking the squash club door with the SquashHub app on his phone"
+                  loading="lazy"
+                  className="w-full rounded-2xl border border-white/10 object-cover shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)]"
+                />
+                <figcaption className="mt-2 text-[11px] text-white/60 italic text-center">
+                  Walk up, tap once — the door unlocks and the court lights come on.
+                </figcaption>
+              </figure>
+              <div className="relative hidden lg:block">
                 <div className="absolute inset-0 bg-amber-500/30 blur-3xl rounded-full" />
                 <video
                   src={lightsAccessVideo.url}
@@ -434,13 +445,47 @@ export default function Home() {
                   loop
                   playsInline
                   aria-label="Court lights switching on and club door unlocking from the SquashHub app"
-                  className="relative w-64 h-64 sm:w-80 sm:h-80 object-cover rounded-2xl border border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
+                  className="relative w-56 h-56 object-cover rounded-2xl border border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
                 />
               </div>
             </motion.div>
           </div>
         </div>
       </section>
+
+      {/* ─── App showcase ─── */}
+      <section id="app" className="bg-card/30 border-b border-border/40">
+        <div className="max-w-6xl mx-auto px-4 py-20 space-y-10">
+          <div className="text-center space-y-3">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-foreground">
+              See the app
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              Bookings, smart lighting, door access, club administration and member billing — one app
+              your players and committee actually enjoy using.
+            </p>
+          </div>
+          <div className="grid lg:grid-cols-[1.6fr_1fr] gap-8 items-center">
+            <motion.img
+              {...fadeUp}
+              transition={{ duration: 0.5 }}
+              src={appShowcaseImg.url}
+              alt="SquashHub app screens: court booking, smart lighting, door access, club administration and member dashboard"
+              loading="lazy"
+              className="w-full rounded-2xl border border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)]"
+            />
+            <motion.img
+              {...fadeUp}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              src={appHomePhoneImg.url}
+              alt="SquashHub member home screen on a phone showing stats, quick actions and club access"
+              loading="lazy"
+              className="w-full max-w-xs mx-auto rounded-2xl"
+            />
+          </div>
+        </div>
+      </section>
+
 
       {/* ─── Features / Manage Everything ─── */}
       <section id="features" className="relative overflow-hidden">

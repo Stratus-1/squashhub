@@ -481,7 +481,7 @@ export default function Home() {
               your players and committee actually enjoy using.
             </p>
           </div>
-          <div className="grid lg:grid-cols-[1.6fr_1fr] gap-8 items-center">
+          <div className="max-w-4xl mx-auto">
             <motion.img
               {...fadeUp}
               transition={{ duration: 0.5 }}
@@ -490,15 +490,8 @@ export default function Home() {
               loading="lazy"
               className="w-full rounded-2xl border border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)]"
             />
-            <motion.img
-              {...fadeUp}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              src={appHomePhoneImg.url}
-              alt="SquashHub member home screen on a phone showing stats, quick actions and club access"
-              loading="lazy"
-              className="w-full max-w-xs mx-auto rounded-2xl"
-            />
           </div>
+
         </div>
       </section>
 

@@ -30,7 +30,7 @@ import featureImg from "@/assets/feature-woman-phone.png";
 import playerRacketImg from "@/assets/player-racket.jpg";
 import playersMatchImg from "@/assets/players-match.jpg";
 import shellyImg from "@/assets/shelly-pro-4pm.jpg";
-import lightsAccessVideo from "@/assets/lights-access-demo.mp4.asset.json";
+import lightsAccessVideo from "@/assets/lights-access-demo-v2.mp4.asset.json";
 import doorAccessImg from "@/assets/club-door-access.png.asset.json";
 import appShowcaseImg from "@/assets/app-showcase.png.asset.json";
 import appHomePhoneImg from "@/assets/app-home-phone.png.asset.json";

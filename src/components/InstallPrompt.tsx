@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { Capacitor } from "@capacitor/core";
 import { useClubContext } from "@/contexts/ClubContext";
-import { getDecision, setDecision, shouldAsk } from "@/lib/permission-cache";
+import { setDecision, shouldAsk } from "@/lib/permission-cache";
 import {
   isStandalone as detectStandalone,
   wasInstalled,
@@ -58,6 +58,7 @@ export function InstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);
   const [iosSheet, setIosSheet] = useState(false);
+  const [iosSafari, setIosSafari] = useState(false);
 
   const onBlockedRoute = BLOCKED_PATH_PREFIXES.some((p) => pathname.startsWith(p));
 
@@ -93,13 +94,19 @@ export function InstallPrompt() {
       handleReinstallSignal();
     }
 
-    // iOS — no event, show our own A2HS hint after a few seconds (Safari only).
-    if (isIosSafari() && shouldAsk("install-prompt-ios")) {
-
+    // iOS never fires a native install prompt. Show our own instructions on
+    // every new browser session until the app is actually running standalone.
+    // sessionStorage means closing it does not permanently suppress the guide.
+    if (isIos()) {
+      const dismissedThisSession = window.sessionStorage.getItem("sh.install.ios.dismissed") === "1";
+      if (dismissedThisSession) {
+        return () => window.removeEventListener("beforeinstallprompt", onBip);
+      }
       const t = setTimeout(() => {
+        setIosSafari(isIosSafari());
         setIosSheet(true);
         setShow(true);
-      }, 5000);
+      }, 2000);
       return () => {
         window.removeEventListener("beforeinstallprompt", onBip);
         clearTimeout(t);
@@ -146,8 +153,11 @@ export function InstallPrompt() {
   };
 
   const handleDismiss = () => {
-    if (iosSheet) setDecision("install-prompt-ios", "dismissed");
-    else setDecision("install-prompt-android", "dismissed");
+    if (iosSheet) {
+      window.sessionStorage.setItem("sh.install.ios.dismissed", "1");
+    } else {
+      setDecision("install-prompt-android", "dismissed");
+    }
     setShow(false);
   };
 
@@ -169,8 +179,13 @@ export function InstallPrompt() {
                 <p className="text-sm font-semibold">Install the app</p>
                 {iosSheet ? (
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    Tap <Share2 className="inline w-3 h-3 mx-0.5" /> <span className="font-medium">Share</span> in Safari,
-                    then choose <span className="font-medium">"Add to Home Screen"</span>.
+                    {iosSafari ? (
+                      <>Tap <Share2 className="inline w-3 h-3 mx-0.5" /> <span className="font-medium">Share</span> in Safari,
+                      then choose <span className="font-medium">"Add to Home Screen"</span>.</>
+                    ) : (
+                      <>Open this page in <span className="font-medium">Safari</span>, tap <Share2 className="inline w-3 h-3 mx-0.5" /> <span className="font-medium">Share</span>,
+                      then choose <span className="font-medium">"Add to Home Screen"</span>.</>
+                    )}
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground mt-0.5">

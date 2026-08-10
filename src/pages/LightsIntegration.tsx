@@ -231,6 +231,26 @@ export default function LightsIntegration() {
         </div>
       </section>
 
+      {/* Installation guide */}
+      <section className="max-w-6xl mx-auto px-4 py-12">
+        <h2 className="text-2xl md:text-3xl font-heading uppercase tracking-tight text-white mb-3">
+          Installing a Shelly system for court lighting
+        </h2>
+        <p className="text-sm text-white/70 leading-relaxed mb-6 max-w-2xl">
+          A qualified electrician mounts the relay in your DB board, connects it to Wi-Fi, and you pair it
+          in SquashHub. Most clubs are up and running in an afternoon.
+        </p>
+        <figure className="rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] shadow-2xl">
+          <img
+            src={shellyGuideImg.url}
+            alt="Five-step guide to installing a Shelly smart relay for squash court lighting: mount in the DB board, wire the circuits, connect to Wi-Fi, pair in the app, and control the lights"
+            loading="lazy"
+            className="w-full object-contain"
+          />
+        </figure>
+      </section>
+
+
       {/* CTA */}
       <section className="max-w-4xl mx-auto px-4 py-16 text-center">
         <h2 className="text-3xl md:text-4xl font-heading uppercase tracking-tight text-white mb-4">

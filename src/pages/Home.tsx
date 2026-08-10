@@ -337,17 +337,53 @@ export default function Home() {
             </motion.div>
           </div>
           <motion.div
-            {...fadeUp}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="flex justify-center lg:justify-end"
+            className="flex flex-col items-center lg:items-end gap-4"
+            style={{ perspective: 1200 }}
           >
-            <img
-              src={appHomePhoneImg.url}
-              alt="SquashHub member home screen on a phone showing club stats, quick actions and door access"
-              loading="eager"
-              className="w-full max-w-[300px] rounded-2xl drop-shadow-[0_20px_40px_rgba(0,0,0,0.55)]"
-            />
+            <motion.div
+              initial={{ rotateY: -78, rotateX: 8, scale: 0.86, opacity: 0 }}
+              animate={{ rotateY: 0, rotateX: 0, scale: 1, opacity: 1 }}
+              transition={{ duration: 1.5, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              style={{ transformStyle: "preserve-3d", transformOrigin: "left center" }}
+              className="relative"
+            >
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.8 }}
+                className="relative"
+              >
+                <img
+                  src={appHomePhoneImg.url}
+                  alt="SquashHub member home screen on a phone showing club stats, quick actions and door access"
+                  loading="eager"
+                  className="w-full max-w-[300px] rounded-2xl drop-shadow-[0_28px_60px_rgba(0,0,0,0.6)]"
+                />
+                {/* glare sweep */}
+                <motion.div
+                  aria-hidden
+                  initial={{ x: "-140%", opacity: 0 }}
+                  animate={{ x: "140%", opacity: [0, 0.55, 0] }}
+                  transition={{ duration: 1.4, delay: 1.5, ease: "easeInOut" }}
+                  className="pointer-events-none absolute inset-0 rounded-2xl overflow-hidden"
+                >
+                  <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent blur-md -skew-x-12" />
+                </motion.div>
+              </motion.div>
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1.9 }}
+              className="text-sm sm:text-base font-heading uppercase tracking-[0.18em] text-amber-300 drop-shadow text-center lg:text-right"
+            >
+              At last — your whole club, in your pocket.
+            </motion.p>
           </motion.div>
+
           </div>
         </div>
 

@@ -376,8 +376,13 @@ Deno.serve(async (req) => {
     ? await supabase.from("club_secrets").select("shelly_auth_key").eq("club_id", clubId).maybeSingle()
     : { data: null };
   const authKey: string | undefined = secrets?.shelly_auth_key;
-  if (!authKey) {
-    return new Response(JSON.stringify({ result: "no-op", reason: "no shelly auth key" }), {
+  const authKeyValid = typeof authKey === "string" && authKey.trim().length >= 40 && !/\s/.test(authKey.trim());
+  if (!authKey || !authKeyValid) {
+    console.warn(`court-lights-schedule: club ${clubId} has ${authKey ? "an invalid" : "no"} Shelly auth key — skipping`);
+    return new Response(JSON.stringify({
+      result: "no-op",
+      reason: authKey ? "invalid shelly auth key" : "no shelly auth key",
+    }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

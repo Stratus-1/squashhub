@@ -36,6 +36,18 @@ function localDateAndTime(date: Date) {
   };
 }
 
+/**
+ * A real Shelly Cloud auth key is a long opaque token (typically 80+ chars).
+ * Short values are almost always a mis-pasted Wi-Fi/device password, which
+ * makes every cloud call fail with 401 invalid_token.
+ */
+function isValidShellyAuthKey(key?: string | null): boolean {
+  return typeof key === "string" && key.trim().length >= 40 && !/\s/.test(key.trim());
+}
+
+const SHELLY_KEY_HINT =
+  "Shelly Cloud auth key for this club is missing or invalid. Add the long auth key from Shelly Cloud → Settings → Authorization cloud key in Club Admin → Court lights.";
+
 async function setShellyRelay(params: {
   server?: string | null;
   authKey: string;
@@ -44,6 +56,9 @@ async function setShellyRelay(params: {
   turn: "on" | "off";
   toggleAfterSeconds?: number | null;
 }) {
+  if (!isValidShellyAuthKey(params.authKey)) {
+    throw new Error(SHELLY_KEY_HINT);
+  }
   const shellyServer = normalizeShellyServer(params.server);
   const channel = Number(params.channel ?? 0);
   const on = params.turn === "on";

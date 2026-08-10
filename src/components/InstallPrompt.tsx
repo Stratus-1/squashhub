@@ -93,8 +93,9 @@ export function InstallPrompt() {
       handleReinstallSignal();
     }
 
-    // iOS — no event, show our own A2HS hint after a few seconds.
-    if (isIos() && shouldAsk("install-prompt-ios")) {
+    // iOS — no event, show our own A2HS hint after a few seconds (Safari only).
+    if (isIosSafari() && shouldAsk("install-prompt-ios")) {
+
       const t = setTimeout(() => {
         setIosSheet(true);
         setShow(true);

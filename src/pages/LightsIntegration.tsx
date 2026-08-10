@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 import { ArrowLeft, Zap, Lightbulb, Wifi, Gauge, ShieldCheck, Receipt, CheckCircle2, Users, CalendarClock, DoorOpen, Fingerprint, Smartphone, UserCheck, KeyRound, Sparkles } from "lucide-react";
 import shellyImg from "@/assets/shelly-pro-4pm.jpg";
+import shellyGuideImg from "@/assets/shelly-install-guide.png.asset.json";
 
 export default function LightsIntegration() {
   const navigate = useNavigate();

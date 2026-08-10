@@ -31,6 +31,9 @@ import playerRacketImg from "@/assets/player-racket.jpg";
 import playersMatchImg from "@/assets/players-match.jpg";
 import shellyImg from "@/assets/shelly-pro-4pm.jpg";
 import lightsAccessVideo from "@/assets/lights-access-demo.mp4.asset.json";
+import doorAccessImg from "@/assets/club-door-access.png.asset.json";
+import appShowcaseImg from "@/assets/app-showcase.png.asset.json";
+import appHomePhoneImg from "@/assets/app-home-phone.png.asset.json";
 import shLogoFull from "@/assets/shub-logo-white.png";
 import featuresCourtBg from "@/assets/features-court-bg.jpg";
 

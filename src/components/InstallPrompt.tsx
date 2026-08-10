@@ -43,6 +43,15 @@ function isIos(): boolean {
   return /iPhone|iPad|iPod/i.test(ua) || (/Mac/i.test(ua) && "ontouchend" in document);
 }
 
+// iOS can only "Add to Home Screen" from Safari — showing the hint inside
+// Chrome/Firefox/Instagram/Facebook in-app browsers just confuses people.
+function isIosSafari(): boolean {
+  if (!isIos()) return false;
+  const ua = navigator.userAgent || "";
+  return !/CriOS|FxiOS|EdgiOS|OPiOS|Instagram|FBAN|FBAV|Line\//i.test(ua);
+}
+
+
 export function InstallPrompt() {
   const { subdomain } = useClubContext();
   const { pathname } = useLocation();
@@ -84,8 +93,9 @@ export function InstallPrompt() {
       handleReinstallSignal();
     }
 
-    // iOS — no event, show our own A2HS hint after a few seconds.
-    if (isIos() && shouldAsk("install-prompt-ios")) {
+    // iOS — no event, show our own A2HS hint after a few seconds (Safari only).
+    if (isIosSafari() && shouldAsk("install-prompt-ios")) {
+
       const t = setTimeout(() => {
         setIosSheet(true);
         setShow(true);

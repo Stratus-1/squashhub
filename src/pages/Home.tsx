@@ -391,17 +391,17 @@ export default function Home() {
           style={{ backgroundImage: `url(${featureImg})` }}
           aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-primary/90 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-slate-200/95 dark:bg-slate-900/90 backdrop-blur-sm" />
         <div className="relative max-w-6xl mx-auto px-4 py-16">
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div className="space-y-5">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white text-xs font-semibold">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/5 dark:bg-white/10 border border-slate-900/15 dark:border-white/20 text-slate-900 dark:text-slate-100 text-xs font-semibold">
                 <Zap className="w-3.5 h-3.5" /> Now is the time to upgrade
               </div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-white">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-slate-900 dark:text-slate-50">
                 Convert your club to the latest technology
               </h2>
-              <p className="text-sm sm:text-base text-white/85 leading-relaxed max-w-xl">
+              <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed max-w-xl">
                 Simplified automated court lighting and access control — all through one
                 affordable platform. No separate systems, no complicated wiring, and no
                 massive upfront cost.
@@ -417,12 +417,12 @@ export default function Home() {
                     key={item.text}
                     {...fadeUp}
                     transition={{ duration: 0.4, delay: i * 0.05 }}
-                    className="flex items-start gap-3 text-sm sm:text-base text-white"
+                    className="flex items-start gap-3 text-sm sm:text-base"
                   >
-                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <item.icon className="w-3 h-3 text-white" />
+                    <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <item.icon className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                     </div>
-                    <span className="text-white/90">{item.text}</span>
+                    <span className="text-slate-700 dark:text-slate-300">{item.text}</span>
                   </motion.li>
                 ))}
               </ul>
@@ -430,7 +430,7 @@ export default function Home() {
                 <Button size="lg" onClick={() => navigate("/lights")} className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold">
                   <Zap className="w-4 h-4 mr-1.5" /> Explore Lights & Access
                 </Button>
-                <Button size="lg" onClick={() => navigate("/auth")} variant="outline" className="rounded-full border-white/30 text-white hover:bg-white/10 hover:text-white">
+                <Button size="lg" onClick={() => navigate("/auth")} variant="outline" className="rounded-full border-slate-900/25 text-slate-900 hover:bg-slate-900/5 hover:text-slate-900 dark:border-white/30 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
                   Register Your Club
                 </Button>
               </div>
@@ -445,12 +445,13 @@ export default function Home() {
                   src={doorAccessImg.url}
                   alt="Member unlocking the squash club door with the SquashHub app on his phone"
                   loading="lazy"
-                  className="w-full rounded-2xl border border-white/10 object-cover shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)]"
+                  className="w-full rounded-2xl border border-slate-900/10 dark:border-white/10 object-cover shadow-[0_8px_32px_-12px_rgba(0,0,0,0.4)]"
                 />
-                <figcaption className="mt-2 text-[11px] text-white/60 italic text-center">
+                <figcaption className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 italic text-center">
                   Walk up, tap once — the door unlocks and the court lights come on.
                 </figcaption>
               </figure>
+
               <div className="relative hidden lg:block">
                 <div className="absolute inset-0 bg-amber-500/30 blur-3xl rounded-full" />
                 <video

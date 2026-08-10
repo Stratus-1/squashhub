@@ -88,6 +88,15 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-10 · iPhone install guidance did not reappear
+- **Symptom:** iPhone users still saw no prompt to install the PWA.
+- **Finding:** iOS never emits a native `beforeinstallprompt` event, and the custom guide was limited
+  to Safari and could remain suppressed for 14 days by an earlier dismissal.
+- **Fix:** the manual Share → Add to Home Screen guide now appears on every new iPhone browser
+  session (including a Safari hand-off instruction for other browsers) until launched standalone.
+- **Guard:** never wait for `beforeinstallprompt` on iOS; dismissals may suppress the guide only for
+  the current browser session, not permanently.
+
 ### 2026-08-09 · ✅ CONFIRMED WORKING — canonical recurring / mandate payment flow (DO NOT CHANGE)
 
 Verified end-to-end on 9 Aug 2026 (≈14:00 SAST): mandate authorised, first instalment collected

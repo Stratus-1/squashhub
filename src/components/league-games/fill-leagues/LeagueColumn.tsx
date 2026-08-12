@@ -12,7 +12,7 @@ type Props = {
   isCaptain: boolean;
   captainName: string | null;
   positions: Array<{ position: number; memberId: string | null }>;
-  benchMembers: Array<{ memberId: string; rank: number | null; isPulled?: boolean; isCascaded?: boolean; cascadedFromCode?: string | null }>;
+  benchMembers: Array<{ memberId: string; rank: number | null; isPulled?: boolean; isCascaded?: boolean; cascadedFromCode?: string | null; alsoPlayingLabel?: string | null }>;
   memberMap: Map<string, MemberLite>;
   /** memberId → league registration number (e.g. WPSRA / association number) for THIS league */
   leagueNumberByMember?: Map<string, string>;
@@ -179,7 +179,9 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                   available={availableSet?.has(b.memberId)}
                   onMarkUnavailable={canEdit && onMarkUnavailable ? () => onMarkUnavailable(b.memberId) : undefined}
                   badge={
-                    b.isPulled
+                    b.alsoPlayingLabel
+                      ? { label: `also ${b.alsoPlayingLabel}`, variant: "secondary" }
+                      : b.isPulled
                       ? { label: "♀ guest", variant: "outline" }
                       : b.isCascaded
                       ? { label: `↓ ${b.cascadedFromCode || ""}`, variant: "outline" }
@@ -187,6 +189,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                       ? { label: "♀", variant: "outline" }
                       : null
                   }
+
                 />
               );
             })}

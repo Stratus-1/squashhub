@@ -152,6 +152,11 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   // Per-association substitution rules (NSA: ±2 cap; NIL: lower-or-equal-only; etc.)
   const { data: subRules } = useAssociationRules(rulesAssociationId ?? associationId);
 
+  // Association allows a player to appear in more than one fixture on the same
+  // night as a substitute (registration stays one-team).
+  const allowMultiFixture = !!(subRules as any)?.allow_multi_fixture_per_night;
+
+
   // Leagues — optionally scoped to a single association
   const { data: leagues = [] } = useQuery<LeagueRow[]>({
     queryKey: ["leagues-with-captain", clubId, associationId || "all"],
@@ -792,20 +797,23 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   // ---------- Mutations ----------
 
   const upsertLineup = useMutation({
-    mutationFn: async (input: { league_id: string; position: number; club_member_id: string }) => {
+    mutationFn: async (input: { league_id: string; position: number; club_member_id: string; allowMulti?: boolean }) => {
       // Atomically move the player to the target slot. The RPC runs as
       // SECURITY DEFINER so it can clear the player from another league's
       // lineup (which RLS would otherwise block when the caller only
       // captains the TARGET league, not the source league).
-      const { error } = await supabase.rpc("move_player_to_lineup", {
+      // allowMulti keeps the player in their other team's lineup (same-night sub).
+      const { error } = await (supabase.rpc as any)("move_player_to_lineup", {
         p_club_id: clubId,
         p_week_start_date: weekStart,
         p_target_league_id: input.league_id,
         p_target_position: input.position,
         p_club_member_id: input.club_member_id,
+        p_allow_multi: !!input.allowMulti,
       });
       if (error) throw error;
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
       qc.invalidateQueries({ queryKey: ["lwl-previous", clubId] });
@@ -1151,14 +1159,56 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     // can only be in one team's lineup at a time, so duplicates from historical
     // participation in multiple leagues vanish from other Available pools once
     // they're placed.
+    // EXCEPTION: when the association allows a player in more than one fixture
+    // per night, players positioned in ANOTHER league stay selectable as subs
+    // (flagged with an "also <code> #n" badge). They're still hidden from the
+    // pool of the league where they already hold a position.
     const positionedAnywhere = new Set<string>();
-    for (const lp of lineupByLeague.values()) {
-      for (const mid of lp.values()) positionedAnywhere.add(mid);
+    const positionedInThisLeague = new Set<string>();
+    const positionedElsewhere = new Map<string, string>(); // memberId → "CODE #pos"
+    for (const [lid, lp] of lineupByLeague.entries()) {
+      for (const [pos, mid] of lp.entries()) {
+        positionedAnywhere.add(mid);
+        if (lid === lg.id) positionedInThisLeague.add(mid);
+        else if (!positionedElsewhere.has(mid)) {
+          const other = sortedLeagues.find(l => l.id === lid);
+          positionedElsewhere.set(mid, `${other?.code || other?.name || "team"} #${pos}`);
+        }
+      }
     }
 
-    return [...basePool, ...cascaded, ...explicitPulls, ...pulledLadies, ...byePool]
+    // When multi-fixture subbing is allowed, surface players already placed in
+    // another team of the same gender group so a captain can pull them in.
+    const alsoPlayingPool = allowMultiFixture
+      ? Array.from(positionedElsewhere.keys())
+          .filter(mid => !positionedInThisLeague.has(mid))
+          .filter(mid => !seenMembers.has(mid))
+          .filter(mid => {
+            const cur = memberCurrentLineup.get(mid);
+            return cur ? listForOrdering.some(l => l.id === cur.leagueId) : false;
+          })
+          .map(mid => ({
+            memberId: mid,
+            rank: null,
+            isPulled: true,
+            isCascaded: false,
+            cascadedFromCode: null as string | null,
+            alsoPlayingLabel: positionedElsewhere.get(mid) || null,
+          }))
+      : [];
+
+    return [...basePool, ...cascaded, ...explicitPulls, ...pulledLadies, ...byePool, ...alsoPlayingPool]
       .filter(p => !unavailableSet.has(p.memberId))
-      .filter(p => !positionedAnywhere.has(p.memberId))
+      .filter(p =>
+        allowMultiFixture
+          ? !positionedInThisLeague.has(p.memberId)
+          : !positionedAnywhere.has(p.memberId),
+      )
+      .map(p => ({
+        ...p,
+        alsoPlayingLabel: (p as any).alsoPlayingLabel ?? (allowMultiFixture ? positionedElsewhere.get(p.memberId) ?? null : null),
+      }))
+
       .sort((a, b) => {
         // Primary: club ladder position (lower = stronger, nulls last)
         const la = memberMap.get(a.memberId)?.ladder_position ?? Number.POSITIVE_INFINITY;
@@ -1263,11 +1313,31 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
       // If from NA, lift the unavailability so they can play
       if (origin === "na") clearUnavailable.mutate(memberId);
+
+      // Same-night sub: player already holds a slot in another team this week.
+      const existing = memberCurrentLineup.get(memberId);
+      const keepOther = allowMultiFixture && !!existing && existing.leagueId !== drop.leagueId;
+      if (keepOther) {
+        const otherLeague = sortedLeagues.find(l => l.id === existing!.leagueId);
+        const otherCode = otherLeague?.code || otherLeague?.name || "another team";
+        const dateOf = (lg?: LeagueRow) =>
+          lg ? leagueIdentityCodes(lg).map(c => nextFixtureByCode.get(c)).find(Boolean)?.fixture_date : undefined;
+        const clash = !!dateOf(otherLeague) && dateOf(otherLeague) === dateOf(targetLeague);
+        toast.warning(
+          clash
+            ? `${memberMap.get(memberId)?.name || "Player"} is also playing ${otherCode} #${existing!.position} on the same date — double booking allowed, check the start times.`
+            : `${memberMap.get(memberId)?.name || "Player"} stays in ${otherCode} #${existing!.position} and is added here as a sub.`,
+          { duration: 8000 },
+        );
+      }
+
       upsertLineup.mutate({
         league_id: drop.leagueId,
         position: drop.position,
         club_member_id: memberId,
+        allowMulti: keepOther,
       });
+
       return;
     }
 

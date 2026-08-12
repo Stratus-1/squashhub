@@ -38,6 +38,10 @@ export interface LeagueRules {
   // NSA-style flexibility: allow a member to be registered in multiple teams
   // within the same association. NIL = false (strict), NSA = true.
   allow_multi_team_registration: boolean;
+  // Same-night subbing: a player may appear in a second team's lineup in the
+  // same week as a substitute, without being registered in that team.
+  allow_multi_fixture_per_night: boolean;
+
   // Feature toggles per association
   fill_up_leagues_enabled: boolean;
 }

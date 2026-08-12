@@ -797,20 +797,23 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   // ---------- Mutations ----------
 
   const upsertLineup = useMutation({
-    mutationFn: async (input: { league_id: string; position: number; club_member_id: string }) => {
+    mutationFn: async (input: { league_id: string; position: number; club_member_id: string; allowMulti?: boolean }) => {
       // Atomically move the player to the target slot. The RPC runs as
       // SECURITY DEFINER so it can clear the player from another league's
       // lineup (which RLS would otherwise block when the caller only
       // captains the TARGET league, not the source league).
-      const { error } = await supabase.rpc("move_player_to_lineup", {
+      // allowMulti keeps the player in their other team's lineup (same-night sub).
+      const { error } = await (supabase.rpc as any)("move_player_to_lineup", {
         p_club_id: clubId,
         p_week_start_date: weekStart,
         p_target_league_id: input.league_id,
         p_target_position: input.position,
         p_club_member_id: input.club_member_id,
+        p_allow_multi: !!input.allowMulti,
       });
       if (error) throw error;
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
       qc.invalidateQueries({ queryKey: ["lwl-previous", clubId] });

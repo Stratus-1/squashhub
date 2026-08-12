@@ -336,6 +336,13 @@ export default function AssociationRulesTab({ associationId }: Props) {
             value={!!form.allow_multi_team_registration}
             onChange={(v) => set("allow_multi_team_registration", v)}
           />
+          <ToggleRow
+            label="Allow a player in more than one fixture per night"
+            hint="Registration stays one-team, but a player already placed in one team's lineup can still be picked as a substitute in another team the same week. They show with an 'also <team> #n' badge, and a warning appears when both fixtures fall on the same date."
+            value={!!(form as any).allow_multi_fixture_per_night}
+            onChange={(v) => set("allow_multi_fixture_per_night" as any, v)}
+          />
+
         </CardContent>
       </Card>
 

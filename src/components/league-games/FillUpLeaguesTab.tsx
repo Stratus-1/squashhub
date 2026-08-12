@@ -152,6 +152,11 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   // Per-association substitution rules (NSA: ±2 cap; NIL: lower-or-equal-only; etc.)
   const { data: subRules } = useAssociationRules(rulesAssociationId ?? associationId);
 
+  // Association allows a player to appear in more than one fixture on the same
+  // night as a substitute (registration stays one-team).
+  const allowMultiFixture = !!(subRules as any)?.allow_multi_fixture_per_night;
+
+
   // Leagues — optionally scoped to a single association
   const { data: leagues = [] } = useQuery<LeagueRow[]>({
     queryKey: ["leagues-with-captain", clubId, associationId || "all"],

@@ -1151,14 +1151,56 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     // can only be in one team's lineup at a time, so duplicates from historical
     // participation in multiple leagues vanish from other Available pools once
     // they're placed.
+    // EXCEPTION: when the association allows a player in more than one fixture
+    // per night, players positioned in ANOTHER league stay selectable as subs
+    // (flagged with an "also <code> #n" badge). They're still hidden from the
+    // pool of the league where they already hold a position.
     const positionedAnywhere = new Set<string>();
-    for (const lp of lineupByLeague.values()) {
-      for (const mid of lp.values()) positionedAnywhere.add(mid);
+    const positionedInThisLeague = new Set<string>();
+    const positionedElsewhere = new Map<string, string>(); // memberId → "CODE #pos"
+    for (const [lid, lp] of lineupByLeague.entries()) {
+      for (const [pos, mid] of lp.entries()) {
+        positionedAnywhere.add(mid);
+        if (lid === lg.id) positionedInThisLeague.add(mid);
+        else if (!positionedElsewhere.has(mid)) {
+          const other = sortedLeagues.find(l => l.id === lid);
+          positionedElsewhere.set(mid, `${other?.code || other?.name || "team"} #${pos}`);
+        }
+      }
     }
 
-    return [...basePool, ...cascaded, ...explicitPulls, ...pulledLadies, ...byePool]
+    // When multi-fixture subbing is allowed, surface players already placed in
+    // another team of the same gender group so a captain can pull them in.
+    const alsoPlayingPool = allowMultiFixture
+      ? Array.from(positionedElsewhere.keys())
+          .filter(mid => !positionedInThisLeague.has(mid))
+          .filter(mid => !seenMembers.has(mid))
+          .filter(mid => {
+            const cur = memberCurrentLineup.get(mid);
+            return cur ? listForOrdering.some(l => l.id === cur.leagueId) : false;
+          })
+          .map(mid => ({
+            memberId: mid,
+            rank: null,
+            isPulled: true,
+            isCascaded: false,
+            cascadedFromCode: null as string | null,
+            alsoPlayingLabel: positionedElsewhere.get(mid) || null,
+          }))
+      : [];
+
+    return [...basePool, ...cascaded, ...explicitPulls, ...pulledLadies, ...byePool, ...alsoPlayingPool]
       .filter(p => !unavailableSet.has(p.memberId))
-      .filter(p => !positionedAnywhere.has(p.memberId))
+      .filter(p =>
+        allowMultiFixture
+          ? !positionedInThisLeague.has(p.memberId)
+          : !positionedAnywhere.has(p.memberId),
+      )
+      .map(p => ({
+        ...p,
+        alsoPlayingLabel: (p as any).alsoPlayingLabel ?? (allowMultiFixture ? positionedElsewhere.get(p.memberId) ?? null : null),
+      }))
+
       .sort((a, b) => {
         // Primary: club ladder position (lower = stronger, nulls last)
         const la = memberMap.get(a.memberId)?.ladder_position ?? Number.POSITIVE_INFINITY;

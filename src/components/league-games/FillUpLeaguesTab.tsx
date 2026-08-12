@@ -1313,11 +1313,31 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
       // If from NA, lift the unavailability so they can play
       if (origin === "na") clearUnavailable.mutate(memberId);
+
+      // Same-night sub: player already holds a slot in another team this week.
+      const existing = memberCurrentLineup.get(memberId);
+      const keepOther = allowMultiFixture && !!existing && existing.leagueId !== drop.leagueId;
+      if (keepOther) {
+        const otherLeague = sortedLeagues.find(l => l.id === existing!.leagueId);
+        const otherCode = otherLeague?.code || otherLeague?.name || "another team";
+        const dateOf = (lg?: LeagueRow) =>
+          lg ? leagueIdentityCodes(lg).map(c => nextFixtureByCode.get(c)).find(Boolean)?.fixture_date : undefined;
+        const clash = !!dateOf(otherLeague) && dateOf(otherLeague) === dateOf(targetLeague);
+        toast.warning(
+          clash
+            ? `${memberMap.get(memberId)?.name || "Player"} is also playing ${otherCode} #${existing!.position} on the same date — double booking allowed, check the start times.`
+            : `${memberMap.get(memberId)?.name || "Player"} stays in ${otherCode} #${existing!.position} and is added here as a sub.`,
+          { duration: 8000 },
+        );
+      }
+
       upsertLineup.mutate({
         league_id: drop.leagueId,
         position: drop.position,
         club_member_id: memberId,
+        allowMulti: keepOther,
       });
+
       return;
     }
 

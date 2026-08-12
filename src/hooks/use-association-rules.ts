@@ -86,7 +86,15 @@ export function useUpdateAssociationRules() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { associationId: string; patch: Partial<LeagueRules> }) => {
-      const { associationId, patch } = input;
+      const { associationId } = input;
+      // Never carry identity/audit columns through — when rules are inherited from a
+      // platform association the loaded row's id/association_id would collide on insert.
+      const patch: Record<string, any> = { ...input.patch };
+      delete patch.id;
+      delete patch.association_id;
+      delete patch.created_at;
+      delete patch.updated_at;
+
       const { data: existing } = await supabase
         .from("league_rules")
         .select("id")
@@ -102,7 +110,7 @@ export function useUpdateAssociationRules() {
       } else {
         const { error } = await supabase
           .from("league_rules")
-          .insert({ association_id: associationId, ...patch });
+          .upsert({ association_id: associationId, ...patch }, { onConflict: "association_id" });
         if (error) throw error;
       }
     },

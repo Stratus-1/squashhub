@@ -472,3 +472,12 @@ Express fallback path is always the one in use for this club.
 - **Where:** `subscription_plans.trial_days = 90`, `app_settings.saas_trial_days = 90`, fallback in `supabase/functions/create-club/index.ts` and defaults in `SuperAdminSubscriptions.tsx`.
 - **Existing clubs:** their current `trial_ends_at` values were NOT changed — no retroactive extensions.
 - **Copy:** Home marketing page, RegisterClub page, and SLA v1.4 (new §1 "Free Trial Period"; billing starts the day after trial ends, not before 1 Sep 2026).
+
+### 2026-08-12 · Same-night substitution across teams
+- **Need:** a player registered in one team must be able to fill in for another team on the same night.
+- **Fix:** new association rule `league_rules.allow_multi_fixture_per_night`. Registration stays
+  one-team; when on, Fill Up Leagues keeps already-placed players selectable in other teams of the
+  same gender group with an "also <team> #n" badge, and `move_player_to_lineup(p_allow_multi)` keeps
+  the original lineup row instead of deleting it.
+- **Guard:** do NOT use `allow_multi_team_registration` for this — that changes permanent squad
+  registration. Same-date fixtures only warn, never block.

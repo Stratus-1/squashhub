@@ -4438,6 +4438,7 @@ export type Database = {
       }
       league_rules: {
         Row: {
+          allow_multi_fixture_per_night: boolean
           allow_multi_team_registration: boolean
           association_id: string | null
           bonus_points_mode: string
@@ -4472,6 +4473,7 @@ export type Database = {
           win_by: number
         }
         Insert: {
+          allow_multi_fixture_per_night?: boolean
           allow_multi_team_registration?: boolean
           association_id?: string | null
           bonus_points_mode?: string
@@ -4506,6 +4508,7 @@ export type Database = {
           win_by?: number
         }
         Update: {
+          allow_multi_fixture_per_night?: boolean
           allow_multi_team_registration?: boolean
           association_id?: string | null
           bonus_points_mode?: string

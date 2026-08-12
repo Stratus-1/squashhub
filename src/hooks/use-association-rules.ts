@@ -110,7 +110,7 @@ export function useUpdateAssociationRules() {
       } else {
         const { error } = await supabase
           .from("league_rules")
-          .upsert({ association_id: associationId, ...patch }, { onConflict: "association_id" });
+          .insert({ association_id: associationId, ...patch });
         if (error) throw error;
       }
     },

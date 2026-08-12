@@ -12,7 +12,7 @@ type Props = {
   isCaptain: boolean;
   captainName: string | null;
   positions: Array<{ position: number; memberId: string | null }>;
-  benchMembers: Array<{ memberId: string; rank: number | null; isPulled?: boolean; isCascaded?: boolean; cascadedFromCode?: string | null }>;
+  benchMembers: Array<{ memberId: string; rank: number | null; isPulled?: boolean; isCascaded?: boolean; cascadedFromCode?: string | null; alsoPlayingLabel?: string | null }>;
   memberMap: Map<string, MemberLite>;
   /** memberId → league registration number (e.g. WPSRA / association number) for THIS league */
   leagueNumberByMember?: Map<string, string>;

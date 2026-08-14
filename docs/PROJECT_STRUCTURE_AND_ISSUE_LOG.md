@@ -505,3 +505,37 @@ Network-agnostic router monitoring module.
 - DOB never exposed broadly: `people_directory` view returns age/age_group only; full DOB gated by `can_view_person_dob()` (self, platform admin, org roles super_admin/competition_admin/tournament_director).
 - Dedupe via `merge_people(keep, dup)` RPC (platform/national admins only).
 - UI: Super Admin → Federation → People tab (`src/components/admin/FederationPeopleTab.tsx`, `src/hooks/use-people.ts`).
+
+## Tournaments — one wizard for club, association and federation (2026-08-14)
+
+### Club level baseline — WORKING, do not change behaviour
+`src/components/club-admin/ClubChampsTab.tsx` is the tournament wizard. Steps:
+`category → courts → registration → players → groups → schedule → review` (+ programmatic `preview`).
+It generates draws (round robin / groups+playoffs / Swiss / cross-league), auto-books courts,
+writes `club_champs_entries` / `club_champs_matches`, and routes scoring through the format
+registry (`src/lib/tournament-formats/`, marker routes per format: standard → MatchMarker, Bells → BellsMarker).
+Any change here must keep the club path identical: the component defaults to `scope="club"`,
+`ownerOrgId=null`, no extra participating clubs — which reproduces the previous behaviour exactly.
+
+### Field ownership — one home per field (no double entry)
+Storage was already de-duplicated when `club_champs` became a view:
+
+| Concern | Table | Edited in |
+|---|---|---|
+| Operations (name, dates, play days, courts, day schedules, leagues, groups, capacity) | `tournaments` | Wizard |
+| Sanctioning, eligibility, registration window, entry fee + federation/association split, payment, refunds | `tournament_governance` | Governance dialog (wizard's registration step writes the same record via the view) |
+| Scoring format, draw type, standard of play, best-of, points, handicap, byes, ranking flag | `tournament_rules` | Rules dialog (wizard's category step writes the same record via the view) |
+| Host venues, courts, host compensation | `tournament_venues` | Governance → Venues |
+
+`public.club_champs` is a compatibility VIEW over these four tables with `INSTEAD OF`
+insert/update/delete triggers (`club_champs_compat_*`). Legacy club code keeps working and
+there is only ever one stored copy of each field.
+
+### 2026-08-14 additions
+- `tournaments`: `event_type`, `max_entrants`, `max_per_league`, `seeding_source`, `participating_club_ids`.
+  These are NOT in the compat view — read/written directly against `tournaments`.
+- `ClubChampsTab` props: `ownerOrgId`, `scope` (`club|association|federation`), `participatingClubIds`.
+  Multi-club mode pools members and courts across the host club plus participating clubs
+  (court names prefixed with the club name), and lists tournaments by `owner_org_id`.
+- Super Admin → Tournaments (`src/pages/admin/SuperAdminTournaments.tsx`) mounts the same wizard
+  for a chosen federation/association owner, host club and extra venues.

@@ -8712,6 +8712,7 @@ export type Database = {
           end_date: string
           end_time: string
           entries_locked: boolean
+          event_type: string
           expected_players: Json | null
           gender: string
           group_break_minutes: Json
@@ -8726,14 +8727,18 @@ export type Database = {
           league_formats: Json | null
           match_duration_minutes: number
           match_type: string
+          max_entrants: number | null
+          max_per_league: number | null
           name: string
           num_groups: number
           owner_org_id: string | null
+          participating_club_ids: string[]
           partner_mode: string
           play_days: number[]
           playoff_break_minutes: number
           playoff_date: string | null
           schedule_mode: string
+          seeding_source: string
           source_league_id: string | null
           source_league_ids: string[]
           start_date: string
@@ -8757,6 +8762,7 @@ export type Database = {
           end_date: string
           end_time?: string
           entries_locked?: boolean
+          event_type?: string
           expected_players?: Json | null
           gender: string
           group_break_minutes?: Json
@@ -8771,14 +8777,18 @@ export type Database = {
           league_formats?: Json | null
           match_duration_minutes?: number
           match_type?: string
+          max_entrants?: number | null
+          max_per_league?: number | null
           name: string
           num_groups?: number
           owner_org_id?: string | null
+          participating_club_ids?: string[]
           partner_mode?: string
           play_days?: number[]
           playoff_break_minutes?: number
           playoff_date?: string | null
           schedule_mode?: string
+          seeding_source?: string
           source_league_id?: string | null
           source_league_ids?: string[]
           start_date: string
@@ -8802,6 +8812,7 @@ export type Database = {
           end_date?: string
           end_time?: string
           entries_locked?: boolean
+          event_type?: string
           expected_players?: Json | null
           gender?: string
           group_break_minutes?: Json
@@ -8816,14 +8827,18 @@ export type Database = {
           league_formats?: Json | null
           match_duration_minutes?: number
           match_type?: string
+          max_entrants?: number | null
+          max_per_league?: number | null
           name?: string
           num_groups?: number
           owner_org_id?: string | null
+          participating_club_ids?: string[]
           partner_mode?: string
           play_days?: number[]
           playoff_break_minutes?: number
           playoff_date?: string | null
           schedule_mode?: string
+          seeding_source?: string
           source_league_id?: string | null
           source_league_ids?: string[]
           start_date?: string

@@ -29,7 +29,14 @@ import { centsToRand, computeFeeSplit, randToCents } from "@/lib/tournaments/fee
 interface Props {
   champ: { id: string; name: string } | null;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Level running the event. At club level the sanctioning block and the
+   * federation share are hidden — a club event is not sanctioned by itself and
+   * keeps its own entry money, so those fields would just be dead inputs.
+   */
+  scope?: "club" | "association" | "federation";
 }
+
 
 const FIELD_LABELS: Record<string, string> = {
   sanction_status: "Sanction status",
@@ -57,7 +64,8 @@ const FIELD_LABELS: Record<string, string> = {
 const toLocalInput = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
 const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null);
 
-export function TournamentGovernanceDialog({ champ, onOpenChange }: Props) {
+export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "federation" }: Props) {
+  const clubScope = scope === "club";
   const id = champ?.id ?? null;
   const { data: gov } = useTournamentGovernance(id);
   const { data: authorities = [] } = useSanctioningAuthorities();
@@ -146,6 +154,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange }: Props) {
                 </p>
               </div>
 
+              {!clubScope && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Competition level</Label>
@@ -197,6 +206,8 @@ export function TournamentGovernanceDialog({ champ, onOpenChange }: Props) {
                   />
                 </div>
               </div>
+              )}
+
               <div className="space-y-1">
                 <Label>Notes</Label>
                 <Textarea
@@ -287,6 +298,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange }: Props) {
                     onChange={(e) => set("entry_fee_cents", randToCents(e.target.value))}
                   />
                 </div>
+                {!clubScope && (
                 <div className="space-y-1">
                   <Label>Federation share (R)</Label>
                   <Input
@@ -295,6 +307,8 @@ export function TournamentGovernanceDialog({ champ, onOpenChange }: Props) {
                     onChange={(e) => set("federation_fee_cents", randToCents(e.target.value))}
                   />
                 </div>
+                )}
+
                 <div className="space-y-1">
                   <Label>Association share (R)</Label>
                   <Input

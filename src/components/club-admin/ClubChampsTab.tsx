@@ -38,8 +38,29 @@ import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-for
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 
 interface ClubChampsTabProps {
+  /** Primary host club — its courts are the default venue and new events are filed under it. */
   clubId: string;
+  /**
+   * Owning body of the events managed here. Omitted at club level (the club's own
+   * organisation is used). Set for association / federation tournament planning.
+   */
+  ownerOrgId?: string | null;
+  /** Who is running the event. Drives the entrant pool and which governance fields matter. */
+  scope?: "club" | "association" | "federation";
+  /** Extra clubs (besides clubId) whose members and courts may be used. */
+  participatingClubIds?: string[];
 }
+
+/** Event types — used at every level; clubs default to a club championship. */
+const EVENT_TYPES: { value: string; label: string }[] = [
+  { value: "club_championship", label: "Club championship" },
+  { value: "closed", label: "Closed (members of the owning body only)" },
+  { value: "open", label: "Open (anyone may enter)" },
+  { value: "invitational", label: "Invitational" },
+  { value: "ranking", label: "Ranking event" },
+  { value: "league_finals", label: "League finals / play-offs" },
+];
+
 
 type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
 type GenderCategory = "men" | "ladies" | "mixed" | "open";
@@ -309,12 +330,34 @@ function DroppableLeague({ id, children, className }: { id: string; children: Re
   );
 }
 
-export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
+export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { data: members = [] } = useClubMembers(clubId);
+  // Clubs whose members and courts are available to this tournament. At club
+  // level this is just the club itself, so behaviour is identical to before.
+  const venueClubIds = useMemo(() => {
+    const ids = new Set<string>([clubId, ...(participatingClubIds || [])]);
+    return Array.from(ids).filter(Boolean);
+  }, [clubId, participatingClubIds]);
+  const multiClub = venueClubIds.length > 1;
+
+  const { data: clubMembers = [] } = useClubMembers(clubId);
+  const { data: pooledMembers = [] } = useQuery({
+    queryKey: ["tournament-member-pool", venueClubIds],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members")
+        .select("*, profiles:user_id(name, email, phone, avatar_url), club:club_id(name)")
+        .in("club_id", venueClubIds)
+        .order("name");
+      if (error) throw error;
+      return (data || []) as ClubMember[];
+    },
+    enabled: multiClub,
+  });
+  const members = multiClub ? pooledMembers : clubMembers;
   const whatsappEnabled = useWhatsAppEnabled(clubId);
   const isSuperAdmin = useIsSuperAdmin();
+
 
   // Club-level payment config — drives the "Accepted payment methods" picker on the Registration step.
   // We read the configured online gateway (clubs.payment_gateway) and check whether bank details
@@ -343,27 +386,52 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   });
 
   const { data: courts = [] } = useQuery({
-    queryKey: ["club-courts", clubId],
+    queryKey: ["tournament-courts", venueClubIds],
     queryFn: async () => {
-      const { data, error } = await fromExt("courts").select("id, name, is_external, venue_name").eq("club_id", clubId);
+      const { data, error } = await fromExt("courts")
+        .select("id, name, is_external, venue_name, club_id, club:club_id(name)")
+        .in("club_id", venueClubIds);
       if (error) throw error;
-      return data as { id: number; name: string; is_external?: boolean | null; venue_name?: string | null }[];
+      return (data || []).map((c: any) => ({
+        ...c,
+        // In multi-venue events the club name is prefixed so courts stay distinguishable.
+        name: multiClub ? `${c.club?.name || "Club"} — ${c.name}` : c.name,
+      })) as { id: number; name: string; is_external?: boolean | null; venue_name?: string | null; club_id?: string }[];
     },
-    enabled: !!clubId,
+    enabled: venueClubIds.length > 0,
   });
 
   const { data: existingChamps = [], isLoading: champsLoading } = useQuery({
-    queryKey: ["club-champs", clubId],
+    queryKey: ["club-champs", clubId, ownerOrgId],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_champs")
-        .select("*")
-        .eq("club_id", clubId)
-        .order("created_at", { ascending: false });
+      let q = fromExt("club_champs").select("*");
+      q = ownerOrgId ? q.eq("owner_org_id", ownerOrgId) : q.eq("club_id", clubId);
+      const { data, error } = await q.order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
     enabled: !!clubId,
   });
+
+  // Fields that live only on the tournaments table (not exposed by the legacy
+  // club_champs compatibility view): event type, entry limits, seeding source.
+  const champIdsKey = (existingChamps as any[]).map((c: any) => c.id).join(",");
+  const { data: tournamentExtras } = useQuery({
+    queryKey: ["tournament-extras", champIdsKey],
+    queryFn: async () => {
+      const ids = (existingChamps as any[]).map((c: any) => c.id);
+      if (ids.length === 0) return {} as Record<string, any>;
+      const { data, error } = await fromExt("tournaments")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids")
+        .in("id", ids);
+      if (error) throw error;
+      const map: Record<string, any> = {};
+      (data || []).forEach((r: any) => { map[r.id] = r; });
+      return map;
+    },
+    enabled: !!champIdsKey,
+  });
+
 
   const [step, setStep] = useState<WizardStep>("category");
   const [showWizard, setShowWizard] = useState(false);
@@ -526,6 +594,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
+  // Tournament type / capacity / seeding — stored on the tournaments row.
+  const [eventType, setEventType] = useState<string>(scope === "club" ? "club_championship" : "open");
+  const [maxEntrants, setMaxEntrants] = useState<string>("");
+  const [maxPerLeague, setMaxPerLeague] = useState<string>("");
+  const [seedingSource, setSeedingSource] = useState<string>("ladder");
+
   const [showInvitePreview, setShowInvitePreview] = useState(false);
 
   // Invite by league (just for the initial roster — admin can still sub from any league later)
@@ -910,22 +984,39 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
       playoff_date: playoffDate || null,
     };
+    // Fields that live only on the tournaments table (not on the legacy view).
+    const extras = {
+      event_type: eventType,
+      max_entrants: maxEntrants ? Math.max(0, Math.round(Number(maxEntrants))) : null,
+      max_per_league: maxPerLeague ? Math.max(0, Math.round(Number(maxPerLeague))) : null,
+      seeding_source: seedingSource,
+      participating_club_ids: venueClubIds.filter((id) => id !== clubId),
+    };
+    const saveExtras = async (id: string) => {
+      const { error } = await fromExt("tournaments").update(extras).eq("id", id);
+      if (error) console.warn("Tournament extras save failed:", error.message);
+    };
     try {
       if (editingChampId) {
         const { error } = await fromExt("club_champs").update(payload).eq("id", editingChampId);
         if (error) throw error;
+        await saveExtras(editingChampId);
       } else {
         const { data, error } = await fromExt("club_champs")
-          .insert({ club_id: clubId, status: "planning", ...payload })
+          .insert({ club_id: clubId, owner_org_id: ownerOrgId ?? undefined, status: "planning", ...payload })
           .select("id")
           .single();
         if (error) throw error;
-        if (data?.id) setEditingChampId(data.id);
+        if (data?.id) {
+          setEditingChampId(data.id);
+          await saveExtras(data.id);
+        }
         qc.invalidateQueries({ queryKey: ["club-champs"] });
         return data?.id || editingChampId;
       }
       qc.invalidateQueries({ queryKey: ["club-champs"] });
       return editingChampId;
+
     } catch (e: any) {
       console.warn("Tournament autosave failed:", e);
       toast.error(`Save failed: ${e?.message || "unknown error"}`);
@@ -3327,6 +3418,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setInviteScheduledAt("");
     setDescription("");
     setAffectsRankingPoints(false);
+    setEventType(scope === "club" ? "club_championship" : "open");
+    setMaxEntrants("");
+    setMaxPerLeague("");
+    setSeedingSource("ladder");
+
     setIncludeVisitors(false);
     setSelectedVisitorClubs(new Set());
     setCustomizeDailySchedule(false);
@@ -3400,6 +3496,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
+    const ex = (tournamentExtras || {})[champ.id] || {};
+    setEventType(ex.event_type || (scope === "club" ? "club_championship" : "open"));
+    setMaxEntrants(ex.max_entrants ? String(ex.max_entrants) : "");
+    setMaxPerLeague(ex.max_per_league ? String(ex.max_per_league) : "");
+    setSeedingSource(ex.seeding_source || "ladder");
+
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")
@@ -3816,7 +3918,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           </DialogContent>
         </Dialog>
 
-        <TournamentGovernanceDialog champ={governanceChamp} onOpenChange={(v) => !v && setGovernanceChamp(null)} />
+        <TournamentGovernanceDialog champ={governanceChamp} scope={scope} onOpenChange={(v) => !v && setGovernanceChamp(null)} />
         <TournamentRulesDialog champ={rulesChamp} onOpenChange={(v) => !v && setRulesChamp(null)} />
         <Dialog open={!!duplicateSource} onOpenChange={(v) => !v && setDuplicateSource(null)}>
           <DialogContent className="max-w-sm">
@@ -3894,6 +3996,55 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 onChange={(e) => setChampName(e.target.value)}
               />
             </div>
+
+            {/* Tournament type, capacity and seeding — same block at every level. */}
+            <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm space-y-3">
+              <div>
+                <Label className="text-sm font-semibold">Tournament type <span className="text-destructive">*</span></Label>
+                <Select value={eventType} onValueChange={setEventType}>
+                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {EVENT_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Sanctioning, eligibility, entry fees and refunds are set once in <strong>Governance</strong>; how the
+                  game is played is set once in <strong>Rules</strong>. This wizard covers the running of the event.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs font-medium">Max entrants (optional)</Label>
+                  <Input type="number" min={0} className="mt-1" value={maxEntrants}
+                    onChange={(e) => setMaxEntrants(e.target.value)} placeholder="No limit" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium">Max per league (optional)</Label>
+                  <Input type="number" min={0} className="mt-1" value={maxPerLeague}
+                    onChange={(e) => setMaxPerLeague(e.target.value)} placeholder="No limit" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium">Seeding from</Label>
+                  <Select value={seedingSource} onValueChange={setSeedingSource}>
+                    <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ladder">Club ladder</SelectItem>
+                      <SelectItem value="ranking">National ranking</SelectItem>
+                      <SelectItem value="manual">Manual order</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {multiClub && (
+                <p className="text-[11px] text-muted-foreground">
+                  Entrants and courts are pooled from {venueClubIds.length} clubs.
+                </p>
+              )}
+            </div>
+
+
 
             {/* Scoring format — driven by the tournament-format registry */}
             <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm">

@@ -59,7 +59,35 @@ export function BillingInfoTab({ clubId, clubName }: { clubId: string; clubName?
   const [form, setForm] = useState<Omit<ClubBillingProfile, "club_id">>(EMPTY);
   const [newEmail, setNewEmail] = useState("");
 
-  // Seed the form: saved profile first, otherwise default from finance-permission members.
+  // Club contact details (Setup → Club → Contact details) used as address defaults.
+  const { data: club } = useQuery({
+    queryKey: ["club-contact-details", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("address, phone, email")
+        .eq("id", clubId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { address: string | null; phone: string | null; email: string | null } | null;
+    },
+  });
+
+  const clubAddress = useMemo(() => parseClubAddress(club?.address), [club?.address]);
+
+  const applyClubContact = () => {
+    if (!clubAddress && !club?.phone) return toast.info("No club contact details captured yet");
+    setForm((f) => ({
+      ...f,
+      ...(clubAddress || {}),
+      country: f.country || "South Africa",
+      phone: f.phone || club?.phone || "",
+    }));
+    toast.success("Pulled in the club's contact details — remember to save");
+  };
+
+  // Seed the form: saved profile first, otherwise default from finance members + club contact details.
   useEffect(() => {
     if (isLoading) return;
     if (profile) {
@@ -70,13 +98,15 @@ export function BillingInfoTab({ clubId, clubName }: { clubId: string; clubName?
         ...EMPTY,
         contact_name: primary?.name || "",
         company_name: clubName || "",
-        phone: primary?.phone || "",
+        phone: primary?.phone || club?.phone || "",
+        ...(clubAddress || {}),
+        country: clubAddress ? "South Africa" : "",
         emails: Array.from(
           new Set(financeContacts.map((c: any) => (c.email || "").trim().toLowerCase()).filter(Boolean))
         ),
       });
     }
-  }, [profile, isLoading, financeContacts, clubName]);
+  }, [profile, isLoading, financeContacts, clubName, club?.phone, clubAddress]);
 
   const set = (k: keyof typeof EMPTY, v: any) => setForm((f) => ({ ...f, [k]: v }));
 

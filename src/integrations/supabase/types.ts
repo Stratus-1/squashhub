@@ -6608,6 +6608,7 @@ export type Database = {
           country: string
           created_at: string
           id: string
+          is_internal_league: boolean
           kind: Database["public"]["Enums"]["org_kind"]
           league_association_id: string | null
           logo_url: string | null
@@ -6626,6 +6627,7 @@ export type Database = {
           country?: string
           created_at?: string
           id?: string
+          is_internal_league?: boolean
           kind: Database["public"]["Enums"]["org_kind"]
           league_association_id?: string | null
           logo_url?: string | null
@@ -6644,6 +6646,7 @@ export type Database = {
           country?: string
           created_at?: string
           id?: string
+          is_internal_league?: boolean
           kind?: Database["public"]["Enums"]["org_kind"]
           league_association_id?: string | null
           logo_url?: string | null

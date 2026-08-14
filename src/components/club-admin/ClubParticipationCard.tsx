@@ -50,7 +50,30 @@ export function ClubParticipationCard({ club }: { club: Club }) {
   });
   const memberCount = typeof liveMemberCount === "number" ? liveMemberCount : (c as any).active_member_count;
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
-  
+
+  // Which billing options this club is allowed to choose (set by SquashHub per club).
+  const allowAnnual = c.allow_annual_billing === true;
+  const allowBiannual = c.allow_biannual_billing === true;
+
+  const pricing = useSaasPricing(clubCurrencyCode);
+  const billable =
+    typeof memberCount === "number"
+      ? pricing.cap && pricing.cap > 0
+        ? Math.min(memberCount, pricing.cap)
+        : memberCount
+      : null;
+  const monthlyTotal =
+    billable != null ? computeTieredCharge(billable, pricing.monthlyTiers, pricing.monthlyMin).subtotal : null;
+  const biannualTotal =
+    billable != null
+      ? computeTieredCharge(billable, pricing.biannualTiers, pricing.biannualMin).subtotal * 6
+      : null;
+  const annualTotal =
+    billable != null ? computeTieredCharge(billable, pricing.annualTiers, pricing.annualMin).subtotal * 12 : null;
+
+  const chosenAmount =
+    billing === "annual_upfront" ? annualTotal : billing === "biannual_upfront" ? biannualTotal : monthlyTotal;
+  const chosenCycle = billing === "annual_upfront" ? "annual" : billing === "biannual_upfront" ? "biannual" : "monthly";
 
   const handleAccept = async () => {
     if (!agreed || !name.trim() || !role.trim()) {
@@ -69,6 +92,20 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         sla_version: SLA_VERSION,
         sla_billing_option: billing,
       } as any);
+
+      // Lock in the baseline member count + amount agreed at signature time.
+      if (typeof memberCount === "number") {
+        const { error } = await (supabase as any).rpc("set_club_subscription_baseline", {
+          _club_id: club.id,
+          _member_count: memberCount,
+          _amount: chosenAmount ?? 0,
+          _currency: clubCurrencyCode,
+          _cycle: chosenCycle,
+          _actor_name: name.trim(),
+        });
+        if (error) throw error;
+      }
+
       toast.success("Club participation activated — welcome aboard!");
       setOpen(false);
     } catch (err: any) {

@@ -13,7 +13,7 @@ import { useSaasPricing } from "@/hooks/use-saas-pricing";
 import { computeTieredCharge } from "@/lib/saas-tiers";
 
 
-type BillingOption = "monthly" | "annual_upfront";
+type BillingOption = "monthly" | "biannual_upfront" | "annual_upfront";
 
 export interface BillingFrequencyInvoice {
   billing_cycle?: string | null;
@@ -42,7 +42,12 @@ export function BillingFrequencyCard({
   const { code: currencyCode } = useClubCurrency();
   const pricing = useSaasPricing(currencyCode);
 
-  const current: BillingOption = c.sla_billing_option === "annual_upfront" ? "annual_upfront" : "monthly";
+  const current: BillingOption =
+    c.sla_billing_option === "annual_upfront"
+      ? "annual_upfront"
+      : c.sla_billing_option === "biannual_upfront"
+        ? "biannual_upfront"
+        : "monthly";
   const [choice, setChoice] = useState<BillingOption>(current);
   const [saving, setSaving] = useState(false);
 
@@ -52,7 +57,7 @@ export function BillingFrequencyCard({
     const ends = invoices
       .filter(
         (i) =>
-          (i.billing_cycle || "").toLowerCase() === "annual" &&
+          ["annual", "biannual"].includes((i.billing_cycle || "").toLowerCase()) &&
           (i.status || "").toLowerCase() !== "void" &&
           i.period_end &&
           i.period_end >= today
@@ -95,10 +100,14 @@ export function BillingFrequencyCard({
 
 
   const monthly = billable !== null ? computeTieredCharge(billable, pricing.monthlyTiers, pricing.monthlyMin) : null;
+  const biannual =
+    billable !== null ? computeTieredCharge(billable, pricing.biannualTiers, pricing.biannualMin) : null;
   const annual = billable !== null ? computeTieredCharge(billable, pricing.annualTiers, pricing.annualMin) : null;
 
   const monthlyTotal = monthly ? monthly.subtotal : null;
   const annualTotal = annual ? annual.subtotal * 12 : null;
+  const biannualTotal = biannual ? biannual.subtotal * 6 : null;
+  const saving6 = monthlyTotal != null && biannualTotal != null ? monthlyTotal * 6 - biannualTotal : null;
   const saving12 = monthlyTotal != null && annualTotal != null ? monthlyTotal * 12 - annualTotal : null;
 
   const [requestedAt, setRequestedAt] = useState<string | null>(c.annual_billing_requested_at ?? null);
@@ -125,7 +134,9 @@ export function BillingFrequencyCard({
       toast.success(
         choice === "annual_upfront"
           ? "Set to annual upfront — your next invoice will cover 12 months."
-          : "Set to monthly — you'll be invoiced each month."
+          : choice === "biannual_upfront"
+            ? "Set to 6-monthly upfront — your next invoice will cover 6 months."
+            : "Set to monthly — you'll be invoiced each month."
       );
     } catch (e: any) {
       toast.error(e?.message || "Failed to save billing frequency");
@@ -140,7 +151,11 @@ export function BillingFrequencyCard({
         <CalendarClock className="w-4 h-4 text-primary" />
         <h3 className="font-semibold text-sm">Billing frequency</h3>
         <Badge variant="outline" className="text-[10px]">
-          {current === "annual_upfront" ? "Annual upfront" : "Monthly"}
+          {current === "annual_upfront"
+            ? "Annual upfront"
+            : current === "biannual_upfront"
+              ? "6-monthly upfront"
+              : "Monthly"}
         </Badge>
         {locked && (
           <Badge variant="secondary" className="text-[10px]">
@@ -151,21 +166,21 @@ export function BillingFrequencyCard({
       <p className="text-xs text-muted-foreground">
         {locked ? (
           <>
-            You&apos;ve paid annually in advance — no further invoices until{" "}
-            {new Date(annualCoverUntil!).toLocaleDateString()}. You can choose monthly or annual
-            again when this period ends.
+            You&apos;ve paid in advance — no further invoices until{" "}
+            {new Date(annualCoverUntil!).toLocaleDateString()}. You can choose monthly, 6-monthly or
+            annual again when this period ends.
           </>
         ) : allowAnnual ? (
           <>
-            Choose how you&apos;d like to be invoiced. While you&apos;re on monthly you can switch to
-            annual upfront at any time — the option stays here every month. Annual upfront covers 12
-            months in one invoice and works out cheaper per member.
+            Choose how you&apos;d like to be invoiced. Paying upfront earns a discount off the
+            monthly scale: 5% for 6 months in advance, 10% for a full year. You can switch while
+            you&apos;re on monthly at any time.
           </>
         ) : (
           <>
             Your club is invoiced monthly in advance, based on your member count at the time of each
             invoice. Invoicing starts 1 September 2026. Prefer to settle a full year upfront? Request
-            annual payment below — SquashHub will review and enable it.
+            upfront payment below — SquashHub will review and enable 6-monthly and annual billing.
           </>
         )}
       </p>
@@ -177,7 +192,7 @@ export function BillingFrequencyCard({
         value={choice}
         onValueChange={(v) => setChoice(v as BillingOption)}
         disabled={locked}
-        className="grid grid-cols-1 md:grid-cols-2 gap-2"
+        className="grid grid-cols-1 md:grid-cols-3 gap-2"
       >
         <label
           className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "monthly" ? "border-primary bg-primary/5" : ""}`}
@@ -199,11 +214,35 @@ export function BillingFrequencyCard({
 
         {allowAnnual && (
           <label
+            className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "biannual_upfront" ? "border-primary bg-primary/5" : ""}`}
+          >
+            <RadioGroupItem value="biannual_upfront" id="freq-biannual" className="mt-0.5" disabled={locked} />
+            <div className="text-sm flex-1">
+              <div className="font-medium">6-monthly upfront <span className="text-[10px] text-muted-foreground">(5% off)</span></div>
+              <div className="text-lg font-bold text-foreground">
+                {biannualTotal != null ? pricing.format(biannualTotal) : "—"}
+                <span className="text-[10px] font-normal text-muted-foreground"> / 6 months</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                One invoice covering six months
+                {biannual && <> · ≈ {pricing.format(biannual.subtotal)} / month</>}
+              </div>
+              {saving6 != null && saving6 > 0 && (
+                <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  Save {pricing.format(saving6)} per 6 months
+                </div>
+              )}
+            </div>
+          </label>
+        )}
+
+        {allowAnnual && (
+          <label
             className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}
           >
             <RadioGroupItem value="annual_upfront" id="freq-annual" className="mt-0.5" disabled={locked} />
             <div className="text-sm flex-1">
-              <div className="font-medium">Annual upfront</div>
+              <div className="font-medium">Annual upfront <span className="text-[10px] text-muted-foreground">(10% off)</span></div>
               <div className="text-lg font-bold text-foreground">
                 {annualTotal != null ? pricing.format(annualTotal) : "—"}
                 <span className="text-[10px] font-normal text-muted-foreground"> / year</span>
@@ -225,15 +264,18 @@ export function BillingFrequencyCard({
       {!allowAnnual && (
         <div className="rounded-md border p-3 space-y-2">
           <div className="text-sm">
-            <div className="font-medium">Annual upfront</div>
+            <div className="font-medium">Upfront payment options</div>
             <div className="text-lg font-bold text-foreground">
               {annualTotal != null ? pricing.format(annualTotal) : "—"}
               <span className="text-[10px] font-normal text-muted-foreground"> / year</span>
             </div>
             <div className="text-xs text-muted-foreground">
-              One invoice, paid in advance
+              Annual, one invoice paid in advance (10% off)
               {annual && <> · ≈ {pricing.format(annual.subtotal)} / month</>}
               {saving12 != null && saving12 > 0 && <> · saves {pricing.format(saving12)} a year</>}
+              {biannualTotal != null && (
+                <> · or {pricing.format(biannualTotal)} for 6 months (5% off)</>
+              )}
             </div>
           </div>
           {requestedAt ? (
@@ -244,7 +286,7 @@ export function BillingFrequencyCard({
           ) : (
             <Button size="sm" variant="outline" onClick={handleRequestAnnual} disabled={requesting}>
               <Send className="w-3.5 h-3.5 mr-1.5" />
-              {requesting ? "Sending…" : "Request annual payment"}
+              {requesting ? "Sending…" : "Request upfront payment"}
             </Button>
           )}
         </div>
@@ -254,10 +296,10 @@ export function BillingFrequencyCard({
         <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
           <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            <span className="font-medium text-foreground">Annual true-up:</span> an annual invoice is
-            priced on your member count on the day it&apos;s issued. If your membership changes by
-            more than 10% during the year, the difference is reconciled on your next annual invoice
-            (or credited if members drop).
+            <span className="font-medium text-foreground">Upfront true-up:</span> an upfront invoice
+            is priced on your member count on the day it&apos;s issued. If your membership changes by
+            more than 10% during the period, the difference is reconciled on your next upfront
+            invoice (or credited if members drop).
           </p>
         </div>
       )}
@@ -268,12 +310,14 @@ export function BillingFrequencyCard({
           {saving
             ? "Saving…"
             : locked
-              ? "Locked until annual period ends"
+              ? "Locked until the prepaid period ends"
               : choice === current
                 ? "Current selection"
                 : choice === "annual_upfront"
                   ? "Switch to annual upfront"
-                  : "Switch to monthly"}
+                  : choice === "biannual_upfront"
+                    ? "Switch to 6-monthly upfront"
+                    : "Switch to monthly"}
         </Button>
 
         <span className="text-[11px] text-muted-foreground">

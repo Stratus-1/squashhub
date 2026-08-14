@@ -113,8 +113,10 @@ Deno.serve(async (req) => {
         },
       },
     })
+      if (err) sendErr = err
+    }
 
-    const emailStatus = sendErr ? `failed: ${sendErr.message}` : 'resent'
+    const emailStatus = sendErr ? `failed: ${sendErr.message}` : `resent to ${recipients.length} recipient${recipients.length === 1 ? '' : 's'}`
     await supabase
       .from('platform_subscription_invoices')
       .update({ email_sent_at: sendErr ? inv.email_sent_at : new Date().toISOString(), email_status: emailStatus })

@@ -68,7 +68,9 @@ Deno.serve(async (req) => {
       : `https://squashhub.co.za/club-admin?tab=subscription`
     const manageUrl = `${baseManage}&pay=${inv.id}`
 
-    const { error: sendErr } = await supabase.functions.invoke('send-transactional-email', {
+    let sendErr: { message: string } | null = null
+    for (const to of recipients) {
+    const { error: err } = await supabase.functions.invoke('send-transactional-email', {
       body: {
         templateName: 'subscription-invoice',
         recipientEmail: recipient,

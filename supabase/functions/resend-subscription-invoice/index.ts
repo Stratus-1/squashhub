@@ -46,9 +46,20 @@ Deno.serve(async (req) => {
       .maybeSingle()
     const settings = settingsRow?.value ? (typeof settingsRow.value === 'string' ? JSON.parse(settingsRow.value) : settingsRow.value) : {}
 
-    // Resolve recipient
+    // Resolve recipients — the club's billing profile emails take priority.
     const club = inv.clubs as any
-    const recipient = (override_email && String(override_email).trim()) || club?.email
+    const { data: billingProfile } = await supabase
+      .from('club_billing_profiles')
+      .select('emails')
+      .eq('club_id', inv.club_id)
+      .maybeSingle()
+    const profileEmails: string[] = (billingProfile?.emails || [])
+      .map((e: string) => String(e || '').trim().toLowerCase())
+      .filter((e: string) => e.includes('@'))
+    const recipients = override_email && String(override_email).trim()
+      ? [String(override_email).trim()]
+      : (profileEmails.length ? profileEmails : (club?.email ? [String(club.email).trim()] : []))
+    const recipient = recipients[0]
     if (!recipient) return json({ error: 'No recipient email on file for this club' }, 400)
 
     const subdomain = club?.subdomain

@@ -10,6 +10,8 @@ import {
   useFederationAdmins,
   type OrgNode,
 } from "@/hooks/use-federation";
+import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
+
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: "National super admin",

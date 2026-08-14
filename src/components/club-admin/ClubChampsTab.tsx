@@ -3717,9 +3717,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       <Button variant="outline" size="sm" onClick={() => loadChampForEdit(c)}>
                         <Pencil className="w-4 h-4 mr-1" /> Edit
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setGovernanceChamp(c)} title="Sanctioning, eligibility, fee split & audit history">
+                      <Button variant="outline" size="sm" onClick={() => setGovernanceChamp(c)} title="Ownership, sanctioning, eligibility, fee split, venues & audit history">
                         <ShieldCheck className="w-4 h-4 mr-1" /> Governance
                       </Button>
+                      <Button variant="outline" size="sm" onClick={() => setRulesChamp(c)} title="Scoring format, draw type & standard of play">
+                        <ScrollText className="w-4 h-4 mr-1" /> Rules
+                      </Button>
+
 
                       <Button
                         variant="outline" size="sm"

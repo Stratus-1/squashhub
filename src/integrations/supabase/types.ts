@@ -2567,6 +2567,7 @@ export type Database = {
           ladder_position: number | null
           name: string | null
           pending_captain_claim: boolean
+          person_id: string | null
           phone: string | null
           plays_league: boolean
           ranking_points: number
@@ -2606,6 +2607,7 @@ export type Database = {
           ladder_position?: number | null
           name?: string | null
           pending_captain_claim?: boolean
+          person_id?: string | null
           phone?: string | null
           plays_league?: boolean
           ranking_points?: number
@@ -2645,6 +2647,7 @@ export type Database = {
           ladder_position?: number | null
           name?: string | null
           pending_captain_claim?: boolean
+          person_id?: string | null
           phone?: string | null
           plays_league?: boolean
           ranking_points?: number
@@ -2695,6 +2698,20 @@ export type Database = {
             columns: ["home_club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_members_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_members_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people_directory"
             referencedColumns: ["id"]
           },
           {
@@ -6380,6 +6397,53 @@ export type Database = {
           },
         ]
       }
+      national_licence_products: {
+        Row: {
+          active: boolean
+          amount: number
+          billing_enabled: boolean
+          code: string
+          created_at: string
+          id: string
+          name: string
+          org_id: string
+          season_year: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          billing_enabled?: boolean
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          org_id: string
+          season_year: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          billing_enabled?: boolean
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          org_id?: string
+          season_year?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "national_licence_products_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           club_member_id: string | null
@@ -7031,6 +7095,194 @@ export type Database = {
             columns: ["prospect_id"]
             isOneToOne: false
             referencedRelation: "outreach_prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string
+          email: string | null
+          first_name: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          last_name: string | null
+          merged_into_person_id: string | null
+          national_player_number: string | null
+          nationality: string | null
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          merged_into_person_id?: string | null
+          national_player_number?: string | null
+          nationality?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          merged_into_person_id?: string | null
+          national_player_number?: string | null
+          nationality?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_merged_into_person_id_fkey"
+            columns: ["merged_into_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_merged_into_person_id_fkey"
+            columns: ["merged_into_person_id"]
+            isOneToOne: false
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_private: {
+        Row: {
+          created_at: string
+          date_of_birth: string | null
+          id_number: string | null
+          person_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_of_birth?: string | null
+          id_number?: string | null
+          person_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_of_birth?: string | null
+          id_number?: string | null
+          person_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_private_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_private_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_affiliations: {
+        Row: {
+          affiliation_status: string
+          billing_enabled: boolean
+          created_at: string
+          fee_amount: number | null
+          id: string
+          licence_product_id: string | null
+          licence_status: string
+          licence_type: string | null
+          licence_valid_from: string | null
+          licence_valid_to: string | null
+          notes: string | null
+          org_id: string
+          person_id: string
+          season_year: number
+          updated_at: string
+        }
+        Insert: {
+          affiliation_status?: string
+          billing_enabled?: boolean
+          created_at?: string
+          fee_amount?: number | null
+          id?: string
+          licence_product_id?: string | null
+          licence_status?: string
+          licence_type?: string | null
+          licence_valid_from?: string | null
+          licence_valid_to?: string | null
+          notes?: string | null
+          org_id: string
+          person_id: string
+          season_year: number
+          updated_at?: string
+        }
+        Update: {
+          affiliation_status?: string
+          billing_enabled?: boolean
+          created_at?: string
+          fee_amount?: number | null
+          id?: string
+          licence_product_id?: string | null
+          licence_status?: string
+          licence_type?: string | null
+          licence_valid_from?: string | null
+          licence_valid_to?: string | null
+          notes?: string | null
+          org_id?: string
+          person_id?: string
+          season_year?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_affiliations_licence_product_id_fkey"
+            columns: ["licence_product_id"]
+            isOneToOne: false
+            referencedRelation: "national_licence_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_affiliations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_affiliations_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_affiliations_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -8720,6 +8972,39 @@ export type Database = {
           },
         ]
       }
+      people_directory: {
+        Row: {
+          age: number | null
+          age_group: string | null
+          full_name: string | null
+          gender: string | null
+          id: string | null
+          national_player_number: string | null
+          nationality: string | null
+          status: string | null
+        }
+        Insert: {
+          age?: never
+          age_group?: never
+          full_name?: string | null
+          gender?: string | null
+          id?: string | null
+          national_player_number?: string | null
+          nationality?: string | null
+          status?: string | null
+        }
+        Update: {
+          age?: never
+          age_group?: never
+          full_name?: string | null
+          gender?: string | null
+          id?: string | null
+          national_player_number?: string | null
+          nationality?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       v_ledger_reconciliation: {
         Row: {
           club_id: string | null
@@ -8791,6 +9076,7 @@ export type Database = {
         Args: { _journal_ref: string; _note?: string }
         Returns: Json
       }
+      age_group_for_age: { Args: { _age: number }; Returns: string }
       apply_ladder_adjustments: {
         Args: {
           _adjustments: Json
@@ -8819,6 +9105,8 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_person: { Args: { _person_id: string }; Returns: boolean }
+      can_view_person_dob: { Args: { _person_id: string }; Returns: boolean }
       cancel_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       captain_list_unclaimed_teammates: {
         Args: { _club_member_id: string }
@@ -9139,6 +9427,7 @@ export type Database = {
       }
       is_member_owner: { Args: { _member_id: string }; Returns: boolean }
       is_national_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_person_self: { Args: { _person_id: string }; Returns: boolean }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
       lookup_existing_member_for_signup: {
@@ -9180,6 +9469,10 @@ export type Database = {
       member_has_permission: {
         Args: { _member_id: string; _permission: string }
         Returns: boolean
+      }
+      merge_people: {
+        Args: { _dup_id: string; _keep_id: string }
+        Returns: undefined
       }
       move_player_to_league_pool: {
         Args: {
@@ -9238,6 +9531,8 @@ export type Database = {
           org_id: string
         }[]
       }
+      person_age: { Args: { _person_id: string }; Returns: number }
+      person_age_group: { Args: { _person_id: string }; Returns: string }
       post_journal: {
         Args: {
           p_club_id: string

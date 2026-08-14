@@ -165,6 +165,7 @@ export default function FederationOrgChart({
   const [name, setName] = useState("");
   const [abbr, setAbbr] = useState("");
   const [trayOver, setTrayOver] = useState(false);
+  const [unaffOpen, setUnaffOpen] = useState(true);
 
   const federation = roots.find((r) => r.kind === "national") || null;
   const associations = (federation?.children || []).filter(isRealAssociation);
@@ -226,9 +227,10 @@ export default function FederationOrgChart({
 
           {/* trunk + bus */}
           <div className="w-px h-4 bg-white/15" />
-          {associations.length > 0 && (
-            <div className="h-px bg-white/15" style={{ width: `${Math.max(1, associations.length) * 226 - 16}px` }} />
-          )}
+          <div
+            className="h-px bg-white/15"
+            style={{ width: `${(associations.length + 1) * 226 - 16}px` }}
+          />
 
           <div className="flex items-start justify-center gap-4">
             {associations.map((a) => (
@@ -240,6 +242,63 @@ export default function FederationOrgChart({
                 onDrop={onDrop}
               />
             ))}
+
+            {/* Permanent unaffiliated branch */}
+            <div className="flex flex-col items-center">
+              <div className="w-px h-4 bg-white/15" />
+              <div
+                onDragOver={(e) => {
+                  if (!dragId) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  if (!trayOver) setTrayOver(true);
+                }}
+                onDragLeave={() => setTrayOver(false)}
+                onDrop={(e) => {
+                  if (!dragId) return;
+                  e.preventDefault();
+                  const childId = e.dataTransfer.getData("text/plain") || dragId;
+                  setTrayOver(false);
+                  setDragId(null);
+                  setUnaffOpen(true);
+                  onDrop(childId, unaffiliateTarget);
+                }}
+                className={`w-[210px] rounded-lg border border-dashed px-2.5 py-2 transition-colors ${
+                  trayOver ? "border-primary/70 bg-primary/20" : "border-white/20 bg-white/[0.03]"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setUnaffOpen((o) => !o)}
+                  className="flex w-full items-center gap-1.5 text-left"
+                >
+                  {unaffOpen ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-white/45 shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-white/45 shrink-0" />
+                  )}
+                  <span className="text-xs font-medium text-white/75 truncate">Unaffiliated clubs</span>
+                  <Badge
+                    variant="outline"
+                    className="ml-auto text-[9px] border-white/20 text-white/55 px-1 py-0"
+                  >
+                    {unaffiliatedClubs.length}
+                  </Badge>
+                </button>
+                {unaffOpen && (
+                  <div className="mt-2 flex flex-col gap-1">
+                    {unaffiliatedClubs.length === 0 ? (
+                      <p className="text-[10px] text-white/35 py-1">Every club is affiliated.</p>
+                    ) : (
+                      unaffiliatedClubs.map((c) => (
+                        <ClubChip key={c.id} club={c} dragId={dragId} setDragId={setDragId} />
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex flex-col items-center">
               <div className="w-px h-4 bg-transparent" />
               <Button
@@ -255,47 +314,6 @@ export default function FederationOrgChart({
         </div>
       </div>
 
-      {/* Unaffiliated tray */}
-      <div
-        onDragOver={(e) => {
-          if (!dragId) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-          if (!trayOver) setTrayOver(true);
-        }}
-        onDragLeave={() => setTrayOver(false)}
-        onDrop={(e) => {
-          if (!dragId) return;
-          e.preventDefault();
-          const childId = e.dataTransfer.getData("text/plain") || dragId;
-          setTrayOver(false);
-          setDragId(null);
-          onDrop(childId, unaffiliateTarget);
-        }}
-        className={`rounded-lg border border-dashed p-3 transition-colors ${
-          trayOver ? "border-primary/70 bg-primary/15" : "border-white/15 bg-white/[0.03]"
-        }`}
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <Building2 className="w-3.5 h-3.5 text-white/45" />
-          <span className="text-xs font-medium text-white/80">Unaffiliated clubs</span>
-          <Badge variant="outline" className="text-[10px] border-white/20 text-white/55">
-            {unaffiliatedClubs.length}
-          </Badge>
-          <span className="text-[10px] text-white/35 ml-auto">
-            Drag a club onto an association above to affiliate it — drop it back here to unaffiliate.
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {unaffiliatedClubs.length === 0 ? (
-            <p className="text-[11px] text-white/35">Every club is affiliated.</p>
-          ) : (
-            unaffiliatedClubs.map((c) => (
-              <ClubChip key={c.id} club={c} dragId={dragId} setDragId={setDragId} />
-            ))
-          )}
-        </div>
-      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-sm">

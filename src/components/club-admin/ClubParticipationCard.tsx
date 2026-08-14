@@ -15,6 +15,8 @@ import { CheckCircle2, ShieldCheck, FileSignature, FileText, Printer, Zap } from
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { useSaasPricing } from "@/hooks/use-saas-pricing";
+import { computeTieredCharge } from "@/lib/saas-tiers";
 import { SquashHubSlaContent, SLA_VERSION } from "@/components/SquashHubSlaContent";
 import { ParticipationFeeStructure } from "@/components/club-admin/ParticipationFeeStructure";
 

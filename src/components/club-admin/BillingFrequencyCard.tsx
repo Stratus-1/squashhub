@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CalendarClock, Info, Send } from "lucide-react";
+import { CalendarClock, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -112,22 +112,8 @@ export function BillingFrequencyCard({
   const saving6 = monthlyTotal != null && biannualTotal != null ? monthlyTotal * 6 - biannualTotal : null;
   const saving12 = monthlyTotal != null && annualTotal != null ? monthlyTotal * 12 - annualTotal : null;
 
-  const [requestedAt, setRequestedAt] = useState<string | null>(c.annual_billing_requested_at ?? null);
-  const [requesting, setRequesting] = useState(false);
 
-  const handleRequestAnnual = async () => {
-    setRequesting(true);
-    try {
-      const now = new Date().toISOString();
-      await updateClub.mutateAsync({ id: club.id, annual_billing_requested_at: now } as any);
-      setRequestedAt(now);
-      toast.success("Request sent — SquashHub will review and enable annual billing.");
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to send request");
-    } finally {
-      setRequesting(false);
-    }
-  };
+
 
   const handleSave = async () => {
     setSaving(true);
@@ -174,22 +160,22 @@ export function BillingFrequencyCard({
           </>
         ) : allowUpfront ? (
           <>
-            Choose how you&apos;d like to be invoiced. Paying upfront earns a discount off the
-            monthly scale
+            You can pay monthly, or settle in advance whenever it suits you — the choice is yours
+            each time
             {allowBiannual && allowAnnual
-              ? ": 5% for 6 months in advance, 10% for a full year"
+              ? ": 5% off for 6 months in advance, 10% off for a full year"
               : allowBiannual
-                ? ": 5% for 6 months in advance"
-                : ": 10% for a full year"}
-            . You can switch while you&apos;re on monthly at any time.
+                ? ": 5% off for 6 months in advance"
+                : ": 10% off for a full year"}
+            . Pick an option below and your next invoice covers that period.
           </>
         ) : (
           <>
             Your club is invoiced monthly in advance, based on your member count at the time of each
-            invoice. Invoicing starts 1 September 2026. Prefer to settle a full year upfront? Request
-            upfront payment below — SquashHub will review and enable 6-monthly and annual billing.
+            invoice. Invoicing starts 1 September 2026.
           </>
         )}
+
       </p>
 
 
@@ -268,36 +254,8 @@ export function BillingFrequencyCard({
         )}
       </RadioGroup>
 
-      {!allowUpfront && (
-        <div className="rounded-md border p-3 space-y-2">
-          <div className="text-sm">
-            <div className="font-medium">Upfront payment options</div>
-            <div className="text-lg font-bold text-foreground">
-              {annualTotal != null ? pricing.format(annualTotal) : "—"}
-              <span className="text-[10px] font-normal text-muted-foreground"> / year</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Annual, one invoice paid in advance (10% off)
-              {annual && <> · ≈ {pricing.format(annual.subtotal)} / month</>}
-              {saving12 != null && saving12 > 0 && <> · saves {pricing.format(saving12)} a year</>}
-              {biannualTotal != null && (
-                <> · or {pricing.format(biannualTotal)} for 6 months (5% off)</>
-              )}
-            </div>
-          </div>
-          {requestedAt ? (
-            <p className="text-[11px] text-muted-foreground">
-              Requested on {new Date(requestedAt).toLocaleDateString()} — awaiting SquashHub
-              approval. We&apos;ll switch you over once it&apos;s approved.
-            </p>
-          ) : (
-            <Button size="sm" variant="outline" onClick={handleRequestAnnual} disabled={requesting}>
-              <Send className="w-3.5 h-3.5 mr-1.5" />
-              {requesting ? "Sending…" : "Request upfront payment"}
-            </Button>
-          )}
-        </div>
-      )}
+
+
 
       {allowUpfront && (
         <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
@@ -321,10 +279,10 @@ export function BillingFrequencyCard({
               : choice === current
                 ? "Current selection"
                 : choice === "annual_upfront"
-                  ? "Switch to annual upfront"
+                  ? "Choose annual upfront"
                   : choice === "biannual_upfront"
-                    ? "Switch to 6-monthly upfront"
-                    : "Switch to monthly"}
+                    ? "Choose 6-monthly upfront"
+                    : "Choose monthly"}
         </Button>
 
         <span className="text-[11px] text-muted-foreground">

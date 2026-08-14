@@ -190,6 +190,66 @@ export type Database = {
           },
         ]
       }
+      audit_events: {
+        Row: {
+          action: string
+          actor_label: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          club_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          org_id: string | null
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor_label?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          club_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          org_id?: string | null
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_label?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          club_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          org_id?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       badge_definitions: {
         Row: {
           category: string
@@ -3947,6 +4007,39 @@ export type Database = {
         }
         Relationships: []
       }
+      external_ids: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          external_id: string
+          id: string
+          source_metadata: Json
+          source_system: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          external_id: string
+          id?: string
+          source_metadata?: Json
+          source_system: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          external_id?: string
+          id?: string
+          source_metadata?: Json
+          source_system?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fee_payments: {
         Row: {
           amount: number
@@ -6413,6 +6506,184 @@ export type Database = {
         }
         Relationships: []
       }
+      organisation_admins: {
+        Row: {
+          active: boolean
+          created_at: string
+          granted_by: string | null
+          id: string
+          notes: string | null
+          org_id: string
+          role: Database["public"]["Enums"]["org_admin_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          notes?: string | null
+          org_id: string
+          role: Database["public"]["Enums"]["org_admin_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string
+          role?: Database["public"]["Enums"]["org_admin_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisation_admins_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisation_relationships: {
+        Row: {
+          child_org_id: string
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          parent_org_id: string
+          relationship: string
+          updated_at: string
+        }
+        Insert: {
+          child_org_id: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          parent_org_id: string
+          relationship?: string
+          updated_at?: string
+        }
+        Update: {
+          child_org_id?: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          parent_org_id?: string
+          relationship?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisation_relationships_child_org_id_fkey"
+            columns: ["child_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisation_relationships_parent_org_id_fkey"
+            columns: ["parent_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisations: {
+        Row: {
+          abbreviation: string | null
+          active: boolean
+          club_id: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          country: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["org_kind"]
+          league_association_id: string | null
+          logo_url: string | null
+          metadata: Json
+          name: string
+          platform_association_id: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          abbreviation?: string | null
+          active?: boolean
+          club_id?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["org_kind"]
+          league_association_id?: string | null
+          logo_url?: string | null
+          metadata?: Json
+          name: string
+          platform_association_id?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          abbreviation?: string | null
+          active?: boolean
+          club_id?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["org_kind"]
+          league_association_id?: string | null
+          logo_url?: string | null
+          metadata?: Json
+          name?: string
+          platform_association_id?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisations_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisations_league_association_id_fkey"
+            columns: ["league_association_id"]
+            isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
+          {
+            foreignKeyName: "organisations_league_association_id_fkey"
+            columns: ["league_association_id"]
+            isOneToOne: false
+            referencedRelation: "league_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisations_platform_association_id_fkey"
+            columns: ["platform_association_id"]
+            isOneToOne: false
+            referencedRelation: "platform_league_associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outreach_campaigns: {
         Row: {
           audience_filter: Json
@@ -8541,6 +8812,10 @@ export type Database = {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_org: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
       cancel_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       captain_list_unclaimed_teammates: {
         Args: { _club_member_id: string }
@@ -8815,6 +9090,14 @@ export type Database = {
           wifi_enabled: boolean
         }[]
       }
+      has_org_role: {
+        Args: {
+          _org_id: string
+          _role: Database["public"]["Enums"]["org_admin_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -8852,6 +9135,7 @@ export type Database = {
         Returns: boolean
       }
       is_member_owner: { Args: { _member_id: string }; Returns: boolean }
+      is_national_admin: { Args: { _user_id: string }; Returns: boolean }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
       lookup_existing_member_for_signup: {
@@ -8945,6 +9229,12 @@ export type Database = {
       }
       norm_person_name: { Args: { _name: string }; Returns: string }
       norm_phone_tail: { Args: { _phone: string }; Returns: string }
+      org_descendants: {
+        Args: { _org_id: string }
+        Returns: {
+          org_id: string
+        }[]
+      }
       post_journal: {
         Args: {
           p_club_id: string
@@ -9229,6 +9519,15 @@ export type Database = {
         | "warning"
         | "suspended"
         | "manual_hold"
+      org_admin_role:
+        | "super_admin"
+        | "competition_admin"
+        | "finance_admin"
+        | "association_admin"
+        | "tournament_director"
+        | "league_admin"
+        | "referee"
+      org_kind: "national" | "association" | "club"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -9396,6 +9695,16 @@ export const Constants = {
         "suspended",
         "manual_hold",
       ],
+      org_admin_role: [
+        "super_admin",
+        "competition_admin",
+        "finance_admin",
+        "association_admin",
+        "tournament_director",
+        "league_admin",
+        "referee",
+      ],
+      org_kind: ["national", "association", "club"],
     },
   },
 } as const

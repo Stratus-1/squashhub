@@ -9,9 +9,11 @@ import {
   useFederationStats,
   useFederationAdmins,
   useReparentOrg,
+  useCreateAssociation,
   type OrgNode,
 } from "@/hooks/use-federation";
 import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
+import FederationOrgChart from "@/components/admin/FederationOrgChart";
 
 
 const ROLE_LABELS: Record<string, string> = {
@@ -157,7 +159,9 @@ export default function SuperAdminFederation() {
   const { data: admins = [], isLoading: loadingAdmins } = useFederationAdmins();
   const [filter, setFilter] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
+  const [view, setView] = useState<"chart" | "list">("chart");
   const reparent = useReparentOrg();
+  const createAssociation = useCreateAssociation();
 
   const orgName = useMemo(() => {
     const map = new Map<string, string>();
@@ -226,35 +230,64 @@ export default function SuperAdminFederation() {
         <TabsContent value="hierarchy" className="mt-3">
           <Card className="bg-white/[0.04] border-white/10 backdrop-blur-md">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-white/90">Organisation hierarchy</CardTitle>
-              <p className="text-[11px] text-white/45">
-                Drag a club or league onto an association (or the federation) to re-affiliate it. Clubs can't be dropped
-                onto other clubs.
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-sm text-white/90">Organisation hierarchy</CardTitle>
+                  <p className="text-[11px] text-white/45">
+                    Drag a club or league onto an association (or the federation) to re-affiliate it. Clubs can't be
+                    dropped onto other clubs.
+                  </p>
+                </div>
+                <div className="flex rounded-md border border-white/15 overflow-hidden shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setView("chart")}
+                    className={`px-2.5 py-1 text-[11px] ${view === "chart" ? "bg-white/15 text-white" : "text-white/55"}`}
+                  >
+                    Chart
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView("list")}
+                    className={`px-2.5 py-1 text-[11px] ${view === "list" ? "bg-white/15 text-white" : "text-white/55"}`}
+                  >
+                    List
+                  </button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <Input
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder="Search organisations…"
-                className="mb-3 h-8 text-xs bg-white/[0.06] border-white/10 text-white placeholder:text-white/40"
-              />
               {loadingTree ? (
                 <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-white/60" /></div>
+              ) : view === "chart" ? (
+                <FederationOrgChart
+                  roots={hierarchy?.roots || []}
+                  onDrop={(childId, parentId) => reparent.mutate({ childId, parentId })}
+                  onCreateAssociation={(input) => createAssociation.mutate(input)}
+                  creating={createAssociation.isPending}
+                />
               ) : (
-                <div className="max-h-[520px] overflow-y-auto">
-                  {(hierarchy?.roots || []).map((r) => (
-                    <TreeNode
-                      key={r.id}
-                      node={r}
-                      depth={0}
-                      filter={filter}
-                      dragId={dragId}
-                      setDragId={setDragId}
-                      onDrop={(childId, parentId) => reparent.mutate({ childId, parentId })}
-                    />
-                  ))}
-                </div>
+                <>
+                  <Input
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    placeholder="Search organisations…"
+                    className="mb-3 h-8 text-xs bg-white/[0.06] border-white/10 text-white placeholder:text-white/40"
+                  />
+                  <div className="max-h-[520px] overflow-y-auto">
+                    {(hierarchy?.roots || []).map((r) => (
+                      <TreeNode
+                        key={r.id}
+                        node={r}
+                        depth={0}
+                        filter={filter}
+                        dragId={dragId}
+                        setDragId={setDragId}
+                        onDrop={(childId, parentId) => reparent.mutate({ childId, parentId })}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

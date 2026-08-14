@@ -989,6 +989,112 @@ export type Database = {
           },
         ]
       }
+      club_billing_audit: {
+        Row: {
+          changed_by: string | null
+          changed_by_name: string | null
+          club_id: string
+          created_at: string
+          field: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          club_id: string
+          created_at?: string
+          field: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          club_id?: string
+          created_at?: string
+          field?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_billing_audit_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_billing_profiles: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          club_id: string
+          company_name: string | null
+          contact_name: string | null
+          country: string | null
+          created_at: string
+          emails: string[]
+          id: string
+          phone: string | null
+          po_number: string | null
+          postal_code: string | null
+          province: string | null
+          updated_at: string
+          vat_number: string | null
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          club_id: string
+          company_name?: string | null
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string
+          emails?: string[]
+          id?: string
+          phone?: string | null
+          po_number?: string | null
+          postal_code?: string | null
+          province?: string | null
+          updated_at?: string
+          vat_number?: string | null
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          club_id?: string
+          company_name?: string | null
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string
+          emails?: string[]
+          id?: string
+          phone?: string | null
+          po_number?: string | null
+          postal_code?: string | null
+          province?: string | null
+          updated_at?: string
+          vat_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_billing_profiles_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_champs: {
         Row: {
           affects_ranking_points: boolean
@@ -6536,6 +6642,7 @@ export type Database = {
       platform_subscription_invoices: {
         Row: {
           billing_cycle: string
+          billing_details: Json | null
           club_id: string
           created_at: string
           currency: string
@@ -6569,6 +6676,7 @@ export type Database = {
         }
         Insert: {
           billing_cycle: string
+          billing_details?: Json | null
           club_id: string
           created_at?: string
           currency?: string
@@ -6602,6 +6710,7 @@ export type Database = {
         }
         Update: {
           billing_cycle?: string
+          billing_details?: Json | null
           club_id?: string
           created_at?: string
           currency?: string

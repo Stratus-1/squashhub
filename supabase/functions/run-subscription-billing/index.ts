@@ -234,8 +234,24 @@ Deno.serve(async (req) => {
   }
   for (const [clubId, email] of clubEmails) addRecipient(clubId, email)
 
-  /** Primary "To" address — the club billing email when set, else any admin/officer. */
+  // Club-managed billing profile (Club Admin → Subscription → Billing Information).
+  // Its emails receive every invoice and its primary email becomes the "To" address.
+  const clubBillingProfiles = new Map<string, any>()
+  if (clubIds.length) {
+    const { data: profiles } = await supabase
+      .from('club_billing_profiles')
+      .select('*')
+      .in('club_id', clubIds)
+    for (const p of profiles || []) {
+      clubBillingProfiles.set(p.club_id, p)
+      for (const e of (p.emails || [])) addRecipient(p.club_id, e)
+    }
+  }
+
+  /** Primary "To" address — billing profile first, then the club billing email. */
   const recipientFor = (clubId: string) => {
+    const profileEmail = (clubBillingProfiles.get(clubId)?.emails || [])[0]
+    if (profileEmail) return String(profileEmail).trim().toLowerCase()
     const billing = clubEmails.get(clubId)
     if (billing) return billing.trim().toLowerCase()
     const set = clubRecipients.get(clubId)

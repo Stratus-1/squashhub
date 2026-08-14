@@ -298,6 +298,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                     onChange={(e) => set("entry_fee_cents", randToCents(e.target.value))}
                   />
                 </div>
+                {!clubScope && (
                 <div className="space-y-1">
                   <Label>Federation share (R)</Label>
                   <Input
@@ -306,6 +307,8 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                     onChange={(e) => set("federation_fee_cents", randToCents(e.target.value))}
                   />
                 </div>
+                )}
+
                 <div className="space-y-1">
                   <Label>Association share (R)</Label>
                   <Input

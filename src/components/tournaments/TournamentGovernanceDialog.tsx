@@ -154,6 +154,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                 </p>
               </div>
 
+              {!clubScope && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Competition level</Label>
@@ -205,6 +206,8 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                   />
                 </div>
               </div>
+              )}
+
               <div className="space-y-1">
                 <Label>Notes</Label>
                 <Textarea

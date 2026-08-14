@@ -984,22 +984,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
       playoff_date: playoffDate || null,
     };
+    // Fields that live only on the tournaments table (not on the legacy view).
+    const extras = {
+      event_type: eventType,
+      max_entrants: maxEntrants ? Math.max(0, Math.round(Number(maxEntrants))) : null,
+      max_per_league: maxPerLeague ? Math.max(0, Math.round(Number(maxPerLeague))) : null,
+      seeding_source: seedingSource,
+      participating_club_ids: venueClubIds.filter((id) => id !== clubId),
+    };
+    const saveExtras = async (id: string) => {
+      const { error } = await fromExt("tournaments").update(extras).eq("id", id);
+      if (error) console.warn("Tournament extras save failed:", error.message);
+    };
     try {
       if (editingChampId) {
         const { error } = await fromExt("club_champs").update(payload).eq("id", editingChampId);
         if (error) throw error;
+        await saveExtras(editingChampId);
       } else {
         const { data, error } = await fromExt("club_champs")
-          .insert({ club_id: clubId, status: "planning", ...payload })
+          .insert({ club_id: clubId, owner_org_id: ownerOrgId ?? undefined, status: "planning", ...payload })
           .select("id")
           .single();
         if (error) throw error;
-        if (data?.id) setEditingChampId(data.id);
+        if (data?.id) {
+          setEditingChampId(data.id);
+          await saveExtras(data.id);
+        }
         qc.invalidateQueries({ queryKey: ["club-champs"] });
         return data?.id || editingChampId;
       }
       qc.invalidateQueries({ queryKey: ["club-champs"] });
       return editingChampId;
+
     } catch (e: any) {
       console.warn("Tournament autosave failed:", e);
       toast.error(`Save failed: ${e?.message || "unknown error"}`);

@@ -1,4 +1,4 @@
-import { Building2, LayoutDashboard, Users, CreditCard, Settings, LogOut, ChevronLeft, Trophy, Download, LifeBuoy, GraduationCap, Megaphone } from "lucide-react";
+import { Building2, LayoutDashboard, Users, CreditCard, Settings, LogOut, ChevronLeft, Trophy, Download, LifeBuoy, GraduationCap, Megaphone, Flag } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";

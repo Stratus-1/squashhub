@@ -169,6 +169,12 @@ export default function SuperAdminFederation() {
     return map;
   }, [hierarchy]);
 
+  const nationalOrgId = useMemo(
+    () => (hierarchy?.orgs || []).find((o) => o.kind === "national")?.id ?? null,
+    [hierarchy],
+  );
+
+
   return (
     <div className="space-y-5 max-w-7xl">
       <div>

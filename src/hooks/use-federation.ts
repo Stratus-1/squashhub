@@ -162,3 +162,31 @@ export function useFederationAdmins() {
     },
   });
 }
+
+/** Move an organisation under a new parent (drag & drop in the hierarchy tree). */
+export function useReparentOrg() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ childId, parentId }: { childId: string; parentId: string }) => {
+      if (childId === parentId) throw new Error("An organisation cannot be its own parent.");
+      const { error: delErr } = await supabase
+        .from("organisation_relationships")
+        .delete()
+        .eq("child_org_id", childId);
+      if (delErr) throw delErr;
+      const { error } = await supabase.from("organisation_relationships").insert({
+        parent_org_id: parentId,
+        child_org_id: childId,
+        relationship: "affiliation",
+        effective_from: new Date().toISOString().slice(0, 10),
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["federation-hierarchy"] });
+      qc.invalidateQueries({ queryKey: ["federation-stats"] });
+      toast.success("Hierarchy updated");
+    },
+    onError: (e: any) => toast.error(e.message || "Could not move organisation"),
+  });
+}

@@ -73,8 +73,8 @@ Deno.serve(async (req) => {
     const { error: err } = await supabase.functions.invoke('send-transactional-email', {
       body: {
         templateName: 'subscription-invoice',
-        recipientEmail: recipient,
-        idempotencyKey: `sub-invoice-${inv.id}-resend-${Date.now()}`,
+        recipientEmail: to,
+        idempotencyKey: `sub-invoice-${inv.id}-resend-${to}-${Date.now()}`,
         templateData: {
           clubName: club?.name,
           invoiceNumber: inv.invoice_number,

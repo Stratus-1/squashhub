@@ -490,3 +490,11 @@ Network-agnostic router monitoring module.
 - UI: Club Admin → Internet tab (`RouterTab.tsx`), dashboard widget `DashboardRouterCard.tsx`, hooks in `use-router-monitor.ts`.
 - Alerts: thresholds default 75/90/95, email + push, one alert per threshold per bundle, offline alert throttled to 6h.
 - Pilot: Gordons Bay Squash Club (config seeded, disabled until router details captured).
+
+## 2026-08-14 — National Federation Module, Phase 1
+- Added gap analysis: `docs/FEDERATION_MODULE_GAP_ANALYSIS.md` (Phase 0 deliverable per spec §24).
+- New tables: `organisations`, `organisation_relationships`, `organisation_admins`, `external_ids`, `audit_events`.
+- New functions: `org_descendants`, `has_org_role`, `can_view_org`, `is_national_admin`.
+- Seeded "Squash South Africa" org; all clubs and active league associations linked into the hierarchy.
+- New UI: `/admin/federation` (`src/pages/admin/SuperAdminFederation.tsx`, `src/hooks/use-federation.ts`) — national roll-up stats, hierarchy tree, scoped federation roles. No club screens changed.
+- Decisions taken: one national `player_profiles` spine (Phase 2), SSA modelled in `organisations` (not as a club tenant).

@@ -1421,6 +1421,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     address: member.address || "",
     fee_category_id: member.fee_category_id || "",
     skill_level: member.skill_level || "",
+    billing_exempt: !!(member as any).billing_exempt,
   });
 
   // Build the classified league-association list (permanent affiliations are

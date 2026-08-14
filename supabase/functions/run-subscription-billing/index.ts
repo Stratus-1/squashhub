@@ -1,6 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 
+type BillingCycle = 'monthly' | 'biannual' | 'annual'
+const CYCLE_MONTHS: Record<BillingCycle, number> = { monthly: 1, biannual: 6, annual: 12 }
+
 interface RequestBody {
   dryRun?: boolean
   subscriptionIds?: string[]
@@ -35,16 +38,16 @@ Deno.serve(async (req) => {
       'saas_rate_zar_monthly', 'saas_rate_zar_annual',
       'saas_rate_usd_monthly', 'saas_rate_usd_annual',
       'saas_rate_eur_monthly', 'saas_rate_eur_annual',
-      'saas_min_charge_monthly', 'saas_min_charge_annual',
+      'saas_min_charge_monthly', 'saas_min_charge_biannual', 'saas_min_charge_annual',
       'fx_usd_to_zar', 'fx_eur_to_zar',
       // Graduated ("sliding scale") pricing — when enabled these override the flat rates.
       'saas_tiers_enabled',
-      'saas_tiers_zar_monthly', 'saas_tiers_zar_annual',
-      'saas_tiers_usd_monthly', 'saas_tiers_usd_annual',
-      'saas_tiers_eur_monthly', 'saas_tiers_eur_annual',
-      'saas_tier_min_zar_monthly', 'saas_tier_min_zar_annual',
-      'saas_tier_min_usd_monthly', 'saas_tier_min_usd_annual',
-      'saas_tier_min_eur_monthly', 'saas_tier_min_eur_annual',
+      'saas_tiers_zar_monthly', 'saas_tiers_zar_biannual', 'saas_tiers_zar_annual',
+      'saas_tiers_usd_monthly', 'saas_tiers_usd_biannual', 'saas_tiers_usd_annual',
+      'saas_tiers_eur_monthly', 'saas_tiers_eur_biannual', 'saas_tiers_eur_annual',
+      'saas_tier_min_zar_monthly', 'saas_tier_min_zar_biannual', 'saas_tier_min_zar_annual',
+      'saas_tier_min_usd_monthly', 'saas_tier_min_usd_biannual', 'saas_tier_min_usd_annual',
+      'saas_tier_min_eur_monthly', 'saas_tier_min_eur_biannual', 'saas_tier_min_eur_annual',
     ])
 
   if (settingErr && settingErr.code !== 'PGRST116') {
@@ -69,13 +72,14 @@ Deno.serve(async (req) => {
     const n = v == null ? NaN : Number(v)
     return isFinite(n) && n > 0 ? n : d
   }
-  const rateFor = (ccy: string, cycle: 'monthly' | 'annual', fallback: number): number => {
+  const rateFor = (ccy: string, cycle: BillingCycle, fallback: number): number => {
     const c = (ccy || 'ZAR').toUpperCase()
-    if (c === 'USD') return num(`saas_rate_usd_${cycle}`, cycle === 'monthly' ? 0.35 : 0.30)
-    if (c === 'EUR') return num(`saas_rate_eur_${cycle}`, cycle === 'monthly' ? 0.32 : 0.27)
+    const disc = cycle === 'annual' ? 0.9 : cycle === 'biannual' ? 0.95 : 1
+    if (c === 'USD') return num(`saas_rate_usd_${cycle}`, +(0.35 * disc).toFixed(2))
+    if (c === 'EUR') return num(`saas_rate_eur_${cycle}`, +(0.32 * disc).toFixed(2))
     return num(`saas_rate_zar_${cycle}`, fallback)
   }
-  const minChargeFor = (cycle: 'monthly' | 'annual', fallback: number): number =>
+  const minChargeFor = (cycle: BillingCycle, fallback: number): number =>
     num(`saas_min_charge_${cycle}`, fallback)
   // FX rates: how many ZAR per 1 unit of foreign currency. Stitch only charges ZAR,
   // so USD/EUR clubs see "~$X per member" for reference but are actually billed in ZAR.
@@ -93,7 +97,7 @@ Deno.serve(async (req) => {
   // USD/EUR pricing stays proportional to the ZAR structure.
   // Sliding scale is the only pricing model — always on.
   const tiersEnabled = true
-  const tiersFor = (ccy: string, cycle: 'monthly' | 'annual'): Array<{ upTo: number | null; rate: number }> | null => {
+  const tiersFor = (ccy: string, cycle: BillingCycle): Array<{ upTo: number | null; rate: number }> | null => {
     const c = (ccy || 'ZAR').toUpperCase()
     const key = `saas_tiers_${c.toLowerCase()}_${cycle}`
     const raw = settingsMap.get(key)
@@ -109,7 +113,7 @@ Deno.serve(async (req) => {
       return null
     }
   }
-  const tierMinFor = (ccy: string, cycle: 'monthly' | 'annual'): number | null => {
+  const tierMinFor = (ccy: string, cycle: BillingCycle): number | null => {
     const c = (ccy || 'ZAR').toUpperCase()
     const v = settingsMap.get(`saas_tier_min_${c.toLowerCase()}_${cycle}`)
     const n = v == null ? NaN : Number(v)
@@ -179,7 +183,7 @@ Deno.serve(async (req) => {
   //    (chairman, secretary, club captain). Currency comes from clubs.currency_code.
   const clubEmails = new Map<string, string>()
   const clubCurrencies = new Map<string, string>()
-  const clubCycles = new Map<string, 'monthly' | 'annual'>()
+  const clubCycles = new Map<string, BillingCycle>()
   const officerMemberIds: string[] = []
   const clubOfficerIds = new Map<string, string[]>()
   if (clubIds.length) {
@@ -193,9 +197,11 @@ Deno.serve(async (req) => {
       // The club's chosen billing frequency wins over the plan default, but annual
       // upfront only applies when the platform has enabled it for that club.
       if ((c as any).sla_billing_option) {
-        const wantsAnnual = (c as any).sla_billing_option === 'annual_upfront'
-        const annualAllowed = (c as any).allow_annual_billing === true
-        clubCycles.set(c.id, wantsAnnual && annualAllowed ? 'annual' : 'monthly')
+        const opt = String((c as any).sla_billing_option)
+        const upfrontAllowed = (c as any).allow_annual_billing === true
+        const wanted: BillingCycle =
+          opt === 'annual_upfront' ? 'annual' : opt === 'biannual_upfront' ? 'biannual' : 'monthly'
+        clubCycles.set(c.id, upfrontAllowed ? wanted : 'monthly')
       }
       const ids = [
         (c as any).chairman_member_id,
@@ -303,7 +309,13 @@ Deno.serve(async (req) => {
       // We always CHARGE in ZAR because Stitch only accepts ZAR — convert the local
       // total to ZAR via the configured FX rate.
       const displayCurrency = clubCurrencies.get(sub.club_id) || 'ZAR'
-      const cycle = (clubCycles.get(sub.club_id) ?? (plan.billing_cycle === 'annual' ? 'annual' : 'monthly')) as 'monthly' | 'annual'
+      const cycle: BillingCycle =
+        clubCycles.get(sub.club_id) ??
+        (plan.billing_cycle === 'annual'
+          ? 'annual'
+          : plan.billing_cycle === 'biannual'
+            ? 'biannual'
+            : 'monthly')
       const planPriceZar = +Number(plan.price_per_member).toFixed(2)
       const planMinZar = +Number(plan.minimum_charge || 0).toFixed(2)
       const flatRateLocal = +rateFor(displayCurrency, cycle, planPriceZar).toFixed(2)
@@ -316,9 +328,9 @@ Deno.serve(async (req) => {
         : minChargeFor(cycle, planMinZar)
       ).toFixed(2)
 
-      // Tier/flat rates are quoted per member per MONTH. An annual-upfront
-      // invoice covers 12 months, so multiply the monthly-equivalent by 12.
-      const months = cycle === 'annual' ? 12 : 1
+      // Tier/flat rates are quoted per member per MONTH. Upfront invoices cover
+      // 6 (biannual) or 12 (annual) months, so multiply the monthly-equivalent.
+      const months = CYCLE_MONTHS[cycle]
       const grossLocal = tiers
         ? graduatedTotal(billableMembers, tiers)
         : billableMembers * flatRateLocal
@@ -369,9 +381,9 @@ Deno.serve(async (req) => {
         continue
       }
 
-      const periodEnd = cycle === 'annual'
-        ? new Date(Date.UTC(periodStart.getUTCFullYear() + 1, periodStart.getUTCMonth(), periodStart.getUTCDate()))
-        : new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1, periodStart.getUTCDate()))
+      const periodEnd = new Date(
+        Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() + months, periodStart.getUTCDate()),
+      )
 
       const dueDate = new Date(billingDate)
       dueDate.setDate(dueDate.getDate() + 14)

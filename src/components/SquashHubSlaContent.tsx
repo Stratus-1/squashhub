@@ -3,8 +3,8 @@
  * Update SLA_VERSION whenever the terms change materially so existing
  * acceptances can be flagged as needing re-acceptance.
  */
-export const SLA_VERSION = "1.4";
-export const SLA_EFFECTIVE_DATE = "9 August 2026";
+export const SLA_VERSION = "1.5";
+export const SLA_EFFECTIVE_DATE = "14 August 2026";
 
 
 export function SquashHubSlaContent() {
@@ -68,14 +68,16 @@ export function SquashHubSlaContent() {
           EUR), regardless of the number of active members.
         </li>
         <li>
-          <strong>Billing options:</strong> Monthly (billed in advance) or annual upfront (payable
-          in advance at the published annual band rates, which represent a saving of approximately
-          15% compared with monthly billing).
+          <strong>Billing options:</strong> Monthly (billed in advance), six-monthly upfront
+          (payable in advance at the published six-monthly band rates, a saving of approximately
+          <strong>5%</strong> compared with monthly billing), or annual upfront (payable in advance
+          at the published annual band rates, a saving of approximately <strong>10%</strong>
+          compared with monthly billing).
         </li>
         <li>
-          <strong>Annual upfront reconciliation (10% variance):</strong> Where the Club has paid
-          annually in advance, the fee is calculated on the number of active members at the start of
-          that annual period. At the end of the annual period (or on renewal) the Provider will
+          <strong>Upfront reconciliation (10% variance):</strong> Where the Club has paid six-monthly
+          or annually in advance, the fee is calculated on the number of active members at the start of
+          that prepaid period. At the end of the prepaid period (or on renewal) the Provider will
           compare that figure with the Club&apos;s actual active membership. If the variance is
           <strong> more than 10%</strong> — whether higher or lower — the difference for the period
           will be reconciled at the applicable sliding-scale rates: an increase of more than 10% is

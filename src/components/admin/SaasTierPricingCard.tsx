@@ -16,6 +16,8 @@ import {
   parseTiers,
   tierSettingKey,
   TIERS_ENABLED_KEY,
+  SAAS_CYCLES,
+  CYCLE_LABEL,
   type SaasCurrency,
   type SaasCycle,
   type SaasTier,
@@ -38,7 +40,7 @@ function buildDefaults(): { tiers: TierState; mins: MinState } {
   const tiers: TierState = {};
   const mins: MinState = {};
   for (const { code } of CURRENCIES) {
-    for (const cycle of ["monthly", "annual"] as SaasCycle[]) {
+    for (const cycle of SAAS_CYCLES) {
       tiers[stateKey(code, cycle)] = DEFAULT_TIERS[code][cycle].map((t) => ({ ...t }));
       mins[minKey(code, cycle)] = String(DEFAULT_MIN_CHARGE[code][cycle]);
     }
@@ -60,7 +62,7 @@ export function SaasTierPricingCard() {
     queryFn: async () => {
       const keys = [TIERS_ENABLED_KEY];
       for (const { code } of CURRENCIES) {
-        for (const cy of ["monthly", "annual"] as SaasCycle[]) {
+        for (const cy of SAAS_CYCLES) {
           keys.push(tierSettingKey(code, cy), minKey(code, cy));
         }
       }
@@ -69,7 +71,7 @@ export function SaasTierPricingCard() {
       const map = new Map<string, string>((data || []).map((r: any) => [r.key, r.value]));
       const next = buildDefaults();
       for (const { code } of CURRENCIES) {
-        for (const cy of ["monthly", "annual"] as SaasCycle[]) {
+        for (const cy of SAAS_CYCLES) {
           const parsed = parseTiers(map.get(tierSettingKey(code, cy)));
           if (parsed?.length) next.tiers[stateKey(code, cy)] = parsed;
           const m = map.get(minKey(code, cy));
@@ -89,7 +91,7 @@ export function SaasTierPricingCard() {
         { key: TIERS_ENABLED_KEY, value: "true" },
       ];
       for (const { code } of CURRENCIES) {
-        for (const cy of ["monthly", "annual"] as SaasCycle[]) {
+        for (const cy of SAAS_CYCLES) {
           rows.push({
             key: tierSettingKey(code, cy),
             value: JSON.stringify(tiers[stateKey(code, cy)] || []),
@@ -175,15 +177,15 @@ export function SaasTierPricingCard() {
       </div>
 
       <div className="flex items-center gap-1">
-        {(["monthly", "annual"] as SaasCycle[]).map((cy) => (
+        {(SAAS_CYCLES).map((cy) => (
           <Button
             key={cy}
             size="sm"
             variant={cycle === cy ? "default" : "outline"}
-            className="h-7 text-xs capitalize"
+            className="h-7 text-xs"
             onClick={() => setCycle(cy)}
           >
-            {cy}
+            {CYCLE_LABEL[cy]}
           </Button>
         ))}
         <span className="text-[10px] text-muted-foreground ml-2">Rates are per member per month.</span>

@@ -25,6 +25,7 @@ import {
   tierSettingKey,
   computeTieredCharge,
   type SaasCycle,
+  CYCLE_MONTHS,
 } from "@/lib/saas-tiers";
 import { saasMinKey } from "@/hooks/use-saas-pricing";
 
@@ -200,8 +201,10 @@ export default function SuperAdminSubscriptions() {
     queryFn: async () => {
       const keys = (["ZAR", "USD", "EUR"] as const).flatMap((c) => [
         tierSettingKey(c, "monthly"),
+        tierSettingKey(c, "biannual"),
         tierSettingKey(c, "annual"),
         saasMinKey(c, "monthly"),
+        saasMinKey(c, "biannual"),
         saasMinKey(c, "annual"),
       ]);
       const { data, error } = await supabase.from("app_settings").select("key, value").in("key", keys);
@@ -217,10 +220,11 @@ export default function SuperAdminSubscriptions() {
     const min = Number(tierSettings?.get(saasMinKey(c, cycle)) ?? DEFAULT_MIN_CHARGE[c][cycle]) || 0;
     const res = computeTieredCharge(Math.max(0, Math.floor(members || 0)), tiers, min);
     // Annual-upfront invoices cover 12 months of the monthly-equivalent charge.
-    const months = cycle === "annual" ? 12 : 1;
+    const months = CYCLE_MONTHS[cycle];
     return { ...res, total: +(res.subtotal * months).toFixed(2), min, months };
   };
-  const cycleOf = (plan?: Plan | null): SaasCycle => (plan?.billing_cycle === "annual" ? "annual" : "monthly");
+  const cycleOf = (plan?: Plan | null): SaasCycle =>
+    plan?.billing_cycle === "annual" ? "annual" : plan?.billing_cycle === "biannual" ? "biannual" : "monthly";
 
 
   // --- Invoice settings (platform / head-office) ---
@@ -1168,7 +1172,8 @@ export default function SuperAdminSubscriptions() {
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="annual">Annual</SelectItem>
+                    <SelectItem value="biannual">6-monthly upfront (5% off)</SelectItem>
+                    <SelectItem value="annual">Annual upfront (10% off)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1240,7 +1245,11 @@ export default function SuperAdminSubscriptions() {
                 <SelectContent>
                   {plans.filter(p => p.active).map(p => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.billing_cycle === "annual" ? "Annual upfront" : "Monthly in advance"} — sliding scale
+                      {p.billing_cycle === "annual"
+                        ? "Annual upfront"
+                        : p.billing_cycle === "biannual"
+                          ? "6-monthly upfront"
+                          : "Monthly in advance"} — sliding scale
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1300,12 +1309,12 @@ export default function SuperAdminSubscriptions() {
               )}
               {calc.months > 1 && (
                 <div className="flex justify-between text-[11px] font-mono">
-                  <span>× 12 months (annual upfront)</span>
+                  <span>× {calc.months} months ({cycle === "annual" ? "annual" : "6-monthly"} upfront)</span>
                   <span>{sym}{calc.total.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between text-[11px] font-semibold border-t pt-1">
-                <span>{cycle === "annual" ? "Annual total" : "Monthly total"}</span>
+                <span>{cycle === "annual" ? "Annual total" : cycle === "biannual" ? "6-month total" : "Monthly total"}</span>
                 <span className="font-mono">{sym}{calc.total.toFixed(2)}</span>
               </div>
               {Number(subForm.amount_due) !== calc.total && (

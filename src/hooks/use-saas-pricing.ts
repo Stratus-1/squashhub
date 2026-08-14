@@ -18,8 +18,10 @@ export interface SaasPricing {
   currency: string;
   symbol: string;
   monthlyTiers: SaasTier[];
+  biannualTiers: SaasTier[];
   annualTiers: SaasTier[];
   monthlyMin: number;
+  biannualMin: number;
   annualMin: number;
   cap: number | null;
   format: (n: number) => string;
@@ -42,8 +44,10 @@ export function useSaasPricing(currencyCode?: string | null): SaasPricing {
       const keys = [
         "saas_billing_cap",
         tierSettingKey(ccy, "monthly"),
+        tierSettingKey(ccy, "biannual"),
         tierSettingKey(ccy, "annual"),
         saasMinKey(ccy, "monthly"),
+        saasMinKey(ccy, "biannual"),
         saasMinKey(ccy, "annual"),
       ];
       const { data, error } = await supabase.from("app_settings").select("key, value").in("key", keys);
@@ -56,8 +60,10 @@ export function useSaasPricing(currencyCode?: string | null): SaasPricing {
   const cap = rawCap == null || rawCap === "" ? null : Number(rawCap);
 
   const monthlyTiers = parseTiers(settings?.get(tierSettingKey(ccy, "monthly"))) || DEFAULT_TIERS[ccy].monthly;
+  const biannualTiers = parseTiers(settings?.get(tierSettingKey(ccy, "biannual"))) || DEFAULT_TIERS[ccy].biannual;
   const annualTiers = parseTiers(settings?.get(tierSettingKey(ccy, "annual"))) || DEFAULT_TIERS[ccy].annual;
   const monthlyMin = Number(settings?.get(saasMinKey(ccy, "monthly")) ?? DEFAULT_MIN_CHARGE[ccy].monthly) || 0;
+  const biannualMin = Number(settings?.get(saasMinKey(ccy, "biannual")) ?? DEFAULT_MIN_CHARGE[ccy].biannual) || 0;
   const annualMin = Number(settings?.get(saasMinKey(ccy, "annual")) ?? DEFAULT_MIN_CHARGE[ccy].annual) || 0;
 
   const symbol = SAAS_SYMBOL[ccy] || "R";
@@ -66,8 +72,10 @@ export function useSaasPricing(currencyCode?: string | null): SaasPricing {
     currency: ccy,
     symbol,
     monthlyTiers,
+    biannualTiers,
     annualTiers,
     monthlyMin,
+    biannualMin,
     annualMin,
     cap,
     format: (n: number) => `${symbol}${Number(n || 0).toFixed(2)}`,

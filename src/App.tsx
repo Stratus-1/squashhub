@@ -486,6 +486,7 @@ function AppRoutes() {
         <Route path="/admin" element={<AdminRoute><SuperAdminLayout /></AdminRoute>}>
           <Route index element={<SuperAdminDashboard />} />
           <Route path="clubs" element={<SuperAdminClubs />} />
+          <Route path="federation" element={<SuperAdminFederation />} />
           <Route path="users" element={<SuperAdminUsers />} />
           <Route path="leagues" element={<SuperAdminLeagues />} />
           <Route path="nsa-import" element={<SuperAdminNsaImport />} />

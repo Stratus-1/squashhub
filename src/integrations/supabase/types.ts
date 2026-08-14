@@ -1158,22 +1158,30 @@ export type Database = {
       club_champs: {
         Row: {
           affects_ranking_points: boolean
+          association_fee_cents: number
           avoid_back_to_back: boolean
           best_of: number | null
           bye_handling: string
           club_id: string
+          competition_level: string
           court_ids: number[]
           court_rotation_minutes: number | null
           created_at: string
           day_schedules: Json
           default_break_minutes: number
           description: string | null
+          eligibility_max_age: number | null
+          eligibility_min_age: number | null
+          eligibility_notes: string | null
+          eligibility_requires_licence: boolean
+          eligibility_scope: string
           enable_playoffs: boolean
           end_date: string
           end_time: string
           entries_locked: boolean
           entry_fee_cents: number
           expected_players: Json | null
+          federation_fee_cents: number
           gender: string
           group_break_minutes: Json
           group_durations: Json
@@ -1202,11 +1210,19 @@ export type Database = {
           playoff_break_minutes: number
           playoff_date: string | null
           points_per_game: number
+          refund_cutoff_date: string | null
+          refund_policy: string
           registration_closes_at: string | null
           registration_mode: string
           registration_opens_at: string | null
           registration_required: boolean
           round_format: string
+          sanction_notes: string | null
+          sanction_reference: string | null
+          sanction_status: string
+          sanctioned_at: string | null
+          sanctioned_by: string | null
+          sanctioning_org_id: string | null
           schedule_mode: string
           scoring_mode: string
           source_league_id: string | null
@@ -1222,22 +1238,30 @@ export type Database = {
         }
         Insert: {
           affects_ranking_points?: boolean
+          association_fee_cents?: number
           avoid_back_to_back?: boolean
           best_of?: number | null
           bye_handling?: string
           club_id: string
+          competition_level?: string
           court_ids?: number[]
           court_rotation_minutes?: number | null
           created_at?: string
           day_schedules?: Json
           default_break_minutes?: number
           description?: string | null
+          eligibility_max_age?: number | null
+          eligibility_min_age?: number | null
+          eligibility_notes?: string | null
+          eligibility_requires_licence?: boolean
+          eligibility_scope?: string
           enable_playoffs?: boolean
           end_date: string
           end_time?: string
           entries_locked?: boolean
           entry_fee_cents?: number
           expected_players?: Json | null
+          federation_fee_cents?: number
           gender: string
           group_break_minutes?: Json
           group_durations?: Json
@@ -1266,11 +1290,19 @@ export type Database = {
           playoff_break_minutes?: number
           playoff_date?: string | null
           points_per_game?: number
+          refund_cutoff_date?: string | null
+          refund_policy?: string
           registration_closes_at?: string | null
           registration_mode?: string
           registration_opens_at?: string | null
           registration_required?: boolean
           round_format?: string
+          sanction_notes?: string | null
+          sanction_reference?: string | null
+          sanction_status?: string
+          sanctioned_at?: string | null
+          sanctioned_by?: string | null
+          sanctioning_org_id?: string | null
           schedule_mode?: string
           scoring_mode?: string
           source_league_id?: string | null
@@ -1286,22 +1318,30 @@ export type Database = {
         }
         Update: {
           affects_ranking_points?: boolean
+          association_fee_cents?: number
           avoid_back_to_back?: boolean
           best_of?: number | null
           bye_handling?: string
           club_id?: string
+          competition_level?: string
           court_ids?: number[]
           court_rotation_minutes?: number | null
           created_at?: string
           day_schedules?: Json
           default_break_minutes?: number
           description?: string | null
+          eligibility_max_age?: number | null
+          eligibility_min_age?: number | null
+          eligibility_notes?: string | null
+          eligibility_requires_licence?: boolean
+          eligibility_scope?: string
           enable_playoffs?: boolean
           end_date?: string
           end_time?: string
           entries_locked?: boolean
           entry_fee_cents?: number
           expected_players?: Json | null
+          federation_fee_cents?: number
           gender?: string
           group_break_minutes?: Json
           group_durations?: Json
@@ -1330,11 +1370,19 @@ export type Database = {
           playoff_break_minutes?: number
           playoff_date?: string | null
           points_per_game?: number
+          refund_cutoff_date?: string | null
+          refund_policy?: string
           registration_closes_at?: string | null
           registration_mode?: string
           registration_opens_at?: string | null
           registration_required?: boolean
           round_format?: string
+          sanction_notes?: string | null
+          sanction_reference?: string | null
+          sanction_status?: string
+          sanctioned_at?: string | null
+          sanctioned_by?: string | null
+          sanctioning_org_id?: string | null
           schedule_mode?: string
           scoring_mode?: string
           source_league_id?: string | null
@@ -1354,6 +1402,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_sanctioning_org_id_fkey"
+            columns: ["sanctioning_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
           {
@@ -8590,6 +8645,47 @@ export type Database = {
           reason?: string
         }
         Relationships: []
+      }
+      tournament_governance_audit: {
+        Row: {
+          champ_id: string
+          changed_by: string | null
+          club_id: string
+          created_at: string
+          field: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          champ_id: string
+          changed_by?: string | null
+          club_id: string
+          created_at?: string
+          field: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          champ_id?: string
+          changed_by?: string | null
+          club_id?: string
+          created_at?: string
+          field?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_governance_audit_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_badges: {
         Row: {

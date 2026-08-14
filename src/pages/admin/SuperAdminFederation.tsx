@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Building2, Users, Trophy, Flag, ChevronRight, ChevronDown, ShieldCheck } from "lucide-react";
+import { Loader2, Building2, Users, Trophy, Flag, ChevronRight, ChevronDown, ShieldCheck, GripVertical } from "lucide-react";
 import {
   useFederationHierarchy,
   useFederationStats,
   useFederationAdmins,
+  useReparentOrg,
   type OrgNode,
 } from "@/hooks/use-federation";
 import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
@@ -38,8 +39,31 @@ function StatCard({ label, value, sub, icon: Icon }: { label: string; value: num
   );
 }
 
-function TreeNode({ node, depth, filter }: { node: OrgNode; depth: number; filter: string }) {
+function descendantIds(n: OrgNode, acc: Set<string> = new Set()): Set<string> {
+  n.children.forEach((c) => {
+    acc.add(c.id);
+    descendantIds(c, acc);
+  });
+  return acc;
+}
+
+function TreeNode({
+  node,
+  depth,
+  filter,
+  dragId,
+  setDragId,
+  onDrop,
+}: {
+  node: OrgNode;
+  depth: number;
+  filter: string;
+  dragId: string | null;
+  setDragId: (id: string | null) => void;
+  onDrop: (childId: string, parentId: string) => void;
+}) {
   const [open, setOpen] = useState(depth < 2);
+  const [over, setOver] = useState(false);
   const matches = (n: OrgNode): boolean =>
     !filter ||
     n.name.toLowerCase().includes(filter.toLowerCase()) ||
@@ -48,13 +72,52 @@ function TreeNode({ node, depth, filter }: { node: OrgNode; depth: number; filte
   if (!matches(node)) return null;
   const hasChildren = node.children.length > 0;
 
+  // Can this node accept the currently dragged org?
+  const canAccept =
+    !!dragId &&
+    dragId !== node.id &&
+    node.kind !== "club" &&
+    !descendantIds(node).has(dragId);
+
   return (
     <div>
       <div
-        className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-white/[0.05] cursor-pointer"
+        draggable
+        onDragStart={(e) => {
+          e.stopPropagation();
+          setDragId(node.id);
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", node.id);
+        }}
+        onDragEnd={() => {
+          setDragId(null);
+          setOver(false);
+        }}
+        onDragOver={(e) => {
+          if (!canAccept) return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = "move";
+          if (!over) setOver(true);
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => {
+          if (!canAccept) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const childId = e.dataTransfer.getData("text/plain") || dragId!;
+          setOver(false);
+          setDragId(null);
+          setOpen(true);
+          onDrop(childId, node.id);
+        }}
+        className={`flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-grab active:cursor-grabbing hover:bg-white/[0.05] ${
+          over ? "bg-primary/20 ring-1 ring-primary/60" : ""
+        } ${dragId === node.id ? "opacity-40" : ""}`}
         style={{ paddingLeft: 8 + depth * 16 }}
         onClick={() => hasChildren && setOpen((o) => !o)}
       >
+        <GripVertical className="w-3 h-3 text-white/25 shrink-0" />
         {hasChildren ? (
           open ? <ChevronDown className="w-3.5 h-3.5 text-white/50" /> : <ChevronRight className="w-3.5 h-3.5 text-white/50" />
         ) : (
@@ -72,7 +135,18 @@ function TreeNode({ node, depth, filter }: { node: OrgNode; depth: number; filte
           <span className="text-[11px] text-white/40 w-10 text-right">{node.children.length}</span>
         )}
       </div>
-      {open && node.children.map((c) => <TreeNode key={c.id} node={c} depth={depth + 1} filter={filter} />)}
+      {open &&
+        node.children.map((c) => (
+          <TreeNode
+            key={c.id}
+            node={c}
+            depth={depth + 1}
+            filter={filter}
+            dragId={dragId}
+            setDragId={setDragId}
+            onDrop={onDrop}
+          />
+        ))}
     </div>
   );
 }
@@ -82,6 +156,8 @@ export default function SuperAdminFederation() {
   const { data: stats, isLoading: loadingStats } = useFederationStats();
   const { data: admins = [], isLoading: loadingAdmins } = useFederationAdmins();
   const [filter, setFilter] = useState("");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const reparent = useReparentOrg();
 
   const orgName = useMemo(() => {
     const map = new Map<string, string>();
@@ -146,6 +222,10 @@ export default function SuperAdminFederation() {
           <Card className="bg-white/[0.04] border-white/10 backdrop-blur-md">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-white/90">Organisation hierarchy</CardTitle>
+              <p className="text-[11px] text-white/45">
+                Drag a club or league onto an association (or the federation) to re-affiliate it. Clubs can't be dropped
+                onto other clubs.
+              </p>
             </CardHeader>
             <CardContent>
               <Input
@@ -159,7 +239,15 @@ export default function SuperAdminFederation() {
               ) : (
                 <div className="max-h-[520px] overflow-y-auto">
                   {(hierarchy?.roots || []).map((r) => (
-                    <TreeNode key={r.id} node={r} depth={0} filter={filter} />
+                    <TreeNode
+                      key={r.id}
+                      node={r}
+                      depth={0}
+                      filter={filter}
+                      dragId={dragId}
+                      setDragId={setDragId}
+                      onDrop={(childId, parentId) => reparent.mutate({ childId, parentId })}
+                    />
                   ))}
                 </div>
               )}

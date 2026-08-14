@@ -279,26 +279,46 @@ export default function SuperAdminClubs() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+            <div className="rounded-md border p-3 space-y-3">
               <div>
-                <Label>Allow upfront billing (6-monthly / annual)</Label>
+                <Label>Upfront payment options</Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  When off, this club can only be invoiced monthly. Turn on once their member roster
-                  has settled, so a year paid upfront reflects realistic numbers.
+                  Enable the upfront cycles this club may choose in their own billing settings. When
+                  both are off they can only be invoiced monthly. Turn these on once their member
+                  roster has settled, so a prepaid period reflects realistic numbers.
                 </p>
-                {editClub?.annual_billing_requested_at && !editForm.allow_annual_billing && (
-                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mt-1.5">
-                    Requested by the club on{" "}
-                    {new Date(editClub.annual_billing_requested_at).toLocaleDateString()} — approve by
-                    turning this on.
-                  </p>
-                )}
+                {editClub?.annual_billing_requested_at &&
+                  !editForm.allow_annual_billing &&
+                  !editForm.allow_biannual_billing && (
+                    <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mt-1.5">
+                      Requested by the club on{" "}
+                      {new Date(editClub.annual_billing_requested_at).toLocaleDateString()} — approve
+                      by turning an option on.
+                    </p>
+                  )}
               </div>
-              <Switch
-                checked={editForm.allow_annual_billing}
-                onCheckedChange={(v) => setEditForm((f) => ({ ...f, allow_annual_billing: v }))}
-              />
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm">
+                  6-monthly upfront
+                  <span className="text-xs text-muted-foreground"> · 5% discount</span>
+                </div>
+                <Switch
+                  checked={editForm.allow_biannual_billing}
+                  onCheckedChange={(v) => setEditForm((f) => ({ ...f, allow_biannual_billing: v }))}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm">
+                  Annual upfront
+                  <span className="text-xs text-muted-foreground"> · 10% discount</span>
+                </div>
+                <Switch
+                  checked={editForm.allow_annual_billing}
+                  onCheckedChange={(v) => setEditForm((f) => ({ ...f, allow_annual_billing: v }))}
+                />
+              </div>
             </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditClub(null)}>Cancel</Button>

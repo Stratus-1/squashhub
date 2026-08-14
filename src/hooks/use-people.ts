@@ -51,22 +51,24 @@ export interface PersonClubLink {
 }
 
 /** National person directory — never exposes date of birth, only age / age group. */
-export function usePeopleDirectory(search: string) {
+export function usePeopleDirectory(search: string, flag?: string | null) {
   return useQuery({
-    queryKey: ["people-directory", search],
+    queryKey: ["people-directory", search, flag || ""],
     queryFn: async () => {
-      let q = supabase
+      let q = (supabase as any)
         .from("people_directory")
         .select("*")
         .order("full_name")
-        .limit(200);
+        .limit(500);
       if (search.trim()) q = q.ilike("full_name", `%${search.trim()}%`);
+      if (flag) q = q.contains("quality_flags", [flag]);
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as PersonDirectoryRow[];
     },
   });
 }
+
 
 /** Club memberships that sit underneath each person (the club facets of the spine). */
 export function usePersonClubLinks(personIds: string[]) {

@@ -42,7 +42,8 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         .select("id", { count: "exact", head: true })
         .eq("club_id", club.id)
         .eq("status", "active")
-        .neq("role", "visitor");
+        .neq("role", "visitor")
+        .eq("billing_exempt", false);
       if (error) throw error;
       return count ?? 0;
     },

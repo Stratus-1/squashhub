@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
       .eq('id', inv.id)
 
     if (sendErr) return json({ error: sendErr.message }, 500)
-    return json({ ok: true, recipient })
+    return json({ ok: true, recipient, recipients })
   } catch (e) {
     return json({ error: (e as Error).message }, 500)
   }

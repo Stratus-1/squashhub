@@ -131,8 +131,14 @@ export default function SuperAdminFederation() {
       <Tabs defaultValue="hierarchy">
         <TabsList className="bg-white/[0.06]">
           <TabsTrigger value="hierarchy">Hierarchy</TabsTrigger>
+          <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="roles">Federation roles</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="people" className="mt-3">
+          <FederationPeopleTab />
+        </TabsContent>
+
 
         <TabsContent value="hierarchy" className="mt-3">
           <Card className="bg-white/[0.04] border-white/10 backdrop-blur-md">

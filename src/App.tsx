@@ -77,6 +77,7 @@ import { SuperAdminLayout } from "./components/admin/SuperAdminLayout";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import SuperAdminClubs from "./pages/admin/SuperAdminClubs";
 import SuperAdminFederation from "./pages/admin/SuperAdminFederation";
+import SuperAdminTournaments from "./pages/admin/SuperAdminTournaments";
 import SuperAdminUsers from "./pages/admin/SuperAdminUsers";
 import SuperAdminSubscriptions from "./pages/admin/SuperAdminSubscriptions";
 import SuperAdminSettings from "./pages/admin/SuperAdminSettings";
@@ -487,6 +488,7 @@ function AppRoutes() {
           <Route index element={<SuperAdminDashboard />} />
           <Route path="clubs" element={<SuperAdminClubs />} />
           <Route path="federation" element={<SuperAdminFederation />} />
+          <Route path="tournaments" element={<SuperAdminTournaments />} />
           <Route path="users" element={<SuperAdminUsers />} />
           <Route path="leagues" element={<SuperAdminLeagues />} />
           <Route path="nsa-import" element={<SuperAdminNsaImport />} />

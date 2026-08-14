@@ -322,3 +322,43 @@ export function useHostClubs() {
     },
   });
 }
+
+/** Create a tournament owned by an association or the national federation. */
+export function useCreateOwnedTournament() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      name: string;
+      owner_org_id: string;
+      host_club_id: string;
+      gender: string;
+      match_type: string;
+      start_date: string;
+      end_date: string;
+      num_groups: number;
+      description?: string | null;
+    }) => {
+      const { data, error } = await fromExt("tournaments")
+        .insert({
+          name: input.name,
+          owner_org_id: input.owner_org_id,
+          club_id: input.host_club_id,
+          gender: input.gender,
+          match_type: input.match_type,
+          start_date: input.start_date,
+          end_date: input.end_date,
+          num_groups: input.num_groups,
+          description: input.description ?? null,
+          status: "planning",
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data as { id: string };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tournaments-by-owner"] });
+      qc.invalidateQueries({ queryKey: ["club-champs"] });
+    },
+  });
+}

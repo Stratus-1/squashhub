@@ -41,6 +41,24 @@ export function useDuplicateCandidates(limit = 200) {
   });
 }
 
+/** Mark a suggested pair as "not a duplicate" (e.g. family members sharing a phone). */
+export function useDismissDuplicatePair() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ aId, bId, reason }: { aId: string; bId: string; reason?: string }) => {
+      const { error } = await (supabase as any).rpc("dismiss_duplicate_pair", {
+        _a: aId,
+        _b: bId,
+        _reason: reason ?? null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["people-duplicate-candidates"] });
+    },
+  });
+}
+
 
 export interface PersonClubLink {
   person_id: string;

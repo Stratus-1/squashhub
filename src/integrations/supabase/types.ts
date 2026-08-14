@@ -7165,6 +7165,62 @@ export type Database = {
           },
         ]
       }
+      people_duplicate_dismissals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          person_a_id: string
+          person_b_id: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_a_id: string
+          person_b_id: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_a_id?: string
+          person_b_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_duplicate_dismissals_person_a_id_fkey"
+            columns: ["person_a_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_duplicate_dismissals_person_a_id_fkey"
+            columns: ["person_a_id"]
+            isOneToOne: false
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_duplicate_dismissals_person_b_id_fkey"
+            columns: ["person_b_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_duplicate_dismissals_person_b_id_fkey"
+            columns: ["person_b_id"]
+            isOneToOne: false
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people_private: {
         Row: {
           created_at: string
@@ -9164,6 +9220,10 @@ export type Database = {
       delete_league_round_cascade: {
         Args: { _round_id: string }
         Returns: Json
+      }
+      dismiss_duplicate_pair: {
+        Args: { _a: string; _b: string; _reason?: string }
+        Returns: undefined
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {

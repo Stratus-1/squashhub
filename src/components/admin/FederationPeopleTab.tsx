@@ -11,6 +11,7 @@ import {
   useMergePeople,
   useLicenceProducts,
   useDuplicateCandidates,
+  useDismissDuplicatePair,
   type DuplicateCandidate,
 } from "@/hooks/use-people";
 
@@ -32,12 +33,21 @@ function confidenceTone(c: number) {
 
 function DuplicateRow({ d }: { d: DuplicateCandidate }) {
   const merge = useMergePeople();
+  const dismiss = useDismissDuplicatePair();
   const run = async (keepId: string, dupId: string) => {
     try {
       await merge.mutateAsync({ keepId, dupId });
       toast.success("Records merged into one national person");
     } catch (e: any) {
       toast.error(e.message || "Merge failed");
+    }
+  };
+  const keepBoth = async () => {
+    try {
+      await dismiss.mutateAsync({ aId: d.person_a_id, bId: d.person_b_id, reason: "family / not a duplicate" });
+      toast.success("Kept both records — pair won't be flagged again");
+    } catch (e: any) {
+      toast.error(e.message || "Could not dismiss pair");
     }
   };
   return (
@@ -58,7 +68,7 @@ function DuplicateRow({ d }: { d: DuplicateCandidate }) {
         <Button
           size="sm"
           variant="outline"
-          disabled={merge.isPending}
+          disabled={merge.isPending || dismiss.isPending}
           onClick={() => run(d.person_a_id, d.person_b_id)}
           className="h-6 text-[10px] border-white/20 text-white/80"
         >
@@ -67,11 +77,20 @@ function DuplicateRow({ d }: { d: DuplicateCandidate }) {
         <Button
           size="sm"
           variant="outline"
-          disabled={merge.isPending}
+          disabled={merge.isPending || dismiss.isPending}
           onClick={() => run(d.person_b_id, d.person_a_id)}
           className="h-6 text-[10px] border-white/20 text-white/80"
         >
           Keep second
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={merge.isPending || dismiss.isPending}
+          onClick={keepBoth}
+          className="h-6 text-[10px] border-emerald-400/40 text-emerald-200"
+        >
+          Keep both (family)
         </Button>
       </div>
     </div>

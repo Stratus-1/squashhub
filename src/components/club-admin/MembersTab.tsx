@@ -1769,6 +1769,22 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               {SKILL_LEVELS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
+          <div className="flex items-start gap-2 rounded-md border border-border p-2.5">
+            <input
+              type="checkbox"
+              id="admin-billing-exempt"
+              className="mt-0.5"
+              checked={form.billing_exempt}
+              onChange={e => setForm(p => ({ ...p, billing_exempt: e.target.checked }))}
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="admin-billing-exempt" className="text-sm font-medium">Not a billable member</Label>
+              <p className="text-[10px] text-muted-foreground">
+                Excludes this record from your club's subscription member count. Use for placeholder or
+                visitor slots (e.g. internal league reserves) that aren't real paying members.
+              </p>
+            </div>
+          </div>
           {leagueAssocs.length > 0 && (
             <div className="border-t border-border pt-3 mt-3 space-y-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Participation</p>

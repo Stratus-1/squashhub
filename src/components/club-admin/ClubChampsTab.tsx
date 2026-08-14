@@ -3997,6 +3997,55 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               />
             </div>
 
+            {/* Tournament type, capacity and seeding — same block at every level. */}
+            <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm space-y-3">
+              <div>
+                <Label className="text-sm font-semibold">Tournament type <span className="text-destructive">*</span></Label>
+                <Select value={eventType} onValueChange={setEventType}>
+                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {EVENT_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Sanctioning, eligibility, entry fees and refunds are set once in <strong>Governance</strong>; how the
+                  game is played is set once in <strong>Rules</strong>. This wizard covers the running of the event.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs font-medium">Max entrants (optional)</Label>
+                  <Input type="number" min={0} className="mt-1" value={maxEntrants}
+                    onChange={(e) => setMaxEntrants(e.target.value)} placeholder="No limit" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium">Max per league (optional)</Label>
+                  <Input type="number" min={0} className="mt-1" value={maxPerLeague}
+                    onChange={(e) => setMaxPerLeague(e.target.value)} placeholder="No limit" />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium">Seeding from</Label>
+                  <Select value={seedingSource} onValueChange={setSeedingSource}>
+                    <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ladder">Club ladder</SelectItem>
+                      <SelectItem value="ranking">National ranking</SelectItem>
+                      <SelectItem value="manual">Manual order</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {multiClub && (
+                <p className="text-[11px] text-muted-foreground">
+                  Entrants and courts are pooled from {venueClubIds.length} clubs.
+                </p>
+              )}
+            </div>
+
+
+
             {/* Scoring format — driven by the tournament-format registry */}
             <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm">
               <Label className="text-sm font-semibold">Scoring format <span className="text-destructive">*</span></Label>

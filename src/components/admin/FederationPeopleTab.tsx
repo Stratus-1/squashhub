@@ -17,8 +17,8 @@ import {
 const FLAG_LABELS: Record<string, string> = {
   missing_name: "Missing name",
   name_is_phone: "Name is a phone number",
-  no_club_link: "No club membership",
-  visitor_only: "Visitor records only",
+  no_association: "No association link",
+
   missing_gender: "Missing gender",
   missing_age: "Missing age",
   no_contact: "No contact details",

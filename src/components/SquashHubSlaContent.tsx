@@ -52,8 +52,8 @@ export function SquashHubSlaContent() {
         <li>
           <strong>Billing commencement:</strong> Subscription fees are first invoiced the day after
           the Club&apos;s three-month free trial ends, and no earlier than
-          <strong> 1 September 2026</strong>, and are then charged monthly or annually in advance
-          depending on the chosen billing option.
+          <strong> 1 September 2026</strong>, and are then charged monthly, six-monthly or annually
+          in advance depending on the chosen billing option.
         </li>
         <li>
           <strong>Sliding scale:</strong> Fees are charged on a graduated (sliding scale) basis
@@ -63,9 +63,10 @@ export function SquashHubSlaContent() {
           adjusted by the Provider from time to time.
         </li>
         <li>
-          <strong>Minimum monthly fee:</strong> A minimum subscription fee of <strong>R250.00 per
-          month</strong> applies (or the equivalent published minimum for clubs invoiced in USD or
-          EUR), regardless of the number of active members.
+          <strong>Minimum monthly fee:</strong> A minimum subscription fee of <strong>R120.00 per
+          month</strong> applies (R114.00 per month when paid six-monthly in advance, R108.00 per
+          month when paid annually in advance), or the equivalent published minimum for clubs
+          invoiced in USD or EUR, regardless of the number of active members.
         </li>
         <li>
           <strong>Billing options:</strong> Monthly (billed in advance), six-monthly upfront

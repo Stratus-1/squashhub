@@ -2539,8 +2539,17 @@ export default function LeagueGameDetail() {
                 const liveHomeTotal = displayScores.reduce((sum, s) => sum + s.home, 0);
                 const liveAwayTotal = displayScores.reduce((sum, s) => sum + s.away, 0);
                 const anyProgress = pos.completed || pos.scores.length > 0 || !!pos.currentGame;
-                const homeAhead = anyProgress && liveHomeTotal > liveAwayTotal;
-                const awayAhead = anyProgress && liveAwayTotal > liveHomeTotal;
+                // Standard play: the winner is whoever wins the most GAMES.
+                // Total points are only a tiebreak while games are level.
+                const homeGamesLive = pos.scores.filter(s => s.home > s.away).length;
+                const awayGamesLive = pos.scores.filter(s => s.away > s.home).length;
+                const homeAhead = anyProgress && (homeGamesLive !== awayGamesLive
+                  ? homeGamesLive > awayGamesLive
+                  : liveHomeTotal > liveAwayTotal);
+                const awayAhead = anyProgress && (homeGamesLive !== awayGamesLive
+                  ? awayGamesLive > homeGamesLive
+                  : liveAwayTotal > liveHomeTotal);
+
                 const homeNameTint = homeAhead
                   ? "bg-green-500/20 text-green-700 dark:text-green-300 rounded px-1"
                   : awayAhead

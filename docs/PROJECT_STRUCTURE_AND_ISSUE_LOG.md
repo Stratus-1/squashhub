@@ -481,3 +481,12 @@ Express fallback path is always the one in use for this club.
   the original lineup row instead of deleting it.
 - **Guard:** do NOT use `allow_multi_team_registration` for this — that changes permanent squad
   registration. Same-date fixtures only warn, never block.
+
+## Router & Internet Monitoring (2026-08-14)
+Network-agnostic router monitoring module.
+- Tables: `club_router_configs`, `club_data_bundles`, `club_router_polls`, `club_router_alert_settings`, `club_router_alerts`. Credentials live in `club_secrets` (`router_username/password/api_token`).
+- RPC `purchase_data_bundle` archives the active bundle and re-bases the usage baseline from the latest poll.
+- Edge function `supabase/functions/router-poll` (+ `drivers.ts` driver registry: generic_http, mikrotik_rest, huawei_hilink, glinet_luci). Cron `router-poll-all` runs every 5 min and polls clubs whose interval is due.
+- UI: Club Admin → Internet tab (`RouterTab.tsx`), dashboard widget `DashboardRouterCard.tsx`, hooks in `use-router-monitor.ts`.
+- Alerts: thresholds default 75/90/95, email + push, one alert per threshold per bundle, offline alert throttled to 6h.
+- Pilot: Gordons Bay Squash Club (config seeded, disabled until router details captured).

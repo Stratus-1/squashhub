@@ -9,9 +9,11 @@ import {
   useFederationStats,
   useFederationAdmins,
   useReparentOrg,
+  useCreateAssociation,
   type OrgNode,
 } from "@/hooks/use-federation";
 import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
+import FederationOrgChart from "@/components/admin/FederationOrgChart";
 
 
 const ROLE_LABELS: Record<string, string> = {

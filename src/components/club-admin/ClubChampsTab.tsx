@@ -3918,7 +3918,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           </DialogContent>
         </Dialog>
 
-        <TournamentGovernanceDialog champ={governanceChamp} onOpenChange={(v) => !v && setGovernanceChamp(null)} />
+        <TournamentGovernanceDialog champ={governanceChamp} scope={scope} onOpenChange={(v) => !v && setGovernanceChamp(null)} />
         <TournamentRulesDialog champ={rulesChamp} onOpenChange={(v) => !v && setRulesChamp(null)} />
         <Dialog open={!!duplicateSource} onOpenChange={(v) => !v && setDuplicateSource(null)}>
           <DialogContent className="max-w-sm">

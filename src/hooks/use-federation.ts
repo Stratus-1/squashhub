@@ -11,6 +11,7 @@ export interface Organisation {
   country: string;
   club_id: string | null;
   league_association_id: string | null;
+  is_internal_league?: boolean;
   active: boolean;
 }
 

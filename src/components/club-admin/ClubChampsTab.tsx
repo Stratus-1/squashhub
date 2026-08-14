@@ -3491,6 +3491,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
+    const ex = (tournamentExtras || {})[champ.id] || {};
+    setEventType(ex.event_type || (scope === "club" ? "club_championship" : "open"));
+    setMaxEntrants(ex.max_entrants ? String(ex.max_entrants) : "");
+    setMaxPerLeague(ex.max_per_league ? String(ex.max_per_league) : "");
+    setSeedingSource(ex.seeding_source || "ladder");
+
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")

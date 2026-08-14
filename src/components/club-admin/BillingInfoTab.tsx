@@ -219,6 +219,18 @@ export function BillingInfoTab({ clubId, clubName }: { clubId: string; clubName?
           </div>
         </div>
 
+        {(club?.address || club?.phone) && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded border bg-muted/40 px-2.5 py-1.5">
+            <span className="text-[11px] text-muted-foreground">
+              Club contact details: {club?.address || "no address"}
+              {club?.phone ? ` · ${club.phone}` : ""}
+            </span>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={applyClubContact}>
+              <MapPin className="w-3 h-3 mr-1" /> Use club contact details
+            </Button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Field label="Address line 1" value={form.address_line1} onChange={(v) => set("address_line1", v)} />
           <Field label="Address line 2" value={form.address_line2} onChange={(v) => set("address_line2", v)} />

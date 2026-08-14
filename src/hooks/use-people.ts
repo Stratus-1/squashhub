@@ -130,6 +130,7 @@ export function useMergePeople() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["people-directory"] });
       qc.invalidateQueries({ queryKey: ["person-club-links"] });
+      qc.invalidateQueries({ queryKey: ["people-duplicate-candidates"] });
     },
   });
 }

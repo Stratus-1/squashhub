@@ -1675,6 +1675,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       address: form.address || null,
       fee_category_id: form.fee_category_id || null,
       skill_level: form.skill_level || null,
+      billing_exempt: form.billing_exempt,
     }).eq("id", member.id);
     if (error) { toast.error(error.message); return; }
 

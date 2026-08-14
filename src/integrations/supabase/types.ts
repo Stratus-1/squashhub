@@ -2801,6 +2801,62 @@ export type Database = {
           },
         ]
       }
+      club_subscription_baselines: {
+        Row: {
+          amount: number
+          billing_cycle: string
+          club_id: string
+          created_at: string
+          currency: string
+          effective_from: string
+          federation_id: string | null
+          id: string
+          member_count: number
+          note: string | null
+          region: string | null
+          set_by: string | null
+          set_by_name: string | null
+        }
+        Insert: {
+          amount?: number
+          billing_cycle?: string
+          club_id: string
+          created_at?: string
+          currency?: string
+          effective_from?: string
+          federation_id?: string | null
+          id?: string
+          member_count: number
+          note?: string | null
+          region?: string | null
+          set_by?: string | null
+          set_by_name?: string | null
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: string
+          club_id?: string
+          created_at?: string
+          currency?: string
+          effective_from?: string
+          federation_id?: string | null
+          id?: string
+          member_count?: number
+          note?: string | null
+          region?: string | null
+          set_by?: string | null
+          set_by_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_subscription_baselines_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_subscriptions: {
         Row: {
           amount_due: number
@@ -3088,6 +3144,11 @@ export type Database = {
           annual_billing_requested_at: string | null
           annual_billing_requested_by: string | null
           auto_number_existing_onboarding: boolean
+          baseline_amount: number | null
+          baseline_currency: string | null
+          baseline_cycle: string | null
+          baseline_member_count: number | null
+          baseline_set_at: string | null
           booking_last_slot_time: string
           booking_open_time: string
           booking_slot_minutes: number
@@ -3168,6 +3229,7 @@ export type Database = {
           tenant_type: string
           updated_at: string
           uses_gobook: boolean
+          variance_threshold_pct: number | null
           visitor_booking_fee: number
           visitors_access_control: boolean
           visitors_can_book: boolean
@@ -3186,6 +3248,11 @@ export type Database = {
           annual_billing_requested_at?: string | null
           annual_billing_requested_by?: string | null
           auto_number_existing_onboarding?: boolean
+          baseline_amount?: number | null
+          baseline_currency?: string | null
+          baseline_cycle?: string | null
+          baseline_member_count?: number | null
+          baseline_set_at?: string | null
           booking_last_slot_time?: string
           booking_open_time?: string
           booking_slot_minutes?: number
@@ -3266,6 +3333,7 @@ export type Database = {
           tenant_type?: string
           updated_at?: string
           uses_gobook?: boolean
+          variance_threshold_pct?: number | null
           visitor_booking_fee?: number
           visitors_access_control?: boolean
           visitors_can_book?: boolean
@@ -3284,6 +3352,11 @@ export type Database = {
           annual_billing_requested_at?: string | null
           annual_billing_requested_by?: string | null
           auto_number_existing_onboarding?: boolean
+          baseline_amount?: number | null
+          baseline_currency?: string | null
+          baseline_cycle?: string | null
+          baseline_member_count?: number | null
+          baseline_set_at?: string | null
           booking_last_slot_time?: string
           booking_open_time?: string
           booking_slot_minutes?: number
@@ -3364,6 +3437,7 @@ export type Database = {
           tenant_type?: string
           updated_at?: string
           uses_gobook?: boolean
+          variance_threshold_pct?: number | null
           visitor_booking_fee?: number
           visitors_access_control?: boolean
           visitors_can_book?: boolean
@@ -7501,6 +7575,69 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_variance_flags: {
+        Row: {
+          adjustment_amount: number | null
+          adjustment_invoice_id: string | null
+          baseline_member_count: number
+          club_id: string
+          created_at: string
+          current_member_count: number
+          id: string
+          note: string | null
+          resolved_at: string | null
+          status: string
+          threshold_pct: number
+          updated_at: string
+          variance_pct: number
+        }
+        Insert: {
+          adjustment_amount?: number | null
+          adjustment_invoice_id?: string | null
+          baseline_member_count: number
+          club_id: string
+          created_at?: string
+          current_member_count: number
+          id?: string
+          note?: string | null
+          resolved_at?: string | null
+          status?: string
+          threshold_pct: number
+          updated_at?: string
+          variance_pct: number
+        }
+        Update: {
+          adjustment_amount?: number | null
+          adjustment_invoice_id?: string | null
+          baseline_member_count?: number
+          club_id?: string
+          created_at?: string
+          current_member_count?: number
+          id?: string
+          note?: string | null
+          resolved_at?: string | null
+          status?: string
+          threshold_pct?: number
+          updated_at?: string
+          variance_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_variance_flags_adjustment_invoice_id_fkey"
+            columns: ["adjustment_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "platform_subscription_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_variance_flags_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_messages: {
         Row: {
           attachments: Json
@@ -8177,6 +8314,16 @@ export type Database = {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number
       }
+      create_subscription_adjustment_invoice: {
+        Args: {
+          _amount: number
+          _club_id: string
+          _flag_id?: string
+          _member_count: number
+          _note?: string
+        }
+        Returns: string
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -8676,6 +8823,17 @@ export type Database = {
           _unranked_default?: number
         }
         Returns: number
+      }
+      set_club_subscription_baseline: {
+        Args: {
+          _actor_name?: string
+          _amount: number
+          _club_id: string
+          _currency: string
+          _cycle: string
+          _member_count: number
+        }
+        Returns: string
       }
       sync_bells_match_state: {
         Args: {

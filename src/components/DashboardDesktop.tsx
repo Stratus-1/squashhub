@@ -16,6 +16,7 @@ import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
 import { DashboardWifiCard } from "@/components/DashboardWifiCard";
+import { DashboardRouterCard } from "@/components/DashboardRouterCard";
 
 interface DashboardDesktopProps {
   clubName: string;
@@ -112,7 +113,9 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
       <div className="px-8">
         <DashboardOpenDoorCard />
         <DashboardWifiCard />
+        <DashboardRouterCard />
       </div>
+
 
       {/* QUICK ACCESS TILES — categorised like the sidebar */}
       <div className="px-8 pb-2">

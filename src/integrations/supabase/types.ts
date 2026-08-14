@@ -1684,6 +1684,59 @@ export type Database = {
           },
         ]
       }
+      club_data_bundles: {
+        Row: {
+          archived_at: string | null
+          baseline_bytes: number
+          club_id: string
+          cost: number | null
+          created_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          purchased_at: string
+          size_mb: number
+          updated_at: string
+          used_bytes: number
+        }
+        Insert: {
+          archived_at?: string | null
+          baseline_bytes?: number
+          club_id: string
+          cost?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          purchased_at?: string
+          size_mb: number
+          updated_at?: string
+          used_bytes?: number
+        }
+        Update: {
+          archived_at?: string | null
+          baseline_bytes?: number
+          club_id?: string
+          cost?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          purchased_at?: string
+          size_mb?: number
+          updated_at?: string
+          used_bytes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_data_bundles_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_email_campaign_recipients: {
         Row: {
           campaign_id: string
@@ -2631,6 +2684,217 @@ export type Database = {
           },
         ]
       }
+      club_router_alert_settings: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          notify_email: boolean
+          notify_offline: boolean
+          notify_push: boolean
+          recipients: string[]
+          thresholds: number[]
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          notify_email?: boolean
+          notify_offline?: boolean
+          notify_push?: boolean
+          recipients?: string[]
+          thresholds?: number[]
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          notify_email?: boolean
+          notify_offline?: boolean
+          notify_push?: boolean
+          recipients?: string[]
+          thresholds?: number[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_router_alert_settings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_router_alerts: {
+        Row: {
+          bundle_id: string | null
+          channels: string[]
+          club_id: string
+          id: string
+          kind: string
+          message: string | null
+          sent_at: string
+          threshold: number | null
+        }
+        Insert: {
+          bundle_id?: string | null
+          channels?: string[]
+          club_id: string
+          id?: string
+          kind?: string
+          message?: string | null
+          sent_at?: string
+          threshold?: number | null
+        }
+        Update: {
+          bundle_id?: string | null
+          channels?: string[]
+          club_id?: string
+          id?: string
+          kind?: string
+          message?: string | null
+          sent_at?: string
+          threshold?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_router_alerts_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "club_data_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_router_alerts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_router_configs: {
+        Row: {
+          club_id: string
+          created_at: string
+          driver: string
+          enabled: boolean
+          host: string | null
+          id: string
+          last_polled_at: string | null
+          last_status: Json
+          model: string | null
+          notes: string | null
+          poll_interval_minutes: number
+          port: number | null
+          updated_at: string
+          use_https: boolean
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          driver?: string
+          enabled?: boolean
+          host?: string | null
+          id?: string
+          last_polled_at?: string | null
+          last_status?: Json
+          model?: string | null
+          notes?: string | null
+          poll_interval_minutes?: number
+          port?: number | null
+          updated_at?: string
+          use_https?: boolean
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          driver?: string
+          enabled?: boolean
+          host?: string | null
+          id?: string
+          last_polled_at?: string | null
+          last_status?: Json
+          model?: string | null
+          notes?: string | null
+          poll_interval_minutes?: number
+          port?: number | null
+          updated_at?: string
+          use_https?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_router_configs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_router_polls: {
+        Row: {
+          bundle_id: string | null
+          club_id: string
+          created_at: string
+          error: string | null
+          id: string
+          online: boolean
+          polled_at: string
+          raw: Json
+          signal_strength: number | null
+          signal_unit: string | null
+          total_bytes: number | null
+          uptime_seconds: number | null
+        }
+        Insert: {
+          bundle_id?: string | null
+          club_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          online?: boolean
+          polled_at?: string
+          raw?: Json
+          signal_strength?: number | null
+          signal_unit?: string | null
+          total_bytes?: number | null
+          uptime_seconds?: number | null
+        }
+        Update: {
+          bundle_id?: string | null
+          club_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          online?: boolean
+          polled_at?: string
+          raw?: Json
+          signal_strength?: number | null
+          signal_unit?: string | null
+          total_bytes?: number | null
+          uptime_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_router_polls_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "club_data_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_router_polls_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_secrets: {
         Row: {
           access_control_api_key: string | null
@@ -2651,6 +2915,9 @@ export type Database = {
           payment_gateway_credentials: Json | null
           payment_gateway_secret_key: string | null
           relay_device_type: string
+          router_api_token: string | null
+          router_password: string | null
+          router_username: string | null
           sender_email: string | null
           sender_name: string | null
           shelly_auth_key: string | null
@@ -2704,6 +2971,9 @@ export type Database = {
           payment_gateway_credentials?: Json | null
           payment_gateway_secret_key?: string | null
           relay_device_type?: string
+          router_api_token?: string | null
+          router_password?: string | null
+          router_username?: string | null
           sender_email?: string | null
           sender_name?: string | null
           shelly_auth_key?: string | null
@@ -2757,6 +3027,9 @@ export type Database = {
           payment_gateway_credentials?: Json | null
           payment_gateway_secret_key?: string | null
           relay_device_type?: string
+          router_api_token?: string | null
+          router_password?: string | null
+          router_username?: string | null
           sender_email?: string | null
           sender_name?: string | null
           shelly_auth_key?: string | null
@@ -8678,6 +8951,16 @@ export type Database = {
           p_description?: string
           p_lines: Json
           p_ref?: string
+        }
+        Returns: string
+      }
+      purchase_data_bundle: {
+        Args: {
+          _club_id: string
+          _cost?: number
+          _notes?: string
+          _purchased_at?: string
+          _size_mb: number
         }
         Returns: string
       }

@@ -386,27 +386,52 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   });
 
   const { data: courts = [] } = useQuery({
-    queryKey: ["club-courts", clubId],
+    queryKey: ["tournament-courts", venueClubIds],
     queryFn: async () => {
-      const { data, error } = await fromExt("courts").select("id, name, is_external, venue_name").eq("club_id", clubId);
+      const { data, error } = await fromExt("courts")
+        .select("id, name, is_external, venue_name, club_id, club:club_id(name)")
+        .in("club_id", venueClubIds);
       if (error) throw error;
-      return data as { id: number; name: string; is_external?: boolean | null; venue_name?: string | null }[];
+      return (data || []).map((c: any) => ({
+        ...c,
+        // In multi-venue events the club name is prefixed so courts stay distinguishable.
+        name: multiClub ? `${c.club?.name || "Club"} — ${c.name}` : c.name,
+      })) as { id: number; name: string; is_external?: boolean | null; venue_name?: string | null; club_id?: string }[];
     },
-    enabled: !!clubId,
+    enabled: venueClubIds.length > 0,
   });
 
   const { data: existingChamps = [], isLoading: champsLoading } = useQuery({
-    queryKey: ["club-champs", clubId],
+    queryKey: ["club-champs", clubId, ownerOrgId],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_champs")
-        .select("*")
-        .eq("club_id", clubId)
-        .order("created_at", { ascending: false });
+      let q = fromExt("club_champs").select("*");
+      q = ownerOrgId ? q.eq("owner_org_id", ownerOrgId) : q.eq("club_id", clubId);
+      const { data, error } = await q.order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
     enabled: !!clubId,
   });
+
+  // Fields that live only on the tournaments table (not exposed by the legacy
+  // club_champs compatibility view): event type, entry limits, seeding source.
+  const champIdsKey = (existingChamps as any[]).map((c: any) => c.id).join(",");
+  const { data: tournamentExtras } = useQuery({
+    queryKey: ["tournament-extras", champIdsKey],
+    queryFn: async () => {
+      const ids = (existingChamps as any[]).map((c: any) => c.id);
+      if (ids.length === 0) return {} as Record<string, any>;
+      const { data, error } = await fromExt("tournaments")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids")
+        .in("id", ids);
+      if (error) throw error;
+      const map: Record<string, any> = {};
+      (data || []).forEach((r: any) => { map[r.id] = r; });
+      return map;
+    },
+    enabled: !!champIdsKey,
+  });
+
 
   const [step, setStep] = useState<WizardStep>("category");
   const [showWizard, setShowWizard] = useState(false);

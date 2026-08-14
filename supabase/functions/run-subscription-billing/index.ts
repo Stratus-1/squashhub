@@ -424,6 +424,9 @@ Deno.serve(async (req) => {
           fx_rate_to_zar: fxRate,
           due_date: dueDate.toISOString().slice(0, 10),
           snapshot: settings,
+          // Snapshot of the club's billing details at issue time so past
+          // invoices keep the address/VAT/PO that applied then.
+          billing_details: clubBillingProfiles.get(sub.club_id) ?? null,
           status: 'issued',
         })
         .select()

@@ -170,7 +170,7 @@ export default function SuperAdminSubscriptions() {
   const { data: clubs = [] } = useQuery({
     queryKey: ["sa-clubs-for-subs"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain, currency_code").order("name").range(0, 49999);
+      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain, currency_code, sla_billing_option").order("name").range(0, 49999);
       if (error) throw error;
       // Billable member counts — active members only, visitors never billed.
       // Paginate to avoid PostgREST's 1000-row response cap.

@@ -76,6 +76,7 @@ import AdminSupport from "./pages/AdminSupport";
 import { SuperAdminLayout } from "./components/admin/SuperAdminLayout";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import SuperAdminClubs from "./pages/admin/SuperAdminClubs";
+import SuperAdminFederation from "./pages/admin/SuperAdminFederation";
 import SuperAdminUsers from "./pages/admin/SuperAdminUsers";
 import SuperAdminSubscriptions from "./pages/admin/SuperAdminSubscriptions";
 import SuperAdminSettings from "./pages/admin/SuperAdminSettings";

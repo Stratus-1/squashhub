@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Building2, Users, Trophy, Flag, ChevronRight, ChevronDown, ShieldCheck } from "lucide-react";
+import { Loader2, Building2, Users, Trophy, Flag, ChevronRight, ChevronDown, ShieldCheck, GripVertical } from "lucide-react";
 import {
   useFederationHierarchy,
   useFederationStats,
   useFederationAdmins,
+  useReparentOrg,
   type OrgNode,
 } from "@/hooks/use-federation";
 import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
@@ -155,6 +156,8 @@ export default function SuperAdminFederation() {
   const { data: stats, isLoading: loadingStats } = useFederationStats();
   const { data: admins = [], isLoading: loadingAdmins } = useFederationAdmins();
   const [filter, setFilter] = useState("");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const reparent = useReparentOrg();
 
   const orgName = useMemo(() => {
     const map = new Map<string, string>();
@@ -232,7 +235,15 @@ export default function SuperAdminFederation() {
               ) : (
                 <div className="max-h-[520px] overflow-y-auto">
                   {(hierarchy?.roots || []).map((r) => (
-                    <TreeNode key={r.id} node={r} depth={0} filter={filter} />
+                    <TreeNode
+                      key={r.id}
+                      node={r}
+                      depth={0}
+                      filter={filter}
+                      dragId={dragId}
+                      setDragId={setDragId}
+                      onDrop={(childId, parentId) => reparent.mutate({ childId, parentId })}
+                    />
                   ))}
                 </div>
               )}

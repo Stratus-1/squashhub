@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, X, Save, UserCheck } from "lucide-react";
+import { Loader2, Plus, X, Save, UserCheck, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useClubBillingProfile,
   useSaveClubBillingProfile,
@@ -13,6 +15,23 @@ import {
   type ClubBillingProfile,
 } from "@/hooks/use-club-billing";
 import { useMemberContext } from "@/contexts/MemberContext";
+
+/** Splits a free-text club address like "15 Drysdale Street, Nelspruit, 1200" into billing fields. */
+function parseClubAddress(raw?: string | null) {
+  const parts = String(raw || "")
+    .split(/[,\n]/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  let postal_code = "";
+  if (parts.length > 1 && /^\d{4,5}$/.test(parts[parts.length - 1])) {
+    postal_code = parts.pop() as string;
+  }
+  const address_line1 = parts.shift() || "";
+  const city = parts.length ? (parts.pop() as string) : "";
+  const address_line2 = parts.join(", ");
+  return { address_line1, address_line2, city, postal_code };
+}
 
 const EMPTY: Omit<ClubBillingProfile, "club_id"> = {
   contact_name: "",

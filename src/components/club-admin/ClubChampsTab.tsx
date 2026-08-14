@@ -38,8 +38,29 @@ import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-for
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 
 interface ClubChampsTabProps {
+  /** Primary host club — its courts are the default venue and new events are filed under it. */
   clubId: string;
+  /**
+   * Owning body of the events managed here. Omitted at club level (the club's own
+   * organisation is used). Set for association / federation tournament planning.
+   */
+  ownerOrgId?: string | null;
+  /** Who is running the event. Drives the entrant pool and which governance fields matter. */
+  scope?: "club" | "association" | "federation";
+  /** Extra clubs (besides clubId) whose members and courts may be used. */
+  participatingClubIds?: string[];
 }
+
+/** Event types — used at every level; clubs default to a club championship. */
+const EVENT_TYPES: { value: string; label: string }[] = [
+  { value: "club_championship", label: "Club championship" },
+  { value: "closed", label: "Closed (members of the owning body only)" },
+  { value: "open", label: "Open (anyone may enter)" },
+  { value: "invitational", label: "Invitational" },
+  { value: "ranking", label: "Ranking event" },
+  { value: "league_finals", label: "League finals / play-offs" },
+];
+
 
 type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
 type GenderCategory = "men" | "ladies" | "mixed" | "open";

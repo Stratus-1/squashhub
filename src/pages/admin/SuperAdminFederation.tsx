@@ -222,6 +222,10 @@ export default function SuperAdminFederation() {
           <Card className="bg-white/[0.04] border-white/10 backdrop-blur-md">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-white/90">Organisation hierarchy</CardTitle>
+              <p className="text-[11px] text-white/45">
+                Drag a club or league onto an association (or the federation) to re-affiliate it. Clubs can't be dropped
+                onto other clubs.
+              </p>
             </CardHeader>
             <CardContent>
               <Input

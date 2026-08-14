@@ -1,0 +1,195 @@
+import { useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Building2, Users, Trophy, Flag, ChevronRight, ChevronDown, ShieldCheck } from "lucide-react";
+import {
+  useFederationHierarchy,
+  useFederationStats,
+  useFederationAdmins,
+  type OrgNode,
+} from "@/hooks/use-federation";
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "National super admin",
+  competition_admin: "Competition admin",
+  finance_admin: "Finance / reporting",
+  association_admin: "Association admin",
+  tournament_director: "Tournament director",
+  league_admin: "League administrator",
+  referee: "Referee / scorer",
+};
+
+function StatCard({ label, value, sub, icon: Icon }: { label: string; value: number | string; sub?: string; icon: any }) {
+  return (
+    <Card className="bg-white/[0.04] border-white/10 backdrop-blur-md">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] uppercase tracking-wide text-white/50">{label}</span>
+          <Icon className="w-4 h-4 text-white/40" />
+        </div>
+        <div className="text-2xl font-semibold mt-1 text-white">{value}</div>
+        {sub && <div className="text-[11px] text-white/50 mt-0.5">{sub}</div>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TreeNode({ node, depth, filter }: { node: OrgNode; depth: number; filter: string }) {
+  const [open, setOpen] = useState(depth < 2);
+  const matches = (n: OrgNode): boolean =>
+    !filter ||
+    n.name.toLowerCase().includes(filter.toLowerCase()) ||
+    n.children.some(matches);
+
+  if (!matches(node)) return null;
+  const hasChildren = node.children.length > 0;
+
+  return (
+    <div>
+      <div
+        className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-white/[0.05] cursor-pointer"
+        style={{ paddingLeft: 8 + depth * 16 }}
+        onClick={() => hasChildren && setOpen((o) => !o)}
+      >
+        {hasChildren ? (
+          open ? <ChevronDown className="w-3.5 h-3.5 text-white/50" /> : <ChevronRight className="w-3.5 h-3.5 text-white/50" />
+        ) : (
+          <span className="w-3.5" />
+        )}
+        <span className="text-sm text-white/90 truncate">{node.name}</span>
+        {node.abbreviation && <span className="text-[11px] text-white/40">({node.abbreviation})</span>}
+        <Badge
+          variant="outline"
+          className="ml-auto text-[10px] border-white/20 text-white/60 capitalize"
+        >
+          {node.kind === "national" ? "Federation" : node.kind}
+        </Badge>
+        {hasChildren && (
+          <span className="text-[11px] text-white/40 w-10 text-right">{node.children.length}</span>
+        )}
+      </div>
+      {open && node.children.map((c) => <TreeNode key={c.id} node={c} depth={depth + 1} filter={filter} />)}
+    </div>
+  );
+}
+
+export default function SuperAdminFederation() {
+  const { data: hierarchy, isLoading: loadingTree } = useFederationHierarchy();
+  const { data: stats, isLoading: loadingStats } = useFederationStats();
+  const { data: admins = [], isLoading: loadingAdmins } = useFederationAdmins();
+  const [filter, setFilter] = useState("");
+
+  const orgName = useMemo(() => {
+    const map = new Map<string, string>();
+    (hierarchy?.orgs || []).forEach((o) => map.set(o.id, o.name));
+    return map;
+  }, [hierarchy]);
+
+  return (
+    <div className="space-y-5 max-w-7xl">
+      <div>
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <Flag className="w-4 h-4" /> National Federation
+        </h2>
+        <p className="text-xs text-white/50 mt-0.5">
+          Phase 1 foundation — organisation hierarchy, scoped federation roles and the national roll-up.
+        </p>
+      </div>
+
+      {loadingStats ? (
+        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-white/60" /></div>
+      ) : stats ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Associations" value={stats.associations} icon={Flag} />
+          <StatCard label="Affiliated clubs" value={stats.clubs} icon={Building2} />
+          <StatCard
+            label="Connected members"
+            value={stats.members}
+            sub={`${stats.activeMembers} active`}
+            icon={Users}
+          />
+          <StatCard
+            label="Competitive members"
+            value={stats.competitiveMembers}
+            sub="hold a league registration number"
+            icon={ShieldCheck}
+          />
+          <StatCard label="Leagues" value={stats.leagues} icon={Trophy} />
+          <StatCard
+            label="Tournaments"
+            value={stats.tournaments}
+            sub={`${stats.upcomingTournaments} upcoming`}
+            icon={Trophy}
+          />
+          <StatCard label="Matches (90 days)" value={stats.matches90d} icon={Trophy} />
+          <StatCard label="Federation roles" value={admins.length} icon={ShieldCheck} />
+        </div>
+      ) : null}
+
+      <Tabs defaultValue="hierarchy">
+        <TabsList className="bg-white/[0.06]">
+          <TabsTrigger value="hierarchy">Hierarchy</TabsTrigger>
+          <TabsTrigger value="roles">Federation roles</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="hierarchy" className="mt-3">
+          <Card className="bg-white/[0.04] border-white/10 backdrop-blur-md">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-white/90">Organisation hierarchy</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Search organisations…"
+                className="mb-3 h-8 text-xs bg-white/[0.06] border-white/10 text-white placeholder:text-white/40"
+              />
+              {loadingTree ? (
+                <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-white/60" /></div>
+              ) : (
+                <div className="max-h-[520px] overflow-y-auto">
+                  {(hierarchy?.roots || []).map((r) => (
+                    <TreeNode key={r.id} node={r} depth={0} filter={filter} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="roles" className="mt-3">
+          <Card className="bg-white/[0.04] border-white/10 backdrop-blur-md">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-white/90">Scoped federation roles</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingAdmins ? (
+                <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-white/60" /></div>
+              ) : admins.length === 0 ? (
+                <p className="text-xs text-white/50 py-4">
+                  No federation roles granted yet. Roles are scoped to an organisation — an association admin sees only
+                  their own branch of the hierarchy, never club-private finance, access-control or contact data.
+                </p>
+              ) : (
+                <div className="divide-y divide-white/10">
+                  {admins.map((a) => (
+                    <div key={a.id} className="flex items-center gap-3 py-2 text-sm text-white/85">
+                      <span className="flex-1 truncate">{orgName.get(a.org_id) || "—"}</span>
+                      <Badge variant="outline" className="text-[10px] border-white/20 text-white/70">
+                        {ROLE_LABELS[a.role] || a.role}
+                      </Badge>
+                      <span className="text-[11px] text-white/40 font-mono truncate w-40">{a.user_id.slice(0, 8)}…</span>
+                      {!a.active && <Badge variant="destructive" className="text-[10px]">inactive</Badge>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

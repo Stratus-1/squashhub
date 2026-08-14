@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CalendarClock, Info, Send } from "lucide-react";
+import { CalendarClock, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -279,10 +279,10 @@ export function BillingFrequencyCard({
               : choice === current
                 ? "Current selection"
                 : choice === "annual_upfront"
-                  ? "Switch to annual upfront"
+                  ? "Choose annual upfront"
                   : choice === "biannual_upfront"
-                    ? "Switch to 6-monthly upfront"
-                    : "Switch to monthly"}
+                    ? "Choose 6-monthly upfront"
+                    : "Choose monthly"}
         </Button>
 
         <span className="text-[11px] text-muted-foreground">

@@ -18,7 +18,7 @@ import { useClubCurrency } from "@/hooks/use-currency";
 import { SquashHubSlaContent, SLA_VERSION } from "@/components/SquashHubSlaContent";
 import { ParticipationFeeStructure } from "@/components/club-admin/ParticipationFeeStructure";
 
-type BillingOption = "monthly" | "annual_upfront";
+type BillingOption = "monthly" | "biannual_upfront" | "annual_upfront";
 
 export function ClubParticipationCard({ club }: { club: Club }) {
   const { user } = useAuth();

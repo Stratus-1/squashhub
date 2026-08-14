@@ -107,7 +107,7 @@ export const DEFAULT_TIERS: Record<SaasCurrency, Record<SaasCycle, SaasTier[]>> 
 
 /** Minimum monthly charge per currency (protects revenue on very small clubs). */
 export const DEFAULT_MIN_CHARGE: Record<SaasCurrency, Record<SaasCycle, number>> = {
-  ZAR: { monthly: 250, biannual: 237.5, annual: 225 },
+  ZAR: { monthly: 120, biannual: 114, annual: 108 },
   USD: { monthly: 14.6, biannual: 13.87, annual: 13.14 },
   EUR: { monthly: 13.35, biannual: 12.68, annual: 12.02 },
 };

@@ -170,7 +170,7 @@ export default function SuperAdminSubscriptions() {
   const { data: clubs = [] } = useQuery({
     queryKey: ["sa-clubs-for-subs"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain, currency_code").order("name").range(0, 49999);
+      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain, currency_code, sla_billing_option").order("name").range(0, 49999);
       if (error) throw error;
       // Billable member counts — active members only, visitors never billed.
       // Paginate to avoid PostgREST's 1000-row response cap.
@@ -1254,9 +1254,31 @@ export default function SuperAdminSubscriptions() {
                   ))}
                 </SelectContent>
               </Select>
+              {(() => {
+                const chosen = (clubs.find(c => c.id === editSub?.club_id) as any)?.sla_billing_option as string | undefined;
+                const label = chosen === "annual_upfront" ? "Annual upfront" : chosen === "biannual_upfront" ? "6-monthly upfront" : chosen ? "Monthly in advance" : null;
+                const wanted = chosen === "annual_upfront" ? "annual" : chosen === "biannual_upfront" ? "biannual" : "monthly";
+                const match = plans.find(p => p.active && p.billing_cycle === wanted);
+                return label ? (
+                  <p className="text-[10px] mt-1">
+                    <span className="text-muted-foreground">Club selected in SLA: </span>
+                    <span className="font-medium">{label}</span>
+                    {match && match.id !== subForm.plan_id && (
+                      <button
+                        type="button"
+                        className="ml-2 text-primary underline"
+                        onClick={() => { setSubForm(f => ({ ...f, plan_id: match.id })); recalcAmount(match.id, subForm.member_count); }}
+                      >
+                        Apply
+                      </button>
+                    )}
+                  </p>
+                ) : null;
+              })()}
               <p className="text-[10px] text-muted-foreground mt-1">
                 Rates come from the sliding scale in Pricing — plans no longer carry a flat per-member rate.
               </p>
+
             </div>
             <div>
               <Label className="text-xs">Status</Label>

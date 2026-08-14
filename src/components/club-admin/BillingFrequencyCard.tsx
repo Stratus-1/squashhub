@@ -67,9 +67,11 @@ export function BillingFrequencyCard({
     return ends.length ? ends[ends.length - 1] : null;
   })();
   const locked = !!annualCoverUntil;
-  const allowAnnual = c.allow_annual_billing === true;
-  const allowBiannual = c.allow_biannual_billing === true;
-  const allowUpfront = allowAnnual || allowBiannual;
+  // Every club can choose monthly, 6-monthly or annual upfront.
+  const allowAnnual = true;
+  const allowBiannual = true;
+  const allowUpfront = true;
+
 
   // Live billable member count — active members only, visitors are never billed.
   const { data: memberCountData } = useQuery({

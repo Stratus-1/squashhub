@@ -254,36 +254,8 @@ export function BillingFrequencyCard({
         )}
       </RadioGroup>
 
-      {!allowUpfront && (
-        <div className="rounded-md border p-3 space-y-2">
-          <div className="text-sm">
-            <div className="font-medium">Upfront payment options</div>
-            <div className="text-lg font-bold text-foreground">
-              {annualTotal != null ? pricing.format(annualTotal) : "—"}
-              <span className="text-[10px] font-normal text-muted-foreground"> / year</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Annual, one invoice paid in advance (10% off)
-              {annual && <> · ≈ {pricing.format(annual.subtotal)} / month</>}
-              {saving12 != null && saving12 > 0 && <> · saves {pricing.format(saving12)} a year</>}
-              {biannualTotal != null && (
-                <> · or {pricing.format(biannualTotal)} for 6 months (5% off)</>
-              )}
-            </div>
-          </div>
-          {requestedAt ? (
-            <p className="text-[11px] text-muted-foreground">
-              Requested on {new Date(requestedAt).toLocaleDateString()} — awaiting SquashHub
-              approval. We&apos;ll switch you over once it&apos;s approved.
-            </p>
-          ) : (
-            <Button size="sm" variant="outline" onClick={handleRequestAnnual} disabled={requesting}>
-              <Send className="w-3.5 h-3.5 mr-1.5" />
-              {requesting ? "Sending…" : "Request upfront payment"}
-            </Button>
-          )}
-        </div>
-      )}
+
+
 
       {allowUpfront && (
         <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">

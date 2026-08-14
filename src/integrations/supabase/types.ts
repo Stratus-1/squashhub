@@ -8976,34 +8976,28 @@ export type Database = {
         Row: {
           age: number | null
           age_group: string | null
+          association_name: string | null
+          club_link_count: number | null
           full_name: string | null
           gender: string | null
           id: string | null
+          membership_status: string | null
           national_player_number: string | null
           nationality: string | null
+          primary_club_id: string | null
+          primary_club_name: string | null
+          quality_flags: string[] | null
           status: string | null
         }
-        Insert: {
-          age?: never
-          age_group?: never
-          full_name?: string | null
-          gender?: string | null
-          id?: string | null
-          national_player_number?: string | null
-          nationality?: string | null
-          status?: string | null
-        }
-        Update: {
-          age?: never
-          age_group?: never
-          full_name?: string | null
-          gender?: string | null
-          id?: string | null
-          national_player_number?: string | null
-          nationality?: string | null
-          status?: string | null
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "club_members_club_id_fkey"
+            columns: ["primary_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_ledger_reconciliation: {
         Row: {
@@ -9529,6 +9523,19 @@ export type Database = {
         Args: { _org_id: string }
         Returns: {
           org_id: string
+        }[]
+      }
+      people_duplicate_candidates: {
+        Args: { _limit?: number }
+        Returns: {
+          confidence: number
+          person_a_club: string
+          person_a_id: string
+          person_a_name: string
+          person_b_club: string
+          person_b_id: string
+          person_b_name: string
+          reasons: string[]
         }[]
       }
       person_age: { Args: { _person_id: string }; Returns: number }

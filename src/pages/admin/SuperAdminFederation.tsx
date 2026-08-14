@@ -181,7 +181,12 @@ export default function SuperAdminFederation() {
       ) : stats ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard label="Associations" value={stats.associations} icon={Flag} />
-          <StatCard label="Affiliated clubs" value={stats.clubs} icon={Building2} />
+          <StatCard
+            label="Clubs"
+            value={stats.clubs}
+            sub={`${stats.affiliatedClubs} affiliated · ${stats.unaffiliatedClubs} unaffiliated`}
+            icon={Building2}
+          />
           <StatCard
             label="Connected members"
             value={stats.members}

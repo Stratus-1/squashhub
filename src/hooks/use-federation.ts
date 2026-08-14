@@ -71,6 +71,8 @@ export function useFederationHierarchy() {
 export interface FederationStats {
   associations: number;
   clubs: number;
+  affiliatedClubs: number;
+  unaffiliatedClubs: number;
   members: number;
   competitiveMembers: number;
   activeMembers: number;
@@ -100,6 +102,7 @@ export function useFederationStats() {
         tournaments,
         upcomingTournaments,
         matches90d,
+        clubAffiliation,
       ] = await Promise.all([
         count(
           supabase
@@ -123,11 +126,40 @@ export function useFederationStats() {
         count(supabase.from("club_champs").select("id", { count: "exact", head: true })),
         count(supabase.from("club_champs").select("id", { count: "exact", head: true }).gte("start_date", today)),
         count(supabase.from("matches").select("id", { count: "exact", head: true }).gte("created_at", since)),
+        (async () => {
+          const [orgsRes, relsRes] = await Promise.all([
+            supabase.from("organisations").select("id, kind, name, is_internal_league"),
+            supabase.from("organisation_relationships").select("parent_org_id, child_org_id, effective_to"),
+          ]);
+          const orgs = (orgsRes.data || []) as any[];
+          const rels = ((relsRes.data || []) as any[]).filter(
+            (r) => !r.effective_to || new Date(r.effective_to) >= new Date(),
+          );
+          const byId = new Map(orgs.map((o) => [o.id, o]));
+          const clubOrgs = orgs.filter((o) => o.kind === "club");
+          let affiliated = 0;
+          clubOrgs.forEach((c) => {
+            const hasRealAssoc = rels.some((r) => {
+              if (r.child_org_id !== c.id) return false;
+              const parent = byId.get(r.parent_org_id);
+              return (
+                !!parent &&
+                parent.kind === "association" &&
+                !parent.is_internal_league &&
+                parent.name !== "Unaffiliated Clubs"
+              );
+            });
+            if (hasRealAssoc) affiliated += 1;
+          });
+          return { affiliated, total: clubOrgs.length };
+        })(),
       ]);
 
       return {
         associations,
-        clubs,
+        clubs: clubAffiliation.total || clubs,
+        affiliatedClubs: clubAffiliation.affiliated,
+        unaffiliatedClubs: Math.max(0, (clubAffiliation.total || clubs) - clubAffiliation.affiliated),
         members,
         activeMembers,
         competitiveMembers,

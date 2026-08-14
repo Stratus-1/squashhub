@@ -3083,6 +3083,7 @@ export type Database = {
           accepted_payment_methods: string[]
           address: string | null
           allow_annual_billing: boolean
+          allow_biannual_billing: boolean
           annual_billing_request_note: string | null
           annual_billing_requested_at: string | null
           annual_billing_requested_by: string | null
@@ -3180,6 +3181,7 @@ export type Database = {
           accepted_payment_methods?: string[]
           address?: string | null
           allow_annual_billing?: boolean
+          allow_biannual_billing?: boolean
           annual_billing_request_note?: string | null
           annual_billing_requested_at?: string | null
           annual_billing_requested_by?: string | null
@@ -3277,6 +3279,7 @@ export type Database = {
           accepted_payment_methods?: string[]
           address?: string | null
           allow_annual_billing?: boolean
+          allow_biannual_billing?: boolean
           annual_billing_request_note?: string | null
           annual_billing_requested_at?: string | null
           annual_billing_requested_by?: string | null

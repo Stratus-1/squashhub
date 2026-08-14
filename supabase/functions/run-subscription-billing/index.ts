@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
   if (clubIds.length) {
     const { data: clubRows } = await supabase
       .from('clubs')
-      .select('id, email, currency_code, sla_billing_option, allow_annual_billing, chairman_member_id, secretary_member_id, club_captain_member_id')
+      .select('id, email, currency_code, sla_billing_option, allow_annual_billing, allow_biannual_billing, chairman_member_id, secretary_member_id, club_captain_member_id')
       .in('id', clubIds)
     for (const c of clubRows || []) {
       if (c.email && String(c.email).trim()) clubEmails.set(c.id, String(c.email).trim())
@@ -198,10 +198,13 @@ Deno.serve(async (req) => {
       // upfront only applies when the platform has enabled it for that club.
       if ((c as any).sla_billing_option) {
         const opt = String((c as any).sla_billing_option)
-        const upfrontAllowed = (c as any).allow_annual_billing === true
+        const annualAllowed = (c as any).allow_annual_billing === true
+        const biannualAllowed = (c as any).allow_biannual_billing === true
         const wanted: BillingCycle =
           opt === 'annual_upfront' ? 'annual' : opt === 'biannual_upfront' ? 'biannual' : 'monthly'
-        clubCycles.set(c.id, upfrontAllowed ? wanted : 'monthly')
+        const allowed =
+          wanted === 'annual' ? annualAllowed : wanted === 'biannual' ? biannualAllowed : true
+        clubCycles.set(c.id, allowed ? wanted : 'monthly')
       }
       const ids = [
         (c as any).chairman_member_id,

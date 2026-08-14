@@ -68,6 +68,8 @@ export function BillingFrequencyCard({
   })();
   const locked = !!annualCoverUntil;
   const allowAnnual = c.allow_annual_billing === true;
+  const allowBiannual = c.allow_biannual_billing === true;
+  const allowUpfront = allowAnnual || allowBiannual;
 
   // Live billable member count — active members only, visitors are never billed.
   const { data: memberCountData } = useQuery({
@@ -170,11 +172,16 @@ export function BillingFrequencyCard({
             {new Date(annualCoverUntil!).toLocaleDateString()}. You can choose monthly, 6-monthly or
             annual again when this period ends.
           </>
-        ) : allowAnnual ? (
+        ) : allowUpfront ? (
           <>
             Choose how you&apos;d like to be invoiced. Paying upfront earns a discount off the
-            monthly scale: 5% for 6 months in advance, 10% for a full year. You can switch while
-            you&apos;re on monthly at any time.
+            monthly scale
+            {allowBiannual && allowAnnual
+              ? ": 5% for 6 months in advance, 10% for a full year"
+              : allowBiannual
+                ? ": 5% for 6 months in advance"
+                : ": 10% for a full year"}
+            . You can switch while you&apos;re on monthly at any time.
           </>
         ) : (
           <>
@@ -192,7 +199,7 @@ export function BillingFrequencyCard({
         value={choice}
         onValueChange={(v) => setChoice(v as BillingOption)}
         disabled={locked}
-        className="grid grid-cols-1 md:grid-cols-3 gap-2"
+        className={`grid grid-cols-1 gap-2 ${allowBiannual && allowAnnual ? "md:grid-cols-3" : allowUpfront ? "md:grid-cols-2" : ""}`}
       >
         <label
           className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "monthly" ? "border-primary bg-primary/5" : ""}`}
@@ -212,7 +219,7 @@ export function BillingFrequencyCard({
           </div>
         </label>
 
-        {allowAnnual && (
+        {allowBiannual && (
           <label
             className={`flex items-start gap-2 rounded-md border p-3 ${locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${choice === "biannual_upfront" ? "border-primary bg-primary/5" : ""}`}
           >
@@ -261,7 +268,7 @@ export function BillingFrequencyCard({
         )}
       </RadioGroup>
 
-      {!allowAnnual && (
+      {!allowUpfront && (
         <div className="rounded-md border p-3 space-y-2">
           <div className="text-sm">
             <div className="font-medium">Upfront payment options</div>
@@ -292,7 +299,7 @@ export function BillingFrequencyCard({
         </div>
       )}
 
-      {allowAnnual && (
+      {allowUpfront && (
         <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
           <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
           <p className="text-[11px] text-muted-foreground leading-relaxed">

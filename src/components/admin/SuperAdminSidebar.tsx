@@ -19,6 +19,7 @@ import {
 const navItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Clubs & Associations", url: "/admin/clubs", icon: Building2 },
+  { title: "Federation", url: "/admin/federation", icon: Flag },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Leagues", url: "/admin/leagues", icon: Trophy },
   { title: "NSA Import", url: "/admin/nsa-import", icon: Download },

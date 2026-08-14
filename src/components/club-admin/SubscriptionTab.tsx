@@ -635,7 +635,16 @@ function renderInvoiceHtml(inv: Invoice, clubName: string, bank: Record<string, 
   <div class="grid">
     <div class="box">
       <h2 style="margin-top:0">Bill To</h2>
-      <div style="font-weight:600">${escapeHtml(clubName)}</div>
+      <div style="font-weight:600">${escapeHtml(billTo?.company_name || clubName)}</div>
+      ${billTo?.contact_name ? `<div class="muted">Attn: ${escapeHtml(billTo.contact_name)}</div>` : ""}
+      ${[billTo?.address_line1, billTo?.address_line2, billTo?.city, billTo?.province, billTo?.postal_code, billTo?.country]
+        .filter(Boolean)
+        .map((l: string) => `<div class="muted">${escapeHtml(l)}</div>`)
+        .join("")}
+      ${billTo?.phone ? `<div class="muted">Tel: ${escapeHtml(billTo.phone)}</div>` : ""}
+      ${(billTo?.emails || []).length ? `<div class="muted">${escapeHtml((billTo.emails || []).join(", "))}</div>` : ""}
+      ${billTo?.vat_number ? `<div class="muted">VAT / Tax No: ${escapeHtml(billTo.vat_number)}</div>` : ""}
+      ${billTo?.po_number ? `<div class="muted">PO No: ${escapeHtml(billTo.po_number)}</div>` : ""}
       <div class="muted">Billing period: ${fmtDate(inv.period_start)} → ${fmtDate(inv.period_end)}</div>
       <div class="muted">Cycle: ${escapeHtml(inv.billing_cycle)}</div>
     </div>

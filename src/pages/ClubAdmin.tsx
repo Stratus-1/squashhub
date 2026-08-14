@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle, CreditCard, MessageCircle } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle, CreditCard, MessageCircle, Router } from "lucide-react";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 
@@ -27,6 +27,7 @@ import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { SubscriptionTab } from "@/components/club-admin/SubscriptionTab";
 import { WhatsAppBillingCard } from "@/components/club-admin/WhatsAppBillingCard";
+import { RouterTab } from "@/components/club-admin/RouterTab";
 import { LeagueAwardsTab } from "@/components/club-admin/LeagueAwardsTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ const SETUP_TABS: AdminTab[] = [
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
   { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
   { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true },
+  { value: "router", label: "Internet", icon: Router, color: "cyan", noStatus: true },
 ];
 
 const OPERATIONS_TABS: AdminTab[] = [
@@ -161,6 +163,7 @@ export default function ClubAdmin() {
       case "comms": return <CommunicationsTab clubId={club.id} />;
       case "subscription": return <SubscriptionTab clubId={club.id} />;
       case "whatsapp": return <div className="mt-4"><WhatsAppBillingCard clubId={club.id} /></div>;
+      case "router": return <RouterTab clubId={club.id} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
       default: return null;
     }

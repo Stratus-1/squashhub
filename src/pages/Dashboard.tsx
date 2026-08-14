@@ -38,6 +38,7 @@ import { LinkExistingMembershipCard } from "@/components/LinkExistingMembershipC
 import DebitOrderPromptCard from "@/components/DebitOrderPromptCard";
 import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
 import { DashboardWifiCard } from "@/components/DashboardWifiCard";
+import { DashboardRouterCard } from "@/components/DashboardRouterCard";
 import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMyPermissions, useMemberHasAdminAccess } from "@/hooks/use-club-permissions";
@@ -884,6 +885,12 @@ export default function Dashboard() {
 
       {/* Open Door quick access (shown when club uses SquashHub-controlled access) */}
       <DashboardOpenDoorCard />
+
+      {/* Club internet / data bundle status (club admins only) */}
+      <div className="px-4 mt-2">
+        <DashboardRouterCard />
+      </div>
+
 
 
 

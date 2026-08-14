@@ -165,6 +165,7 @@ export default function FederationOrgChart({
   const [name, setName] = useState("");
   const [abbr, setAbbr] = useState("");
   const [trayOver, setTrayOver] = useState(false);
+  const [unaffOpen, setUnaffOpen] = useState(true);
 
   const federation = roots.find((r) => r.kind === "national") || null;
   const associations = (federation?.children || []).filter(isRealAssociation);

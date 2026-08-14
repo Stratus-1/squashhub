@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, X, Save, UserCheck } from "lucide-react";
+import { Loader2, Plus, X, Save, UserCheck, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useClubBillingProfile,
   useSaveClubBillingProfile,
@@ -13,6 +15,23 @@ import {
   type ClubBillingProfile,
 } from "@/hooks/use-club-billing";
 import { useMemberContext } from "@/contexts/MemberContext";
+
+/** Splits a free-text club address like "15 Drysdale Street, Nelspruit, 1200" into billing fields. */
+function parseClubAddress(raw?: string | null) {
+  const parts = String(raw || "")
+    .split(/[,\n]/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  let postal_code = "";
+  if (parts.length > 1 && /^\d{4,5}$/.test(parts[parts.length - 1])) {
+    postal_code = parts.pop() as string;
+  }
+  const address_line1 = parts.shift() || "";
+  const city = parts.length ? (parts.pop() as string) : "";
+  const address_line2 = parts.join(", ");
+  return { address_line1, address_line2, city, postal_code };
+}
 
 const EMPTY: Omit<ClubBillingProfile, "club_id"> = {
   contact_name: "",
@@ -40,7 +59,35 @@ export function BillingInfoTab({ clubId, clubName }: { clubId: string; clubName?
   const [form, setForm] = useState<Omit<ClubBillingProfile, "club_id">>(EMPTY);
   const [newEmail, setNewEmail] = useState("");
 
-  // Seed the form: saved profile first, otherwise default from finance-permission members.
+  // Club contact details (Setup → Club → Contact details) used as address defaults.
+  const { data: club } = useQuery({
+    queryKey: ["club-contact-details", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("address, phone, email")
+        .eq("id", clubId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { address: string | null; phone: string | null; email: string | null } | null;
+    },
+  });
+
+  const clubAddress = useMemo(() => parseClubAddress(club?.address), [club?.address]);
+
+  const applyClubContact = () => {
+    if (!clubAddress && !club?.phone) return toast.info("No club contact details captured yet");
+    setForm((f) => ({
+      ...f,
+      ...(clubAddress || {}),
+      country: f.country || "South Africa",
+      phone: f.phone || club?.phone || "",
+    }));
+    toast.success("Pulled in the club's contact details — remember to save");
+  };
+
+  // Seed the form: saved profile first, otherwise default from finance members + club contact details.
   useEffect(() => {
     if (isLoading) return;
     if (profile) {
@@ -51,13 +98,15 @@ export function BillingInfoTab({ clubId, clubName }: { clubId: string; clubName?
         ...EMPTY,
         contact_name: primary?.name || "",
         company_name: clubName || "",
-        phone: primary?.phone || "",
+        phone: primary?.phone || club?.phone || "",
+        ...(clubAddress || {}),
+        country: clubAddress ? "South Africa" : "",
         emails: Array.from(
           new Set(financeContacts.map((c: any) => (c.email || "").trim().toLowerCase()).filter(Boolean))
         ),
       });
     }
-  }, [profile, isLoading, financeContacts, clubName]);
+  }, [profile, isLoading, financeContacts, clubName, club?.phone, clubAddress]);
 
   const set = (k: keyof typeof EMPTY, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -169,6 +218,18 @@ export function BillingInfoTab({ clubId, clubName }: { clubId: string; clubName?
             </Button>
           </div>
         </div>
+
+        {(club?.address || club?.phone) && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded border bg-muted/40 px-2.5 py-1.5">
+            <span className="text-[11px] text-muted-foreground">
+              Club contact details: {club?.address || "no address"}
+              {club?.phone ? ` · ${club.phone}` : ""}
+            </span>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={applyClubContact}>
+              <MapPin className="w-3 h-3 mr-1" /> Use club contact details
+            </Button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Field label="Address line 1" value={form.address_line1} onChange={(v) => set("address_line1", v)} />

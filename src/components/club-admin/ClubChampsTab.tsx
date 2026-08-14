@@ -3418,6 +3418,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteScheduledAt("");
     setDescription("");
     setAffectsRankingPoints(false);
+    setEventType(scope === "club" ? "club_championship" : "open");
+    setMaxEntrants("");
+    setMaxPerLeague("");
+    setSeedingSource("ladder");
+
     setIncludeVisitors(false);
     setSelectedVisitorClubs(new Set());
     setCustomizeDailySchedule(false);

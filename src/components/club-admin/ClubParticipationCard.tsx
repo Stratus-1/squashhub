@@ -53,9 +53,10 @@ export function ClubParticipationCard({ club }: { club: Club }) {
   const memberCount = typeof liveMemberCount === "number" ? liveMemberCount : (c as any).active_member_count;
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
 
-  // Which billing options this club is allowed to choose (set by SquashHub per club).
-  const allowAnnual = c.allow_annual_billing === true;
-  const allowBiannual = c.allow_biannual_billing === true;
+  // All clubs may choose monthly, 6-monthly or annual upfront.
+  const allowAnnual = true;
+  const allowBiannual = true;
+
 
   const pricing = useSaasPricing(clubCurrencyCode);
   const billable =

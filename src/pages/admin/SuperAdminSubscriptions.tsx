@@ -181,6 +181,7 @@ export default function SuperAdminSubscriptions() {
           .from("club_members")
           .select("club_id")
           .neq("role", "visitor")
+          .eq("billing_exempt", false)
           .eq("status", "active")
           .range(from, from + PAGE - 1);
         if (mErr) throw mErr;

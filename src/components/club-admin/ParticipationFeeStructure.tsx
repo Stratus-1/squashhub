@@ -11,7 +11,7 @@ import { useSaasPricing } from "@/hooks/use-saas-pricing";
  */
 export function ParticipationFeeStructure({ memberCount }: { memberCount?: number | null }) {
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
-  const { monthlyTiers, annualTiers, monthlyMin, annualMin, cap, format: fmt } =
+  const { monthlyTiers, biannualTiers, annualTiers, monthlyMin, biannualMin, annualMin, cap, format: fmt } =
     useSaasPricing(clubCurrencyCode);
 
   const billable =
@@ -46,7 +46,8 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
                 <tr className="text-left text-muted-foreground">
                   <th className="py-1 pr-2 font-medium">Band</th>
                   <th className="py-1 px-2 font-medium text-right">Monthly / member</th>
-                  <th className="py-1 pl-2 font-medium text-right">Annual upfront / member / month</th>
+                  <th className="py-1 px-2 font-medium text-right">6-monthly / member / month</th>
+                  <th className="py-1 pl-2 font-medium text-right">Annual / member / month</th>
                 </tr>
               </thead>
               <tbody>
@@ -56,6 +57,9 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
                     <tr key={i} className="border-t border-border/60">
                       <td className="py-1 pr-2 text-muted-foreground">{bandLabel(from, t.upTo)}</td>
                       <td className="py-1 px-2 text-right font-medium text-foreground">{fmt(t.rate)}</td>
+                      <td className="py-1 px-2 text-right text-muted-foreground">
+                        {fmt(biannualTiers[i]?.rate ?? t.rate)}
+                      </td>
                       <td className="py-1 pl-2 text-right text-muted-foreground">
                         {fmt(annualTiers[i]?.rate ?? t.rate)}
                       </td>
@@ -68,9 +72,13 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
           <ul className="list-disc pl-5 text-muted-foreground space-y-1 text-xs">
             <li>
               Minimum charge of <strong className="text-foreground">{fmt(monthlyMin)}</strong> per month
-              ({fmt(annualMin)} / month when paid annually in advance).
+              ({fmt(biannualMin)} / month paid six-monthly, {fmt(annualMin)} / month paid annually in advance).
             </li>
-            <li>Paying <strong className="text-foreground">annually in advance</strong> saves roughly 15% overall.</li>
+            <li>
+              Paying upfront saves off the monthly scale:{" "}
+              <strong className="text-foreground">5% for six months</strong> in advance or{" "}
+              <strong className="text-foreground">10% for a full year</strong>.
+            </li>
             {cap && cap > 0 && (
               <li>
                 Billing is <strong className="text-foreground">capped at {cap} active members</strong> — additional
@@ -83,8 +91,8 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
 
       <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
         Fees are invoiced <strong>monthly in advance</strong>, with the first invoice issued on{" "}
-        <strong>1 September 2026</strong>. Annual upfront payment can be requested on the
-        Subscription tab.
+        <strong>1 September 2026</strong>. Six-monthly or annual upfront payment can be requested
+        on the Subscription tab.
       </p>
       <p className="text-xs text-muted-foreground italic">
         Invoiced in your club currency ({clubCurrencyName} · {clubCurrencyCode}).

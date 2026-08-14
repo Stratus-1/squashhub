@@ -122,7 +122,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             {c.sla_accepted_name && <div>Accepted by <strong className="text-foreground">{c.sla_accepted_name}</strong>{c.sla_accepted_role ? `, ${c.sla_accepted_role}` : ""}</div>}
             {c.sla_accepted_at && <div>Accepted on {new Date(c.sla_accepted_at).toLocaleString()}</div>}
             <div>
-              Billing: <strong className="text-foreground">{c.sla_billing_option === "annual_upfront" ? "Annual upfront" : "Monthly"}</strong>
+              Billing: <strong className="text-foreground">{c.sla_billing_option === "annual_upfront" ? "Annual upfront" : c.sla_billing_option === "biannual_upfront" ? "6-monthly upfront" : "Monthly"}</strong>
               {c.sla_version && <> · SLA v{c.sla_version}</>}
             </div>
           </div>
@@ -178,7 +178,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Billing option</Label>
-                <RadioGroup value={billing} onValueChange={(v) => setBilling(v as BillingOption)} className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <RadioGroup value={billing} onValueChange={(v) => setBilling(v as BillingOption)} className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "monthly" ? "border-primary bg-primary/5" : ""}`}>
                     <RadioGroupItem value="monthly" id="bill-monthly" />
                     <div className="text-sm">
@@ -186,11 +186,18 @@ export function ClubParticipationCard({ club }: { club: Club }) {
                       <div className="text-xs text-muted-foreground">Billed monthly in arrears in your club currency</div>
                     </div>
                   </label>
+                  <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "biannual_upfront" ? "border-primary bg-primary/5" : ""}`}>
+                    <RadioGroupItem value="biannual_upfront" id="bill-biannual" />
+                    <div className="text-sm">
+                      <div className="font-medium">6-monthly upfront</div>
+                      <div className="text-xs text-muted-foreground">Paid six months in advance — 5% off the monthly scale</div>
+                    </div>
+                  </label>
                   <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}>
                     <RadioGroupItem value="annual_upfront" id="bill-annual" />
                     <div className="text-sm">
                       <div className="font-medium">Annual upfront</div>
-                      <div className="text-xs text-muted-foreground">Paid yearly in advance — save one month's fee per member</div>
+                      <div className="text-xs text-muted-foreground">Paid yearly in advance — 10% off the monthly scale</div>
                     </div>
                   </label>
                 </RadioGroup>

@@ -578,7 +578,12 @@ function BankRow({
   );
 }
 
-function renderInvoiceHtml(inv: Invoice, clubName: string, bank: Record<string, string>) {
+function renderInvoiceHtml(
+  inv: Invoice,
+  clubName: string,
+  bank: Record<string, string>,
+  billTo?: any
+) {
   const money = (n: number) => fmtMoney(n, inv.currency);
   const platformName = bank.company_name || "SquashHub / HKFT Services";
   const platformAddr = bank.company_address || "";

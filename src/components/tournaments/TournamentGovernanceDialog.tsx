@@ -29,7 +29,14 @@ import { centsToRand, computeFeeSplit, randToCents } from "@/lib/tournaments/fee
 interface Props {
   champ: { id: string; name: string } | null;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Level running the event. At club level the sanctioning block and the
+   * federation share are hidden — a club event is not sanctioned by itself and
+   * keeps its own entry money, so those fields would just be dead inputs.
+   */
+  scope?: "club" | "association" | "federation";
 }
+
 
 const FIELD_LABELS: Record<string, string> = {
   sanction_status: "Sanction status",

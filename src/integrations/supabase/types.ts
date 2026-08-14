@@ -1155,271 +1155,6 @@ export type Database = {
           },
         ]
       }
-      club_champs: {
-        Row: {
-          affects_ranking_points: boolean
-          association_fee_cents: number
-          avoid_back_to_back: boolean
-          best_of: number | null
-          bye_handling: string
-          club_id: string
-          competition_level: string
-          court_ids: number[]
-          court_rotation_minutes: number | null
-          created_at: string
-          day_schedules: Json
-          default_break_minutes: number
-          description: string | null
-          eligibility_max_age: number | null
-          eligibility_min_age: number | null
-          eligibility_notes: string | null
-          eligibility_requires_licence: boolean
-          eligibility_scope: string
-          enable_playoffs: boolean
-          end_date: string
-          end_time: string
-          entries_locked: boolean
-          entry_fee_cents: number
-          expected_players: Json | null
-          federation_fee_cents: number
-          gender: string
-          group_break_minutes: Json
-          group_durations: Json
-          group_labels: Json | null
-          handicap_divider: number
-          handicap_mode: string
-          handicap_multiplier: number
-          id: string
-          include_visitors: boolean
-          invite_excluded_member_ids: string[]
-          invite_include_reserves: boolean
-          invite_methods: string[]
-          invite_source: string
-          league_formats: Json | null
-          match_duration_minutes: number
-          match_type: string
-          name: string
-          no_show_opponent_points: number
-          no_show_player_points: number
-          num_groups: number
-          partner_mode: string
-          payment_methods: string[]
-          payment_required: boolean
-          play_all_games: boolean
-          play_days: number[]
-          playoff_break_minutes: number
-          playoff_date: string | null
-          points_per_game: number
-          refund_cutoff_date: string | null
-          refund_policy: string
-          registration_closes_at: string | null
-          registration_mode: string
-          registration_opens_at: string | null
-          registration_required: boolean
-          round_format: string
-          sanction_notes: string | null
-          sanction_reference: string | null
-          sanction_status: string
-          sanctioned_at: string | null
-          sanctioned_by: string | null
-          sanctioning_org_id: string | null
-          schedule_mode: string
-          scoring_mode: string
-          source_league_id: string | null
-          source_league_ids: string[]
-          start_date: string
-          start_time: string
-          status: string
-          swiss_pools: Json | null
-          swiss_rounds: Json | null
-          updated_at: string
-          visitor_clubs: string[]
-          win_condition: string
-        }
-        Insert: {
-          affects_ranking_points?: boolean
-          association_fee_cents?: number
-          avoid_back_to_back?: boolean
-          best_of?: number | null
-          bye_handling?: string
-          club_id: string
-          competition_level?: string
-          court_ids?: number[]
-          court_rotation_minutes?: number | null
-          created_at?: string
-          day_schedules?: Json
-          default_break_minutes?: number
-          description?: string | null
-          eligibility_max_age?: number | null
-          eligibility_min_age?: number | null
-          eligibility_notes?: string | null
-          eligibility_requires_licence?: boolean
-          eligibility_scope?: string
-          enable_playoffs?: boolean
-          end_date: string
-          end_time?: string
-          entries_locked?: boolean
-          entry_fee_cents?: number
-          expected_players?: Json | null
-          federation_fee_cents?: number
-          gender: string
-          group_break_minutes?: Json
-          group_durations?: Json
-          group_labels?: Json | null
-          handicap_divider?: number
-          handicap_mode?: string
-          handicap_multiplier?: number
-          id?: string
-          include_visitors?: boolean
-          invite_excluded_member_ids?: string[]
-          invite_include_reserves?: boolean
-          invite_methods?: string[]
-          invite_source?: string
-          league_formats?: Json | null
-          match_duration_minutes?: number
-          match_type?: string
-          name: string
-          no_show_opponent_points?: number
-          no_show_player_points?: number
-          num_groups?: number
-          partner_mode?: string
-          payment_methods?: string[]
-          payment_required?: boolean
-          play_all_games?: boolean
-          play_days?: number[]
-          playoff_break_minutes?: number
-          playoff_date?: string | null
-          points_per_game?: number
-          refund_cutoff_date?: string | null
-          refund_policy?: string
-          registration_closes_at?: string | null
-          registration_mode?: string
-          registration_opens_at?: string | null
-          registration_required?: boolean
-          round_format?: string
-          sanction_notes?: string | null
-          sanction_reference?: string | null
-          sanction_status?: string
-          sanctioned_at?: string | null
-          sanctioned_by?: string | null
-          sanctioning_org_id?: string | null
-          schedule_mode?: string
-          scoring_mode?: string
-          source_league_id?: string | null
-          source_league_ids?: string[]
-          start_date: string
-          start_time?: string
-          status?: string
-          swiss_pools?: Json | null
-          swiss_rounds?: Json | null
-          updated_at?: string
-          visitor_clubs?: string[]
-          win_condition?: string
-        }
-        Update: {
-          affects_ranking_points?: boolean
-          association_fee_cents?: number
-          avoid_back_to_back?: boolean
-          best_of?: number | null
-          bye_handling?: string
-          club_id?: string
-          competition_level?: string
-          court_ids?: number[]
-          court_rotation_minutes?: number | null
-          created_at?: string
-          day_schedules?: Json
-          default_break_minutes?: number
-          description?: string | null
-          eligibility_max_age?: number | null
-          eligibility_min_age?: number | null
-          eligibility_notes?: string | null
-          eligibility_requires_licence?: boolean
-          eligibility_scope?: string
-          enable_playoffs?: boolean
-          end_date?: string
-          end_time?: string
-          entries_locked?: boolean
-          entry_fee_cents?: number
-          expected_players?: Json | null
-          federation_fee_cents?: number
-          gender?: string
-          group_break_minutes?: Json
-          group_durations?: Json
-          group_labels?: Json | null
-          handicap_divider?: number
-          handicap_mode?: string
-          handicap_multiplier?: number
-          id?: string
-          include_visitors?: boolean
-          invite_excluded_member_ids?: string[]
-          invite_include_reserves?: boolean
-          invite_methods?: string[]
-          invite_source?: string
-          league_formats?: Json | null
-          match_duration_minutes?: number
-          match_type?: string
-          name?: string
-          no_show_opponent_points?: number
-          no_show_player_points?: number
-          num_groups?: number
-          partner_mode?: string
-          payment_methods?: string[]
-          payment_required?: boolean
-          play_all_games?: boolean
-          play_days?: number[]
-          playoff_break_minutes?: number
-          playoff_date?: string | null
-          points_per_game?: number
-          refund_cutoff_date?: string | null
-          refund_policy?: string
-          registration_closes_at?: string | null
-          registration_mode?: string
-          registration_opens_at?: string | null
-          registration_required?: boolean
-          round_format?: string
-          sanction_notes?: string | null
-          sanction_reference?: string | null
-          sanction_status?: string
-          sanctioned_at?: string | null
-          sanctioned_by?: string | null
-          sanctioning_org_id?: string | null
-          schedule_mode?: string
-          scoring_mode?: string
-          source_league_id?: string | null
-          source_league_ids?: string[]
-          start_date?: string
-          start_time?: string
-          status?: string
-          swiss_pools?: Json | null
-          swiss_rounds?: Json | null
-          updated_at?: string
-          visitor_clubs?: string[]
-          win_condition?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "club_champs_club_id_fkey"
-            columns: ["club_id"]
-            isOneToOne: false
-            referencedRelation: "clubs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "club_champs_sanctioning_org_id_fkey"
-            columns: ["sanctioning_org_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "club_champs_source_league_id_fkey"
-            columns: ["source_league_id"]
-            isOneToOne: false
-            referencedRelation: "leagues"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       club_champs_entries: {
         Row: {
           champ_id: string
@@ -1454,6 +1189,13 @@ export type Database = {
             columns: ["champ_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_entries_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
           {
@@ -1601,6 +1343,13 @@ export type Database = {
             columns: ["champ_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
           {
@@ -1760,6 +1509,13 @@ export type Database = {
             columns: ["champ_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_registrations_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
           {
@@ -8646,6 +8402,115 @@ export type Database = {
         }
         Relationships: []
       }
+      tournament_governance: {
+        Row: {
+          association_fee_cents: number
+          competition_level: string
+          created_at: string
+          eligibility_max_age: number | null
+          eligibility_min_age: number | null
+          eligibility_notes: string | null
+          eligibility_requires_licence: boolean
+          eligibility_scope: string
+          entry_fee_cents: number
+          federation_fee_cents: number
+          payment_methods: string[]
+          payment_required: boolean
+          refund_cutoff_date: string | null
+          refund_policy: string
+          registration_closes_at: string | null
+          registration_mode: string
+          registration_opens_at: string | null
+          registration_required: boolean
+          sanction_notes: string | null
+          sanction_reference: string | null
+          sanction_status: string
+          sanctioned_at: string | null
+          sanctioned_by: string | null
+          sanctioning_org_id: string | null
+          tournament_id: string
+          updated_at: string
+        }
+        Insert: {
+          association_fee_cents?: number
+          competition_level?: string
+          created_at?: string
+          eligibility_max_age?: number | null
+          eligibility_min_age?: number | null
+          eligibility_notes?: string | null
+          eligibility_requires_licence?: boolean
+          eligibility_scope?: string
+          entry_fee_cents?: number
+          federation_fee_cents?: number
+          payment_methods?: string[]
+          payment_required?: boolean
+          refund_cutoff_date?: string | null
+          refund_policy?: string
+          registration_closes_at?: string | null
+          registration_mode?: string
+          registration_opens_at?: string | null
+          registration_required?: boolean
+          sanction_notes?: string | null
+          sanction_reference?: string | null
+          sanction_status?: string
+          sanctioned_at?: string | null
+          sanctioned_by?: string | null
+          sanctioning_org_id?: string | null
+          tournament_id: string
+          updated_at?: string
+        }
+        Update: {
+          association_fee_cents?: number
+          competition_level?: string
+          created_at?: string
+          eligibility_max_age?: number | null
+          eligibility_min_age?: number | null
+          eligibility_notes?: string | null
+          eligibility_requires_licence?: boolean
+          eligibility_scope?: string
+          entry_fee_cents?: number
+          federation_fee_cents?: number
+          payment_methods?: string[]
+          payment_required?: boolean
+          refund_cutoff_date?: string | null
+          refund_policy?: string
+          registration_closes_at?: string | null
+          registration_mode?: string
+          registration_opens_at?: string | null
+          registration_required?: boolean
+          sanction_notes?: string | null
+          sanction_reference?: string | null
+          sanction_status?: string
+          sanctioned_at?: string | null
+          sanctioned_by?: string | null
+          sanctioning_org_id?: string | null
+          tournament_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_governance_sanctioning_org_id_fkey"
+            columns: ["sanctioning_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_governance_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: true
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_governance_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: true
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_governance_audit: {
         Row: {
           champ_id: string
@@ -8683,6 +8548,312 @@ export type Database = {
             columns: ["champ_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_governance_audit_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_rules: {
+        Row: {
+          affects_ranking_points: boolean
+          best_of: number | null
+          bye_handling: string
+          created_at: string
+          draw_type: string
+          handicap_divider: number
+          handicap_mode: string
+          handicap_multiplier: number
+          no_show_opponent_points: number
+          no_show_player_points: number
+          play_all_games: boolean
+          points_per_game: number
+          round_format: string
+          scoring_mode: string
+          standard_of_play: string
+          tournament_id: string
+          updated_at: string
+          win_condition: string
+        }
+        Insert: {
+          affects_ranking_points?: boolean
+          best_of?: number | null
+          bye_handling?: string
+          created_at?: string
+          draw_type?: string
+          handicap_divider?: number
+          handicap_mode?: string
+          handicap_multiplier?: number
+          no_show_opponent_points?: number
+          no_show_player_points?: number
+          play_all_games?: boolean
+          points_per_game?: number
+          round_format?: string
+          scoring_mode?: string
+          standard_of_play?: string
+          tournament_id: string
+          updated_at?: string
+          win_condition?: string
+        }
+        Update: {
+          affects_ranking_points?: boolean
+          best_of?: number | null
+          bye_handling?: string
+          created_at?: string
+          draw_type?: string
+          handicap_divider?: number
+          handicap_mode?: string
+          handicap_multiplier?: number
+          no_show_opponent_points?: number
+          no_show_player_points?: number
+          play_all_games?: boolean
+          points_per_game?: number
+          round_format?: string
+          scoring_mode?: string
+          standard_of_play?: string
+          tournament_id?: string
+          updated_at?: string
+          win_condition?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_rules_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: true
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_rules_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: true
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_venues: {
+        Row: {
+          club_id: string
+          court_ids: number[]
+          created_at: string
+          host_fee_cents: number
+          host_share_pct: number
+          id: string
+          is_primary: boolean
+          notes: string | null
+          tournament_id: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          court_ids?: number[]
+          created_at?: string
+          host_fee_cents?: number
+          host_share_pct?: number
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          tournament_id: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          court_ids?: number[]
+          created_at?: string
+          host_fee_cents?: number
+          host_share_pct?: number
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          tournament_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_venues_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_venues_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_venues_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournaments: {
+        Row: {
+          avoid_back_to_back: boolean
+          club_id: string
+          court_ids: number[]
+          court_rotation_minutes: number | null
+          created_at: string
+          day_schedules: Json
+          default_break_minutes: number
+          description: string | null
+          enable_playoffs: boolean
+          end_date: string
+          end_time: string
+          entries_locked: boolean
+          expected_players: Json | null
+          gender: string
+          group_break_minutes: Json
+          group_durations: Json
+          group_labels: Json | null
+          id: string
+          include_visitors: boolean
+          invite_excluded_member_ids: string[]
+          invite_include_reserves: boolean
+          invite_methods: string[]
+          invite_source: string
+          league_formats: Json | null
+          match_duration_minutes: number
+          match_type: string
+          name: string
+          num_groups: number
+          owner_org_id: string | null
+          partner_mode: string
+          play_days: number[]
+          playoff_break_minutes: number
+          playoff_date: string | null
+          schedule_mode: string
+          source_league_id: string | null
+          source_league_ids: string[]
+          start_date: string
+          start_time: string
+          status: string
+          swiss_pools: Json | null
+          swiss_rounds: Json | null
+          updated_at: string
+          visitor_clubs: string[]
+        }
+        Insert: {
+          avoid_back_to_back?: boolean
+          club_id: string
+          court_ids?: number[]
+          court_rotation_minutes?: number | null
+          created_at?: string
+          day_schedules?: Json
+          default_break_minutes?: number
+          description?: string | null
+          enable_playoffs?: boolean
+          end_date: string
+          end_time?: string
+          entries_locked?: boolean
+          expected_players?: Json | null
+          gender: string
+          group_break_minutes?: Json
+          group_durations?: Json
+          group_labels?: Json | null
+          id?: string
+          include_visitors?: boolean
+          invite_excluded_member_ids?: string[]
+          invite_include_reserves?: boolean
+          invite_methods?: string[]
+          invite_source?: string
+          league_formats?: Json | null
+          match_duration_minutes?: number
+          match_type?: string
+          name: string
+          num_groups?: number
+          owner_org_id?: string | null
+          partner_mode?: string
+          play_days?: number[]
+          playoff_break_minutes?: number
+          playoff_date?: string | null
+          schedule_mode?: string
+          source_league_id?: string | null
+          source_league_ids?: string[]
+          start_date: string
+          start_time?: string
+          status?: string
+          swiss_pools?: Json | null
+          swiss_rounds?: Json | null
+          updated_at?: string
+          visitor_clubs?: string[]
+        }
+        Update: {
+          avoid_back_to_back?: boolean
+          club_id?: string
+          court_ids?: number[]
+          court_rotation_minutes?: number | null
+          created_at?: string
+          day_schedules?: Json
+          default_break_minutes?: number
+          description?: string | null
+          enable_playoffs?: boolean
+          end_date?: string
+          end_time?: string
+          entries_locked?: boolean
+          expected_players?: Json | null
+          gender?: string
+          group_break_minutes?: Json
+          group_durations?: Json
+          group_labels?: Json | null
+          id?: string
+          include_visitors?: boolean
+          invite_excluded_member_ids?: string[]
+          invite_include_reserves?: boolean
+          invite_methods?: string[]
+          invite_source?: string
+          league_formats?: Json | null
+          match_duration_minutes?: number
+          match_type?: string
+          name?: string
+          num_groups?: number
+          owner_org_id?: string | null
+          partner_mode?: string
+          play_days?: number[]
+          playoff_break_minutes?: number
+          playoff_date?: string | null
+          schedule_mode?: string
+          source_league_id?: string | null
+          source_league_ids?: string[]
+          start_date?: string
+          start_time?: string
+          status?: string
+          swiss_pools?: Json | null
+          swiss_rounds?: Json | null
+          updated_at?: string
+          visitor_clubs?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_champs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_source_league_id_fkey"
+            columns: ["source_league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_owner_org_id_fkey"
+            columns: ["owner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
         ]
@@ -9108,6 +9279,121 @@ export type Database = {
           },
         ]
       }
+      club_champs: {
+        Row: {
+          affects_ranking_points: boolean | null
+          association_fee_cents: number | null
+          avoid_back_to_back: boolean | null
+          best_of: number | null
+          bye_handling: string | null
+          club_id: string | null
+          competition_level: string | null
+          court_ids: number[] | null
+          court_rotation_minutes: number | null
+          created_at: string | null
+          day_schedules: Json | null
+          default_break_minutes: number | null
+          description: string | null
+          draw_type: string | null
+          eligibility_max_age: number | null
+          eligibility_min_age: number | null
+          eligibility_notes: string | null
+          eligibility_requires_licence: boolean | null
+          eligibility_scope: string | null
+          enable_playoffs: boolean | null
+          end_date: string | null
+          end_time: string | null
+          entries_locked: boolean | null
+          entry_fee_cents: number | null
+          expected_players: Json | null
+          federation_fee_cents: number | null
+          gender: string | null
+          group_break_minutes: Json | null
+          group_durations: Json | null
+          group_labels: Json | null
+          handicap_divider: number | null
+          handicap_mode: string | null
+          handicap_multiplier: number | null
+          id: string | null
+          include_visitors: boolean | null
+          invite_excluded_member_ids: string[] | null
+          invite_include_reserves: boolean | null
+          invite_methods: string[] | null
+          invite_source: string | null
+          league_formats: Json | null
+          match_duration_minutes: number | null
+          match_type: string | null
+          name: string | null
+          no_show_opponent_points: number | null
+          no_show_player_points: number | null
+          num_groups: number | null
+          owner_org_id: string | null
+          partner_mode: string | null
+          payment_methods: string[] | null
+          payment_required: boolean | null
+          play_all_games: boolean | null
+          play_days: number[] | null
+          playoff_break_minutes: number | null
+          playoff_date: string | null
+          points_per_game: number | null
+          refund_cutoff_date: string | null
+          refund_policy: string | null
+          registration_closes_at: string | null
+          registration_mode: string | null
+          registration_opens_at: string | null
+          registration_required: boolean | null
+          round_format: string | null
+          sanction_notes: string | null
+          sanction_reference: string | null
+          sanction_status: string | null
+          sanctioned_at: string | null
+          sanctioned_by: string | null
+          sanctioning_org_id: string | null
+          schedule_mode: string | null
+          scoring_mode: string | null
+          source_league_id: string | null
+          source_league_ids: string[] | null
+          standard_of_play: string | null
+          start_date: string | null
+          start_time: string | null
+          status: string | null
+          swiss_pools: Json | null
+          swiss_rounds: Json | null
+          updated_at: string | null
+          visitor_clubs: string[] | null
+          win_condition: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_champs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_source_league_id_fkey"
+            columns: ["source_league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_governance_sanctioning_org_id_fkey"
+            columns: ["sanctioning_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_owner_org_id_fkey"
+            columns: ["owner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_delegates_public: {
         Row: {
           club_id: string | null
@@ -9243,6 +9529,10 @@ export type Database = {
       }
       auto_complete_past_tournaments: { Args: never; Returns: number }
       bill_wifi_monthly: { Args: never; Returns: Json }
+      can_manage_tournament: {
+        Args: { _tournament_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_mark_bells_match: {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
@@ -9253,6 +9543,10 @@ export type Database = {
       }
       can_view_person: { Args: { _person_id: string }; Returns: boolean }
       can_view_person_dob: { Args: { _person_id: string }; Returns: boolean }
+      can_view_tournament: {
+        Args: { _tournament_id: string; _user_id: string }
+        Returns: boolean
+      }
       cancel_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       captain_list_unclaimed_teammates: {
         Args: { _club_member_id: string }

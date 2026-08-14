@@ -111,7 +111,9 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
   };
 
   const openInvoice = (inv: Invoice) => {
-    const html = renderInvoiceHtml(inv, club?.name || "Your Club", bank || {});
+    // Past invoices keep the billing details captured when they were issued.
+    const billTo = (inv as any).billing_details || billingProfile || null;
+    const html = renderInvoiceHtml(inv, club?.name || "Your Club", bank || {}, billTo);
     const w = window.open("", "_blank", "width=900,height=1100");
     if (!w) {
       toast.error("Popup blocked — allow popups to view the invoice");

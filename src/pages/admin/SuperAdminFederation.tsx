@@ -64,7 +64,7 @@ function TreeNode({ node, depth, filter }: { node: OrgNode; depth: number; filte
           variant="outline"
           className="ml-auto text-[10px] border-white/20 text-white/60 capitalize"
         >
-          {node.kind === "national" ? "Federation" : node.kind}
+          {node.is_internal_league ? "Club league" : node.kind === "national" ? "Federation" : node.kind}
         </Badge>
         {hasChildren && (
           <span className="text-[11px] text-white/40 w-10 text-right">{node.children.length}</span>

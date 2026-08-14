@@ -281,7 +281,7 @@ export default function SuperAdminClubs() {
             </div>
             <div className="flex items-start justify-between gap-3 rounded-md border p-3">
               <div>
-                <Label>Allow annual upfront billing</Label>
+                <Label>Allow upfront billing (6-monthly / annual)</Label>
                 <p className="text-xs text-muted-foreground mt-1">
                   When off, this club can only be invoiced monthly. Turn on once their member roster
                   has settled, so a year paid upfront reflects realistic numbers.

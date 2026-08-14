@@ -99,7 +99,13 @@ export function useFederationStats() {
         upcomingTournaments,
         matches90d,
       ] = await Promise.all([
-        count(supabase.from("organisations").select("id", { count: "exact", head: true }).eq("kind", "association")),
+        count(
+          supabase
+            .from("organisations")
+            .select("id", { count: "exact", head: true })
+            .eq("kind", "association")
+            .neq("name", "Unaffiliated Clubs"),
+        ),
         count(supabase.from("organisations").select("id", { count: "exact", head: true }).eq("kind", "club")),
         count(supabase.from("club_members").select("id", { count: "exact", head: true })),
         count(supabase.from("club_members").select("id", { count: "exact", head: true }).eq("status", "active")),

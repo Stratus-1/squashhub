@@ -46,9 +46,20 @@ Deno.serve(async (req) => {
       .maybeSingle()
     const settings = settingsRow?.value ? (typeof settingsRow.value === 'string' ? JSON.parse(settingsRow.value) : settingsRow.value) : {}
 
-    // Resolve recipient
+    // Resolve recipients — the club's billing profile emails take priority.
     const club = inv.clubs as any
-    const recipient = (override_email && String(override_email).trim()) || club?.email
+    const { data: billingProfile } = await supabase
+      .from('club_billing_profiles')
+      .select('emails')
+      .eq('club_id', inv.club_id)
+      .maybeSingle()
+    const profileEmails: string[] = (billingProfile?.emails || [])
+      .map((e: string) => String(e || '').trim().toLowerCase())
+      .filter((e: string) => e.includes('@'))
+    const recipients = override_email && String(override_email).trim()
+      ? [String(override_email).trim()]
+      : (profileEmails.length ? profileEmails : (club?.email ? [String(club.email).trim()] : []))
+    const recipient = recipients[0]
     if (!recipient) return json({ error: 'No recipient email on file for this club' }, 400)
 
     const subdomain = club?.subdomain
@@ -57,11 +68,13 @@ Deno.serve(async (req) => {
       : `https://squashhub.co.za/club-admin?tab=subscription`
     const manageUrl = `${baseManage}&pay=${inv.id}`
 
-    const { error: sendErr } = await supabase.functions.invoke('send-transactional-email', {
+    let sendErr: { message: string } | null = null
+    for (const to of recipients) {
+    const { error: err } = await supabase.functions.invoke('send-transactional-email', {
       body: {
         templateName: 'subscription-invoice',
-        recipientEmail: recipient,
-        idempotencyKey: `sub-invoice-${inv.id}-resend-${Date.now()}`,
+        recipientEmail: to,
+        idempotencyKey: `sub-invoice-${inv.id}-resend-${to}-${Date.now()}`,
         templateData: {
           clubName: club?.name,
           invoiceNumber: inv.invoice_number,
@@ -100,15 +113,17 @@ Deno.serve(async (req) => {
         },
       },
     })
+      if (err) sendErr = err
+    }
 
-    const emailStatus = sendErr ? `failed: ${sendErr.message}` : 'resent'
+    const emailStatus = sendErr ? `failed: ${sendErr.message}` : `resent to ${recipients.length} recipient${recipients.length === 1 ? '' : 's'}`
     await supabase
       .from('platform_subscription_invoices')
       .update({ email_sent_at: sendErr ? inv.email_sent_at : new Date().toISOString(), email_status: emailStatus })
       .eq('id', inv.id)
 
     if (sendErr) return json({ error: sendErr.message }, 500)
-    return json({ ok: true, recipient })
+    return json({ ok: true, recipient, recipients })
   } catch (e) {
     return json({ error: (e as Error).message }, 500)
   }

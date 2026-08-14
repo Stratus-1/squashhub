@@ -159,7 +159,9 @@ export default function SuperAdminFederation() {
   const { data: admins = [], isLoading: loadingAdmins } = useFederationAdmins();
   const [filter, setFilter] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
+  const [view, setView] = useState<"chart" | "list">("chart");
   const reparent = useReparentOrg();
+  const createAssociation = useCreateAssociation();
 
   const orgName = useMemo(() => {
     const map = new Map<string, string>();

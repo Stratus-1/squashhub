@@ -26,6 +26,7 @@ type Club = {
   created_at: string;
   booking_slot_minutes?: number | null;
   allow_annual_billing?: boolean | null;
+  allow_biannual_billing?: boolean | null;
   annual_billing_requested_at?: string | null;
   member_count?: number;
 };
@@ -34,7 +35,7 @@ export default function SuperAdminClubs() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [editClub, setEditClub] = useState<Club | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", subdomain: "", email: "", phone: "", address: "", booking_slot_minutes: 30, allow_annual_billing: false });
+  const [editForm, setEditForm] = useState({ name: "", subdomain: "", email: "", phone: "", address: "", booking_slot_minutes: 30, allow_annual_billing: false, allow_biannual_billing: false });
   const [deleteConfirm, setDeleteConfirm] = useState<Club | null>(null);
 
   const { data: clubs = [], isLoading } = useQuery({
@@ -42,7 +43,7 @@ export default function SuperAdminClubs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at, booking_slot_minutes, allow_annual_billing, annual_billing_requested_at")
+        .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at, booking_slot_minutes, allow_annual_billing, allow_biannual_billing, annual_billing_requested_at")
         .order("created_at", { ascending: false })
         .range(0, 49999);
       if (error) throw error;
@@ -78,7 +79,7 @@ export default function SuperAdminClubs() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (club: { id: string; name: string; subdomain: string; email: string; phone: string; address: string; booking_slot_minutes: number; allow_annual_billing: boolean }) => {
+    mutationFn: async (club: { id: string; name: string; subdomain: string; email: string; phone: string; address: string; booking_slot_minutes: number; allow_annual_billing: boolean; allow_biannual_billing: boolean }) => {
       const { error } = await supabase
         .from("clubs")
         .update({
@@ -89,6 +90,7 @@ export default function SuperAdminClubs() {
           address: club.address || null,
           booking_slot_minutes: club.booking_slot_minutes,
           allow_annual_billing: club.allow_annual_billing,
+          allow_biannual_billing: club.allow_biannual_billing,
         })
         .eq("id", club.id);
       if (error) throw error;
@@ -126,6 +128,7 @@ export default function SuperAdminClubs() {
       address: club.address || "",
       booking_slot_minutes: club.booking_slot_minutes ?? 30,
       allow_annual_billing: club.allow_annual_billing === true,
+      allow_biannual_billing: club.allow_biannual_billing === true,
     });
   };
 

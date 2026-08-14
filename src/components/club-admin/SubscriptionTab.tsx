@@ -61,6 +61,8 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const verifiedRef = useRef<string | null>(null);
 
+  const { data: billingProfile } = useClubBillingProfile(clubId);
+
   const { data: invoices = [], isLoading: invLoading } = useQuery({
     queryKey: ["club-platform-invoices", clubId],
     queryFn: async () => {

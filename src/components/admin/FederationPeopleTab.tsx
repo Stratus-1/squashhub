@@ -11,6 +11,7 @@ import {
   useMergePeople,
   useLicenceProducts,
   useDuplicateCandidates,
+  useDismissDuplicatePair,
   type DuplicateCandidate,
 } from "@/hooks/use-people";
 

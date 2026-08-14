@@ -222,3 +222,47 @@ export function useReparentOrg() {
     onError: (e: any) => toast.error(e.message || "Could not move organisation"),
   });
 }
+
+/** Create a new association (affiliation) directly under the federation. */
+export function useCreateAssociation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      name,
+      abbreviation,
+      parentId,
+    }: {
+      name: string;
+      abbreviation?: string | null;
+      parentId: string;
+    }) => {
+      const { data, error } = await supabase
+        .from("organisations")
+        .insert({
+          kind: "association",
+          name: name.trim(),
+          abbreviation: abbreviation?.trim() || null,
+          country: "ZA",
+          is_internal_league: false,
+          active: true,
+        } as any)
+        .select("id")
+        .single();
+      if (error) throw error;
+      const { error: relErr } = await supabase.from("organisation_relationships").insert({
+        parent_org_id: parentId,
+        child_org_id: (data as any).id,
+        relationship: "affiliation",
+        effective_from: new Date().toISOString().slice(0, 10),
+      } as any);
+      if (relErr) throw relErr;
+      return (data as any).id as string;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["federation-hierarchy"] });
+      qc.invalidateQueries({ queryKey: ["federation-stats"] });
+      toast.success("Association created");
+    },
+    onError: (e: any) => toast.error(e.message || "Could not create association"),
+  });
+}

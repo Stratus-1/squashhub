@@ -81,3 +81,9 @@ Things already built here that the spec does not account for and must not be reg
 - Ladder immutability rules stay in force; national rankings are a separate list, not a rewrite of `ladder_position`.
 - Every new public table ships with GRANTs + RLS in the same migration.
 - No ranking formula is implemented before SSA answers §22.
+
+## Phase 3a — Competition governance (delivered)
+- `club_champs` extended with sanction_status / sanctioning_org_id / sanction_reference / notes, competition_level (club|regional|provincial|national), eligibility (min/max age, licence required, scope, notes), fee split (federation_fee_cents, association_fee_cents; club keeps the balance), refund_policy + refund_cutoff_date.
+- `tournament_governance_audit` table + `log_tournament_governance_changes` trigger records every governance field change.
+- UI: "Governance" button on each tournament in ClubChampsTab → `TournamentGovernanceDialog` (Sanctioning / Eligibility / Fees & refunds / History).
+- Deferred to Phase 3b: MONRAD, feed-in draws, qualification rounds, draw lock & versioning, result-correction workflow. Rankings (Phase 5) remain blocked on SSA policy.

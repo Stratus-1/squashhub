@@ -31,7 +31,8 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
-import { Users as UsersIcon } from "lucide-react";
+import { Users as UsersIcon, ShieldCheck } from "lucide-react";
+import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
 import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 
@@ -3490,6 +3491,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   };
 
   const [duplicateSource, setDuplicateSource] = useState<any>(null);
+  const [governanceChamp, setGovernanceChamp] = useState<any>(null);
 
   const duplicateChamp = async (champ: any, includePlayers: boolean) => {
     await loadChampForEdit(champ);
@@ -3715,6 +3717,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       <Button variant="outline" size="sm" onClick={() => loadChampForEdit(c)}>
                         <Pencil className="w-4 h-4 mr-1" /> Edit
                       </Button>
+                      <Button variant="outline" size="sm" onClick={() => setGovernanceChamp(c)} title="Sanctioning, eligibility, fee split & audit history">
+                        <ShieldCheck className="w-4 h-4 mr-1" /> Governance
+                      </Button>
+
                       <Button
                         variant="outline" size="sm"
                         disabled={setChampStatus.isPending}
@@ -3804,6 +3810,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           </DialogContent>
         </Dialog>
 
+        <TournamentGovernanceDialog champ={governanceChamp} onOpenChange={(v) => !v && setGovernanceChamp(null)} />
         <Dialog open={!!duplicateSource} onOpenChange={(v) => !v && setDuplicateSource(null)}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle>Duplicate tournament</DialogTitle></DialogHeader>

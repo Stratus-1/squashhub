@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Landmark, FileText, ExternalLink, Copy, Loader2, Printer, RefreshCw, History } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BillingInfoTab } from "@/components/club-admin/BillingInfoTab";
-import { useClubBillingAudit, BILLING_FIELD_LABELS } from "@/hooks/use-club-billing";
+import { useClubBillingAudit, useClubBillingProfile, BILLING_FIELD_LABELS } from "@/hooks/use-club-billing";
 import { toast } from "sonner";
 import { useMyClub } from "@/hooks/use-club";
 import { ClubParticipationCard } from "@/components/club-admin/ClubParticipationCard";

@@ -166,6 +166,7 @@ Deno.serve(async (req) => {
       .select('club_id, email, role')
       .in('club_id', clubIds)
       .neq('role', 'visitor')
+      .eq('billing_exempt', false)
       .eq('status', 'active')
       .range(0, 99999)
     for (const m of members || []) {

@@ -2435,6 +2435,7 @@ export type Database = {
           access_suspended_at: string | null
           address: string | null
           avatar_url: string | null
+          billing_exempt: boolean
           club_id: string
           club_member_number: string | null
           email: string | null
@@ -2473,6 +2474,7 @@ export type Database = {
           access_suspended_at?: string | null
           address?: string | null
           avatar_url?: string | null
+          billing_exempt?: boolean
           club_id: string
           club_member_number?: string | null
           email?: string | null
@@ -2511,6 +2513,7 @@ export type Database = {
           access_suspended_at?: string | null
           address?: string | null
           avatar_url?: string | null
+          billing_exempt?: boolean
           club_id?: string
           club_member_number?: string | null
           email?: string | null

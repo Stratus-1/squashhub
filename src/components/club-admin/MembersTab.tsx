@@ -1421,6 +1421,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     address: member.address || "",
     fee_category_id: member.fee_category_id || "",
     skill_level: member.skill_level || "",
+    billing_exempt: !!(member as any).billing_exempt,
   });
 
   // Build the classified league-association list (permanent affiliations are
@@ -1674,6 +1675,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       address: form.address || null,
       fee_category_id: form.fee_category_id || null,
       skill_level: form.skill_level || null,
+      billing_exempt: form.billing_exempt,
     }).eq("id", member.id);
     if (error) { toast.error(error.message); return; }
 
@@ -1768,6 +1770,22 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               <option value="">— Select —</option>
               {SKILL_LEVELS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
+          </div>
+          <div className="flex items-start gap-2 rounded-md border border-border p-2.5">
+            <input
+              type="checkbox"
+              id="admin-billing-exempt"
+              className="mt-0.5"
+              checked={form.billing_exempt}
+              onChange={e => setForm(p => ({ ...p, billing_exempt: e.target.checked }))}
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="admin-billing-exempt" className="text-sm font-medium">Not a billable member</Label>
+              <p className="text-[10px] text-muted-foreground">
+                Excludes this record from your club's subscription member count. Use for placeholder or
+                visitor slots (e.g. internal league reserves) that aren't real paying members.
+              </p>
+            </div>
           </div>
           {leagueAssocs.length > 0 && (
             <div className="border-t border-border pt-3 mt-3 space-y-3">

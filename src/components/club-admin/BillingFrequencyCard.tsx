@@ -160,22 +160,22 @@ export function BillingFrequencyCard({
           </>
         ) : allowUpfront ? (
           <>
-            Choose how you&apos;d like to be invoiced. Paying upfront earns a discount off the
-            monthly scale
+            You can pay monthly, or settle in advance whenever it suits you — the choice is yours
+            each time
             {allowBiannual && allowAnnual
-              ? ": 5% for 6 months in advance, 10% for a full year"
+              ? ": 5% off for 6 months in advance, 10% off for a full year"
               : allowBiannual
-                ? ": 5% for 6 months in advance"
-                : ": 10% for a full year"}
-            . You can switch while you&apos;re on monthly at any time.
+                ? ": 5% off for 6 months in advance"
+                : ": 10% off for a full year"}
+            . Pick an option below and your next invoice covers that period.
           </>
         ) : (
           <>
             Your club is invoiced monthly in advance, based on your member count at the time of each
-            invoice. Invoicing starts 1 September 2026. Prefer to settle a full year upfront? Request
-            upfront payment below — SquashHub will review and enable 6-monthly and annual billing.
+            invoice. Invoicing starts 1 September 2026.
           </>
         )}
+
       </p>
 
 

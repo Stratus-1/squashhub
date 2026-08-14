@@ -330,12 +330,34 @@ function DroppableLeague({ id, children, className }: { id: string; children: Re
   );
 }
 
-export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
+export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { data: members = [] } = useClubMembers(clubId);
+  // Clubs whose members and courts are available to this tournament. At club
+  // level this is just the club itself, so behaviour is identical to before.
+  const venueClubIds = useMemo(() => {
+    const ids = new Set<string>([clubId, ...(participatingClubIds || [])]);
+    return Array.from(ids).filter(Boolean);
+  }, [clubId, participatingClubIds]);
+  const multiClub = venueClubIds.length > 1;
+
+  const { data: clubMembers = [] } = useClubMembers(clubId);
+  const { data: pooledMembers = [] } = useQuery({
+    queryKey: ["tournament-member-pool", venueClubIds],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members")
+        .select("*, profiles:user_id(name, email, phone, avatar_url), club:club_id(name)")
+        .in("club_id", venueClubIds)
+        .order("name");
+      if (error) throw error;
+      return (data || []) as ClubMember[];
+    },
+    enabled: multiClub,
+  });
+  const members = multiClub ? pooledMembers : clubMembers;
   const whatsappEnabled = useWhatsAppEnabled(clubId);
   const isSuperAdmin = useIsSuperAdmin();
+
 
   // Club-level payment config — drives the "Accepted payment methods" picker on the Registration step.
   // We read the configured online gateway (clubs.payment_gateway) and check whether bank details

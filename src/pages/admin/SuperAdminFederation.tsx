@@ -14,6 +14,8 @@ import {
 } from "@/hooks/use-federation";
 import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
 import FederationOrgChart from "@/components/admin/FederationOrgChart";
+import { TournamentsPanel } from "@/components/tournaments/TournamentsPanel";
+
 
 
 const ROLE_LABELS: Record<string, string> = {

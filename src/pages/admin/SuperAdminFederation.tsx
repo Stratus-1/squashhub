@@ -14,6 +14,8 @@ import {
 } from "@/hooks/use-federation";
 import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
 import FederationOrgChart from "@/components/admin/FederationOrgChart";
+import { TournamentsPanel } from "@/components/tournaments/TournamentsPanel";
+
 
 
 const ROLE_LABELS: Record<string, string> = {
@@ -169,6 +171,12 @@ export default function SuperAdminFederation() {
     return map;
   }, [hierarchy]);
 
+  const nationalOrgId = useMemo(
+    () => (hierarchy?.orgs || []).find((o) => o.kind === "national")?.id ?? null,
+    [hierarchy],
+  );
+
+
   return (
     <div className="space-y-5 max-w-7xl">
       <div>
@@ -219,12 +227,22 @@ export default function SuperAdminFederation() {
         <TabsList className="bg-white/[0.06]">
           <TabsTrigger value="hierarchy">Hierarchy</TabsTrigger>
           <TabsTrigger value="people">People</TabsTrigger>
+          <TabsTrigger value="competitions">Competitions</TabsTrigger>
           <TabsTrigger value="roles">Federation roles</TabsTrigger>
         </TabsList>
 
         <TabsContent value="people" className="mt-3">
           <FederationPeopleTab />
         </TabsContent>
+
+        <TabsContent value="competitions" className="mt-3">
+          <TournamentsPanel
+            ownerOrgId={nationalOrgId}
+            title="National competitions"
+            description="Tournaments owned by the federation. Governance, rules and the shared draw engine are identical to club and association events."
+          />
+        </TabsContent>
+
 
 
         <TabsContent value="hierarchy" className="mt-3">

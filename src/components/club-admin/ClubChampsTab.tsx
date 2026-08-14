@@ -31,8 +31,9 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
-import { Users as UsersIcon, ShieldCheck } from "lucide-react";
+import { Users as UsersIcon, ShieldCheck, ScrollText } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
+import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
 import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 
@@ -3492,6 +3493,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   const [duplicateSource, setDuplicateSource] = useState<any>(null);
   const [governanceChamp, setGovernanceChamp] = useState<any>(null);
+  const [rulesChamp, setRulesChamp] = useState<any>(null);
 
   const duplicateChamp = async (champ: any, includePlayers: boolean) => {
     await loadChampForEdit(champ);
@@ -3717,9 +3719,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       <Button variant="outline" size="sm" onClick={() => loadChampForEdit(c)}>
                         <Pencil className="w-4 h-4 mr-1" /> Edit
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setGovernanceChamp(c)} title="Sanctioning, eligibility, fee split & audit history">
+                      <Button variant="outline" size="sm" onClick={() => setGovernanceChamp(c)} title="Ownership, sanctioning, eligibility, fee split, venues & audit history">
                         <ShieldCheck className="w-4 h-4 mr-1" /> Governance
                       </Button>
+                      <Button variant="outline" size="sm" onClick={() => setRulesChamp(c)} title="Scoring format, draw type & standard of play">
+                        <ScrollText className="w-4 h-4 mr-1" /> Rules
+                      </Button>
+
 
                       <Button
                         variant="outline" size="sm"
@@ -3811,6 +3817,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         </Dialog>
 
         <TournamentGovernanceDialog champ={governanceChamp} onOpenChange={(v) => !v && setGovernanceChamp(null)} />
+        <TournamentRulesDialog champ={rulesChamp} onOpenChange={(v) => !v && setRulesChamp(null)} />
         <Dialog open={!!duplicateSource} onOpenChange={(v) => !v && setDuplicateSource(null)}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle>Duplicate tournament</DialogTitle></DialogHeader>

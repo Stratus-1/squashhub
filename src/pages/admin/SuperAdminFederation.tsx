@@ -225,12 +225,22 @@ export default function SuperAdminFederation() {
         <TabsList className="bg-white/[0.06]">
           <TabsTrigger value="hierarchy">Hierarchy</TabsTrigger>
           <TabsTrigger value="people">People</TabsTrigger>
+          <TabsTrigger value="competitions">Competitions</TabsTrigger>
           <TabsTrigger value="roles">Federation roles</TabsTrigger>
         </TabsList>
 
         <TabsContent value="people" className="mt-3">
           <FederationPeopleTab />
         </TabsContent>
+
+        <TabsContent value="competitions" className="mt-3">
+          <TournamentsPanel
+            ownerOrgId={nationalOrgId}
+            title="National competitions"
+            description="Tournaments owned by the federation. Governance, rules and the shared draw engine are identical to club and association events."
+          />
+        </TabsContent>
+
 
 
         <TabsContent value="hierarchy" className="mt-3">

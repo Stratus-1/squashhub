@@ -105,6 +105,7 @@ export function useFederationStats() {
             .from("organisations")
             .select("id", { count: "exact", head: true })
             .eq("kind", "association")
+            .eq("is_internal_league", false)
             .neq("name", "Unaffiliated Clubs"),
         ),
         count(supabase.from("organisations").select("id", { count: "exact", head: true }).eq("kind", "club")),

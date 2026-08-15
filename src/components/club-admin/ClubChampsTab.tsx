@@ -78,6 +78,24 @@ const ELIGIBILITY_SCOPES: { value: string; label: string }[] = [
   { value: "open", label: "Open — anyone may enter" },
 ];
 
+/**
+ * Legacy `event_type` values mixed category with eligibility/ranking. Map the
+ * old ones onto a real category so existing tournaments keep working.
+ */
+const LEGACY_EVENT_TYPES: Record<string, string> = {
+  closed: "club_championship",
+  invitational: "club_championship",
+  ranking: "open_tournament",
+  open: "open_tournament",
+};
+
+function normaliseEventType(value: string | null | undefined, scope: string): string {
+  if (!value) return scope === "club" ? "club_championship" : "open_tournament";
+  if (EVENT_TYPES.some((t) => t.value === value)) return value;
+  return LEGACY_EVENT_TYPES[value] || (scope === "club" ? "club_championship" : "open_tournament");
+}
+
+
 
 type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
 type GenderCategory = "men" | "ladies" | "mixed" | "open";

@@ -4497,6 +4497,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       ? `Bells ${groupDurations[key] || matchDuration || 20}′`
                                       : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"}`}
                                   </span>
+                                  {collapsed && (
+                                    <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
+                                      {Math.max(1, Number(swissPools[key]) || 1)} pool{Math.max(1, Number(swissPools[key]) || 1) === 1 ? "" : "s"}
+                                      {expectedPlayers[key] ? ` · ${expectedPlayers[key]} ${isDoubles ? "pairs" : "players"}` : ""}
+                                    </span>
+                                  )}
                                 </div>
                                 {!collapsed && (
                                 <div className="flex items-end gap-2">

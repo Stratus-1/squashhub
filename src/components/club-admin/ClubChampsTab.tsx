@@ -4464,9 +4464,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       type="checkbox"
                       className="h-3.5 w-3.5"
                       checked={enablePlayoffs}
-                      onChange={(e) => setEnablePlayoffs(e.target.checked)}
+                      onChange={(e) => {
+                        setEnablePlayoffs(e.target.checked);
+                        // Master switch — every league follows it again until
+                        // individually overridden on its card.
+                        setLeaguePlayoffs({});
+                      }}
                     />
-                    Include playoffs
+                    Include playoffs (set per league below)
                   </label>
                 </div>
               </div>

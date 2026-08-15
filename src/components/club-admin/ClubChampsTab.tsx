@@ -760,6 +760,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setLeagueScoringModes(shift);
     setLeaguePointsPerGame(shift);
     setLeagueBestOf(shift);
+    setLeagueWinConditions(shift);
     setNumGroups((n) => Math.max(0, (n || 0) - 1));
   };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");

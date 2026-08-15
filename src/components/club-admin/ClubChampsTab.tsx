@@ -3524,7 +3524,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setDescription(champ.description || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
     const ex = (tournamentExtras || {})[champ.id] || {};
-    setEventType(ex.event_type || (scope === "club" ? "club_championship" : "open"));
+    setEventType(normaliseEventType(ex.event_type, scope));
     setMaxEntrants(ex.max_entrants ? String(ex.max_entrants) : "");
     setMaxPerLeague(ex.max_per_league ? String(ex.max_per_league) : "");
     setSeedingSource(ex.seeding_source || "ladder");

@@ -4115,7 +4115,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <Trophy className="w-4 h-4 mr-2" /> Plan New Tournament
             </Button>
             <p className="text-xs text-muted-foreground max-w-xs text-right">
-              Tip: to save time, use the <strong>Copy</strong> button next to a completed tournament below to duplicate its setup with new dates.
+              Tip: to save time, use the <strong>Template</strong> button on any tournament below to duplicate its full setup with new dates.
             </p>
           </div>
         </div>
@@ -4178,11 +4178,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       Re-open
                     </Button>
                   )}
-                  {isCompleted && (
-                    <Button variant="outline" size="sm" onClick={() => setDuplicateSource(c)} title="Duplicate this tournament with new dates">
-                      <Copy className="w-4 h-4 mr-1" /> Copy
-                    </Button>
-                  )}
+                  <Button variant="outline" size="sm" onClick={() => setDuplicateSource(c)} title="Use as template — duplicate this tournament's full setup with new dates">
+                    <Copy className="w-4 h-4 mr-1" /> {isCompleted ? "Copy" : "Template"}
+                  </Button>
                   {(() => {
                     // Club admin can only delete tournaments that haven't started yet.
                     // Only super admin can delete active or completed tournaments.

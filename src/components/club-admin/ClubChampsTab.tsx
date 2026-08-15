@@ -636,6 +636,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [eventType, setEventType] = useState<string>(scope === "club" ? "club_championship" : "open_tournament");
   // Who may enter — lives on tournament_governance (kept in sync from the wizard).
   const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "open");
+  // Load the saved eligibility whenever a different tournament is opened for edit.
+  useEffect(() => {
+    if (wizardGovernance?.eligibility_scope) setEligibilityScope(wizardGovernance.eligibility_scope);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingChampId, wizardGovernance?.eligibility_scope]);
   const [maxEntrants, setMaxEntrants] = useState<string>("");
   const [maxPerLeague, setMaxPerLeague] = useState<string>("");
   const [seedingSource, setSeedingSource] = useState<string>("ladder");

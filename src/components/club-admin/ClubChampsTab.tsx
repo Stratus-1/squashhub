@@ -778,7 +778,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setLeagueWinConditions(shift);
     setNumGroups((n) => Math.max(0, (n || 0) - 1));
   };
-  const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
+  const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("no_match");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   // Prune any selected court IDs that no longer exist in the club's courts
   // list — protects against stale references (e.g. deleted external courts)
@@ -4066,7 +4066,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           if (!bestOf) m.push("Best of (3 or 5)");
         }
         if (!roundFormat) m.push("Round format");
-        if (!byeHandling) m.push("Bye handling");
         break;
       }
       case "courts": {

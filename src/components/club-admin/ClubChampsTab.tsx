@@ -6430,9 +6430,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCrossLeagueDragEnd}>
               <div className="space-y-4">
                 {(() => {
-                  const isSwissPools = roundFormat === "swiss";
+                  const isSwissPools = true; // pools apply to any format now
                   const poolsFor = (gi: number) =>
-                    isSwissPools ? Math.max(1, Number(swissPools[String(gi + 1)]) || 1) : 1;
+                    Math.max(1, Number(swissPools[String(gi + 1)]) || 1);
+
                   // Block distribution: pool A = first chunk, pool B = next chunk, etc.
                   // Admins arrange strength manually by dragging within the pool.
                   const poolIdx = (i: number, pools: number, total: number) => {

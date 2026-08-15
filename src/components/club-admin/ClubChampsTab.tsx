@@ -52,14 +52,30 @@ interface ClubChampsTabProps {
   participatingClubIds?: string[];
 }
 
-/** Event types — used at every level; clubs default to a club championship. */
+/**
+ * Tournament categories — WHAT kind of competition this is. Deliberately free
+ * of eligibility ("closed"/"open"/"invitational") and ranking status: those are
+ * separate fields (Who may enter, invitation-only registration, ranking toggle,
+ * sanctioning authority) so any category can be combined with any of them —
+ * e.g. a club championship that is also a ranking event.
+ */
 const EVENT_TYPES: { value: string; label: string }[] = [
   { value: "club_championship", label: "Club championship" },
-  { value: "closed", label: "Closed (members of the owning body only)" },
-  { value: "open", label: "Open (anyone may enter)" },
-  { value: "invitational", label: "Invitational" },
-  { value: "ranking", label: "Ranking event" },
+  { value: "league_fixture", label: "League fixture" },
   { value: "league_finals", label: "League finals / play-offs" },
+  { value: "open_tournament", label: "Open tournament" },
+  { value: "junior", label: "Junior tournament" },
+  { value: "masters", label: "Masters tournament" },
+  { value: "team_event", label: "Team event / inter-club" },
+  { value: "provincial_championship", label: "Provincial championship" },
+  { value: "national_championship", label: "National championship" },
+];
+
+/** Who may enter — stored on tournament_governance.eligibility_scope. */
+const ELIGIBILITY_SCOPES: { value: string; label: string }[] = [
+  { value: "club", label: "Members of the host club only" },
+  { value: "association", label: "Members of the owning association" },
+  { value: "open", label: "Open — anyone may enter" },
 ];
 
 

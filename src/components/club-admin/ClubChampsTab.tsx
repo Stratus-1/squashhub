@@ -614,8 +614,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
-  // Tournament type / capacity / seeding — stored on the tournaments row.
-  const [eventType, setEventType] = useState<string>(scope === "club" ? "club_championship" : "open");
+  // Tournament category / capacity / seeding — stored on the tournaments row.
+  const [eventType, setEventType] = useState<string>(scope === "club" ? "club_championship" : "open_tournament");
+  // Who may enter — lives on tournament_governance (kept in sync from the wizard).
+  const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "open");
   const [maxEntrants, setMaxEntrants] = useState<string>("");
   const [maxPerLeague, setMaxPerLeague] = useState<string>("");
   const [seedingSource, setSeedingSource] = useState<string>("ladder");

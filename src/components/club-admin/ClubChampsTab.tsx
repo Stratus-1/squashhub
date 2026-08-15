@@ -4560,6 +4560,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             </div>
                             {/* Visual, button-driven league setup — draw format,
                                 category, entity type and scoring all per league. */}
+                            {!collapsed && (
                             <div className="space-y-2">
                               <SegRow
                                 label="Draw format"

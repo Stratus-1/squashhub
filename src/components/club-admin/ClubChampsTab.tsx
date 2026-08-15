@@ -5029,7 +5029,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"} ·{" "}
                                     {scoringForLeague(gn) === "time_capped_points"
                                       ? `Bells ${groupDurations[key] || matchDuration || 20}′`
-                                      : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"}`}
+                                      : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"} · ${Number(groupDurations[key]) || matchDuration || 20}′`}
                                   </span>
                                   {collapsed && (
                                     <span className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">

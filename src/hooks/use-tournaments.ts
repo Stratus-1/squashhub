@@ -316,9 +316,17 @@ export function useHostClubs() {
   return useQuery({
     queryKey: ["host-clubs"],
     queryFn: async () => {
-      const { data, error } = await fromExt("clubs").select("id, name").order("name");
+      const { data, error } = await fromExt("clubs")
+        .select("id, name, host_court_fee_cents_per_hour, host_cleaning_fee_cents_per_day")
+        .order("name");
       if (error) throw error;
-      return (data || []) as { id: string; name: string }[];
+      return (data || []) as {
+        id: string;
+        name: string;
+        host_court_fee_cents_per_hour?: number | null;
+        host_cleaning_fee_cents_per_day?: number | null;
+      }[];
+
     },
   });
 }

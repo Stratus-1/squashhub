@@ -101,33 +101,46 @@ export function OrgSettingsDialog({ orgId, orgName, isFederation, onOpenChange }
                 <div className="space-y-1">
                   <Label>Default entry fee (R)</Label>
                   <Input
-                    type="number" min={0} step="0.01"
-                    value={centsToRand(form.default_entry_fee_cents)}
-                    onChange={(e) => set("default_entry_fee_cents", randToCents(e.target.value))}
+                    type="text" inputMode="decimal"
+                    value={raw.default_entry_fee_cents ?? ""}
+                    onChange={(e) => setMoney("default_entry_fee_cents", e.target.value)}
+                    onBlur={() => blurMoney("default_entry_fee_cents")}
                   />
                 </div>
                 <div className="space-y-1">
                   <Label>Federation share (R)</Label>
                   <Input
-                    type="number" min={0} step="0.01"
-                    value={centsToRand(form.default_federation_fee_cents)}
-                    onChange={(e) => set("default_federation_fee_cents", randToCents(e.target.value))}
+                    type="text" inputMode="decimal"
+                    value={raw.default_federation_fee_cents ?? ""}
+                    onChange={(e) => setMoney("default_federation_fee_cents", e.target.value)}
+                    onBlur={() => blurMoney("default_federation_fee_cents")}
                   />
                 </div>
                 <div className="space-y-1">
                   <Label>Association share (R)</Label>
                   <Input
-                    type="number" min={0} step="0.01"
-                    value={centsToRand(form.default_association_fee_cents)}
-                    onChange={(e) => set("default_association_fee_cents", randToCents(e.target.value))}
+                    type="text" inputMode="decimal"
+                    value={raw.default_association_fee_cents ?? ""}
+                    onChange={(e) => setMoney("default_association_fee_cents", e.target.value)}
+                    onBlur={() => blurMoney("default_association_fee_cents")}
                   />
                 </div>
                 <div className="space-y-1">
                   <Label>Host share (% of entry)</Label>
                   <Input
-                    type="number" min={0} max={100} step="0.5"
-                    value={form.default_host_share_pct}
-                    onChange={(e) => set("default_host_share_pct", Number(e.target.value) || 0)}
+                    type="text" inputMode="decimal"
+                    value={raw.default_host_share_pct ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setRaw((r) => ({ ...r, default_host_share_pct: v }));
+                      set("default_host_share_pct", Math.max(0, Math.min(100, parseFloat(v) || 0)));
+                    }}
+                    onBlur={() =>
+                      setRaw((r) => ({
+                        ...r,
+                        default_host_share_pct: String(form?.default_host_share_pct ?? 0),
+                      }))
+                    }
                   />
                 </div>
               </div>
@@ -140,9 +153,14 @@ export function OrgSettingsDialog({ orgId, orgName, isFederation, onOpenChange }
                 <div>Federation: <strong>R {centsToRand(split.federation)}</strong></div>
                 <div>Association: <strong>R {centsToRand(split.association)}</strong></div>
                 <div>Host club: <strong>R {centsToRand(split.host)}</strong></div>
-                <div>Retained by organiser: <strong>R {centsToRand(split.owner)}</strong></div>
+                <div>Retained by {orgName} (event owner): <strong>R {centsToRand(split.owner)}</strong></div>
+                <p className="text-[11px] text-muted-foreground">
+                  The owner is this organisation — whatever is left after the federation, association and
+                  host shares stays with {orgName} as the body running the event.
+                </p>
                 {split.overAllocated && <div>Shares exceed the entry fee</div>}
               </div>
+
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">

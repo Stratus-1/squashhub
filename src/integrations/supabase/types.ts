@@ -6479,6 +6479,62 @@ export type Database = {
           },
         ]
       }
+      organisation_settings: {
+        Row: {
+          created_at: string
+          default_association_fee_cents: number
+          default_entry_fee_cents: number
+          default_federation_fee_cents: number
+          default_host_share_pct: number
+          finance_contact_email: string | null
+          finance_contact_name: string | null
+          notes: string | null
+          org_id: string
+          payout_reference: string | null
+          require_competitive_licence: boolean
+          require_sanctioning: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_association_fee_cents?: number
+          default_entry_fee_cents?: number
+          default_federation_fee_cents?: number
+          default_host_share_pct?: number
+          finance_contact_email?: string | null
+          finance_contact_name?: string | null
+          notes?: string | null
+          org_id: string
+          payout_reference?: string | null
+          require_competitive_licence?: boolean
+          require_sanctioning?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_association_fee_cents?: number
+          default_entry_fee_cents?: number
+          default_federation_fee_cents?: number
+          default_host_share_pct?: number
+          finance_contact_email?: string | null
+          finance_contact_name?: string | null
+          notes?: string | null
+          org_id?: string
+          payout_reference?: string | null
+          require_competitive_licence?: boolean
+          require_sanctioning?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisation_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organisations: {
         Row: {
           abbreviation: string | null

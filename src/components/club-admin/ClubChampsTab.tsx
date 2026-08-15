@@ -4054,23 +4054,41 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               />
             </div>
 
-            {/* Tournament type, capacity and seeding — same block at every level. */}
+            {/* Category, eligibility, capacity and seeding — same block at every level. */}
             <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm space-y-3">
-              <div>
-                <Label className="text-sm font-semibold">Tournament type <span className="text-destructive">*</span></Label>
-                <Select value={eventType} onValueChange={setEventType}>
-                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {EVENT_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Sanctioning, eligibility, entry fees and refunds are set once in <strong>Governance</strong>; how the
-                  game is played is set once in <strong>Rules</strong>. This wizard covers the running of the event.
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm font-semibold">Tournament category <span className="text-destructive">*</span></Label>
+                  <Select value={eventType} onValueChange={setEventType}>
+                    <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EVENT_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">What kind of competition this is.</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold">Who may enter <span className="text-destructive">*</span></Label>
+                  <Select value={eligibilityScope} onValueChange={setEligibilityScope}>
+                    <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ELIGIBILITY_SCOPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Age limits and licence requirements live in <strong>Governance → Eligibility</strong>.
+                  </p>
+                </div>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Invitation-only is set on the <strong>Registration</strong> step ("who can register"), ranking status on
+                the scoring settings ("counts for ranking points"), and the sanctioning authority in{" "}
+                <strong>Governance</strong> — so any category can be combined with any of them.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <Label className="text-xs font-medium">Max entrants (optional)</Label>

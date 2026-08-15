@@ -566,12 +566,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const gn = (numGroups || 0) + 1;
     setNumGroups(gn);
     setLeagueFormats((m) => ({ ...m, [String(gn)]: fmt }));
+    // New leagues inherit the current category as their starting point.
+    setLeagueGenders((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? gender }));
+    setLeagueMatchTypes((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? matchType }));
     if (fmt === "swiss") {
       setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
     }
     setUsePerLeagueFormats(true);
     if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
+  };
+  /** Set one league's gender, materialising the others so nothing shifts. */
+  const setLeagueGender = (gn: number, g: GenderCategory) => {
+    setLeagueGenders((m) => {
+      const next: Record<string, GenderCategory> = { ...m };
+      for (let i = 1; i <= (numGroups || 0); i++) next[String(i)] = next[String(i)] ?? gender;
+      next[String(gn)] = g;
+      // When leagues no longer share one category the entrant pool has to be
+      // the union — keep the tournament-level gender as "open" so every
+      // eligible member stays selectable on the Players step.
+      const distinct = new Set(Object.values(next).slice(0, numGroups || 0));
+      if (distinct.size > 1) setGender("open");
+      else setGender(g);
+      return next;
+    });
+  };
+  /** Singles/doubles per league — the engine needs one entity type per event. */
+  const setLeagueMatchType = (gn: number, mt: "singles" | "doubles") => {
+    setLeagueMatchTypes(() => {
+      const next: Record<string, "singles" | "doubles"> = {};
+      for (let i = 1; i <= (numGroups || 0); i++) next[String(i)] = mt;
+      return next;
+    });
+    setMatchType(mt);
   };
   const removeLeagueAt = (gn: number) => {
     const shift = <T,>(map: Record<string, T>): Record<string, T> => {
@@ -591,7 +618,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setGroupDurations(shift);
     setGroupBreakMinutes(shift);
     setExpectedPlayers(shift);
+    setLeagueGenders(shift);
+    setLeagueMatchTypes(shift);
     setNumGroups((n) => Math.max(0, (n || 0) - 1));
+  };
   };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());

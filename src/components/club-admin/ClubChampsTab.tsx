@@ -4350,37 +4350,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
             {/* Match rules are now decided per league in the builder below —
-                the only genuinely event-wide rule left is the win condition. */}
-            <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <Label className="text-sm font-semibold">Match rules</Label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Format (Standard / Bells), category, singles or doubles, par 11 / par 15 and best-of are set on
-                    each league card in the builder below.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Win condition</Label>
-                  <div className="flex gap-1">
-                    {([
-                      { v: "win_by_2", l: "Win by 2" },
-                      { v: "sudden_death", l: "Sudden death" },
-                    ] as const).map((o) => (
-                      <Button
-                        key={o.v}
-                        type="button"
-                        size="sm"
-                        variant={winCondition === o.v ? "default" : "outline"}
-                        className="h-8 text-xs"
-                        onClick={() => setWinCondition(o.v)}
-                      >
-                        {o.l}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                format (Standard / Bells), category, singles/doubles, par 11 / 15,
+                best-of and win condition are all independently configurable. */}
+            <div className="rounded-lg border border-border p-3 bg-muted/40 shadow-sm">
+              <Label className="text-sm font-semibold">Match rules</Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Format, category, singles or doubles, par 11 / par 15, best-of and win condition are set on each
+                league card in the builder below.
+              </p>
             </div>
 
 

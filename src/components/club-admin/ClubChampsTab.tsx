@@ -4399,9 +4399,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
                                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">League {gn}</span>
                                   <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
+                                  <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                    {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"}
+                                  </span>
                                 </div>
                                 <Input
                                   value={groupLabels[key] || ""}

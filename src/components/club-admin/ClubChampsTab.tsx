@@ -369,28 +369,71 @@ function DroppableLeague({ id, children, className }: { id: string; children: Re
  * Compact segmented button row — visual replacement for the small dropdowns
  * inside a league card (draw format, category, scoring, par, best-of).
  */
+const SEG_ROW_COLORS: Record<string, { label: string; active: string; outline: string }> = {
+  violet: {
+    label: "text-violet-700 dark:text-violet-300",
+    active: "bg-violet-600 text-white hover:bg-violet-700 border-violet-600",
+    outline: "border-violet-300 text-violet-700 hover:bg-violet-50 hover:border-violet-400 dark:border-violet-700 dark:text-violet-300 dark:hover:bg-violet-950/40",
+  },
+  blue: {
+    label: "text-blue-700 dark:text-blue-300",
+    active: "bg-blue-600 text-white hover:bg-blue-700 border-blue-600",
+    outline: "border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950/40",
+  },
+  green: {
+    label: "text-emerald-700 dark:text-emerald-300",
+    active: "bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600",
+    outline: "border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40",
+  },
+  amber: {
+    label: "text-amber-700 dark:text-amber-300",
+    active: "bg-amber-500 text-white hover:bg-amber-600 border-amber-500",
+    outline: "border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/40",
+  },
+  red: {
+    label: "text-rose-700 dark:text-rose-300",
+    active: "bg-rose-600 text-white hover:bg-rose-700 border-rose-600",
+    outline: "border-rose-300 text-rose-700 hover:bg-rose-50 hover:border-rose-400 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-950/40",
+  },
+  pink: {
+    label: "text-pink-700 dark:text-pink-300",
+    active: "bg-pink-600 text-white hover:bg-pink-700 border-pink-600",
+    outline: "border-pink-300 text-pink-700 hover:bg-pink-50 hover:border-pink-400 dark:border-pink-700 dark:text-pink-300 dark:hover:bg-pink-950/40",
+  },
+  cyan: {
+    label: "text-cyan-700 dark:text-cyan-300",
+    active: "bg-cyan-600 text-white hover:bg-cyan-700 border-cyan-600",
+    outline: "border-cyan-300 text-cyan-700 hover:bg-cyan-50 hover:border-cyan-400 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-950/40",
+  },
+};
 function SegRow({
   label,
   value,
   options,
   onChange,
+  color = "violet",
 }: {
   label: string;
   value: string;
   options: { v: string; l: string }[];
   onChange: (v: string) => void;
+  color?: keyof typeof SEG_ROW_COLORS;
 }) {
+  const c = SEG_ROW_COLORS[color] || SEG_ROW_COLORS.violet;
   return (
     <div>
-      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</Label>
+      <Label className={cn("text-[10px] uppercase tracking-wider font-semibold", c.label)}>{label}</Label>
       <div className="mt-0.5 flex flex-wrap gap-1">
         {options.map((o) => (
           <Button
             key={o.v}
             type="button"
             size="sm"
-            variant={value === o.v ? "default" : "outline"}
-            className="h-8 px-3 text-xs flex-1 min-w-[84px]"
+            variant="outline"
+            className={cn(
+              "h-8 px-3 text-xs flex-1 min-w-[84px] transition-colors",
+              value === o.v ? c.active : c.outline
+            )}
             onClick={() => onChange(o.v)}
           >
             {o.l}

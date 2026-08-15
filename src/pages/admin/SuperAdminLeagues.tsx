@@ -135,6 +135,23 @@ export default function SuperAdminLeagues() {
     },
   });
 
+  // Organisation rows backing each affiliation — used for settings & scoped admins
+  const { data: orgs } = useQuery({
+    queryKey: ["admin-association-orgs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("organisations")
+        .select("id, name, platform_association_id")
+        .eq("kind", "association");
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+  const orgForAssociation = (a: any) =>
+    (orgs ?? []).find((o) => o.platform_association_id === a?.id) ||
+    (orgs ?? []).find((o) => (o.name || "").toLowerCase() === (a?.name || "").toLowerCase()) ||
+    null;
+
   // Auto-select first association — prefer one linked to an external source (e.g. NSA)
   const activeAssociation =
     selectedAssociation ||

@@ -98,14 +98,15 @@ function normaliseEventType(value: string | null | undefined, scope: string): st
 
 
 
-type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
+type WizardStep = "category" | "courts" | "structure" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
 type GenderCategory = "men" | "ladies" | "mixed" | "open";
 type MatchType = "singles" | "doubles";
 
-const STEPS: WizardStep[] = ["category", "courts", "registration", "players", "groups", "schedule", "review"];
+const STEPS: WizardStep[] = ["category", "courts", "structure", "registration", "players", "groups", "schedule", "review"];
 const STEP_LABELS: Record<WizardStep, string> = {
   category: "Category",
   courts: "Courts",
+  structure: "Structure & Capacity",
   registration: "Registration",
   players: "Players",
   groups: "Leagues",
@@ -1128,8 +1129,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const activeSteps = useMemo<WizardStep[]>(() => {
     if (!awaitingPlayerPairs) return STEPS;
     return selfPairInviteSelection
-      ? ["category", "courts", "registration", "players", "review"]
-      : ["category", "courts", "registration", "review"];
+      ? ["category", "courts", "structure", "registration", "players", "review"]
+      : ["category", "courts", "structure", "registration", "review"];
   }, [awaitingPlayerPairs, selfPairInviteSelection]);
   const stepIdx = activeSteps.indexOf(step);
 
@@ -4082,6 +4083,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
         break;
       }
+      case "structure": {
+        if (!(numGroups >= 1)) m.push("At least one league");
+        break;
+      }
       case "registration": {
         if (!registrationMode) m.push("Choose who can register");
         if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
@@ -4435,508 +4440,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </div>
             </WizardSection>
 
-            <WizardSection
-              title={"Tournament structure"}
-              summary={`${numGroups || 0} league${numGroups === 1 ? "" : "s"} configured`}
-              complete={(numGroups || 0) > 0}
-              defaultOpen={true}
-            >
-
-
-            {/* Match rules are now decided per league in the builder below —
-                format (Standard / Bells), category, singles/doubles, par 11 / 15,
-                best-of and win condition are all independently configurable. */}
-            <div className="rounded-lg border border-border p-3 bg-muted/40 shadow-sm">
-              <Label className="text-sm font-semibold">Match rules</Label>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Format, category, singles or doubles, par 11 / par 15, best-of and win condition are set on each
-                league card in the builder below.
-              </p>
-            </div>
-
-
-            {/* ─── Tournament Structure Builder ─────────────────────────── */}
-            {/* Visual builder — admin drags/clicks formats from the palette to
-                add leagues, then tweaks name / pools / expected players inline.
-                Replaces the old Round Format dropdown + Per-league overrides
-                checkbox. Cross-league mode is a toggle above the builder since
-                it's inherently tournament-wide. */}
-            <div className="rounded-xl border-2 border-border bg-card shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
-                <div>
-                  <div className="text-sm font-semibold">Tournament Structure <span className="text-destructive">*</span></div>
-                  <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league has its own format, category (Men’s / Ladies’ / Mixed / Open), pools and planned player count — so one tournament can run a Ladies’ league next to a Men’s and a Mixed league. Singles vs doubles is applied to every league in the event.</div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      className="h-3.5 w-3.5"
-                      checked={enablePlayoffs}
-                      onChange={(e) => {
-                        setEnablePlayoffs(e.target.checked);
-                        // Master switch — every league follows it again until
-                        // individually overridden on its card.
-                        setLeaguePlayoffs({});
-                      }}
-                    />
-                    Include playoffs (set per league below)
-                  </label>
-                </div>
-              </div>
-
-              {roundFormat === "cross_league" && (
-                <div className="px-4 py-2 text-[11px] text-muted-foreground bg-amber-500/10 border-b border-amber-500/30">
-                  <strong className="text-foreground">Cross-league is active.</strong> Leagues set to “Cross league” play against the other leagues instead of within themselves — no intra-league matches for those leagues.
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px]">
-                  {/* Canvas */}
-                  <div
-                    className="p-4 space-y-3 min-h-[220px] bg-muted/10"
-                    onDragOver={(e) => { e.preventDefault(); }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const fmt = e.dataTransfer.getData("application/x-champ-format") as PerLeagueFormat;
-                      if (fmt && FORMAT_META[fmt]) addLeagueOfFormat(fmt);
-                    }}
-                  >
-                    {numGroups > 0 ? (
-                      Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => {
-                        const key = String(gn);
-                        const fmt: PerLeagueFormat = (leagueFormats[key]
-                          ?? (roundFormat === "swiss" || roundFormat === "double_round_robin" || roundFormat === "single_round_robin"
-                              ? (roundFormat as PerLeagueFormat)
-                              : "single_round_robin"));
-                        const meta = FORMAT_META[fmt];
-                        const isSwiss = fmt === "swiss";
-                        const collapsed = !!collapsedLeagues[key];
-                        return (
-                          <div key={gn} className="relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm">
-                            <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
-                            <div className={cn("flex items-start justify-between gap-2", !collapsed && "mb-2")}>
-                              <div className="flex-1 min-w-0">
-                                <div
-                                  className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
-                                  onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
-                                >
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">League {gn}</span>
-                                  {collapsed && groupLabels[key] && (
-                                    <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
-                                  )}
-                                  <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
-                                  <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                                    {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"} ·{" "}
-                                    {scoringForLeague(gn) === "time_capped_points"
-                                      ? `Bells ${groupDurations[key] || matchDuration || 20}′`
-                                      : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"}`}
-                                  </span>
-                                  {collapsed && (
-                                    <span className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                                      Bye: {byeForLeague(gn).replace(/_/g, " ")}
-                                    </span>
-                                  )}
-                                  {collapsed && playoffsForLeague(gn) && (
-                                    <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
-                                      Playoffs
-                                    </span>
-                                  )}
-                                  {collapsed && (
-                                    <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
-                                      {Math.max(1, Number(swissPools[key]) || 1)} pool{Math.max(1, Number(swissPools[key]) || 1) === 1 ? "" : "s"}
-                                      {expectedPlayers[key] ? ` · ${expectedPlayers[key]} ${isDoubles ? "pairs" : "players"}` : ""}
-                                    </span>
-                                  )}
-                                </div>
-                                {!collapsed && (
-                                <div className="flex items-end gap-2">
-                                  <Input
-                                    value={groupLabels[key] || ""}
-                                    placeholder={`League ${gn}`}
-                                    onChange={(e) => setGroupLabels((m) => ({ ...m, [key]: e.target.value }))}
-                                    className="h-8 text-sm font-semibold flex-1 min-w-0"
-                                  />
-                                  <div className="w-14 shrink-0">
-                                    <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Pools</Label>
-                                    <Input
-                                      type="number"
-                                      min={1}
-                                      value={swissPools[key] ?? 1}
-                                      title={fmt === "cross_league" ? "Each pool plays every other pool" : "1 = one draw · 2+ = split into pools"}
-                                      onChange={(e) => {
-                                        const pools = Math.max(1, Number(e.target.value) || 1);
-                                        setSwissPools((m) => ({ ...m, [key]: pools }));
-                                        const n = Number(expectedPlayers[key]) || 0;
-                                        if (isSwiss && n >= 2) {
-                                          const perPool = Math.max(2, Math.ceil(n / pools));
-                                          setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
-                                        }
-                                      }}
-                                      className="h-8 text-xs mt-0.5 px-1.5"
-                                    />
-                                  </div>
-                                  <div className="w-20 shrink-0">
-                                    <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                      {isDoubles ? "Pairs" : "Players"}
-                                    </Label>
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      placeholder="—"
-                                      value={expectedPlayers[key] ?? ""}
-                                      title={isDoubles ? "Expected pairs" : "Expected players"}
-                                      onChange={(e) => {
-                                        const n = Number(e.target.value);
-                                        setExpectedPlayers((m) => {
-                                          const next = { ...m };
-                                          if (!Number.isFinite(n) || n <= 0) delete next[key];
-                                          else next[key] = Math.round(n);
-                                          return next;
-                                        });
-                                        // Auto-derive Swiss rounds (treat pool as round-robin: rounds = perPool - 1)
-                                        if (isSwiss && Number.isFinite(n) && n >= 2) {
-                                          const pools = Math.max(1, Number(swissPools[key]) || 1);
-                                          const perPool = Math.max(2, Math.ceil(n / pools));
-                                          setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
-                                        }
-                                      }}
-                                      className="h-8 text-xs mt-0.5 px-1.5"
-                                    />
-                                  </div>
-                                </div>
-                                )}
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground"
-                                onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !m[key] }))}
-                                title={collapsed ? "Expand league" : "Collapse league"}
-                              >
-                                <ChevronDown className={cn("h-4 w-4 transition-transform", !collapsed && "rotate-180")} />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                onClick={() => removeLeagueAt(gn)}
-                                title="Remove league"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            {/* Visual, button-driven league setup — draw format,
-                                category, entity type and scoring all per league. */}
-                            {!collapsed && (
-                            <div className="space-y-2">
-                              <SegRow
-                                label="Draw format"
-                                value={fmt === "double_round_robin" ? "single_round_robin" : fmt}
-                                color="violet"
-                                options={[
-                                  { v: "single_round_robin", l: "Round robin" },
-                                  { v: "swiss", l: "Swiss pairing" },
-                                  { v: "cross_league", l: "Cross league" },
-                                ]}
-                                onChange={(v) => {
-                                  const nv = v as PerLeagueFormat;
-                                  setLeagueFormats((m) => ({ ...m, [key]: nv }));
-                                  setUsePerLeagueFormats(true);
-                                  if (nv === "swiss") {
-                                    setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
-                                    setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
-                                  }
-                                  if (nv === "cross_league") setRoundFormat("cross_league");
-                                  else {
-                                    // Drop cross-league mode once no league uses it.
-                                    const next = { ...leagueFormats, [key]: nv };
-                                    const stillCross = Array.from({ length: numGroups || 0 }, (_, i) => next[String(i + 1)]).some((f) => f === "cross_league");
-                                    if (!stillCross && (!roundFormat || roundFormat === "cross_league")) setRoundFormat(nv as any);
-                                  }
-                                }}
-                              />
-                              {(fmt === "single_round_robin" || fmt === "double_round_robin") && (
-                                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
-                                  <input
-                                    type="checkbox"
-                                    className="h-3.5 w-3.5 accent-violet-500"
-                                    checked={fmt === "double_round_robin"}
-                                    onChange={(e) => {
-                                      const nv: PerLeagueFormat = e.target.checked ? "double_round_robin" : "single_round_robin";
-                                      setLeagueFormats((m) => ({ ...m, [key]: nv }));
-                                      setUsePerLeagueFormats(true);
-                                      if (!roundFormat || roundFormat === "cross_league") setRoundFormat(nv as any);
-                                    }}
-                                  />
-                                  Double round robin (play each opponent twice — home &amp; away)
-                                </label>
-                              )}
-                              <SegRow
-                                label="Category"
-                                value={genderForLeague(gn)}
-                                color="blue"
-                                options={[
-                                  { v: "men", l: "Men's" },
-                                  { v: "ladies", l: "Ladies'" },
-                                  { v: "mixed", l: "Mixed" },
-                                  { v: "open", l: "Open" },
-                                ]}
-                                onChange={(v) => setLeagueGender(gn, v as GenderCategory)}
-                              />
-                              <SegRow
-                                label="Players"
-                                value={matchTypeForLeague(gn)}
-                                color="green"
-                                options={[
-                                  { v: "singles", l: "👤 Singles" },
-                                  { v: "doubles", l: "👥 Doubles" },
-                                ]}
-                                onChange={(v) => setLeagueMatchType(gn, v as "singles" | "doubles")}
-                              />
-                              <SegRow
-                                label="Scoring"
-                                value={scoringForLeague(gn)}
-                                color="amber"
-                                options={[
-                                  { v: "standard", l: "Standard" },
-                                  { v: "time_capped_points", l: "🔔 Bells" },
-                                ]}
-                                onChange={(v) => setLeagueScoring(gn, v as "standard" | "time_capped_points")}
-                              />
-                              {scoringForLeague(gn) === "standard" ? (
-                                <div className="space-y-2">
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <SegRow
-                                      label="Game length"
-                                      value={String(pointsForLeague(gn))}
-                                      color="red"
-                                      options={[
-                                        { v: "11", l: "Par 11" },
-                                        { v: "15", l: "Par 15" },
-                                      ]}
-                                      onChange={(v) => {
-                                        const n = Number(v) === 15 ? 15 : 11;
-                                        setLeaguePointsPerGame((m) => ({ ...m, [key]: n }));
-                                        if (gn === 1) setPointsPerGame(n);
-                                      }}
-                                    />
-                                    <SegRow
-                                      label="Games"
-                                      value={`${playAllForLeague(gn) ? "all" : "bo"}${bestOfForLeague(gn)}`}
-                                      color="pink"
-                                      options={[
-                                        { v: "bo3", l: "Best of 3" },
-                                        { v: "bo5", l: "Best of 5" },
-                                        { v: "all3", l: "Play all 3" },
-                                        { v: "all5", l: "Play all 5" },
-                                      ]}
-                                      onChange={(v) => {
-                                        const n = v.endsWith("5") ? 5 : 3;
-                                        const all = v.startsWith("all");
-                                        setLeagueBestOf((m) => ({ ...m, [key]: n }));
-                                        setLeaguePlayAll((m) => ({ ...m, [key]: all }));
-                                        if (gn === 1) setBestOf(n);
-                                      }}
-                                    />
-
-                                  </div>
-                                  <SegRow
-                                    label="Win condition"
-                                    value={winConditionForLeague(gn)}
-                                    color="cyan"
-                                    options={[
-                                      { v: "win_by_2", l: "Win by 2" },
-                                      { v: "sudden_death", l: "Sudden death" },
-                                    ]}
-                                    onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")}
-                                  />
-                                  <SegRow
-                                    label="Bye handling"
-                                    value={byeForLeague(gn)}
-                                    color="green"
-                                    options={[
-                                      { v: "no_match", l: "No match" },
-                                      { v: "walkover_win", l: "Walkover win" },
-                                      { v: "neutral", l: "Neutral" },
-                                    ]}
-                                    onChange={(v) => {
-                                      setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
-                                      if (gn === 1) setByeHandling(v as any);
-                                    }}
-                                  />
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div>
-                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bell slot (min)</Label>
-                                    <Input
-                                      type="number"
-                                      min={1}
-                                      value={groupDurations[key] ?? ""}
-                                      placeholder="20"
-                                      onChange={(e) => {
-                                        const n = Math.max(0, Number(e.target.value) || 0);
-                                        setGroupDurations((m) => {
-                                          const next = { ...m };
-                                          if (n <= 0) delete next[key];
-                                          else next[key] = n;
-                                          return next;
-                                        });
-                                      }}
-                                      className="h-8 text-xs mt-0.5"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Break (min)</Label>
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      value={groupBreakMinutes[key] ?? ""}
-                                      placeholder={String(defaultBreakMinutes || 0)}
-                                      onChange={(e) => {
-                                        const n = Math.max(0, Number(e.target.value) || 0);
-                                        setGroupBreakMinutes((m) => ({ ...m, [key]: n }));
-                                      }}
-                                      className="h-8 text-xs mt-0.5"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                              {scoringForLeague(gn) === "time_capped_points" && (
-                                <SegRow
-                                  label="Bye handling"
-                                  value={byeForLeague(gn)}
-                                  color="green"
-                                  options={[
-                                    { v: "no_match", l: "No match" },
-                                    { v: "walkover_win", l: "Walkover win" },
-                                    { v: "neutral", l: "Neutral" },
-                                  ]}
-                                  onChange={(v) => {
-                                    setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
-                                    if (gn === 1) setByeHandling(v as any);
-                                  }}
-                                />
-                              )}
-                              <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5 pt-1">
-                                <input
-                                  type="checkbox"
-                                  className="h-3.5 w-3.5 accent-fuchsia-500"
-                                  checked={playoffsForLeague(gn)}
-                                  onChange={(e) => {
-                                    const on = e.target.checked;
-                                    setLeaguePlayoffs((m) => {
-                                      const next = { ...m, [key]: on };
-                                      // Keep the tournament-level flag in sync: on when any league runs playoffs.
-                                      const anyOn = Array.from({ length: numGroups || 0 }, (_, i) =>
-                                        next[String(i + 1)] ?? enablePlayoffs).some(Boolean);
-                                      setEnablePlayoffs(anyOn);
-                                      return next;
-                                    });
-                                  }}
-                                />
-                                Playoffs / finals for this league
-                              </label>
-                              <div className="pt-1 flex justify-end">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-[11px]"
-                                  onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: true }))}
-                                >
-                                  <Check className="h-3.5 w-3.5 mr-1" /> Done
-                                </Button>
-                              </div>
-                            </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : null}
-
-                    {/* Drop zone / empty state */}
-                    <div className="rounded-lg border-2 border-dashed border-border/70 py-6 flex flex-col items-center justify-center text-muted-foreground hover:border-amber-500/50 hover:text-amber-600 transition-colors text-center px-3">
-                      <Trophy className="w-6 h-6 mb-1 opacity-60" />
-                      <div className="text-xs font-medium">Drop a format here to add {numGroups > 0 ? `League ${numGroups + 1}` : "League 1"}</div>
-                      <div className="text-[10px] text-muted-foreground/80 mt-0.5">or click a format on the right</div>
-                    </div>
-
-                    {(() => {
-                      const totalExpected = Object.values(expectedPlayers).reduce((a, b) => a + (Number(b) || 0), 0);
-                      if (numGroups === 0 && totalExpected === 0) return null;
-                      // Rough estimate: sum of C(n,2) per league for single RR, x2 for double,
-                      // pools * C(n/pools,2) * rounds for Swiss (approx).
-                      let est = 0;
-                      for (let gn = 1; gn <= numGroups; gn++) {
-                        const key = String(gn);
-                        const n = Number(expectedPlayers[key]) || 0;
-                        if (n < 2) continue;
-                        const fmt: PerLeagueFormat = (leagueFormats[key] ?? (roundFormat as PerLeagueFormat)) || "single_round_robin";
-                        const pools = Math.max(1, Number(swissPools[key]) || 1);
-                        const perPool = Math.max(1, Math.ceil(n / pools));
-                        if (fmt === "swiss") {
-                          const pp = Math.max(2, perPool);
-                          est += pools * ((pp * (pp - 1)) / 2);
-                        } else if (fmt === "cross_league" && pools > 1) {
-                          // pool-vs-pool inside the league
-                          est += ((pools * (pools - 1)) / 2) * perPool * perPool;
-                        } else {
-                          const games = (perPool * (perPool - 1)) / 2 * pools;
-                          est += fmt === "double_round_robin" ? games * 2 : games;
-                        }
-
-                      }
-                      return (
-                        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-500">
-                              <Trophy className="w-3.5 h-3.5" />
-                            </span>
-                            <div>
-                              <div className="font-semibold">{est > 0 ? `≈ ${est} match${est === 1 ? "" : "es"}` : "Planned capacity"}</div>
-                              <div className="text-[10px] text-muted-foreground">{numGroups} league{numGroups === 1 ? "" : "s"} · {totalExpected || "—"} planned {isDoubles ? `pair${totalExpected === 1 ? "" : "s"}` : `player${totalExpected === 1 ? "" : "s"}`}</div>
-                            </div>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground italic">Refined once players register</div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Format palette */}
-                  <div className="border-t lg:border-t-0 lg:border-l border-border bg-muted/30 p-3 space-y-2">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Format palette</div>
-                    {(["single_round_robin", "swiss", "cross_league"] as PerLeagueFormat[]).map((fmt) => {
-                      const meta = FORMAT_META[fmt];
-                      return (
-                        <button
-                          key={fmt}
-                          type="button"
-                          draggable
-                          onDragStart={(e) => { e.dataTransfer.setData("application/x-champ-format", fmt); e.dataTransfer.effectAllowed = "copy"; }}
-                          onClick={() => addLeagueOfFormat(fmt)}
-                          className="w-full text-left rounded-lg border border-border bg-card p-2.5 shadow-sm hover:border-amber-500/50 hover:shadow-md transition-all cursor-grab active:cursor-grabbing group"
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-amber-500/10 text-amber-600 dark:text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
-                              <Plus className="w-3.5 h-3.5" />
-                            </span>
-                            <span className="text-xs font-semibold">{meta.label}</span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground leading-tight">{meta.desc}</p>
-                        </button>
-                      );
-                    })}
-                    <p className="text-[10px] text-muted-foreground italic pt-1">Tip: add up to 6 leagues in one tournament.</p>
-                  </div>
-                </div>
-
-            </div>
-            </WizardSection>
 
             <WizardSection
               title={"Byes & visitors"}
@@ -5295,6 +4798,663 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </div>
             </WizardSection>
 
+
+
+            <WizardSection
+              title={"Scheduling & playoffs"}
+              summary={enablePlayoffs ? "Playoffs enabled" : "No playoffs"}
+              complete={true}
+              defaultOpen={true}
+            >
+            {/* Schedule density — fill vs spread. Court bookings are made on the final Review step. */}
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+              <p className="text-sm font-medium">How should games be scheduled?</p>
+              <p className="text-[11px] text-muted-foreground">
+                Controls how the generator fills the available time. You can rebuild the schedule after changing this.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
+                  scheduleMode === "fill" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
+                )}>
+                  <input
+                    type="radio"
+                    name="schedule-mode"
+                    className="mt-0.5"
+                    checked={scheduleMode === "fill"}
+                    onChange={() => setScheduleMode("fill")}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium">Fill up games — finish as quickly as possible</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Packs every slot on the earliest day first. Later days are only used if needed — the tournament may finish in fewer days than selected.
+                    </div>
+                  </div>
+                </label>
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
+                  scheduleMode === "spread" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
+                )}>
+                  <input
+                    type="radio"
+                    name="schedule-mode"
+                    className="mt-0.5"
+                    checked={scheduleMode === "spread"}
+                    onChange={() => setScheduleMode("spread")}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium">Spread across available times</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Interleaves games evenly across all selected play-days so nobody is loaded onto a single day.
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Playoff finishing options — only when playoffs are enabled */}
+            {enablePlayoffs && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Playoff finishing options</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Fine-tune when the finals happen after the pool stage ends.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="playoff-break" className="text-xs">
+                      Break after last pool match
+                    </Label>
+                    <div id="playoff-break" className="grid grid-cols-4 gap-1">
+                      {[0, 15, 30, 45, 60, 90, 120].map((minutes) => (
+                        <Button
+                          key={minutes}
+                          type="button"
+                          size="sm"
+                          variant={playoffBreakMinutes === minutes ? "default" : "outline"}
+                          className="h-8 px-2 text-xs"
+                          disabled={!!playoffDate}
+                          onClick={() => setPlayoffBreakMinutes(minutes)}
+                        >
+                          {minutes === 0 ? "None" : minutes === 90 ? "1½h" : minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Applies to fill-mode when playoffs run on the same day as pool play.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="playoff-date" className="text-xs">
+                      Play finals on a specific date (optional)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="playoff-date"
+                        type="date"
+                        className="h-9"
+                        value={playoffDate}
+                        min={startDate || undefined}
+                        max={endDate || undefined}
+                        onChange={(e) => setPlayoffDate(e.target.value)}
+                      />
+                      {playoffDate && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-9"
+                          onClick={() => setPlayoffDate("")}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Overrides the break setting — finals are forced onto this date.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            </WizardSection>
+          </CardContent>
+        </Card>
+      )}
+
+
+      {/* ── STEP: STRUCTURE & CAPACITY ── */}
+      {step === "structure" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Structure &amp; Capacity</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Build the leagues that make up this tournament, then check they fit the dates, times and courts you just picked.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <WizardSection
+              title={"Tournament structure"}
+              summary={`${numGroups || 0} league${numGroups === 1 ? "" : "s"} configured`}
+              complete={(numGroups || 0) > 0}
+              defaultOpen={true}
+            >
+
+
+            {/* Match rules are now decided per league in the builder below —
+                format (Standard / Bells), category, singles/doubles, par 11 / 15,
+                best-of and win condition are all independently configurable. */}
+            <div className="rounded-lg border border-border p-3 bg-muted/40 shadow-sm">
+              <Label className="text-sm font-semibold">Match rules</Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Format, category, singles or doubles, par 11 / par 15, best-of and win condition are set on each
+                league card in the builder below.
+              </p>
+            </div>
+
+
+            {/* ─── Tournament Structure Builder ─────────────────────────── */}
+            {/* Visual builder — admin drags/clicks formats from the palette to
+                add leagues, then tweaks name / pools / expected players inline.
+                Replaces the old Round Format dropdown + Per-league overrides
+                checkbox. Cross-league mode is a toggle above the builder since
+                it's inherently tournament-wide. */}
+            <div className="rounded-xl border-2 border-border bg-card shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
+                <div>
+                  <div className="text-sm font-semibold">Tournament Structure <span className="text-destructive">*</span></div>
+                  <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league has its own format, category (Men’s / Ladies’ / Mixed / Open), pools and planned player count — so one tournament can run a Ladies’ league next to a Men’s and a Mixed league. Singles vs doubles is applied to every league in the event.</div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5"
+                      checked={enablePlayoffs}
+                      onChange={(e) => {
+                        setEnablePlayoffs(e.target.checked);
+                        // Master switch — every league follows it again until
+                        // individually overridden on its card.
+                        setLeaguePlayoffs({});
+                      }}
+                    />
+                    Include playoffs (set per league below)
+                  </label>
+                </div>
+              </div>
+
+              {roundFormat === "cross_league" && (
+                <div className="px-4 py-2 text-[11px] text-muted-foreground bg-amber-500/10 border-b border-amber-500/30">
+                  <strong className="text-foreground">Cross-league is active.</strong> Leagues set to “Cross league” play against the other leagues instead of within themselves — no intra-league matches for those leagues.
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px]">
+                  {/* Canvas */}
+                  <div
+                    className="p-4 space-y-3 min-h-[220px] bg-muted/10"
+                    onDragOver={(e) => { e.preventDefault(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const fmt = e.dataTransfer.getData("application/x-champ-format") as PerLeagueFormat;
+                      if (fmt && FORMAT_META[fmt]) addLeagueOfFormat(fmt);
+                    }}
+                  >
+                    {numGroups > 0 ? (
+                      Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => {
+                        const key = String(gn);
+                        const fmt: PerLeagueFormat = (leagueFormats[key]
+                          ?? (roundFormat === "swiss" || roundFormat === "double_round_robin" || roundFormat === "single_round_robin"
+                              ? (roundFormat as PerLeagueFormat)
+                              : "single_round_robin"));
+                        const meta = FORMAT_META[fmt];
+                        const isSwiss = fmt === "swiss";
+                        const collapsed = !!collapsedLeagues[key];
+                        return (
+                          <div key={gn} className="relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm">
+                            <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
+                            <div className={cn("flex items-start justify-between gap-2", !collapsed && "mb-2")}>
+                              <div className="flex-1 min-w-0">
+                                <div
+                                  className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
+                                  onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
+                                >
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">League {gn}</span>
+                                  {collapsed && groupLabels[key] && (
+                                    <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
+                                  )}
+                                  <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
+                                  <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                    {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"} ·{" "}
+                                    {scoringForLeague(gn) === "time_capped_points"
+                                      ? `Bells ${groupDurations[key] || matchDuration || 20}′`
+                                      : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"} · ${Number(groupDurations[key]) || matchDuration || 20}′`}
+                                  </span>
+                                  {collapsed && (
+                                    <span className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                                      Bye: {byeForLeague(gn).replace(/_/g, " ")}
+                                    </span>
+                                  )}
+                                  {collapsed && playoffsForLeague(gn) && (
+                                    <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
+                                      Playoffs
+                                    </span>
+                                  )}
+                                  {collapsed && (
+                                    <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
+                                      {Math.max(1, Number(swissPools[key]) || 1)} pool{Math.max(1, Number(swissPools[key]) || 1) === 1 ? "" : "s"}
+                                      {expectedPlayers[key] ? ` · ${expectedPlayers[key]} ${isDoubles ? "pairs" : "players"}` : ""}
+                                    </span>
+                                  )}
+                                </div>
+                                {!collapsed && (
+                                <div className="flex items-end gap-2">
+                                  <Input
+                                    value={groupLabels[key] || ""}
+                                    placeholder={`League ${gn}`}
+                                    onChange={(e) => setGroupLabels((m) => ({ ...m, [key]: e.target.value }))}
+                                    className="h-8 text-sm font-semibold flex-1 min-w-0"
+                                  />
+                                  <div className="w-14 shrink-0">
+                                    <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Pools</Label>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={swissPools[key] ?? 1}
+                                      title={fmt === "cross_league" ? "Each pool plays every other pool" : "1 = one draw · 2+ = split into pools"}
+                                      onChange={(e) => {
+                                        const pools = Math.max(1, Number(e.target.value) || 1);
+                                        setSwissPools((m) => ({ ...m, [key]: pools }));
+                                        const n = Number(expectedPlayers[key]) || 0;
+                                        if (isSwiss && n >= 2) {
+                                          const perPool = Math.max(2, Math.ceil(n / pools));
+                                          setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+                                        }
+                                      }}
+                                      className="h-8 text-xs mt-0.5 px-1.5"
+                                    />
+                                  </div>
+                                  <div className="w-20 shrink-0">
+                                    <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                      {isDoubles ? "Pairs" : "Players"}
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      placeholder="—"
+                                      value={expectedPlayers[key] ?? ""}
+                                      title={isDoubles ? "Expected pairs" : "Expected players"}
+                                      onChange={(e) => {
+                                        const n = Number(e.target.value);
+                                        setExpectedPlayers((m) => {
+                                          const next = { ...m };
+                                          if (!Number.isFinite(n) || n <= 0) delete next[key];
+                                          else next[key] = Math.round(n);
+                                          return next;
+                                        });
+                                        // Auto-derive Swiss rounds (treat pool as round-robin: rounds = perPool - 1)
+                                        if (isSwiss && Number.isFinite(n) && n >= 2) {
+                                          const pools = Math.max(1, Number(swissPools[key]) || 1);
+                                          const perPool = Math.max(2, Math.ceil(n / pools));
+                                          setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+                                        }
+                                      }}
+                                      className="h-8 text-xs mt-0.5 px-1.5"
+                                    />
+                                  </div>
+                                </div>
+                                )}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground"
+                                onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !m[key] }))}
+                                title={collapsed ? "Expand league" : "Collapse league"}
+                              >
+                                <ChevronDown className={cn("h-4 w-4 transition-transform", !collapsed && "rotate-180")} />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => removeLeagueAt(gn)}
+                                title="Remove league"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            {/* Visual, button-driven league setup — draw format,
+                                category, entity type and scoring all per league. */}
+                            {!collapsed && (
+                            <div className="space-y-2">
+                              <SegRow
+                                label="Draw format"
+                                value={fmt === "double_round_robin" ? "single_round_robin" : fmt}
+                                color="violet"
+                                options={[
+                                  { v: "single_round_robin", l: "Round robin" },
+                                  { v: "swiss", l: "Swiss pairing" },
+                                  { v: "cross_league", l: "Cross league" },
+                                ]}
+                                onChange={(v) => {
+                                  const nv = v as PerLeagueFormat;
+                                  setLeagueFormats((m) => ({ ...m, [key]: nv }));
+                                  setUsePerLeagueFormats(true);
+                                  if (nv === "swiss") {
+                                    setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
+                                    setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
+                                  }
+                                  if (nv === "cross_league") setRoundFormat("cross_league");
+                                  else {
+                                    // Drop cross-league mode once no league uses it.
+                                    const next = { ...leagueFormats, [key]: nv };
+                                    const stillCross = Array.from({ length: numGroups || 0 }, (_, i) => next[String(i + 1)]).some((f) => f === "cross_league");
+                                    if (!stillCross && (!roundFormat || roundFormat === "cross_league")) setRoundFormat(nv as any);
+                                  }
+                                }}
+                              />
+                              {(fmt === "single_round_robin" || fmt === "double_round_robin") && (
+                                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
+                                  <input
+                                    type="checkbox"
+                                    className="h-3.5 w-3.5 accent-violet-500"
+                                    checked={fmt === "double_round_robin"}
+                                    onChange={(e) => {
+                                      const nv: PerLeagueFormat = e.target.checked ? "double_round_robin" : "single_round_robin";
+                                      setLeagueFormats((m) => ({ ...m, [key]: nv }));
+                                      setUsePerLeagueFormats(true);
+                                      if (!roundFormat || roundFormat === "cross_league") setRoundFormat(nv as any);
+                                    }}
+                                  />
+                                  Double round robin (play each opponent twice — home &amp; away)
+                                </label>
+                              )}
+                              <SegRow
+                                label="Category"
+                                value={genderForLeague(gn)}
+                                color="blue"
+                                options={[
+                                  { v: "men", l: "Men's" },
+                                  { v: "ladies", l: "Ladies'" },
+                                  { v: "mixed", l: "Mixed" },
+                                  { v: "open", l: "Open" },
+                                ]}
+                                onChange={(v) => setLeagueGender(gn, v as GenderCategory)}
+                              />
+                              <SegRow
+                                label="Players"
+                                value={matchTypeForLeague(gn)}
+                                color="green"
+                                options={[
+                                  { v: "singles", l: "👤 Singles" },
+                                  { v: "doubles", l: "👥 Doubles" },
+                                ]}
+                                onChange={(v) => setLeagueMatchType(gn, v as "singles" | "doubles")}
+                              />
+                              <SegRow
+                                label="Scoring"
+                                value={scoringForLeague(gn)}
+                                color="amber"
+                                options={[
+                                  { v: "standard", l: "Standard" },
+                                  { v: "time_capped_points", l: "🔔 Bells" },
+                                ]}
+                                onChange={(v) => setLeagueScoring(gn, v as "standard" | "time_capped_points")}
+                              />
+                              {scoringForLeague(gn) === "standard" ? (
+                                <div className="space-y-2">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <SegRow
+                                      label="Game length"
+                                      value={String(pointsForLeague(gn))}
+                                      color="red"
+                                      options={[
+                                        { v: "11", l: "Par 11" },
+                                        { v: "15", l: "Par 15" },
+                                      ]}
+                                      onChange={(v) => {
+                                        const n = Number(v) === 15 ? 15 : 11;
+                                        setLeaguePointsPerGame((m) => ({ ...m, [key]: n }));
+                                        if (gn === 1) setPointsPerGame(n);
+                                      }}
+                                    />
+                                    <SegRow
+                                      label="Games"
+                                      value={`${playAllForLeague(gn) ? "all" : "bo"}${bestOfForLeague(gn)}`}
+                                      color="pink"
+                                      options={[
+                                        { v: "bo3", l: "Best of 3" },
+                                        { v: "bo5", l: "Best of 5" },
+                                        { v: "all3", l: "Play all 3" },
+                                        { v: "all5", l: "Play all 5" },
+                                      ]}
+                                      onChange={(v) => {
+                                        const n = v.endsWith("5") ? 5 : 3;
+                                        const all = v.startsWith("all");
+                                        setLeagueBestOf((m) => ({ ...m, [key]: n }));
+                                        setLeaguePlayAll((m) => ({ ...m, [key]: all }));
+                                        if (gn === 1) setBestOf(n);
+                                      }}
+                                    />
+
+                                  </div>
+                                  <SegRow
+                                    label="Win condition"
+                                    value={winConditionForLeague(gn)}
+                                    color="cyan"
+                                    options={[
+                                      { v: "win_by_2", l: "Win by 2" },
+                                      { v: "sudden_death", l: "Sudden death" },
+                                    ]}
+                                    onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")}
+                                  />
+                                  <SegRow
+                                    label="Bye handling"
+                                    value={byeForLeague(gn)}
+                                    color="green"
+                                    options={[
+                                      { v: "no_match", l: "No match" },
+                                      { v: "walkover_win", l: "Walkover win" },
+                                      { v: "neutral", l: "Neutral" },
+                                    ]}
+                                    onChange={(v) => {
+                                      setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
+                                      if (gn === 1) setByeHandling(v as any);
+                                    }}
+                                  />
+                                  {/* Planned time one match of this league occupies a court.
+                                      Feeds the capacity calculator (Bells leagues use the bell slot). */}
+                                  <SegRow
+                                    label="Planned match time"
+                                    value={String(Number(groupDurations[key]) || matchDuration || 20)}
+                                    color="amber"
+                                    options={[
+                                      { v: "20", l: "20 min" },
+                                      { v: "30", l: "30 min" },
+                                      { v: "45", l: "45 min" },
+                                      { v: "60", l: "60 min" },
+                                    ]}
+                                    onChange={(v) => {
+                                      const n = Number(v) || 0;
+                                      setGroupDurations((m) => ({ ...m, [key]: n }));
+                                      if (gn === 1 && (!matchDuration || matchDuration <= 0)) setMatchDuration(n);
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bell slot (min)</Label>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={groupDurations[key] ?? ""}
+                                      placeholder="20"
+                                      onChange={(e) => {
+                                        const n = Math.max(0, Number(e.target.value) || 0);
+                                        setGroupDurations((m) => {
+                                          const next = { ...m };
+                                          if (n <= 0) delete next[key];
+                                          else next[key] = n;
+                                          return next;
+                                        });
+                                      }}
+                                      className="h-8 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Break (min)</Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={groupBreakMinutes[key] ?? ""}
+                                      placeholder={String(defaultBreakMinutes || 0)}
+                                      onChange={(e) => {
+                                        const n = Math.max(0, Number(e.target.value) || 0);
+                                        setGroupBreakMinutes((m) => ({ ...m, [key]: n }));
+                                      }}
+                                      className="h-8 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              {scoringForLeague(gn) === "time_capped_points" && (
+                                <SegRow
+                                  label="Bye handling"
+                                  value={byeForLeague(gn)}
+                                  color="green"
+                                  options={[
+                                    { v: "no_match", l: "No match" },
+                                    { v: "walkover_win", l: "Walkover win" },
+                                    { v: "neutral", l: "Neutral" },
+                                  ]}
+                                  onChange={(v) => {
+                                    setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
+                                    if (gn === 1) setByeHandling(v as any);
+                                  }}
+                                />
+                              )}
+                              <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5 pt-1">
+                                <input
+                                  type="checkbox"
+                                  className="h-3.5 w-3.5 accent-fuchsia-500"
+                                  checked={playoffsForLeague(gn)}
+                                  onChange={(e) => {
+                                    const on = e.target.checked;
+                                    setLeaguePlayoffs((m) => {
+                                      const next = { ...m, [key]: on };
+                                      // Keep the tournament-level flag in sync: on when any league runs playoffs.
+                                      const anyOn = Array.from({ length: numGroups || 0 }, (_, i) =>
+                                        next[String(i + 1)] ?? enablePlayoffs).some(Boolean);
+                                      setEnablePlayoffs(anyOn);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                Playoffs / finals for this league
+                              </label>
+                              <div className="pt-1 flex justify-end">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-[11px]"
+                                  onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: true }))}
+                                >
+                                  <Check className="h-3.5 w-3.5 mr-1" /> Done
+                                </Button>
+                              </div>
+                            </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : null}
+
+                    {/* Drop zone / empty state */}
+                    <div className="rounded-lg border-2 border-dashed border-border/70 py-6 flex flex-col items-center justify-center text-muted-foreground hover:border-amber-500/50 hover:text-amber-600 transition-colors text-center px-3">
+                      <Trophy className="w-6 h-6 mb-1 opacity-60" />
+                      <div className="text-xs font-medium">Drop a format here to add {numGroups > 0 ? `League ${numGroups + 1}` : "League 1"}</div>
+                      <div className="text-[10px] text-muted-foreground/80 mt-0.5">or click a format on the right</div>
+                    </div>
+
+                    {(() => {
+                      const totalExpected = Object.values(expectedPlayers).reduce((a, b) => a + (Number(b) || 0), 0);
+                      if (numGroups === 0 && totalExpected === 0) return null;
+                      // Rough estimate: sum of C(n,2) per league for single RR, x2 for double,
+                      // pools * C(n/pools,2) * rounds for Swiss (approx).
+                      let est = 0;
+                      for (let gn = 1; gn <= numGroups; gn++) {
+                        const key = String(gn);
+                        const n = Number(expectedPlayers[key]) || 0;
+                        if (n < 2) continue;
+                        const fmt: PerLeagueFormat = (leagueFormats[key] ?? (roundFormat as PerLeagueFormat)) || "single_round_robin";
+                        const pools = Math.max(1, Number(swissPools[key]) || 1);
+                        const perPool = Math.max(1, Math.ceil(n / pools));
+                        if (fmt === "swiss") {
+                          const pp = Math.max(2, perPool);
+                          est += pools * ((pp * (pp - 1)) / 2);
+                        } else if (fmt === "cross_league" && pools > 1) {
+                          // pool-vs-pool inside the league
+                          est += ((pools * (pools - 1)) / 2) * perPool * perPool;
+                        } else {
+                          const games = (perPool * (perPool - 1)) / 2 * pools;
+                          est += fmt === "double_round_robin" ? games * 2 : games;
+                        }
+
+                      }
+                      return (
+                        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-500">
+                              <Trophy className="w-3.5 h-3.5" />
+                            </span>
+                            <div>
+                              <div className="font-semibold">{est > 0 ? `≈ ${est} match${est === 1 ? "" : "es"}` : "Planned capacity"}</div>
+                              <div className="text-[10px] text-muted-foreground">{numGroups} league{numGroups === 1 ? "" : "s"} · {totalExpected || "—"} planned {isDoubles ? `pair${totalExpected === 1 ? "" : "s"}` : `player${totalExpected === 1 ? "" : "s"}`}</div>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground italic">Refined once players register</div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Format palette */}
+                  <div className="border-t lg:border-t-0 lg:border-l border-border bg-muted/30 p-3 space-y-2">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Format palette</div>
+                    {(["single_round_robin", "swiss", "cross_league"] as PerLeagueFormat[]).map((fmt) => {
+                      const meta = FORMAT_META[fmt];
+                      return (
+                        <button
+                          key={fmt}
+                          type="button"
+                          draggable
+                          onDragStart={(e) => { e.dataTransfer.setData("application/x-champ-format", fmt); e.dataTransfer.effectAllowed = "copy"; }}
+                          onClick={() => addLeagueOfFormat(fmt)}
+                          className="w-full text-left rounded-lg border border-border bg-card p-2.5 shadow-sm hover:border-amber-500/50 hover:shadow-md transition-all cursor-grab active:cursor-grabbing group"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-amber-500/10 text-amber-600 dark:text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                              <Plus className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="text-xs font-semibold">{meta.label}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground leading-tight">{meta.desc}</p>
+                        </button>
+                      );
+                    })}
+                    <p className="text-[10px] text-muted-foreground italic pt-1">Tip: add up to 6 leagues in one tournament.</p>
+                  </div>
+                </div>
+
+            </div>
+            </WizardSection>
+
             <WizardSection
               title={"Capacity check"}
               summary={"Estimate matches against available court time"}
@@ -5610,131 +5770,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               })()}
             </div>
             </WizardSection>
-
-
-            <WizardSection
-              title={"Scheduling & playoffs"}
-              summary={enablePlayoffs ? "Playoffs enabled" : "No playoffs"}
-              complete={true}
-              defaultOpen={true}
-            >
-            {/* Schedule density — fill vs spread. Court bookings are made on the final Review step. */}
-            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-              <p className="text-sm font-medium">How should games be scheduled?</p>
-              <p className="text-[11px] text-muted-foreground">
-                Controls how the generator fills the available time. You can rebuild the schedule after changing this.
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className={cn(
-                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
-                  scheduleMode === "fill" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
-                )}>
-                  <input
-                    type="radio"
-                    name="schedule-mode"
-                    className="mt-0.5"
-                    checked={scheduleMode === "fill"}
-                    onChange={() => setScheduleMode("fill")}
-                  />
-                  <div className="space-y-0.5">
-                    <div className="text-sm font-medium">Fill up games — finish as quickly as possible</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Packs every slot on the earliest day first. Later days are only used if needed — the tournament may finish in fewer days than selected.
-                    </div>
-                  </div>
-                </label>
-                <label className={cn(
-                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
-                  scheduleMode === "spread" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
-                )}>
-                  <input
-                    type="radio"
-                    name="schedule-mode"
-                    className="mt-0.5"
-                    checked={scheduleMode === "spread"}
-                    onChange={() => setScheduleMode("spread")}
-                  />
-                  <div className="space-y-0.5">
-                    <div className="text-sm font-medium">Spread across available times</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Interleaves games evenly across all selected play-days so nobody is loaded onto a single day.
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Playoff finishing options — only when playoffs are enabled */}
-            {enablePlayoffs && (
-              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
-                <div>
-                  <p className="text-sm font-medium">Playoff finishing options</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Fine-tune when the finals happen after the pool stage ends.
-                  </p>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="playoff-break" className="text-xs">
-                      Break after last pool match
-                    </Label>
-                    <div id="playoff-break" className="grid grid-cols-4 gap-1">
-                      {[0, 15, 30, 45, 60, 90, 120].map((minutes) => (
-                        <Button
-                          key={minutes}
-                          type="button"
-                          size="sm"
-                          variant={playoffBreakMinutes === minutes ? "default" : "outline"}
-                          className="h-8 px-2 text-xs"
-                          disabled={!!playoffDate}
-                          onClick={() => setPlayoffBreakMinutes(minutes)}
-                        >
-                          {minutes === 0 ? "None" : minutes === 90 ? "1½h" : minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
-                        </Button>
-                      ))}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Applies to fill-mode when playoffs run on the same day as pool play.
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="playoff-date" className="text-xs">
-                      Play finals on a specific date (optional)
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="playoff-date"
-                        type="date"
-                        className="h-9"
-                        value={playoffDate}
-                        min={startDate || undefined}
-                        max={endDate || undefined}
-                        onChange={(e) => setPlayoffDate(e.target.value)}
-                      />
-                      {playoffDate && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-9"
-                          onClick={() => setPlayoffDate("")}
-                        >
-                          Clear
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Overrides the break setting — finals are forced onto this date.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            </WizardSection>
           </CardContent>
         </Card>
       )}
-
 
       {/* ── STEP: REGISTRATION & PAYMENT ── */}
       {step === "registration" && (

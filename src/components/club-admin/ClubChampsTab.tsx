@@ -457,7 +457,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -540,6 +540,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (usePerLeagueFormats && leagueFormats[String(gn)]) return leagueFormats[String(gn)];
     return roundFormat;
   };
+  // Per-league gender category and match type (keyed by group_number string).
+  // A tournament can therefore hold e.g. a Ladies' league, a Men's league and
+  // a Mixed league side by side. Missing entries fall back to the
+  // tournament-level defaults below.
+  const [leagueGenders, setLeagueGenders] = useState<Record<string, GenderCategory>>({});
+  const [leagueMatchTypes, setLeagueMatchTypes] = useState<Record<string, "singles" | "doubles">>({});
+  const genderForLeague = (gn: number): GenderCategory => leagueGenders[String(gn)] ?? gender;
+  const matchTypeForLeague = (gn: number): "singles" | "doubles" => leagueMatchTypes[String(gn)] ?? matchType;
+  /** Does this member satisfy the category set for the given league? */
+  const memberFitsLeague = (m: any, gn: number): boolean => {
+    const g = genderForLeague(gn);
+    if (g === "mixed" || g === "open") return true;
+    return memberMatchesTournamentGender(m?.gender, g);
+  };
+  /** Distinct gender categories actually in use across the leagues. */
+  const leagueGenderSet = useMemo(() => {
+    const s = new Set<GenderCategory>();
+    for (let i = 1; i <= (numGroups || 0); i++) s.add(leagueGenders[String(i)] ?? gender);
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueGenders, numGroups, gender]);
 
   // ---- Visual "Tournament Structure Builder" helpers ---------------------
   const FORMAT_META: Record<PerLeagueFormat, { label: string; short: string; desc: string }> = {
@@ -551,12 +572,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const gn = (numGroups || 0) + 1;
     setNumGroups(gn);
     setLeagueFormats((m) => ({ ...m, [String(gn)]: fmt }));
+    // New leagues inherit the current category as their starting point.
+    setLeagueGenders((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? gender }));
+    setLeagueMatchTypes((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? matchType }));
     if (fmt === "swiss") {
       setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
     }
     setUsePerLeagueFormats(true);
     if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
+  };
+  /** Set one league's gender, materialising the others so nothing shifts. */
+  const setLeagueGender = (gn: number, g: GenderCategory) => {
+    setLeagueGenders((m) => {
+      const next: Record<string, GenderCategory> = { ...m };
+      for (let i = 1; i <= (numGroups || 0); i++) next[String(i)] = next[String(i)] ?? gender;
+      next[String(gn)] = g;
+      // When leagues no longer share one category the entrant pool has to be
+      // the union — keep the tournament-level gender as "open" so every
+      // eligible member stays selectable on the Players step.
+      const distinct = new Set(Object.values(next).slice(0, numGroups || 0));
+      if (distinct.size > 1) setGender("open");
+      else setGender(g);
+      return next;
+    });
+  };
+  /** Singles/doubles per league — the engine needs one entity type per event. */
+  const setLeagueMatchType = (gn: number, mt: "singles" | "doubles") => {
+    setLeagueMatchTypes(() => {
+      const next: Record<string, "singles" | "doubles"> = {};
+      for (let i = 1; i <= (numGroups || 0); i++) next[String(i)] = mt;
+      return next;
+    });
+    setMatchType(mt);
   };
   const removeLeagueAt = (gn: number) => {
     const shift = <T,>(map: Record<string, T>): Record<string, T> => {
@@ -576,6 +624,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setGroupDurations(shift);
     setGroupBreakMinutes(shift);
     setExpectedPlayers(shift);
+    setLeagueGenders(shift);
+    setLeagueMatchTypes(shift);
     setNumGroups((n) => Math.max(0, (n || 0) - 1));
   };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
@@ -1035,6 +1085,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       max_entrants: maxEntrants ? Math.max(0, Math.round(Number(maxEntrants))) : null,
       max_per_league: maxPerLeague ? Math.max(0, Math.round(Number(maxPerLeague))) : null,
       seeding_source: seedingSource,
+      league_genders: Object.keys(leagueGenders).length > 0 ? leagueGenders : null,
+      league_match_types: Object.keys(leagueMatchTypes).length > 0 ? leagueMatchTypes : null,
       participating_club_ids: venueClubIds.filter((id) => id !== clubId),
     };
     const saveExtras = async (id: string) => {
@@ -3430,6 +3482,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setSwissRounds({});
     setExpectedPlayers({});
     setLeagueFormats({});
+    setLeagueGenders({});
+    setLeagueMatchTypes({});
     setUsePerLeagueFormats(false);
     setPointsPerGame(0);
     setBestOf(0);
@@ -3551,6 +3605,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setMaxEntrants(ex.max_entrants ? String(ex.max_entrants) : "");
     setMaxPerLeague(ex.max_per_league ? String(ex.max_per_league) : "");
     setSeedingSource(ex.seeding_source || "ladder");
+    // Per-league category. Older tournaments have none — every league simply
+    // inherits the tournament-level gender / match type.
+    const lg = (ex.league_genders as Record<string, GenderCategory> | null) || null;
+    const lmt = (ex.league_match_types as Record<string, "singles" | "doubles"> | null) || null;
+    const inheritedG: Record<string, GenderCategory> = {};
+    const inheritedM: Record<string, "singles" | "doubles"> = {};
+    for (let i = 1; i <= (champ.num_groups || 0); i++) {
+      inheritedG[String(i)] = (lg?.[String(i)] as GenderCategory) ?? champ.gender;
+      inheritedM[String(i)] = (lmt?.[String(i)] as "singles" | "doubles") ?? (champ.match_type || "singles");
+    }
+    setLeagueGenders(inheritedG);
+    setLeagueMatchTypes(inheritedM);
 
 
     const { data: entries } = await fromExt("club_champs_entries")
@@ -4233,7 +4299,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <p className="text-[11px] text-muted-foreground mt-1.5">
                 {isDoubles
                   ? "Doubles — planned counts below are entered as pairs."
-                  : "Singles — planned counts below are entered as players."}
+                  : "Singles — planned counts below are entered as players."}{" "}
+                Applies to every league in this tournament.
               </p>
             </div>
 
@@ -4263,6 +4330,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               {gender === "open" && (
                 <p className="text-[11px] text-muted-foreground mt-1.5">Open = any pairing allowed (M+M, F+F, or M+F). Great for fundraisers.</p>
               )}
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                This is the default category for new leagues — each league below can be set to its own (e.g. a Ladies' league, a Men's league and a Mixed league in the same tournament).
+              </p>
             </div>
 
             {/* ─── Tournament Structure Builder ─────────────────────────── */}
@@ -4275,7 +4345,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
                 <div>
                   <div className="text-sm font-semibold">Tournament Structure <span className="text-destructive">*</span></div>
-                  <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league can have its own format, pools and planned player count.</div>
+                  <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league has its own format, category (Men’s / Ladies’ / Mixed / Open), pools and planned player count — so one tournament can run a Ladies’ league next to a Men’s and a Mixed league. Singles vs doubles is applied to every league in the event.</div>
                 </div>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
@@ -4339,9 +4409,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
                                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">League {gn}</span>
                                   <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
+                                  <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                    {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"}
+                                  </span>
                                 </div>
                                 <Input
                                   value={groupLabels[key] || ""}
@@ -4382,6 +4455,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     <SelectItem value="single_round_robin">Single round-robin</SelectItem>
                                     <SelectItem value="double_round_robin">Double round-robin</SelectItem>
                                     <SelectItem value="swiss">Swiss pairing</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</Label>
+                                <Select
+                                  value={genderForLeague(gn)}
+                                  onValueChange={(v) => setLeagueGender(gn, v as GenderCategory)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="men">Men's</SelectItem>
+                                    <SelectItem value="ladies">Ladies'</SelectItem>
+                                    <SelectItem value="mixed">Mixed</SelectItem>
+                                    <SelectItem value="open">Open</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Singles / doubles</Label>
+                                <Select
+                                  value={matchTypeForLeague(gn)}
+                                  onValueChange={(v) => setLeagueMatchType(gn, v as "singles" | "doubles")}
+                                >
+                                  <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="singles">Singles</SelectItem>
+                                    <SelectItem value="doubles">Doubles</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -6276,6 +6377,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     )}
                                     <SortableRow id={p.id}>
                                       <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
+                                      {!memberFitsLeague(p, (groupAssignments.get(p.id) ?? 0) + 1) && (
+                                        <Badge variant="destructive" className="text-[10px]" title="This player does not match the category set for this league">
+                                          {GENDER_LABELS[genderForLeague((groupAssignments.get(p.id) ?? 0) + 1)]}?
+                                        </Badge>
+                                      )}
                                       {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
                                       {isSwissPools && pools > 1 && (
                                         <Badge variant="outline" className={`text-[10px] ${poolTint[pl % poolTint.length]}`}>

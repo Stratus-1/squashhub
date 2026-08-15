@@ -642,17 +642,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [leagueGenders, numGroups, gender]);
 
   // ---- Per-league scoring settings ---------------------------------------
-  // Each league can run its own scoring format (Standard / Bells), and for
-  // Standard its own game length (par 11 / par 15) and best-of. Missing
-  // entries fall back to the tournament-level values.
+  // Each league can run its own scoring format (Standard / Bells), for
+  // Standard its own game length (par 11 / par 15), best-of and win
+  // condition (win-by-2 / sudden death). Missing entries fall back to the
+  // tournament-level values.
   const [leagueScoringModes, setLeagueScoringModes] = useState<Record<string, "standard" | "time_capped_points">>({});
   const [leaguePointsPerGame, setLeaguePointsPerGame] = useState<Record<string, 11 | 15>>({});
   const [leagueBestOf, setLeagueBestOf] = useState<Record<string, 3 | 5>>({});
+  const [leagueWinConditions, setLeagueWinConditions] = useState<Record<string, "win_by_2" | "sudden_death">({});
   const scoringForLeague = (gn: number): "standard" | "time_capped_points" =>
     leagueScoringModes[String(gn)] ?? ((scoringMode === "time_capped_points" ? "time_capped_points" : "standard"));
   const pointsForLeague = (gn: number): 11 | 15 =>
     leaguePointsPerGame[String(gn)] ?? ((pointsPerGame === 15 ? 15 : 11));
   const bestOfForLeague = (gn: number): 3 | 5 => leagueBestOf[String(gn)] ?? ((bestOf === 5 ? 5 : 3));
+  const winConditionForLeague = (gn: number): "win_by_2" | "sudden_death" =>
+    leagueWinConditions[String(gn)] ?? winCondition;
   /** Set one league's scoring format; keeps tournament-level in sync with league 1. */
   const setLeagueScoring = (gn: number, mode: "standard" | "time_capped_points") => {
     setLeagueScoringModes((m) => {
@@ -669,6 +673,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Bells needs a slot length per league — seed a sensible default.
       setGroupDurations((m) => ({ ...m, [String(gn)]: Number(m[String(gn)]) > 0 ? m[String(gn)] : (matchDuration > 0 ? matchDuration : 20) }));
     }
+  };
+  const setLeagueWinCondition = (gn: number, wc: "win_by_2" | "sudden_death") => {
+    setLeagueWinConditions((m) => {
+      const next = { ...m, [String(gn)]: wc };
+      // Keep the tournament-level win_condition in sync with League 1 for
+      // downstream compatibility (legacy matches, scoring engine).
+      if (gn === 1 || Object.keys(next).length === 1) setWinCondition(wc);
+      return next;
+    });
   };
 
   // ---- Visual "Tournament Structure Builder" helpers ---------------------

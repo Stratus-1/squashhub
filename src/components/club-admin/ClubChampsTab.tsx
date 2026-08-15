@@ -536,7 +536,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -1231,6 +1231,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       league_points_per_game: Object.keys(leaguePointsPerGame).length > 0 ? leaguePointsPerGame : null,
       league_best_of: Object.keys(leagueBestOf).length > 0 ? leagueBestOf : null,
       league_win_conditions: Object.keys(leagueWinConditions).length > 0 ? leagueWinConditions : null,
+      league_play_all_games: Object.keys(leaguePlayAll).length > 0 ? leaguePlayAll : null,
       participating_club_ids: venueClubIds.filter((id) => id !== clubId),
     };
     const saveExtras = async (id: string) => {

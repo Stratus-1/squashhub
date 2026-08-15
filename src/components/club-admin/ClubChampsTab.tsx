@@ -4469,6 +4469,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               <SegRow
                                 label="Draw format"
                                 value={fmt}
+                                color="violet"
                                 options={[
                                   { v: "single_round_robin", l: "Single RR" },
                                   { v: "double_round_robin", l: "Double RR" },
@@ -4488,6 +4489,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               <SegRow
                                 label="Category"
                                 value={genderForLeague(gn)}
+                                color="blue"
                                 options={[
                                   { v: "men", l: "Men's" },
                                   { v: "ladies", l: "Ladies'" },
@@ -4499,6 +4501,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               <SegRow
                                 label="Players"
                                 value={matchTypeForLeague(gn)}
+                                color="green"
                                 options={[
                                   { v: "singles", l: "👤 Singles" },
                                   { v: "doubles", l: "👥 Doubles" },
@@ -4508,6 +4511,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               <SegRow
                                 label="Scoring"
                                 value={scoringForLeague(gn)}
+                                color="amber"
                                 options={[
                                   { v: "standard", l: "Standard" },
                                   { v: "time_capped_points", l: "🔔 Bells" },
@@ -4515,32 +4519,46 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 onChange={(v) => setLeagueScoring(gn, v as "standard" | "time_capped_points")}
                               />
                               {scoringForLeague(gn) === "standard" ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="space-y-2">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <SegRow
+                                      label="Game length"
+                                      value={String(pointsForLeague(gn))}
+                                      color="red"
+                                      options={[
+                                        { v: "11", l: "Par 11" },
+                                        { v: "15", l: "Par 15" },
+                                      ]}
+                                      onChange={(v) => {
+                                        const n = Number(v) === 15 ? 15 : 11;
+                                        setLeaguePointsPerGame((m) => ({ ...m, [key]: n }));
+                                        if (gn === 1) setPointsPerGame(n);
+                                      }}
+                                    />
+                                    <SegRow
+                                      label="Best of"
+                                      value={String(bestOfForLeague(gn))}
+                                      color="pink"
+                                      options={[
+                                        { v: "3", l: "Best of 3" },
+                                        { v: "5", l: "Best of 5" },
+                                      ]}
+                                      onChange={(v) => {
+                                        const n = Number(v) === 5 ? 5 : 3;
+                                        setLeagueBestOf((m) => ({ ...m, [key]: n }));
+                                        if (gn === 1) setBestOf(n);
+                                      }}
+                                    />
+                                  </div>
                                   <SegRow
-                                    label="Game length"
-                                    value={String(pointsForLeague(gn))}
+                                    label="Win condition"
+                                    value={winConditionForLeague(gn)}
+                                    color="cyan"
                                     options={[
-                                      { v: "11", l: "Par 11" },
-                                      { v: "15", l: "Par 15" },
+                                      { v: "win_by_2", l: "Win by 2" },
+                                      { v: "sudden_death", l: "Sudden death" },
                                     ]}
-                                    onChange={(v) => {
-                                      const n = Number(v) === 15 ? 15 : 11;
-                                      setLeaguePointsPerGame((m) => ({ ...m, [key]: n }));
-                                      if (gn === 1) setPointsPerGame(n);
-                                    }}
-                                  />
-                                  <SegRow
-                                    label="Best of"
-                                    value={String(bestOfForLeague(gn))}
-                                    options={[
-                                      { v: "3", l: "Best of 3" },
-                                      { v: "5", l: "Best of 5" },
-                                    ]}
-                                    onChange={(v) => {
-                                      const n = Number(v) === 5 ? 5 : 3;
-                                      setLeagueBestOf((m) => ({ ...m, [key]: n }));
-                                      if (gn === 1) setBestOf(n);
-                                    }}
+                                    onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")}
                                   />
                                 </div>
                               ) : (

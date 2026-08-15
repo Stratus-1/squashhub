@@ -19,12 +19,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Calendar, MapPin, Users, Trophy, List, Pencil, Trash2, AlertTriangle, ScrollText, RefreshCw } from "lucide-react";
+import { Search, Calendar, MapPin, Users, Trophy, List, Pencil, Trash2, AlertTriangle, ScrollText, RefreshCw, Settings } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
 import AssociationPenaltiesTab from "@/components/super-admin/league/AssociationPenaltiesTab";
+import { OrgSettingsDialog } from "@/components/admin/OrgSettingsDialog";
 
 export default function SuperAdminLeagues() {
   const queryClient = useQueryClient();
@@ -37,6 +38,7 @@ export default function SuperAdminLeagues() {
   const [form, setForm] = useState({ name: "", short_code: "", region: "", season_year: new Date().getFullYear(), status: "active" });
   const [syncing, setSyncing] = useState(false);
   const [syncingMembers, setSyncingMembers] = useState(false);
+  const [settingsOrg, setSettingsOrg] = useState<{ id: string; name: string } | null>(null);
 
   const activeAssociationObj = (a: any[] | undefined, id: string | null) =>
     (a ?? []).find((x) => x.id === id) || null;
@@ -322,8 +324,19 @@ export default function SuperAdminLeagues() {
                 {a.name}
               </button>
               <button
+                onClick={() => {
+                  const org = orgForAssociation(a);
+                  if (!org) { toast.error("No organisation record linked to this affiliation yet"); return; }
+                  setSettingsOrg({ id: org.id, name: a.name });
+                }}
+                title="Settings & admins"
+                className="px-2 bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-l border-border transition-colors"
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </button>
+              <button
                 onClick={() => openEdit(a)}
-                title="Edit league"
+                title="Edit affiliation"
                 className="px-2 bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-l border-border transition-colors"
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -660,6 +673,12 @@ export default function SuperAdminLeagues() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <OrgSettingsDialog
+        orgId={settingsOrg?.id ?? null}
+        orgName={settingsOrg?.name ?? ""}
+        onOpenChange={(o) => !o && setSettingsOrg(null)}
+      />
     </div>
   );
 }

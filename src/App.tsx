@@ -490,7 +490,8 @@ function AppRoutes() {
           <Route path="federation" element={<SuperAdminFederation />} />
           <Route path="tournaments" element={<SuperAdminTournaments />} />
           <Route path="users" element={<SuperAdminUsers />} />
-          <Route path="leagues" element={<SuperAdminLeagues />} />
+          <Route path="affiliations" element={<SuperAdminLeagues />} />
+          <Route path="leagues" element={<Navigate to="/admin/affiliations" replace />} />
           <Route path="nsa-import" element={<SuperAdminNsaImport />} />
           <Route path="outreach" element={<SuperAdminOutreach />} />
           <Route path="outreach/campaigns" element={<SuperAdminOutreachCampaigns />} />

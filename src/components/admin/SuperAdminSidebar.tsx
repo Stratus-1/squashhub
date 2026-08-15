@@ -21,7 +21,7 @@ const navItems = [
   { title: "Clubs & Associations", url: "/admin/clubs", icon: Building2 },
   { title: "Federation", url: "/admin/federation", icon: Flag },
   { title: "Users", url: "/admin/users", icon: Users },
-  { title: "Leagues", url: "/admin/leagues", icon: Trophy },
+  { title: "Affiliations", url: "/admin/affiliations", icon: Trophy },
   { title: "Tournaments", url: "/admin/tournaments", icon: Swords },
   { title: "NSA Import", url: "/admin/nsa-import", icon: Download },
   { title: "Outreach", url: "/admin/outreach", icon: Megaphone },

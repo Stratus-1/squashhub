@@ -26,6 +26,7 @@ import { format, eachDayOfInterval, getDay, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { WizardSection } from "@/components/club-admin/tournament/WizardSection";
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -6035,7 +6036,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </WizardSection>
             <WizardSection
               title={"Invites & messaging"}
-              summary={`${Array.from(inviteMethods).join(", ") || "no channel"} · ${champDescription ? "custom message" : "default message"}`}
+              summary={`${Array.from(inviteMethods).join(", ") || "no channel"} · ${description ? "custom message" : "default message"}`}
               complete={inviteMethods.size > 0}
               defaultOpen={true}
             >

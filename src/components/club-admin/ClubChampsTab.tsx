@@ -548,6 +548,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [leagueMatchTypes, setLeagueMatchTypes] = useState<Record<string, "singles" | "doubles">>({});
   const genderForLeague = (gn: number): GenderCategory => leagueGenders[String(gn)] ?? gender;
   const matchTypeForLeague = (gn: number): "singles" | "doubles" => leagueMatchTypes[String(gn)] ?? matchType;
+  /** Does this member satisfy the category set for the given league? */
+  const memberFitsLeague = (m: any, gn: number): boolean => {
+    const g = genderForLeague(gn);
+    if (g === "mixed" || g === "open") return true;
+    return memberMatchesTournamentGender(m?.gender, g);
+  };
   /** Distinct gender categories actually in use across the leagues. */
   const leagueGenderSet = useMemo(() => {
     const s = new Set<GenderCategory>();
@@ -4335,7 +4341,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
                 <div>
                   <div className="text-sm font-semibold">Tournament Structure <span className="text-destructive">*</span></div>
-                  <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league can have its own format, pools and planned player count.</div>
+                  <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league has its own format, category (Men’s / Ladies’ / Mixed / Open), pools and planned player count — so one tournament can run a Ladies’ league next to a Men’s and a Mixed league. Singles vs doubles is applied to every league in the event.</div>
                 </div>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
@@ -6367,6 +6373,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     )}
                                     <SortableRow id={p.id}>
                                       <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
+                                      {!memberFitsLeague(p, (groupAssignments.get(p.id) ?? 0) + 1) && (
+                                        <Badge variant="destructive" className="text-[10px]" title="This player does not match the category set for this league">
+                                          {GENDER_LABELS[genderForLeague((groupAssignments.get(p.id) ?? 0) + 1)]}?
+                                        </Badge>
+                                      )}
                                       {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
                                       {isSwissPools && pools > 1 && (
                                         <Badge variant="outline" className={`text-[10px] ${poolTint[pl % poolTint.length]}`}>

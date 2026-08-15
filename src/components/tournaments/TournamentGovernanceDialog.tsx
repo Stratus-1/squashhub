@@ -95,7 +95,9 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
     associationFeeCents: form?.association_fee_cents ?? 0,
     hostFeeCents: venues.reduce((s, v) => s + (v.host_fee_cents || 0), 0),
     hostSharePct: venues.reduce((s, v) => s + Number(v.host_share_pct || 0), 0),
+    platformFeePct: platformPct ?? 0,
   });
+
 
   const submit = async () => {
     if (!form) return;

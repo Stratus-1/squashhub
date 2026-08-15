@@ -609,6 +609,78 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   );
 }
 
+/**
+ * Hosting fees charged by this club when it hosts a tournament:
+ * a court rate per hour and a cleaning fee per day. Used by the
+ * tournament governance fee split to work out host compensation.
+ */
+function HostingFeesCard({ club }: { club: Club }) {
+  const updateClub = useUpdateClub();
+  const { symbol } = useClubCurrency();
+  const initial = () => ({
+    hourly: ((club as any).host_court_fee_cents_per_hour ?? 0) / 100,
+    cleaning: ((club as any).host_cleaning_fee_cents_per_day ?? 0) / 100,
+  });
+  const [form, setForm] = useState(initial);
+  useEffect(() => setForm(initial()), [club.id, (club as any).host_court_fee_cents_per_hour, (club as any).host_cleaning_fee_cents_per_day]);
+  const lock = useEditLock(() => setForm(initial()));
+
+  const save = async (onDone?: () => void) => {
+    try {
+      await updateClub.mutateAsync({
+        id: club.id,
+        host_court_fee_cents_per_hour: Math.max(0, Math.round((form.hourly || 0) * 100)),
+        host_cleaning_fee_cents_per_day: Math.max(0, Math.round((form.cleaning || 0) * 100)),
+      } as any);
+      toast.success("Hosting fees saved");
+      onDone?.();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save");
+    }
+  };
+
+  return (
+    <Card className="p-4 space-y-4">
+      <EditLock
+        editing={lock.editing}
+        onEdit={lock.edit}
+        onCancel={lock.cancel}
+        onSave={() => save(lock.done)}
+        saving={updateClub.isPending}
+        title="hosting fees"
+      >
+        <div>
+          <h3 className="font-semibold text-sm">Hosting fees</h3>
+          <p className="text-xs text-muted-foreground">
+            What this club charges when it hosts a tournament. These rates feed the host compensation in the tournament fee split.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Court hosting fee ({symbol} per hour)</Label>
+            <Input
+              type="number" min={0} step="0.01" className="h-8 text-xs"
+              value={form.hourly}
+              onChange={(e) => setForm(p => ({ ...p, hourly: parseFloat(e.target.value) || 0 }))}
+            />
+            <p className="text-[11px] text-muted-foreground">Per court, per hour of tournament play.</p>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Cleaning fee ({symbol} per day)</Label>
+            <Input
+              type="number" min={0} step="0.01" className="h-8 text-xs"
+              value={form.cleaning}
+              onChange={(e) => setForm(p => ({ ...p, cleaning: parseFloat(e.target.value) || 0 }))}
+            />
+            <p className="text-[11px] text-muted-foreground">Charged once per tournament day.</p>
+          </div>
+        </div>
+      </EditLock>
+    </Card>
+  );
+}
+
+
 function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; relayDeviceType: RelayDevice; mode: "list" | "relays" }) {
 
   const showRelays = mode === "relays";

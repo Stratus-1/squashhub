@@ -3660,6 +3660,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
     setLeagueGenders(inheritedG);
     setLeagueMatchTypes(inheritedM);
+    // Per-league scoring settings (format / par / best-of) with fallback to
+    // the tournament-level values saved on the champ row.
+    const lsm = (ex.league_scoring_modes as Record<string, "standard" | "time_capped_points"> | null) || null;
+    const lppg = (ex.league_points_per_game as Record<string, 11 | 15> | null) || null;
+    const lbo = (ex.league_best_of as Record<string, 3 | 5> | null) || null;
+    const inheritedS: Record<string, "standard" | "time_capped_points"> = {};
+    const inheritedP: Record<string, 11 | 15> = {};
+    const inheritedB: Record<string, 3 | 5> = {};
+    for (let i = 1; i <= (champ.num_groups || 0); i++) {
+      inheritedS[String(i)] = (lsm?.[String(i)] as any) ?? ((champ as any).scoring_mode === "time_capped_points" ? "time_capped_points" : "standard");
+      inheritedP[String(i)] = (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : 11));
+      inheritedB[String(i)] = (Number(lbo?.[String(i)]) === 5 ? 5 : Number(lbo?.[String(i)]) === 3 ? 3 : (Number((champ as any).best_of) === 5 ? 5 : 3));
+    }
+    setLeagueScoringModes(inheritedS);
+    setLeaguePointsPerGame(inheritedP);
+    setLeagueBestOf(inheritedB);
+
 
 
     const { data: entries } = await fromExt("club_champs_entries")

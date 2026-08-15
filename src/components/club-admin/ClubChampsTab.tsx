@@ -5706,17 +5706,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               <div className="text-[11px] text-muted-foreground pl-[4.5rem]">
                                 {isSwissL ? (
                                   actualEntities > 0 ? (
-                                    <>needs {gamesNeeded} game{gamesNeeded === 1 ? "" : "s"} ({rounds} rounds × {pools} pool{pools === 1 ? "" : "s"}) · {games} available {fits ? "✓" : `· short by ${gamesNeeded - games}`}</>
+                                    <>needs {gamesNeeded} game{gamesNeeded === 1 ? "" : "s"} ({rounds} rounds × {pools} pool{pools === 1 ? "" : "s"})</>
                                   ) : (
                                     <>fits {games} game{games === 1 ? "" : "s"} · {rounds || suggestedRounds} rounds × {pools} pool{pools === 1 ? "" : "s"}</>
                                   )
                                 ) : (
                                   actualEntities > 0 ? (
-                                    <>needs {gamesNeeded} game{gamesNeeded === 1 ? "" : "s"} · {games} available {fits ? "✓" : `· short by ${gamesNeeded - games}`}</>
+                                    <>needs {gamesNeeded} game{gamesNeeded === 1 ? "" : "s"}{pools > 1 && <> ({pools} pools)</>}</>
                                   ) : (
-                                    <>fits {games} game{games === 1 ? "" : "s"} · capacity for full round-robin</>
+                                    <>fits {games} game{games === 1 ? "" : "s"} · capacity for full round-robin{pools > 1 && <> in {pools} pools</>}</>
                                   )
                                 )}
+                                {actualEntities > 0 && (
+                                  <>
+                                    {L.hasPlayoffs && L.playoffGames > 0 && <> + {L.playoffGames} play-off{L.playoffGames === 1 ? "" : "s"}</>}
+                                    {" · "}{games} available {fits ? "✓" : `· short by ${L.totalNeeded - games}`}
+                                  </>
+                                )}
+                                {actualEntities === 0 && L.hasPlayoffs && <> · play-offs on</>}
                               </div>
                             </div>
                           );

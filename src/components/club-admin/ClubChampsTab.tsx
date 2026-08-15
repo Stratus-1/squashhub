@@ -4720,7 +4720,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   </div>
                                 </div>
                               )}
+                              <div className="pt-1 flex justify-end">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-[11px]"
+                                  onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: true }))}
+                                >
+                                  <Check className="h-3.5 w-3.5 mr-1" /> Done
+                                </Button>
+                              </div>
                             </div>
+                            )}
                           </div>
                         );
                       })

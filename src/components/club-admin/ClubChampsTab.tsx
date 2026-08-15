@@ -4247,153 +4247,40 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-            {/* Scoring format — driven by the tournament-format registry */}
+            {/* Match rules are now decided per league in the builder below —
+                the only genuinely event-wide rule left is the win condition. */}
             <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm">
-              <Label className="text-sm font-semibold">Scoring format <span className="text-destructive">*</span></Label>
-              <Select
-                value={scoringMode}
-                onValueChange={(v) => {
-                  const fmt = getTournamentFormat(v);
-                  setScoringMode(v as any);
-                  if (fmt.requiresDoubles && matchType !== "doubles") {
-                    setMatchType("doubles");
-                  }
-                }}
-              >
-                <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                  {listTournamentFormats().filter((fmt) => fmt.key !== "swiss").map((fmt) => (
-                    <SelectItem key={fmt.key} value={fmt.key}>{fmt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {scoringMode ? (
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {getTournamentFormat(scoringMode).description}
-                </p>
-              ) : (
-                <p className="text-[11px] text-muted-foreground mt-1">Choose a scoring format to see details.</p>
-              )}
-              {scoringMode && getTournamentFormat(scoringMode).requiresDoubles && !isDoubles && (
-                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
-                  This format requires doubles — match type will be set to Doubles.
-                </p>
-              )}
-              {scoringMode === "standard" && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
-                  <div>
-                    <Label className="text-xs font-medium">Game length</Label>
-                    <Select
-                      value={pointsPerGame > 0 ? String(pointsPerGame) : ""}
-                      onValueChange={(v) => setPointsPerGame(Number(v) as 11 | 15)}
-                    >
-                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                        <SelectItem value="11">Par 11 — WSF standard</SelectItem>
-                        <SelectItem value="15">Par 15</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium">Win condition</Label>
-                    <Select
-                      value={winCondition}
-                      onValueChange={(v) => setWinCondition(v as "win_by_2" | "sudden_death")}
-                    >
-                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="win_by_2">Win by 2 (traditional)</SelectItem>
-                        <SelectItem value="sudden_death">Sudden death (first to par point wins)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium">Best of</Label>
-                    <Select
-                      value={bestOf > 0 ? (playAllGames ? `all${bestOf}` : String(bestOf)) : ""}
-                      onValueChange={(v) => {
-                        if (v.startsWith("all")) {
-                          setBestOf(Number(v.slice(3)) as 3 | 5);
-                          setPlayAllGames(true);
-                        } else {
-                          setBestOf(Number(v) as 3 | 5);
-                          setPlayAllGames(false);
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue placeholder="Please select" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                        <SelectItem value="3">Best of 3 (first to 2 games)</SelectItem>
-                        <SelectItem value="all3">Play all 3 (winner = most games)</SelectItem>
-                        <SelectItem value="5">Best of 5 (first to 3 games)</SelectItem>
-                        <SelectItem value="all5">Play all 5 (winner = most games)</SelectItem>
-                      </SelectContent>
-                    </Select>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <Label className="text-sm font-semibold">Match rules</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Format (Standard / Bells), category, singles or doubles, par 11 / par 15 and best-of are set on
+                    each league card in the builder below.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Win condition</Label>
+                  <div className="flex gap-1">
+                    {([
+                      { v: "win_by_2", l: "Win by 2" },
+                      { v: "sudden_death", l: "Sudden death" },
+                    ] as const).map((o) => (
+                      <Button
+                        key={o.v}
+                        type="button"
+                        size="sm"
+                        variant={winCondition === o.v ? "default" : "outline"}
+                        className="h-8 text-xs"
+                        onClick={() => setWinCondition(o.v)}
+                      >
+                        {o.l}
+                      </Button>
+                    ))}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* Match Type & Gender come first — determines players vs pairs downstream */}
-            <div>
-              <Label className="text-sm font-semibold mb-2 block">Match Type <span className="text-destructive">*</span></Label>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant={matchType === "singles" ? "default" : "outline"}
-                  className="h-16 text-base"
-                  onClick={() => setMatchType("singles")}
-                >
-                  👤 Singles
-                </Button>
-                <Button
-                  variant={matchType === "doubles" ? "default" : "outline"}
-                  className="h-16 text-base"
-                  onClick={() => setMatchType("doubles")}
-                >
-                  👥 Doubles
-                </Button>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5">
-                {isDoubles
-                  ? "Doubles — planned counts below are entered as pairs."
-                  : "Singles — planned counts below are entered as players."}{" "}
-                Applies to every league in this tournament.
-              </p>
-            </div>
-
-            <div>
-              <Label className="text-sm font-semibold mb-2 block">Gender Category <span className="text-destructive">*</span></Label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {(["men", "ladies", "mixed", "open"] as GenderCategory[]).map((g) => (
-                  <Button
-                    key={g}
-                    variant={gender === g ? "default" : "outline"}
-                    className="h-16 text-base"
-                    onClick={() => setGender(g)}
-                  >
-                    {g === "men"
-                      ? "🏆 Men's"
-                      : g === "ladies"
-                      ? "🏆 Ladies'"
-                      : g === "mixed"
-                      ? "🏆 Mixed"
-                      : "🏆 Open"}
-                  </Button>
-                ))}
-              </div>
-              {gender === "mixed" && (
-                <p className="text-[11px] text-muted-foreground mt-1.5">Mixed = traditional 1 man + 1 lady pairs.</p>
-              )}
-              {gender === "open" && (
-                <p className="text-[11px] text-muted-foreground mt-1.5">Open = any pairing allowed (M+M, F+F, or M+F). Great for fundraisers.</p>
-              )}
-              <p className="text-[11px] text-muted-foreground mt-1.5">
-                This is the default category for new leagues — each league below can be set to its own (e.g. a Ladies' league, a Men's league and a Mixed league in the same tournament).
-              </p>
-            </div>
 
             {/* ─── Tournament Structure Builder ─────────────────────────── */}
             {/* Visual builder — admin drags/clicks formats from the palette to

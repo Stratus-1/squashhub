@@ -4547,6 +4547,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     />
                                   </div>
                                 </div>
+                                )}
                               </div>
                               <Button
                                 type="button"

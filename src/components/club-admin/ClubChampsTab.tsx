@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy, Check } from "lucide-react";
+import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy, Check, ChevronDown } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, eachDayOfInterval, getDay, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -585,6 +585,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss">("");
   // Swiss-only config: per-league pools & rounds (keyed by group_number string).
   const [swissPools, setSwissPools] = useState<Record<string, number>>({});
+  const [collapsedLeagues, setCollapsedLeagues] = useState<Record<string, boolean>>({});
   const [swissRounds, setSwissRounds] = useState<Record<string, number>>({});
   const [showCapacity, setShowCapacity] = useState(false);
   const [parallelLeagues, setParallelLeagues] = useState(false);
@@ -4476,13 +4477,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               : "single_round_robin"));
                         const meta = FORMAT_META[fmt];
                         const isSwiss = fmt === "swiss";
+                        const collapsed = !!collapsedLeagues[key];
                         return (
                           <div key={gn} className="relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm">
                             <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
-                            <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className={cn("flex items-start justify-between gap-2", !collapsed && "mb-2")}>
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <div
+                                  className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
+                                  onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
+                                >
                                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">League {gn}</span>
+                                  {collapsed && groupLabels[key] && (
+                                    <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
+                                  )}
                                   <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
                                   <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                                     {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"} ·{" "}
@@ -4490,7 +4498,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       ? `Bells ${groupDurations[key] || matchDuration || 20}′`
                                       : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"}`}
                                   </span>
+                                  {collapsed && (
+                                    <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
+                                      {Math.max(1, Number(swissPools[key]) || 1)} pool{Math.max(1, Number(swissPools[key]) || 1) === 1 ? "" : "s"}
+                                      {expectedPlayers[key] ? ` · ${expectedPlayers[key]} ${isDoubles ? "pairs" : "players"}` : ""}
+                                    </span>
+                                  )}
                                 </div>
+                                {!collapsed && (
                                 <div className="flex items-end gap-2">
                                   <Input
                                     value={groupLabels[key] || ""}
@@ -4546,7 +4561,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     />
                                   </div>
                                 </div>
+                                )}
                               </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground"
+                                onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !m[key] }))}
+                                title={collapsed ? "Expand league" : "Collapse league"}
+                              >
+                                <ChevronDown className={cn("h-4 w-4 transition-transform", !collapsed && "rotate-180")} />
+                              </Button>
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -4560,6 +4586,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             </div>
                             {/* Visual, button-driven league setup — draw format,
                                 category, entity type and scoring all per league. */}
+                            {!collapsed && (
                             <div className="space-y-2">
                               <SegRow
                                 label="Draw format"
@@ -4720,7 +4747,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   </div>
                                 </div>
                               )}
+                              <div className="pt-1 flex justify-end">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-[11px]"
+                                  onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: true }))}
+                                >
+                                  <Check className="h-3.5 w-3.5 mr-1" /> Done
+                                </Button>
+                              </div>
                             </div>
+                            )}
                           </div>
                         );
                       })

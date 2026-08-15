@@ -25,6 +25,8 @@ import {
   type TournamentGovernance,
 } from "@/hooks/use-tournaments";
 import { centsToRand, computeFeeSplit, randToCents } from "@/lib/tournaments/fee-split";
+import { usePlatformTournamentFeePct } from "@/components/admin/PlatformTournamentFeeCard";
+
 
 interface Props {
   champ: { id: string; name: string } | null;

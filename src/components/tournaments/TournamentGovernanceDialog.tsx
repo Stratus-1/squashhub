@@ -74,6 +74,8 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
   const { data: owner } = useTournamentOwner(id);
   const { data: venues = [] } = useTournamentVenues(id);
   const { data: clubs = [] } = useHostClubs();
+  const { data: platformPct = 0 } = usePlatformTournamentFeePct();
+
 
   const save = useSaveTournamentGovernance(id);
   const setOwner = useSetTournamentOwner(id);

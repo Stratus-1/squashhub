@@ -2468,18 +2468,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         ? (groups as DoublePair[][]).map((g) => g.length)
         : (groups as ClubMember[][]).map((g) => g.length);
 
-      // Pool mode: leagues running Swiss contribute their pool split;
-      // non-Swiss leagues stay as a single pool (i.e. one intra-league bracket).
-      // Any league on Swiss activates pool-mode for placeholder counting.
+      // Pool mode: any league split into 2+ pools (Swiss, round robin or cross
+      // league) contributes its pool split; others stay as a single pool.
       const anySwiss = (roundFormat === "swiss")
-        || (usePerLeagueFormats && Object.values(leagueFormats).some((f) => f === "swiss"));
+        || (usePerLeagueFormats && Object.values(leagueFormats).some((f) => f === "swiss"))
+        || entriesPerLeague.some((_, gi) => poolsForLeague(gi + 1) > 1);
       const poolsByLeague: Record<number, number> = {};
       const entriesByLeaguePool: Record<number, number[]> = {};
       if (anySwiss) {
         entriesPerLeague.forEach((total, gi) => {
           const lg = gi + 1;
-          const isLeagueSwiss = formatForLeague(lg) === "swiss";
-          const pc = isLeagueSwiss ? Math.max(1, Number(swissPools[String(lg)]) || 1) : 1;
+          const pc = poolsForLeague(lg);
           poolsByLeague[lg] = pc;
           const size = Math.ceil(total / pc);
           const sizes: number[] = [];
@@ -2491,6 +2490,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           entriesByLeaguePool[lg] = sizes;
         });
       }
+
 
       const playoffCount = enablePlayoffs
         ? countPlayoffPlaceholders({

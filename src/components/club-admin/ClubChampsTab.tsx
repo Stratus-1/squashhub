@@ -686,9 +686,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // ---- Visual "Tournament Structure Builder" helpers ---------------------
   const FORMAT_META: Record<PerLeagueFormat, { label: string; short: string; desc: string }> = {
-    single_round_robin: { label: "Single round-robin", short: "Single RR", desc: "Each player plays every other in their league once." },
-    double_round_robin: { label: "Double round-robin", short: "Double RR", desc: "Play each opponent twice — home & away." },
+    single_round_robin: { label: "Round robin", short: "Round robin", desc: "Everyone in this league plays everyone else. Tick “double” to play home & away." },
+    double_round_robin: { label: "Round robin (double)", short: "Double RR", desc: "Play each opponent twice — home & away." },
     swiss: { label: "Swiss pairing", short: "Swiss", desc: "Fixed rounds; admin re-pairs each round by score." },
+    cross_league: { label: "Cross league", short: "Cross league", desc: "This league plays against the other leagues instead of within itself." },
   };
   const addLeagueOfFormat = (fmt: PerLeagueFormat) => {
     const gn = (numGroups || 0) + 1;

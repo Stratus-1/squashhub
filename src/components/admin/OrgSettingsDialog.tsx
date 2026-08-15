@@ -41,14 +41,32 @@ export function OrgSettingsDialog({ orgId, orgName, isFederation, onOpenChange }
   const [form, setForm] = useState<OrgSettings | null>(null);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<OrgAdminRole>("association_admin");
+  // Raw text drafts so typing "3.50" isn't reformatted mid-keystroke
+  const [raw, setRaw] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (settings) setForm(settings);
-    else if (orgId) setForm(emptyOrgSettings(orgId));
+    const next = settings ?? (orgId ? emptyOrgSettings(orgId) : null);
+    if (!next) return;
+    setForm(next);
+    setRaw({
+      default_entry_fee_cents: centsToRand(next.default_entry_fee_cents),
+      default_federation_fee_cents: centsToRand(next.default_federation_fee_cents),
+      default_association_fee_cents: centsToRand(next.default_association_fee_cents),
+      default_host_share_pct: String(next.default_host_share_pct ?? 0),
+    });
   }, [settings, orgId]);
 
   const set = <K extends keyof OrgSettings>(k: K, v: OrgSettings[K]) =>
     setForm((f) => (f ? { ...f, [k]: v } : f));
+
+  const setMoney = (k: keyof OrgSettings, v: string) => {
+    setRaw((r) => ({ ...r, [k as string]: v }));
+    set(k, randToCents(v) as OrgSettings[typeof k]);
+  };
+
+  const blurMoney = (k: keyof OrgSettings) =>
+    setRaw((r) => ({ ...r, [k as string]: centsToRand(randToCents(r[k as string] ?? "0")) }));
+
 
   const split = computeFeeSplit({
     entryFeeCents: form?.default_entry_fee_cents ?? 0,

@@ -4518,6 +4518,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       ? `Bells ${groupDurations[key] || matchDuration || 20}′`
                                       : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"}`}
                                   </span>
+                                  {collapsed && playoffsForLeague(gn) && (
+                                    <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
+                                      Playoffs
+                                    </span>
+                                  )}
                                   {collapsed && (
                                     <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
                                       {Math.max(1, Number(swissPools[key]) || 1)} pool{Math.max(1, Number(swissPools[key]) || 1) === 1 ? "" : "s"}
@@ -4767,6 +4772,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   </div>
                                 </div>
                               )}
+                              <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5 pt-1">
+                                <input
+                                  type="checkbox"
+                                  className="h-3.5 w-3.5 accent-fuchsia-500"
+                                  checked={playoffsForLeague(gn)}
+                                  onChange={(e) => {
+                                    const on = e.target.checked;
+                                    setLeaguePlayoffs((m) => {
+                                      const next = { ...m, [key]: on };
+                                      // Keep the tournament-level flag in sync: on when any league runs playoffs.
+                                      const anyOn = Array.from({ length: numGroups || 0 }, (_, i) =>
+                                        next[String(i + 1)] ?? enablePlayoffs).some(Boolean);
+                                      setEnablePlayoffs(anyOn);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                Playoffs / finals for this league
+                              </label>
                               <div className="pt-1 flex justify-end">
                                 <Button
                                   type="button"

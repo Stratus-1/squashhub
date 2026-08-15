@@ -656,6 +656,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [leaguePlayAll, setLeaguePlayAll] = useState<Record<string, boolean>>({});
   // Per-league playoffs: which leagues run their own knockout / finals stage.
   const [leaguePlayoffs, setLeaguePlayoffs] = useState<Record<string, boolean>>({});
+  // Per-league bye handling (falls back to the tournament-level rule).
+  const [leagueByeHandling, setLeagueByeHandling] = useState<Record<string, "no_match" | "walkover_win" | "neutral">>({});
   const scoringForLeague = (gn: number): "standard" | "time_capped_points" =>
     leagueScoringModes[String(gn)] ?? ((scoringMode === "time_capped_points" ? "time_capped_points" : "standard"));
   const pointsForLeague = (gn: number): 11 | 15 =>
@@ -663,6 +665,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const bestOfForLeague = (gn: number): 3 | 5 => leagueBestOf[String(gn)] ?? ((bestOf === 5 ? 5 : 3));
   const playAllForLeague = (gn: number): boolean => leaguePlayAll[String(gn)] ?? false;
   const playoffsForLeague = (gn: number): boolean => leaguePlayoffs[String(gn)] ?? enablePlayoffs;
+  const byeForLeague = (gn: number): "no_match" | "walkover_win" | "neutral" =>
+    leagueByeHandling[String(gn)] ?? ((byeHandling || "no_match") as "no_match" | "walkover_win" | "neutral");
   const winConditionForLeague = (gn: number): "win_by_2" | "sudden_death" =>
     leagueWinConditions[String(gn)] ?? winCondition;
   /** Set one league's scoring format; keeps tournament-level in sync with league 1. */

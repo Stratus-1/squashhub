@@ -4532,6 +4532,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       ? `Bells ${groupDurations[key] || matchDuration || 20}′`
                                       : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"}`}
                                   </span>
+                                  {collapsed && (
+                                    <span className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                                      Bye: {byeForLeague(gn).replace(/_/g, " ")}
+                                    </span>
+                                  )}
                                   {collapsed && playoffsForLeague(gn) && (
                                     <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
                                       Playoffs
@@ -4748,6 +4753,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     ]}
                                     onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")}
                                   />
+                                  <SegRow
+                                    label="Bye handling"
+                                    value={byeForLeague(gn)}
+                                    color="green"
+                                    options={[
+                                      { v: "no_match", l: "No match" },
+                                      { v: "walkover_win", l: "Walkover win" },
+                                      { v: "neutral", l: "Neutral" },
+                                    ]}
+                                    onChange={(v) => {
+                                      setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
+                                      if (gn === 1) setByeHandling(v as any);
+                                    }}
+                                  />
                                 </div>
                               ) : (
                                 <div className="grid grid-cols-2 gap-2">
@@ -4785,6 +4804,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     />
                                   </div>
                                 </div>
+                              )}
+                              {scoringForLeague(gn) === "time_capped_points" && (
+                                <SegRow
+                                  label="Bye handling"
+                                  value={byeForLeague(gn)}
+                                  color="green"
+                                  options={[
+                                    { v: "no_match", l: "No match" },
+                                    { v: "walkover_win", l: "Walkover win" },
+                                    { v: "neutral", l: "Neutral" },
+                                  ]}
+                                  onChange={(v) => {
+                                    setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
+                                    if (gn === 1) setByeHandling(v as any);
+                                  }}
+                                />
                               )}
                               <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5 pt-1">
                                 <input

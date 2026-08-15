@@ -354,6 +354,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
             <TabsContent value="venues" className="space-y-3 pt-3">
               <p className="text-xs text-muted-foreground">
                 Host clubs and what each is paid for hosting. A fixed amount and/or a percentage of every entry fee.
+                Each club's own court and cleaning rates (set in Club admin → Courts) are shown as a guide.
               </p>
               <div className="divide-y rounded-md border">
                 {venues.length === 0 && (
@@ -364,7 +365,9 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                     <div>
                       <div className="text-sm font-medium">{clubName(v.club_id)}</div>
                       {v.is_primary && <Badge variant="outline" className="text-[10px]">Primary</Badge>}
+                      <div className="text-[11px] text-muted-foreground">{clubRates(v.club_id)}</div>
                     </div>
+
                     <div className="space-y-1">
                       <Label className="text-xs">Host fee (R)</Label>
                       <Input

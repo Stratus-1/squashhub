@@ -26,6 +26,7 @@ import { format, eachDayOfInterval, getDay, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { WizardSection } from "@/components/club-admin/tournament/WizardSection";
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -4114,7 +4115,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <Trophy className="w-4 h-4 mr-2" /> Plan New Tournament
             </Button>
             <p className="text-xs text-muted-foreground max-w-xs text-right">
-              Tip: to save time, use the <strong>Copy</strong> button next to a completed tournament below to duplicate its setup with new dates.
+              Tip: to save time, use the <strong>Template</strong> button on any tournament below to duplicate its full setup with new dates.
             </p>
           </div>
         </div>
@@ -4177,11 +4178,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       Re-open
                     </Button>
                   )}
-                  {isCompleted && (
-                    <Button variant="outline" size="sm" onClick={() => setDuplicateSource(c)} title="Duplicate this tournament with new dates">
-                      <Copy className="w-4 h-4 mr-1" /> Copy
-                    </Button>
-                  )}
+                  <Button variant="outline" size="sm" onClick={() => setDuplicateSource(c)} title="Use as template — duplicate this tournament's full setup with new dates">
+                    <Copy className="w-4 h-4 mr-1" /> {isCompleted ? "Copy" : "Template"}
+                  </Button>
                   {(() => {
                     // Club admin can only delete tournaments that haven't started yet.
                     // Only super admin can delete active or completed tournaments.
@@ -4325,6 +4324,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         <Card>
           <CardHeader><CardTitle>Select Category</CardTitle></CardHeader>
           <CardContent className="space-y-6">
+            <WizardSection
+              title={"Name, category & eligibility"}
+              summary={`${champName || "Unnamed"} · ${GENDER_LABELS[gender]} ${matchType === "doubles" ? "Doubles" : "Singles"} · ${eligibilityScope}`}
+              complete={!!eventType && !!eligibilityScope}
+              defaultOpen={true}
+            >
             <div>
               <Label>Championship Name (optional)</Label>
               <Input
@@ -4398,7 +4403,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </p>
               )}
             </div>
+            </WizardSection>
 
+            <WizardSection
+              title={"Tournament structure"}
+              summary={`${numGroups || 0} league${numGroups === 1 ? "" : "s"} configured`}
+              complete={(numGroups || 0) > 0}
+              defaultOpen={true}
+            >
 
 
             {/* Match rules are now decided per league in the builder below —
@@ -4797,7 +4809,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
 
             </div>
+            </WizardSection>
 
+            <WizardSection
+              title={"Byes & visitors"}
+              summary={`${byeHandling ? "Bye rule set" : "Bye rule not set"} · ${includeVisitors ? "visitors included" : "members only"}`}
+              complete={!!byeHandling}
+              defaultOpen={true}
+            >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>
@@ -4862,6 +4881,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 No visitors registered yet. Visitors can register from the club sign-in page.
               </p>
             )}
+            </WizardSection>
           </CardContent>
         </Card>
       )}
@@ -4877,6 +4897,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
+            <WizardSection
+              title={"Dates & times"}
+              summary={`${startDate || "start?"} → ${endDate || "end?"} · ${startTime}–${endTime} · ${playDays.size} play day${playDays.size === 1 ? "" : "s"}`}
+              complete={!!startDate && !!endDate && playDays.size > 0}
+              defaultOpen={true}
+            >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-sm">Tournament starts</Label>
@@ -4920,7 +4946,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 For a one-day tournament tick just that day. For a weekend, tick both.
               </p>
             </div>
+            </WizardSection>
 
+            <WizardSection
+              title={"Courts & daily schedule"}
+              summary={`${selectedCourtIds.size} court${selectedCourtIds.size === 1 ? "" : "s"}${customizeDailySchedule ? " · per-day times" : ""}`}
+              complete={selectedCourtIds.size > 0}
+              defaultOpen={true}
+            >
             <div>
               <Label className="text-sm">Courts used by the tournament</Label>
               {(() => {
@@ -5133,7 +5166,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               )}
             </div>
+            </WizardSection>
 
+            <WizardSection
+              title={"Capacity check"}
+              summary={"Estimate matches against available court time"}
+              complete={true}
+              defaultOpen={true}
+            >
             {scoringMode !== "time_capped_points" && (
               <div className="max-w-xs">
                 <Label className="text-sm">Match Duration (slot per game)</Label>
@@ -5442,8 +5482,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 );
               })()}
             </div>
+            </WizardSection>
 
 
+            <WizardSection
+              title={"Scheduling & playoffs"}
+              summary={enablePlayoffs ? "Playoffs enabled" : "No playoffs"}
+              complete={true}
+              defaultOpen={true}
+            >
             {/* Schedule density — fill vs spread. Court bookings are made on the final Review step. */}
             <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
               <p className="text-sm font-medium">How should games be scheduled?</p>
@@ -5556,6 +5603,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               </div>
             )}
+            </WizardSection>
           </CardContent>
         </Card>
       )}
@@ -5571,6 +5619,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
+            <WizardSection
+              title={"Entry fee & payment"}
+              summary={Number(entryFeeRand) > 0 ? `R${entryFeeRand} entry fee` : "Free entry"}
+              complete={true}
+              defaultOpen={true}
+            >
             {/* Registration-required toggle — when off, the entire invite/window
                 section collapses and the admin seeds the roster directly on the
                 Players step. */}
@@ -5697,6 +5751,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
+            </WizardSection>
+            <WizardSection
+              title={"Entries & seeding"}
+              summary={`${effectiveRegistrationMode === "invite" ? "Invite list" : effectiveRegistrationMode === "open" ? "Open sign-up" : "Mode not set"}`}
+              complete={!!effectiveRegistrationMode}
+              defaultOpen={true}
+            >
             {/* Registration mode — always visible. Even when registration is not
                 required, this still controls how the admin seeds the player
                 roster (open audience vs invite shortlist). */}
@@ -5904,6 +5965,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </div>
             )}
 
+            </WizardSection>
+            <WizardSection
+              title={"No-shows & registration window"}
+              summary={registrationRequired ? "Registration window & no-show rule" : "No registration required"}
+              complete={true}
+              defaultOpen={true}
+            >
             {/* No Show / Injured rule — applies when a player can't play.
                 Opponent gets the opponent points; the absent player records the
                 player points (can be negative as a penalty). */}
@@ -5963,6 +6031,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             )}
 
 
+            </WizardSection>
+            <WizardSection
+              title={"Invites & messaging"}
+              summary={`${Array.from(inviteMethods).join(", ") || "no channel"} · ${description ? "custom message" : "default message"}`}
+              complete={inviteMethods.size > 0}
+              defaultOpen={true}
+            >
             {/* Invite methods — always shown so admins control delivery channel */}
             <div className="space-y-2">
               <Label className="text-sm">Invite delivery method</Label>
@@ -6156,12 +6231,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </div>
 
             </div>
+            </WizardSection>
 
 
 
 
 
 
+            <WizardSection
+              title={"Partner selection"}
+              summary={isDoubles ? (partnerMode === "admin" ? "Admin pairs players" : partnerMode === "players" ? "Players choose partners" : "Not set") : "Singles — no partners needed"}
+              complete={!isDoubles || !!partnerMode}
+              defaultOpen={true}
+            >
             {/* Partner mode — doubles only */}
             {isDoubles && (
               <div className="space-y-2">
@@ -6194,6 +6276,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             )}
 
 
+            </WizardSection>
           </CardContent>
         </Card>
       )}

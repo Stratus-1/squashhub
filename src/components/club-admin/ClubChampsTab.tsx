@@ -606,17 +606,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // has no entry here, the tournament-wide `roundFormat` applies. Only used
   // when `usePerLeagueFormats` is enabled — hidden while roundFormat is
   // `cross_league` (which is inherently tournament-wide).
-  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss";
+  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss" | "cross_league";
   const [leagueFormats, setLeagueFormats] = useState<Record<string, PerLeagueFormat>>({});
   const [usePerLeagueFormats, setUsePerLeagueFormats] = useState(false);
   // Planning-only per-league expected player counts (keyed by group_number).
   // Purely for the capacity readout in the wizard — not enforced anywhere.
   const [expectedPlayers, setExpectedPlayers] = useState<Record<string, number>>({});
-  // Effective format for a given league number (1-based). Falls back to the
-  // tournament default; ignored when the default is `cross_league`.
+  // Effective format for a given league number (1-based). A per-league
+  // override wins; otherwise the tournament default applies.
   const formatForLeague = (gn: number): "single_round_robin" | "double_round_robin" | "cross_league" | "swiss" | "" => {
-    if (roundFormat === "cross_league") return "cross_league";
     if (usePerLeagueFormats && leagueFormats[String(gn)]) return leagueFormats[String(gn)];
+    if (roundFormat === "cross_league") return "cross_league";
     return roundFormat;
   };
   // Per-league gender category and match type (keyed by group_number string).

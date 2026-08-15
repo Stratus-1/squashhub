@@ -3971,15 +3971,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // ── WIZARD VIEW ──
   return (
     <div className="space-y-4">
-      {/* Step indicator */}
-      <div className="flex items-center gap-1 text-sm overflow-x-auto">
-          {activeSteps.map((s, i) => (
-          <div key={s} className="flex items-center">
-            {i > 0 && <ChevronRight className="w-3 h-3 mx-1 text-muted-foreground shrink-0" />}
-            <span className={`whitespace-nowrap px-2 py-1 rounded ${s === step ? "bg-primary text-primary-foreground font-medium" : i < stepIdx ? "text-primary" : "text-muted-foreground"}`}>
-              {STEP_LABELS[s]}
-            </span>
-          </div>
+      {/* Step tabs — every step is directly clickable; the wizard autosaves on jump. */}
+      <div className="flex items-center gap-1 text-sm overflow-x-auto border-b border-border pb-px">
+        {activeSteps.map((s, i) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => goToStep(s)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-t-md border border-b-0 transition-colors flex items-center gap-1.5 ${
+              s === step
+                ? "bg-primary text-primary-foreground border-primary font-medium"
+                : "bg-muted/40 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {i < stepIdx && s !== step && <Check className="w-3 h-3 text-primary" />}
+            {STEP_LABELS[s]}
+          </button>
         ))}
       </div>
 

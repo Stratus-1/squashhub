@@ -2084,25 +2084,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
     };
 
-    if (isCrossLeague) {
-      const groupIds: string[][] = isDoubles
-        ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
-        : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
-      ingestCrossLeague(groupIds);
-    } else {
-      // Per-league dispatch: each league can independently be Swiss or
-      // (single/double) round-robin.
+    {
       const perLeagueIds: string[][] = isDoubles
         ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
         : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
+
+      // Leagues on "cross league" WITHOUT their own pools play against the other
+      // cross-league leagues (classic league-vs-league). Cross-league leagues WITH
+      // 2+ pools play pool-vs-pool inside themselves.
+      const crossAcross: { ids: string[]; gn: number }[] = [];
       perLeagueIds.forEach((ids, gi) => {
-        if (formatForLeague(gi + 1) === "swiss") {
+        const f = formatForLeague(gi + 1);
+        if (f === "swiss") {
           buildSwissLeague(gi, ids);
+        } else if (f === "cross_league") {
+          if (poolsForLeague(gi + 1) > 1) ingestCrossPools(gi, ids);
+          else crossAcross.push({ ids, gn: gi + 1 });
         } else {
           ingestRounds(gi, ids);
         }
       });
+      if (crossAcross.length > 1) {
+        ingestCrossGroups(
+          crossAcross.map((c) => c.ids),
+          crossAcross.map((c) => c.gn),
+          roundFormat === "double_round_robin",
+        );
+      } else if (crossAcross.length === 1) {
+        // Only one cross-league league and no pools — fall back to a round robin
+        // so the league still gets a draw.
+        ingestRounds(crossAcross[0].gn - 1, crossAcross[0].ids);
+      }
     }
+
 
 
     // Spread mode uses per-session entity caps (below) as its main balancer,

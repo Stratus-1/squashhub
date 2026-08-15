@@ -4330,6 +4330,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               {gender === "open" && (
                 <p className="text-[11px] text-muted-foreground mt-1.5">Open = any pairing allowed (M+M, F+F, or M+F). Great for fundraisers.</p>
               )}
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                This is the default category for new leagues — each league below can be set to its own (e.g. a Ladies' league, a Men's league and a Mixed league in the same tournament).
+              </p>
             </div>
 
             {/* ─── Tournament Structure Builder ─────────────────────────── */}

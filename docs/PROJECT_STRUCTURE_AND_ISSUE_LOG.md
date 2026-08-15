@@ -565,3 +565,13 @@ The mixed concepts each have one home:
 - Sanctioning authority / level → Governance → Ownership
 Next up (not built): official SSA tournament templates that pre-fill category, eligibility,
 rules and fee split so clubs only add dates and venue.
+
+## Per-league scoring & win condition (2026-08-15)
+Match rules were fully decentralised to each league card in the wizard. `tournaments` now has
+`league_scoring_modes`, `league_points_per_game`, `league_best_of` and `league_win_conditions`
+JSONB columns. The compatibility view `public.club_champs` and its insert/update triggers expose
+and persist the new column. In `ClubChampsTab` every league independently configures draw format,
+category, singles/doubles, Standard/Bells, par 11/15, best-of 3/5 and win condition (win-by-2 /
+sudden death). League 1's values sync back to the tournament-level `tournament_rules` row so the
+legacy marker engine continues to work without per-league changes. Segmented row controls are now
+color-coded by row to distinguish options visually.

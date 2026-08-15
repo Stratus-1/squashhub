@@ -562,6 +562,36 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueGenders, numGroups, gender]);
 
+  // ---- Per-league scoring settings ---------------------------------------
+  // Each league can run its own scoring format (Standard / Bells), and for
+  // Standard its own game length (par 11 / par 15) and best-of. Missing
+  // entries fall back to the tournament-level values.
+  const [leagueScoringModes, setLeagueScoringModes] = useState<Record<string, "standard" | "time_capped_points">>({});
+  const [leaguePointsPerGame, setLeaguePointsPerGame] = useState<Record<string, 11 | 15>>({});
+  const [leagueBestOf, setLeagueBestOf] = useState<Record<string, 3 | 5>>({});
+  const scoringForLeague = (gn: number): "standard" | "time_capped_points" =>
+    leagueScoringModes[String(gn)] ?? ((scoringMode === "time_capped_points" ? "time_capped_points" : "standard"));
+  const pointsForLeague = (gn: number): 11 | 15 =>
+    leaguePointsPerGame[String(gn)] ?? ((pointsPerGame === 15 ? 15 : 11));
+  const bestOfForLeague = (gn: number): 3 | 5 => leagueBestOf[String(gn)] ?? ((bestOf === 5 ? 5 : 3));
+  /** Set one league's scoring format; keeps tournament-level in sync with league 1. */
+  const setLeagueScoring = (gn: number, mode: "standard" | "time_capped_points") => {
+    setLeagueScoringModes((m) => {
+      const next = { ...m, [String(gn)]: mode };
+      if (gn === 1 || Object.keys(next).length === 1) setScoringMode(mode);
+      return next;
+    });
+    if (mode === "standard") {
+      setLeaguePointsPerGame((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? (pointsPerGame === 15 ? 15 : 11) }));
+      setLeagueBestOf((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? (bestOf === 5 ? 5 : 3) }));
+      if (!pointsPerGame) setPointsPerGame(11);
+      if (!bestOf) setBestOf(3);
+    } else {
+      // Bells needs a slot length per league — seed a sensible default.
+      setGroupDurations((m) => ({ ...m, [String(gn)]: Number(m[String(gn)]) > 0 ? m[String(gn)] : (matchDuration > 0 ? matchDuration : 20) }));
+    }
+  };
+
   // ---- Visual "Tournament Structure Builder" helpers ---------------------
   const FORMAT_META: Record<PerLeagueFormat, { label: string; short: string; desc: string }> = {
     single_round_robin: { label: "Single round-robin", short: "Single RR", desc: "Each player plays every other in their league once." },

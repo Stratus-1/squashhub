@@ -5444,28 +5444,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               complete={true}
               defaultOpen={true}
             >
-            {scoringMode !== "time_capped_points" && (
-              <div className="max-w-xs">
-                <Label className="text-sm">Match Duration (slot per game)</Label>
-                <div className="mt-1 grid grid-cols-4 gap-1">
-                  {[20, 30, 45, 60].map((minutes) => (
-                    <Button
-                      key={minutes}
-                      type="button"
-                      size="sm"
-                      variant={matchDuration === minutes ? "default" : "outline"}
-                      className="h-8 px-2 text-xs"
-                      onClick={() => setMatchDuration(minutes)}
-                    >
-                      {minutes}m
-                    </Button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  How long one game occupies a court — drives the capacity calculator below.
-                </p>
-              </div>
-            )}
+
+
 
             {/* Capacity calculator — moved here so admins can size the tournament before picking players. */}
             <div className="rounded-lg border p-3 space-y-2 bg-muted/20">

@@ -25,6 +25,7 @@ import {
   type TournamentGovernance,
 } from "@/hooks/use-tournaments";
 import { centsToRand, computeFeeSplit, randToCents } from "@/lib/tournaments/fee-split";
+import { useOrgSettings } from "@/hooks/use-org-settings";
 import { usePlatformTournamentFeePct } from "@/components/admin/PlatformTournamentFeeCard";
 
 
@@ -77,6 +78,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
   const { data: venues = [] } = useTournamentVenues(id);
   const { data: clubs = [] } = useHostClubs();
   const { data: platformPct = 0 } = usePlatformTournamentFeePct();
+  const { data: ownerDefaults } = useOrgSettings(owner?.owner_org_id ?? null);
 
 
   const save = useSaveTournamentGovernance(id);
@@ -329,6 +331,27 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                   />
                 </div>
               </div>
+
+              {ownerDefaults && (ownerDefaults.default_federation_fee_cents || ownerDefaults.default_association_fee_cents) ? (
+                <div className="flex items-center justify-between rounded-md border border-dashed p-2.5 text-xs">
+                  <span className="text-muted-foreground">
+                    Owning body defaults: federation R {centsToRand(ownerDefaults.default_federation_fee_cents)} ·
+                    association R {centsToRand(ownerDefaults.default_association_fee_cents)}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      set("federation_fee_cents", ownerDefaults.default_federation_fee_cents);
+                      set("association_fee_cents", ownerDefaults.default_association_fee_cents);
+                    }}
+                  >
+                    Apply defaults
+                  </Button>
+                </div>
+              ) : null}
+
               <div className={`rounded-md border p-3 text-sm space-y-1 ${split.overAllocated ? "border-destructive text-destructive" : ""}`}>
                 <div>
                   SquashHub admin fee ({platformPct}%): <strong>R {centsToRand(split.platform)}</strong>

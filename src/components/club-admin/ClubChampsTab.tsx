@@ -701,9 +701,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setLeagueScoringModes((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? (scoringMode === "time_capped_points" ? "time_capped_points" : "standard") }));
     setLeaguePointsPerGame((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? (pointsPerGame === 15 ? 15 : 11) }));
     setLeagueBestOf((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? (bestOf === 5 ? 5 : 3) }));
+    setLeagueWinConditions((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? winCondition }));
     if (!scoringMode) setScoringMode("standard");
     if (!pointsPerGame) setPointsPerGame(11);
     if (!bestOf) setBestOf(3);
+    if (!winCondition) setWinCondition("win_by_2");
     if (fmt === "swiss") {
       setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));

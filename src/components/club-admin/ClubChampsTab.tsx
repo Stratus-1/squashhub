@@ -606,17 +606,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // has no entry here, the tournament-wide `roundFormat` applies. Only used
   // when `usePerLeagueFormats` is enabled — hidden while roundFormat is
   // `cross_league` (which is inherently tournament-wide).
-  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss";
+  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss" | "cross_league";
   const [leagueFormats, setLeagueFormats] = useState<Record<string, PerLeagueFormat>>({});
   const [usePerLeagueFormats, setUsePerLeagueFormats] = useState(false);
   // Planning-only per-league expected player counts (keyed by group_number).
   // Purely for the capacity readout in the wizard — not enforced anywhere.
   const [expectedPlayers, setExpectedPlayers] = useState<Record<string, number>>({});
-  // Effective format for a given league number (1-based). Falls back to the
-  // tournament default; ignored when the default is `cross_league`.
+  // Effective format for a given league number (1-based). A per-league
+  // override wins; otherwise the tournament default applies.
   const formatForLeague = (gn: number): "single_round_robin" | "double_round_robin" | "cross_league" | "swiss" | "" => {
-    if (roundFormat === "cross_league") return "cross_league";
     if (usePerLeagueFormats && leagueFormats[String(gn)]) return leagueFormats[String(gn)];
+    if (roundFormat === "cross_league") return "cross_league";
     return roundFormat;
   };
   // Per-league gender category and match type (keyed by group_number string).
@@ -686,9 +686,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // ---- Visual "Tournament Structure Builder" helpers ---------------------
   const FORMAT_META: Record<PerLeagueFormat, { label: string; short: string; desc: string }> = {
-    single_round_robin: { label: "Single round-robin", short: "Single RR", desc: "Each player plays every other in their league once." },
-    double_round_robin: { label: "Double round-robin", short: "Double RR", desc: "Play each opponent twice — home & away." },
+    single_round_robin: { label: "Round robin", short: "Round robin", desc: "Everyone in this league plays everyone else. Tick “double” to play home & away." },
+    double_round_robin: { label: "Round robin (double)", short: "Double RR", desc: "Play each opponent twice — home & away." },
     swiss: { label: "Swiss pairing", short: "Swiss", desc: "Fixed rounds; admin re-pairs each round by score." },
+    cross_league: { label: "Cross league", short: "Cross league", desc: "This league plays against the other leagues instead of within itself." },
   };
   const addLeagueOfFormat = (fmt: PerLeagueFormat) => {
     const gn = (numGroups || 0) + 1;
@@ -711,7 +712,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
     }
     setUsePerLeagueFormats(true);
-    if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
+    if (fmt === "cross_league") setRoundFormat("cross_league");
+    else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
   };
   /** Set one league's gender, materialising the others so nothing shifts. */
   const setLeagueGender = (gn: number, g: GenderCategory) => {
@@ -1172,7 +1174,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       swiss_pools: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissPools : null,
       swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
       expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
-      league_formats: usePerLeagueFormats && roundFormat !== "cross_league" ? leagueFormats : null,
+      league_formats: usePerLeagueFormats ? leagueFormats : null,
       points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
       best_of: bestOf > 0 ? bestOf : null,
       play_all_games: playAllGames,
@@ -2812,7 +2814,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             swiss_pools: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissPools : null,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
-            league_formats: usePerLeagueFormats && roundFormat !== "cross_league" ? leagueFormats : null,
+            league_formats: usePerLeagueFormats ? leagueFormats : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
             play_all_games: playAllGames,
@@ -2877,7 +2879,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             swiss_pools: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissPools : null,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
-            league_formats: usePerLeagueFormats && roundFormat !== "cross_league" ? leagueFormats : null,
+            league_formats: usePerLeagueFormats ? leagueFormats : null,
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
             play_all_games: playAllGames,
@@ -4383,34 +4385,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     />
                     Include playoffs
                   </label>
-                  <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      className="h-3.5 w-3.5"
-                      checked={roundFormat === "cross_league"}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setRoundFormat("cross_league");
-                          setUsePerLeagueFormats(false);
-                        } else {
-                          // Restore to the first league's format (or blank).
-                          const first = leagueFormats[String(1)];
-                          setRoundFormat((first as any) || "");
-                        }
-                      }}
-                    />
-                    Cross-league only (League vs League)
-                  </label>
                 </div>
               </div>
 
-              {roundFormat === "cross_league" ? (
-                <div className="p-4 text-[12px] text-muted-foreground bg-muted/20">
-                  <p className="mb-1"><strong className="text-foreground">Cross-league mode.</strong> Every player in league 1 plays every player in the other leagues — no intra-league matches.</p>
-                  <p>Set the number of leagues in the capacity calculator below. Format-per-league doesn't apply in this mode.</p>
+              {roundFormat === "cross_league" && (
+                <div className="px-4 py-2 text-[11px] text-muted-foreground bg-amber-500/10 border-b border-amber-500/30">
+                  <strong className="text-foreground">Cross-league is active.</strong> Leagues set to “Cross league” play against the other leagues instead of within themselves — no intra-league matches for those leagues.
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px]">
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px]">
                   {/* Canvas */}
                   <div
                     className="p-4 space-y-3 min-h-[220px] bg-muted/10"
@@ -4468,12 +4452,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <div className="space-y-2">
                               <SegRow
                                 label="Draw format"
-                                value={fmt}
+                                value={fmt === "double_round_robin" ? "single_round_robin" : fmt}
                                 color="violet"
                                 options={[
-                                  { v: "single_round_robin", l: "Single RR" },
-                                  { v: "double_round_robin", l: "Double RR" },
-                                  { v: "swiss", l: "Swiss" },
+                                  { v: "single_round_robin", l: "Round robin" },
+                                  { v: "swiss", l: "Swiss pairing" },
+                                  { v: "cross_league", l: "Cross league" },
                                 ]}
                                 onChange={(v) => {
                                   const nv = v as PerLeagueFormat;
@@ -4483,9 +4467,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
                                     setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
                                   }
-                                  if (!roundFormat) setRoundFormat(nv as any);
+                                  if (nv === "cross_league") setRoundFormat("cross_league");
+                                  else {
+                                    // Drop cross-league mode once no league uses it.
+                                    const next = { ...leagueFormats, [key]: nv };
+                                    const stillCross = Array.from({ length: numGroups || 0 }, (_, i) => next[String(i + 1)]).some((f) => f === "cross_league");
+                                    if (!stillCross && (!roundFormat || roundFormat === "cross_league")) setRoundFormat(nv as any);
+                                  }
                                 }}
                               />
+                              {(fmt === "single_round_robin" || fmt === "double_round_robin") && (
+                                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
+                                  <input
+                                    type="checkbox"
+                                    className="h-3.5 w-3.5 accent-violet-500"
+                                    checked={fmt === "double_round_robin"}
+                                    onChange={(e) => {
+                                      const nv: PerLeagueFormat = e.target.checked ? "double_round_robin" : "single_round_robin";
+                                      setLeagueFormats((m) => ({ ...m, [key]: nv }));
+                                      setUsePerLeagueFormats(true);
+                                      if (!roundFormat || roundFormat === "cross_league") setRoundFormat(nv as any);
+                                    }}
+                                  />
+                                  Double round robin (play each opponent twice — home &amp; away)
+                                </label>
+                              )}
                               <SegRow
                                 label="Category"
                                 value={genderForLeague(gn)}
@@ -4702,7 +4708,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   {/* Format palette */}
                   <div className="border-t lg:border-t-0 lg:border-l border-border bg-muted/30 p-3 space-y-2">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Format palette</div>
-                    {(Object.keys(FORMAT_META) as PerLeagueFormat[]).map((fmt) => {
+                    {(["single_round_robin", "swiss", "cross_league"] as PerLeagueFormat[]).map((fmt) => {
                       const meta = FORMAT_META[fmt];
                       return (
                         <button
@@ -4726,7 +4732,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     <p className="text-[10px] text-muted-foreground italic pt-1">Tip: add up to 6 leagues in one tournament.</p>
                   </div>
                 </div>
-              )}
+
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -650,11 +650,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [leaguePointsPerGame, setLeaguePointsPerGame] = useState<Record<string, 11 | 15>>({});
   const [leagueBestOf, setLeagueBestOf] = useState<Record<string, 3 | 5>>({});
   const [leagueWinConditions, setLeagueWinConditions] = useState<{[key: string]: "win_by_2" | "sudden_death"}>({});
+  // When true for a league, every game is played (no early finish at best-of).
+  const [leaguePlayAll, setLeaguePlayAll] = useState<Record<string, boolean>>({});
   const scoringForLeague = (gn: number): "standard" | "time_capped_points" =>
     leagueScoringModes[String(gn)] ?? ((scoringMode === "time_capped_points" ? "time_capped_points" : "standard"));
   const pointsForLeague = (gn: number): 11 | 15 =>
     leaguePointsPerGame[String(gn)] ?? ((pointsPerGame === 15 ? 15 : 11));
   const bestOfForLeague = (gn: number): 3 | 5 => leagueBestOf[String(gn)] ?? ((bestOf === 5 ? 5 : 3));
+  const playAllForLeague = (gn: number): boolean => leaguePlayAll[String(gn)] ?? false;
   const winConditionForLeague = (gn: number): "win_by_2" | "sudden_death" =>
     leagueWinConditions[String(gn)] ?? winCondition;
   /** Set one league's scoring format; keeps tournament-level in sync with league 1. */

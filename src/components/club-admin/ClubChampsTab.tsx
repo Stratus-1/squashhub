@@ -4737,15 +4737,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         const n = Number(expectedPlayers[key]) || 0;
                         if (n < 2) continue;
                         const fmt: PerLeagueFormat = (leagueFormats[key] ?? (roundFormat as PerLeagueFormat)) || "single_round_robin";
+                        const pools = Math.max(1, Number(swissPools[key]) || 1);
+                        const perPool = Math.max(1, Math.ceil(n / pools));
                         if (fmt === "swiss") {
-                          const pools = Math.max(1, Number(swissPools[key]) || 1);
-                          const perPool = Math.max(2, Math.ceil(n / pools));
-                          const perPoolGames = (perPool * (perPool - 1)) / 2;
-                          est += pools * perPoolGames;
+                          const pp = Math.max(2, perPool);
+                          est += pools * ((pp * (pp - 1)) / 2);
+                        } else if (fmt === "cross_league" && pools > 1) {
+                          // pool-vs-pool inside the league
+                          est += ((pools * (pools - 1)) / 2) * perPool * perPool;
                         } else {
-                          const games = (n * (n - 1)) / 2;
+                          const games = (perPool * (perPool - 1)) / 2 * pools;
                           est += fmt === "double_round_robin" ? games * 2 : games;
                         }
+
                       }
                       return (
                         <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs">

@@ -3767,20 +3767,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const lppg = (ex.league_points_per_game as Record<string, 11 | 15> | null) || null;
     const lbo = (ex.league_best_of as Record<string, 3 | 5> | null) || null;
     const lwc = (ex.league_win_conditions as Record<string, "win_by_2" | "sudden_death"> | null) || null;
+    const lpa = ((ex as any).league_play_all_games as Record<string, boolean> | null) || null;
     const inheritedS: Record<string, "standard" | "time_capped_points"> = {};
     const inheritedP: Record<string, 11 | 15> = {};
     const inheritedB: Record<string, 3 | 5> = {};
     const inheritedW: Record<string, "win_by_2" | "sudden_death"> = {};
+    const inheritedPA: Record<string, boolean> = {};
     for (let i = 1; i <= (champ.num_groups || 0); i++) {
       inheritedS[String(i)] = (lsm?.[String(i)] as any) ?? ((champ as any).scoring_mode === "time_capped_points" ? "time_capped_points" : "standard");
       inheritedP[String(i)] = (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : 11));
       inheritedB[String(i)] = (Number(lbo?.[String(i)]) === 5 ? 5 : Number(lbo?.[String(i)]) === 3 ? 3 : (Number((champ as any).best_of) === 5 ? 5 : 3));
       inheritedW[String(i)] = (lwc?.[String(i)] === "sudden_death" ? "sudden_death" : (lwc?.[String(i)] === "win_by_2" ? "win_by_2" : ((champ as any).win_condition || "win_by_2")));
+      inheritedPA[String(i)] = lpa?.[String(i)] === true;
     }
     setLeagueScoringModes(inheritedS);
     setLeaguePointsPerGame(inheritedP);
     setLeagueBestOf(inheritedB);
     setLeagueWinConditions(inheritedW);
+    setLeaguePlayAll(inheritedPA);
     // Seed the tournament-level win condition from League 1 for compatibility.
     if (inheritedW["1"]) setWinCondition(inheritedW["1"]);
 

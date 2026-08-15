@@ -17,7 +17,7 @@ import { MembersTab } from "@/components/club-admin/MembersTab";
 import { LadderTab } from "@/components/club-admin/LadderTab";
 import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
 import { FeesTab } from "@/components/club-admin/FeesTab";
-import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
+import { TournamentPlanner } from "@/components/tournaments/TournamentPlanner";
 import { SettingsTab } from "@/components/club-admin/SettingsTab";
 import { HonestyBarTab } from "@/components/club-admin/HonestyBarTab";
 import { AccessControlTab } from "@/components/club-admin/AccessControlTab";

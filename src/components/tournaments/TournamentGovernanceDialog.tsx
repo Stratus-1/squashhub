@@ -25,6 +25,8 @@ import {
   type TournamentGovernance,
 } from "@/hooks/use-tournaments";
 import { centsToRand, computeFeeSplit, randToCents } from "@/lib/tournaments/fee-split";
+import { usePlatformTournamentFeePct } from "@/components/admin/PlatformTournamentFeeCard";
+
 
 interface Props {
   champ: { id: string; name: string } | null;
@@ -74,6 +76,8 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
   const { data: owner } = useTournamentOwner(id);
   const { data: venues = [] } = useTournamentVenues(id);
   const { data: clubs = [] } = useHostClubs();
+  const { data: platformPct = 0 } = usePlatformTournamentFeePct();
+
 
   const save = useSaveTournamentGovernance(id);
   const setOwner = useSetTournamentOwner(id);
@@ -95,7 +99,9 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
     associationFeeCents: form?.association_fee_cents ?? 0,
     hostFeeCents: venues.reduce((s, v) => s + (v.host_fee_cents || 0), 0),
     hostSharePct: venues.reduce((s, v) => s + Number(v.host_share_pct || 0), 0),
+    platformFeePct: platformPct ?? 0,
   });
+
 
   const submit = async () => {
     if (!form) return;
@@ -112,6 +118,18 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
   };
 
   const clubName = (cid: string) => clubs.find((c) => c.id === cid)?.name || "Club";
+
+  /** Club's own hosting rates, shown as guidance when setting host compensation. */
+  const clubRates = (cid: string) => {
+    const c = clubs.find((x) => x.id === cid);
+    const hourly = c?.host_court_fee_cents_per_hour || 0;
+    const cleaning = c?.host_cleaning_fee_cents_per_day || 0;
+    if (!hourly && !cleaning) return "No hosting rates set";
+    return [
+      hourly ? `R ${centsToRand(hourly)} / court-hour` : null,
+      cleaning ? `R ${centsToRand(cleaning)} cleaning / day` : null,
+    ].filter(Boolean).join(" · ");
+  };
 
   return (
     <Dialog open={!!champ} onOpenChange={onOpenChange}>
@@ -312,7 +330,11 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                 </div>
               </div>
               <div className={`rounded-md border p-3 text-sm space-y-1 ${split.overAllocated ? "border-destructive text-destructive" : ""}`}>
+                <div>
+                  SquashHub admin fee ({platformPct}%): <strong>R {centsToRand(split.platform)}</strong>
+                </div>
                 <div>Federation: <strong>R {centsToRand(split.federation)}</strong></div>
+
                 <div>Association: <strong>R {centsToRand(split.association)}</strong></div>
                 <div>Host compensation: <strong>R {centsToRand(split.host)}</strong></div>
                 <div>Owning body retains: <strong>R {centsToRand(split.owner)}</strong></div>
@@ -344,6 +366,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
             <TabsContent value="venues" className="space-y-3 pt-3">
               <p className="text-xs text-muted-foreground">
                 Host clubs and what each is paid for hosting. A fixed amount and/or a percentage of every entry fee.
+                Each club's own court and cleaning rates (set in Club admin → Courts) are shown as a guide.
               </p>
               <div className="divide-y rounded-md border">
                 {venues.length === 0 && (
@@ -354,7 +377,9 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                     <div>
                       <div className="text-sm font-medium">{clubName(v.club_id)}</div>
                       {v.is_primary && <Badge variant="outline" className="text-[10px]">Primary</Badge>}
+                      <div className="text-[11px] text-muted-foreground">{clubRates(v.club_id)}</div>
                     </div>
+
                     <div className="space-y-1">
                       <Label className="text-xs">Host fee (R)</Label>
                       <Input

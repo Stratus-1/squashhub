@@ -16,10 +16,14 @@ export interface FeeSplitInput {
   /** Host compensation for the venue: fixed amount plus percentage of entry. */
   hostFeeCents?: number;
   hostSharePct?: number;
+  /** SquashHub platform admin fee, as a percentage of the entry fee. */
+  platformFeePct?: number;
 }
 
 export interface FeeSplit {
   entry: number;
+  /** SquashHub admin fee taken off the top. */
+  platform: number;
   federation: number;
   association: number;
   host: number;
@@ -34,10 +38,13 @@ export function computeFeeSplit(input: FeeSplitInput): FeeSplit {
   const association = Math.max(0, Math.round(input.associationFeeCents || 0));
   const hostPct = Math.max(0, Math.min(100, input.hostSharePct || 0));
   const host = Math.max(0, Math.round((input.hostFeeCents || 0) + (entry * hostPct) / 100));
+  const platformPct = Math.max(0, Math.min(100, input.platformFeePct || 0));
+  const platform = Math.round((entry * platformPct) / 100);
 
-  const allocated = federation + association + host;
+  const allocated = platform + federation + association + host;
   return {
     entry,
+    platform,
     federation,
     association,
     host,
@@ -45,6 +52,7 @@ export function computeFeeSplit(input: FeeSplitInput): FeeSplit {
     overAllocated: allocated > entry,
   };
 }
+
 
 export const centsToRand = (cents: number) => (cents / 100).toFixed(2);
 export const randToCents = (value: string) => Math.max(0, Math.round((parseFloat(value || "0") || 0) * 100));

@@ -17,6 +17,8 @@ import { SEO } from "@/components/SEO";
 import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard, Save, FileText, Upload, X, Link2, Eye, EyeOff, Play, Receipt, Globe } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { SaasTierPricingCard } from "@/components/admin/SaasTierPricingCard";
+import { PlatformTournamentFeeCard } from "@/components/admin/PlatformTournamentFeeCard";
+
 import {
   DEFAULT_TIERS,
   DEFAULT_MIN_CHARGE,
@@ -612,6 +614,9 @@ export default function SuperAdminSubscriptions() {
         <TabsContent value="plans" className="space-y-4 mt-4">
           {/* Graduated sliding-scale pricing is the primary structure. */}
           <SaasTierPricingCard />
+
+          <PlatformTournamentFeeCard />
+
 
           <Card className="p-4 space-y-4">
             <div className="flex items-start justify-between gap-3">

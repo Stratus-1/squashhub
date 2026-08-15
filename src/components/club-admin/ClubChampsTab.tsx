@@ -537,7 +537,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs, league_bye_handling")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -656,6 +656,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [leaguePlayAll, setLeaguePlayAll] = useState<Record<string, boolean>>({});
   // Per-league playoffs: which leagues run their own knockout / finals stage.
   const [leaguePlayoffs, setLeaguePlayoffs] = useState<Record<string, boolean>>({});
+  // Per-league bye handling (falls back to the tournament-level rule).
+  const [leagueByeHandling, setLeagueByeHandling] = useState<Record<string, "no_match" | "walkover_win" | "neutral">>({});
   const scoringForLeague = (gn: number): "standard" | "time_capped_points" =>
     leagueScoringModes[String(gn)] ?? ((scoringMode === "time_capped_points" ? "time_capped_points" : "standard"));
   const pointsForLeague = (gn: number): 11 | 15 =>
@@ -663,6 +665,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const bestOfForLeague = (gn: number): 3 | 5 => leagueBestOf[String(gn)] ?? ((bestOf === 5 ? 5 : 3));
   const playAllForLeague = (gn: number): boolean => leaguePlayAll[String(gn)] ?? false;
   const playoffsForLeague = (gn: number): boolean => leaguePlayoffs[String(gn)] ?? enablePlayoffs;
+  const byeForLeague = (gn: number): "no_match" | "walkover_win" | "neutral" =>
+    leagueByeHandling[String(gn)] ?? ((byeHandling || "no_match") as "no_match" | "walkover_win" | "neutral");
   const winConditionForLeague = (gn: number): "win_by_2" | "sudden_death" =>
     leagueWinConditions[String(gn)] ?? winCondition;
   /** Set one league's scoring format; keeps tournament-level in sync with league 1. */
@@ -1238,6 +1242,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       league_win_conditions: Object.keys(leagueWinConditions).length > 0 ? leagueWinConditions : null,
       league_play_all_games: Object.keys(leaguePlayAll).length > 0 ? leaguePlayAll : null,
       league_playoffs: Object.keys(leaguePlayoffs).length > 0 ? leaguePlayoffs : null,
+      league_bye_handling: Object.keys(leagueByeHandling).length > 0 ? leagueByeHandling : null,
       participating_club_ids: venueClubIds.filter((id) => id !== clubId),
     };
     const saveExtras = async (id: string) => {
@@ -2004,7 +2009,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
           });
           const byeId = byesPerRound[ri];
-          if (byeId && byeHandling !== "no_match") {
+          if (byeId && byeForLeague(gi + 1) !== "no_match") {
             allMatches.push({
               groupNum: gi + 1, roundNum: ri + 1,
               entityA: byeId, entityB: byeId, leg: null,
@@ -2079,7 +2084,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             allMatches.push({ groupNum: gi + 1, roundNum: r + 1, entityA: a, entityB: b, leg });
           });
           const byeId = byesPerRound[r % byesPerRound.length];
-          if (byeId && byeHandling !== "no_match") {
+          if (byeId && byeForLeague(gi + 1) !== "no_match") {
             allMatches.push({
               groupNum: gi + 1, roundNum: r + 1,
               entityA: byeId, entityB: byeId, leg: null,
@@ -2832,7 +2837,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate]);
 
   // Create/update champ
   const createChamp = useMutation({
@@ -3102,7 +3107,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             is_bye: isBye,
             bye_member_id: isBye ? resolvedPairDbId(pairA?.player1Id || m.entityA) : null,
             status: isBye
-              ? (byeHandling === "walkover_win" ? "completed" : "scheduled")
+              ? (byeForLeague(m.groupNum) === "walkover_win" ? "completed" : "scheduled")
               : "scheduled",
           };
         }
@@ -3119,7 +3124,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           is_bye: isBye,
           bye_member_id: isBye ? toDbId(m.entityA) : null,
           status: isBye
-            ? (byeHandling === "walkover_win" ? "completed" : "scheduled")
+            ? (byeForLeague(m.groupNum) === "walkover_win" ? "completed" : "scheduled")
             : "scheduled",
         };
       });
@@ -3830,12 +3835,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const lwc = (ex.league_win_conditions as Record<string, "win_by_2" | "sudden_death"> | null) || null;
     const lpa = ((ex as any).league_play_all_games as Record<string, boolean> | null) || null;
     const lpo = ((ex as any).league_playoffs as Record<string, boolean> | null) || null;
+    const lbh = ((ex as any).league_bye_handling as Record<string, "no_match" | "walkover_win" | "neutral"> | null) || null;
     const inheritedS: Record<string, "standard" | "time_capped_points"> = {};
     const inheritedP: Record<string, 11 | 15> = {};
     const inheritedB: Record<string, 3 | 5> = {};
     const inheritedW: Record<string, "win_by_2" | "sudden_death"> = {};
     const inheritedPA: Record<string, boolean> = {};
     const inheritedPO: Record<string, boolean> = {};
+    const inheritedBH: Record<string, "no_match" | "walkover_win" | "neutral"> = {};
     for (let i = 1; i <= (champ.num_groups || 0); i++) {
       inheritedS[String(i)] = (lsm?.[String(i)] as any) ?? ((champ as any).scoring_mode === "time_capped_points" ? "time_capped_points" : "standard");
       inheritedP[String(i)] = (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : 11));
@@ -3843,6 +3850,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       inheritedW[String(i)] = (lwc?.[String(i)] === "sudden_death" ? "sudden_death" : (lwc?.[String(i)] === "win_by_2" ? "win_by_2" : ((champ as any).win_condition || "win_by_2")));
       inheritedPA[String(i)] = lpa?.[String(i)] === true;
       inheritedPO[String(i)] = lpo?.[String(i)] ?? !!(champ as any).enable_playoffs;
+      inheritedBH[String(i)] = (lbh?.[String(i)] as any) ?? (((champ as any).bye_handling as any) || "no_match");
     }
     setLeagueScoringModes(inheritedS);
     setLeaguePointsPerGame(inheritedP);
@@ -3850,6 +3858,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setLeagueWinConditions(inheritedW);
     setLeaguePlayAll(inheritedPA);
     setLeaguePlayoffs(inheritedPO);
+    setLeagueByeHandling(inheritedBH);
     // Seed the tournament-level win condition from League 1 for compatibility.
     if (inheritedW["1"]) setWinCondition(inheritedW["1"]);
 
@@ -4523,6 +4532,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       ? `Bells ${groupDurations[key] || matchDuration || 20}′`
                                       : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"}`}
                                   </span>
+                                  {collapsed && (
+                                    <span className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                                      Bye: {byeForLeague(gn).replace(/_/g, " ")}
+                                    </span>
+                                  )}
                                   {collapsed && playoffsForLeague(gn) && (
                                     <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
                                       Playoffs
@@ -4739,6 +4753,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     ]}
                                     onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")}
                                   />
+                                  <SegRow
+                                    label="Bye handling"
+                                    value={byeForLeague(gn)}
+                                    color="green"
+                                    options={[
+                                      { v: "no_match", l: "No match" },
+                                      { v: "walkover_win", l: "Walkover win" },
+                                      { v: "neutral", l: "Neutral" },
+                                    ]}
+                                    onChange={(v) => {
+                                      setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
+                                      if (gn === 1) setByeHandling(v as any);
+                                    }}
+                                  />
                                 </div>
                               ) : (
                                 <div className="grid grid-cols-2 gap-2">
@@ -4776,6 +4804,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     />
                                   </div>
                                 </div>
+                              )}
+                              {scoringForLeague(gn) === "time_capped_points" && (
+                                <SegRow
+                                  label="Bye handling"
+                                  value={byeForLeague(gn)}
+                                  color="green"
+                                  options={[
+                                    { v: "no_match", l: "No match" },
+                                    { v: "walkover_win", l: "Walkover win" },
+                                    { v: "neutral", l: "Neutral" },
+                                  ]}
+                                  onChange={(v) => {
+                                    setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
+                                    if (gn === 1) setByeHandling(v as any);
+                                  }}
+                                />
                               )}
                               <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5 pt-1">
                                 <input

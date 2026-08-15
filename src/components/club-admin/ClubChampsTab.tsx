@@ -537,7 +537,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -654,12 +654,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [leagueWinConditions, setLeagueWinConditions] = useState<{[key: string]: "win_by_2" | "sudden_death"}>({});
   // When true for a league, every game is played (no early finish at best-of).
   const [leaguePlayAll, setLeaguePlayAll] = useState<Record<string, boolean>>({});
+  // Per-league playoffs: which leagues run their own knockout / finals stage.
+  const [leaguePlayoffs, setLeaguePlayoffs] = useState<Record<string, boolean>>({});
   const scoringForLeague = (gn: number): "standard" | "time_capped_points" =>
     leagueScoringModes[String(gn)] ?? ((scoringMode === "time_capped_points" ? "time_capped_points" : "standard"));
   const pointsForLeague = (gn: number): 11 | 15 =>
     leaguePointsPerGame[String(gn)] ?? ((pointsPerGame === 15 ? 15 : 11));
   const bestOfForLeague = (gn: number): 3 | 5 => leagueBestOf[String(gn)] ?? ((bestOf === 5 ? 5 : 3));
   const playAllForLeague = (gn: number): boolean => leaguePlayAll[String(gn)] ?? false;
+  const playoffsForLeague = (gn: number): boolean => leaguePlayoffs[String(gn)] ?? enablePlayoffs;
   const winConditionForLeague = (gn: number): "win_by_2" | "sudden_death" =>
     leagueWinConditions[String(gn)] ?? winCondition;
   /** Set one league's scoring format; keeps tournament-level in sync with league 1. */
@@ -1234,6 +1237,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       league_best_of: Object.keys(leagueBestOf).length > 0 ? leagueBestOf : null,
       league_win_conditions: Object.keys(leagueWinConditions).length > 0 ? leagueWinConditions : null,
       league_play_all_games: Object.keys(leaguePlayAll).length > 0 ? leaguePlayAll : null,
+      league_playoffs: Object.keys(leaguePlayoffs).length > 0 ? leaguePlayoffs : null,
       participating_club_ids: venueClubIds.filter((id) => id !== clubId),
     };
     const saveExtras = async (id: string) => {
@@ -3813,23 +3817,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const lbo = (ex.league_best_of as Record<string, 3 | 5> | null) || null;
     const lwc = (ex.league_win_conditions as Record<string, "win_by_2" | "sudden_death"> | null) || null;
     const lpa = ((ex as any).league_play_all_games as Record<string, boolean> | null) || null;
+    const lpo = ((ex as any).league_playoffs as Record<string, boolean> | null) || null;
     const inheritedS: Record<string, "standard" | "time_capped_points"> = {};
     const inheritedP: Record<string, 11 | 15> = {};
     const inheritedB: Record<string, 3 | 5> = {};
     const inheritedW: Record<string, "win_by_2" | "sudden_death"> = {};
     const inheritedPA: Record<string, boolean> = {};
+    const inheritedPO: Record<string, boolean> = {};
     for (let i = 1; i <= (champ.num_groups || 0); i++) {
       inheritedS[String(i)] = (lsm?.[String(i)] as any) ?? ((champ as any).scoring_mode === "time_capped_points" ? "time_capped_points" : "standard");
       inheritedP[String(i)] = (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : 11));
       inheritedB[String(i)] = (Number(lbo?.[String(i)]) === 5 ? 5 : Number(lbo?.[String(i)]) === 3 ? 3 : (Number((champ as any).best_of) === 5 ? 5 : 3));
       inheritedW[String(i)] = (lwc?.[String(i)] === "sudden_death" ? "sudden_death" : (lwc?.[String(i)] === "win_by_2" ? "win_by_2" : ((champ as any).win_condition || "win_by_2")));
       inheritedPA[String(i)] = lpa?.[String(i)] === true;
+      inheritedPO[String(i)] = lpo?.[String(i)] ?? !!(champ as any).enable_playoffs;
     }
     setLeagueScoringModes(inheritedS);
     setLeaguePointsPerGame(inheritedP);
     setLeagueBestOf(inheritedB);
     setLeagueWinConditions(inheritedW);
     setLeaguePlayAll(inheritedPA);
+    setLeaguePlayoffs(inheritedPO);
     // Seed the tournament-level win condition from League 1 for compatibility.
     if (inheritedW["1"]) setWinCondition(inheritedW["1"]);
 

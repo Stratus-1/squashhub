@@ -318,7 +318,11 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                 </div>
               </div>
               <div className={`rounded-md border p-3 text-sm space-y-1 ${split.overAllocated ? "border-destructive text-destructive" : ""}`}>
+                <div>
+                  SquashHub admin fee ({platformPct}%): <strong>R {centsToRand(split.platform)}</strong>
+                </div>
                 <div>Federation: <strong>R {centsToRand(split.federation)}</strong></div>
+
                 <div>Association: <strong>R {centsToRand(split.association)}</strong></div>
                 <div>Host compensation: <strong>R {centsToRand(split.host)}</strong></div>
                 <div>Owning body retains: <strong>R {centsToRand(split.owner)}</strong></div>

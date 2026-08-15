@@ -2498,12 +2498,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
 
-      const playoffCount = enablePlayoffs
+      // Per-league playoffs: leagues opted out contribute zero entries, so no
+      // bracket is reserved or built for them (indices stay aligned).
+      const poEntriesPerLeague = entriesPerLeague.map((n, i) => (playoffsForLeague(i + 1) ? n : 0));
+      const poEntriesByLeaguePool: Record<number, number[]> = {};
+      Object.keys(entriesByLeaguePool).forEach((k) => {
+        const lg = Number(k);
+        poEntriesByLeaguePool[lg] = playoffsForLeague(lg)
+          ? entriesByLeaguePool[lg]
+          : entriesByLeaguePool[lg].map(() => 0);
+      });
+      const anyLeaguePlayoffs = poEntriesPerLeague.some((n) => n > 0);
+
+      const playoffCount = (enablePlayoffs && anyLeaguePlayoffs)
         ? countPlayoffPlaceholders({
             numLeagues: entriesPerLeague.length,
-            entriesPerLeague,
+            entriesPerLeague: poEntriesPerLeague,
             poolsByLeague: anySwiss ? poolsByLeague : undefined,
-            entriesByLeaguePool: anySwiss ? entriesByLeaguePool : undefined,
+            entriesByLeaguePool: anySwiss ? poEntriesByLeaguePool : undefined,
           })
         : 0;
 
@@ -2790,10 +2802,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         const placeholderRows = buildPlayoffPlaceholders({
           champId: "__preview__",
           numLeagues: entriesPerLeague.length,
-          entriesPerLeague,
+          entriesPerLeague: poEntriesPerLeague,
           leagueLabels: entriesPerLeague.map((_, i) => groupLabels[String(i + 1)] || `League ${i + 1}`),
           poolsByLeague: anySwiss ? poolsByLeague : undefined,
-          entriesByLeaguePool: anySwiss ? entriesByLeaguePool : undefined,
+          entriesByLeaguePool: anySwiss ? poEntriesByLeaguePool : undefined,
         });
         placeholderRows.sort((a, b) => a.round_number - b.round_number);
         placeholderRows.forEach((row, i) => {
@@ -2820,7 +2832,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate]);
 
   // Create/update champ
   const createChamp = useMutation({

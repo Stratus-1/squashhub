@@ -249,23 +249,15 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Entries open</Label>
-                  <Input
-                    type="datetime-local"
-                    value={toLocalInput(form.registration_opens_at)}
-                    onChange={(e) => set("registration_opens_at", fromLocalInput(e.target.value))}
-                  />
+              {/* Registration window is owned by the tournament setup wizard —
+                  shown here read-only so there is only one place to edit it. */}
+              <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Registration window
                 </div>
-                <div className="space-y-1">
-                  <Label>Entries close</Label>
-                  <Input
-                    type="datetime-local"
-                    value={toLocalInput(form.registration_closes_at)}
-                    onChange={(e) => set("registration_closes_at", fromLocalInput(e.target.value))}
-                  />
-                </div>
+                <div>Entries open: <strong>{toLocalInput(form.registration_opens_at)?.replace("T", " ") || "—"}</strong></div>
+                <div>Entries close: <strong>{toLocalInput(form.registration_closes_at)?.replace("T", " ") || "—"}</strong></div>
+                <p className="text-xs text-muted-foreground">Set in the tournament setup → Registration step.</p>
               </div>
               <div className="flex items-center justify-between rounded-md border p-3">
                 <div>

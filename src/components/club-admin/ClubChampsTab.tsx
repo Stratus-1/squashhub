@@ -649,7 +649,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [leagueScoringModes, setLeagueScoringModes] = useState<Record<string, "standard" | "time_capped_points">>({});
   const [leaguePointsPerGame, setLeaguePointsPerGame] = useState<Record<string, 11 | 15>>({});
   const [leagueBestOf, setLeagueBestOf] = useState<Record<string, 3 | 5>>({});
-  const [leagueWinConditions, setLeagueWinConditions] = useState<Record<string, "win_by_2" | "sudden_death">({});
+  const [leagueWinConditions, setLeagueWinConditions] = useState<{[key: string]: "win_by_2" | "sudden_death"}>({});
   const scoringForLeague = (gn: number): "standard" | "time_capped_points" =>
     leagueScoringModes[String(gn)] ?? ((scoringMode === "time_capped_points" ? "time_capped_points" : "standard"));
   const pointsForLeague = (gn: number): 11 | 15 =>

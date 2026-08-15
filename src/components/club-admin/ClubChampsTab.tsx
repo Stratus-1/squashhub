@@ -712,7 +712,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
     }
     setUsePerLeagueFormats(true);
-    if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
+    if (fmt === "cross_league") setRoundFormat("cross_league");
+    else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
   };
   /** Set one league's gender, materialising the others so nothing shifts. */
   const setLeagueGender = (gn: number, g: GenderCategory) => {

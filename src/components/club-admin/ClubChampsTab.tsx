@@ -4468,7 +4468,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
                                   }
                                   if (nv === "cross_league") setRoundFormat("cross_league");
-                                  else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(nv as any);
+                                  else {
+                                    // Drop cross-league mode once no league uses it.
+                                    const next = { ...leagueFormats, [key]: nv };
+                                    const stillCross = Array.from({ length: numGroups || 0 }, (_, i) => next[String(i + 1)]).some((f) => f === "cross_league");
+                                    if (!stillCross && (!roundFormat || roundFormat === "cross_league")) setRoundFormat(nv as any);
+                                  }
                                 }}
                               />
                               {(fmt === "single_round_robin" || fmt === "double_round_robin") && (

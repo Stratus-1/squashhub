@@ -277,8 +277,8 @@ export default function SuperAdminLeagues() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">League Management</h2>
-        <p className="text-muted-foreground text-sm mt-1">Manage associations, fixtures, and members</p>
+        <h2 className="text-2xl font-bold text-foreground">Affiliations</h2>
+        <p className="text-muted-foreground text-sm mt-1">Each affiliation (league association) has its own rules, penalties, fixtures and members</p>
       </div>
 
       {/* Association selector */}

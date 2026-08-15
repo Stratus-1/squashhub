@@ -52,15 +52,49 @@ interface ClubChampsTabProps {
   participatingClubIds?: string[];
 }
 
-/** Event types — used at every level; clubs default to a club championship. */
+/**
+ * Tournament categories — WHAT kind of competition this is. Deliberately free
+ * of eligibility ("closed"/"open"/"invitational") and ranking status: those are
+ * separate fields (Who may enter, invitation-only registration, ranking toggle,
+ * sanctioning authority) so any category can be combined with any of them —
+ * e.g. a club championship that is also a ranking event.
+ */
 const EVENT_TYPES: { value: string; label: string }[] = [
   { value: "club_championship", label: "Club championship" },
-  { value: "closed", label: "Closed (members of the owning body only)" },
-  { value: "open", label: "Open (anyone may enter)" },
-  { value: "invitational", label: "Invitational" },
-  { value: "ranking", label: "Ranking event" },
+  { value: "league_fixture", label: "League fixture" },
   { value: "league_finals", label: "League finals / play-offs" },
+  { value: "open_tournament", label: "Open tournament" },
+  { value: "junior", label: "Junior tournament" },
+  { value: "masters", label: "Masters tournament" },
+  { value: "team_event", label: "Team event / inter-club" },
+  { value: "provincial_championship", label: "Provincial championship" },
+  { value: "national_championship", label: "National championship" },
 ];
+
+/** Who may enter — stored on tournament_governance.eligibility_scope. */
+const ELIGIBILITY_SCOPES: { value: string; label: string }[] = [
+  { value: "club", label: "Members of the host club only" },
+  { value: "association", label: "Members of the owning association" },
+  { value: "open", label: "Open — anyone may enter" },
+];
+
+/**
+ * Legacy `event_type` values mixed category with eligibility/ranking. Map the
+ * old ones onto a real category so existing tournaments keep working.
+ */
+const LEGACY_EVENT_TYPES: Record<string, string> = {
+  closed: "club_championship",
+  invitational: "club_championship",
+  ranking: "open_tournament",
+  open: "open_tournament",
+};
+
+function normaliseEventType(value: string | null | undefined, scope: string): string {
+  if (!value) return scope === "club" ? "club_championship" : "open_tournament";
+  if (EVENT_TYPES.some((t) => t.value === value)) return value;
+  return LEGACY_EVENT_TYPES[value] || (scope === "club" ? "club_championship" : "open_tournament");
+}
+
 
 
 type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
@@ -598,8 +632,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
-  // Tournament type / capacity / seeding — stored on the tournaments row.
-  const [eventType, setEventType] = useState<string>(scope === "club" ? "club_championship" : "open");
+  // Tournament category / capacity / seeding — stored on the tournaments row.
+  const [eventType, setEventType] = useState<string>(scope === "club" ? "club_championship" : "open_tournament");
+  // Who may enter — lives on tournament_governance (kept in sync from the wizard).
+  const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "open");
+  // Load the saved eligibility whenever a different tournament is opened for edit.
+  useEffect(() => {
+    if (wizardGovernance?.eligibility_scope) setEligibilityScope(wizardGovernance.eligibility_scope);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingChampId, wizardGovernance?.eligibility_scope]);
   const [maxEntrants, setMaxEntrants] = useState<string>("");
   const [maxPerLeague, setMaxPerLeague] = useState<string>("");
   const [seedingSource, setSeedingSource] = useState<string>("ladder");
@@ -999,6 +1040,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const saveExtras = async (id: string) => {
       const { error } = await fromExt("tournaments").update(extras).eq("id", id);
       if (error) console.warn("Tournament extras save failed:", error.message);
+      // "Who may enter" is a governance field — keep the single copy in sync.
+      const { error: govErr } = await fromExt("tournament_governance")
+        .upsert({ tournament_id: id, eligibility_scope: eligibilityScope }, { onConflict: "tournament_id" } as any);
+      if (govErr) console.warn("Eligibility save failed:", govErr.message);
     };
     try {
       if (editingChampId) {
@@ -3422,7 +3467,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteScheduledAt("");
     setDescription("");
     setAffectsRankingPoints(false);
-    setEventType(scope === "club" ? "club_championship" : "open");
+    setEventType(scope === "club" ? "club_championship" : "open_tournament");
+    setEligibilityScope(scope === "club" ? "club" : "open");
     setMaxEntrants("");
     setMaxPerLeague("");
     setSeedingSource("ladder");
@@ -3501,7 +3547,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setDescription(champ.description || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
     const ex = (tournamentExtras || {})[champ.id] || {};
-    setEventType(ex.event_type || (scope === "club" ? "club_championship" : "open"));
+    setEventType(normaliseEventType(ex.event_type, scope));
     setMaxEntrants(ex.max_entrants ? String(ex.max_entrants) : "");
     setMaxPerLeague(ex.max_per_league ? String(ex.max_per_league) : "");
     setSeedingSource(ex.seeding_source || "ladder");
@@ -4008,23 +4054,41 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               />
             </div>
 
-            {/* Tournament type, capacity and seeding — same block at every level. */}
+            {/* Category, eligibility, capacity and seeding — same block at every level. */}
             <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm space-y-3">
-              <div>
-                <Label className="text-sm font-semibold">Tournament type <span className="text-destructive">*</span></Label>
-                <Select value={eventType} onValueChange={setEventType}>
-                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {EVENT_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Sanctioning, eligibility, entry fees and refunds are set once in <strong>Governance</strong>; how the
-                  game is played is set once in <strong>Rules</strong>. This wizard covers the running of the event.
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm font-semibold">Tournament category <span className="text-destructive">*</span></Label>
+                  <Select value={eventType} onValueChange={setEventType}>
+                    <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EVENT_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">What kind of competition this is.</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold">Who may enter <span className="text-destructive">*</span></Label>
+                  <Select value={eligibilityScope} onValueChange={setEligibilityScope}>
+                    <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ELIGIBILITY_SCOPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Age limits and licence requirements live in <strong>Governance → Eligibility</strong>.
+                  </p>
+                </div>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Invitation-only is set on the <strong>Registration</strong> step ("who can register"), ranking status on
+                the scoring settings ("counts for ranking points"), and the sanctioning authority in{" "}
+                <strong>Governance</strong> — so any category can be combined with any of them.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <Label className="text-xs font-medium">Max entrants (optional)</Label>

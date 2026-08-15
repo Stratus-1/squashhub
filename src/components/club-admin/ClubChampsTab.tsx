@@ -3476,6 +3476,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setSwissRounds({});
     setExpectedPlayers({});
     setLeagueFormats({});
+    setLeagueGenders({});
+    setLeagueMatchTypes({});
     setUsePerLeagueFormats(false);
     setPointsPerGame(0);
     setBestOf(0);

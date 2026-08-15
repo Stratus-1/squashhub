@@ -1079,6 +1079,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       max_entrants: maxEntrants ? Math.max(0, Math.round(Number(maxEntrants))) : null,
       max_per_league: maxPerLeague ? Math.max(0, Math.round(Number(maxPerLeague))) : null,
       seeding_source: seedingSource,
+      league_genders: Object.keys(leagueGenders).length > 0 ? leagueGenders : null,
+      league_match_types: Object.keys(leagueMatchTypes).length > 0 ? leagueMatchTypes : null,
       participating_club_ids: venueClubIds.filter((id) => id !== clubId),
     };
     const saveExtras = async (id: string) => {

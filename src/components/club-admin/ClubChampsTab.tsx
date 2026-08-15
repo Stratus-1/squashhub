@@ -4545,19 +4545,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       }}
                                     />
                                     <SegRow
-                                      label="Best of"
-                                      value={String(bestOfForLeague(gn))}
+                                      label="Games"
+                                      value={`${playAllForLeague(gn) ? "all" : "bo"}${bestOfForLeague(gn)}`}
                                       color="pink"
                                       options={[
-                                        { v: "3", l: "Best of 3" },
-                                        { v: "5", l: "Best of 5" },
+                                        { v: "bo3", l: "Best of 3" },
+                                        { v: "bo5", l: "Best of 5" },
+                                        { v: "all3", l: "Play all 3" },
+                                        { v: "all5", l: "Play all 5" },
                                       ]}
                                       onChange={(v) => {
-                                        const n = Number(v) === 5 ? 5 : 3;
+                                        const n = v.endsWith("5") ? 5 : 3;
+                                        const all = v.startsWith("all");
                                         setLeagueBestOf((m) => ({ ...m, [key]: n }));
+                                        setLeaguePlayAll((m) => ({ ...m, [key]: all }));
                                         if (gn === 1) setBestOf(n);
                                       }}
                                     />
+
                                   </div>
                                   <SegRow
                                     label="Win condition"

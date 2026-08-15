@@ -436,6 +436,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [step, setStep] = useState<WizardStep>("category");
   const [showWizard, setShowWizard] = useState(false);
   const [editingChampId, setEditingChampId] = useState<string | null>(null);
+  // Governance record for the tournament being edited — read-only in the wizard
+  // (fee shares and refunds are owned by the Governance dialog).
+  const { data: wizardGovernance } = useTournamentGovernance(editingChampId);
   // Snapshot of entities (players / doubles pairs) at the moment an existing
   // tournament was loaded for edit. Used to prompt the admin to rebuild the
   // schedule when players are added / removed / swapped.

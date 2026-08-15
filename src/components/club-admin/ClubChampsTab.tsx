@@ -5266,6 +5266,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       if (gn === 1) setByeHandling(v as any);
                                     }}
                                   />
+                                  {/* Planned time one match of this league occupies a court.
+                                      Feeds the capacity calculator (Bells leagues use the bell slot). */}
+                                  <SegRow
+                                    label="Planned match time"
+                                    value={String(Number(groupDurations[key]) || matchDuration || 20)}
+                                    color="amber"
+                                    options={[
+                                      { v: "20", l: "20 min" },
+                                      { v: "30", l: "30 min" },
+                                      { v: "45", l: "45 min" },
+                                      { v: "60", l: "60 min" },
+                                    ]}
+                                    onChange={(v) => {
+                                      const n = Number(v) || 0;
+                                      setGroupDurations((m) => ({ ...m, [key]: n }));
+                                      if (gn === 1 && (!matchDuration || matchDuration <= 0)) setMatchDuration(n);
+                                    }}
+                                  />
                                 </div>
                               ) : (
                                 <div className="grid grid-cols-2 gap-2">

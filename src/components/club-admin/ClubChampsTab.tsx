@@ -5321,6 +5321,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               )}
             </div>
 
+            {/* Fee shares and refunds live in Governance — shown read-only so
+                there is a single place to edit them. */}
+            {editingChampId && wizardGovernance && (
+              <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+                <div className="font-medium uppercase tracking-wide text-muted-foreground">Governance</div>
+                {scope !== "club" && (
+                  <div>Federation share: <strong>R {((wizardGovernance.federation_fee_cents || 0) / 100).toFixed(2)}</strong></div>
+                )}
+                <div>Association share: <strong>R {((wizardGovernance.association_fee_cents || 0) / 100).toFixed(2)}</strong></div>
+                <div>
+                  Refunds: <strong>
+                    {wizardGovernance.refund_policy === "none" ? "No refunds"
+                      : wizardGovernance.refund_policy === "full_before_cutoff" ? "Full refund before cut-off"
+                      : "Partial refund before cut-off"}
+                  </strong>
+                  {wizardGovernance.refund_cutoff_date ? ` (cut-off ${wizardGovernance.refund_cutoff_date})` : ""}
+                </div>
+                <p className="text-muted-foreground">Edit these in the tournament's Governance dialog.</p>
+              </div>
+            )}
+
+
+
             {/* Registration mode — always visible. Even when registration is not
                 required, this still controls how the admin seeds the player
                 roster (open audience vs invite shortlist). */}

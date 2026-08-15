@@ -540,6 +540,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (usePerLeagueFormats && leagueFormats[String(gn)]) return leagueFormats[String(gn)];
     return roundFormat;
   };
+  // Per-league gender category and match type (keyed by group_number string).
+  // A tournament can therefore hold e.g. a Ladies' league, a Men's league and
+  // a Mixed league side by side. Missing entries fall back to the
+  // tournament-level defaults below.
+  const [leagueGenders, setLeagueGenders] = useState<Record<string, GenderCategory>>({});
+  const [leagueMatchTypes, setLeagueMatchTypes] = useState<Record<string, "singles" | "doubles">>({});
+  const genderForLeague = (gn: number): GenderCategory => leagueGenders[String(gn)] ?? gender;
+  const matchTypeForLeague = (gn: number): "singles" | "doubles" => leagueMatchTypes[String(gn)] ?? matchType;
+  /** Distinct gender categories actually in use across the leagues. */
+  const leagueGenderSet = useMemo(() => {
+    const s = new Set<GenderCategory>();
+    for (let i = 1; i <= (numGroups || 0); i++) s.add(leagueGenders[String(i)] ?? gender);
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueGenders, numGroups, gender]);
 
   // ---- Visual "Tournament Structure Builder" helpers ---------------------
   const FORMAT_META: Record<PerLeagueFormat, { label: string; short: string; desc: string }> = {

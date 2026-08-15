@@ -140,12 +140,25 @@ export function useGrantOrgAdmin(orgId: string | null) {
         .maybeSingle();
       if (pErr) throw pErr;
       if (!profile) throw new Error("No SquashHub account found with that email address");
+      const uid = (profile as any).id as string;
+      const { data: existing } = await supabase
+        .from("organisation_admins")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("user_id", uid)
+        .eq("role", role)
+        .maybeSingle();
+      if (existing) {
+        const { error } = await supabase
+          .from("organisation_admins")
+          .update({ active: true } as any)
+          .eq("id", (existing as any).id);
+        if (error) throw error;
+        return;
+      }
       const { error } = await supabase
         .from("organisation_admins")
-        .upsert(
-          { org_id: orgId, user_id: (profile as any).id, role, active: true } as any,
-          { onConflict: "org_id,user_id,role" },
-        );
+        .insert({ org_id: orgId, user_id: uid, role, active: true } as any);
       if (error) throw error;
     },
     onSuccess: () => {

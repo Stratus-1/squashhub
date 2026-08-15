@@ -457,7 +457,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -3597,6 +3597,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setMaxEntrants(ex.max_entrants ? String(ex.max_entrants) : "");
     setMaxPerLeague(ex.max_per_league ? String(ex.max_per_league) : "");
     setSeedingSource(ex.seeding_source || "ladder");
+    // Per-league category. Older tournaments have none — every league simply
+    // inherits the tournament-level gender / match type.
+    const lg = (ex.league_genders as Record<string, GenderCategory> | null) || null;
+    const lmt = (ex.league_match_types as Record<string, "singles" | "doubles"> | null) || null;
+    const inheritedG: Record<string, GenderCategory> = {};
+    const inheritedM: Record<string, "singles" | "doubles"> = {};
+    for (let i = 1; i <= (champ.num_groups || 0); i++) {
+      inheritedG[String(i)] = (lg?.[String(i)] as GenderCategory) ?? champ.gender;
+      inheritedM[String(i)] = (lmt?.[String(i)] as "singles" | "doubles") ?? (champ.match_type || "singles");
+    }
+    setLeagueGenders(inheritedG);
+    setLeagueMatchTypes(inheritedM);
 
 
     const { data: entries } = await fromExt("club_champs_entries")

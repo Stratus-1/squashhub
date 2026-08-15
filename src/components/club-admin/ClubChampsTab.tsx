@@ -778,7 +778,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setLeagueWinConditions(shift);
     setNumGroups((n) => Math.max(0, (n || 0) - 1));
   };
-  const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
+  const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("no_match");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   // Prune any selected court IDs that no longer exist in the club's courts
   // list — protects against stale references (e.g. deleted external courts)
@@ -4066,7 +4066,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           if (!bestOf) m.push("Best of (3 or 5)");
         }
         if (!roundFormat) m.push("Round format");
-        if (!byeHandling) m.push("Bye handling");
         break;
       }
       case "courts": {
@@ -4442,28 +4441,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
             <WizardSection
-              title={"Byes & visitors"}
-              summary={`${byeHandling ? "Bye rule set" : "Bye rule not set"} · ${includeVisitors ? "visitors included" : "members only"}`}
-              complete={!!byeHandling}
+              title={"Visitors"}
+              summary={includeVisitors ? "visitors included" : "members only"}
+              complete={true}
               defaultOpen={true}
             >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>
-                <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="no_match">No match — bye not recorded</SelectItem>
-                    <SelectItem value="walkover_win">Walkover win — full points</SelectItem>
-                    <SelectItem value="neutral">Neutral — excluded from averages</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Applies when an odd number of teams means one sits out per round.
-                </p>
-              </div>
-            </div>
+
 
 
 

@@ -613,6 +613,9 @@ export default function SuperAdminSubscriptions() {
           {/* Graduated sliding-scale pricing is the primary structure. */}
           <SaasTierPricingCard />
 
+          <PlatformTournamentFeeCard />
+
+
           <Card className="p-4 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>

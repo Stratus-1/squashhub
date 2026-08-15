@@ -4383,33 +4383,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     />
                     Include playoffs
                   </label>
-                  <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      className="h-3.5 w-3.5"
-                      checked={roundFormat === "cross_league"}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setRoundFormat("cross_league");
-                          setUsePerLeagueFormats(false);
-                        } else {
-                          // Restore to the first league's format (or blank).
-                          const first = leagueFormats[String(1)];
-                          setRoundFormat((first as any) || "");
-                        }
-                      }}
-                    />
-                    Cross-league only (League vs League)
-                  </label>
                 </div>
               </div>
 
-              {roundFormat === "cross_league" ? (
-                <div className="p-4 text-[12px] text-muted-foreground bg-muted/20">
-                  <p className="mb-1"><strong className="text-foreground">Cross-league mode.</strong> Every player in league 1 plays every player in the other leagues — no intra-league matches.</p>
-                  <p>Set the number of leagues in the capacity calculator below. Format-per-league doesn't apply in this mode.</p>
+              {roundFormat === "cross_league" && (
+                <div className="px-4 py-2 text-[11px] text-muted-foreground bg-amber-500/10 border-b border-amber-500/30">
+                  <strong className="text-foreground">Cross-league is active.</strong> Leagues set to “Cross league” play against the other leagues instead of within themselves — no intra-league matches for those leagues.
                 </div>
-              ) : (
+              )}
+
+              {(
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px]">
                   {/* Canvas */}
                   <div

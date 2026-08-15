@@ -9,8 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Building2, ChevronDown, ChevronRight, Flag, Plus, Trophy } from "lucide-react";
+import { Building2, ChevronDown, ChevronRight, Flag, Plus, Settings, Trophy } from "lucide-react";
 import type { OrgNode } from "@/hooks/use-federation";
+import { OrgSettingsDialog } from "@/components/admin/OrgSettingsDialog";
 
 const UNAFFILIATED = "Unaffiliated Clubs";
 
@@ -66,11 +67,13 @@ function AssociationCard({
   dragId,
   setDragId,
   onDrop,
+  onOpenSettings,
 }: {
   node: OrgNode;
   dragId: string | null;
   setDragId: (id: string | null) => void;
   onDrop: (childId: string, parentId: string) => void;
+  onOpenSettings: (node: OrgNode) => void;
 }) {
   const [open, setOpen] = useState(true);
   const [over, setOver] = useState(false);
@@ -125,6 +128,14 @@ function AssociationCard({
           </Badge>
         </button>
 
+        <button
+          type="button"
+          onClick={() => onOpenSettings(node)}
+          className="mt-1 flex items-center gap-1 text-[10px] text-white/50 hover:text-white/90"
+        >
+          <Settings className="w-3 h-3" /> Settings & admins
+        </button>
+
         {open && (
           <div className="mt-2 flex flex-col gap-1">
             {clubs.length === 0 && leagues.length === 0 ? (
@@ -166,6 +177,7 @@ export default function FederationOrgChart({
   const [abbr, setAbbr] = useState("");
   const [trayOver, setTrayOver] = useState(false);
   const [unaffOpen, setUnaffOpen] = useState(true);
+  const [settingsOrg, setSettingsOrg] = useState<OrgNode | null>(null);
 
   const federation = roots.find((r) => r.kind === "national") || null;
   const associations = (federation?.children || []).filter(isRealAssociation);
@@ -220,6 +232,13 @@ export default function FederationOrgChart({
                 <span className="text-[11px] text-white/50">({federation.abbreviation})</span>
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => setSettingsOrg(federation)}
+              className="mt-1 inline-flex items-center gap-1 text-[10px] text-white/60 hover:text-white"
+            >
+              <Settings className="w-3 h-3" /> Settings & admins
+            </button>
             <div className="text-[10px] text-white/50 mt-0.5">
               {associations.length} associations · {associations.reduce((s, a) => s + clubsUnder(a).length, 0)} affiliated clubs
             </div>
@@ -240,6 +259,7 @@ export default function FederationOrgChart({
                 dragId={dragId}
                 setDragId={setDragId}
                 onDrop={onDrop}
+                onOpenSettings={setSettingsOrg}
               />
             ))}
 
@@ -314,6 +334,13 @@ export default function FederationOrgChart({
         </div>
       </div>
 
+
+      <OrgSettingsDialog
+        orgId={settingsOrg?.id ?? null}
+        orgName={settingsOrg?.name ?? ""}
+        isFederation={settingsOrg?.kind === "national"}
+        onOpenChange={(o) => !o && setSettingsOrg(null)}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-sm">

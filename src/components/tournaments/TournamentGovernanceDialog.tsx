@@ -62,7 +62,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 const toLocalInput = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
-const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null);
+
 
 export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "federation" }: Props) {
   const clubScope = scope === "club";

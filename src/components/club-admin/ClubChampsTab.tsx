@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy } from "lucide-react";
+import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, eachDayOfInterval, getDay, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -33,6 +33,7 @@ import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
 import { Users as UsersIcon, ShieldCheck, ScrollText } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
+import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
 import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
@@ -436,6 +437,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [step, setStep] = useState<WizardStep>("category");
   const [showWizard, setShowWizard] = useState(false);
   const [editingChampId, setEditingChampId] = useState<string | null>(null);
+  // Governance record for the tournament being edited — read-only in the wizard
+  // (fee shares and refunds are owned by the Governance dialog).
+  const { data: wizardGovernance } = useTournamentGovernance(editingChampId);
   // Snapshot of entities (players / doubles pairs) at the moment an existing
   // tournament was loaded for edit. Used to prompt the admin to rebuild the
   // schedule when players are added / removed / swapped.
@@ -3971,15 +3975,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // ── WIZARD VIEW ──
   return (
     <div className="space-y-4">
-      {/* Step indicator */}
-      <div className="flex items-center gap-1 text-sm overflow-x-auto">
-          {activeSteps.map((s, i) => (
-          <div key={s} className="flex items-center">
-            {i > 0 && <ChevronRight className="w-3 h-3 mx-1 text-muted-foreground shrink-0" />}
-            <span className={`whitespace-nowrap px-2 py-1 rounded ${s === step ? "bg-primary text-primary-foreground font-medium" : i < stepIdx ? "text-primary" : "text-muted-foreground"}`}>
-              {STEP_LABELS[s]}
-            </span>
-          </div>
+      {/* Step tabs — every step is directly clickable; the wizard autosaves on jump. */}
+      <div className="flex items-center gap-1 text-sm overflow-x-auto border-b border-border pb-px">
+        {activeSteps.map((s, i) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => goToStep(s)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-t-md border border-b-0 transition-colors flex items-center gap-1.5 ${
+              s === step
+                ? "bg-primary text-primary-foreground border-primary font-medium"
+                : "bg-muted/40 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {i < stepIdx && s !== step && <Check className="w-3 h-3 text-primary" />}
+            {STEP_LABELS[s]}
+          </button>
         ))}
       </div>
 
@@ -5313,6 +5324,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               )}
             </div>
+
+            {/* Fee shares and refunds live in Governance — shown read-only so
+                there is a single place to edit them. */}
+            {editingChampId && wizardGovernance && (
+              <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+                <div className="font-medium uppercase tracking-wide text-muted-foreground">Governance</div>
+                {scope !== "club" && (
+                  <div>Federation share: <strong>R {((wizardGovernance.federation_fee_cents || 0) / 100).toFixed(2)}</strong></div>
+                )}
+                <div>Association share: <strong>R {((wizardGovernance.association_fee_cents || 0) / 100).toFixed(2)}</strong></div>
+                <div>
+                  Refunds: <strong>
+                    {wizardGovernance.refund_policy === "none" ? "No refunds"
+                      : wizardGovernance.refund_policy === "full_before_cutoff" ? "Full refund before cut-off"
+                      : "Partial refund before cut-off"}
+                  </strong>
+                  {wizardGovernance.refund_cutoff_date ? ` (cut-off ${wizardGovernance.refund_cutoff_date})` : ""}
+                </div>
+                <p className="text-muted-foreground">Edit these in the tournament's Governance dialog.</p>
+              </div>
+            )}
+
+
 
             {/* Registration mode — always visible. Even when registration is not
                 required, this still controls how the admin seeds the player

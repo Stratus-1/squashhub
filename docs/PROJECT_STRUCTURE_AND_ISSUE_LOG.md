@@ -539,3 +539,17 @@ there is only ever one stored copy of each field.
   (court names prefixed with the club name), and lists tournaments by `owner_org_id`.
 - Super Admin → Tournaments (`src/pages/admin/SuperAdminTournaments.tsx`) mounts the same wizard
   for a chosen federation/association owner, host club and extra venues.
+
+### 2026-08-15 — single entry point, tabbed wizard, no double entry
+- `src/components/tournaments/TournamentPlanner.tsx` is now the ONLY mount point for the wizard.
+  - `mode="club"` — used by Club Admin → Tournaments (`src/pages/ClubAdmin.tsx`, case `champs`).
+    Owning body and host venue are the club itself; multi-venue picker only for super admins.
+  - `mode="platform"` — used by Super Admin → Tournaments; pick any federation/association owner,
+    any host club nationwide, plus extra participating clubs.
+  Club behaviour is unchanged: `ownerOrgId=null`, `scope="club"`.
+- Wizard step indicator is now clickable TABS (`goToStep`), not a read-only breadcrumb.
+- Double entry removed in the Governance dialog:
+  - Entry fee, "payment required" and the registration open/close window are READ-ONLY there;
+    they are edited in the wizard's Registration step (same `tournament_governance` record).
+  - Fee shares (federation/association) and refunds stay editable in Governance and are shown
+    read-only in the wizard's Registration step.

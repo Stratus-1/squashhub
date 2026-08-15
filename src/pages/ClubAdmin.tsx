@@ -17,7 +17,7 @@ import { MembersTab } from "@/components/club-admin/MembersTab";
 import { LadderTab } from "@/components/club-admin/LadderTab";
 import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
 import { FeesTab } from "@/components/club-admin/FeesTab";
-import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
+import { TournamentPlanner } from "@/components/tournaments/TournamentPlanner";
 import { SettingsTab } from "@/components/club-admin/SettingsTab";
 import { HonestyBarTab } from "@/components/club-admin/HonestyBarTab";
 import { AccessControlTab } from "@/components/club-admin/AccessControlTab";
@@ -156,7 +156,7 @@ export default function ClubAdmin() {
       case "ladder": return <LadderTab clubId={club.id} />;
       case "ranking-points": return <RankingPointsTab clubId={club.id} />;
       case "leagues": return <LeaguesTab clubId={club.id} />;
-      case "champs": return <ClubChampsTab clubId={club.id} />;
+      case "champs": return <TournamentPlanner mode="club" clubId={club.id} />;
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
       case "awards": return <LeagueAwardsTab clubId={club.id} />;

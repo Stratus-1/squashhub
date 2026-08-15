@@ -1174,7 +1174,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       end_time: endTime,
       match_duration_minutes: matchDuration,
       scoring_mode: scoringMode,
-      swiss_pools: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissPools : null,
+      swiss_pools: swissPools,
       swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
       expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
       league_formats: usePerLeagueFormats ? leagueFormats : null,
@@ -1978,29 +1978,48 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const f = formatForLeague(gi + 1);
       return f === "double_round_robin" ? "double" : "single";
     };
+    // Pools per league (shared by Swiss, round robin and cross league).
+    const poolsForLeague = (gn: number) => Math.max(1, Number(swissPools[String(gn)]) || 1);
+    const splitIntoPools = (ids: string[], pools: number): string[][] => {
+      if (pools <= 1) return [ids];
+      const size = Math.ceil(ids.length / pools);
+      const out: string[][] = [];
+      for (let p = 0; p < pools; p++) out.push(ids.slice(p * size, Math.min(ids.length, (p + 1) * size)));
+      return out.filter((g) => g.length > 0);
+    };
     const ingestRounds = (gi: number, ids: string[]) => {
-      const { rounds, byesPerRound } = generateRoundRobinRounds(ids, rrFmtForLeague(gi));
-      rounds.forEach((roundMatches, ri) => {
-        roundMatches.forEach(([a, b, leg]) => {
-          allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
-        });
-        const byeId = byesPerRound[ri];
-        if (byeId && byeHandling !== "no_match") {
-          allMatches.push({
-            groupNum: gi + 1, roundNum: ri + 1,
-            entityA: byeId, entityB: byeId, leg: null,
-            isBye: true, byeEntityId: byeId,
+      // Round robin inside each pool of the league (1 pool = classic RR).
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1));
+      for (const poolIds of pools) {
+        if (poolIds.length < 2) continue;
+        const { rounds, byesPerRound } = generateRoundRobinRounds(poolIds, rrFmtForLeague(gi));
+        rounds.forEach((roundMatches, ri) => {
+          roundMatches.forEach(([a, b, leg]) => {
+            allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
           });
-        }
-      });
+          const byeId = byesPerRound[ri];
+          if (byeId && byeHandling !== "no_match") {
+            allMatches.push({
+              groupNum: gi + 1, roundNum: ri + 1,
+              entityA: byeId, entityB: byeId, leg: null,
+              isBye: true, byeEntityId: byeId,
+            });
+          }
+        });
+      }
     };
 
-    // Cross-league mode: every entity in league i plays every entity in league j
-    // (no intra-league matches). Each cross match is filed under the lower league's
+    // Cross-league mode: every entity in group i plays every entity in group j
+    // (no intra-group matches). Each cross match is filed under the lower group's
     // group_number for scheduling; standings include all matches the player took part in.
-    const ingestCrossLeague = (allGroups: string[][]) => {
-      let roundCounter = 1;
-      const fmt = roundFormat === "double_round_robin" ? "double" : "single";
+    // `groupNums` maps each entry of allGroups back to its league number.
+    const ingestCrossGroups = (
+      allGroups: string[][],
+      groupNums: number[],
+      double: boolean,
+      startRound = 1,
+    ) => {
+      let roundCounter = startRound;
       for (let i = 0; i < allGroups.length; i++) {
         for (let j = i + 1; j < allGroups.length; j++) {
           const a = allGroups[i];
@@ -2008,15 +2027,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           for (const pa of a) {
             for (const pb of b) {
               allMatches.push({
-                groupNum: i + 1,
+                groupNum: groupNums[i],
                 roundNum: roundCounter++,
                 entityA: pa,
                 entityB: pb,
                 leg: "home",
               });
-              if (fmt === "double") {
+              if (double) {
                 allMatches.push({
-                  groupNum: i + 1,
+                  groupNum: groupNums[i],
                   roundNum: roundCounter++,
                   entityA: pb,
                   entityB: pa,
@@ -2028,6 +2047,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
       }
     };
+
+    // Cross-pool inside one league: split the league into N pools, then every
+    // pool plays every other pool.
+    const ingestCrossPools = (gi: number, ids: string[]) => {
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1));
+      if (pools.length < 2) return;
+      ingestCrossGroups(pools, pools.map(() => gi + 1), formatForLeague(gi + 1) === "double_round_robin");
+    };
+
 
     // Swiss for a single league — reserves placeholder matches based on
     // pools × rounds × ceil(pool/2) so scheduling books the right slot count.
@@ -2056,25 +2084,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
     };
 
-    if (isCrossLeague) {
-      const groupIds: string[][] = isDoubles
-        ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
-        : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
-      ingestCrossLeague(groupIds);
-    } else {
-      // Per-league dispatch: each league can independently be Swiss or
-      // (single/double) round-robin.
+    {
       const perLeagueIds: string[][] = isDoubles
         ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
         : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
+
+      // Leagues on "cross league" WITHOUT their own pools play against the other
+      // cross-league leagues (classic league-vs-league). Cross-league leagues WITH
+      // 2+ pools play pool-vs-pool inside themselves.
+      const crossAcross: { ids: string[]; gn: number }[] = [];
       perLeagueIds.forEach((ids, gi) => {
-        if (formatForLeague(gi + 1) === "swiss") {
+        const f = formatForLeague(gi + 1);
+        if (f === "swiss") {
           buildSwissLeague(gi, ids);
+        } else if (f === "cross_league") {
+          if (poolsForLeague(gi + 1) > 1) ingestCrossPools(gi, ids);
+          else crossAcross.push({ ids, gn: gi + 1 });
         } else {
           ingestRounds(gi, ids);
         }
       });
+      if (crossAcross.length > 1) {
+        ingestCrossGroups(
+          crossAcross.map((c) => c.ids),
+          crossAcross.map((c) => c.gn),
+          roundFormat === "double_round_robin",
+        );
+      } else if (crossAcross.length === 1) {
+        // Only one cross-league league and no pools — fall back to a round robin
+        // so the league still gets a draw.
+        ingestRounds(crossAcross[0].gn - 1, crossAcross[0].ids);
+      }
     }
+
 
 
     // Spread mode uses per-session entity caps (below) as its main balancer,
@@ -2426,18 +2468,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         ? (groups as DoublePair[][]).map((g) => g.length)
         : (groups as ClubMember[][]).map((g) => g.length);
 
-      // Pool mode: leagues running Swiss contribute their pool split;
-      // non-Swiss leagues stay as a single pool (i.e. one intra-league bracket).
-      // Any league on Swiss activates pool-mode for placeholder counting.
+      // Pool mode: any league split into 2+ pools (Swiss, round robin or cross
+      // league) contributes its pool split; others stay as a single pool.
       const anySwiss = (roundFormat === "swiss")
-        || (usePerLeagueFormats && Object.values(leagueFormats).some((f) => f === "swiss"));
+        || (usePerLeagueFormats && Object.values(leagueFormats).some((f) => f === "swiss"))
+        || entriesPerLeague.some((_, gi) => poolsForLeague(gi + 1) > 1);
       const poolsByLeague: Record<number, number> = {};
       const entriesByLeaguePool: Record<number, number[]> = {};
       if (anySwiss) {
         entriesPerLeague.forEach((total, gi) => {
           const lg = gi + 1;
-          const isLeagueSwiss = formatForLeague(lg) === "swiss";
-          const pc = isLeagueSwiss ? Math.max(1, Number(swissPools[String(lg)]) || 1) : 1;
+          const pc = poolsForLeague(lg);
           poolsByLeague[lg] = pc;
           const size = Math.ceil(total / pc);
           const sizes: number[] = [];
@@ -2449,6 +2490,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           entriesByLeaguePool[lg] = sizes;
         });
       }
+
 
       const playoffCount = enablePlayoffs
         ? countPlayoffPlaceholders({
@@ -2815,7 +2857,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             end_time: endTime,
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
-            swiss_pools: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissPools : null,
+            swiss_pools: swissPools,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats ? leagueFormats : null,
@@ -2880,7 +2922,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             end_time: endTime,
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
-            swiss_pools: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissPools : null,
+            swiss_pools: swissPools,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats ? leagueFormats : null,
@@ -4620,27 +4662,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
 
-                              {isSwiss && (
-                                <div>
-                                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Pools</Label>
-                                  <Input
-                                    type="number"
-                                    min={1}
-                                    value={swissPools[key] ?? 1}
-                                    onChange={(e) => {
-                                      const pools = Math.max(1, Number(e.target.value) || 1);
-                                      setSwissPools((m) => ({ ...m, [key]: pools }));
-                                      const n = Number(expectedPlayers[key]) || 0;
-                                      if (n >= 2) {
-                                        const perPool = Math.max(2, Math.ceil(n / pools));
-                                        setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
-                                      }
-                                    }}
-                                    className="h-8 text-xs mt-0.5"
-                                  />
+                              <div>
+                                <Label className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Pools</Label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  value={swissPools[key] ?? 1}
+                                  onChange={(e) => {
+                                    const pools = Math.max(1, Number(e.target.value) || 1);
+                                    setSwissPools((m) => ({ ...m, [key]: pools }));
+                                    const n = Number(expectedPlayers[key]) || 0;
+                                    if (isSwiss && n >= 2) {
+                                      const perPool = Math.max(2, Math.ceil(n / pools));
+                                      setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+                                    }
+                                  }}
+                                  className="h-8 text-xs mt-0.5"
+                                />
+                                <div className="text-[9px] text-muted-foreground mt-0.5 leading-tight">
+                                  {fmt === "cross_league"
+                                    ? "Each pool plays every other pool"
+                                    : "1 = one draw · 2+ = split into pools"}
                                 </div>
-                              )}
-                              <div className={isSwiss ? "" : "col-span-1"}>
+                              </div>
+                              <div>
+
                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                                   {isDoubles ? "Expected pairs" : "Expected players"}
                                 </Label>
@@ -4691,15 +4737,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         const n = Number(expectedPlayers[key]) || 0;
                         if (n < 2) continue;
                         const fmt: PerLeagueFormat = (leagueFormats[key] ?? (roundFormat as PerLeagueFormat)) || "single_round_robin";
+                        const pools = Math.max(1, Number(swissPools[key]) || 1);
+                        const perPool = Math.max(1, Math.ceil(n / pools));
                         if (fmt === "swiss") {
-                          const pools = Math.max(1, Number(swissPools[key]) || 1);
-                          const perPool = Math.max(2, Math.ceil(n / pools));
-                          const perPoolGames = (perPool * (perPool - 1)) / 2;
-                          est += pools * perPoolGames;
+                          const pp = Math.max(2, perPool);
+                          est += pools * ((pp * (pp - 1)) / 2);
+                        } else if (fmt === "cross_league" && pools > 1) {
+                          // pool-vs-pool inside the league
+                          est += ((pools * (pools - 1)) / 2) * perPool * perPool;
                         } else {
-                          const games = (n * (n - 1)) / 2;
+                          const games = (perPool * (perPool - 1)) / 2 * pools;
                           est += fmt === "double_round_robin" ? games * 2 : games;
                         }
+
                       }
                       return (
                         <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs">
@@ -6380,9 +6430,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCrossLeagueDragEnd}>
               <div className="space-y-4">
                 {(() => {
-                  const isSwissPools = roundFormat === "swiss";
+                  const isSwissPools = true; // pools apply to any format now
                   const poolsFor = (gi: number) =>
-                    isSwissPools ? Math.max(1, Number(swissPools[String(gi + 1)]) || 1) : 1;
+                    Math.max(1, Number(swissPools[String(gi + 1)]) || 1);
+
                   // Block distribution: pool A = first chunk, pool B = next chunk, etc.
                   // Admins arrange strength manually by dragging within the pool.
                   const poolIdx = (i: number, pools: number, total: number) => {

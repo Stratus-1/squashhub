@@ -3638,6 +3638,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       qc.invalidateQueries({ queryKey: ["my-bookings"] });
       setDeleteConfirm(null);
     },
+    onError: (e: any) => {
+      toast.error(e?.message || "Could not delete this tournament");
+    },
   });
 
   const setChampStatus = useMutation({

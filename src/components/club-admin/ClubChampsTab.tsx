@@ -4468,12 +4468,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <div className="space-y-2">
                               <SegRow
                                 label="Draw format"
-                                value={fmt}
+                                value={fmt === "double_round_robin" ? "single_round_robin" : fmt}
                                 color="violet"
                                 options={[
-                                  { v: "single_round_robin", l: "Single RR" },
-                                  { v: "double_round_robin", l: "Double RR" },
-                                  { v: "swiss", l: "Swiss" },
+                                  { v: "single_round_robin", l: "Round robin" },
+                                  { v: "swiss", l: "Swiss pairing" },
+                                  { v: "cross_league", l: "Cross league" },
                                 ]}
                                 onChange={(v) => {
                                   const nv = v as PerLeagueFormat;
@@ -4483,9 +4483,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
                                     setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
                                   }
-                                  if (!roundFormat) setRoundFormat(nv as any);
+                                  if (nv === "cross_league") setRoundFormat("cross_league");
+                                  else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(nv as any);
                                 }}
                               />
+                              {(fmt === "single_round_robin" || fmt === "double_round_robin") && (
+                                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
+                                  <input
+                                    type="checkbox"
+                                    className="h-3.5 w-3.5 accent-violet-500"
+                                    checked={fmt === "double_round_robin"}
+                                    onChange={(e) => {
+                                      const nv: PerLeagueFormat = e.target.checked ? "double_round_robin" : "single_round_robin";
+                                      setLeagueFormats((m) => ({ ...m, [key]: nv }));
+                                      setUsePerLeagueFormats(true);
+                                      if (!roundFormat || roundFormat === "cross_league") setRoundFormat(nv as any);
+                                    }}
+                                  />
+                                  Double round robin (play each opponent twice — home &amp; away)
+                                </label>
+                              )}
                               <SegRow
                                 label="Category"
                                 value={genderForLeague(gn)}

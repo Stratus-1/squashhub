@@ -553,3 +553,15 @@ there is only ever one stored copy of each field.
     they are edited in the wizard's Registration step (same `tournament_governance` record).
   - Fee shares (federation/association) and refunds stay editable in Governance and are shown
     read-only in the wizard's Registration step.
+
+## Tournament type split into category + eligibility (2026-08-15)
+`tournaments.event_type` now holds ONLY real categories: club_championship, league_fixture,
+league_finals, open_tournament, junior, masters, team_event, provincial_championship,
+national_championship. Legacy values (closed, open, invitational, ranking) were migrated.
+The mixed concepts each have one home:
+- Who may enter → `tournament_governance.eligibility_scope` (shown in the wizard Category step)
+- Invitation only → registration mode on the Registration step
+- Ranking event → "counts for ranking points" on the scoring settings
+- Sanctioning authority / level → Governance → Ownership
+Next up (not built): official SSA tournament templates that pre-fill category, eligibility,
+rules and fee split so clubs only add dates and venue.

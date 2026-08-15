@@ -4662,27 +4662,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
 
-                              {isSwiss && (
-                                <div>
-                                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Pools</Label>
-                                  <Input
-                                    type="number"
-                                    min={1}
-                                    value={swissPools[key] ?? 1}
-                                    onChange={(e) => {
-                                      const pools = Math.max(1, Number(e.target.value) || 1);
-                                      setSwissPools((m) => ({ ...m, [key]: pools }));
-                                      const n = Number(expectedPlayers[key]) || 0;
-                                      if (n >= 2) {
-                                        const perPool = Math.max(2, Math.ceil(n / pools));
-                                        setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
-                                      }
-                                    }}
-                                    className="h-8 text-xs mt-0.5"
-                                  />
+                              <div>
+                                <Label className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Pools</Label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  value={swissPools[key] ?? 1}
+                                  onChange={(e) => {
+                                    const pools = Math.max(1, Number(e.target.value) || 1);
+                                    setSwissPools((m) => ({ ...m, [key]: pools }));
+                                    const n = Number(expectedPlayers[key]) || 0;
+                                    if (isSwiss && n >= 2) {
+                                      const perPool = Math.max(2, Math.ceil(n / pools));
+                                      setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+                                    }
+                                  }}
+                                  className="h-8 text-xs mt-0.5"
+                                />
+                                <div className="text-[9px] text-muted-foreground mt-0.5 leading-tight">
+                                  {fmt === "cross_league"
+                                    ? "Each pool plays every other pool"
+                                    : "1 = one draw · 2+ = split into pools"}
                                 </div>
-                              )}
-                              <div className={isSwiss ? "" : "col-span-1"}>
+                              </div>
+                              <div>
+
                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                                   {isDoubles ? "Expected pairs" : "Expected players"}
                                 </Label>

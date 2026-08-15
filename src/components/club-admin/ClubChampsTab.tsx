@@ -4726,7 +4726,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     <p className="text-[10px] text-muted-foreground italic pt-1">Tip: add up to 6 leagues in one tournament.</p>
                   </div>
                 </div>
-              )}
+
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

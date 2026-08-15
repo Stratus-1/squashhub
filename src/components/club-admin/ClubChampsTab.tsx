@@ -35,7 +35,7 @@ import { Users as UsersIcon, ShieldCheck, ScrollText } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
 import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
-import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-formats";
+import { getTournamentFormat } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 
 interface ClubChampsTabProps {

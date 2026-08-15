@@ -4491,12 +4491,61 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"}`}
                                   </span>
                                 </div>
-                                <Input
-                                  value={groupLabels[key] || ""}
-                                  placeholder={`League ${gn}`}
-                                  onChange={(e) => setGroupLabels((m) => ({ ...m, [key]: e.target.value }))}
-                                  className="h-8 text-sm font-semibold"
-                                />
+                                <div className="flex items-end gap-2">
+                                  <Input
+                                    value={groupLabels[key] || ""}
+                                    placeholder={`League ${gn}`}
+                                    onChange={(e) => setGroupLabels((m) => ({ ...m, [key]: e.target.value }))}
+                                    className="h-8 text-sm font-semibold flex-1 min-w-0"
+                                  />
+                                  <div className="w-14 shrink-0">
+                                    <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Pools</Label>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={swissPools[key] ?? 1}
+                                      title={fmt === "cross_league" ? "Each pool plays every other pool" : "1 = one draw · 2+ = split into pools"}
+                                      onChange={(e) => {
+                                        const pools = Math.max(1, Number(e.target.value) || 1);
+                                        setSwissPools((m) => ({ ...m, [key]: pools }));
+                                        const n = Number(expectedPlayers[key]) || 0;
+                                        if (isSwiss && n >= 2) {
+                                          const perPool = Math.max(2, Math.ceil(n / pools));
+                                          setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+                                        }
+                                      }}
+                                      className="h-8 text-xs mt-0.5 px-1.5"
+                                    />
+                                  </div>
+                                  <div className="w-20 shrink-0">
+                                    <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                      {isDoubles ? "Pairs" : "Players"}
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      placeholder="—"
+                                      value={expectedPlayers[key] ?? ""}
+                                      title={isDoubles ? "Expected pairs" : "Expected players"}
+                                      onChange={(e) => {
+                                        const n = Number(e.target.value);
+                                        setExpectedPlayers((m) => {
+                                          const next = { ...m };
+                                          if (!Number.isFinite(n) || n <= 0) delete next[key];
+                                          else next[key] = Math.round(n);
+                                          return next;
+                                        });
+                                        // Auto-derive Swiss rounds (treat pool as round-robin: rounds = perPool - 1)
+                                        if (isSwiss && Number.isFinite(n) && n >= 2) {
+                                          const pools = Math.max(1, Number(swissPools[key]) || 1);
+                                          const perPool = Math.max(2, Math.ceil(n / pools));
+                                          setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+                                        }
+                                      }}
+                                      className="h-8 text-xs mt-0.5 px-1.5"
+                                    />
+                                  </div>
+                                </div>
                               </div>
                               <Button
                                 type="button"
@@ -4671,60 +4720,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   </div>
                                 </div>
                               )}
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
-
-                              <div>
-                                <Label className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Pools</Label>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  value={swissPools[key] ?? 1}
-                                  onChange={(e) => {
-                                    const pools = Math.max(1, Number(e.target.value) || 1);
-                                    setSwissPools((m) => ({ ...m, [key]: pools }));
-                                    const n = Number(expectedPlayers[key]) || 0;
-                                    if (isSwiss && n >= 2) {
-                                      const perPool = Math.max(2, Math.ceil(n / pools));
-                                      setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
-                                    }
-                                  }}
-                                  className="h-8 text-xs mt-0.5"
-                                />
-                                <div className="text-[9px] text-muted-foreground mt-0.5 leading-tight">
-                                  {fmt === "cross_league"
-                                    ? "Each pool plays every other pool"
-                                    : "1 = one draw · 2+ = split into pools"}
-                                </div>
-                              </div>
-                              <div>
-
-                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                  {isDoubles ? "Expected pairs" : "Expected players"}
-                                </Label>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  placeholder="—"
-                                  value={expectedPlayers[key] ?? ""}
-                                  onChange={(e) => {
-                                    const n = Number(e.target.value);
-                                    setExpectedPlayers((m) => {
-                                      const next = { ...m };
-                                      if (!Number.isFinite(n) || n <= 0) delete next[key];
-                                      else next[key] = Math.round(n);
-                                      return next;
-                                    });
-                                    // Auto-derive Swiss rounds (treat pool as round-robin: rounds = perPool - 1)
-                                    if (isSwiss && Number.isFinite(n) && n >= 2) {
-                                      const pools = Math.max(1, Number(swissPools[key]) || 1);
-                                      const perPool = Math.max(2, Math.ceil(n / pools));
-                                      setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
-                                    }
-                                  }}
-                                  className="h-8 text-xs mt-0.5"
-                                />
-                              </div>
                             </div>
                           </div>
                         );

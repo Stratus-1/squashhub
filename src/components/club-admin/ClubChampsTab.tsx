@@ -4448,6 +4448,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   </SelectContent>
                                 </Select>
                               </div>
+                              <div>
+                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</Label>
+                                <Select
+                                  value={genderForLeague(gn)}
+                                  onValueChange={(v) => setLeagueGender(gn, v as GenderCategory)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="men">Men's</SelectItem>
+                                    <SelectItem value="ladies">Ladies'</SelectItem>
+                                    <SelectItem value="mixed">Mixed</SelectItem>
+                                    <SelectItem value="open">Open</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Singles / doubles</Label>
+                                <Select
+                                  value={matchTypeForLeague(gn)}
+                                  onValueChange={(v) => setLeagueMatchType(gn, v as "singles" | "doubles")}
+                                >
+                                  <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="singles">Singles</SelectItem>
+                                    <SelectItem value="doubles">Doubles</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                               {isSwiss && (
                                 <div>
                                   <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Pools</Label>

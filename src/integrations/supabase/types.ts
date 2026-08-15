@@ -8730,6 +8730,7 @@ export type Database = {
           league_match_types: Json | null
           league_points_per_game: Json | null
           league_scoring_modes: Json | null
+          league_win_conditions: Json
           match_duration_minutes: number
           match_type: string
           max_entrants: number | null
@@ -8785,6 +8786,7 @@ export type Database = {
           league_match_types?: Json | null
           league_points_per_game?: Json | null
           league_scoring_modes?: Json | null
+          league_win_conditions?: Json
           match_duration_minutes?: number
           match_type?: string
           max_entrants?: number | null
@@ -8840,6 +8842,7 @@ export type Database = {
           league_match_types?: Json | null
           league_points_per_game?: Json | null
           league_scoring_modes?: Json | null
+          league_win_conditions?: Json
           match_duration_minutes?: number
           match_type?: string
           max_entrants?: number | null
@@ -9351,6 +9354,7 @@ export type Database = {
           invite_methods: string[] | null
           invite_source: string | null
           league_formats: Json | null
+          league_win_conditions: Json | null
           match_duration_minutes: number | null
           match_type: string | null
           name: string | null

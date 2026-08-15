@@ -8724,9 +8724,12 @@ export type Database = {
           invite_include_reserves: boolean
           invite_methods: string[]
           invite_source: string
+          league_best_of: Json | null
           league_formats: Json | null
           league_genders: Json | null
           league_match_types: Json | null
+          league_points_per_game: Json | null
+          league_scoring_modes: Json | null
           match_duration_minutes: number
           match_type: string
           max_entrants: number | null
@@ -8776,9 +8779,12 @@ export type Database = {
           invite_include_reserves?: boolean
           invite_methods?: string[]
           invite_source?: string
+          league_best_of?: Json | null
           league_formats?: Json | null
           league_genders?: Json | null
           league_match_types?: Json | null
+          league_points_per_game?: Json | null
+          league_scoring_modes?: Json | null
           match_duration_minutes?: number
           match_type?: string
           max_entrants?: number | null
@@ -8828,9 +8834,12 @@ export type Database = {
           invite_include_reserves?: boolean
           invite_methods?: string[]
           invite_source?: string
+          league_best_of?: Json | null
           league_formats?: Json | null
           league_genders?: Json | null
           league_match_types?: Json | null
+          league_points_per_game?: Json | null
+          league_scoring_modes?: Json | null
           match_duration_minutes?: number
           match_type?: string
           max_entrants?: number | null

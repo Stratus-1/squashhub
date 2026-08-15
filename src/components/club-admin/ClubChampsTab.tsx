@@ -4551,6 +4551,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 type="button"
                                 variant="ghost"
                                 size="icon"
+                                className="h-7 w-7 text-muted-foreground"
+                                onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !m[key] }))}
+                                title={collapsed ? "Expand league" : "Collapse league"}
+                              >
+                                <ChevronDown className={cn("h-4 w-4 transition-transform", !collapsed && "rotate-180")} />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
                                 onClick={() => removeLeagueAt(gn)}
                                 title="Remove league"

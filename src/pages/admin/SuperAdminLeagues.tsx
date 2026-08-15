@@ -673,6 +673,12 @@ export default function SuperAdminLeagues() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <OrgSettingsDialog
+        orgId={settingsOrg?.id ?? null}
+        orgName={settingsOrg?.name ?? ""}
+        onOpenChange={(o) => !o && setSettingsOrg(null)}
+      />
     </div>
   );
 }

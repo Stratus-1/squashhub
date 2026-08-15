@@ -119,6 +119,18 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
 
   const clubName = (cid: string) => clubs.find((c) => c.id === cid)?.name || "Club";
 
+  /** Club's own hosting rates, shown as guidance when setting host compensation. */
+  const clubRates = (cid: string) => {
+    const c = clubs.find((x) => x.id === cid);
+    const hourly = c?.host_court_fee_cents_per_hour || 0;
+    const cleaning = c?.host_cleaning_fee_cents_per_day || 0;
+    if (!hourly && !cleaning) return "No hosting rates set";
+    return [
+      hourly ? `R ${centsToRand(hourly)} / court-hour` : null,
+      cleaning ? `R ${centsToRand(cleaning)} cleaning / day` : null,
+    ].filter(Boolean).join(" · ");
+  };
+
   return (
     <Dialog open={!!champ} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">

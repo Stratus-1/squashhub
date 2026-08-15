@@ -281,15 +281,16 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
             </TabsContent>
 
             <TabsContent value="fees" className="space-y-3 pt-3">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label>Entry fee (R)</Label>
-                  <Input
-                    type="number" min={0} step="0.01"
-                    value={centsToRand(form.entry_fee_cents)}
-                    onChange={(e) => set("entry_fee_cents", randToCents(e.target.value))}
-                  />
+              {/* Entry fee and "payment required" are owned by the tournament
+                  setup wizard (Registration step) — read-only here. */}
+              <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
+                <div>Entry fee: <strong>R {centsToRand(form.entry_fee_cents)}</strong></div>
+                <div>
+                  Payment required to confirm entry: <strong>{form.payment_required ? "Yes" : "No"}</strong>
                 </div>
+                <p className="text-xs text-muted-foreground">Set in the tournament setup → Registration step.</p>
+              </div>
+              <div className={`grid gap-3 ${clubScope ? "grid-cols-1" : "grid-cols-2"}`}>
                 {!clubScope && (
                 <div className="space-y-1">
                   <Label>Federation share (R)</Label>
@@ -316,13 +317,6 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                 <div>Host compensation: <strong>R {centsToRand(split.host)}</strong></div>
                 <div>Owning body retains: <strong>R {centsToRand(split.owner)}</strong></div>
                 {split.overAllocated && <div>Shares exceed the entry fee</div>}
-              </div>
-              <div className="flex items-center justify-between rounded-md border p-3">
-                <div>
-                  <Label>Payment required to confirm entry</Label>
-                  <p className="text-xs text-muted-foreground">Entries stay pending until the fee is paid.</p>
-                </div>
-                <Switch checked={form.payment_required} onCheckedChange={(v) => set("payment_required", v)} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">

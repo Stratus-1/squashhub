@@ -4392,8 +4392,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               )}
 
-              {(
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px]">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px]">
                   {/* Canvas */}
                   <div
                     className="p-4 space-y-3 min-h-[220px] bg-muted/10"

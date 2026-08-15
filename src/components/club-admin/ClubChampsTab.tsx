@@ -4381,58 +4381,126 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 <X className="h-4 w-4" />
                               </Button>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                              <div>
-                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Format</Label>
-                                <Select
-                                  value={fmt}
-                                  onValueChange={(v) => {
-                                    const nv = v as PerLeagueFormat;
-                                    setLeagueFormats((m) => ({ ...m, [key]: nv }));
-                                    setUsePerLeagueFormats(true);
-                                    if (nv === "swiss") {
-                                      setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
-                                      setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
-                                    }
-                                    if (!roundFormat) setRoundFormat(nv as any);
-                                  }}
-                                >
-                                  <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="single_round_robin">Single round-robin</SelectItem>
-                                    <SelectItem value="double_round_robin">Double round-robin</SelectItem>
-                                    <SelectItem value="swiss">Swiss pairing</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</Label>
-                                <Select
-                                  value={genderForLeague(gn)}
-                                  onValueChange={(v) => setLeagueGender(gn, v as GenderCategory)}
-                                >
-                                  <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="men">Men's</SelectItem>
-                                    <SelectItem value="ladies">Ladies'</SelectItem>
-                                    <SelectItem value="mixed">Mixed</SelectItem>
-                                    <SelectItem value="open">Open</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Singles / doubles</Label>
-                                <Select
-                                  value={matchTypeForLeague(gn)}
-                                  onValueChange={(v) => setLeagueMatchType(gn, v as "singles" | "doubles")}
-                                >
-                                  <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="singles">Singles</SelectItem>
-                                    <SelectItem value="doubles">Doubles</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                            {/* Visual, button-driven league setup — draw format,
+                                category, entity type and scoring all per league. */}
+                            <div className="space-y-2">
+                              <SegRow
+                                label="Draw format"
+                                value={fmt}
+                                options={[
+                                  { v: "single_round_robin", l: "Single RR" },
+                                  { v: "double_round_robin", l: "Double RR" },
+                                  { v: "swiss", l: "Swiss" },
+                                ]}
+                                onChange={(v) => {
+                                  const nv = v as PerLeagueFormat;
+                                  setLeagueFormats((m) => ({ ...m, [key]: nv }));
+                                  setUsePerLeagueFormats(true);
+                                  if (nv === "swiss") {
+                                    setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
+                                    setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
+                                  }
+                                  if (!roundFormat) setRoundFormat(nv as any);
+                                }}
+                              />
+                              <SegRow
+                                label="Category"
+                                value={genderForLeague(gn)}
+                                options={[
+                                  { v: "men", l: "Men's" },
+                                  { v: "ladies", l: "Ladies'" },
+                                  { v: "mixed", l: "Mixed" },
+                                  { v: "open", l: "Open" },
+                                ]}
+                                onChange={(v) => setLeagueGender(gn, v as GenderCategory)}
+                              />
+                              <SegRow
+                                label="Players"
+                                value={matchTypeForLeague(gn)}
+                                options={[
+                                  { v: "singles", l: "👤 Singles" },
+                                  { v: "doubles", l: "👥 Doubles" },
+                                ]}
+                                onChange={(v) => setLeagueMatchType(gn, v as "singles" | "doubles")}
+                              />
+                              <SegRow
+                                label="Scoring"
+                                value={scoringForLeague(gn)}
+                                options={[
+                                  { v: "standard", l: "Standard" },
+                                  { v: "time_capped_points", l: "🔔 Bells" },
+                                ]}
+                                onChange={(v) => setLeagueScoring(gn, v as "standard" | "time_capped_points")}
+                              />
+                              {scoringForLeague(gn) === "standard" ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <SegRow
+                                    label="Game length"
+                                    value={String(pointsForLeague(gn))}
+                                    options={[
+                                      { v: "11", l: "Par 11" },
+                                      { v: "15", l: "Par 15" },
+                                    ]}
+                                    onChange={(v) => {
+                                      const n = Number(v) === 15 ? 15 : 11;
+                                      setLeaguePointsPerGame((m) => ({ ...m, [key]: n }));
+                                      if (gn === 1) setPointsPerGame(n);
+                                    }}
+                                  />
+                                  <SegRow
+                                    label="Best of"
+                                    value={String(bestOfForLeague(gn))}
+                                    options={[
+                                      { v: "3", l: "Best of 3" },
+                                      { v: "5", l: "Best of 5" },
+                                    ]}
+                                    onChange={(v) => {
+                                      const n = Number(v) === 5 ? 5 : 3;
+                                      setLeagueBestOf((m) => ({ ...m, [key]: n }));
+                                      if (gn === 1) setBestOf(n);
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bell slot (min)</Label>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={groupDurations[key] ?? ""}
+                                      placeholder="20"
+                                      onChange={(e) => {
+                                        const n = Math.max(0, Number(e.target.value) || 0);
+                                        setGroupDurations((m) => {
+                                          const next = { ...m };
+                                          if (n <= 0) delete next[key];
+                                          else next[key] = n;
+                                          return next;
+                                        });
+                                      }}
+                                      className="h-8 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Break (min)</Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={groupBreakMinutes[key] ?? ""}
+                                      placeholder={String(defaultBreakMinutes || 0)}
+                                      onChange={(e) => {
+                                        const n = Math.max(0, Number(e.target.value) || 0);
+                                        setGroupBreakMinutes((m) => ({ ...m, [key]: n }));
+                                      }}
+                                      className="h-8 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+
                               {isSwiss && (
                                 <div>
                                   <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Pools</Label>

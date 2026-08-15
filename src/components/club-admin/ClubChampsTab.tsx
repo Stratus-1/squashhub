@@ -4435,6 +4435,500 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </div>
             </WizardSection>
 
+
+            <WizardSection
+              title={"Byes & visitors"}
+              summary={`${byeHandling ? "Bye rule set" : "Bye rule not set"} · ${includeVisitors ? "visitors included" : "members only"}`}
+              complete={!!byeHandling}
+              defaultOpen={true}
+            >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>
+                <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Please select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
+                    <SelectItem value="no_match">No match — bye not recorded</SelectItem>
+                    <SelectItem value="walkover_win">Walkover win — full points</SelectItem>
+                    <SelectItem value="neutral">Neutral — excluded from averages</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Applies when an odd number of teams means one sits out per round.
+                </p>
+              </div>
+            </div>
+
+
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label className="text-sm font-medium">Include Visitors</Label>
+                <p className="text-xs text-muted-foreground">
+                  Add registered visitors to the tournament player pool
+                </p>
+              </div>
+              <Switch checked={includeVisitors} onCheckedChange={(v) => { setIncludeVisitors(v); if (!v) setSelectedVisitorClubs(new Set()); }} />
+            </div>
+
+
+
+            {visitorClubs.length > 0 && (
+              <div className="space-y-2 rounded-lg border p-3">
+                <Label className="text-sm font-medium">Filter by Home Club</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Leave all unchecked to include entrants from all clubs ({(homeClubCounts && Object.values(homeClubCounts).reduce((a, b) => a + b, 0)) || 0} out-of-club entrant{(Object.values(homeClubCounts).reduce((a, b) => a + b, 0)) !== 1 ? "s" : ""} across {visitorClubs.length} club{visitorClubs.length !== 1 ? "s" : ""})
+                </p>
+                <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                  {visitorClubs.map((club) => (
+                    <label key={club} className="flex items-center gap-2 cursor-pointer hover:bg-accent rounded px-2 py-1">
+                      <Checkbox
+                        checked={selectedVisitorClubs.has(club)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedVisitorClubs);
+                          checked ? next.add(club) : next.delete(club);
+                          setSelectedVisitorClubs(next);
+                        }}
+                      />
+                      <span className="text-sm">{club}</span>
+                      <Badge variant="secondary" className="ml-auto text-[10px]">
+                        {homeClubCounts[club] || 0}
+                      </Badge>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {includeVisitors && visitorClubs.length === 0 && (
+              <p className="text-xs text-muted-foreground rounded-lg border p-3">
+                No visitors registered yet. Visitors can register from the club sign-in page.
+              </p>
+            )}
+            </WizardSection>
+          </CardContent>
+        </Card>
+      )}
+
+
+      {/* ── STEP: COURTS (date / time / courts → book ahead of player selection) ── */}
+      {step === "courts" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Dates, Times &amp; Courts</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Lock in when the tournament is played and which courts it owns. You can book the courts now — bookings appear under the tournament name in the courts grid so nothing else can be booked over them.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <WizardSection
+              title={"Dates & times"}
+              summary={`${startDate || "start?"} → ${endDate || "end?"} · ${startTime}–${endTime} · ${playDays.size} play day${playDays.size === 1 ? "" : "s"}`}
+              complete={!!startDate && !!endDate && playDays.size > 0}
+              defaultOpen={true}
+            >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Tournament starts</Label>
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm">Tournament ends</Label>
+                <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Daily start time</Label>
+                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm">Daily end time</Label>
+                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm">Play days</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {DAY_NAMES.map((name, i) => (
+                  <label key={i} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={playDays.has(i)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(playDays);
+                        checked ? next.add(i) : next.delete(i);
+                        setPlayDays(next);
+                      }}
+                    />
+                    <span className="text-sm">{name}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                For a one-day tournament tick just that day. For a weekend, tick both.
+              </p>
+            </div>
+            </WizardSection>
+
+            <WizardSection
+              title={"Courts & daily schedule"}
+              summary={`${selectedCourtIds.size} court${selectedCourtIds.size === 1 ? "" : "s"}${customizeDailySchedule ? " · per-day times" : ""}`}
+              complete={selectedCourtIds.size > 0}
+              defaultOpen={true}
+            >
+            <div>
+              <Label className="text-sm">Courts used by the tournament</Label>
+              {(() => {
+                const homeCourts = courts.filter((c) => !c.is_external);
+                const externalCourts = courts.filter((c) => c.is_external);
+                const externalByVenue = externalCourts.reduce<Record<string, typeof externalCourts>>((acc, c) => {
+                  const key = c.venue_name || "External venue";
+                  (acc[key] ||= []).push(c);
+                  return acc;
+                }, {});
+                const renderCheckbox = (c: typeof courts[number]) => (
+                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={selectedCourtIds.has(c.id)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(selectedCourtIds);
+                        checked ? next.add(c.id) : next.delete(c.id);
+                        setSelectedCourtIds(next);
+                      }}
+                    />
+                    <span className="text-sm">{c.name}</span>
+                  </label>
+                );
+                return (
+                  <div className="space-y-2 mt-1">
+                    {homeCourts.length > 0 && (
+                      <div className="flex flex-wrap gap-2">{homeCourts.map(renderCheckbox)}</div>
+                    )}
+                    {Object.entries(externalByVenue).map(([venue, list]) => (
+                      <div key={venue} className="rounded-md border border-dashed p-2">
+                        <div className="text-[11px] font-semibold text-muted-foreground mb-1">📍 {venue}</div>
+                        <div className="flex flex-wrap gap-2">{list.map(renderCheckbox)}</div>
+                      </div>
+                    ))}
+                    {courts.length === 0 && (
+                      <span className="text-xs text-muted-foreground">No courts configured for this club yet.</span>
+                    )}
+                    {externalCourts.length === 0 && homeCourts.length > 0 && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Need more courts? Add external venues in <strong>Admin → Courts → External / Tournament Venues</strong>.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Per-day schedule overrides — supports multiple time windows per date
+                (e.g. Sat 10:00–12:00 AND Sat 14:00–16:00, Sun different hours). */}
+            <div className="rounded-lg border p-3 space-y-3">
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={customizeDailySchedule}
+                  onCheckedChange={(v) => {
+                    const on = !!v;
+                    setCustomizeDailySchedule(on);
+                    if (on && daySchedules.length === 0 && startDate && endDate) {
+                      const dates = eachDayOfInterval({
+                        start: parseISO(startDate),
+                        end: parseISO(endDate),
+                      }).filter((d) => playDays.size === 0 || playDays.has(getDay(d)));
+                      setDaySchedules(
+                        dates.map((d) => ({
+                          date: format(d, "yyyy-MM-dd"),
+                          start_time: startTime,
+                          end_time: endTime,
+                          court_ids: null,
+                        }))
+                      );
+                    }
+                  }}
+                />
+                <span>
+                  <span className="font-medium">Customize times per day</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Set different time windows (and optionally specific courts) for each play-day — e.g. Saturday 10:00–12:00 and 14:00–16:00, Sunday different hours.
+                  </span>
+                </span>
+              </label>
+
+              {customizeDailySchedule && (
+                <div className="space-y-2">
+                  {daySchedules.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Pick dates and play days above, then add a window.</p>
+                  )}
+                  {daySchedules.map((d, idx) => {
+                    const allCourts = d.court_ids === null;
+                    return (
+                      <div key={idx} className="rounded border p-2 bg-muted/20 space-y-2">
+                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+                          <div>
+                            <Label className="text-xs">Date</Label>
+                            <Input
+                              type="date"
+                              value={d.date}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, date: v } : x));
+                              }}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Start</Label>
+                            <Input
+                              type="time"
+                              value={d.start_time}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, start_time: v } : x));
+                              }}
+                              className="h-8 text-sm w-28"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">End</Label>
+                            <Input
+                              type="time"
+                              value={d.end_time}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, end_time: v } : x));
+                              }}
+                              className="h-8 text-sm w-28"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8"
+                            onClick={() => setDaySchedules((prev) => prev.filter((_, i) => i !== idx))}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Checkbox
+                              checked={allCourts}
+                              onCheckedChange={(v) => {
+                                setDaySchedules((prev) => prev.map((x, i) =>
+                                  i === idx
+                                    ? { ...x, court_ids: v ? null : Array.from(selectedCourtIds) }
+                                    : x
+                                ));
+                              }}
+                            />
+                            <span className="text-xs">All selected courts</span>
+                          </div>
+                          {!allCourts && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {Array.from(selectedCourtIds).map((cid) => {
+                                const active = d.court_ids?.includes(cid);
+                                return (
+                                  <button
+                                    key={cid}
+                                    type="button"
+                                    onClick={() => {
+                                      setDaySchedules((prev) => prev.map((x, i) => {
+                                        if (i !== idx) return x;
+                                        const cur = x.court_ids ?? [];
+                                        const next = cur.includes(cid)
+                                          ? cur.filter((c) => c !== cid)
+                                          : [...cur, cid];
+                                        return { ...x, court_ids: next };
+                                      }));
+                                    }}
+                                    className={`px-2 py-0.5 rounded text-xs border ${
+                                      active
+                                        ? "bg-primary text-primary-foreground border-primary"
+                                        : "bg-background hover:bg-muted border-border"
+                                    }`}
+                                  >
+                                    {getCourtName(cid)}
+                                  </button>
+                                );
+                              })}
+                              {selectedCourtIds.size === 0 && (
+                                <span className="text-xs text-muted-foreground">Tick courts above first.</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const last = daySchedules[daySchedules.length - 1];
+                      setDaySchedules((prev) => [
+                        ...prev,
+                        {
+                          date: last?.date || startDate || format(new Date(), "yyyy-MM-dd"),
+                          start_time: startTime,
+                          end_time: endTime,
+                          court_ids: null,
+                        },
+                      ]);
+                    }}
+                  >
+                    + Add time window
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    Add the same date more than once to create multiple sessions on that day (e.g. morning + afternoon). When customized, the global Start/End times above are ignored.
+                  </p>
+                </div>
+              )}
+            </div>
+            </WizardSection>
+
+
+
+            <WizardSection
+              title={"Scheduling & playoffs"}
+              summary={enablePlayoffs ? "Playoffs enabled" : "No playoffs"}
+              complete={true}
+              defaultOpen={true}
+            >
+            {/* Schedule density — fill vs spread. Court bookings are made on the final Review step. */}
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+              <p className="text-sm font-medium">How should games be scheduled?</p>
+              <p className="text-[11px] text-muted-foreground">
+                Controls how the generator fills the available time. You can rebuild the schedule after changing this.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
+                  scheduleMode === "fill" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
+                )}>
+                  <input
+                    type="radio"
+                    name="schedule-mode"
+                    className="mt-0.5"
+                    checked={scheduleMode === "fill"}
+                    onChange={() => setScheduleMode("fill")}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium">Fill up games — finish as quickly as possible</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Packs every slot on the earliest day first. Later days are only used if needed — the tournament may finish in fewer days than selected.
+                    </div>
+                  </div>
+                </label>
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
+                  scheduleMode === "spread" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
+                )}>
+                  <input
+                    type="radio"
+                    name="schedule-mode"
+                    className="mt-0.5"
+                    checked={scheduleMode === "spread"}
+                    onChange={() => setScheduleMode("spread")}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium">Spread across available times</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Interleaves games evenly across all selected play-days so nobody is loaded onto a single day.
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Playoff finishing options — only when playoffs are enabled */}
+            {enablePlayoffs && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Playoff finishing options</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Fine-tune when the finals happen after the pool stage ends.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="playoff-break" className="text-xs">
+                      Break after last pool match
+                    </Label>
+                    <div id="playoff-break" className="grid grid-cols-4 gap-1">
+                      {[0, 15, 30, 45, 60, 90, 120].map((minutes) => (
+                        <Button
+                          key={minutes}
+                          type="button"
+                          size="sm"
+                          variant={playoffBreakMinutes === minutes ? "default" : "outline"}
+                          className="h-8 px-2 text-xs"
+                          disabled={!!playoffDate}
+                          onClick={() => setPlayoffBreakMinutes(minutes)}
+                        >
+                          {minutes === 0 ? "None" : minutes === 90 ? "1½h" : minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Applies to fill-mode when playoffs run on the same day as pool play.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="playoff-date" className="text-xs">
+                      Play finals on a specific date (optional)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="playoff-date"
+                        type="date"
+                        className="h-9"
+                        value={playoffDate}
+                        min={startDate || undefined}
+                        max={endDate || undefined}
+                        onChange={(e) => setPlayoffDate(e.target.value)}
+                      />
+                      {playoffDate && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-9"
+                          onClick={() => setPlayoffDate("")}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Overrides the break setting — finals are forced onto this date.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            </WizardSection>
+          </CardContent>
+        </Card>
+      )}
+
+
+      {/* ── STEP: STRUCTURE & CAPACITY ── */}
+      {step === "structure" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Structure &amp; Capacity</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Build the leagues that make up this tournament, then check they fit the dates, times and courts you just picked.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
             <WizardSection
               title={"Tournament structure"}
               summary={`${numGroups || 0} league${numGroups === 1 ? "" : "s"} configured`}
@@ -4939,363 +5433,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </WizardSection>
 
             <WizardSection
-              title={"Byes & visitors"}
-              summary={`${byeHandling ? "Bye rule set" : "Bye rule not set"} · ${includeVisitors ? "visitors included" : "members only"}`}
-              complete={!!byeHandling}
-              defaultOpen={true}
-            >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-semibold">Bye Handling <span className="text-destructive">*</span></Label>
-                <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="no_match">No match — bye not recorded</SelectItem>
-                    <SelectItem value="walkover_win">Walkover win — full points</SelectItem>
-                    <SelectItem value="neutral">Neutral — excluded from averages</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Applies when an odd number of teams means one sits out per round.
-                </p>
-              </div>
-            </div>
-
-
-
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div>
-                <Label className="text-sm font-medium">Include Visitors</Label>
-                <p className="text-xs text-muted-foreground">
-                  Add registered visitors to the tournament player pool
-                </p>
-              </div>
-              <Switch checked={includeVisitors} onCheckedChange={(v) => { setIncludeVisitors(v); if (!v) setSelectedVisitorClubs(new Set()); }} />
-            </div>
-
-
-
-            {visitorClubs.length > 0 && (
-              <div className="space-y-2 rounded-lg border p-3">
-                <Label className="text-sm font-medium">Filter by Home Club</Label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Leave all unchecked to include entrants from all clubs ({(homeClubCounts && Object.values(homeClubCounts).reduce((a, b) => a + b, 0)) || 0} out-of-club entrant{(Object.values(homeClubCounts).reduce((a, b) => a + b, 0)) !== 1 ? "s" : ""} across {visitorClubs.length} club{visitorClubs.length !== 1 ? "s" : ""})
-                </p>
-                <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                  {visitorClubs.map((club) => (
-                    <label key={club} className="flex items-center gap-2 cursor-pointer hover:bg-accent rounded px-2 py-1">
-                      <Checkbox
-                        checked={selectedVisitorClubs.has(club)}
-                        onCheckedChange={(checked) => {
-                          const next = new Set(selectedVisitorClubs);
-                          checked ? next.add(club) : next.delete(club);
-                          setSelectedVisitorClubs(next);
-                        }}
-                      />
-                      <span className="text-sm">{club}</span>
-                      <Badge variant="secondary" className="ml-auto text-[10px]">
-                        {homeClubCounts[club] || 0}
-                      </Badge>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {includeVisitors && visitorClubs.length === 0 && (
-              <p className="text-xs text-muted-foreground rounded-lg border p-3">
-                No visitors registered yet. Visitors can register from the club sign-in page.
-              </p>
-            )}
-            </WizardSection>
-          </CardContent>
-        </Card>
-      )}
-
-
-      {/* ── STEP: COURTS (date / time / courts → book ahead of player selection) ── */}
-      {step === "courts" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Dates, Times &amp; Courts</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Lock in when the tournament is played and which courts it owns. You can book the courts now — bookings appear under the tournament name in the courts grid so nothing else can be booked over them.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <WizardSection
-              title={"Dates & times"}
-              summary={`${startDate || "start?"} → ${endDate || "end?"} · ${startTime}–${endTime} · ${playDays.size} play day${playDays.size === 1 ? "" : "s"}`}
-              complete={!!startDate && !!endDate && playDays.size > 0}
-              defaultOpen={true}
-            >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Tournament starts</Label>
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-sm">Tournament ends</Label>
-                <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Daily start time</Label>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-sm">Daily end time</Label>
-                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-sm">Play days</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {DAY_NAMES.map((name, i) => (
-                  <label key={i} className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox
-                      checked={playDays.has(i)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(playDays);
-                        checked ? next.add(i) : next.delete(i);
-                        setPlayDays(next);
-                      }}
-                    />
-                    <span className="text-sm">{name}</span>
-                  </label>
-                ))}
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                For a one-day tournament tick just that day. For a weekend, tick both.
-              </p>
-            </div>
-            </WizardSection>
-
-            <WizardSection
-              title={"Courts & daily schedule"}
-              summary={`${selectedCourtIds.size} court${selectedCourtIds.size === 1 ? "" : "s"}${customizeDailySchedule ? " · per-day times" : ""}`}
-              complete={selectedCourtIds.size > 0}
-              defaultOpen={true}
-            >
-            <div>
-              <Label className="text-sm">Courts used by the tournament</Label>
-              {(() => {
-                const homeCourts = courts.filter((c) => !c.is_external);
-                const externalCourts = courts.filter((c) => c.is_external);
-                const externalByVenue = externalCourts.reduce<Record<string, typeof externalCourts>>((acc, c) => {
-                  const key = c.venue_name || "External venue";
-                  (acc[key] ||= []).push(c);
-                  return acc;
-                }, {});
-                const renderCheckbox = (c: typeof courts[number]) => (
-                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox
-                      checked={selectedCourtIds.has(c.id)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selectedCourtIds);
-                        checked ? next.add(c.id) : next.delete(c.id);
-                        setSelectedCourtIds(next);
-                      }}
-                    />
-                    <span className="text-sm">{c.name}</span>
-                  </label>
-                );
-                return (
-                  <div className="space-y-2 mt-1">
-                    {homeCourts.length > 0 && (
-                      <div className="flex flex-wrap gap-2">{homeCourts.map(renderCheckbox)}</div>
-                    )}
-                    {Object.entries(externalByVenue).map(([venue, list]) => (
-                      <div key={venue} className="rounded-md border border-dashed p-2">
-                        <div className="text-[11px] font-semibold text-muted-foreground mb-1">📍 {venue}</div>
-                        <div className="flex flex-wrap gap-2">{list.map(renderCheckbox)}</div>
-                      </div>
-                    ))}
-                    {courts.length === 0 && (
-                      <span className="text-xs text-muted-foreground">No courts configured for this club yet.</span>
-                    )}
-                    {externalCourts.length === 0 && homeCourts.length > 0 && (
-                      <p className="text-[10px] text-muted-foreground">
-                        Need more courts? Add external venues in <strong>Admin → Courts → External / Tournament Venues</strong>.
-                      </p>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Per-day schedule overrides — supports multiple time windows per date
-                (e.g. Sat 10:00–12:00 AND Sat 14:00–16:00, Sun different hours). */}
-            <div className="rounded-lg border p-3 space-y-3">
-              <label className="flex items-start gap-2 text-sm cursor-pointer">
-                <Checkbox
-                  checked={customizeDailySchedule}
-                  onCheckedChange={(v) => {
-                    const on = !!v;
-                    setCustomizeDailySchedule(on);
-                    if (on && daySchedules.length === 0 && startDate && endDate) {
-                      const dates = eachDayOfInterval({
-                        start: parseISO(startDate),
-                        end: parseISO(endDate),
-                      }).filter((d) => playDays.size === 0 || playDays.has(getDay(d)));
-                      setDaySchedules(
-                        dates.map((d) => ({
-                          date: format(d, "yyyy-MM-dd"),
-                          start_time: startTime,
-                          end_time: endTime,
-                          court_ids: null,
-                        }))
-                      );
-                    }
-                  }}
-                />
-                <span>
-                  <span className="font-medium">Customize times per day</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Set different time windows (and optionally specific courts) for each play-day — e.g. Saturday 10:00–12:00 and 14:00–16:00, Sunday different hours.
-                  </span>
-                </span>
-              </label>
-
-              {customizeDailySchedule && (
-                <div className="space-y-2">
-                  {daySchedules.length === 0 && (
-                    <p className="text-xs text-muted-foreground">Pick dates and play days above, then add a window.</p>
-                  )}
-                  {daySchedules.map((d, idx) => {
-                    const allCourts = d.court_ids === null;
-                    return (
-                      <div key={idx} className="rounded border p-2 bg-muted/20 space-y-2">
-                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
-                          <div>
-                            <Label className="text-xs">Date</Label>
-                            <Input
-                              type="date"
-                              value={d.date}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, date: v } : x));
-                              }}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Start</Label>
-                            <Input
-                              type="time"
-                              value={d.start_time}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, start_time: v } : x));
-                              }}
-                              className="h-8 text-sm w-28"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">End</Label>
-                            <Input
-                              type="time"
-                              value={d.end_time}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, end_time: v } : x));
-                              }}
-                              className="h-8 text-sm w-28"
-                            />
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8"
-                            onClick={() => setDaySchedules((prev) => prev.filter((_, i) => i !== idx))}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Checkbox
-                              checked={allCourts}
-                              onCheckedChange={(v) => {
-                                setDaySchedules((prev) => prev.map((x, i) =>
-                                  i === idx
-                                    ? { ...x, court_ids: v ? null : Array.from(selectedCourtIds) }
-                                    : x
-                                ));
-                              }}
-                            />
-                            <span className="text-xs">All selected courts</span>
-                          </div>
-                          {!allCourts && (
-                            <div className="flex flex-wrap gap-1.5">
-                              {Array.from(selectedCourtIds).map((cid) => {
-                                const active = d.court_ids?.includes(cid);
-                                return (
-                                  <button
-                                    key={cid}
-                                    type="button"
-                                    onClick={() => {
-                                      setDaySchedules((prev) => prev.map((x, i) => {
-                                        if (i !== idx) return x;
-                                        const cur = x.court_ids ?? [];
-                                        const next = cur.includes(cid)
-                                          ? cur.filter((c) => c !== cid)
-                                          : [...cur, cid];
-                                        return { ...x, court_ids: next };
-                                      }));
-                                    }}
-                                    className={`px-2 py-0.5 rounded text-xs border ${
-                                      active
-                                        ? "bg-primary text-primary-foreground border-primary"
-                                        : "bg-background hover:bg-muted border-border"
-                                    }`}
-                                  >
-                                    {getCourtName(cid)}
-                                  </button>
-                                );
-                              })}
-                              {selectedCourtIds.size === 0 && (
-                                <span className="text-xs text-muted-foreground">Tick courts above first.</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const last = daySchedules[daySchedules.length - 1];
-                      setDaySchedules((prev) => [
-                        ...prev,
-                        {
-                          date: last?.date || startDate || format(new Date(), "yyyy-MM-dd"),
-                          start_time: startTime,
-                          end_time: endTime,
-                          court_ids: null,
-                        },
-                      ]);
-                    }}
-                  >
-                    + Add time window
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    Add the same date more than once to create multiple sessions on that day (e.g. morning + afternoon). When customized, the global Start/End times above are ignored.
-                  </p>
-                </div>
-              )}
-            </div>
-            </WizardSection>
-
-            <WizardSection
               title={"Capacity check"}
               summary={"Estimate matches against available court time"}
               complete={true}
@@ -5610,131 +5747,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               })()}
             </div>
             </WizardSection>
-
-
-            <WizardSection
-              title={"Scheduling & playoffs"}
-              summary={enablePlayoffs ? "Playoffs enabled" : "No playoffs"}
-              complete={true}
-              defaultOpen={true}
-            >
-            {/* Schedule density — fill vs spread. Court bookings are made on the final Review step. */}
-            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-              <p className="text-sm font-medium">How should games be scheduled?</p>
-              <p className="text-[11px] text-muted-foreground">
-                Controls how the generator fills the available time. You can rebuild the schedule after changing this.
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className={cn(
-                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
-                  scheduleMode === "fill" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
-                )}>
-                  <input
-                    type="radio"
-                    name="schedule-mode"
-                    className="mt-0.5"
-                    checked={scheduleMode === "fill"}
-                    onChange={() => setScheduleMode("fill")}
-                  />
-                  <div className="space-y-0.5">
-                    <div className="text-sm font-medium">Fill up games — finish as quickly as possible</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Packs every slot on the earliest day first. Later days are only used if needed — the tournament may finish in fewer days than selected.
-                    </div>
-                  </div>
-                </label>
-                <label className={cn(
-                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
-                  scheduleMode === "spread" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
-                )}>
-                  <input
-                    type="radio"
-                    name="schedule-mode"
-                    className="mt-0.5"
-                    checked={scheduleMode === "spread"}
-                    onChange={() => setScheduleMode("spread")}
-                  />
-                  <div className="space-y-0.5">
-                    <div className="text-sm font-medium">Spread across available times</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Interleaves games evenly across all selected play-days so nobody is loaded onto a single day.
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Playoff finishing options — only when playoffs are enabled */}
-            {enablePlayoffs && (
-              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
-                <div>
-                  <p className="text-sm font-medium">Playoff finishing options</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Fine-tune when the finals happen after the pool stage ends.
-                  </p>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="playoff-break" className="text-xs">
-                      Break after last pool match
-                    </Label>
-                    <div id="playoff-break" className="grid grid-cols-4 gap-1">
-                      {[0, 15, 30, 45, 60, 90, 120].map((minutes) => (
-                        <Button
-                          key={minutes}
-                          type="button"
-                          size="sm"
-                          variant={playoffBreakMinutes === minutes ? "default" : "outline"}
-                          className="h-8 px-2 text-xs"
-                          disabled={!!playoffDate}
-                          onClick={() => setPlayoffBreakMinutes(minutes)}
-                        >
-                          {minutes === 0 ? "None" : minutes === 90 ? "1½h" : minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
-                        </Button>
-                      ))}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Applies to fill-mode when playoffs run on the same day as pool play.
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="playoff-date" className="text-xs">
-                      Play finals on a specific date (optional)
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="playoff-date"
-                        type="date"
-                        className="h-9"
-                        value={playoffDate}
-                        min={startDate || undefined}
-                        max={endDate || undefined}
-                        onChange={(e) => setPlayoffDate(e.target.value)}
-                      />
-                      {playoffDate && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-9"
-                          onClick={() => setPlayoffDate("")}
-                        >
-                          Clear
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Overrides the break setting — finals are forced onto this date.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            </WizardSection>
           </CardContent>
         </Card>
       )}
-
 
       {/* ── STEP: REGISTRATION & PAYMENT ── */}
       {step === "registration" && (

@@ -4299,7 +4299,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <p className="text-[11px] text-muted-foreground mt-1.5">
                 {isDoubles
                   ? "Doubles — planned counts below are entered as pairs."
-                  : "Singles — planned counts below are entered as players."}
+                  : "Singles — planned counts below are entered as players."}{" "}
+                Applies to every league in this tournament.
               </p>
             </div>
 

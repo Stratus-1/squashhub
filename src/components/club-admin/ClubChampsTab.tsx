@@ -622,7 +622,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setLeagueMatchTypes(shift);
     setNumGroups((n) => Math.max(0, (n || 0) - 1));
   };
-  };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   // Prune any selected court IDs that no longer exist in the club's courts

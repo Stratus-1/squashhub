@@ -156,7 +156,7 @@ export default function ClubAdmin() {
       case "ladder": return <LadderTab clubId={club.id} />;
       case "ranking-points": return <RankingPointsTab clubId={club.id} />;
       case "leagues": return <LeaguesTab clubId={club.id} />;
-      case "champs": return <ClubChampsTab clubId={club.id} />;
+      case "champs": return <TournamentPlanner mode="club" clubId={club.id} />;
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
       case "awards": return <LeagueAwardsTab clubId={club.id} />;

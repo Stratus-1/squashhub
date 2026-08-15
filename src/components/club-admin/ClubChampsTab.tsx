@@ -4702,7 +4702,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   {/* Format palette */}
                   <div className="border-t lg:border-t-0 lg:border-l border-border bg-muted/30 p-3 space-y-2">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Format palette</div>
-                    {(Object.keys(FORMAT_META) as PerLeagueFormat[]).map((fmt) => {
+                    {(["single_round_robin", "swiss", "cross_league"] as PerLeagueFormat[]).map((fmt) => {
                       const meta = FORMAT_META[fmt];
                       return (
                         <button

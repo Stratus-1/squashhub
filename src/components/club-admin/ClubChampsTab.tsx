@@ -98,14 +98,15 @@ function normaliseEventType(value: string | null | undefined, scope: string): st
 
 
 
-type WizardStep = "category" | "courts" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
+type WizardStep = "category" | "courts" | "structure" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
 type GenderCategory = "men" | "ladies" | "mixed" | "open";
 type MatchType = "singles" | "doubles";
 
-const STEPS: WizardStep[] = ["category", "courts", "registration", "players", "groups", "schedule", "review"];
+const STEPS: WizardStep[] = ["category", "courts", "structure", "registration", "players", "groups", "schedule", "review"];
 const STEP_LABELS: Record<WizardStep, string> = {
   category: "Category",
   courts: "Courts",
+  structure: "Structure & Capacity",
   registration: "Registration",
   players: "Players",
   groups: "Leagues",
@@ -1128,8 +1129,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const activeSteps = useMemo<WizardStep[]>(() => {
     if (!awaitingPlayerPairs) return STEPS;
     return selfPairInviteSelection
-      ? ["category", "courts", "registration", "players", "review"]
-      : ["category", "courts", "registration", "review"];
+      ? ["category", "courts", "structure", "registration", "players", "review"]
+      : ["category", "courts", "structure", "registration", "review"];
   }, [awaitingPlayerPairs, selfPairInviteSelection]);
   const stepIdx = activeSteps.indexOf(step);
 
@@ -4080,6 +4081,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
           m.push("At least one play day");
         }
+        break;
+      }
+      case "structure": {
+        if (!(numGroups >= 1)) m.push("At least one league");
         break;
       }
       case "registration": {

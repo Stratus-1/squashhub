@@ -322,8 +322,19 @@ export default function SuperAdminLeagues() {
                 {a.name}
               </button>
               <button
+                onClick={() => {
+                  const org = orgForAssociation(a);
+                  if (!org) { toast.error("No organisation record linked to this affiliation yet"); return; }
+                  setSettingsOrg({ id: org.id, name: a.name });
+                }}
+                title="Settings & admins"
+                className="px-2 bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-l border-border transition-colors"
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </button>
+              <button
                 onClick={() => openEdit(a)}
-                title="Edit league"
+                title="Edit affiliation"
                 className="px-2 bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-l border-border transition-colors"
               >
                 <Pencil className="h-3.5 w-3.5" />

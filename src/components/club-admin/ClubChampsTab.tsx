@@ -3444,7 +3444,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteScheduledAt("");
     setDescription("");
     setAffectsRankingPoints(false);
-    setEventType(scope === "club" ? "club_championship" : "open");
+    setEventType(scope === "club" ? "club_championship" : "open_tournament");
+    setEligibilityScope(scope === "club" ? "club" : "open");
     setMaxEntrants("");
     setMaxPerLeague("");
     setSeedingSource("ladder");

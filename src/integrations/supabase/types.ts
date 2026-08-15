@@ -8728,6 +8728,7 @@ export type Database = {
           league_formats: Json | null
           league_genders: Json | null
           league_match_types: Json | null
+          league_play_all_games: Json | null
           league_points_per_game: Json | null
           league_scoring_modes: Json | null
           league_win_conditions: Json
@@ -8784,6 +8785,7 @@ export type Database = {
           league_formats?: Json | null
           league_genders?: Json | null
           league_match_types?: Json | null
+          league_play_all_games?: Json | null
           league_points_per_game?: Json | null
           league_scoring_modes?: Json | null
           league_win_conditions?: Json
@@ -8840,6 +8842,7 @@ export type Database = {
           league_formats?: Json | null
           league_genders?: Json | null
           league_match_types?: Json | null
+          league_play_all_games?: Json | null
           league_points_per_game?: Json | null
           league_scoring_modes?: Json | null
           league_win_conditions?: Json

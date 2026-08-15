@@ -369,28 +369,71 @@ function DroppableLeague({ id, children, className }: { id: string; children: Re
  * Compact segmented button row — visual replacement for the small dropdowns
  * inside a league card (draw format, category, scoring, par, best-of).
  */
+const SEG_ROW_COLORS: Record<string, { label: string; active: string; outline: string }> = {
+  violet: {
+    label: "text-violet-700 dark:text-violet-300",
+    active: "bg-violet-600 text-white hover:bg-violet-700 border-violet-600",
+    outline: "border-violet-300 text-violet-700 hover:bg-violet-50 hover:border-violet-400 dark:border-violet-700 dark:text-violet-300 dark:hover:bg-violet-950/40",
+  },
+  blue: {
+    label: "text-blue-700 dark:text-blue-300",
+    active: "bg-blue-600 text-white hover:bg-blue-700 border-blue-600",
+    outline: "border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950/40",
+  },
+  green: {
+    label: "text-emerald-700 dark:text-emerald-300",
+    active: "bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600",
+    outline: "border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40",
+  },
+  amber: {
+    label: "text-amber-700 dark:text-amber-300",
+    active: "bg-amber-500 text-white hover:bg-amber-600 border-amber-500",
+    outline: "border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/40",
+  },
+  red: {
+    label: "text-rose-700 dark:text-rose-300",
+    active: "bg-rose-600 text-white hover:bg-rose-700 border-rose-600",
+    outline: "border-rose-300 text-rose-700 hover:bg-rose-50 hover:border-rose-400 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-950/40",
+  },
+  pink: {
+    label: "text-pink-700 dark:text-pink-300",
+    active: "bg-pink-600 text-white hover:bg-pink-700 border-pink-600",
+    outline: "border-pink-300 text-pink-700 hover:bg-pink-50 hover:border-pink-400 dark:border-pink-700 dark:text-pink-300 dark:hover:bg-pink-950/40",
+  },
+  cyan: {
+    label: "text-cyan-700 dark:text-cyan-300",
+    active: "bg-cyan-600 text-white hover:bg-cyan-700 border-cyan-600",
+    outline: "border-cyan-300 text-cyan-700 hover:bg-cyan-50 hover:border-cyan-400 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-950/40",
+  },
+};
 function SegRow({
   label,
   value,
   options,
   onChange,
+  color = "violet",
 }: {
   label: string;
   value: string;
   options: { v: string; l: string }[];
   onChange: (v: string) => void;
+  color?: keyof typeof SEG_ROW_COLORS;
 }) {
+  const c = SEG_ROW_COLORS[color] || SEG_ROW_COLORS.violet;
   return (
     <div>
-      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</Label>
+      <Label className={cn("text-[10px] uppercase tracking-wider font-semibold", c.label)}>{label}</Label>
       <div className="mt-0.5 flex flex-wrap gap-1">
         {options.map((o) => (
           <Button
             key={o.v}
             type="button"
             size="sm"
-            variant={value === o.v ? "default" : "outline"}
-            className="h-8 px-3 text-xs flex-1 min-w-[84px]"
+            variant="outline"
+            className={cn(
+              "h-8 px-3 text-xs flex-1 min-w-[84px] transition-colors",
+              value === o.v ? c.active : c.outline
+            )}
             onClick={() => onChange(o.v)}
           >
             {o.l}
@@ -493,7 +536,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -599,17 +642,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [leagueGenders, numGroups, gender]);
 
   // ---- Per-league scoring settings ---------------------------------------
-  // Each league can run its own scoring format (Standard / Bells), and for
-  // Standard its own game length (par 11 / par 15) and best-of. Missing
-  // entries fall back to the tournament-level values.
+  // Each league can run its own scoring format (Standard / Bells), for
+  // Standard its own game length (par 11 / par 15), best-of and win
+  // condition (win-by-2 / sudden death). Missing entries fall back to the
+  // tournament-level values.
   const [leagueScoringModes, setLeagueScoringModes] = useState<Record<string, "standard" | "time_capped_points">>({});
   const [leaguePointsPerGame, setLeaguePointsPerGame] = useState<Record<string, 11 | 15>>({});
   const [leagueBestOf, setLeagueBestOf] = useState<Record<string, 3 | 5>>({});
+  const [leagueWinConditions, setLeagueWinConditions] = useState<Record<string, "win_by_2" | "sudden_death">({});
   const scoringForLeague = (gn: number): "standard" | "time_capped_points" =>
     leagueScoringModes[String(gn)] ?? ((scoringMode === "time_capped_points" ? "time_capped_points" : "standard"));
   const pointsForLeague = (gn: number): 11 | 15 =>
     leaguePointsPerGame[String(gn)] ?? ((pointsPerGame === 15 ? 15 : 11));
   const bestOfForLeague = (gn: number): 3 | 5 => leagueBestOf[String(gn)] ?? ((bestOf === 5 ? 5 : 3));
+  const winConditionForLeague = (gn: number): "win_by_2" | "sudden_death" =>
+    leagueWinConditions[String(gn)] ?? winCondition;
   /** Set one league's scoring format; keeps tournament-level in sync with league 1. */
   const setLeagueScoring = (gn: number, mode: "standard" | "time_capped_points") => {
     setLeagueScoringModes((m) => {
@@ -626,6 +673,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Bells needs a slot length per league — seed a sensible default.
       setGroupDurations((m) => ({ ...m, [String(gn)]: Number(m[String(gn)]) > 0 ? m[String(gn)] : (matchDuration > 0 ? matchDuration : 20) }));
     }
+  };
+  const setLeagueWinCondition = (gn: number, wc: "win_by_2" | "sudden_death") => {
+    setLeagueWinConditions((m) => {
+      const next = { ...m, [String(gn)]: wc };
+      // Keep the tournament-level win_condition in sync with League 1 for
+      // downstream compatibility (legacy matches, scoring engine).
+      if (gn === 1 || Object.keys(next).length === 1) setWinCondition(wc);
+      return next;
+    });
   };
 
   // ---- Visual "Tournament Structure Builder" helpers ---------------------
@@ -645,9 +701,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setLeagueScoringModes((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? (scoringMode === "time_capped_points" ? "time_capped_points" : "standard") }));
     setLeaguePointsPerGame((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? (pointsPerGame === 15 ? 15 : 11) }));
     setLeagueBestOf((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? (bestOf === 5 ? 5 : 3) }));
+    setLeagueWinConditions((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? winCondition }));
     if (!scoringMode) setScoringMode("standard");
     if (!pointsPerGame) setPointsPerGame(11);
     if (!bestOf) setBestOf(3);
+    if (!winCondition) setWinCondition("win_by_2");
     if (fmt === "swiss") {
       setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
@@ -702,6 +760,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setLeagueScoringModes(shift);
     setLeaguePointsPerGame(shift);
     setLeagueBestOf(shift);
+    setLeagueWinConditions(shift);
     setNumGroups((n) => Math.max(0, (n || 0) - 1));
   };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("");
@@ -1166,6 +1225,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       league_scoring_modes: Object.keys(leagueScoringModes).length > 0 ? leagueScoringModes : null,
       league_points_per_game: Object.keys(leaguePointsPerGame).length > 0 ? leaguePointsPerGame : null,
       league_best_of: Object.keys(leagueBestOf).length > 0 ? leagueBestOf : null,
+      league_win_conditions: Object.keys(leagueWinConditions).length > 0 ? leagueWinConditions : null,
       participating_club_ids: venueClubIds.filter((id) => id !== clubId),
     };
     const saveExtras = async (id: string) => {
@@ -3696,22 +3756,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
     setLeagueGenders(inheritedG);
     setLeagueMatchTypes(inheritedM);
-    // Per-league scoring settings (format / par / best-of) with fallback to
+    // Per-league scoring settings (format / par / best-of / win condition) with fallback to
     // the tournament-level values saved on the champ row.
     const lsm = (ex.league_scoring_modes as Record<string, "standard" | "time_capped_points"> | null) || null;
     const lppg = (ex.league_points_per_game as Record<string, 11 | 15> | null) || null;
     const lbo = (ex.league_best_of as Record<string, 3 | 5> | null) || null;
+    const lwc = (ex.league_win_conditions as Record<string, "win_by_2" | "sudden_death"> | null) || null;
     const inheritedS: Record<string, "standard" | "time_capped_points"> = {};
     const inheritedP: Record<string, 11 | 15> = {};
     const inheritedB: Record<string, 3 | 5> = {};
+    const inheritedW: Record<string, "win_by_2" | "sudden_death"> = {};
     for (let i = 1; i <= (champ.num_groups || 0); i++) {
       inheritedS[String(i)] = (lsm?.[String(i)] as any) ?? ((champ as any).scoring_mode === "time_capped_points" ? "time_capped_points" : "standard");
       inheritedP[String(i)] = (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : 11));
       inheritedB[String(i)] = (Number(lbo?.[String(i)]) === 5 ? 5 : Number(lbo?.[String(i)]) === 3 ? 3 : (Number((champ as any).best_of) === 5 ? 5 : 3));
+      inheritedW[String(i)] = (lwc?.[String(i)] === "sudden_death" ? "sudden_death" : (lwc?.[String(i)] === "win_by_2" ? "win_by_2" : ((champ as any).win_condition || "win_by_2")));
     }
     setLeagueScoringModes(inheritedS);
     setLeaguePointsPerGame(inheritedP);
     setLeagueBestOf(inheritedB);
+    setLeagueWinConditions(inheritedW);
+    // Seed the tournament-level win condition from League 1 for compatibility.
+    if (inheritedW["1"]) setWinCondition(inheritedW["1"]);
 
 
 
@@ -4284,37 +4350,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
             {/* Match rules are now decided per league in the builder below —
-                the only genuinely event-wide rule left is the win condition. */}
-            <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <Label className="text-sm font-semibold">Match rules</Label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Format (Standard / Bells), category, singles or doubles, par 11 / par 15 and best-of are set on
-                    each league card in the builder below.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Win condition</Label>
-                  <div className="flex gap-1">
-                    {([
-                      { v: "win_by_2", l: "Win by 2" },
-                      { v: "sudden_death", l: "Sudden death" },
-                    ] as const).map((o) => (
-                      <Button
-                        key={o.v}
-                        type="button"
-                        size="sm"
-                        variant={winCondition === o.v ? "default" : "outline"}
-                        className="h-8 text-xs"
-                        onClick={() => setWinCondition(o.v)}
-                      >
-                        {o.l}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                format (Standard / Bells), category, singles/doubles, par 11 / 15,
+                best-of and win condition are all independently configurable. */}
+            <div className="rounded-lg border border-border p-3 bg-muted/40 shadow-sm">
+              <Label className="text-sm font-semibold">Match rules</Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Format, category, singles or doubles, par 11 / par 15, best-of and win condition are set on each
+                league card in the builder below.
+              </p>
             </div>
 
 
@@ -4399,7 +4442,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"} ·{" "}
                                     {scoringForLeague(gn) === "time_capped_points"
                                       ? `Bells ${groupDurations[key] || matchDuration || 20}′`
-                                      : `Par ${pointsForLeague(gn)} · Bo${bestOfForLeague(gn)}`}
+                                      : `Par ${pointsForLeague(gn)} · Bo${bestOfForLeague(gn)} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"}`}
                                   </span>
                                 </div>
                                 <Input
@@ -4426,6 +4469,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               <SegRow
                                 label="Draw format"
                                 value={fmt}
+                                color="violet"
                                 options={[
                                   { v: "single_round_robin", l: "Single RR" },
                                   { v: "double_round_robin", l: "Double RR" },
@@ -4445,6 +4489,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               <SegRow
                                 label="Category"
                                 value={genderForLeague(gn)}
+                                color="blue"
                                 options={[
                                   { v: "men", l: "Men's" },
                                   { v: "ladies", l: "Ladies'" },
@@ -4456,6 +4501,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               <SegRow
                                 label="Players"
                                 value={matchTypeForLeague(gn)}
+                                color="green"
                                 options={[
                                   { v: "singles", l: "👤 Singles" },
                                   { v: "doubles", l: "👥 Doubles" },
@@ -4465,6 +4511,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               <SegRow
                                 label="Scoring"
                                 value={scoringForLeague(gn)}
+                                color="amber"
                                 options={[
                                   { v: "standard", l: "Standard" },
                                   { v: "time_capped_points", l: "🔔 Bells" },
@@ -4472,32 +4519,46 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 onChange={(v) => setLeagueScoring(gn, v as "standard" | "time_capped_points")}
                               />
                               {scoringForLeague(gn) === "standard" ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="space-y-2">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <SegRow
+                                      label="Game length"
+                                      value={String(pointsForLeague(gn))}
+                                      color="red"
+                                      options={[
+                                        { v: "11", l: "Par 11" },
+                                        { v: "15", l: "Par 15" },
+                                      ]}
+                                      onChange={(v) => {
+                                        const n = Number(v) === 15 ? 15 : 11;
+                                        setLeaguePointsPerGame((m) => ({ ...m, [key]: n }));
+                                        if (gn === 1) setPointsPerGame(n);
+                                      }}
+                                    />
+                                    <SegRow
+                                      label="Best of"
+                                      value={String(bestOfForLeague(gn))}
+                                      color="pink"
+                                      options={[
+                                        { v: "3", l: "Best of 3" },
+                                        { v: "5", l: "Best of 5" },
+                                      ]}
+                                      onChange={(v) => {
+                                        const n = Number(v) === 5 ? 5 : 3;
+                                        setLeagueBestOf((m) => ({ ...m, [key]: n }));
+                                        if (gn === 1) setBestOf(n);
+                                      }}
+                                    />
+                                  </div>
                                   <SegRow
-                                    label="Game length"
-                                    value={String(pointsForLeague(gn))}
+                                    label="Win condition"
+                                    value={winConditionForLeague(gn)}
+                                    color="cyan"
                                     options={[
-                                      { v: "11", l: "Par 11" },
-                                      { v: "15", l: "Par 15" },
+                                      { v: "win_by_2", l: "Win by 2" },
+                                      { v: "sudden_death", l: "Sudden death" },
                                     ]}
-                                    onChange={(v) => {
-                                      const n = Number(v) === 15 ? 15 : 11;
-                                      setLeaguePointsPerGame((m) => ({ ...m, [key]: n }));
-                                      if (gn === 1) setPointsPerGame(n);
-                                    }}
-                                  />
-                                  <SegRow
-                                    label="Best of"
-                                    value={String(bestOfForLeague(gn))}
-                                    options={[
-                                      { v: "3", l: "Best of 3" },
-                                      { v: "5", l: "Best of 5" },
-                                    ]}
-                                    onChange={(v) => {
-                                      const n = Number(v) === 5 ? 5 : 3;
-                                      setLeagueBestOf((m) => ({ ...m, [key]: n }));
-                                      if (gn === 1) setBestOf(n);
-                                    }}
+                                    onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")}
                                   />
                                 </div>
                               ) : (

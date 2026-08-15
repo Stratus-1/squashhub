@@ -249,9 +249,11 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       {step === "courts" && (
         <div className="space-y-4">
           <CourtsSection clubId={clubId} mode="list" relayDeviceType={lightsForm.relay_device_type} />
+          <HostingFeesCard club={club} />
           <ExternalBookingSection club={club} clubId={clubId} />
         </div>
       )}
+
 
 
       {step === "lights" && (

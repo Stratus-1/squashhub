@@ -5500,6 +5500,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   const leagueFmt = formatForLeague(gn);
                   const isSwissL = leagueFmt === "swiss";
                   const isDouble = leagueFmt === "double_round_robin";
+                  // Slot length now comes from the league's own planned match time.
                   const slot = roundFormat === "cross_league"
                     ? sharedSlot
                     : (Number(groupDurations[String(gn)]) || matchDuration || 20);
@@ -5509,17 +5510,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       : s.courts;
                     return a + Math.floor(s.minutes / slot) * leagueCourts;
                   }, 0);
-                  // Round-robin sizing (used when not Swiss)
-                  const rrMaxEntities = maxEntitiesFor(games);
+                  // Pools apply to every format now (round-robin, double RR and Swiss).
+                  const pools = Math.max(1, Number(swissPools[String(gn)]) || 1);
+                  // Round-robin sizing (used when not Swiss) — pools split the field.
+                  const gamesPerPoolAvail = Math.floor(games / pools);
+                  const rrMaxEntities = maxEntitiesFor(isDouble ? Math.floor(gamesPerPoolAvail / 2) : gamesPerPoolAvail) * pools;
                   const rrMaxPlayers = isDoubles ? rrMaxEntities * 2 : rrMaxEntities;
                   const groupItems = (groups as any[])[gn - 1] || [];
-                  const actualEntities = groupItems.length;
+                  // Fall back to the planned "expected players/pairs" when no roster exists yet.
+                  const actualEntities = groupItems.length || Math.max(0, Number(expectedPlayers[String(gn)]) || 0);
                   const actualPlayers = isDoubles ? actualEntities * 2 : actualEntities;
 
                   // Swiss sizing: split league into K pools, each plays R rounds; games needed per pool = ceil(N/2)*R
-                  const pools = isSwissL ? Math.max(1, Number(swissPools[String(gn)]) || 1) : 1;
-                  const gamesPerPool = Math.floor(games / pools);
-                  const perPoolActual = isSwissL ? Math.ceil(actualEntities / pools) : 0;
+                  const gamesPerPool = gamesPerPoolAvail;
+                  const perPoolActual = Math.ceil(actualEntities / pools);
                   const suggestedRounds = isSwissL
                     ? Math.max(1, perPoolActual > 1
                         ? Math.min(perPoolActual - 1, Math.floor(gamesPerPool / Math.max(1, Math.ceil(perPoolActual / 2))))
@@ -5527,28 +5531,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     : 0;
                   const roundsRaw = Number(swissRounds[String(gn)]);
                   const rounds = isSwissL ? (roundsRaw > 0 ? roundsRaw : suggestedRounds) : 0;
-                  const gamesPerRoundPerPool = isSwissL ? Math.max(1, Math.ceil(Math.max(2, perPoolActual || 2) / 2)) : 0;
                   const swissMaxPerPool = isSwissL && rounds > 0 ? Math.floor(gamesPerPool / rounds) * 2 : 0;
                   const swissMaxEntities = isSwissL ? swissMaxPerPool * pools : 0;
                   const swissMaxPlayers = isDoubles ? swissMaxEntities * 2 : swissMaxEntities;
 
                   const maxEntities = isSwissL ? swissMaxEntities : rrMaxEntities;
                   const maxPlayers = isSwissL ? swissMaxPlayers : rrMaxPlayers;
-                  const rrGamesNeeded = actualEntities > 1
-                    ? (actualEntities * (actualEntities - 1)) / (isDouble ? 1 : 2)
+                  const rrGamesNeeded = perPoolActual > 1
+                    ? (perPoolActual * (perPoolActual - 1)) / (isDouble ? 1 : 2) * pools
                     : 0;
                   const gamesNeeded = isSwissL
-                    ? (rounds > 0 ? Math.ceil((actualEntities || 0) / pools / 2) * rounds * pools : 0)
+                    ? (rounds > 0 ? Math.ceil(perPoolActual / 2) * rounds * pools : 0)
                     : rrGamesNeeded;
-                  const fits = gamesNeeded <= games;
+                  // Per-league play-offs: bracket over the pool winners (or top 2/4/8 of a single pool).
+                  const hasPlayoffs = playoffsForLeague(gn);
+                  const bracketSize = pools > 1
+                    ? (pools >= 8 ? 8 : pools >= 4 ? 4 : 2)
+                    : (actualEntities >= 8 ? 8 : actualEntities >= 4 ? 4 : actualEntities >= 2 ? 2 : 0);
+                  const playoffGames = hasPlayoffs ? playoffMatchesForBracket(bracketSize) : 0;
+                  const totalNeeded = gamesNeeded + playoffGames;
+                  const fits = totalNeeded <= games;
                   return {
                     gn, slot, games, maxEntities, maxPlayers, actualEntities, actualPlayers, gamesNeeded, fits,
                     pools, rounds, suggestedRounds, gamesPerPool, swissMaxPerPool, perPoolActual,
-                    isSwissL,
+                    isSwissL, hasPlayoffs, playoffGames, totalNeeded,
                   };
                 });
                 const sessionsCount = capSessions.length;
-                const needsSlot = (!matchDuration || matchDuration <= 0) && scoringMode !== "time_capped_points";
+                const needsSlot = perLeague.some((l) => !l.slot || l.slot <= 0);
                 return (
                   <div className="mt-1 rounded-lg border p-3 bg-background text-xs space-y-2">
                     <div className="flex items-center justify-between gap-2 flex-wrap">

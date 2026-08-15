@@ -3341,6 +3341,8 @@ export type Database = {
           free_tier_until: string | null
           gobook_url: string | null
           honesty_bar_enabled: boolean
+          host_cleaning_fee_cents_per_day: number
+          host_court_fee_cents_per_hour: number
           id: string
           league_fee_due_month: number
           league_member_annual_fee: number
@@ -3445,6 +3447,8 @@ export type Database = {
           free_tier_until?: string | null
           gobook_url?: string | null
           honesty_bar_enabled?: boolean
+          host_cleaning_fee_cents_per_day?: number
+          host_court_fee_cents_per_hour?: number
           id?: string
           league_fee_due_month?: number
           league_member_annual_fee?: number
@@ -3549,6 +3553,8 @@ export type Database = {
           free_tier_until?: string | null
           gobook_url?: string | null
           honesty_bar_enabled?: boolean
+          host_cleaning_fee_cents_per_day?: number
+          host_court_fee_cents_per_hour?: number
           id?: string
           league_fee_due_month?: number
           league_member_annual_fee?: number

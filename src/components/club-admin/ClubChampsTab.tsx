@@ -365,6 +365,42 @@ function DroppableLeague({ id, children, className }: { id: string; children: Re
   );
 }
 
+/**
+ * Compact segmented button row — visual replacement for the small dropdowns
+ * inside a league card (draw format, category, scoring, par, best-of).
+ */
+function SegRow({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { v: string; l: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</Label>
+      <div className="mt-0.5 flex flex-wrap gap-1">
+        {options.map((o) => (
+          <Button
+            key={o.v}
+            type="button"
+            size="sm"
+            variant={value === o.v ? "default" : "outline"}
+            className="h-8 px-3 text-xs flex-1 min-w-[84px]"
+            onClick={() => onChange(o.v)}
+          >
+            {o.l}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();

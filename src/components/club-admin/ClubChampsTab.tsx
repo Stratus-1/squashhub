@@ -1978,29 +1978,48 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const f = formatForLeague(gi + 1);
       return f === "double_round_robin" ? "double" : "single";
     };
+    // Pools per league (shared by Swiss, round robin and cross league).
+    const poolsForLeague = (gn: number) => Math.max(1, Number(swissPools[String(gn)]) || 1);
+    const splitIntoPools = (ids: string[], pools: number): string[][] => {
+      if (pools <= 1) return [ids];
+      const size = Math.ceil(ids.length / pools);
+      const out: string[][] = [];
+      for (let p = 0; p < pools; p++) out.push(ids.slice(p * size, Math.min(ids.length, (p + 1) * size)));
+      return out.filter((g) => g.length > 0);
+    };
     const ingestRounds = (gi: number, ids: string[]) => {
-      const { rounds, byesPerRound } = generateRoundRobinRounds(ids, rrFmtForLeague(gi));
-      rounds.forEach((roundMatches, ri) => {
-        roundMatches.forEach(([a, b, leg]) => {
-          allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
-        });
-        const byeId = byesPerRound[ri];
-        if (byeId && byeHandling !== "no_match") {
-          allMatches.push({
-            groupNum: gi + 1, roundNum: ri + 1,
-            entityA: byeId, entityB: byeId, leg: null,
-            isBye: true, byeEntityId: byeId,
+      // Round robin inside each pool of the league (1 pool = classic RR).
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1));
+      for (const poolIds of pools) {
+        if (poolIds.length < 2) continue;
+        const { rounds, byesPerRound } = generateRoundRobinRounds(poolIds, rrFmtForLeague(gi));
+        rounds.forEach((roundMatches, ri) => {
+          roundMatches.forEach(([a, b, leg]) => {
+            allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
           });
-        }
-      });
+          const byeId = byesPerRound[ri];
+          if (byeId && byeHandling !== "no_match") {
+            allMatches.push({
+              groupNum: gi + 1, roundNum: ri + 1,
+              entityA: byeId, entityB: byeId, leg: null,
+              isBye: true, byeEntityId: byeId,
+            });
+          }
+        });
+      }
     };
 
-    // Cross-league mode: every entity in league i plays every entity in league j
-    // (no intra-league matches). Each cross match is filed under the lower league's
+    // Cross-league mode: every entity in group i plays every entity in group j
+    // (no intra-group matches). Each cross match is filed under the lower group's
     // group_number for scheduling; standings include all matches the player took part in.
-    const ingestCrossLeague = (allGroups: string[][]) => {
-      let roundCounter = 1;
-      const fmt = roundFormat === "double_round_robin" ? "double" : "single";
+    // `groupNums` maps each entry of allGroups back to its league number.
+    const ingestCrossGroups = (
+      allGroups: string[][],
+      groupNums: number[],
+      double: boolean,
+      startRound = 1,
+    ) => {
+      let roundCounter = startRound;
       for (let i = 0; i < allGroups.length; i++) {
         for (let j = i + 1; j < allGroups.length; j++) {
           const a = allGroups[i];
@@ -2008,15 +2027,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           for (const pa of a) {
             for (const pb of b) {
               allMatches.push({
-                groupNum: i + 1,
+                groupNum: groupNums[i],
                 roundNum: roundCounter++,
                 entityA: pa,
                 entityB: pb,
                 leg: "home",
               });
-              if (fmt === "double") {
+              if (double) {
                 allMatches.push({
-                  groupNum: i + 1,
+                  groupNum: groupNums[i],
                   roundNum: roundCounter++,
                   entityA: pb,
                   entityB: pa,
@@ -2028,6 +2047,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
       }
     };
+
+    // Cross-pool inside one league: split the league into N pools, then every
+    // pool plays every other pool.
+    const ingestCrossPools = (gi: number, ids: string[]) => {
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1));
+      if (pools.length < 2) return;
+      ingestCrossGroups(pools, pools.map(() => gi + 1), formatForLeague(gi + 1) === "double_round_robin");
+    };
+
 
     // Swiss for a single league — reserves placeholder matches based on
     // pools × rounds × ceil(pool/2) so scheduling books the right slot count.

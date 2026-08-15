@@ -4491,6 +4491,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"}`}
                                   </span>
                                 </div>
+                                {!collapsed && (
                                 <div className="flex items-end gap-2">
                                   <Input
                                     value={groupLabels[key] || ""}

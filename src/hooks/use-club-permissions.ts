@@ -153,14 +153,18 @@ export function useMyPermissions(): Set<string> {
   const clubWide = allSlugs.filter(s => !SUPER_ADMIN_ONLY_SLUGS.includes(s));
 
   if (isSuperAdmin) return new Set(allSlugs);
-  if (isRoleFullAccess) return new Set(clubWide);
-  if (perm?.is_full_admin) return new Set(clubWide);
-  if ((perm as any)?.club_permission_roles?.is_full_admin) return new Set(clubWide);
 
   const perms = new Set<string>();
-  if (perm?.custom_permissions) perm.custom_permissions.forEach(p => { if (!SUPER_ADMIN_ONLY_SLUGS.includes(p)) perms.add(p); });
-  if (perm?.club_permission_roles?.permissions) perm.club_permission_roles.permissions.forEach(p => { if (!SUPER_ADMIN_ONLY_SLUGS.includes(p)) perms.add(p); });
+  // Explicit grants first (these may include restricted slugs granted by a super admin).
+  perm?.custom_permissions?.forEach(p => perms.add(p));
+  perm?.club_permission_roles?.permissions?.forEach(p => perms.add(p));
+
+  const impliedFull =
+    isRoleFullAccess || perm?.is_full_admin || (perm as any)?.club_permission_roles?.is_full_admin;
+  if (impliedFull) clubWide.forEach(p => perms.add(p));
+
   return perms;
+
 }
 
 

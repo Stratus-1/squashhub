@@ -7099,6 +7099,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </p>
             )}
 
+            {editingChampId && <DrawLockCard champId={editingChampId} />}
+
+
             {entitiesChangedSinceLoad && (
               <div className="rounded-lg border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
                 <p className="font-semibold">⚠ Players changed since this tournament was opened</p>

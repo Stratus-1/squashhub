@@ -2853,7 +2853,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
       if (existingChampId) {
         // PHASE 3b GUARD: a locked draw is frozen — refuse to rebuild fixtures.
-        const { data: lockRow } = await fromExt("club_champs")
+        const { data: lockRow } = await fromExt("tournaments")
           .select("draw_locked")
           .eq("id", existingChampId)
           .maybeSingle();

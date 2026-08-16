@@ -147,15 +147,21 @@ export function useMyPermissions(): Set<string> {
   const isRoleFullAccess = isSuperAdmin || memberRole === "admin" || isAdmin;
   const { data: perm } = useMemberPermission(memberId);
 
-  if (isRoleFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));
-  if (perm?.is_full_admin) return new Set(PERMISSION_SLUGS.map(s => s.value));
-  if ((perm as any)?.club_permission_roles?.is_full_admin) return new Set(PERMISSION_SLUGS.map(s => s.value));
+  const allSlugs = PERMISSION_SLUGS.map(s => s.value as string);
+  // Club-level full admin gets everything except super-admin-only slugs.
+  const clubWide = allSlugs.filter(s => !SUPER_ADMIN_ONLY_SLUGS.includes(s));
+
+  if (isSuperAdmin) return new Set(allSlugs);
+  if (isRoleFullAccess) return new Set(clubWide);
+  if (perm?.is_full_admin) return new Set(clubWide);
+  if ((perm as any)?.club_permission_roles?.is_full_admin) return new Set(clubWide);
 
   const perms = new Set<string>();
-  if (perm?.custom_permissions) perm.custom_permissions.forEach(p => perms.add(p));
-  if (perm?.club_permission_roles?.permissions) perm.club_permission_roles.permissions.forEach(p => perms.add(p));
+  if (perm?.custom_permissions) perm.custom_permissions.forEach(p => { if (!SUPER_ADMIN_ONLY_SLUGS.includes(p)) perms.add(p); });
+  if (perm?.club_permission_roles?.permissions) perm.club_permission_roles.permissions.forEach(p => { if (!SUPER_ADMIN_ONLY_SLUGS.includes(p)) perms.add(p); });
   return perms;
 }
+
 
 /** Upsert member permissions */
 export function useUpsertMemberPermission() {

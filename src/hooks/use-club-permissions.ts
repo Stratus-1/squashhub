@@ -107,9 +107,13 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   // Platform super-admins always have full access. 'captain' = team captain only (league-scoped).
   // Full admin = 'admin' role OR a club delegate (chairman/secretary/club_captain), tracked via MemberContext.isAdmin.
   const isRoleFullAccess = isSuperAdmin || memberRole === "admin" || isAdmin;
+  // Super-admin-only slugs (e.g. 'federation') are never implied by club-level full admin.
+  const restricted = SUPER_ADMIN_ONLY_SLUGS.includes(permission);
 
   const { data: perm } = useMemberPermission(memberId);
 
+  if (isSuperAdmin) return true;
+  if (restricted) return false;
   if (isRoleFullAccess) return true;
   if (perm?.is_full_admin) return true;
   if ((perm as any)?.club_permission_roles?.is_full_admin) return true;
@@ -120,6 +124,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
 
   return false;
 }
+
 
 /**
  * Get all effective permissions for the current member.

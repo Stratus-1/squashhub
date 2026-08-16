@@ -344,3 +344,124 @@ export function computeTeamStandings(
     return x.name.localeCompare(y.name);
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* Position awards — best performer at No 1, 2, 3, 4, 5 ...            */
+/* ------------------------------------------------------------------ */
+
+export type PositionAward = {
+  position: number;
+  players: PlayerAward[];
+};
+
+/**
+ * Best player per playing position (string 1, 2, 3 ...).
+ * Only matches actually played at that position count towards the stats.
+ */
+export function computePositionAwards(
+  matches: AwardMatchRow[],
+  fixtures: Map<string, AwardFixtureMeta>,
+  rounds: Map<string, AwardRoundMeta>,
+  minPlayed = 1,
+): PositionAward[] {
+  const positions = [...new Set(matches.map((m) => m.position).filter((p): p is number => p != null))].sort(
+    (a, b) => a - b,
+  );
+  return positions.map((position) => {
+    const subset = matches.filter((m) => m.position === position);
+    const players = computePlayerAwards(subset, fixtures, rounds).filter((p) => p.played >= minPlayed);
+    return { position, players: rankPlayers(players) };
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Team consistency — who played most often as a settled team          */
+/* ------------------------------------------------------------------ */
+
+export type TeamConsistency = {
+  code: string;
+  name: string;
+  fixtures: number;
+  /** Fixtures where every slot was filled by a regular squad member. */
+  fullStrength: number;
+  /** % of all slots across the season filled by regular squad members. */
+  regularPct: number;
+  /** Distinct players used over the season (lower = more settled). */
+  playersUsed: number;
+  /** Typical team size (slots per fixture). */
+  teamSize: number;
+  /** The regular squad names, most-used first. */
+  core: string[];
+};
+
+export function computeTeamConsistency(
+  matches: AwardMatchRow[],
+  fixtures: Map<string, AwardFixtureMeta>,
+  teamNames: Map<string, string>,
+): TeamConsistency[] {
+  // team code -> fixture id -> player names/keys used
+  const byTeam = new Map<string, Map<string, string[]>>();
+  const labelFor = new Map<string, string>();
+
+  for (const m of matches) {
+    const hg = Number(m.home_games_won ?? 0) || 0;
+    const ag = Number(m.away_games_won ?? 0) || 0;
+    if (!m.winner && hg === 0 && ag === 0) continue; // unplayed
+    const fx = fixtures.get(m.fixture_id);
+    if (!fx) continue;
+
+    for (const side of ["home", "away"] as const) {
+      const team = side === "home" ? fx.home_team_code : fx.away_team_code;
+      if (!team) continue;
+      const code = String(team).toUpperCase();
+      const pcode = side === "home" ? m.home_player_code : m.away_player_code;
+      const pname = side === "home" ? m.home_player_name : m.away_player_name;
+      const key = playerKey(pcode, pname);
+      if (!key) continue;
+      if (!labelFor.has(key)) labelFor.set(key, (pname || "").trim() || (pcode || "").trim() || "Unknown");
+      let fxMap = byTeam.get(code);
+      if (!fxMap) byTeam.set(code, (fxMap = new Map()));
+      const list = fxMap.get(m.fixture_id) || [];
+      if (!list.includes(key)) list.push(key);
+      fxMap.set(m.fixture_id, list);
+    }
+  }
+
+  const out: TeamConsistency[] = [];
+  for (const [code, fxMap] of byTeam) {
+    const lineups = [...fxMap.values()].filter((l) => l.length > 0);
+    if (!lineups.length) continue;
+    const counts = new Map<string, number>();
+    for (const l of lineups) for (const k of l) counts.set(k, (counts.get(k) || 0) + 1);
+    const teamSize = Math.max(...lineups.map((l) => l.length));
+    const ordered = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    const coreKeys = new Set(ordered.slice(0, teamSize).map(([k]) => k));
+
+    let slots = 0;
+    let regularSlots = 0;
+    let fullStrength = 0;
+    for (const l of lineups) {
+      slots += l.length;
+      const reg = l.filter((k) => coreKeys.has(k)).length;
+      regularSlots += reg;
+      if (l.length === teamSize && reg === teamSize) fullStrength += 1;
+    }
+
+    out.push({
+      code,
+      name: teamNames.get(code) || code,
+      fixtures: lineups.length,
+      fullStrength,
+      regularPct: slots ? (regularSlots / slots) * 100 : 0,
+      playersUsed: counts.size,
+      teamSize,
+      core: [...coreKeys].map((k) => labelFor.get(k) || k),
+    });
+  }
+
+  return out.sort((a, b) => {
+    if (b.fullStrength !== a.fullStrength) return b.fullStrength - a.fullStrength;
+    if (b.regularPct !== a.regularPct) return b.regularPct - a.regularPct;
+    return a.playersUsed - b.playersUsed;
+  });
+}

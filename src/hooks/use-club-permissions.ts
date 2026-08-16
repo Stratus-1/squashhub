@@ -113,16 +113,17 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   const { data: perm } = useMemberPermission(memberId);
 
   if (isSuperAdmin) return true;
+  // Explicit grants always count — including restricted slugs handed out by a super admin.
+  if (perm?.custom_permissions?.includes(permission)) return true;
+  if (perm?.club_permission_roles?.permissions?.includes(permission)) return true;
+  // Implied full access never covers super-admin-only slugs.
   if (restricted) return false;
   if (isRoleFullAccess) return true;
   if (perm?.is_full_admin) return true;
   if ((perm as any)?.club_permission_roles?.is_full_admin) return true;
-  if (!perm) return false;
-
-  if (perm.custom_permissions?.includes(permission)) return true;
-  if (perm.club_permission_roles?.permissions?.includes(permission)) return true;
 
   return false;
+
 }
 
 

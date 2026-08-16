@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Trophy, Copy, Flame, Repeat, TrendingUp, Zap, Shield, Swords, Timer } from "lucide-react";
+import { Loader2, Trophy, Copy, Flame, Repeat, TrendingUp, Zap, Shield, Swords, Timer, Users, Target } from "lucide-react";
 import { toast } from "sonner";
 import {
   computeImprovement,
   computePlayerAwards,
+  computePositionAwards,
+  computeTeamConsistency,
   computeTeamStandings,
   leagueLabelFromRoundName,
   rankPlayers,
@@ -111,8 +113,10 @@ export function LeagueAwardsTab({ clubId }: Props) {
     rounds.forEach((r) => (labels[r.round_number] = r.name));
     const improvement = computeImprovement(players, roundNumbers, labels);
     const standings = computeTeamStandings(results, fixtureMap, teamNames);
+    const positions = computePositionAwards(matches, fixtureMap, roundMap);
+    const consistency = computeTeamConsistency(matches, fixtureMap, teamNames);
 
-    return { rounds, players, ranked, improvement, standings, teamNames, matchCount: matches.length };
+    return { rounds, players, ranked, improvement, standings, positions, consistency, teamNames, matchCount: matches.length };
   }, [data, activeLabel]);
 
   const top = <T,>(list: T[], pick: (t: T) => number, minPlayed?: (t: T) => boolean): T[] => {
@@ -207,6 +211,20 @@ export function LeagueAwardsTab({ clubId }: Props) {
     for (const a of awards) {
       if (!a.winners.length) continue;
       lines.push(`*${a.title}*: ${a.winners.map((w) => `${w.name} (${w.detail})`).join(", ")}`);
+    }
+    if (computed.positions.length) {
+      lines.push("", "*Best player per position*");
+      computed.positions.forEach((pos) => {
+        const w = pos.players[0];
+        if (w) lines.push(`No ${pos.position}: ${w.name} — ${w.won}/${w.played} wins`);
+      });
+    }
+    if (computed.consistency.length) {
+      const t = computed.consistency[0];
+      lines.push(
+        "",
+        `*Most settled team*: ${t.name} — ${t.fullStrength}/${t.fixtures} fixtures at full strength (${t.playersUsed} players used)`,
+      );
     }
     if (computed.standings.length) {
       lines.push("", "*Team standings*");
@@ -362,6 +380,93 @@ export function LeagueAwardsTab({ clubId }: Props) {
                       {r.delta > 0 ? "+" : ""}
                       {r.delta.toFixed(0)} pts
                     </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
+
+      {/* Best per position */}
+      {!!computed?.positions.length && (
+        <Card className="p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Target className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold">Best player per position</h3>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Who performed best playing at No 1, No 2, No 3 … in this league. Only matches played at that position count.
+          </p>
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {computed.positions.map((pos) => (
+              <Card key={pos.position} className="p-3 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-[11px]">No {pos.position}</Badge>
+                  <span className="text-[11px] text-muted-foreground">{pos.players.length} players</span>
+                </div>
+                {pos.players.length ? (
+                  <ol className="space-y-0.5">
+                    {pos.players.slice(0, 3).map((p, i) => (
+                      <li key={p.key} className="text-[13px]">
+                        <span className="mr-1">{MEDALS[i] || `${i + 1}.`}</span>
+                        <span className="font-medium">{p.name}</span>{" "}
+                        <span className="text-muted-foreground">
+                          — {p.won}/{p.played} wins · {winPct(p).toFixed(0)}% · {p.gamesWon}–{p.gamesLost}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-[12px] text-muted-foreground">No results yet.</p>
+                )}
+              </Card>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Most settled team */}
+      {!!computed?.consistency.length && (
+        <Card className="p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold">Most settled team — played most together</h3>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            A team is "full strength" when every slot in the fixture was filled by one of its regular squad members —
+            no reserves, subs or visitors. Ranked on full-strength fixtures, then % of slots filled by regulars.
+          </p>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">#</TableHead>
+                  <TableHead>Team</TableHead>
+                  <TableHead className="text-center">Fixtures</TableHead>
+                  <TableHead className="text-center">Full strength</TableHead>
+                  <TableHead className="text-center">Regulars %</TableHead>
+                  <TableHead className="text-center">Players used</TableHead>
+                  <TableHead>Regular squad</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {computed.consistency.map((t, i) => (
+                  <TableRow key={t.code} className={i === 0 ? "bg-accent/10" : undefined}>
+                    <TableCell className="font-semibold">{MEDALS[i] || i + 1}</TableCell>
+                    <TableCell className="font-medium">
+                      {t.name}
+                      <span className="text-muted-foreground text-[11px] ml-1">{t.code}</span>
+                    </TableCell>
+                    <TableCell className="text-center">{t.fixtures}</TableCell>
+                    <TableCell className="text-center font-semibold">
+                      {t.fullStrength}/{t.fixtures}
+                    </TableCell>
+                    <TableCell className="text-center">{t.regularPct.toFixed(0)}%</TableCell>
+                    <TableCell className="text-center">
+                      {t.playersUsed} <span className="text-muted-foreground text-[11px]">(team of {t.teamSize})</span>
+                    </TableCell>
+                    <TableCell className="text-[12px] text-muted-foreground break-words">{t.core.join(", ")}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

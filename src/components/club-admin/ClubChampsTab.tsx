@@ -5,6 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
+import { DrawLockCard } from "@/components/tournaments/DrawLockCard";
 import { useClubMembers, useIsSuperAdmin, type ClubMember } from "@/hooks/use-club";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { sendWhatsApp } from "@/lib/whatsapp-send";

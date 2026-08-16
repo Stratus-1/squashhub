@@ -21,12 +21,20 @@ export const PERMISSION_SLUGS = [
   { value: "bar", label: "Honesty Bar" },
   { value: "access", label: "Access Control" },
   { value: "communications", label: "Communications" },
+  { value: "affiliation", label: "Affiliation (own tournaments for the club's association)" },
+  { value: "federation", label: "Federation (own tournaments for any body)", superAdminOnly: true },
   { value: "bookings_unlimited", label: "Unlimited Bookings (bypass daily/peak/event caps)" },
   { value: "bookings_unlimited_non_peak", label: "Unlimited Non-Peak Bookings (bypass caps outside peak hours)" },
   { value: "ops_booking", label: "Ops Bookings (maintenance / cleaning, free)" },
 ] as const;
 
 export type PermissionSlug = typeof PERMISSION_SLUGS[number]["value"];
+
+/** Slugs only a platform super admin may hand out. */
+export const SUPER_ADMIN_ONLY_SLUGS: string[] = PERMISSION_SLUGS
+  .filter((s) => (s as any).superAdminOnly)
+  .map((s) => s.value);
+
 
 export interface PermissionRole {
   id: string;

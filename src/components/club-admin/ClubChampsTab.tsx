@@ -2851,6 +2851,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
 
       if (existingChampId) {
+        // PHASE 3b GUARD: a locked draw is frozen — refuse to rebuild fixtures.
+        const { data: lockRow } = await fromExt("club_champs")
+          .select("draw_locked")
+          .eq("id", existingChampId)
+          .maybeSingle();
+        if (lockRow?.draw_locked) {
+          throw new Error("This draw is locked. Unlock it on the Review step before rebuilding the schedule.");
+        }
+
         // SAFETY GUARD: never let Regenerate shrink the saved pair/player list.
         // If the wizard is loaded with fewer entrants than what's already saved
         // (e.g. registrations hadn't finished loading), abort instead of wiping.

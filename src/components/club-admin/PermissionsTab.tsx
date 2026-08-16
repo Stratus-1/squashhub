@@ -14,12 +14,14 @@ import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import {
   PERMISSION_SLUGS,
+  SUPER_ADMIN_ONLY_SLUGS,
   usePermissionRoles,
   useSavePermissionRole,
   useDeletePermissionRole,
   useUpsertMemberPermission,
   type PermissionRole,
 } from "@/hooks/use-club-permissions";
+import { useIsSuperAdmin } from "@/hooks/use-club";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
 export function PermissionsTab({ clubId }: { clubId: string }) {
@@ -140,7 +142,7 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
         id: existing?.id,
         club_id: clubId,
         role_name: name.trim(),
-        permissions: isFullAdmin ? PERMISSION_SLUGS.map(s => s.value) : [...perms],
+        permissions: isFullAdmin ? grantableSlugs.map(s => s.value) : [...perms],
         is_full_admin: isFullAdmin,
       });
       toast.success(existing ? "Updated" : "Created");
@@ -169,7 +171,7 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
           <div className="space-y-2" aria-disabled={isFullAdmin}>
             <Label className={isFullAdmin ? "text-muted-foreground" : ""}>Permissions</Label>
             <div className={`grid grid-cols-2 gap-2 ${isFullAdmin ? "opacity-50 pointer-events-none" : ""}`}>
-              {PERMISSION_SLUGS.map(s => (
+              {grantableSlugs.map(s => (
                 <label key={s.value} className="flex items-center gap-2 text-sm cursor-pointer">
                   <Checkbox checked={isFullAdmin || perms.has(s.value)} onCheckedChange={() => toggle(s.value)} disabled={isFullAdmin} />
                   {s.label}
@@ -178,7 +180,7 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
             </div>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => { setPerms(new Set(PERMISSION_SLUGS.map(s => s.value))); }} variant="outline" size="sm" disabled={isFullAdmin}>Select All</Button>
+            <Button onClick={() => { setPerms(new Set(grantableSlugs.map(s => s.value))); }} variant="outline" size="sm" disabled={isFullAdmin}>Select All</Button>
             <Button onClick={() => setPerms(new Set())} variant="outline" size="sm" disabled={isFullAdmin}>Clear</Button>
           </div>
           <Button onClick={handleSave} className="w-full" disabled={save.isPending}>
@@ -513,7 +515,7 @@ function MemberPermDialog({
             <Label>Additional Custom Permissions</Label>
             <p className="text-[10px] text-muted-foreground">Grant extra permissions beyond the assigned role</p>
             <div className="grid grid-cols-2 gap-2">
-              {PERMISSION_SLUGS.map(s => (
+              {grantableSlugs.map(s => (
                 <label key={s.value} className="flex items-center gap-2 text-sm cursor-pointer">
                   <Checkbox
                     checked={customPerms.has(s.value)}

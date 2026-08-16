@@ -126,6 +126,11 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
   const [perms, setPerms] = useState<Set<string>>(new Set(existing?.permissions ?? []));
   const [isFullAdmin, setIsFullAdmin] = useState<boolean>(!!existing?.is_full_admin);
   const save = useSavePermissionRole();
+  const isSuperAdmin = useIsSuperAdmin();
+  /** Federation-level slugs may only be handed out by a platform super admin. */
+  const grantableSlugs = PERMISSION_SLUGS.filter(
+    (s) => isSuperAdmin || !SUPER_ADMIN_ONLY_SLUGS.includes(s.value),
+  );
 
   const toggle = (slug: string) => {
     setPerms(prev => {
@@ -444,6 +449,11 @@ function MemberPermDialog({
   const [customPerms, setCustomPerms] = useState<Set<string>>(new Set(existing?.custom_permissions ?? []));
   const [isFullAdmin, setIsFullAdmin] = useState<boolean>(!!existing?.is_full_admin);
   const upsert = useUpsertMemberPermission();
+  const isSuperAdmin = useIsSuperAdmin();
+  /** Federation-level slugs may only be handed out by a platform super admin. */
+  const grantableSlugs = PERMISSION_SLUGS.filter(
+    (s) => isSuperAdmin || !SUPER_ADMIN_ONLY_SLUGS.includes(s.value),
+  );
 
   const toggle = (slug: string) => {
     setCustomPerms(prev => {

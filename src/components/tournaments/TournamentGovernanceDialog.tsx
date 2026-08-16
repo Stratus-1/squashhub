@@ -27,6 +27,11 @@ import {
 import { centsToRand, computeFeeSplit, randToCents } from "@/lib/tournaments/fee-split";
 import { useOrgSettings } from "@/hooks/use-org-settings";
 import { usePlatformTournamentFeePct } from "@/components/admin/PlatformTournamentFeeCard";
+import { useHasPermission } from "@/hooks/use-club-permissions";
+import { useIsSuperAdmin } from "@/hooks/use-club";
+import { useClubContext } from "@/contexts/ClubContext";
+import { useQuery } from "@tanstack/react-query";
+import { fromExt } from "@/lib/supabase-ext";
 
 
 interface Props {
@@ -80,6 +85,46 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
   const { data: platformPct = 0 } = usePlatformTournamentFeePct();
   const { data: ownerDefaults } = useOrgSettings(owner?.owner_org_id ?? null);
 
+
+  // ── Ownership scoping by permission ──────────────────────────────────────
+  const isSuperAdmin = useIsSuperAdmin();
+  const canFederation = useHasPermission("federation" as any);
+  const canAffiliation = useHasPermission("affiliation" as any);
+  const { club } = useClubContext();
+  const { data: rels = [] } = useQuery({
+    queryKey: ["org-affiliation-parents"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("organisation_relationships")
+        .select("parent_org_id, child_org_id, effective_to");
+      if (error) throw error;
+      return (data || []) as { parent_org_id: string; child_org_id: string; effective_to: string | null }[];
+    },
+  });
+
+  const ownOrgId = orgs.find((o) => o.club_id && o.club_id === club?.id)?.id ?? null;
+  const activeRels = rels.filter((r) => !r.effective_to || new Date(r.effective_to) >= new Date());
+  /** Walk up the hierarchy from the club's own organisation. */
+  const ancestorIds = (() => {
+    const out: string[] = [];
+    let cur = ownOrgId;
+    const seen = new Set<string>();
+    while (cur && !seen.has(cur)) {
+      seen.add(cur);
+      const parent = activeRels.find((r) => r.child_org_id === cur)?.parent_org_id ?? null;
+      if (parent) out.push(parent);
+      cur = parent;
+    }
+    return out;
+  })();
+
+  const unrestricted = isSuperAdmin || canFederation;
+  const allowedOrgIds = new Set<string>([
+    ...(ownOrgId ? [ownOrgId] : []),
+    ...(canAffiliation ? ancestorIds : []),
+    ...(owner?.owner_org_id ? [owner.owner_org_id] : []),
+  ]);
+  const ownableOrgs = unrestricted ? orgs : orgs.filter((o) => allowedOrgIds.has(o.id));
+  const ownerLocked = !unrestricted && ownableOrgs.length <= 1;
 
   const save = useSaveTournamentGovernance(id);
   const setOwner = useSetTournamentOwner(id);
@@ -157,12 +202,13 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                 <Label>Owning body</Label>
                 <Select
                   value={owner?.owner_org_id ?? "none"}
+                  disabled={ownerLocked}
                   onValueChange={(v) => setOwner.mutate(v === "none" ? null : v)}
                 >
                   <SelectTrigger><SelectValue placeholder="Select owner" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Unassigned</SelectItem>
-                    {orgs.map((o) => (
+                    {ownableOrgs.map((o) => (
                       <SelectItem key={o.id} value={o.id}>
                         {o.name} · {o.kind === "national" ? "Federation" : o.kind === "association" ? "Association" : "Club"}
                       </SelectItem>
@@ -172,6 +218,13 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                 <p className="text-xs text-muted-foreground">
                   The owning body drives who may manage this event and where the entry money settles.
                 </p>
+                {!unrestricted && (
+                  <p className="text-xs text-muted-foreground">
+                    {canAffiliation
+                      ? "You may assign this event to your club or to an association your club is affiliated to."
+                      : "You may only assign this event to your own club. Affiliation or federation rights are needed to own it at a higher level."}
+                  </p>
+                )}
               </div>
 
               {!clubScope && (

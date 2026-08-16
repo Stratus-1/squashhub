@@ -21,12 +21,20 @@ export const PERMISSION_SLUGS = [
   { value: "bar", label: "Honesty Bar" },
   { value: "access", label: "Access Control" },
   { value: "communications", label: "Communications" },
+  { value: "affiliation", label: "Affiliation (own tournaments for the club's association)" },
+  { value: "federation", label: "Federation (own tournaments for any body)", superAdminOnly: true },
   { value: "bookings_unlimited", label: "Unlimited Bookings (bypass daily/peak/event caps)" },
   { value: "bookings_unlimited_non_peak", label: "Unlimited Non-Peak Bookings (bypass caps outside peak hours)" },
   { value: "ops_booking", label: "Ops Bookings (maintenance / cleaning, free)" },
 ] as const;
 
 export type PermissionSlug = typeof PERMISSION_SLUGS[number]["value"];
+
+/** Slugs only a platform super admin may hand out. */
+export const SUPER_ADMIN_ONLY_SLUGS: string[] = PERMISSION_SLUGS
+  .filter((s) => (s as any).superAdminOnly)
+  .map((s) => s.value);
+
 
 export interface PermissionRole {
   id: string;
@@ -99,19 +107,25 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   // Platform super-admins always have full access. 'captain' = team captain only (league-scoped).
   // Full admin = 'admin' role OR a club delegate (chairman/secretary/club_captain), tracked via MemberContext.isAdmin.
   const isRoleFullAccess = isSuperAdmin || memberRole === "admin" || isAdmin;
+  // Super-admin-only slugs (e.g. 'federation') are never implied by club-level full admin.
+  const restricted = SUPER_ADMIN_ONLY_SLUGS.includes(permission);
 
   const { data: perm } = useMemberPermission(memberId);
 
+  if (isSuperAdmin) return true;
+  // Explicit grants always count — including restricted slugs handed out by a super admin.
+  if (perm?.custom_permissions?.includes(permission)) return true;
+  if (perm?.club_permission_roles?.permissions?.includes(permission)) return true;
+  // Implied full access never covers super-admin-only slugs.
+  if (restricted) return false;
   if (isRoleFullAccess) return true;
   if (perm?.is_full_admin) return true;
   if ((perm as any)?.club_permission_roles?.is_full_admin) return true;
-  if (!perm) return false;
-
-  if (perm.custom_permissions?.includes(permission)) return true;
-  if (perm.club_permission_roles?.permissions?.includes(permission)) return true;
 
   return false;
+
 }
+
 
 /**
  * Get all effective permissions for the current member.
@@ -134,15 +148,25 @@ export function useMyPermissions(): Set<string> {
   const isRoleFullAccess = isSuperAdmin || memberRole === "admin" || isAdmin;
   const { data: perm } = useMemberPermission(memberId);
 
-  if (isRoleFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));
-  if (perm?.is_full_admin) return new Set(PERMISSION_SLUGS.map(s => s.value));
-  if ((perm as any)?.club_permission_roles?.is_full_admin) return new Set(PERMISSION_SLUGS.map(s => s.value));
+  const allSlugs = PERMISSION_SLUGS.map(s => s.value as string);
+  // Club-level full admin gets everything except super-admin-only slugs.
+  const clubWide = allSlugs.filter(s => !SUPER_ADMIN_ONLY_SLUGS.includes(s));
+
+  if (isSuperAdmin) return new Set(allSlugs);
 
   const perms = new Set<string>();
-  if (perm?.custom_permissions) perm.custom_permissions.forEach(p => perms.add(p));
-  if (perm?.club_permission_roles?.permissions) perm.club_permission_roles.permissions.forEach(p => perms.add(p));
+  // Explicit grants first (these may include restricted slugs granted by a super admin).
+  perm?.custom_permissions?.forEach(p => perms.add(p));
+  perm?.club_permission_roles?.permissions?.forEach(p => perms.add(p));
+
+  const impliedFull =
+    isRoleFullAccess || perm?.is_full_admin || (perm as any)?.club_permission_roles?.is_full_admin;
+  if (impliedFull) clubWide.forEach(p => perms.add(p));
+
   return perms;
+
 }
+
 
 /** Upsert member permissions */
 export function useUpsertMemberPermission() {

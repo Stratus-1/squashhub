@@ -5375,6 +5375,69 @@ export type Database = {
         }
         Relationships: []
       }
+      match_correction_requests: {
+        Row: {
+          created_at: string
+          id: string
+          match_id: string
+          proposed_game_scores: string | null
+          proposed_score: string | null
+          proposed_winner_member_id: string | null
+          reason: string
+          requested_by: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          tournament_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_id: string
+          proposed_game_scores?: string | null
+          proposed_score?: string | null
+          proposed_winner_member_id?: string | null
+          reason: string
+          requested_by?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tournament_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_id?: string
+          proposed_game_scores?: string | null
+          proposed_score?: string | null
+          proposed_winner_member_id?: string | null
+          reason?: string
+          requested_by?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_correction_requests_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_correction_requests_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_disputes: {
         Row: {
           created_at: string
@@ -8464,6 +8527,54 @@ export type Database = {
         }
         Relationships: []
       }
+      tournament_draw_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          match_count: number
+          note: string | null
+          snapshot: Json
+          tournament_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          match_count?: number
+          note?: string | null
+          snapshot?: Json
+          tournament_id: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          match_count?: number
+          note?: string | null
+          snapshot?: Json
+          tournament_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_draw_versions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_draw_versions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_governance: {
         Row: {
           association_fee_cents: number
@@ -8770,6 +8881,10 @@ export type Database = {
           day_schedules: Json
           default_break_minutes: number
           description: string | null
+          draw_locked: boolean
+          draw_locked_at: string | null
+          draw_locked_by: string | null
+          draw_version: number
           enable_playoffs: boolean
           end_date: string
           end_time: string
@@ -8829,6 +8944,10 @@ export type Database = {
           day_schedules?: Json
           default_break_minutes?: number
           description?: string | null
+          draw_locked?: boolean
+          draw_locked_at?: string | null
+          draw_locked_by?: string | null
+          draw_version?: number
           enable_playoffs?: boolean
           end_date: string
           end_time?: string
@@ -8888,6 +9007,10 @@ export type Database = {
           day_schedules?: Json
           default_break_minutes?: number
           description?: string | null
+          draw_locked?: boolean
+          draw_locked_at?: string | null
+          draw_locked_by?: string | null
+          draw_version?: number
           enable_playoffs?: boolean
           end_date?: string
           end_time?: string

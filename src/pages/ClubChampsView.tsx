@@ -19,6 +19,7 @@ import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
+import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { UserX, Trophy, Shuffle, RotateCcw } from "lucide-react";
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 import { buildPlayoffMatches, type StandingEntity } from "@/lib/tournament-playoffs";
@@ -1553,6 +1554,11 @@ export default function ClubChampsView() {
                             </span>
                             {!isBye && m.score && <Badge variant="secondary" className="text-xs shrink-0">{m.score}</Badge>}
                           </div>
+                          {!isBye && m.status === "completed" && (
+                            <div className="mt-0.5 flex justify-end">
+                              <RequestCorrectionDialog champId={champ.id} matchId={m.id} currentScore={m.score} />
+                            </div>
+                          )}
                         </div>
                       );
                     })}

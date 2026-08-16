@@ -5,6 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
+import { DrawLockCard } from "@/components/tournaments/DrawLockCard";
 import { useClubMembers, useIsSuperAdmin, type ClubMember } from "@/hooks/use-club";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { sendWhatsApp } from "@/lib/whatsapp-send";
@@ -2851,6 +2852,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
 
       if (existingChampId) {
+        // PHASE 3b GUARD: a locked draw is frozen — refuse to rebuild fixtures.
+        const { data: lockRow } = await fromExt("club_champs")
+          .select("draw_locked")
+          .eq("id", existingChampId)
+          .maybeSingle();
+        if (lockRow?.draw_locked) {
+          throw new Error("This draw is locked. Unlock it on the Review step before rebuilding the schedule.");
+        }
+
         // SAFETY GUARD: never let Regenerate shrink the saved pair/player list.
         // If the wizard is loaded with fewer entrants than what's already saved
         // (e.g. registrations hadn't finished loading), abort instead of wiping.
@@ -7088,6 +7098,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 <strong>Rebuild Schedule</strong> recreates the fixture list and tournament page entries using the leagues/pairs shown above — it does <em>not</em> change who's paired with whom or which league they're in. Court bookings are written separately via <strong>Make Court Bookings</strong>.
               </p>
             )}
+
+            {editingChampId && <DrawLockCard champId={editingChampId} />}
+
 
             {entitiesChangedSinceLoad && (
               <div className="rounded-lg border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">

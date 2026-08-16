@@ -1553,6 +1553,11 @@ export default function ClubChampsView() {
                             </span>
                             {!isBye && m.score && <Badge variant="secondary" className="text-xs shrink-0">{m.score}</Badge>}
                           </div>
+                          {!isBye && m.status === "completed" && (
+                            <div className="mt-0.5 flex justify-end">
+                              <RequestCorrectionDialog champId={champ.id} matchId={m.id} currentScore={m.score} />
+                            </div>
+                          )}
                         </div>
                       );
                     })}

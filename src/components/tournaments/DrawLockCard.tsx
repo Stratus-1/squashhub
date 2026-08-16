@@ -50,7 +50,7 @@ export function DrawLockCard({ champId, onLockChange }: Props) {
   const { data: champ } = useQuery({
     queryKey: ["champ-draw-lock", champId],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_champs")
+      const { data, error } = await fromExt("tournaments")
         .select("id, draw_locked, draw_locked_at, draw_version")
         .eq("id", champId)
         .maybeSingle();
@@ -111,12 +111,12 @@ export function DrawLockCard({ champId, onLockChange }: Props) {
         });
         if (vErr) throw vErr;
 
-        const { error } = await fromExt("club_champs")
+        const { error } = await fromExt("tournaments")
           .update({ draw_locked: true, draw_locked_at: new Date().toISOString(), draw_locked_by: uid, draw_version: nextVersion })
           .eq("id", champId);
         if (error) throw error;
       } else {
-        const { error } = await fromExt("club_champs")
+        const { error } = await fromExt("tournaments")
           .update({ draw_locked: false, draw_locked_at: null, draw_locked_by: null })
           .eq("id", champId);
         if (error) throw error;

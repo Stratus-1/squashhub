@@ -19,6 +19,7 @@ import { template as stitchOnboardingApplication } from './stitch-onboarding-app
 import { template as pendingTopupApproval } from './pending-topup-approval.tsx'
 import { template as tournamentEntryConfirmation } from './tournament-entry-confirmation.tsx'
 import { template as tournamentEntryImportSummary } from './tournament-entry-import-summary.tsx'
+import { template as trialEnding } from './trial-ending.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-club-registered': newClubRegistered,
@@ -31,4 +32,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'pending-topup-approval': pendingTopupApproval,
   'tournament-entry-confirmation': tournamentEntryConfirmation,
   'tournament-entry-import-summary': tournamentEntryImportSummary,
+  'trial-ending': trialEnding,
 }

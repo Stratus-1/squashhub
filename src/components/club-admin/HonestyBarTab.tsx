@@ -128,6 +128,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
   const enabled = !!club.honesty_bar_enabled;
   const [step, setStep] = useState("items");
+  const [qrOpen, setQrOpen] = useState(false);
 
   const barSteps: SetupStep[] = [
     { id: "items", label: "Items & prices", description: "List everything on sale at the bar with its selling price and current stock.", complete: items.length > 0 },

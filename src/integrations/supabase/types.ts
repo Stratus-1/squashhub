@@ -9973,6 +9973,24 @@ export type Database = {
           bank_reference: string
         }[]
       }
+      get_club_member_config: {
+        Args: { _club_id: string }
+        Returns: {
+          access_control_type: string
+          bank_account_name: string
+          bank_account_number: string
+          bank_branch_code: string
+          bank_name: string
+          bank_reference: string
+          ble_fallback_enabled: boolean
+          club_id: string
+          relay_device_type: string
+          shelly_ble_control_password: string
+          shelly_door_ble_mac: string
+          shelly_door_channel: number
+          shelly_door_pulse_ms: number
+        }[]
+      }
       get_club_member_count: { Args: { _club_id: string }; Returns: number }
       get_club_whatsapp_usage: {
         Args: { _club_id: string; _period_end: string; _period_start: string }

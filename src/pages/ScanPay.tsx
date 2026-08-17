@@ -380,8 +380,11 @@ export default function ScanPay() {
                     <Button className="w-full gap-2" disabled={submitting} onClick={chargeToAccount}>
                       <Wallet className="w-4 h-4" /> Charge to my account
                     </Button>
-                    <Button variant="outline" className="w-full gap-2" disabled={submitting} onClick={() => payAsGuest("card")}>
-                      <CreditCard className="w-4 h-4" /> I paid by card
+                    <Button variant="outline" className="w-full gap-2" disabled={submitting} onClick={payByCardNow}>
+                      <CreditCard className="w-4 h-4" /> Pay now by card
+                    </Button>
+                    <Button variant="ghost" size="sm" className="w-full" disabled={submitting} onClick={() => payAsGuest("cash")}>
+                      I left cash in the tin
                     </Button>
                     <p className="text-[11px] text-muted-foreground text-center">
                       Signed in as {member.name}
@@ -399,12 +402,15 @@ export default function ScanPay() {
                         className="h-9"
                       />
                     </div>
-                    <Button className="w-full gap-2" disabled={submitting || !visitorName.trim()} onClick={() => payAsGuest("card")}>
-                      <CreditCard className="w-4 h-4" /> Paid by card
+                    <Button className="w-full gap-2" disabled={submitting || !visitorName.trim()} onClick={payByCardNow}>
+                      <CreditCard className="w-4 h-4" /> Pay now by card
                     </Button>
                     <Button variant="outline" className="w-full gap-2" disabled={submitting || !visitorName.trim()} onClick={() => payAsGuest("cash")}>
-                      Paid cash
+                      I left cash in the tin
                     </Button>
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      Card payments go through {club.name}&apos;s secure checkout.
+                    </p>
                     {userId && !member && (
                       <p className="text-[11px] text-muted-foreground text-center">
                         You are signed in but not a member of {club.name}, so this is recorded as a visitor sale.
@@ -417,6 +423,7 @@ export default function ScanPay() {
                     )}
                   </div>
                 )}
+
               </Card>
             )}
           </>

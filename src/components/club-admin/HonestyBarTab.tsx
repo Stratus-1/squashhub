@@ -313,7 +313,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
 
 /* ─── Item Manager with edit support ─── */
-function ItemManager({ clubId, items, loading }: { clubId: string; items: BarItem[]; loading: boolean }) {
+function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; items: BarItem[]; loading: boolean; onQrLabels?: () => void }) {
   const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);

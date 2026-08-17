@@ -184,10 +184,12 @@ export default function BarPaymentSuccess() {
           {status === "verifying" ? (
             <div className="space-y-4">
               <Loader2 className="w-10 h-10 mx-auto animate-spin text-primary" />
-              <h1 className="text-lg font-semibold">Confirming your payment…</h1>
+              <h1 className="text-lg font-semibold">Waiting for your card payment…</h1>
               <p className="text-sm text-muted-foreground">
-                This takes a few seconds. Please wait.
+                Finish the payment in the secure payment tab. This page updates
+                automatically — you can leave it open.
               </p>
+
             </div>
           ) : status === "failed" ? (
             <div className="space-y-4">

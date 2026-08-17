@@ -23,8 +23,19 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const { code, bar_item_id, quantity = 1, buyer_name = null, return_url = null } = body || {};
-    const qty = Number(quantity);
-    if (!code || !bar_item_id || !(qty >= 1 && qty <= 50)) {
+
+    // Cart support: `lines: [{ bar_item_id, quantity }]`. Single-item callers
+    // keep working via bar_item_id/quantity.
+    const rawLines: Array<{ bar_item_id: string; quantity: number }> =
+      Array.isArray(body?.lines) && body.lines.length
+        ? body.lines
+        : bar_item_id
+          ? [{ bar_item_id, quantity: Number(quantity) }]
+          : [];
+    const lines = rawLines
+      .map((l) => ({ bar_item_id: String(l?.bar_item_id || ""), quantity: Number(l?.quantity) }))
+      .filter((l) => l.bar_item_id && l.quantity >= 1 && l.quantity <= 50);
+    if (!code || lines.length === 0 || lines.length > 30) {
       return json({ error: "Missing or invalid payment details" });
     }
 
@@ -33,18 +44,23 @@ Deno.serve(async (req) => {
       .select("id, club_id, bar_item_id, active")
       .eq("code", code).maybeSingle();
     if (!qr || !qr.active) return json({ error: "This QR code is no longer active" });
-    if (qr.bar_item_id && qr.bar_item_id !== bar_item_id) return json({ error: "Item does not match this code" });
 
-    const { data: item } = await admin
+    const { data: items } = await admin
       .from("bar_items")
       .select("id, name, price, club_id, active")
-      .eq("id", bar_item_id).eq("club_id", qr.club_id).maybeSingle();
-    if (!item || !item.active) return json({ error: "Item not available" });
+      .eq("club_id", qr.club_id)
+      .in("id", lines.map((l) => l.bar_item_id));
+    const itemMap = new Map((items || []).filter((i: any) => i.active).map((i: any) => [i.id, i]));
+    if (itemMap.size !== new Set(lines.map((l) => l.bar_item_id)).size) {
+      return json({ error: "One or more items are not available" });
+    }
 
-    const amount = Number(item.price) * qty;
+    const amount = lines.reduce(
+      (sum, l) => sum + Number((itemMap.get(l.bar_item_id) as any).price) * l.quantity, 0,
+    );
     if (!(amount > 0)) return json({ error: "Invalid amount" });
     if (Math.round(amount * 100) < 100) {
-      return json({ error: "Card payments must be at least R1.00 — please pay cash or charge to your account." });
+      return json({ error: "Card payments must be at least R1.00 — please add another item or charge to your account." });
     }
 
     const { data: club } = await admin
@@ -60,22 +76,27 @@ Deno.serve(async (req) => {
     const clientSecret = (creds.client_secret || "").trim();
     if (!clientId || !clientSecret) return json({ error: "This club has not finished its card payment setup" });
 
-    // Record the sale up-front as pending so stock/admin views stay accurate.
-    const { data: sale, error: saleErr } = await admin
+    // Record the sale lines up-front as pending so stock/admin views stay accurate.
+    const { data: sales, error: saleErr } = await admin
       .from("bar_visitor_sales")
-      .insert({
-        club_id: club.id,
-        bar_item_id: item.id,
-        quantity: qty,
-        unit_price: Number(item.price),
-        total: amount,
-        payment_method: "card",
-        visitor_name: (buyer_name || "").trim() || null,
-        note: "Scan-to-pay (QR) · card checkout",
-        payment_status: "pending",
-      })
-      .select("id").single();
-    if (saleErr || !sale) return json({ error: saleErr?.message || "Could not start the sale" });
+      .insert(lines.map((l) => {
+        const it = itemMap.get(l.bar_item_id) as any;
+        return {
+          club_id: club.id,
+          bar_item_id: it.id,
+          quantity: l.quantity,
+          unit_price: Number(it.price),
+          total: Number(it.price) * l.quantity,
+          payment_method: "card",
+          visitor_name: (buyer_name || "").trim() || null,
+          note: "Scan-to-pay (QR) · card checkout",
+          payment_status: "pending",
+        };
+      }))
+      .select("id");
+    if (saleErr || !sales?.length) return json({ error: saleErr?.message || "Could not start the sale" });
+    const saleIds = sales.map((s: any) => s.id);
+    const sale = sales[0];
 
     const reference = `BAR-${String(sale.id).slice(0, 8)}`;
     const redirectUri = sanitizeReturnUrl(return_url, String(club.subdomain || ""), code);
@@ -88,8 +109,8 @@ Deno.serve(async (req) => {
         redirectUri,
       });
       await admin.from("bar_visitor_sales")
-        .update({ payment_reference: request.id }).eq("id", sale.id);
-      return json({ sale_id: sale.id, redirect_url: request.redirect_url });
+        .update({ payment_reference: request.id }).in("id", saleIds);
+      return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: request.redirect_url });
     } catch (err) {
       console.warn("payment-request failed, trying Express link:", (err as Error)?.message || err);
     }
@@ -103,7 +124,7 @@ Deno.serve(async (req) => {
     const tokenJson = await tokenResp.json().catch(() => ({}));
     const accessToken = tokenJson?.data?.accessToken;
     if (!tokenResp.ok || !accessToken) {
-      await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).eq("id", sale.id);
+      await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).in("id", saleIds);
       return json({ error: "Could not reach the card payment provider" });
     }
     const plResp = await fetch(`${STITCH_EXPRESS_BASE}/payments`, {
@@ -119,14 +140,14 @@ Deno.serve(async (req) => {
     const plJson = await plResp.json().catch(() => ({}));
     const link = plJson?.data?.payment?.link;
     if (!plResp.ok || !link) {
-      await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).eq("id", sale.id);
+      await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).in("id", saleIds);
       return json({ error: "Could not create the card payment" });
     }
     await admin.from("bar_visitor_sales")
-      .update({ payment_reference: String(plJson.data.payment.id) }).eq("id", sale.id);
+      .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
     // NOTE: express.stitch.money hosted links 404 when ANY query param is appended,
     // so the link must be handed to the payer exactly as Stitch returned it.
-    return json({ sale_id: sale.id, redirect_url: String(link) });
+    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: String(link) });
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
     return json({ error: e?.message || "Unexpected error" });

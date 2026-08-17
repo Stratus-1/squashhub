@@ -31,13 +31,18 @@ Visitor (not logged in):
 Member (logged in, same QR):
 - Page recognises the session and offers a choice: **Pay by card** or **Charge to my account** (existing bar tab flow, credited to My Account).
 
-## Admin side
+## Admin side — printing the stickers
 
-In the club admin bar tab:
-- "QR labels" action per item and a "Print all labels" sheet (A4 grid of stickers with name, price, QR).
-- One "Venue poster" QR for the whole bar.
-- Ability to regenerate a code if a label is compromised.
+Yes: Nelspruit's admin can print their own labels straight from the club admin bar tab.
+
+- "QR labels" action per item, and a **Print labels** sheet that lays the selected items out as an A4 grid of stickers (fits standard peel-off label sheets).
+- Each sticker shows: club logo/name, product name, price, and the QR code.
+- Choose which items to include, and how many copies of each (e.g. 6 Castle Light shelf tags).
+- One larger **Venue poster** (A4/A5) QR for the fridge or bar counter.
+- Ability to regenerate a code if a label is damaged or compromised — the old sticker then stops working.
+- Printing uses the browser print dialog, so any normal printer works; output can also be saved as PDF and sent to a print shop.
 - Scan-to-pay sales appear in the same bar reports/ledger as today, tagged with the source (QR vs manual).
+
 
 ## Shop reuse
 

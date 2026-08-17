@@ -93,10 +93,11 @@ export default function BarPaymentSuccess() {
       const st = (res as any)?.status;
       if (st === "paid") {
         localStorage.removeItem(PENDING_SALE_KEY);
+        void closeStitchPaymentWindow();
         setStatus("paid");
         return;
       }
-      if (st === "failed" || attempt >= 8) {
+      if (st === "failed" || attempt >= 60) {
         localStorage.removeItem(PENDING_SALE_KEY);
         setStatus(st === "failed" ? "failed" : "no-sale");
         return;
@@ -104,6 +105,7 @@ export default function BarPaymentSuccess() {
       setTimeout(() => poll(attempt + 1), 3000);
     };
     poll();
+
     return () => {
       cancelled = true;
     };

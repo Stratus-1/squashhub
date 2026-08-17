@@ -352,13 +352,39 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
       />
 
       <Tabs defaultValue="subscription" className="w-full">
-        <TabsList className="flex flex-wrap h-auto">
-          <TabsTrigger value="subscription" className="text-xs">Subscription</TabsTrigger>
-          <TabsTrigger value="billing" className="text-xs">Billing Information</TabsTrigger>
-          <TabsTrigger value="invoices" className="text-xs">Invoices</TabsTrigger>
-          <TabsTrigger value="payments" className="text-xs">Payment History</TabsTrigger>
-          <TabsTrigger value="audit" className="text-xs">Audit Log</TabsTrigger>
+        <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/40 p-1">
+          <TabsTrigger
+            value="subscription"
+            className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Subscription
+          </TabsTrigger>
+          <TabsTrigger
+            value="billing"
+            className="text-xs data-[state=active]:bg-sky-600 data-[state=active]:text-white"
+          >
+            Billing Information
+          </TabsTrigger>
+          <TabsTrigger
+            value="invoices"
+            className="text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-white"
+          >
+            Invoices
+          </TabsTrigger>
+          <TabsTrigger
+            value="payments"
+            className="text-xs data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+          >
+            Payment History
+          </TabsTrigger>
+          <TabsTrigger
+            value="audit"
+            className="text-xs data-[state=active]:bg-violet-600 data-[state=active]:text-white"
+          >
+            Audit Log
+          </TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="subscription" className="space-y-4 mt-4">
           {club && <ClubParticipationCard club={club} />}

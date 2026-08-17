@@ -3386,6 +3386,7 @@ export type Database = {
           sla_accepted_name: string | null
           sla_accepted_role: string | null
           sla_billing_option: string | null
+          sla_payment_method: string | null
           sla_version: string | null
           subdomain: string | null
           suspension_rules: Json
@@ -3492,6 +3493,7 @@ export type Database = {
           sla_accepted_name?: string | null
           sla_accepted_role?: string | null
           sla_billing_option?: string | null
+          sla_payment_method?: string | null
           sla_version?: string | null
           subdomain?: string | null
           suspension_rules?: Json
@@ -3598,6 +3600,7 @@ export type Database = {
           sla_accepted_name?: string | null
           sla_accepted_role?: string | null
           sla_billing_option?: string | null
+          sla_payment_method?: string | null
           sla_version?: string | null
           subdomain?: string | null
           suspension_rules?: Json

@@ -146,10 +146,12 @@ Deno.serve(async (req) => {
     }
     await admin.from("bar_visitor_sales")
       .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
-    // IMPORTANT: never append query params to express.stitch.money/pay links —
-    // Stitch Express 404s on them. The payer finishes on Stitch's completion
-    // page and returns via the branded success page opened by the app tab.
-    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: String(link) });
+    // Express ignores the body-level returnUrl. Match the proven normal
+    // once-off checkout flow by attaching the exact tenant-hosted return URL
+    // to the hosted link itself, otherwise Stitch strands the payer on its own
+    // generic completion page.
+    const hostedLink = appendExpressRedirectUrl(String(link), redirectUri);
+    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: hostedLink });
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
     return json({ error: e?.message || "Unexpected error" });
@@ -164,6 +166,17 @@ function withRedirect(link: string, returnUrl: string) {
   try {
     const url = new URL(link);
     url.searchParams.delete("redirect_uri");
+    url.searchParams.set("redirect_url", returnUrl);
+    return url.toString();
+  } catch {
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
+  }
+}
+
+function appendExpressRedirectUrl(link: string, returnUrl: string) {
+  try {
+    const url = new URL(link);
     url.searchParams.set("redirect_url", returnUrl);
     return url.toString();
   } catch {

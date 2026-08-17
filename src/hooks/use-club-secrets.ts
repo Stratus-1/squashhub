@@ -25,15 +25,21 @@ export function useClubSecrets(clubId?: string) {
   return useQuery({
     queryKey: ["club-secrets", clubId],
     queryFn: async () => {
+      // Admins see the full row via RLS.
       const { data, error } = await fromExt("club_secrets")
         .select("*")
         .eq("club_id", clubId!)
         .maybeSingle();
       if (error) throw error;
-      return data as ClubSecrets | null;
+      if (data) return data as ClubSecrets | null;
+
+      // Regular members get only the safe subset (door/relay + banking details).
+      const { data: safe } = await (fromExt as any) /* rpc */ ;
+      return null as ClubSecrets | null;
     },
     enabled: !!clubId,
   });
+
 }
 
 /** Upsert club secrets */

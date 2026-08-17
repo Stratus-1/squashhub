@@ -338,7 +338,6 @@ export function SelectLineupWizard({
             picks={home}
             onToggle={toggle("home")}
             onClear={() => setHome([])}
-            onAddManual={addManual("home")}
           />
         ) : (
           <SideStep
@@ -350,7 +349,6 @@ export function SelectLineupWizard({
             picks={away}
             onToggle={toggle("away")}
             onClear={() => setAway([])}
-            onAddManual={addManual("away")}
           />
         )}
 

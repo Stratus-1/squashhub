@@ -397,32 +397,6 @@ export function SelectLineupWizard({
             </Button>
           )}
         </DialogFooter>
-          {step === "away" ? (
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep("home")}>
-              <ArrowLeft className="w-4 h-4 mr-1" /> Home team
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-          )}
-          {step === "home" ? (
-            <Button size="sm" className="flex-1" onClick={() => setStep("away")}>
-              Visitors <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              className="flex-1"
-              onClick={() => {
-                onApply(home, away);
-                onOpenChange(false);
-              }}
-            >
-              <Check className="w-4 h-4 mr-1" /> Apply lineup
-            </Button>
-          )}
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

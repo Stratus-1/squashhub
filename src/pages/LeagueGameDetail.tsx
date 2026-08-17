@@ -21,7 +21,6 @@ import { clearMarkerStateForSession, getMarkerSessionKeys, hasMarkerStateForSess
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { RosterPanel } from "@/components/league-games/RosterPanel";
 import { SelectLineupWizard, type LineupPick } from "@/components/league-games/SelectLineupWizard";
 import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
 import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";

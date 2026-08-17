@@ -156,14 +156,20 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               </span>
             </p>
           </div>
-          <Switch
-            checked={enabled}
-            onCheckedChange={toggleBarEnabled}
-          />
+          <div className="flex items-center gap-3">
+            <Button size="sm" variant="outline" onClick={() => setQrOpen(true)}>
+              <QrCode className="w-3.5 h-3.5 mr-1" /> QR labels
+            </Button>
+            <Switch
+              checked={enabled}
+              onCheckedChange={toggleBarEnabled}
+            />
+          </div>
         </div>
       </Card>
 
       <SetupSteps steps={barSteps} value={step} onChange={setStep} />
+
 
       {step === "items" && (
         <div className="space-y-4">

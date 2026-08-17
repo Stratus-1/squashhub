@@ -21,6 +21,7 @@ import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLef
 import { formatMoney } from "@/lib/qr-shortcodes";
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
+const PENDING_SALE_KEY = "sh.scanpay.pendingSale";
 
 interface ScanItem {
   id: string;
@@ -51,7 +52,9 @@ export default function ScanPay() {
   const [visitorName, setVisitorName] = useState("");
   const [selected, setSelected] = useState<ScanItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean } | null>(null);
+  const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean } | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
   const [guestChosen, setGuestChosen] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem(GUEST_PREF_KEY) === "1",
   );
@@ -106,6 +109,43 @@ export default function ScanPay() {
 
   const total = item ? Number(item.price) * qty : 0;
 
+  // Returning from the Stitch hosted card page — confirm the payment landed.
+  useEffect(() => {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(PENDING_SALE_KEY) : null;
+    if (!raw) return;
+    let pending: { saleId: string; itemName: string; total: number; code: string } | null = null;
+    try { pending = JSON.parse(raw); } catch { localStorage.removeItem(PENDING_SALE_KEY); return; }
+    if (!pending?.saleId || pending.code !== code) return;
+
+    let cancelled = false;
+    setVerifying(true);
+    const poll = async (attempt = 0) => {
+      if (cancelled) return;
+      const { data: res } = await supabase.functions.invoke("bar-card-verify", {
+        body: { sale_id: pending!.saleId },
+      });
+      const status = (res as any)?.status;
+      if (status === "paid") {
+        localStorage.removeItem(PENDING_SALE_KEY);
+        setVerifying(false);
+        setDone({ total: pending!.total, itemName: pending!.itemName, onAccount: false, cardPaid: true });
+        return;
+      }
+      if (status === "failed" || attempt >= 6) {
+        localStorage.removeItem(PENDING_SALE_KEY);
+        setVerifying(false);
+        if (status === "failed") toast.error("That card payment did not go through.");
+        else toast.message("We're still waiting for the bank to confirm your card payment.");
+        return;
+      }
+      setTimeout(() => poll(attempt + 1), 4000);
+    };
+    poll();
+    return () => { cancelled = true; };
+  }, [code]);
+
+
+
   const continueAsGuest = () => {
     localStorage.setItem(GUEST_PREF_KEY, "1");
     setGuestChosen(true);
@@ -137,6 +177,40 @@ export default function ScanPay() {
       setSubmitting(false);
     }
   };
+
+  /** Real card checkout — sends the payer to the club's Stitch hosted page. */
+  const payByCardNow = async () => {
+    if (!item) return;
+    setSubmitting(true);
+    try {
+      const buyerName = member?.name || visitorName.trim() || null;
+      const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
+        body: {
+          code,
+          bar_item_id: item.id,
+          quantity: qty,
+          buyer_name: buyerName,
+          return_url: `${window.location.origin}/s/${code}`,
+        },
+      });
+      if (error) throw error;
+      if ((res as any)?.error) throw new Error((res as any).error);
+      const redirect = (res as any)?.redirect_url;
+      const saleId = (res as any)?.sale_id;
+      if (!redirect) throw new Error("Card payment could not be started");
+      if (saleId) {
+        localStorage.setItem(
+          PENDING_SALE_KEY,
+          JSON.stringify({ saleId, itemName: item.name, total, code }),
+        );
+      }
+      window.location.href = redirect;
+    } catch (err: any) {
+      toast.error(err.message || "Could not start the card payment");
+      setSubmitting(false);
+    }
+  };
+
 
   const chargeToAccount = async () => {
     if (!item || !member || !club) return;
@@ -197,19 +271,30 @@ export default function ScanPay() {
       </header>
 
       <main className="px-4 py-4 max-w-md mx-auto space-y-4">
-        {done ? (
+        {verifying ? (
+          <Card className="p-6 text-center space-y-3">
+            <Loader2 className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />
+            <h2 className="text-base font-semibold">Confirming your card payment…</h2>
+            <p className="text-sm text-muted-foreground">This takes a few seconds.</p>
+          </Card>
+        ) : done ? (
           <Card className="p-6 text-center space-y-3">
             <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-600" />
             <h2 className="text-lg font-semibold">Thank you!</h2>
             <p className="text-sm text-muted-foreground">
               {done.itemName} — {formatMoney(done.total, currency)}{" "}
-              {done.onAccount ? "was charged to your club account." : "recorded at the bar."}
+              {done.onAccount
+                ? "was charged to your club account."
+                : done.cardPaid
+                  ? "was paid by card. Enjoy!"
+                  : "recorded at the bar."}
             </p>
             <Button variant="outline" className="w-full" onClick={() => { setDone(null); setQty(1); setSelected(null); }}>
               Buy something else
             </Button>
           </Card>
         ) : (
+
           <>
             {showLoginPrompt && (
               <Card className="p-4 space-y-3 border-primary/40">
@@ -306,8 +391,11 @@ export default function ScanPay() {
                     <Button className="w-full gap-2" disabled={submitting} onClick={chargeToAccount}>
                       <Wallet className="w-4 h-4" /> Charge to my account
                     </Button>
-                    <Button variant="outline" className="w-full gap-2" disabled={submitting} onClick={() => payAsGuest("card")}>
-                      <CreditCard className="w-4 h-4" /> I paid by card
+                    <Button variant="outline" className="w-full gap-2" disabled={submitting} onClick={payByCardNow}>
+                      <CreditCard className="w-4 h-4" /> Pay now by card
+                    </Button>
+                    <Button variant="ghost" size="sm" className="w-full" disabled={submitting} onClick={() => payAsGuest("cash")}>
+                      I left cash in the tin
                     </Button>
                     <p className="text-[11px] text-muted-foreground text-center">
                       Signed in as {member.name}
@@ -325,12 +413,15 @@ export default function ScanPay() {
                         className="h-9"
                       />
                     </div>
-                    <Button className="w-full gap-2" disabled={submitting || !visitorName.trim()} onClick={() => payAsGuest("card")}>
-                      <CreditCard className="w-4 h-4" /> Paid by card
+                    <Button className="w-full gap-2" disabled={submitting || !visitorName.trim()} onClick={payByCardNow}>
+                      <CreditCard className="w-4 h-4" /> Pay now by card
                     </Button>
                     <Button variant="outline" className="w-full gap-2" disabled={submitting || !visitorName.trim()} onClick={() => payAsGuest("cash")}>
-                      Paid cash
+                      I left cash in the tin
                     </Button>
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      Card payments go through {club.name}&apos;s secure checkout.
+                    </p>
                     {userId && !member && (
                       <p className="text-[11px] text-muted-foreground text-center">
                         You are signed in but not a member of {club.name}, so this is recorded as a visitor sale.
@@ -343,6 +434,7 @@ export default function ScanPay() {
                     )}
                   </div>
                 )}
+
               </Card>
             )}
           </>

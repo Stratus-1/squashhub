@@ -481,6 +481,8 @@ export type Database = {
           logged_by: string | null
           note: string | null
           payment_method: string
+          payment_reference: string | null
+          payment_status: string
           quantity: number
           total: number
           unit_price: number
@@ -494,6 +496,8 @@ export type Database = {
           logged_by?: string | null
           note?: string | null
           payment_method: string
+          payment_reference?: string | null
+          payment_status?: string
           quantity: number
           total: number
           unit_price: number
@@ -507,6 +511,8 @@ export type Database = {
           logged_by?: string | null
           note?: string | null
           payment_method?: string
+          payment_reference?: string | null
+          payment_status?: string
           quantity?: number
           total?: number
           unit_price?: number
@@ -9904,6 +9910,7 @@ export type Database = {
         }
         Returns: string
       }
+      qr_bar_sale_status: { Args: { _sale_id: string }; Returns: Json }
       qr_record_visitor_sale: {
         Args: {
           _bar_item_id: string

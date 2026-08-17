@@ -21,6 +21,7 @@ import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLef
 import { formatMoney } from "@/lib/qr-shortcodes";
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
+const PENDING_SALE_KEY = "sh.scanpay.pendingSale";
 
 interface ScanItem {
   id: string;

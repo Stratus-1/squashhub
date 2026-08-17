@@ -1946,6 +1946,9 @@ export default function LeagueGameDetail() {
   // page becomes a pure live-follow scorecard via the realtime channel.
   const isViewMode = (searchParams.get("mode") || "") === "view";
   const isSubmitted = isSubmittedReal || isViewMode;
+  // For NSA fixtures the tap-to-pick wizard is the ONLY setup surface — the
+  // intermediate grid/format/complete-setup page is redundant and hidden.
+  const nsaPreSetup = nsaLive && !setupDone && !isSubmitted;
 
   // Auto-open the lineup wizard on fresh fixtures so the marker starts with
   // selecting players instead of showing the intermediate setup screen.

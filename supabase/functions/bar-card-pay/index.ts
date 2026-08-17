@@ -135,6 +135,7 @@ Deno.serve(async (req) => {
         currency: "ZAR",
         payerName: (buyer_name || "Bar customer").slice(0, 40),
         merchantReference: reference,
+        returnUrl: redirectUri,
       }),
     });
     const plJson = await plResp.json().catch(() => ({}));

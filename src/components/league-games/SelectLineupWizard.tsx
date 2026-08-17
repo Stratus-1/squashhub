@@ -365,6 +365,22 @@ export function SelectLineupWizard({
     [step],
   );
 
+  /** League prefix taken from the squad's own numbers (e.g. "NSF" from NSF7594).
+   *  Falls back to NSF when the roster has no lettered codes. */
+  const codePrefix = useMemo(() => {
+    const pool = step === "home" ? [...homePlayers, ...extraHome] : [...awayPlayers, ...extraAway];
+    for (const p of pool) {
+      const m = (p.code || "").toUpperCase().match(/^([A-Z]+)\d/);
+      if (m) return m[1];
+    }
+    const other = step === "home" ? awayPlayers : homePlayers;
+    for (const p of other) {
+      const m = (p.code || "").toUpperCase().match(/^([A-Z]+)\d/);
+      if (m) return m[1];
+    }
+    return "NSF";
+  }, [step, homePlayers, awayPlayers, extraHome, extraAway]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
@@ -382,8 +398,10 @@ export function SelectLineupWizard({
             open={addingPlayer}
             onOpenChange={setAddingPlayer}
             side={step}
+            prefix={codePrefix}
             onAdd={addManual(step)}
           />
+
         ) : step === "home" ? (
           <SideStep
             title="Home"

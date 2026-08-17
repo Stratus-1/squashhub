@@ -3391,7 +3391,19 @@ export default function LeagueGameDetail() {
         teamSize={positions.length}
         initialHome={positions.map((p) => ({ code: p.homeCode, name: p.homeName }))}
         initialAway={positions.map((p) => ({ code: p.awayCode, name: p.awayName }))}
-        onApply={handleWizardApply}
+        onApply={(home, away) => {
+          handleWizardApply(home, away);
+          // Compute the same lineup the wizard just applied and save it so the
+          // user lands directly on the scoring screen after selecting players.
+          const nextPositions = positions.map((p, i) => ({
+            ...p,
+            homeCode: home[i]?.code || "",
+            homeName: home[i]?.name || "",
+            awayCode: away[i]?.code || "",
+            awayName: away[i]?.name || "",
+          }));
+          handleSaveSetup(nextPositions);
+        }}
       />
 
       {activeMember?.id && nsaLive && (

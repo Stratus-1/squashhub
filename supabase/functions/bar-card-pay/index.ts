@@ -292,3 +292,34 @@ async function createPaymentRequest(opts: {
   // Hand back the hosted URL exactly as Stitch issued it — never append params.
   return { id: String(data.id), redirect_url: String(redirectBase) };
 }
+
+// See stitch-create-payment: the redirect host whitelist is per-club, so probe
+// the hosted link and fall back rather than shipping a 404 to the payer.
+async function pickWorkingLink(link: string, returnUrl: string): Promise<string> {
+  if (!link || !returnUrl) return link;
+  const candidates = [
+    appendRedirectUrl(link, returnUrl),
+    appendExpressParam(link, "redirect_uri", returnUrl),
+  ];
+  for (const candidate of candidates) {
+    try {
+      const resp = await fetch(candidate, { method: "GET", redirect: "manual" });
+      if (resp.status < 400) return candidate;
+      console.warn(`[bar-card-pay] link variant rejected (${resp.status})`);
+    } catch (_) { /* try next */ }
+  }
+  return link;
+}
+
+function appendExpressParam(link: string, key: string, value: string) {
+  try {
+    const url = new URL(link);
+    url.searchParams.delete("redirect_url");
+    url.searchParams.delete("redirect_uri");
+    url.searchParams.set(key, value);
+    return url.toString();
+  } catch {
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}${key}=${encodeURIComponent(value)}`;
+  }
+}

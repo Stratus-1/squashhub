@@ -285,20 +285,48 @@ export function BillingFrequencyCard({
       )}
 
 
+      <div className="rounded-md border p-3 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-medium">Preferred payment method</p>
+          {currentPay && (
+            <Badge variant="outline" className="text-[10px]">
+              {currentPay === "card" ? "Card" : "EFT"}
+            </Badge>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Tell us how you&apos;d normally like to settle your invoices. You can still pay either way
+          on any individual invoice — this simply sets your default.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setPayMethod("eft")}
+            className={`text-left rounded-md border p-2.5 text-xs transition-colors ${payMethod === "eft" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
+          >
+            <span className="block font-semibold text-sm">EFT / bank transfer</span>
+            <span className="text-muted-foreground">Bank details are shown on every invoice.</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPayMethod("card")}
+            className={`text-left rounded-md border p-2.5 text-xs transition-colors ${payMethod === "card" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
+          >
+            <span className="block font-semibold text-sm">Card payment</span>
+            <span className="text-muted-foreground">Pay online from the invoice link.</span>
+          </button>
+        </div>
+      </div>
+
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" onClick={handleSave} disabled={locked || saving || choice === current}>
+        <Button size="sm" onClick={handleSave} disabled={saving || !dirty || (locked && choice !== current)}>
           {saving
             ? "Saving…"
-            : locked
-              ? "Locked until the prepaid period ends"
-              : choice === current
-                ? "Current selection"
-                : choice === "annual_upfront"
-                  ? "Choose annual upfront"
-                  : choice === "biannual_upfront"
-                    ? "Choose 6-monthly upfront"
-                    : "Choose monthly"}
+            : !dirty
+              ? "Current selection"
+              : "Save preferences"}
         </Button>
+
 
         <span className="text-[11px] text-muted-foreground">
           Estimates exclude VAT and are based on {memberCount ?? "your"} active member

@@ -181,17 +181,18 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // Items 3 + 4: Express hosted links must stay param-free. `redirect_url`
-    // 404s the link outright and `redirect_uri` is ignored, so appending only
-    // breaks checkout. Express payers finish on Stitch's own completion page;
-    // the branded return is only available via the payment-request flow above.
-    const redirectUrl = payment.link as string;
+    // CANONICAL (09 Aug 2026, confirmed working — see issue log §"canonical
+    // once-off / top-up payment flow"): append `redirect_url` (with the club's
+    // validated tenant subdomain host) to the Express hosted link. Body-level
+    // redirect keys are silently dropped by Express. Do not "simplify" this.
+    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
     }).eq("id", session.id);
 
     return json({ session_id: session.id, redirect_url: redirectUrl, request_id: payment.id, redirect_mode: "direct" });
+
 
   } catch (e: any) {
     console.error("stitch-create-payment error:", e);

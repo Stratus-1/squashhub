@@ -31,6 +31,7 @@ export interface Club {
   tenant_type?: string;
   league_member_annual_fee?: number;
   league_fee_due_month?: number;
+  payment_gateway_fee_percent?: number | null;
   booking_slot_minutes?: number;
   booking_open_time?: string;
   booking_last_slot_time?: string;

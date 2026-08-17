@@ -124,7 +124,9 @@ Deno.serve(async (req) => {
     }
     await admin.from("bar_visitor_sales")
       .update({ payment_reference: String(plJson.data.payment.id) }).eq("id", sale.id);
-    return json({ sale_id: sale.id, redirect_url: withRedirect(String(link), redirectUri) });
+    // NOTE: express.stitch.money hosted links 404 when ANY query param is appended,
+    // so the link must be handed to the payer exactly as Stitch returned it.
+    return json({ sale_id: sale.id, redirect_url: String(link) });
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
     return json({ error: e?.message || "Unexpected error" });

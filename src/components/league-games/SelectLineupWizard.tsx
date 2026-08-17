@@ -19,10 +19,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Check, RotateCcw, ArrowRight, ArrowLeft, Users } from "lucide-react";
+import { Check, RotateCcw, ArrowRight, ArrowLeft, Users, UserPlus, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import type { NsaTeamPlayer } from "@/hooks/use-nsa";
+
 
 export type LineupPick = { code: string; name: string };
 

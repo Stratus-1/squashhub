@@ -144,11 +144,18 @@ export function ClubParticipationCard({ club }: { club: Club }) {
               <Badge variant="outline">SLA not accepted</Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">
-            The chairman, captain or authorised office bearer must accept the Service Level
-            Agreement. Your club stays fully active during the trial and afterwards — access is
-            only suspended for unpaid invoices.
-          </p>
+          {isActive ? (
+            <p className="text-sm text-muted-foreground">
+              The Service Level Agreement has been signed and accepted on behalf of {club.name}. No
+              further action is required — the record below is kept for your reference.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              The chairman, captain or authorised office bearer must accept the Service Level
+              Agreement. Your club stays fully active during the trial and afterwards — access is
+              only suspended for unpaid invoices.
+            </p>
+          )}
 
         </div>
       </div>
@@ -161,7 +168,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
       {isActive ? (
         <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm space-y-1">
           <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-medium">
-            <CheckCircle2 className="w-4 h-4" /> SLA accepted
+            <CheckCircle2 className="w-4 h-4" /> SLA signed &amp; accepted — no action needed
           </div>
           <div className="text-muted-foreground text-xs space-y-0.5">
             {c.sla_accepted_name && <div>Accepted by <strong className="text-foreground">{c.sla_accepted_name}</strong>{c.sla_accepted_role ? `, ${c.sla_accepted_role}` : ""}</div>}
@@ -171,15 +178,39 @@ export function ClubParticipationCard({ club }: { club: Club }) {
               {c.sla_version && <> · SLA v{c.sla_version}</>}
             </div>
           </div>
-          <div className="flex gap-2 pt-2">
-            <Button variant="ghost" size="sm" onClick={handleDeactivate}>Deactivate</Button>
-          </div>
+          <details className="pt-2 group">
+            <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none">
+              Signed agreement record
+            </summary>
+            <div className="pt-2 flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" asChild className="h-7 px-2 text-xs">
+                <a href="/sla" target="_blank" rel="noopener noreferrer">
+                  <FileText className="w-3.5 h-3.5 mr-1" /> View signed SLA
+                </a>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => {
+                  const w = window.open("/sla?print=1", "_blank");
+                  if (w) setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 800);
+                }}
+              >
+                <Printer className="w-3.5 h-3.5 mr-1" /> Download / Print
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={handleDeactivate}>
+                Deactivate participation
+              </Button>
+            </div>
+          </details>
         </div>
       ) : (
         <Button onClick={() => setOpen(true)} className="w-full md:w-auto">
           <FileSignature className="w-4 h-4 mr-2" /> Activate Participation &amp; Accept SLA
         </Button>
       )}
+
 
 
 

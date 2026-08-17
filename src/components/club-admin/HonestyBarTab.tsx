@@ -184,7 +184,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               <QrCode className="w-3.5 h-3.5 mr-1" /> QR labels
             </Button>
           </Card>
-          <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
+          <ItemManager clubId={clubId} items={items} loading={itemsLoading} onQrLabels={() => setQrOpen(true)} />
         </div>
       )}
 

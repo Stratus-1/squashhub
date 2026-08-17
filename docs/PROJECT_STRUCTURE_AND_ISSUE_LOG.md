@@ -703,3 +703,15 @@ automatically (Yoco uses `club_secrets.payment_gateway_credentials.secret_key`).
 changes are needed when a tenant picks a gateway — member fees/top-ups already route via
 `src/lib/club-payments.ts`. Stitch Express bar checkout uses no body-level return aliases and one
 documented `redirect_uri` on the fresh hosted link.
+
+### 2026-08-17 · Once-off top-up 404 in Riverside (Stitch Express)
+- **Symptom:** Normal member top-up in Riverside opened a **404** on the Stitch hosted link; Gordon's Bay
+  appeared to work.
+- **Finding (live probes):** For a fresh link, `/pay/<id>` → 200, `/pay/<id>?foo=bar` → 200, but
+  `/pay/<id>?redirect_url=<any value>` → **404** — for Riverside *and* Gordon's Bay links alike.
+  Gordon's Bay only looked healthy because the tested link belonged to an already-completed session
+  (307 redirect). `redirect_uri`, `returnUrl`, `return_url`, `redirectUrl` all return 200.
+- **Fix:** `stitch-create-payment` now appends `redirect_uri` (never `redirect_url`) to the hosted
+  Express link, matching the bar checkout.
+- **Guard:** `redirect_url` is dead on Stitch Express hosted links — any occurrence 404s the checkout.
+  Use `redirect_uri` only.

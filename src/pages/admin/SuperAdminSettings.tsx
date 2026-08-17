@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Mail, Shield, Save, Send } from "lucide-react";
+import { Settings, Mail, Shield, Save, Send, BellRing } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +20,7 @@ interface PlatformSettings {
   platform_smtp_pass: string;
   hcaptcha_enabled: string;
   hcaptcha_site_key: string;
+  trial_end_reminder_days: string;
 }
 
 export default function SuperAdminSettings() {
@@ -32,6 +33,7 @@ export default function SuperAdminSettings() {
     platform_smtp_pass: "",
     hcaptcha_enabled: "true",
     hcaptcha_site_key: "",
+    trial_end_reminder_days: "10",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,6 +57,7 @@ export default function SuperAdminSettings() {
         "platform_smtp_pass",
         "hcaptcha_enabled",
         "hcaptcha_site_key",
+        "trial_end_reminder_days",
       ]);
 
     if (data) {
@@ -289,6 +292,36 @@ export default function SuperAdminSettings() {
               Google reCAPTCHA Admin Console
             </a>
             . Both keys are read from the backend secrets RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY.
+          </p>
+        </div>
+      </Card>
+
+      {/* Billing reminders */}
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <BellRing className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-lg">Billing Reminders</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Controls the daily reminder jobs: the trial-ending email is sent this many
+          days before a club's trial expires, and the outstanding-SLA chaser repeats
+          at the same interval after the trial has ended.
+        </p>
+        <Separator />
+        <div className="max-w-xs">
+          <Label htmlFor="trial-reminder-days">Reminder lead time (days)</Label>
+          <Input
+            id="trial-reminder-days"
+            type="number"
+            min={1}
+            max={90}
+            value={settings.trial_end_reminder_days}
+            onChange={(e) =>
+              setSettings((s) => ({ ...s, trial_end_reminder_days: e.target.value }))
+            }
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Default 10 days. Jobs run daily at 06:00.
           </p>
         </div>
       </Card>

@@ -19,6 +19,12 @@ import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
+import {
+  prepareStitchPaymentWindow,
+  openStitchPaymentWindow,
+  discardPreparedStitchPaymentWindow,
+} from "@/lib/stitch-checkout";
+
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
 const PENDING_SALE_KEY = "sh.scanpay.pendingSale";

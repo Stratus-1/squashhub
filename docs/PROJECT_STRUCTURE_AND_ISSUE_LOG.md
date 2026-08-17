@@ -88,6 +88,17 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-17 · Bar card payment stopped on Stitch's completion page
+- **Symptom:** After a QR bar purchase, Stitch showed its own **Payment complete** page; the payer had
+  to close it manually before seeing SquashHub's branded confirmation in the original bar tab.
+- **Finding:** The Express fallback in `bar-card-pay` sent Stitch's hosted link unchanged and relied on
+  the request-body `returnUrl`. The confirmed normal once-off flow documents that Express drops the
+  body return field and requires `redirect_url` on the hosted link itself.
+- **Fix:** `bar-card-pay` now appends the club-specific branded success URL as the hosted link's
+  `redirect_url`, matching `stitch-create-payment`. The public bar header also has a **Close bar** action.
+- **Guard:** Every Express once-off checkout, including QR bar sales, must append `redirect_url` to the
+  hosted link; never restore the disproved assumption that all Express query parameters cause a 404.
+
 ### 2026-08-17 · Bar payment success “Close this tab” did nothing
 - **Symptom:** After closing Stitch's completion screen, the branded bar payment confirmation appeared,
   but its **Close this tab** button did not close the original QR scanner tab.

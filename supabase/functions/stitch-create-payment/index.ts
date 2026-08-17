@@ -181,9 +181,11 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // Restored: attach the return URL to the hosted link. This is the exact
-    // behaviour that worked before 09 Aug 2026.
-    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
+    // Items 3 + 4: Express hosted links must stay param-free. `redirect_url`
+    // 404s the link outright and `redirect_uri` is ignored, so appending only
+    // breaks checkout. Express payers finish on Stitch's own completion page;
+    // the branded return is only available via the payment-request flow above.
+    const redirectUrl = payment.link as string;
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,

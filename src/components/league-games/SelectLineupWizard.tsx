@@ -329,6 +329,15 @@ export function SelectLineupWizard({
           </DialogDescription>
         </DialogHeader>
 
+        <div className="sticky top-0 z-10 bg-background">
+          <AddByNumberInline
+            open={addingPlayer}
+            onOpenChange={setAddingPlayer}
+            side={step}
+            onAdd={addManual(step)}
+          />
+        </div>
+
         {step === "home" ? (
           <SideStep
             title="Home"
@@ -353,12 +362,6 @@ export function SelectLineupWizard({
           />
         )}
 
-        <AddByNumberInline
-          open={addingPlayer}
-          onOpenChange={setAddingPlayer}
-          side={step}
-          onAdd={addManual(step)}
-        />
 
         <DialogFooter className="flex-row gap-2 sm:justify-between">
           {step === "away" ? (

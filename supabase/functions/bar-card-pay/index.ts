@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
     // CANONICAL (matches the 09 Aug confirmed-working top-up flow): append
     // `redirect_url` with the club's tenant-subdomain return URL. A 404 means
     // the host isn't whitelisted for this club — fix the host, don't strip it.
-    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: appendRedirectUrl(String(link), redirectUri) });
+    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: await pickWorkingLink(String(link), redirectUri) });
 
   } catch (e: any) {
     console.error("bar-card-pay error:", e);

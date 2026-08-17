@@ -27,6 +27,8 @@ export function ClubParticipationCard({ club }: { club: Club }) {
   const { user } = useAuth();
   const updateClub = useUpdateClub();
   const c = club as any;
+  const billingStart = useClubBillingStart(club.id);
+
 
   const isActive = !!c.participation_active;
   const [open, setOpen] = useState(false);

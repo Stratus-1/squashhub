@@ -267,6 +267,8 @@ export function SelectLineupWizard({
   const [step, setStep] = useState<"home" | "away">("home");
   const [home, setHome] = useState<LineupPick[]>([]);
   const [away, setAway] = useState<LineupPick[]>([]);
+  const [extraHome, setExtraHome] = useState<NsaTeamPlayer[]>([]);
+  const [extraAway, setExtraAway] = useState<NsaTeamPlayer[]>([]);
 
   // Seed from the current lineup each time the wizard opens.
   useEffect(() => {
@@ -274,6 +276,8 @@ export function SelectLineupWizard({
     setStep("home");
     setHome(initialHome.filter((p) => p.code || p.name));
     setAway(initialAway.filter((p) => p.code || p.name));
+    setExtraHome([]);
+    setExtraAway([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -286,6 +290,18 @@ export function SelectLineupWizard({
       if (prev.length >= teamSize) return prev;
       return [...prev, { code, name: fullName(p) }];
     });
+  };
+
+  const addManual = (side: "home" | "away") => (p: NsaTeamPlayer) => {
+    const code = (p.code || "").toUpperCase();
+    const base = side === "home" ? homePlayers : awayPlayers;
+    const extras = side === "home" ? extraHome : extraAway;
+    const known =
+      base.some((x) => (x.code || "").toUpperCase() === code) ||
+      extras.some((x) => (x.code || "").toUpperCase() === code);
+    if (!known) (side === "home" ? setExtraHome : setExtraAway)((prev) => [...prev, p]);
+    const picks = side === "home" ? home : away;
+    if (!picks.some((x) => (x.code || "").toUpperCase() === code)) toggle(side)(p);
   };
 
   const activePicks = step === "home" ? home : away;
@@ -313,24 +329,27 @@ export function SelectLineupWizard({
             title="Home"
             teamCode={homeCode}
             tone="home"
-            players={homePlayers}
+            players={[...homePlayers, ...extraHome]}
             teamSize={teamSize}
             picks={home}
             onToggle={toggle("home")}
             onClear={() => setHome([])}
+            onAddManual={addManual("home")}
           />
         ) : (
           <SideStep
             title="Visitors"
             teamCode={awayCode}
             tone="away"
-            players={awayPlayers}
+            players={[...awayPlayers, ...extraAway]}
             teamSize={teamSize}
             picks={away}
             onToggle={toggle("away")}
             onClear={() => setAway([])}
+            onAddManual={addManual("away")}
           />
         )}
+
 
         <DialogFooter className="flex-row gap-2 sm:justify-between">
           {step === "away" ? (

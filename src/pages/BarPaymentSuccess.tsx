@@ -221,28 +221,25 @@ export default function BarPaymentSuccess() {
                   <>Your payment has been received.</>
                 )}
               </p>
-              <p className="text-sm font-medium text-accent">
-                {canCloseTab ? "You can close this tab now." : "You can now return to the bar."}
-              </p>
-              {status === "paid" && canCloseTab && (
+              <p className="text-sm font-medium text-accent">Enjoy your evening!</p>
+              {status === "paid" && canCloseTab && countdown > 0 && (
                 <p className="text-xs text-muted-foreground">
                   This tab will close automatically in {countdown}s…
+                </p>
+              )}
+              {closeBlocked && (
+                <p className="text-xs text-muted-foreground">
+                  You can now close this tab.
                 </p>
               )}
             </div>
           )}
 
-          <div className="grid gap-3">
+          {status !== "verifying" && (
             <Button className="w-full gap-2" onClick={attemptClose}>
-              <ShoppingBag className="w-4 h-4" />
-              {canCloseTab ? "Close this tab" : "Done — back to bar"}
+              <ShoppingBag className="w-4 h-4" /> Close
             </Button>
-            {canCloseTab && (
-              <Button variant="ghost" className="w-full gap-2" onClick={() => navigate(`/s/${code}`, { replace: true })}>
-                <ShoppingBag className="w-4 h-4" /> Back to bar
-              </Button>
-            )}
-          </div>
+          )}
         </Card>
       </main>
     </div>

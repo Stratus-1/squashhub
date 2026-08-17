@@ -3180,7 +3180,7 @@ export default function LeagueGameDetail() {
             >
               <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reset to default league players
             </Button>
-            <Button className="w-full" size="sm" onClick={handleSaveSetup} disabled={!setupValid || savingSetup}>
+            <Button className="w-full" size="sm" onClick={() => handleSaveSetup()} disabled={!setupValid || savingSetup}>
               {savingSetup ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
               Complete Setup
             </Button>

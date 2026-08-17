@@ -53,17 +53,31 @@ function AddByNumberInline({
   open,
   onOpenChange,
   side,
+  prefix,
   onAdd,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   side: "home" | "away";
+  /** League code prefix pre-filled into the field, e.g. "NSF". */
+  prefix: string;
   onAdd: (p: NsaTeamPlayer) => void;
 }) {
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(prefix);
   const [name, setName] = useState("");
   const [looking, setLooking] = useState(false);
   const [found, setFound] = useState<string | null>(null);
+
+  // Re-seed the prefix each time the form opens (or the league prefix changes).
+  useEffect(() => {
+    if (open) {
+      setCode(prefix);
+      setName("");
+      setFound(null);
+    }
+  }, [open, prefix]);
+
+
 
   const lookup = async () => {
     const c = code.trim().toUpperCase();
@@ -102,7 +116,7 @@ function AddByNumberInline({
       surname: "",
       result_summary: { won: 0, lost: 0, played: 0 },
     });
-    setCode("");
+    setCode(prefix);
     setName("");
     setFound(null);
     onOpenChange(false);
@@ -122,26 +136,21 @@ function AddByNumberInline({
         </Button>
       </div>
       <div className="flex gap-2">
-        <div className="relative flex-1">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-muted-foreground">
-            NSF
-          </span>
-          <Input
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                lookup();
-              }
-            }}
-            placeholder="1234"
-            inputMode="numeric"
-            className="h-11 text-base font-mono pl-11"
-            maxLength={20}
-            autoFocus
-          />
-        </div>
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              lookup();
+            }
+          }}
+          placeholder={`${prefix}1234`}
+          className="h-11 text-base font-mono flex-1"
+          maxLength={20}
+          autoFocus
+        />
+
         <Button variant="secondary" onClick={lookup} disabled={looking || !code.trim()}>
           {looking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Find"}
         </Button>
@@ -356,6 +365,22 @@ export function SelectLineupWizard({
     [step],
   );
 
+  /** League prefix taken from the squad's own numbers (e.g. "NSF" from NSF7594).
+   *  Falls back to NSF when the roster has no lettered codes. */
+  const codePrefix = useMemo(() => {
+    const pool = step === "home" ? [...homePlayers, ...extraHome] : [...awayPlayers, ...extraAway];
+    for (const p of pool) {
+      const m = (p.code || "").toUpperCase().match(/^([A-Z]+)\d/);
+      if (m) return m[1];
+    }
+    const other = step === "home" ? awayPlayers : homePlayers;
+    for (const p of other) {
+      const m = (p.code || "").toUpperCase().match(/^([A-Z]+)\d/);
+      if (m) return m[1];
+    }
+    return "NSF";
+  }, [step, homePlayers, awayPlayers, extraHome, extraAway]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
@@ -373,8 +398,10 @@ export function SelectLineupWizard({
             open={addingPlayer}
             onOpenChange={setAddingPlayer}
             side={step}
+            prefix={codePrefix}
             onAdd={addManual(step)}
           />
+
         ) : step === "home" ? (
           <SideStep
             title="Home"

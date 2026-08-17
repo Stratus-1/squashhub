@@ -12,7 +12,7 @@ type PendingStitchSession = {
 
 const PAY_RETURN_COOKIE = "sh_pay_to";
 
-function setPayReturnCookie(target: string) {
+export function rememberPayReturnTarget(target: string) {
   if (typeof document === "undefined") return;
   const host = window.location.hostname;
   // Cookie must be readable by the /pay/return page on the apex domain, so
@@ -59,9 +59,8 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
     ? pathAndSearch
     : `/${pathAndSearch.replace(/^\/+/, "")}`;
 
-  // Stitch Express validates the exact redirect URL configured for the tenant.
-  // Send the current tenant URL directly instead of routing through the apex
-  // /pay/return bridge, which Stitch can treat as a different unapproved URL.
+  // Remember the tenant destination in a shared-domain cookie, then give Stitch
+  // the one exact callback URL registered for the whole SquashHub platform.
   let originHere = "https://squashhub.co.za";
   if (typeof window !== "undefined" && window.location?.origin) {
     // `www.` is not served on the apex — a return URL pointing there 404s the
@@ -79,11 +78,11 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
 
   try {
     const target = new URL(safePath, originHere);
-    setPayReturnCookie(target.toString());
-    return target.toString();
+    rememberPayReturnTarget(target.toString());
+    return "https://squashhub.co.za/pay/return";
   } catch {
-    setPayReturnCookie(`${originHere}/my-account`);
-    return `${originHere}/my-account`;
+    rememberPayReturnTarget(`${originHere}/my-account`);
+    return "https://squashhub.co.za/pay/return";
   }
 }
 

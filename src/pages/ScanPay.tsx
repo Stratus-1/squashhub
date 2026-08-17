@@ -19,6 +19,7 @@ import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart, X } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
+import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -198,13 +199,14 @@ export default function ScanPay() {
     if (cartLines.length === 0) return;
     setSubmitting(true);
     try {
+      rememberPayReturnTarget(`${window.location.origin}/s/${code}/success`);
       const buyerName = member?.name || visitorName.trim() || null;
       const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
         body: {
           code,
           lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
           buyer_name: buyerName,
-          return_url: `${window.location.origin}/s/${code}/success`,
+          return_url: "https://squashhub.co.za/pay/return",
         },
       });
       if (error) throw error;

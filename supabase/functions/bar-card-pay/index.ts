@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     const sale = sales[0];
 
     const reference = `BAR-${String(sale.id).slice(0, 8)}`;
-    const redirectUri = sanitizeReturnUrl(return_url, String(club.subdomain || ""), code);
+    const redirectUri = `${PUBLIC_APP_ORIGIN}/pay/return`;
 
     // ---- Yoco tenants -------------------------------------------------
     if (gateway === "yoco") {
@@ -182,10 +182,13 @@ Deno.serve(async (req) => {
     }
     await admin.from("bar_visitor_sales")
       .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
-    // CANONICAL (matches the 09 Aug confirmed-working top-up flow): append
-    // `redirect_url` with the club's tenant-subdomain return URL. A 404 means
-    // the host isn't whitelisted for this club — fix the host, don't strip it.
-    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: await pickWorkingLink(String(link), redirectUri) });
+    // Stitch Express permits only a small redirect allow-list. Every club uses
+    // the one shared SquashHub callback; that page forwards back to the bar.
+    return json({
+      sale_id: sale.id,
+      sale_ids: saleIds,
+      redirect_url: await appendRedirectIfReachable(String(link), redirectUri),
+    });
 
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
@@ -195,37 +198,6 @@ Deno.serve(async (req) => {
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-
-function sanitizeReturnUrl(raw: string | null, clubSubdomain: string, code: string) {
-  const sub = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
-  let successSuffix = "";
-  if (raw) {
-    try {
-      successSuffix = new URL(raw).pathname.endsWith("/success") ? "/success" : "";
-    } catch {
-      successSuffix = raw.endsWith("/success") ? "/success" : "";
-    }
-  }
-  const fallback = sub
-    ? `https://${sub}.squashhub.co.za/s/${code}${successSuffix}`
-    : `${PUBLIC_APP_ORIGIN}/s/${code}${successSuffix}`;
-  if (!raw) return fallback;
-  try {
-    const parsed = new URL(raw);
-    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
-    const allowed =
-      host === "squashhub.co.za" || host.endsWith(".squashhub.co.za") ||
-      host.endsWith(".lovable.app") || host === "localhost";
-    if (!allowed) return fallback;
-    if (sub && (host === "squashhub.co.za" || host.endsWith(".lovable.app"))) return fallback;
-    parsed.hostname = host;
-    parsed.search = "";
-    parsed.hash = "";
-    return parsed.toString();
-  } catch {
-    return fallback;
-  }
 }
 
 function appendRedirectUrl(link: string, returnUrl: string) {
@@ -239,6 +211,18 @@ function appendRedirectUrl(link: string, returnUrl: string) {
     const separator = link.includes("?") ? "&" : "?";
     return `${link}${separator}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
+}
+
+async function appendRedirectIfReachable(link: string, returnUrl: string) {
+  const candidate = appendRedirectUrl(link, returnUrl);
+  try {
+    const response = await fetch(candidate, { method: "GET", redirect: "follow" });
+    if (response.ok) return candidate;
+    console.warn(`[bar-card-pay] shared callback rejected (${response.status}); using bare hosted link`);
+  } catch (error) {
+    console.warn("[bar-card-pay] callback check failed; using bare hosted link", error);
+  }
+  return link;
 }
 
 
@@ -293,33 +277,3 @@ async function createPaymentRequest(opts: {
   return { id: String(data.id), redirect_url: String(redirectBase) };
 }
 
-// See stitch-create-payment: the redirect host whitelist is per-club, so probe
-// the hosted link and fall back rather than shipping a 404 to the payer.
-async function pickWorkingLink(link: string, returnUrl: string): Promise<string> {
-  if (!link || !returnUrl) return link;
-  const candidates = [
-    appendRedirectUrl(link, returnUrl),
-    appendExpressParam(link, "redirect_uri", returnUrl),
-  ];
-  for (const candidate of candidates) {
-    try {
-      const resp = await fetch(candidate, { method: "GET", redirect: "manual" });
-      if (resp.status < 400) return candidate;
-      console.warn(`[bar-card-pay] link variant rejected (${resp.status})`);
-    } catch (_) { /* try next */ }
-  }
-  return link;
-}
-
-function appendExpressParam(link: string, key: string, value: string) {
-  try {
-    const url = new URL(link);
-    url.searchParams.delete("redirect_url");
-    url.searchParams.delete("redirect_uri");
-    url.searchParams.set(key, value);
-    return url.toString();
-  } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}${key}=${encodeURIComponent(value)}`;
-  }
-}

@@ -62,6 +62,13 @@ export default function PayReturn() {
 
 async function buildFallbackTarget(here: URL) {
   const club = (here.searchParams.get("stitch_club") || "").trim().toLowerCase();
+  const barCode = (here.searchParams.get("bar_code") || "").trim();
+  if (barCode && /^[A-Za-z0-9_-]{4,64}$/.test(barCode)) {
+    const origin = isSafeClubSubdomain(club)
+      ? `https://${club}.squashhub.co.za`
+      : "https://squashhub.co.za";
+    return new URL(`/s/${encodeURIComponent(barCode)}/success`, origin);
+  }
   if (isSafeClubSubdomain(club)) return new URL(`/my-account`, `https://${club}.squashhub.co.za`);
 
   const sessionId = (here.searchParams.get("stitch_session") || "").trim();

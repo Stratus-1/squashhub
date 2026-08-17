@@ -397,6 +397,16 @@ export default function HonestyBar() {
         loggedByMemberId={memberId}
       />
 
+      <BarMenuQrDialog
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        clubId={clubId}
+        clubName={club?.name}
+        subdomain={(club as any)?.subdomain}
+      />
+
+
+
       <BackToDashboard />
     </div>
   );

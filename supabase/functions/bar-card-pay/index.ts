@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     const tokenJson = await tokenResp.json().catch(() => ({}));
     const accessToken = tokenJson?.data?.accessToken;
     if (!tokenResp.ok || !accessToken) {
-      await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).eq("id", sale.id);
+      await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).in("id", saleIds);
       return json({ error: "Could not reach the card payment provider" });
     }
     const plResp = await fetch(`${STITCH_EXPRESS_BASE}/payments`, {
@@ -140,14 +140,14 @@ Deno.serve(async (req) => {
     const plJson = await plResp.json().catch(() => ({}));
     const link = plJson?.data?.payment?.link;
     if (!plResp.ok || !link) {
-      await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).eq("id", sale.id);
+      await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).in("id", saleIds);
       return json({ error: "Could not create the card payment" });
     }
     await admin.from("bar_visitor_sales")
-      .update({ payment_reference: String(plJson.data.payment.id) }).eq("id", sale.id);
+      .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
     // NOTE: express.stitch.money hosted links 404 when ANY query param is appended,
     // so the link must be handed to the payer exactly as Stitch returned it.
-    return json({ sale_id: sale.id, redirect_url: String(link) });
+    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: String(link) });
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
     return json({ error: e?.message || "Unexpected error" });

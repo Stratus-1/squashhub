@@ -40,7 +40,11 @@ Deno.serve(async (req) => {
 
     const next = paid ? "paid" : failed ? "failed" : "pending";
     if (next !== sale.payment_status) {
-      await admin.from("bar_visitor_sales").update({ payment_status: next }).eq("id", sale.id);
+      // Cart payments write one row per line sharing the same reference.
+      await admin.from("bar_visitor_sales")
+        .update({ payment_status: next })
+        .eq("club_id", sale.club_id)
+        .eq("payment_reference", sale.payment_reference);
     }
     return json({ status: next, stitch_state: state, total: Number(sale.total) });
   } catch (e: any) {

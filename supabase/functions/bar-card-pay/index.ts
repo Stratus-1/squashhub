@@ -146,12 +146,11 @@ Deno.serve(async (req) => {
     }
     await admin.from("bar_visitor_sales")
       .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
-    // Express ignores the body-level returnUrl. Match the proven normal
-    // once-off checkout flow by attaching the exact tenant-hosted return URL
-    // to the hosted link itself, otherwise Stitch strands the payer on its own
-    // generic completion page.
-    const hostedLink = appendExpressRedirectUrl(String(link), redirectUri);
-    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: hostedLink });
+    // Bar purchases deliberately do not redirect out of Stitch. The original
+    // Scan-to-Pay tab stays open and polls the sale, then shows the branded
+    // thank-you page. Adding redirect_url to this Express link makes some
+    // tenant payment links return Stitch's 404 before checkout even opens.
+    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: String(link) });
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
     return json({ error: e?.message || "Unexpected error" });
@@ -160,29 +159,6 @@ Deno.serve(async (req) => {
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-
-function withRedirect(link: string, returnUrl: string) {
-  try {
-    const url = new URL(link);
-    url.searchParams.delete("redirect_uri");
-    url.searchParams.set("redirect_url", returnUrl);
-    return url.toString();
-  } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
-  }
-}
-
-function appendExpressRedirectUrl(link: string, returnUrl: string) {
-  try {
-    const url = new URL(link);
-    url.searchParams.set("redirect_url", returnUrl);
-    return url.toString();
-  } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
-  }
 }
 
 function sanitizeReturnUrl(raw: string | null, clubSubdomain: string, code: string) {
@@ -260,5 +236,7 @@ async function createPaymentRequest(opts: {
   if (!resp.ok || !data?.id || !redirectBase) {
     throw new Error(data?.detail || data?.message || `payment request HTTP ${resp.status}`);
   }
-  return { id: String(data.id), redirect_url: withRedirect(String(redirectBase), opts.redirectUri) };
+  // Keep the provider URL untouched. The original bar tab owns verification
+  // and confirmation, so this hosted checkout must not carry a return URL.
+  return { id: String(data.id), redirect_url: String(redirectBase) };
 }

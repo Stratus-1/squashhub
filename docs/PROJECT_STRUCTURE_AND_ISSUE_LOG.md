@@ -88,6 +88,16 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-17 · League “Set up & mark” opened a blank screen
+- **Symptom:** Nelspruit players opening an active internal-league fixture and choosing **Set up & mark**
+  landed on a blank page with no way back.
+- **Finding:** `LeagueGameDetail` returned its loading screen before the NSA lineup auto-open `useEffect`.
+  The first render therefore used fewer hooks than the render after the fixture loaded, causing React's
+  “Rendered more hooks than during the previous render” crash.
+- **Fix:** Moved the fixture loading return below the lineup auto-open effect so hook order is stable on
+  every render.
+- **Guard:** All hooks in route pages must execute before loading, missing-data, and error early returns.
+
 ### 2026-08-17 · Bar product QR codes were not discoverable
 - **Symptom:** Club admins could see imported bar products but no QR code action or visible QR beside each product.
 - **Finding:** QR creation was exposed only through a bulk labels dialog, generated codes only for active items,

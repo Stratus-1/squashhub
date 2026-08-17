@@ -129,8 +129,8 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
   link. For this club's Express link, that query parameter invalidated the hosted checkout URL.
 - **Fix:** Bar checkout now opens Stitch's returned hosted URL unchanged. The original Scan-to-Pay tab
   remains open, verifies the payment independently, and displays the branded thank-you screen.
-- **Guard:** Superseded after comparison with fresh, completed Gordon's Bay top-ups proved that a
-  tenant-host `redirect_url` works. A 404 must be investigated as a host or stale-link issue first.
+- **Guard:** Superseded by live verification that the failure was the parameter spelling itself:
+  `redirect_url` returned 404, while Stitch's supported `redirect_uri` opened the same fresh link.
 
 ### 2026-08-17 · Bar card payment stopped on Stitch's completion page (SUPERSEDED)
 - **Symptom:** After a QR bar purchase, Stitch showed its own **Payment complete** page; the payer had

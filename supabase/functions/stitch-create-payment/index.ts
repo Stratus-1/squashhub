@@ -253,35 +253,10 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
   }
 }
 
-function appendRedirectUri(link: string, returnUrl: string) {
-  // Stitch hosted flows honour `redirect_url`; `redirect_uri` is silently
-  // ignored and leaves the payer stranded on Stitch's completion screen.
-  try {
-    const url = new URL(link);
-    url.searchParams.delete("redirect_uri");
-    url.searchParams.set("redirect_url", returnUrl);
-    return url.toString();
-  } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
-  }
-}
-
-function appendExpressRedirectUrl(link: string, returnUrl: string) {
-  // 17 Aug 2026: Stitch Express now 404s a fresh hosted /pay link whenever a
-  // `redirect_url` query param is present (verified live: `?foo=bar` → 200,
-  // `?redirect_url=<anything>` → 404, for both Riverside and Gordon's Bay
-  // links). `redirect_uri` returns 200, which is what the bar checkout uses.
-  try {
-    const url = new URL(link);
-    url.searchParams.delete("redirect_url");
-    url.searchParams.set("redirect_uri", returnUrl);
-    return url.toString();
-  } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
-  }
-}
+// NOTE (17 Aug 2026): helpers that appended `redirect_url` / `redirect_uri` to
+// Stitch hosted links were removed. Verified live: `?foo=bar` → 200,
+// `?redirect_url=<anything>` → 404, `?redirect_uri=...` → 200 but no redirect.
+// Hosted links must be handed to the payer exactly as Stitch issued them.
 
 
 function appendSessionParams(returnUrl: string, _sessionId: string, _clubSubdomain = "") {

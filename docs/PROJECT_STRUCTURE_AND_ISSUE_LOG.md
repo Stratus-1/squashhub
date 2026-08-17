@@ -600,3 +600,9 @@ category, singles/doubles, Standard/Bells, par 11/15, best-of 3/5 and win condit
 sudden death). League 1's values sync back to the tournament-level `tournament_rules` row so the
 legacy marker engine continues to work without per-league changes. Segmented row controls are now
 color-coded by row to distinguish options visually.
+
+## Hand-out flash duration & clarity (2026-08-17)
+**Symptom:** The hand-out notice on the marker/scoring screen flashed too briefly (1.8 s) and was hard to read.  
+**Finding:** Both `MarkerScoreboard.tsx` and `BellsMarker.tsx` used `setTimeout(..., 1800)` and a subtle `animate-pulse` amber highlight that made the message disappear quickly.  
+**Fix:** Increased the display duration to 3 seconds in both components. Replaced pulsing with a solid amber-tinted background, a stronger border ring, larger uppercase text, and a bold server name so the hand-out stays visible and readable.  
+**Guard:** Type-check passes; both markers share the same timeout and styling pattern.

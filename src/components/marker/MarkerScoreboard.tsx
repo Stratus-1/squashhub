@@ -375,7 +375,7 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
         // Hand-out: serve transfers. Flash an indicator pointing to the new server.
         if (handOutTimerRef.current) clearTimeout(handOutTimerRef.current);
         setHandOutFlash(scorer);
-        handOutTimerRef.current = setTimeout(() => setHandOutFlash(null), 1800);
+        handOutTimerRef.current = setTimeout(() => setHandOutFlash(null), 3000);
       }
 
       setHistory((h) => [
@@ -716,26 +716,26 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
       {/* Serving direction + Hand-out flash */}
       <div
         className={cn(
-          "rounded-lg border px-3 py-2 flex items-center justify-center gap-3 transition-all",
+          "rounded-lg border px-3 py-2.5 flex items-center justify-center gap-3 transition-all",
           handOutFlash
-            ? "bg-amber-500/15 border-amber-500/60 animate-pulse"
+            ? "bg-amber-500/20 border-amber-500 shadow-[0_0_0_2px_hsl(var(--amber-500))]"
             : "bg-muted/40 border-border"
         )}
         aria-live="polite"
       >
         {server === "a" ? (
-          <ArrowLeft className={cn("w-5 h-5", handOutFlash ? "text-amber-600" : "text-primary")} />
+          <ArrowLeft className={cn("w-5 h-5", handOutFlash ? "text-amber-700" : "text-primary")} />
         ) : null}
-        <Hand className={cn("w-5 h-5", handOutFlash ? "text-amber-600" : "text-primary")} />
-        <span className="text-sm font-semibold">
+        <Hand className={cn("w-5 h-5", handOutFlash ? "text-amber-700" : "text-primary")} />
+        <span className={cn("font-semibold", handOutFlash ? "text-base uppercase tracking-wide text-amber-900" : "text-sm")}>
           {handOutFlash ? (
-            <>HAND-OUT · serve to <span className="uppercase">{server === "a" ? playerAName : playerBName}</span></>
+            <>HAND-OUT · serve to <span className="font-bold">{server === "a" ? playerAName : playerBName}</span></>
           ) : (
             <>Serving: {server === "a" ? playerAName : playerBName} ({serveSide})</>
           )}
         </span>
         {server === "b" ? (
-          <ArrowRight className={cn("w-5 h-5", handOutFlash ? "text-amber-600" : "text-primary")} />
+          <ArrowRight className={cn("w-5 h-5", handOutFlash ? "text-amber-700" : "text-primary")} />
         ) : null}
       </div>
 

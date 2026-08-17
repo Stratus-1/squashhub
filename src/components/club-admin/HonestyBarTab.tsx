@@ -498,8 +498,14 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
         </div>
       </div>
 
-
-      {(adding || editItem) && itemForm}
+      <Dialog open={!!adding || !!editItem} onOpenChange={(v) => { if (!v) { setAdding(false); setEditItem(null); resetForm(); } }}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editItem ? "Edit Bar Item" : "Add Bar Item"}</DialogTitle>
+          </DialogHeader>
+          {itemForm}
+        </DialogContent>
+      </Dialog>
 
       <div className="space-y-2">
         {items.map(item => {

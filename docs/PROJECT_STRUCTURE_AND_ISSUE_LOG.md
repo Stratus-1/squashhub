@@ -9,7 +9,7 @@
 > §4 using the `Symptom → Finding → Fix → Guard` format. Never delete old entries; mark them
 > `SUPERSEDED` if a later fix replaces them.
 
-Last updated: **16 August 2026**
+Last updated: **17 August 2026**
 
 ---
 
@@ -87,6 +87,16 @@ working.
 ## 4. Issue log
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
+
+### 2026-08-17 · Set up and edit stopped at the lineup summary
+- **Symptom:** Opening a fixture to set up and score could stop on the intermediate scorecard with a
+  “Select players (1 → 4)” button, while previously selected players were not clearly ordered on mobile.
+- **Finding:** The wizard auto-open guard survived route changes between fixture IDs, and wizard inputs
+  were seeded from the existing lineup even when the user was starting a new selection pass.
+- **Fix:** Reset the auto-open guard whenever the fixture changes. Fresh setup and “Edit / Select Players”
+  now open the guided picker directly at Home position 1 with both teams unselected.
+- **Guard:** Setup/edit entry points must open the guided picker directly; never require the intermediate
+  roster-summary button before selecting positions 1 through the configured team size.
 
 ### 2026-08-16 · League marker had to click "Complete Setup" after selecting players
 - **Symptom:** When a marker opened a fixture that had not yet been set up, tapping "Select players"

@@ -275,6 +275,7 @@ export default function LeagueGameDetail() {
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
   const [selectWizardOpen, setSelectWizardOpen] = useState(false);
+  const [wizardStartEmpty, setWizardStartEmpty] = useState(false);
   const autoOpenWizardRef = useRef(false);
   // Players removed from THIS fixture's lineup by the captain.
   // They won't reappear in the NSA Squad pool (so they can't be accidentally
@@ -285,7 +286,10 @@ export default function LeagueGameDetail() {
     away: Record<string, string>;
   }>({ home: {}, away: {} });
   // Reset the excluded pool when switching between fixtures.
-  useEffect(() => { setExcludedFromGame({ home: {}, away: {} }); }, [fixtureId]);
+  useEffect(() => {
+    setExcludedFromGame({ home: {}, away: {} });
+    autoOpenWizardRef.current = false;
+  }, [fixtureId]);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
   // Read-only spectator view of a position currently being marked by someone else.
   // Stays in sync via the same realtime channel that feeds `positions`.
@@ -1949,6 +1953,7 @@ export default function LeagueGameDetail() {
   useEffect(() => {
     if (!nsaLive || setupDone || isSubmitted || autoOpenWizardRef.current) return;
     autoOpenWizardRef.current = true;
+    setWizardStartEmpty(true);
     setSelectWizardOpen(true);
   }, [nsaLive, setupDone, isSubmitted]);
 
@@ -2464,7 +2469,10 @@ export default function LeagueGameDetail() {
         {nsaLive && !setupDone && !isSubmitted && (
           <Button
             className="w-full h-12 font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg"
-            onClick={() => setSelectWizardOpen(true)}
+            onClick={() => {
+              setWizardStartEmpty(true);
+              setSelectWizardOpen(true);
+            }}
           >
             <Users className="w-4 h-4 mr-2" /> Select players (1 → {positions.length})
           </Button>
@@ -3056,7 +3064,10 @@ export default function LeagueGameDetail() {
                                 onClick={() => {
                                   // Go straight to the tap-to-pick wizard; only fall back to the
                                   // manual setup grid when no NSA roster is available.
-                                  if (nsaLive) setSelectWizardOpen(true);
+                                  if (nsaLive) {
+                                    setWizardStartEmpty(true);
+                                    setSelectWizardOpen(true);
+                                  }
                                   else setSetupDone(false);
                                 }}
                               >
@@ -3388,14 +3399,17 @@ export default function LeagueGameDetail() {
 
       <SelectLineupWizard
         open={selectWizardOpen}
-        onOpenChange={setSelectWizardOpen}
+        onOpenChange={(open) => {
+          setSelectWizardOpen(open);
+          if (!open) setWizardStartEmpty(false);
+        }}
         homeCode={fixture?.home_team_code}
         awayCode={fixture?.away_team_code}
         homePlayers={nsaHomeTeam?.players || []}
         awayPlayers={nsaAwayTeam?.players || []}
         teamSize={positions.length}
-        initialHome={positions.map((p) => ({ code: p.homeCode, name: p.homeName }))}
-        initialAway={positions.map((p) => ({ code: p.awayCode, name: p.awayName }))}
+        initialHome={wizardStartEmpty ? [] : positions.map((p) => ({ code: p.homeCode, name: p.homeName }))}
+        initialAway={wizardStartEmpty ? [] : positions.map((p) => ({ code: p.awayCode, name: p.awayName }))}
         onApply={(home, away) => {
           handleWizardApply(home, away);
           // Compute the same lineup the wizard just applied and save it so the

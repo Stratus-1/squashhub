@@ -1820,10 +1820,12 @@ interface FinanceHubProps {
   onBalances: (filter: "outstanding" | "credit" | "all") => void;
   onBill: () => void;
   onEnterTx: () => void;
+  moneyAccounts: Array<{ account: string; label: string; balance: number; display: string }>;
+  onSelectAccount: (account: string) => void;
   children: (view: FinanceView, setView: (v: string) => void) => ReactNode;
 }
 
-function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, children }: FinanceHubProps) {
+function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, moneyAccounts, onSelectAccount, children }: FinanceHubProps) {
   const [view, setView] = useState<FinanceView>("");
   const [hubStep, setHubStep] = useState("0");
 

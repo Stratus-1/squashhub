@@ -129,6 +129,11 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
   const enabled = !!club.honesty_bar_enabled;
   const [step, setStep] = useState("items");
   const [qrOpen, setQrOpen] = useState(false);
+  const [qrItemId, setQrItemId] = useState<string | null>(null);
+  const openQrLabels = (itemId?: string) => {
+    setQrItemId(itemId || null);
+    setQrOpen(true);
+  };
 
   const barSteps: SetupStep[] = [
     { id: "items", label: "Items & prices", description: "List everything on sale at the bar with its selling price and current stock.", complete: items.length > 0 },
@@ -157,7 +162,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button size="sm" variant="outline" onClick={() => setQrOpen(true)}>
+            <Button size="sm" variant="outline" onClick={() => openQrLabels()}>
               <QrCode className="w-3.5 h-3.5 mr-1" /> QR labels
             </Button>
             <Switch
@@ -180,11 +185,11 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                 Print club-specific QR stickers per product, plus a venue poster for the whole menu.
               </p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => setQrOpen(true)}>
+            <Button size="sm" variant="outline" onClick={() => openQrLabels()}>
               <QrCode className="w-3.5 h-3.5 mr-1" /> QR labels
             </Button>
           </Card>
-          <ItemManager clubId={clubId} items={items} loading={itemsLoading} onQrLabels={() => setQrOpen(true)} />
+          <ItemManager clubId={clubId} items={items} loading={itemsLoading} onQrLabels={openQrLabels} />
         </div>
       )}
 
@@ -195,6 +200,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         clubName={club.name}
         subdomain={(club as any).subdomain}
         items={items}
+        focusItemId={qrItemId}
       />
 
 
@@ -313,7 +319,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
 
 /* ─── Item Manager with edit support ─── */
-function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; items: BarItem[]; loading: boolean; onQrLabels?: () => void }) {
+function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; items: BarItem[]; loading: boolean; onQrLabels?: (itemId?: string) => void }) {
   const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
@@ -480,7 +486,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
         <h3 className="font-semibold">Bar Items ({items.length})</h3>
         <div className="flex items-center gap-2">
           {onQrLabels && (
-            <Button size="sm" variant="outline" onClick={onQrLabels}>
+            <Button size="sm" variant="outline" onClick={() => onQrLabels()}>
               <QrCode className="w-3.5 h-3.5 mr-1" />QR labels
             </Button>
           )}
@@ -533,6 +539,11 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
                 </div>
               </div>
               <div className="flex items-center gap-0.5 shrink-0">
+                {onQrLabels && (
+                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onQrLabels(item.id)}>
+                    <QrCode className="w-3.5 h-3.5 mr-1" /> QR code
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit item" onClick={() => openEdit(item)}>
                   <Pencil className="w-3.5 h-3.5" />
                 </Button>

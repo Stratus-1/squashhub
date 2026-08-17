@@ -496,7 +496,7 @@ export default function ScanPay() {
       </main>
 
       {/* Sticky cart bar */}
-      {!done && !verifying && !checkingOut && count > 0 && (
+      {!done && !checkingOut && count > 0 && (
         <div className="fixed bottom-0 inset-x-0 border-t bg-background/95 backdrop-blur px-4 py-3">
           <div className="max-w-md mx-auto flex items-center gap-3">
             <div className="min-w-0 flex-1">

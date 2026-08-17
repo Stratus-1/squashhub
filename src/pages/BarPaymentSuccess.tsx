@@ -48,6 +48,7 @@ export default function BarPaymentSuccess() {
   const [status, setStatus] = useState<"verifying" | "paid" | "failed" | "no-sale">("verifying");
   const [pending, setPending] = useState<PendingSale | null>(null);
   const [countdown, setCountdown] = useState(5);
+  const [closeBlocked, setCloseBlocked] = useState(false);
   const [canCloseTab] = useState(
     () => typeof window !== "undefined" && Boolean(window.opener),
   );

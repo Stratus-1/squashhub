@@ -88,6 +88,18 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-17 · Bar checkout showed two completion experiences
+- **Symptom:** After payment, the customer saw Stitch's completion page and then a branded club/app
+  confirmation whose Close button could not close the original QR-scanner tab.
+- **Finding:** The payment provider owns its hosted tab, while browsers prohibit JavaScript from closing
+  the original user-opened QR tab. The confirmation also contained unnecessary logos, purchase details,
+  and navigation for a once-off visitor sale.
+- **Fix:** The app tab now polls every two seconds, closes the script-opened payment tab immediately when
+  payment is confirmed, and shows only “Thank you for your payment. Enjoy your squash. Bye.” with Close.
+  If the browser blocks closing the original QR tab, Close finishes the page in place with no redirect.
+- **Guard:** Scan-to-Pay completion must remain plain and terminal: no logos, return-to-bar navigation,
+  amount breakdown, automatic redirect, or promise that a user-opened browser tab can be force-closed.
+
 ### 2026-08-17 · Bar checkout returned 404 before payment
 - **Symptom:** A QR bar customer reached a **404 page not found** before the card-payment form opened.
 - **Finding:** `bar-card-pay` appended the branded success URL as `redirect_url` to Stitch's hosted

@@ -107,6 +107,43 @@ export default function ScanPay() {
 
   const total = item ? Number(item.price) * qty : 0;
 
+  // Returning from the Stitch hosted card page — confirm the payment landed.
+  useEffect(() => {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(PENDING_SALE_KEY) : null;
+    if (!raw) return;
+    let pending: { saleId: string; itemName: string; total: number; code: string } | null = null;
+    try { pending = JSON.parse(raw); } catch { localStorage.removeItem(PENDING_SALE_KEY); return; }
+    if (!pending?.saleId || pending.code !== code) return;
+
+    let cancelled = false;
+    setVerifying(true);
+    const poll = async (attempt = 0) => {
+      if (cancelled) return;
+      const { data: res } = await supabase.functions.invoke("bar-card-verify", {
+        body: { sale_id: pending!.saleId },
+      });
+      const status = (res as any)?.status;
+      if (status === "paid") {
+        localStorage.removeItem(PENDING_SALE_KEY);
+        setVerifying(false);
+        setDone({ total: pending!.total, itemName: pending!.itemName, onAccount: false, cardPaid: true });
+        return;
+      }
+      if (status === "failed" || attempt >= 6) {
+        localStorage.removeItem(PENDING_SALE_KEY);
+        setVerifying(false);
+        if (status === "failed") toast.error("That card payment did not go through.");
+        else toast.message("We're still waiting for the bank to confirm your card payment.");
+        return;
+      }
+      setTimeout(() => poll(attempt + 1), 4000);
+    };
+    poll();
+    return () => { cancelled = true; };
+  }, [code]);
+
+
+
   const continueAsGuest = () => {
     localStorage.setItem(GUEST_PREF_KEY, "1");
     setGuestChosen(true);

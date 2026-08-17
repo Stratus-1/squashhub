@@ -78,7 +78,15 @@ const ALL_ACCOUNTS = Object.keys(CHART_OF_ACCOUNTS) as GLAccount[];
 const DEBIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Asset" || CHART_OF_ACCOUNTS[a].category === "Expense");
 const CREDIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Liability" || CHART_OF_ACCOUNTS[a].category === "Income");
 
-const GATEWAY_FEE_RATE = 0.035; // 3.5%
+// Default gateway fee percentages by provider (overridable per club in Banking settings)
+const DEFAULT_GATEWAY_FEE_PCT: Record<string, number> = { yoco: 2.9, stitch: 2.5 };
+const FALLBACK_GATEWAY_FEE_PCT = 3.5;
+export const gatewayFeePercent = (club: any): number => {
+  const explicit = Number(club?.payment_gateway_fee_percent);
+  if (Number.isFinite(explicit) && explicit >= 0) return explicit;
+  const g = String(club?.payment_gateway || "").toLowerCase();
+  return DEFAULT_GATEWAY_FEE_PCT[g] ?? FALLBACK_GATEWAY_FEE_PCT;
+};
 
 // Fee options in the "Bill a Member" dialog are loaded from the actual
 // Fees tables (member_fee_categories, league_associations, national_body_fees)
@@ -100,6 +108,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const queryClient = useQueryClient();
   const { data: members } = useClubMembers(clubId);
   const [accountFilter, setAccountFilter] = useState<string>("all");
+  const gatewayPct = gatewayFeePercent(club);
+  const GATEWAY_FEE_RATE = gatewayPct / 100;
+  const gatewayPctLabel = `${gatewayPct}%`;
   const [journalSearch, setJournalSearch] = useState("");
   const [txOpen, setTxOpen] = useState(false);
 
@@ -391,8 +402,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       if (txMethod === "card" && amount > 0) {
         const gatewayFee = Math.round(amount * GATEWAY_FEE_RATE * 100) / 100;
         await postJournal(clubId, [
-          { account: "gateway_fees", debit: gatewayFee, description: `Gateway fee (3.5%) on card payment: ${desc}` },
-          { account: "bank_current", credit: gatewayFee, description: `Gateway fee (3.5%) on card payment: ${desc}` },
+          { account: "gateway_fees", debit: gatewayFee, description: `Gateway fee (${gatewayPctLabel}) on card payment: ${desc}` },
+          { account: "bank_current", credit: gatewayFee, description: `Gateway fee (${gatewayPctLabel}) on card payment: ${desc}` },
         ]);
       }
 
@@ -1112,7 +1123,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <Input type="number" step="0.01" min="0" placeholder="0.00" value={txAmount} onChange={e => setTxAmount(e.target.value)} className="h-9 text-xs" />
               {txMethod === "card" && txAmount && parseFloat(txAmount) > 0 && (
                 <p className="text-[10px] text-amber-600 mt-1">
-                  + {money(parseFloat(txAmount) * GATEWAY_FEE_RATE)} gateway fee (3.5%) will be auto-charged
+                  + {money(parseFloat(txAmount) * GATEWAY_FEE_RATE)} gateway fee ({gatewayPctLabel}) will be auto-charged
                 </p>
               )}
             </div>

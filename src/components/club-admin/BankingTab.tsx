@@ -35,6 +35,8 @@ type GatewayDef = {
   fields: FieldDef[];
 };
 
+const DEFAULT_FEE_PCT: Record<string, number> = { yoco: 2.9, stitch: 2.5 };
+
 const GATEWAYS: GatewayDef[] = [
   {
     id: "payfast",
@@ -240,6 +242,9 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   });
 
   const [gateway, setGateway] = useState(club.payment_gateway || "");
+  const [feePercent, setFeePercent] = useState(
+    (club as any).payment_gateway_fee_percent != null ? String((club as any).payment_gateway_fee_percent) : ""
+  );
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
   const [acceptedMethods, setAcceptedMethods] = useState<Set<string>>(
@@ -256,6 +261,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   // Resync dropdown when club data finishes loading or changes (e.g. after a save).
   useEffect(() => {
     setGateway(club.payment_gateway || "");
+    setFeePercent((club as any).payment_gateway_fee_percent != null ? String((club as any).payment_gateway_fee_percent) : "");
     setAcceptedMethods(new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"]));
   }, [club.payment_gateway, (club as any).accepted_payment_methods]);
 
@@ -304,6 +310,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const handleGatewayChange = (value: string) => {
     const newGateway = value === "__none__" ? "" : value;
     setGateway(newGateway);
+    setFeePercent(newGateway ? String(DEFAULT_FEE_PCT[newGateway] ?? 3.5) : "");
     setCredentials({});
     setVisibleFields(new Set());
   };
@@ -317,6 +324,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   });
   const resetGateway = () => {
     setGateway(club.payment_gateway || "");
+    setFeePercent((club as any).payment_gateway_fee_percent != null ? String((club as any).payment_gateway_fee_percent) : "");
     const saved = (secrets as any)?.payment_gateway_credentials;
     setCredentials(saved && typeof saved === "object" ? saved : {});
   };
@@ -334,6 +342,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         id: club.id,
         payment_gateway: gateway || null,
         payment_gateway_public_key: null, // migrated to credentials JSON
+        payment_gateway_fee_percent: feePercent.trim() === "" ? null : Number(feePercent),
         accepted_payment_methods: Array.from(acceptedMethods),
       } as any);
 
@@ -465,6 +474,29 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Gateway transaction fee */}
+        {gateway && (
+          <div className="space-y-1">
+            <Label className="text-xs">Transaction fee (%)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              max="20"
+              className="h-8 text-xs"
+              value={feePercent}
+              onChange={(e) => setFeePercent(e.target.value)}
+              placeholder={String(DEFAULT_FEE_PCT[gateway] ?? 3.5)}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Charged by the gateway on every card payment. The fee is booked automatically:
+              debit Payment Gateway Fees, credit Current Account — so your bank balance matches
+              what actually settles and no month-end reconciliation is needed.
+              Defaults: Yoco 2.9%, Stitch 2.5%.
+            </p>
+          </div>
+        )}
 
         {/* Gateway Info */}
         {selectedGateway && (

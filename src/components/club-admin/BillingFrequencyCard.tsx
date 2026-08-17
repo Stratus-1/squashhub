@@ -14,6 +14,8 @@ import { computeTieredCharge } from "@/lib/saas-tiers";
 
 
 type BillingOption = "monthly" | "biannual_upfront" | "annual_upfront";
+type PaymentMethod = "eft" | "card";
+
 
 export interface BillingFrequencyInvoice {
   billing_cycle?: string | null;

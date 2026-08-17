@@ -449,6 +449,8 @@ function AppRoutes() {
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
         <Route path="/pay/stitch" element={<ProtectedRoute><StitchPaymentBridge /></ProtectedRoute>} />
         <Route path="/pay/return" element={<PayReturn />} />
+        <Route path="/s/:code" element={<ScanPay />} />
+        <Route path="/c/:subdomain/s/:code" element={<ScanPay />} />
         <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
         <Route path="/ladder" element={<ProtectedRoute><Ladder /></ProtectedRoute>} />
         <Route path="/challenges/new" element={<Navigate to="/ladder" replace />} />

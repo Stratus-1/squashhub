@@ -266,13 +266,18 @@ function appendRedirectUri(link: string, returnUrl: string) {
 }
 
 function appendExpressRedirectUrl(link: string, returnUrl: string) {
+  // 17 Aug 2026: Stitch Express now 404s a fresh hosted /pay link whenever a
+  // `redirect_url` query param is present (verified live: `?foo=bar` → 200,
+  // `?redirect_url=<anything>` → 404, for both Riverside and Gordon's Bay
+  // links). `redirect_uri` returns 200, which is what the bar checkout uses.
   try {
     const url = new URL(link);
-    url.searchParams.set("redirect_url", returnUrl);
+    url.searchParams.delete("redirect_url");
+    url.searchParams.set("redirect_uri", returnUrl);
     return url.toString();
   } catch {
     const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
+    return `${link}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
   }
 }
 

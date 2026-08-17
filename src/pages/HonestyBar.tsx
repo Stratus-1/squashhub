@@ -75,7 +75,7 @@ export default function HonestyBar() {
   const { club } = useClubContext();
   const { activeMember, isAdmin } = useMemberContext();
   const isSuperAdmin = useIsSuperAdmin();
-  const canSeeVisitors = true;
+  const canSeeVisitors = false;
   const clubId = club?.id;
   const memberId = activeMember?.id;
   const { format: fmtMoney } = useClubCurrency();

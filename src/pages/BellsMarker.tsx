@@ -357,7 +357,7 @@ export default function BellsMarker() {
       // Hand-out: receiver won the rally, serve changes hands → flash indicator
       setHandOutFlash(side);
       if (handOutTimerRef.current) clearTimeout(handOutTimerRef.current);
-      handOutTimerRef.current = setTimeout(() => setHandOutFlash(null), 1800);
+      handOutTimerRef.current = setTimeout(() => setHandOutFlash(null), 3000);
     }
   };
 
@@ -758,23 +758,27 @@ export default function BellsMarker() {
         {!finished && (
           <div
             className={cn(
-              "rounded-lg border px-3 py-2 flex items-center justify-center gap-2 text-sm font-semibold transition",
+              "rounded-lg border px-3 py-2.5 flex items-center justify-center gap-2 transition-all",
               handOutFlash
-                ? "border-amber-500 bg-amber-100 text-amber-900 animate-pulse dark:bg-amber-500/20 dark:text-amber-200"
+                ? "border-amber-500 bg-amber-100 text-amber-900 shadow-[0_0_0_2px_hsl(var(--amber-500))] dark:bg-amber-500/25 dark:text-amber-100"
                 : "border-border bg-muted/50 text-foreground",
             )}
           >
             {server === "a" ? (
               <>
-                <Hand className="w-4 h-4" />
-                <span>{handOutFlash ? "HAND-OUT · serve to" : "Serving:"} {pairAName}</span>
-                <ArrowLeft className="w-4 h-4" />
+                <Hand className="w-5 h-5" />
+                <span className={cn("font-semibold", handOutFlash && "text-base uppercase tracking-wide")}>
+                  {handOutFlash ? "HAND-OUT · serve to" : "Serving:"} <span className={cn(handOutFlash && "font-bold")}>{pairAName}</span>
+                </span>
+                <ArrowLeft className="w-5 h-5" />
               </>
             ) : (
               <>
-                <ArrowRight className="w-4 h-4" />
-                <span>{handOutFlash ? "HAND-OUT · serve to" : "Serving:"} {pairBName}</span>
-                <Hand className="w-4 h-4 scale-x-[-1]" />
+                <ArrowRight className="w-5 h-5" />
+                <span className={cn("font-semibold", handOutFlash && "text-base uppercase tracking-wide")}>
+                  {handOutFlash ? "HAND-OUT · serve to" : "Serving:"} <span className={cn(handOutFlash && "font-bold")}>{pairBName}</span>
+                </span>
+                <Hand className="w-5 h-5 scale-x-[-1]" />
               </>
             )}
           </div>

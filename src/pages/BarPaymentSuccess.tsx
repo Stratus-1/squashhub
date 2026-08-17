@@ -48,7 +48,9 @@ export default function BarPaymentSuccess() {
   const [status, setStatus] = useState<"verifying" | "paid" | "failed" | "no-sale">("verifying");
   const [pending, setPending] = useState<PendingSale | null>(null);
   const [countdown, setCountdown] = useState(5);
-  const [closeAttempted, setCloseAttempted] = useState(false);
+  const [canCloseTab] = useState(
+    () => typeof window !== "undefined" && Boolean(window.opener),
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ["scan-code", code],
@@ -115,22 +117,21 @@ export default function BarPaymentSuccess() {
 
   // Auto-close the tab after the payment is confirmed.
   useEffect(() => {
-    if (status !== "paid") return;
+    if (status !== "paid" || !canCloseTab) return;
     if (countdown <= 0) {
-      attemptClose();
+      window.close();
       return;
     }
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(t);
-  }, [status, countdown]);
+  }, [status, countdown, canCloseTab]);
 
   const attemptClose = () => {
-    try {
+    if (canCloseTab) {
       window.close();
-    } catch {
-      // Browsers block this unless the tab was opened by script. Show fallback.
+      return;
     }
-    setCloseAttempted(true);
+    navigate(`/s/${code}`, { replace: true });
   };
 
   if (isLoading) {
@@ -218,24 +219,27 @@ export default function BarPaymentSuccess() {
                   <>Your payment has been received.</>
                 )}
               </p>
-              <p className="text-sm font-medium text-accent">You can close this tab now.</p>
-              {status === "paid" && (
+              <p className="text-sm font-medium text-accent">
+                {canCloseTab ? "You can close this tab now." : "You can now return to the bar."}
+              </p>
+              {status === "paid" && canCloseTab && (
                 <p className="text-xs text-muted-foreground">
-                  {closeAttempted
-                    ? "Please close this tab manually."
-                    : `This tab will try to close automatically in ${countdown}s…`}
+                  This tab will close automatically in {countdown}s…
                 </p>
               )}
             </div>
           )}
 
           <div className="grid gap-3">
-            <Button variant="outline" className="w-full" onClick={attemptClose}>
-              Close this tab
+            <Button className="w-full gap-2" onClick={attemptClose}>
+              <ShoppingBag className="w-4 h-4" />
+              {canCloseTab ? "Close this tab" : "Done — back to bar"}
             </Button>
-            <Button variant="ghost" className="w-full gap-2" onClick={() => navigate(`/s/${code}`)}>
-              <ShoppingBag className="w-4 h-4" /> Back to bar
-            </Button>
+            {canCloseTab && (
+              <Button variant="ghost" className="w-full gap-2" onClick={() => navigate(`/s/${code}`, { replace: true })}>
+                <ShoppingBag className="w-4 h-4" /> Back to bar
+              </Button>
+            )}
           </div>
         </Card>
       </main>

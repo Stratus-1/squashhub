@@ -88,7 +88,7 @@ const Email = ({
 
 
           <Section style={{ textAlign: 'center' as const, marginTop: 24 }}>
-            <Button href={subscriptionUrl} style={cta}>Complete billing setup</Button>
+            <Button href={subscriptionUrl} style={cta}>Accept SLA & complete billing setup</Button>
           </Section>
 
           <Hr style={hr} />

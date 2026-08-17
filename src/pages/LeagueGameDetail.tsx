@@ -2530,6 +2530,7 @@ export default function LeagueGameDetail() {
         )}
 
 
+        {!nsaPreSetup && (
         <div className="border rounded-lg overflow-hidden bg-card text-card-foreground">
           <table className="w-full text-xs bg-card text-card-foreground">
             <thead>

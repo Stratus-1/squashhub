@@ -2391,7 +2391,7 @@ export default function LeagueGameDetail() {
         </div>
 
         {/* Match format selection — only during setup */}
-        {!setupDone && !isSubmitted && (() => {
+        {!setupDone && !isSubmitted && !nsaPreSetup && (() => {
           const ruleScoring: "par11" | "par15" | null =
             leagueRules?.points_per_game === 15 ? "par15"
             : leagueRules?.points_per_game === 11 ? "par11"
@@ -3184,7 +3184,7 @@ export default function LeagueGameDetail() {
         )}
 
         {/* Setup / scoring buttons */}
-        {!setupDone && !isSubmitted && (
+        {!setupDone && !isSubmitted && !nsaPreSetup && (
           <div className="space-y-2">
             <Button
               size="sm"

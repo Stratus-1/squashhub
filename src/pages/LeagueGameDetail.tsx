@@ -275,6 +275,14 @@ export default function LeagueGameDetail() {
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
   const [selectWizardOpen, setSelectWizardOpen] = useState(false);
+  const autoOpenWizardRef = useRef(false);
+  // Auto-open the lineup wizard on fresh fixtures so the marker starts with
+  // selecting players instead of showing the intermediate setup screen.
+  useEffect(() => {
+    if (!nsaLive || setupDone || isSubmitted || autoOpenWizardRef.current) return;
+    autoOpenWizardRef.current = true;
+    setSelectWizardOpen(true);
+  }, [nsaLive, setupDone, isSubmitted]);
   // Players removed from THIS fixture's lineup by the captain.
   // They won't reappear in the NSA Squad pool (so they can't be accidentally
   // re-added and counted as subs). The captain can restore them via the

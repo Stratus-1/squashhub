@@ -220,6 +220,16 @@ export default function HonestyBar() {
           </TooltipProvider>
         )}
 
+        <Button
+          variant="outline"
+          className="w-full h-10 gap-2 text-sm"
+          onClick={() => setQrOpen(true)}
+        >
+          <QrCode className="w-4 h-4" />
+          Show / share bar QR code
+        </Button>
+
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid" style={{ gridTemplateColumns: canSeeVisitors ? "1fr 1fr 1fr" : "1fr 1fr" }}>
             <TabsTrigger value="shop" className="gap-1 text-xs">

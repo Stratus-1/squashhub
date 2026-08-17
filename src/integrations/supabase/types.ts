@@ -9473,9 +9473,10 @@ export type Database = {
         Args: { _member_id: string }
         Returns: Json
       }
-      club_gateway_fee_percent:
-        | { Args: { _club_id: string }; Returns: number }
-        | { Args: { _club_id: string; _method?: string }; Returns: number }
+      club_gateway_fee_percent: {
+        Args: { _club_id: string; _method?: string }
+        Returns: number
+      }
       count_member_duplicate_hints: {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number
@@ -9909,28 +9910,17 @@ export type Database = {
       }
       person_age: { Args: { _person_id: string }; Returns: number }
       person_age_group: { Args: { _person_id: string }; Returns: string }
-      post_gateway_fee:
-        | {
-            Args: {
-              _amount: number
-              _club_id: string
-              _club_member_id?: string
-              _desc: string
-              _journal_ref: string
-            }
-            Returns: number
-          }
-        | {
-            Args: {
-              _amount: number
-              _club_id: string
-              _club_member_id?: string
-              _desc: string
-              _journal_ref: string
-              _method?: string
-            }
-            Returns: number
-          }
+      post_gateway_fee: {
+        Args: {
+          _amount: number
+          _club_id: string
+          _club_member_id?: string
+          _desc: string
+          _journal_ref: string
+          _method?: string
+        }
+        Returns: number
+      }
       post_journal: {
         Args: {
           p_club_id: string

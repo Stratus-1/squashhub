@@ -24,12 +24,14 @@ Geofencing is added as a **safety check, not the identifier**: if the phone's lo
 Visitor (not logged in):
 1. Scan QR at the bar.
 2. Public page opens: club name/logo, item, price, quantity, optional basket.
-3. Enter name + cell (for the sale record), tap Pay.
-4. Card payment via the club's existing payment gateway.
-5. Success page + stock decremented + sale recorded as a visitor bar sale.
+3. A notice appears at the top: *"Are you a member? Log in to charge this to your club account."* with two buttons — **Log in** (goes to sign-in and returns to this same item afterwards) and **No, continue as guest**. The choice is remembered on that phone so it isn't nagged on every scan.
+4. Guest continues: enter name + cell (for the sale record), tap Pay.
+5. Card payment via the club's existing payment gateway.
+6. Success page + stock decremented + sale recorded as a visitor bar sale.
 
 Member (logged in, same QR):
-- Page recognises the session and offers a choice: **Pay by card** or **Charge to my account** (existing bar tab flow, credited to My Account).
+- No prompt. The page recognises the session and offers a choice: **Pay by card** or **Charge to my account** (existing bar tab flow, credited to My Account).
+- After logging in from the prompt, the user lands back on the same product page — no need to re-scan, though re-scanning also works.
 
 ## Admin side — printing the stickers
 

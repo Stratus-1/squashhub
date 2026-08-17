@@ -16,15 +16,6 @@ interface ClubDelegate {
   name: string | null;
 }
 
-interface FeeCategory {
-  id: string;
-  name: string;
-  description: string | null;
-  annual_fee: number;
-  once_off?: boolean;
-}
-
-
 interface ClubData {
   id: string;
   name: string;
@@ -64,7 +55,8 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
   const { data: queriedClub, isLoading } = useQuery({
     queryKey: ["club-by-subdomain", effectiveSubdomain],
     queryFn: async () => {
-      const { data, error } = await fromExt("clubs")
+      const { data, error } = await (supabase as any)
+        .from("clubs")
         .select("id, name, subdomain, address, email, phone, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id, show_delegates_on_landing")
         .eq("subdomain", effectiveSubdomain!)
         .maybeSingle();
@@ -78,57 +70,17 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
   const loading = needsQuery && isLoading;
   const displaySubdomain = club?.subdomain ?? effectiveSubdomain;
 
-
-  // Fetch delegate details via safe public view (no PII exposed)
-  const delegateIds = [club?.chairman_member_id, club?.secretary_member_id, club?.club_captain_member_id].filter(Boolean) as string[];
+  // Fetch public delegate details via safe security-definer function (no PII exposed)
   const { data: delegates = [] } = useQuery({
-    queryKey: ["club-delegates", club?.id, delegateIds.join(",")],
+    queryKey: ["club-delegates", club?.id],
     queryFn: async () => {
-      if (delegateIds.length === 0) return [];
-      const { data, error } = await fromExt("club_delegates_public")
-        .select("id, name")
-        .in("id", delegateIds);
+      if (!club?.id) return [];
+      const { data, error } = await (supabase.rpc as any)("get_club_delegates_public", { _club_id: club.id });
       if (error) throw error;
       return (data || []).map((d: any) => ({
         id: d.id,
         name: d.name || "Unknown",
       })) as ClubDelegate[];
-    },
-    enabled: !!club && delegateIds.length > 0,
-  });
-
-  // Fetch fee categories
-  const { data: feeCategories = [] } = useQuery({
-    queryKey: ["club-fee-categories-public", club?.id],
-    queryFn: async () => {
-      const { data, error } = await fromExt("member_fee_categories")
-        .select("id, name, description, annual_fee")
-        .eq("club_id", club!.id)
-        .eq("show_on_landing", true)
-        .order("sort_order");
-      if (error) throw error;
-      return (data || []) as FeeCategory[];
-    },
-    enabled: !!club?.id,
-  });
-
-  // Fetch registration fees (e.g. joining fee)
-  const { data: registrationFees = [] } = useQuery({
-    queryKey: ["club-registration-fees-public", club?.id],
-    queryFn: async () => {
-      const { data, error } = await fromExt("national_body_fees")
-        .select("id, body_name, fee_annual, fee_type")
-        .eq("club_id", club!.id)
-        .eq("fee_type", "registration")
-        .eq("show_on_landing", true);
-      if (error) throw error;
-      return (data || []).map((f: any) => ({
-        id: f.id,
-        name: f.body_name,
-        description: "Once-off",
-        annual_fee: Number(f.fee_annual || 0),
-        once_off: true,
-      })) as FeeCategory[];
     },
     enabled: !!club?.id,
   });
@@ -162,9 +114,6 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
     return query ? `/auth?${query}` : "/auth";
   })();
 
-  // Only block on the club query itself. Auth resolution can happen in the
-  // background — the landing page renders fine for unauthenticated users, and
-  // once `user` is known we redirect below.
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -191,8 +140,6 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
   }
 
   const hasDelegates = chairmanDelegate || secretaryDelegate || captainDelegate;
-  const allFees = [...feeCategories, ...registrationFees];
-  const hasFees = allFees.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -221,129 +168,71 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Tabs defaultValue="details" className="w-full">
-              <TabsList className="w-full h-auto p-0 bg-transparent grid grid-cols-2 gap-0 rounded-t-2xl overflow-hidden">
-                <TabsTrigger
-                  value="details"
-                  className="rounded-none rounded-tl-2xl py-4 text-base font-bold font-heading bg-white/90 text-landing-navy data-[state=active]:bg-landing-navy data-[state=active]:text-white shadow-none transition-colors"
-                >
-                  Club Details
-                </TabsTrigger>
-                <TabsTrigger
-                  value="fees"
-                  className="rounded-none rounded-tr-2xl py-4 text-base font-bold font-heading bg-white/90 text-landing-navy data-[state=active]:bg-landing-navy data-[state=active]:text-white shadow-none transition-colors"
-                >
-                  Membership Fees
-                </TabsTrigger>
-              </TabsList>
-
-              <div className="rounded-b-2xl bg-[#07122E]/20 backdrop-blur-md border border-white/20 shadow-2xl p-8">
-                <TabsContent value="details" className="mt-0 space-y-5 text-center">
-                  {club.logo_url ? (
-                    <img src={club.logo_url} alt={`${club.name} logo`} loading="eager" fetchPriority="high" decoding="async" className="w-28 h-28 sm:w-32 sm:h-32 object-contain mx-auto rounded-xl shadow-lg" />
-                  ) : (
-                    <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
-                      <Building2 className="w-10 h-10 text-primary-foreground" />
-                    </div>
-                  )}
-                  <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-white">
-                    {club.name}
-                  </h1>
-                  <p className="text-sm font-bold font-mono text-white invisible">{displaySubdomain}.squashhub.co.za</p>
-
-                  {memberCount > 0 && (
-                    <div className="flex items-baseline justify-center gap-2 pt-2">
-                      <span className="text-5xl font-extrabold font-heading text-white tabular-nums"><AnimatedCount value={memberCount} /></span>
-                      <span className="text-base font-bold text-white/90 uppercase tracking-wide">Squash Members</span>
-                    </div>
-                  )}
-
-                  {club.address && <p className="text-base text-white/90">{club.address}</p>}
-                  {(club.email || club.phone) && (
-                    <p className="text-white/80 text-base font-bold">
-                      {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
-                    </p>
-                  )}
-
-                  {hasDelegates && club.show_delegates_on_landing !== false && (
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4 text-white">
-                      {chairmanDelegate && (
-                        <div>
-                          <div className="font-bold text-sm">Chairman:</div>
-                          <div className="text-sm">{chairmanDelegate.name}</div>
-                        </div>
-                      )}
-                      {secretaryDelegate && (
-                        <div>
-                          <div className="font-bold text-sm">Secretary:</div>
-                          <div className="text-sm">{secretaryDelegate.name}</div>
-                        </div>
-                      )}
-                      {captainDelegate && (
-                        <div className="col-span-2">
-                          <div className="font-bold text-sm">Captain:</div>
-                          <div className="text-sm">{captainDelegate.name}</div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="fees" className="mt-0 space-y-5">
-                  <div className="flex flex-col items-center space-y-3">
-                    {club.logo_url ? (
-                      <img src={club.logo_url} alt={`${club.name} logo`} loading="eager" fetchPriority="high" decoding="async" className="w-28 h-28 sm:w-32 sm:h-32 object-contain rounded-xl shadow-lg" />
-                    ) : (
-                      <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
-                        <Building2 className="w-10 h-10 text-primary-foreground" />
-                      </div>
-                    )}
-                    <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-white">
-                      {club.name}
-                    </h1>
-                  </div>
-
-                  {hasFees ? (
-                    <div className="rounded-xl bg-landing-navy/95 overflow-hidden shadow-lg">
-                      <table className="w-full text-sm">
-                        <tbody>
-                          {allFees.map((cat, i) => (
-                            <tr key={cat.id} className={i > 0 ? "border-t border-white/10" : ""}>
-                              <td className="px-4 py-3 text-white font-bold">
-                                {cat.name}
-                                {cat.description && (
-                                  <span className="block text-xs text-white/60 font-normal mt-0.5">{cat.description}</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-right font-bold text-primary whitespace-nowrap">
-                                {formatMoney(cat.annual_fee, club as any)}<span className="text-white/60 font-normal">{cat.once_off ? "" : "/yr"}</span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="text-center text-landing-navy/70 py-8">No membership fees configured.</p>
-                  )}
-                </TabsContent>
-
-                <div className="mt-6">
-                  <Button
-                    size="lg"
-                    className="w-full gap-2 bg-landing-navy hover:bg-landing-navy/90 text-white rounded-full h-12"
-                    onClick={() => { window.location.href = signInUrl; }}
-                  >
-                    Sign In / Register
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
+            <div className="rounded-2xl bg-[#07122E]/20 backdrop-blur-md border border-white/20 shadow-2xl p-8 text-center space-y-5">
+              {club.logo_url ? (
+                <img src={club.logo_url} alt={`${club.name} logo`} loading="eager" fetchPriority="high" decoding="async" className="w-28 h-28 sm:w-32 sm:h-32 object-contain mx-auto rounded-xl shadow-lg" />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
+                  <Building2 className="w-10 h-10 text-primary-foreground" />
                 </div>
-              </div>
+              )}
+              <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-white">
+                {club.name}
+              </h1>
+              <p className="text-sm font-bold font-mono text-white invisible">{displaySubdomain}.squashhub.co.za</p>
 
-              <div className="mt-4 flex justify-center">
-                <PoweredBySquashHub />
+              {memberCount > 0 && (
+                <div className="flex items-baseline justify-center gap-2 pt-2">
+                  <span className="text-5xl font-extrabold font-heading text-white tabular-nums"><AnimatedCount value={memberCount} /></span>
+                  <span className="text-base font-bold text-white/90 uppercase tracking-wide">Squash Members</span>
+                </div>
+              )}
+
+              {club.address && <p className="text-base text-white/90">{club.address}</p>}
+              {(club.email || club.phone) && (
+                <p className="text-white/80 text-base font-bold">
+                  {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
+                </p>
+              )}
+
+              {hasDelegates && club.show_delegates_on_landing !== false && (
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4 text-white">
+                  {chairmanDelegate && (
+                    <div>
+                      <div className="font-bold text-sm">Chairman:</div>
+                      <div className="text-sm">{chairmanDelegate.name}</div>
+                    </div>
+                  )}
+                  {secretaryDelegate && (
+                    <div>
+                      <div className="font-bold text-sm">Secretary:</div>
+                      <div className="text-sm">{secretaryDelegate.name}</div>
+                    </div>
+                  )}
+                  {captainDelegate && (
+                    <div className="col-span-2">
+                      <div className="font-bold text-sm">Captain:</div>
+                      <div className="text-sm">{captainDelegate.name}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-4">
+                <Button
+                  size="lg"
+                  className="w-full gap-2 bg-landing-navy hover:bg-landing-navy/90 text-white rounded-full h-12"
+                  onClick={() => { window.location.href = signInUrl; }}
+                >
+                  Sign In / Register
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
-            </Tabs>
+            </div>
+
+            <div className="mt-4 flex justify-center">
+              <PoweredBySquashHub />
+            </div>
           </motion.div>
         </div>
       </section>

@@ -34,8 +34,12 @@ export function useClubSecrets(clubId?: string) {
       if (data) return data as ClubSecrets | null;
 
       // Regular members get only the safe subset (door/relay + banking details).
-      const { data: safe } = await (fromExt as any) /* rpc */ ;
-      return null as ClubSecrets | null;
+      const { data: safe } = await (supabase as any).rpc("get_club_member_config", {
+        _club_id: clubId!,
+      });
+      const row = Array.isArray(safe) ? safe[0] : safe;
+      return (row ?? null) as ClubSecrets | null;
+
     },
     enabled: !!clubId,
   });

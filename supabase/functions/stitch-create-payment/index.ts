@@ -181,17 +181,18 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // CANONICAL (09 Aug 2026, confirmed working — see issue log §"canonical
-    // once-off / top-up payment flow"): append `redirect_url` (with the club's
-    // validated tenant subdomain host) to the Express hosted link. Body-level
-    // redirect keys are silently dropped by Express. Do not "simplify" this.
-    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
+    // CANONICAL (09 Aug 2026): append `redirect_url` (club tenant subdomain) to
+    // the Express hosted link. BUT whether Stitch accepts that redirect host is
+    // per-club (whitelist on their side): GB accepts it, Riverside 404s. So we
+    // probe the actual link before handing it to the payer and degrade safely.
+    const redirectUrl = await pickWorkingLink(payment.link as string, safeReturnWithSession);
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
     }).eq("id", session.id);
 
     return json({ session_id: session.id, redirect_url: redirectUrl, request_id: payment.id, redirect_mode: "direct" });
+
 
 
   } catch (e: any) {
@@ -365,4 +366,38 @@ async function createPaymentRequestV2(opts: {
     // Items 3 + 4: hand back the hosted URL exactly as issued — param-free.
     redirect_url: String(redirectBase),
   };
+}
+// Stitch validates the appended redirect host against the club's own Express
+// whitelist. Accepted → 200; not whitelisted → 404 (which is the "404 before
+// paying" bug). Probe the real link and pick the best variant that loads:
+//   1. ?redirect_url=<return>  (branded return, canonical)
+//   2. ?redirect_uri=<return>  (loads, but Stitch keeps its completion page)
+//   3. bare link               (always loads)
+async function pickWorkingLink(link: string, returnUrl: string): Promise<string> {
+  if (!link || !returnUrl) return link;
+  const candidates = [
+    appendExpressRedirectUrl(link, returnUrl),
+    appendExpressParam(link, "redirect_uri", returnUrl),
+  ];
+  for (const candidate of candidates) {
+    try {
+      const resp = await fetch(candidate, { method: "GET", redirect: "manual" });
+      if (resp.status < 400) return candidate;
+      console.warn(`[stitch] link variant rejected (${resp.status}):`, candidate.split("?")[1]?.slice(0, 40));
+    } catch (_) { /* network hiccup — try the next variant */ }
+  }
+  return link;
+}
+
+function appendExpressParam(link: string, key: string, value: string) {
+  try {
+    const url = new URL(link);
+    url.searchParams.delete("redirect_url");
+    url.searchParams.delete("redirect_uri");
+    url.searchParams.set(key, value);
+    return url.toString();
+  } catch {
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}${key}=${encodeURIComponent(value)}`;
+  }
 }

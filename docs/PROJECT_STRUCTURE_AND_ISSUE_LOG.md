@@ -729,3 +729,15 @@ documented `redirect_uri` on the fresh hosted link.
 - **Guard:** the completed-session `stitch_redirect_url` string is the source of truth. If a fresh
   link 404s with `redirect_url`, the **host** is wrong or not whitelisted for that club's Stitch
   credentials — fix the host, never strip the parameter, never swap to `redirect_uri`.
+
+### 2026-08-17 · Riverside 404 before paying — redirect whitelist is PER CLUB
+- **Probe on a fresh Riverside link:** bare → 200, `?redirect_url=riverside.squashhub.co.za` → **404**,
+  `?redirect_url=squashhub.co.za` → **404**, `?redirect_uri=...` → 200.
+  Same probe on a fresh Gordon's Bay link: `?redirect_url=gb.squashhub.co.za` → **200**.
+- **Conclusion:** Stitch validates the appended redirect host against **that club's** Express
+  whitelist. GB is whitelisted, Riverside is not — nothing in our code differed.
+- **Fix:** `stitch-create-payment` and `bar-card-pay` now call `pickWorkingLink()`, which probes the
+  real hosted link and uses the first variant that loads: `redirect_url` (branded return) →
+  `redirect_uri` (loads, Stitch keeps its completion page) → bare link. No club can 404 again.
+- **To get the branded return for a club:** whitelist `<subdomain>.squashhub.co.za` on that club's
+  Stitch account. Until then that club finishes on Stitch's completion page by design.

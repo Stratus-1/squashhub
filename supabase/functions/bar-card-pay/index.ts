@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
     // CANONICAL (matches the 09 Aug confirmed-working top-up flow): append
     // `redirect_url` with the club's tenant-subdomain return URL. A 404 means
     // the host isn't whitelisted for this club — fix the host, don't strip it.
-    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: appendRedirectUrl(String(link), redirectUri) });
+    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: await pickWorkingLink(String(link), redirectUri) });
 
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
@@ -291,4 +291,35 @@ async function createPaymentRequest(opts: {
   }
   // Hand back the hosted URL exactly as Stitch issued it — never append params.
   return { id: String(data.id), redirect_url: String(redirectBase) };
+}
+
+// See stitch-create-payment: the redirect host whitelist is per-club, so probe
+// the hosted link and fall back rather than shipping a 404 to the payer.
+async function pickWorkingLink(link: string, returnUrl: string): Promise<string> {
+  if (!link || !returnUrl) return link;
+  const candidates = [
+    appendRedirectUrl(link, returnUrl),
+    appendExpressParam(link, "redirect_uri", returnUrl),
+  ];
+  for (const candidate of candidates) {
+    try {
+      const resp = await fetch(candidate, { method: "GET", redirect: "manual" });
+      if (resp.status < 400) return candidate;
+      console.warn(`[bar-card-pay] link variant rejected (${resp.status})`);
+    } catch (_) { /* try next */ }
+  }
+  return link;
+}
+
+function appendExpressParam(link: string, key: string, value: string) {
+  try {
+    const url = new URL(link);
+    url.searchParams.delete("redirect_url");
+    url.searchParams.delete("redirect_uri");
+    url.searchParams.set(key, value);
+    return url.toString();
+  } catch {
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}${key}=${encodeURIComponent(value)}`;
+  }
 }

@@ -116,7 +116,7 @@ function AddByNumberInline({
       surname: "",
       result_summary: { won: 0, lost: 0, played: 0 },
     });
-    setCode("");
+    setCode(prefix);
     setName("");
     setFound(null);
     onOpenChange(false);

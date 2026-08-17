@@ -98,7 +98,8 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
   `https://squashhub.co.za/pay/return` callback. The browser stores the final tenant destination in
   the existing `.squashhub.co.za` return cookie and `PayReturn` forwards there. Removed per-club probing.
 - **Guard:** Never require or infer per-club Stitch redirect whitelist entries; payment URLs use the
-  one shared SquashHub callback and are handed directly to the browser.
+  one shared SquashHub callback. Validate the final hosted response; if Stitch rejects that callback,
+  use the bare hosted link so the payer always reaches payment rather than a 404.
 
 ### 2026-08-17 · Bar checkout trapped the payer in a two-tab close loop
 - **Symptom:** Stitch showed Payment complete; closing it exposed an app Close action that the browser

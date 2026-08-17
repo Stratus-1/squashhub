@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
     const payment = plJson.data.payment;
     // All clubs share the single whitelisted SquashHub callback. The callback
     // resolves the session and forwards the payer to the correct club page.
-    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
+    const redirectUrl = await appendRedirectIfReachable(payment.link as string, safeReturnWithSession);
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
@@ -222,6 +222,18 @@ function appendExpressRedirectUrl(link: string, returnUrl: string) {
     const sep = link.includes("?") ? "&" : "?";
     return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
+}
+
+async function appendRedirectIfReachable(link: string, returnUrl: string) {
+  const candidate = appendExpressRedirectUrl(link, returnUrl);
+  try {
+    const response = await fetch(candidate, { method: "GET", redirect: "follow" });
+    if (response.ok) return candidate;
+    console.warn(`[stitch-create-payment] shared callback rejected (${response.status}); using bare hosted link`);
+  } catch (error) {
+    console.warn("[stitch-create-payment] callback check failed; using bare hosted link", error);
+  }
+  return link;
 }
 
 async function getPaymentRequestToken(clientId: string, clientSecret: string) {

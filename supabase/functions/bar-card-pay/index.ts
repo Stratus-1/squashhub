@@ -184,7 +184,11 @@ Deno.serve(async (req) => {
       .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
     // Stitch Express permits only a small redirect allow-list. Every club uses
     // the one shared SquashHub callback; that page forwards back to the bar.
-    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: appendRedirectUrl(String(link), redirectUri) });
+    return json({
+      sale_id: sale.id,
+      sale_ids: saleIds,
+      redirect_url: await appendRedirectIfReachable(String(link), redirectUri),
+    });
 
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
@@ -207,6 +211,18 @@ function appendRedirectUrl(link: string, returnUrl: string) {
     const separator = link.includes("?") ? "&" : "?";
     return `${link}${separator}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
+}
+
+async function appendRedirectIfReachable(link: string, returnUrl: string) {
+  const candidate = appendRedirectUrl(link, returnUrl);
+  try {
+    const response = await fetch(candidate, { method: "GET", redirect: "follow" });
+    if (response.ok) return candidate;
+    console.warn(`[bar-card-pay] shared callback rejected (${response.status}); using bare hosted link`);
+  } catch (error) {
+    console.warn("[bar-card-pay] callback check failed; using bare hosted link", error);
+  }
+  return link;
 }
 
 

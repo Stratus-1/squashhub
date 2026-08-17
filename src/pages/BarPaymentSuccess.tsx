@@ -15,6 +15,8 @@ import { SEO } from "@/components/SEO";
 import { Loader2, CheckCircle2, XCircle, ShoppingBag } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 import shLogo from "@/assets/sh-logo.png";
+import { closeStitchPaymentWindow } from "@/lib/stitch-checkout";
+
 
 const PENDING_SALE_KEY = "sh.scanpay.pendingSale";
 
@@ -93,10 +95,11 @@ export default function BarPaymentSuccess() {
       const st = (res as any)?.status;
       if (st === "paid") {
         localStorage.removeItem(PENDING_SALE_KEY);
+        void closeStitchPaymentWindow();
         setStatus("paid");
         return;
       }
-      if (st === "failed" || attempt >= 8) {
+      if (st === "failed" || attempt >= 60) {
         localStorage.removeItem(PENDING_SALE_KEY);
         setStatus(st === "failed" ? "failed" : "no-sale");
         return;
@@ -104,6 +107,7 @@ export default function BarPaymentSuccess() {
       setTimeout(() => poll(attempt + 1), 3000);
     };
     poll();
+
     return () => {
       cancelled = true;
     };
@@ -180,10 +184,12 @@ export default function BarPaymentSuccess() {
           {status === "verifying" ? (
             <div className="space-y-4">
               <Loader2 className="w-10 h-10 mx-auto animate-spin text-primary" />
-              <h1 className="text-lg font-semibold">Confirming your payment…</h1>
+              <h1 className="text-lg font-semibold">Waiting for your card payment…</h1>
               <p className="text-sm text-muted-foreground">
-                This takes a few seconds. Please wait.
+                Finish the payment in the secure payment tab. This page updates
+                automatically — you can leave it open.
               </p>
+
             </div>
           ) : status === "failed" ? (
             <div className="space-y-4">

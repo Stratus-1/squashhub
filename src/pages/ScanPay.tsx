@@ -19,6 +19,12 @@ import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
+import {
+  prepareStitchPaymentWindow,
+  openStitchPaymentWindow,
+  discardPreparedStitchPaymentWindow,
+} from "@/lib/stitch-checkout";
+
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
 const PENDING_SALE_KEY = "sh.scanpay.pendingSale";
@@ -188,6 +194,10 @@ export default function ScanPay() {
   const payByCardNow = async () => {
     if (cartLines.length === 0) return;
     setSubmitting(true);
+    // Reserve the tab while we still have the user gesture — Stitch Express
+    // parks payers on its own completion screen, so we keep the app tab alive
+    // and show our branded thank-you page there instead.
+    prepareStitchPaymentWindow();
     try {
       const buyerName = member?.name || visitorName.trim() || null;
       const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
@@ -209,12 +219,19 @@ export default function ScanPay() {
           JSON.stringify({ saleId, itemName: cartLabel, total, code }),
         );
       }
-      window.location.href = redirect;
+      const keptAppTab = await openStitchPaymentWindow(redirect);
+      if (keptAppTab) {
+        setCart({});
+        setSubmitting(false);
+        navigate(`/s/${code}/success`);
+      }
     } catch (err: any) {
+      discardPreparedStitchPaymentWindow();
       toast.error(err.message || "Could not start the card payment");
       setSubmitting(false);
     }
   };
+
 
   const chargeToAccount = async () => {
     if (cartLines.length === 0 || !member || !club) return;

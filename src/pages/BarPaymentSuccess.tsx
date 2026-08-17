@@ -130,11 +130,9 @@ export default function BarPaymentSuccess() {
   }, [status, countdown, canCloseTab]);
 
   const attemptClose = () => {
-    if (canCloseTab) {
-      window.close();
-      return;
-    }
-    navigate(`/s/${code}`, { replace: true });
+    window.close();
+    // Browsers block window.close() for tabs the script did not open.
+    setTimeout(() => setCloseBlocked(true), 300);
   };
 
   if (isLoading) {

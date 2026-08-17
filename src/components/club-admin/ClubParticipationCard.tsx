@@ -139,15 +139,17 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             <ShieldCheck className="w-5 h-5 text-primary" />
             <h3 className="font-semibold">Club Participation</h3>
             {isActive ? (
-              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Active</Badge>
+              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">SLA accepted</Badge>
             ) : (
-              <Badge variant="outline">Not active</Badge>
+              <Badge variant="outline">SLA not accepted</Badge>
             )}
           </div>
           <p className="text-sm text-muted-foreground">
-            Activate your club&apos;s participation on SquashHub. The chairman, captain or
-            authorised office bearer must accept the Service Level Agreement.
+            The chairman, captain or authorised office bearer must accept the Service Level
+            Agreement. Your club stays fully active during the trial and afterwards — access is
+            only suspended for unpaid invoices.
           </p>
+
         </div>
       </div>
 

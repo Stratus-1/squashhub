@@ -275,6 +275,7 @@ export default function LeagueGameDetail() {
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
   const [selectWizardOpen, setSelectWizardOpen] = useState(false);
+  const autoOpenWizardRef = useRef(false);
   // Players removed from THIS fixture's lineup by the captain.
   // They won't reappear in the NSA Squad pool (so they can't be accidentally
   // re-added and counted as subs). The captain can restore them via the
@@ -1504,16 +1505,17 @@ export default function LeagueGameDetail() {
   };
 
   // ---- Save Setup (persist player data without submitting results) ----
-  const handleSaveSetup = async () => {
+  const handleSaveSetup = useCallback(async (overridePositions?: PositionEntry[]) => {
     if (!fixtureId || !user) return;
+    const positionsToSave = overridePositions ?? positions;
     setSavingSetup(true);
     try {
       const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
         ? originalLineupSnapshot!
-        : buildOriginalSnapshot(positions);
+        : buildOriginalSnapshot(positionsToSave);
       if (!hasOriginalSnapshot(originalLineupSnapshot)) setOriginalLineupSnapshot(setupOriginalSnapshot);
-      for (let i = 0; i < positions.length; i++) {
-        const pos = positions[i];
+      for (let i = 0; i < positionsToSave.length; i++) {
+        const pos = positionsToSave[i];
         if (!pos.homeCode && !pos.awayCode && !pos.homeName && !pos.awayName) continue;
         // Compute winner + games-won from scores so a setup-save never wipes
         // out a previously-decided rubber's winner column (which would hide
@@ -1542,7 +1544,7 @@ export default function LeagueGameDetail() {
         .from("league_match_results")
         .delete()
         .eq("fixture_id", fixtureId)
-        .gt("position", positions.length);
+        .gt("position", positionsToSave.length);
       const { error: sumErr } = await supabase.from("league_fixture_results" as any).upsert({
         fixture_id: fixtureId,
         home_total_games: 0, away_total_games: 0,
@@ -1562,7 +1564,7 @@ export default function LeagueGameDetail() {
     } finally {
       setSavingSetup(false);
     }
-  };
+  }, [fixtureId, user, positions, originalLineupSnapshot, scoringFormat, bestOf, queryClient]);
 
   // ---- Marker ----
   const buildMarkerConfigForPosition = useCallback((posIdx: number): MarkerConfig | null => {
@@ -1941,6 +1943,15 @@ export default function LeagueGameDetail() {
   // page becomes a pure live-follow scorecard via the realtime channel.
   const isViewMode = (searchParams.get("mode") || "") === "view";
   const isSubmitted = isSubmittedReal || isViewMode;
+
+  // Auto-open the lineup wizard on fresh fixtures so the marker starts with
+  // selecting players instead of showing the intermediate setup screen.
+  useEffect(() => {
+    if (!nsaLive || setupDone || isSubmitted || autoOpenWizardRef.current) return;
+    autoOpenWizardRef.current = true;
+    setSelectWizardOpen(true);
+  }, [nsaLive, setupDone, isSubmitted]);
+
   // ---- LIVE indicator: any position has an in-progress rally or a fresh marker lock ----
   const isLiveNow = positions.some((p) => !!p.currentGame) || markerLocksFresh.size > 0;
 
@@ -3169,7 +3180,7 @@ export default function LeagueGameDetail() {
             >
               <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reset to default league players
             </Button>
-            <Button className="w-full" size="sm" onClick={handleSaveSetup} disabled={!setupValid || savingSetup}>
+            <Button className="w-full" size="sm" onClick={() => handleSaveSetup()} disabled={!setupValid || savingSetup}>
               {savingSetup ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
               Complete Setup
             </Button>
@@ -3380,7 +3391,19 @@ export default function LeagueGameDetail() {
         teamSize={positions.length}
         initialHome={positions.map((p) => ({ code: p.homeCode, name: p.homeName }))}
         initialAway={positions.map((p) => ({ code: p.awayCode, name: p.awayName }))}
-        onApply={handleWizardApply}
+        onApply={(home, away) => {
+          handleWizardApply(home, away);
+          // Compute the same lineup the wizard just applied and save it so the
+          // user lands directly on the scoring screen after selecting players.
+          const nextPositions = positions.map((p, i) => ({
+            ...p,
+            homeCode: home[i]?.code || "",
+            homeName: home[i]?.name || "",
+            awayCode: away[i]?.code || "",
+            awayName: away[i]?.name || "",
+          }));
+          handleSaveSetup(nextPositions);
+        }}
       />
 
       {activeMember?.id && nsaLive && (

@@ -9,7 +9,7 @@
 > §4 using the `Symptom → Finding → Fix → Guard` format. Never delete old entries; mark them
 > `SUPERSEDED` if a later fix replaces them.
 
-Last updated: **15 August 2026**
+Last updated: **16 August 2026**
 
 ---
 
@@ -87,6 +87,21 @@ working.
 ## 4. Issue log
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
+
+### 2026-08-16 · League marker had to click "Complete Setup" after selecting players
+- **Symptom:** When a marker opened a fixture that had not yet been set up, tapping "Select players"
+  opened the wizard, but after picking the teams the app returned to the setup summary and still
+  required a separate "Complete Setup" tap before scoring could start.
+- **Finding:** The `SelectLineupWizard` only updated local React state (`positions`) via
+  `handleWizardApply`; it did not persist the lineup to the fixture until the explicit
+  `handleSaveSetup` path was triggered.
+- **Fix:** Converted `handleSaveSetup` in `LeagueGameDetail.tsx` to a `useCallback` that accepts an
+  optional `overridePositions` argument, and added an `autoOpenWizardRef` effect so the wizard opens
+  automatically for unconfigured fixtures. The wizard's `onApply` now calls `handleSaveSetup` with the
+  computed lineup immediately after `handleWizardApply` updates local state, taking the marker straight
+  to the scoring screen.
+- **Guard:** Any future change that delays persisting the wizard output must still provide a direct
+  path to the scoring screen for unconfigured fixtures; do not rely on a separate manual save step.
 
 ### 2026-08-10 · iPhone install guidance did not reappear
 - **Symptom:** iPhone users still saw no prompt to install the PWA.

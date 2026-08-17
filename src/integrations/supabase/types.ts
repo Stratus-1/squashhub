@@ -289,6 +289,7 @@ export type Database = {
       bar_items: {
         Row: {
           active: boolean
+          barcode: string | null
           category: string
           club_id: string
           cost_price: number
@@ -304,6 +305,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          barcode?: string | null
           category?: string
           club_id: string
           cost_price?: number
@@ -319,6 +321,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          barcode?: string | null
           category?: string
           club_id?: string
           cost_price?: number
@@ -7736,6 +7739,57 @@ export type Database = {
         }
         Relationships: []
       }
+      qr_short_codes: {
+        Row: {
+          active: boolean
+          bar_item_id: string | null
+          club_id: string
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          bar_item_id?: string | null
+          club_id: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          bar_item_id?: string | null
+          club_id?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_short_codes_bar_item_id_fkey"
+            columns: ["bar_item_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_short_codes_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ranking_points_ledger: {
         Row: {
           balance_after: number
@@ -10241,6 +10295,17 @@ export type Database = {
         }
         Returns: string
       }
+      qr_record_visitor_sale: {
+        Args: {
+          _bar_item_id: string
+          _code: string
+          _note?: string
+          _payment_method?: string
+          _quantity: number
+          _visitor_name: string
+        }
+        Returns: Json
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
@@ -10295,6 +10360,7 @@ export type Database = {
       }
       request_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
+      resolve_qr_short_code: { Args: { _code: string }; Returns: Json }
       respond_league_week_availability: {
         Args: {
           _club_member_id: string

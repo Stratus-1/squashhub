@@ -123,14 +123,14 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
 - **Guard:** Express once-off payments must have one return instruction only: the hosted link's
   `redirect_url`. Do not add `returnUrl`, `redirectUrl`, or `merchantRedirectUrl` to the request body.
 
-### 2026-08-17 · Bar checkout returned 404 before payment
+### 2026-08-17 · Bar checkout returned 404 before payment (SUPERSEDED)
 - **Symptom:** A QR bar customer reached a **404 page not found** before the card-payment form opened.
 - **Finding:** `bar-card-pay` appended the branded success URL as `redirect_url` to Stitch's hosted
   link. For this club's Express link, that query parameter invalidated the hosted checkout URL.
 - **Fix:** Bar checkout now opens Stitch's returned hosted URL unchanged. The original Scan-to-Pay tab
   remains open, verifies the payment independently, and displays the branded thank-you screen.
-- **Guard:** Bar purchases are a standalone flow: never append return or redirect query parameters to
-  their hosted payment URL. Do not copy the member top-up return strategy into Scan-to-Pay.
+- **Guard:** Superseded after comparison with fresh, completed Gordon's Bay top-ups proved that a
+  tenant-host `redirect_url` works. A 404 must be investigated as a host or stale-link issue first.
 
 ### 2026-08-17 · Bar card payment stopped on Stitch's completion page (SUPERSEDED)
 - **Symptom:** After a QR bar purchase, Stitch showed its own **Payment complete** page; the payer had

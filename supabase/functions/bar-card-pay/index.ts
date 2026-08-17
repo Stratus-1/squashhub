@@ -231,12 +231,12 @@ function sanitizeReturnUrl(raw: string | null, clubSubdomain: string, code: stri
 function appendRedirectUrl(link: string, returnUrl: string) {
   try {
     const url = new URL(link);
-    url.searchParams.delete("redirect_uri");
-    url.searchParams.set("redirect_url", returnUrl);
+    url.searchParams.delete("redirect_url");
+    url.searchParams.set("redirect_uri", returnUrl);
     return url.toString();
   } catch {
     const separator = link.includes("?") ? "&" : "?";
-    return `${link}${separator}redirect_url=${encodeURIComponent(returnUrl)}`;
+    return `${link}${separator}redirect_uri=${encodeURIComponent(returnUrl)}`;
   }
 }
 

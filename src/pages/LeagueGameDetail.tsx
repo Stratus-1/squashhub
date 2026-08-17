@@ -1505,16 +1505,17 @@ export default function LeagueGameDetail() {
   };
 
   // ---- Save Setup (persist player data without submitting results) ----
-  const handleSaveSetup = async () => {
+  const handleSaveSetup = useCallback(async (overridePositions?: PositionEntry[]) => {
     if (!fixtureId || !user) return;
+    const positionsToSave = overridePositions ?? positions;
     setSavingSetup(true);
     try {
       const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
         ? originalLineupSnapshot!
-        : buildOriginalSnapshot(positions);
+        : buildOriginalSnapshot(positionsToSave);
       if (!hasOriginalSnapshot(originalLineupSnapshot)) setOriginalLineupSnapshot(setupOriginalSnapshot);
-      for (let i = 0; i < positions.length; i++) {
-        const pos = positions[i];
+      for (let i = 0; i < positionsToSave.length; i++) {
+        const pos = positionsToSave[i];
         if (!pos.homeCode && !pos.awayCode && !pos.homeName && !pos.awayName) continue;
         // Compute winner + games-won from scores so a setup-save never wipes
         // out a previously-decided rubber's winner column (which would hide
@@ -1543,7 +1544,7 @@ export default function LeagueGameDetail() {
         .from("league_match_results")
         .delete()
         .eq("fixture_id", fixtureId)
-        .gt("position", positions.length);
+        .gt("position", positionsToSave.length);
       const { error: sumErr } = await supabase.from("league_fixture_results" as any).upsert({
         fixture_id: fixtureId,
         home_total_games: 0, away_total_games: 0,
@@ -1563,7 +1564,7 @@ export default function LeagueGameDetail() {
     } finally {
       setSavingSetup(false);
     }
-  };
+  }, [fixtureId, user, positions, originalLineupSnapshot, scoringFormat, bestOf, queryClient]);
 
   // ---- Marker ----
   const buildMarkerConfigForPosition = useCallback((posIdx: number): MarkerConfig | null => {

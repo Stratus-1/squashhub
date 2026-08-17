@@ -287,16 +287,24 @@ export default function ClubAuth() {
     e.preventDefault();
     setLoading(true);
     try {
+      // Captcha is best-effort on sign-in: existing members must never be
+      // locked out if reCAPTCHA fails to load or errors on a given domain.
       if (captchaRef.current) {
-        const token = await captchaRef.current.execute();
-        const valid = await verifyCaptchaToken(token);
-        if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+        try {
+          const token = await captchaRef.current.execute();
+          if (token) await verifyCaptchaToken(token);
+        } catch {
+          console.warn("[auth] captcha unavailable, continuing sign-in");
+        }
       }
       const { error } = await signIn(loginEmail.trim(), loginPassword);
       if (error) toast.error(error.message);
-    } catch { toast.error("Captcha verification failed"); }
+    } catch {
+      toast.error("Sign in failed. Please try again.");
+    }
     setLoading(false);
   };
+
 
   const handleExistingMemberSignup = async (e: React.FormEvent) => {
     e.preventDefault();

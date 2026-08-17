@@ -68,11 +68,12 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
     try {
+      // Best-effort captcha on sign-in — never lock existing users out.
       const token = await captchaRef.current?.execute().catch(() => null);
       if (token) {
-        const valid = await verifyCaptchaToken(token);
-        if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+        await verifyCaptchaToken(token).catch(() => false);
       }
+
       const { error } = await signIn(loginEmail.trim(), loginPassword);
       if (error) toast.error(error.message);
     } finally {

@@ -63,21 +63,29 @@ const Email = ({
           </Section>
 
           <Text style={p}>
-            Before your first invoice is issued, please complete two short steps in the app under{' '}
+            Before your first invoice is issued, please complete three short steps in the app under{' '}
             <strong>Club Admin → Subscription</strong>:
           </Text>
           <Text style={p}>
-            <strong>1. Billing Information</strong> — confirm your billing contact, company details,
+            <strong>1. Club Participation — accept the SLA</strong> — the chairman, captain or an
+            authorised office bearer must accept the SquashHub Service Level Agreement on the
+            Subscription tab. Until this is done your club shows as{' '}
+            <em>participation not active</em>.
+            <br />
+            <strong>2. Billing Information</strong> — confirm your billing contact, company details,
             billing email addresses and VAT number so your invoices are correct.
             <br />
-            <strong>2. Subscription</strong> — choose how often you want to be invoiced (monthly,
+            <strong>3. Subscription</strong> — choose how often you want to be invoiced (monthly,
             six-monthly upfront at 5% off, or annually upfront at 10% off) and whether you prefer to
             pay by <strong>EFT</strong> or by <strong>card</strong>.
           </Text>
           <Text style={pMuted}>
-            You can still pay any individual invoice either way — this simply tells us your default
-            so we can bill you the way that suits your club.
+            Your club stays fully active throughout the trial and afterwards — access is only
+            suspended if an invoice goes unpaid. You can still pay any individual invoice by either
+            method; this simply tells us your default so we can bill you the way that suits your
+            club.
           </Text>
+
 
           <Section style={{ textAlign: 'center' as const, marginTop: 24 }}>
             <Button href={subscriptionUrl} style={cta}>Complete billing setup</Button>

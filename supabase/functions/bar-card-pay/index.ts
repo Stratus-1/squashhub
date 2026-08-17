@@ -65,16 +65,25 @@ Deno.serve(async (req) => {
 
     const { data: club } = await admin
       .from("clubs").select("id, name, subdomain, payment_gateway").eq("id", qr.club_id).maybeSingle();
-    if (!club || club.payment_gateway !== "stitch") {
+    const gateway = String(club?.payment_gateway || "").toLowerCase();
+    if (!club || !["stitch", "yoco"].includes(gateway)) {
       return json({ error: "Card payments are not enabled for this club" });
     }
 
     const { data: secrets } = await admin
-      .from("club_secrets").select("payment_gateway_credentials").eq("club_id", club.id).maybeSingle();
+      .from("club_secrets")
+      .select("payment_gateway_credentials, payment_gateway_secret_key")
+      .eq("club_id", club.id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
     const clientId = (creds.client_id || "").trim();
     const clientSecret = (creds.client_secret || "").trim();
-    if (!clientId || !clientSecret) return json({ error: "This club has not finished its card payment setup" });
+    const yocoSecretKey = String(creds.secret_key || (secrets as any)?.payment_gateway_secret_key || "").trim();
+    if (gateway === "stitch" && (!clientId || !clientSecret)) {
+      return json({ error: "This club has not finished its card payment setup" });
+    }
+    if (gateway === "yoco" && !yocoSecretKey) {
+      return json({ error: "This club has not finished its card payment setup" });
+    }
 
     // Record the sale lines up-front as pending so stock/admin views stay accurate.
     const { data: sales, error: saleErr } = await admin
@@ -100,6 +109,34 @@ Deno.serve(async (req) => {
 
     const reference = `BAR-${String(sale.id).slice(0, 8)}`;
     const redirectUri = sanitizeReturnUrl(return_url, String(club.subdomain || ""), code);
+
+    // ---- Yoco tenants -------------------------------------------------
+    if (gateway === "yoco") {
+      const cancelUrl = redirectUri.replace(/\/success$/, "");
+      const resp = await fetch("https://payments.yoco.com/api/checkouts", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${yocoSecretKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: Math.round(amount * 100),
+          currency: "ZAR",
+          successUrl: redirectUri,
+          cancelUrl,
+          failureUrl: cancelUrl,
+          metadata: { sale_id: String(sale.id), reference, club_id: club.id, source: "bar-scan-to-pay" },
+        }),
+      });
+      const yocoData = await resp.json().catch(() => ({}));
+      const checkoutId = yocoData?.id || yocoData?.checkoutId || yocoData?.checkout_id;
+      if (!resp.ok || !checkoutId || !yocoData?.redirectUrl) {
+        await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).in("id", saleIds);
+        console.error("Yoco bar checkout failed", resp.status, yocoData);
+        return json({ error: "Could not create the card payment" });
+      }
+      await admin.from("bar_visitor_sales")
+        .update({ payment_reference: String(checkoutId) }).in("id", saleIds);
+      return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: String(yocoData.redirectUrl) });
+    }
+
 
     try {
       const request = await createPaymentRequest({

@@ -273,6 +273,7 @@ export function SelectLineupWizard({
   const [away, setAway] = useState<LineupPick[]>([]);
   const [extraHome, setExtraHome] = useState<NsaTeamPlayer[]>([]);
   const [extraAway, setExtraAway] = useState<NsaTeamPlayer[]>([]);
+  const [addingPlayer, setAddingPlayer] = useState(false);
 
   // Seed from the current lineup each time the wizard opens.
   useEffect(() => {

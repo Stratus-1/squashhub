@@ -10,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon, AlertTriangle, PackagePlus, FileText, X, Upload, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon, AlertTriangle, PackagePlus, FileText, X, Upload, Sparkles, Loader2, QrCode } from "lucide-react";
+import { BarQrLabelsDialog } from "./BarQrLabelsDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -127,6 +128,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
   const enabled = !!club.honesty_bar_enabled;
   const [step, setStep] = useState("items");
+  const [qrOpen, setQrOpen] = useState(false);
 
   const barSteps: SetupStep[] = [
     { id: "items", label: "Items & prices", description: "List everything on sale at the bar with its selling price and current stock.", complete: items.length > 0 },
@@ -165,9 +167,30 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
       {step === "items" && (
         <div className="space-y-4">
+          <Card className="p-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-sm">Scan-to-pay QR labels</h3>
+              <p className="text-xs text-muted-foreground">
+                Print club-specific QR stickers per product, plus a venue poster for the whole menu.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setQrOpen(true)}>
+              <QrCode className="w-3.5 h-3.5 mr-1" /> QR labels
+            </Button>
+          </Card>
           <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
         </div>
       )}
+
+      <BarQrLabelsDialog
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        clubId={clubId}
+        clubName={club.name}
+        subdomain={(club as any).subdomain}
+        items={items}
+      />
+
 
       {step === "stock-purchases" && (
         <div className="space-y-4">

@@ -271,19 +271,30 @@ export default function ScanPay() {
       </header>
 
       <main className="px-4 py-4 max-w-md mx-auto space-y-4">
-        {done ? (
+        {verifying ? (
+          <Card className="p-6 text-center space-y-3">
+            <Loader2 className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />
+            <h2 className="text-base font-semibold">Confirming your card payment…</h2>
+            <p className="text-sm text-muted-foreground">This takes a few seconds.</p>
+          </Card>
+        ) : done ? (
           <Card className="p-6 text-center space-y-3">
             <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-600" />
             <h2 className="text-lg font-semibold">Thank you!</h2>
             <p className="text-sm text-muted-foreground">
               {done.itemName} — {formatMoney(done.total, currency)}{" "}
-              {done.onAccount ? "was charged to your club account." : "recorded at the bar."}
+              {done.onAccount
+                ? "was charged to your club account."
+                : done.cardPaid
+                  ? "was paid by card. Enjoy!"
+                  : "recorded at the bar."}
             </p>
             <Button variant="outline" className="w-full" onClick={() => { setDone(null); setQty(1); setSelected(null); }}>
               Buy something else
             </Button>
           </Card>
         ) : (
+
           <>
             {showLoginPrompt && (
               <Card className="p-4 space-y-3 border-primary/40">

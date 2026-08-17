@@ -2,8 +2,8 @@
  * Public Scan-to-Pay page — `/s/:code`
  *
  * Opened by scanning a club QR sticker (per product) or the venue poster
- * (whole menu). Works fully unauthenticated: guests record a card/cash sale,
- * members can charge the item to their club account instead.
+ * (whole menu). Works fully unauthenticated: guests build a cart and pay by
+ * card, members can charge the whole cart to their club account instead.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -48,9 +48,9 @@ export default function ScanPay() {
   const { code = "" } = useParams();
   const navigate = useNavigate();
 
-  const [qty, setQty] = useState(1);
+  const [cart, setCart] = useState<Record<string, number>>({});
   const [visitorName, setVisitorName] = useState("");
-  const [selected, setSelected] = useState<ScanItem | null>(null);
+  const [checkingOut, setCheckingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean } | null>(null);
   const [verifying, setVerifying] = useState(false);
@@ -102,12 +102,41 @@ export default function ScanPay() {
     enabled: !!club?.id && !!userId,
   });
 
-  const item = useMemo<ScanItem | null>(() => {
-    if (data?.kind === "item") return (data.item as ScanItem) || null;
-    return selected;
-  }, [data, selected]);
+  /** Everything the payer can tap — a single-item sticker still shows a menu of one. */
+  const menu = useMemo<ScanItem[]>(() => {
+    if (data?.kind === "item" && data.item) return [data.item as ScanItem];
+    return (data?.menu || []) as ScanItem[];
+  }, [data]);
 
-  const total = item ? Number(item.price) * qty : 0;
+  const cartLines = useMemo(
+    () =>
+      Object.entries(cart)
+        .filter(([, q]) => q > 0)
+        .map(([id, qty]) => {
+          const it = menu.find((m) => m.id === id);
+          return it ? { item: it, qty, line: Number(it.price) * qty } : null;
+        })
+        .filter(Boolean) as { item: ScanItem; qty: number; line: number }[],
+    [cart, menu],
+  );
+  const total = cartLines.reduce((s, l) => s + l.line, 0);
+  const count = cartLines.reduce((s, l) => s + l.qty, 0);
+  const cartLabel =
+    cartLines.length === 0
+      ? ""
+      : cartLines.length === 1
+        ? `${cartLines[0].qty}× ${cartLines[0].item.name}`
+        : `${count} items`;
+
+  const bump = (id: string, delta: number) =>
+    setCart((prev) => {
+      const next = Math.max(0, Math.min(50, (prev[id] || 0) + delta));
+      if (next === 0) {
+        const { [id]: _drop, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [id]: next };
+    });
 
   // Returning from the Stitch hosted card page — confirm the payment landed.
   useEffect(() => {
@@ -144,8 +173,6 @@ export default function ScanPay() {
     return () => { cancelled = true; };
   }, [code]);
 
-
-
   const continueAsGuest = () => {
     localStorage.setItem(GUEST_PREF_KEY, "1");
     setGuestChosen(true);
@@ -157,38 +184,16 @@ export default function ScanPay() {
     navigate(`/auth?redirectTo=${encodeURIComponent(next)}`);
   };
 
-  const payAsGuest = async (method: "card" | "cash") => {
-    if (!item) return;
-    setSubmitting(true);
-    try {
-      const { data: res, error } = await (supabase as any).rpc("qr_record_visitor_sale", {
-        _code: code,
-        _bar_item_id: item.id,
-        _quantity: qty,
-        _visitor_name: visitorName.trim() || null,
-        _payment_method: method,
-        _note: null,
-      });
-      if (error) throw error;
-      setDone({ total: Number((res as any)?.total ?? total), itemName: item.name, onAccount: false });
-    } catch (err: any) {
-      toast.error(err.message || "Could not record the sale");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   /** Real card checkout — sends the payer to the club's Stitch hosted page. */
   const payByCardNow = async () => {
-    if (!item) return;
+    if (cartLines.length === 0) return;
     setSubmitting(true);
     try {
       const buyerName = member?.name || visitorName.trim() || null;
       const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
         body: {
           code,
-          bar_item_id: item.id,
-          quantity: qty,
+          lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
           buyer_name: buyerName,
           return_url: `${window.location.origin}/s/${code}`,
         },
@@ -201,7 +206,7 @@ export default function ScanPay() {
       if (saleId) {
         localStorage.setItem(
           PENDING_SALE_KEY,
-          JSON.stringify({ saleId, itemName: item.name, total, code }),
+          JSON.stringify({ saleId, itemName: cartLabel, total, code }),
         );
       }
       window.location.href = redirect;
@@ -211,21 +216,23 @@ export default function ScanPay() {
     }
   };
 
-
   const chargeToAccount = async () => {
-    if (!item || !member || !club) return;
+    if (cartLines.length === 0 || !member || !club) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("bar_tab_entries").insert({
-        club_id: club.id,
-        club_member_id: member.id,
-        bar_item_id: item.id,
-        quantity: qty,
-        unit_price: Number(item.price),
-        total: Number(item.price) * qty,
-      });
+      const { error } = await supabase.from("bar_tab_entries").insert(
+        cartLines.map((l) => ({
+          club_id: club.id,
+          club_member_id: member.id,
+          bar_item_id: l.item.id,
+          quantity: l.qty,
+          unit_price: Number(l.item.price),
+          total: l.line,
+        })),
+      );
       if (error) throw error;
-      setDone({ total, itemName: item.name, onAccount: true });
+      setDone({ total, itemName: cartLabel, onAccount: true });
+      setCart({});
     } catch (err: any) {
       toast.error(err.message || "Could not charge your account");
     } finally {
@@ -257,7 +264,7 @@ export default function ScanPay() {
   const showLoginPrompt = !userId && !guestChosen;
 
   return (
-    <div className="min-h-screen bg-background pb-16">
+    <div className="min-h-screen bg-background pb-28">
       <SEO title={`${club.name} — Scan to pay`} description="Scan-to-pay bar and shop" path={`/s/${code}`} noIndex />
 
       <header className="px-4 py-4 flex items-center gap-3 border-b">
@@ -282,19 +289,20 @@ export default function ScanPay() {
             <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-600" />
             <h2 className="text-lg font-semibold">Thank you!</h2>
             <p className="text-sm text-muted-foreground">
-              {done.itemName} — {formatMoney(done.total, currency)}{" "}
-              {done.onAccount
-                ? "was charged to your club account."
-                : done.cardPaid
-                  ? "was paid by card. Enjoy!"
-                  : "recorded at the bar."}
+              {done.itemName} · {formatMoney(done.total, currency)}
             </p>
-            <Button variant="outline" className="w-full" onClick={() => { setDone(null); setQty(1); setSelected(null); }}>
+            <p className="text-sm text-muted-foreground">
+              {done.onAccount
+                ? "Charged to your member account."
+                : done.cardPaid
+                  ? "Paid by card — payment confirmed."
+                  : "Your purchase has been recorded."}
+            </p>
+            <Button variant="outline" className="w-full" onClick={() => { setDone(null); setCheckingOut(false); }}>
               Buy something else
             </Button>
           </Card>
         ) : (
-
           <>
             {showLoginPrompt && (
               <Card className="p-4 space-y-3 border-primary/40">
@@ -313,28 +321,48 @@ export default function ScanPay() {
               </Card>
             )}
 
-            {!item ? (
+            {!checkingOut ? (
               <>
-                <h2 className="text-sm font-semibold">Bar menu</h2>
+                <h2 className="text-sm font-semibold">Tap items to add</h2>
                 <div className="grid grid-cols-3 gap-2">
-                  {(data.menu || []).map((m) => (
-                    <Card
-                      key={m.id}
-                      className="p-2 flex flex-col items-center gap-1 cursor-pointer hover:bg-accent/50"
-                      onClick={() => { setSelected(m); setQty(1); }}
-                    >
-                      <div className="w-full aspect-square rounded bg-muted overflow-hidden flex items-center justify-center">
-                        {m.image_url ? (
-                          <img src={m.image_url} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
-                        ) : (
-                          <span className="text-2xl">📦</span>
+                  {menu.map((m) => {
+                    const qty = cart[m.id] || 0;
+                    const out = typeof m.stock_qty === "number" && m.stock_qty <= 0;
+                    return (
+                      <Card
+                        key={m.id}
+                        className={`relative p-2 flex flex-col items-center gap-1 cursor-pointer hover:bg-accent/50 ${qty > 0 ? "ring-2 ring-primary" : ""} ${out ? "opacity-50" : ""}`}
+                        onClick={() => { if (!out) bump(m.id, 1); }}
+                      >
+                        <div className="w-full aspect-square rounded bg-muted overflow-hidden flex items-center justify-center">
+                          {m.image_url ? (
+                            <img src={m.image_url} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
+                          ) : (
+                            <span className="text-2xl">📦</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] font-medium text-center leading-tight break-words">{m.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{formatMoney(Number(m.price), currency)}</p>
+                        {out && <Badge variant="destructive" className="text-[10px]">Out of stock</Badge>}
+                        {qty > 0 && (
+                          <>
+                            <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                              {qty}
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="absolute top-1 left-1 h-6 w-6"
+                              onClick={(e) => { e.stopPropagation(); bump(m.id, -1); }}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                          </>
                         )}
-                      </div>
-                      <p className="text-[11px] font-medium text-center leading-tight break-words">{m.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{formatMoney(Number(m.price), currency)}</p>
-                    </Card>
-                  ))}
-                  {(data.menu || []).length === 0 && (
+                      </Card>
+                    );
+                  })}
+                  {menu.length === 0 && (
                     <p className="col-span-3 text-sm text-muted-foreground text-center py-6">
                       Nothing is in stock right now.
                     </p>
@@ -343,40 +371,31 @@ export default function ScanPay() {
               </>
             ) : (
               <Card className="p-4 space-y-4">
-                {data.kind === "venue" && (
-                  <Button variant="ghost" size="sm" className="gap-1 -ml-2" onClick={() => setSelected(null)}>
-                    <ArrowLeft className="w-3.5 h-3.5" /> Back to menu
-                  </Button>
-                )}
+                <Button variant="ghost" size="sm" className="gap-1 -ml-2" onClick={() => setCheckingOut(false)}>
+                  <ArrowLeft className="w-3.5 h-3.5" /> Add more items
+                </Button>
 
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded bg-muted overflow-hidden flex items-center justify-center shrink-0">
-                    {item.image_url ? (
-                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-2xl">📦</span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold leading-tight break-words">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">{formatMoney(Number(item.price), currency)} each</p>
-                    {typeof item.stock_qty === "number" && item.stock_qty <= 0 && (
-                      <Badge variant="destructive" className="text-[10px] mt-1">Out of stock</Badge>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Quantity</span>
-                  <div className="flex items-center gap-3">
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty((q) => Math.max(1, q - 1))}>
-                      <Minus className="w-4 h-4" />
-                    </Button>
-                    <span className="w-6 text-center font-semibold">{qty}</span>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty((q) => Math.min(50, q + 1))}>
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
+                <div className="space-y-2">
+                  {cartLines.map((l) => (
+                    <div key={l.item.id} className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium leading-tight break-words">{l.item.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {formatMoney(Number(l.item.price), currency)} each
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => bump(l.item.id, -1)}>
+                          <Minus className="w-3.5 h-3.5" />
+                        </Button>
+                        <span className="w-5 text-center text-sm font-semibold">{l.qty}</span>
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => bump(l.item.id, 1)}>
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
+                        <span className="w-16 text-right text-sm font-semibold">{formatMoney(l.line, currency)}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 <Separator />
@@ -393,9 +412,6 @@ export default function ScanPay() {
                     </Button>
                     <Button variant="outline" className="w-full gap-2" disabled={submitting} onClick={payByCardNow}>
                       <CreditCard className="w-4 h-4" /> Pay now by card
-                    </Button>
-                    <Button variant="ghost" size="sm" className="w-full" disabled={submitting} onClick={() => payAsGuest("cash")}>
-                      I left cash in the tin
                     </Button>
                     <p className="text-[11px] text-muted-foreground text-center">
                       Signed in as {member.name}
@@ -414,10 +430,8 @@ export default function ScanPay() {
                       />
                     </div>
                     <Button className="w-full gap-2" disabled={submitting || !visitorName.trim()} onClick={payByCardNow}>
-                      <CreditCard className="w-4 h-4" /> Pay now by card
-                    </Button>
-                    <Button variant="outline" className="w-full gap-2" disabled={submitting || !visitorName.trim()} onClick={() => payAsGuest("cash")}>
-                      I left cash in the tin
+                      {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                      Pay {formatMoney(total, currency)} by card
                     </Button>
                     <p className="text-[11px] text-muted-foreground text-center">
                       Card payments go through {club.name}&apos;s secure checkout.
@@ -434,12 +448,26 @@ export default function ScanPay() {
                     )}
                   </div>
                 )}
-
               </Card>
             )}
           </>
         )}
       </main>
+
+      {/* Sticky cart bar */}
+      {!done && !verifying && !checkingOut && count > 0 && (
+        <div className="fixed bottom-0 inset-x-0 border-t bg-background/95 backdrop-blur px-4 py-3">
+          <div className="max-w-md mx-auto flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground">{count} item{count > 1 ? "s" : ""} in cart</p>
+              <p className="text-base font-semibold">{formatMoney(total, currency)}</p>
+            </div>
+            <Button className="gap-2" onClick={() => setCheckingOut(true)}>
+              <ShoppingCart className="w-4 h-4" /> Done — checkout
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

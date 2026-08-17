@@ -47,9 +47,19 @@ export interface SelectLineupWizardProps {
 const fullName = (p: NsaTeamPlayer) =>
   `${p.name || ""} ${p.surname || ""}`.trim() || p.code || "—";
 
-/** Add a player who isn't in the squad list, by league / NSF number. */
-function AddByNumber({ onAdd }: { onAdd: (p: NsaTeamPlayer) => void }) {
-  const [open, setOpen] = useState(false);
+/** Add a player who isn't in the squad list, by league / NSF number.
+ *  Rendered inline when the parent wants it visible. */
+function AddByNumberInline({
+  open,
+  onOpenChange,
+  side,
+  onAdd,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  side: "home" | "away";
+  onAdd: (p: NsaTeamPlayer) => void;
+}) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [looking, setLooking] = useState(false);
@@ -91,24 +101,25 @@ function AddByNumber({ onAdd }: { onAdd: (p: NsaTeamPlayer) => void }) {
     });
     setCode("");
     setName("");
-    setOpen(false);
   };
 
-  if (!open) {
-    return (
-      <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => setOpen(true)}>
-        <UserPlus className="w-3.5 h-3.5 mr-1" /> Add player by NSF / league number
-      </Button>
-    );
-  }
+  if (!open) return null;
 
   return (
-    <div className="rounded-lg border border-dashed p-2 space-y-2">
+    <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide">
+          Insert {side === "home" ? "home" : "visitors"} player
+        </span>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onOpenChange(false)}>
+          ×
+        </Button>
+      </div>
       <div className="flex gap-2">
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="NSF number e.g. NSF1234"
+          placeholder="NSF / league number"
           className="h-9 text-sm font-mono"
           maxLength={20}
         />
@@ -123,14 +134,9 @@ function AddByNumber({ onAdd }: { onAdd: (p: NsaTeamPlayer) => void }) {
         className="h-9 text-sm"
         maxLength={80}
       />
-      <div className="flex gap-2">
-        <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => setOpen(false)}>
-          Cancel
-        </Button>
-        <Button size="sm" className="flex-1 text-xs" onClick={add} disabled={!code.trim() && !name.trim()}>
-          <Check className="w-3.5 h-3.5 mr-1" /> Add & pick
-        </Button>
-      </div>
+      <Button size="sm" className="w-full text-xs" onClick={add} disabled={!code.trim() && !name.trim()}>
+        <UserPlus className="w-3.5 h-3.5 mr-1" /> Add & pick player
+      </Button>
     </div>
   );
 }

@@ -9,10 +9,18 @@ import { useSaasPricing } from "@/hooks/use-saas-pricing";
  * scale") pricing, which applies to every club. All values are read live from
  * the platform pricing settings managed in Super Admin.
  */
-export function ParticipationFeeStructure({ memberCount }: { memberCount?: number | null }) {
+export function ParticipationFeeStructure({
+  memberCount,
+  clubId,
+}: {
+  memberCount?: number | null;
+  clubId?: string;
+}) {
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
+  const { startLabel, trialEndLabel } = useClubBillingStart(clubId);
   const { monthlyTiers, biannualTiers, annualTiers, monthlyMin, biannualMin, annualMin, cap, format: fmt } =
     useSaasPricing(clubCurrencyCode);
+
 
   const billable =
     typeof memberCount === "number"

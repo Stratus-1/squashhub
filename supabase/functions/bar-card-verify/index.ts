@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
         .eq("club_id", sale.club_id)
         .eq("payment_reference", sale.payment_reference);
     }
-    return json({ status: next, stitch_state: state, total: Number(sale.total) });
+    return json({ status: next, gateway, provider_state: state, stitch_state: state, total: Number(sale.total) });
   } catch (e: any) {
     console.error("bar-card-verify error:", e);
     return json({ error: e?.message || "Unexpected error" });
@@ -113,6 +113,24 @@ async function lookupStatus(clientId: string, clientSecret: string, reference: s
     const status = data?.data?.payment?.status || data?.data?.status || data?.status;
     return String(status || "PENDING").toUpperCase();
   } catch {
+    return "PENDING";
+  }
+}
+
+async function lookupYocoStatus(secretKey: string, checkoutId: string) {
+  try {
+    const resp = await fetch(
+      `https://payments.yoco.com/api/checkouts/${encodeURIComponent(checkoutId)}`,
+      { headers: { Authorization: `Bearer ${secretKey}` } },
+    );
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      console.warn("Yoco bar verify failed", resp.status, data);
+      return "PENDING";
+    }
+    return String(data?.status || "PENDING").toUpperCase();
+  } catch (err) {
+    console.warn("Yoco bar verify error", (err as Error)?.message || err);
     return "PENDING";
   }
 }

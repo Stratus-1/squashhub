@@ -1,16 +1,14 @@
 import { useParams, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, Building2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
-import { SEO } from "@/components/SEO";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useEffect } from "react";
-import { formatMoney } from "@/lib/currency";
+import { SEO } from "@/components/SEO";
+import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
+
 
 
 interface ClubDelegate {

@@ -78,15 +78,27 @@ This has caused repeated regressions. They share a provider (Stitch) and *nothin
 that flow's files. Do not "harmonise" the other one, and do not refactor a flow that is confirmed
 working.
 
-**Hard constraint:** Express returns depend on the exact whitelisted tenant host. Append
-`?redirect_url=` using the club subdomain (for example `gb.squashhub.co.za`), never the apex or
-`www` host. Body-level redirect fields are ignored by Express.
+**Hard constraint:** Stitch Express allows only a small redirect allow-list. Every club must use the
+single shared callback `https://squashhub.co.za/pay/return`; it forwards to the correct tenant/page
+using validated callback parameters. Never create or require one whitelist entry per club.
 
 ---
 
 ## 4. Issue log
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
+
+### 2026-08-17 · Riverside card checkout returned 404 before payment
+- **Symptom:** Tapping card payment opened a 404 before the hosted payment form; the failure was
+  incorrectly attributed to a missing per-club redirect whitelist entry.
+- **Finding:** SquashHub has one shared Stitch redirect because Express permits only five entries.
+  The functions rewrote that callback to each club subdomain and a GET “probe” treated an intermediate
+  response as success, so Riverside received a hosted URL containing an unapproved redirect.
+- **Fix:** Both bar checkout and member once-off payments now append only the shared
+  `https://squashhub.co.za/pay/return` callback. It carries a validated session/club or bar code and
+  `PayReturn` forwards to the correct tenant page after payment. Removed all per-club probing.
+- **Guard:** Never require or infer per-club Stitch redirect whitelist entries; payment URLs use the
+  one shared SquashHub callback and are handed directly to the browser.
 
 ### 2026-08-17 · Bar checkout trapped the payer in a two-tab close loop
 - **Symptom:** Stitch showed Payment complete; closing it exposed an app Close action that the browser

@@ -104,12 +104,16 @@ Deno.serve(async (req) => {
     const merchantReference = `${refPrefix}-${String(session.id).slice(0, 8)}`
       .replace(/[^a-zA-Z0-9\s\-)]/g, "").slice(0, 50) || String(session.id).slice(0, 50);
 
-    const safeReturnUrl = sanitizeReturnUrl(return_url, String((club as any).subdomain || "").trim());
+    const safeReturnUrl = sanitizeReturnUrl(return_url);
 
     // 2. Prefer Stitch's documented Payment Request flow. Unlike Express
     // payment-links, this hosted URL honours `redirect_uri` after success.
     const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
-    const safeReturnWithSession = appendSessionParams(safeReturnUrl, session.id, String((club as any).subdomain || "").trim());
+    const safeReturnWithSession = appendSessionParams(
+      safeReturnUrl,
+      session.id,
+      String((club as any).subdomain || "").trim(),
+    );
     try {
       const request = await createPaymentRequestV2({
         clientId,
@@ -181,11 +185,9 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // CANONICAL (09 Aug 2026): append `redirect_url` (club tenant subdomain) to
-    // the Express hosted link. BUT whether Stitch accepts that redirect host is
-    // per-club (whitelist on their side): GB accepts it, Riverside 404s. So we
-    // probe the actual link before handing it to the payer and degrade safely.
-    const redirectUrl = await pickWorkingLink(payment.link as string, safeReturnWithSession);
+    // All clubs share the single whitelisted SquashHub callback. The callback
+    // resolves the session and forwards the payer to the correct club page.
+    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
@@ -204,55 +206,9 @@ Deno.serve(async (req) => {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
-function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
+function sanitizeReturnUrl(_raw: string) {
   const canonicalReturnUrl = `${PUBLIC_APP_ORIGIN}/pay/return`;
-  try {
-    const parsed = new URL(raw);
-    if (parsed.protocol === "gbsquash:") return raw;
-    if (parsed.hostname.endsWith(".supabase.co")) {
-      return canonicalReturnUrl;
-    }
-    // `www.squashhub.co.za` is not served — it produced the "404 after paying"
-    // reports. Always fold it back onto the apex host.
-    if (parsed.hostname.toLowerCase() === "www.squashhub.co.za") {
-      parsed.hostname = "squashhub.co.za";
-    }
-    // Stitch Express validates the redirect host against the club tenant that
-    // owns the credentials. An apex return URL makes a fresh GB payment link
-    // return 404, while the same link with gb.squashhub.co.za returns 200.
-    // Restore the proven tenant host whenever checkout arrives from the apex
-    // or a preview host (the latter cannot be whitelisted by Stitch).
-    const normalizedSubdomain = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
-    const incomingHost = parsed.hostname.toLowerCase();
-    if (
-      normalizedSubdomain &&
-      (incomingHost === "squashhub.co.za" || incomingHost.endsWith(".lovable.app"))
-    ) {
-      parsed.protocol = "https:";
-      parsed.hostname = `${normalizedSubdomain}.squashhub.co.za`;
-      parsed.port = "";
-    }
-    const host = parsed.hostname.toLowerCase();
-    const allowed =
-      host === "squashhub.co.za" ||
-      host.endsWith(".squashhub.co.za") ||
-      host === "squashhub.lovable.app" ||
-      host.endsWith(".lovable.app") ||
-      host === "localhost";
-    if (!allowed) return canonicalReturnUrl;
-    parsed.search = "";
-    parsed.hash = "";
-    if (host === "squashhub.co.za" || host.endsWith(".squashhub.co.za")) {
-      if (parsed.pathname === "/" || parsed.pathname === "") parsed.pathname = "/my-account";
-      return parsed.toString();
-    }
-    if (parsed.pathname === "/" || parsed.pathname === "") {
-      parsed.pathname = "/pay/return";
-    }
-    return parsed.toString();
-  } catch {
-    return canonicalReturnUrl;
-  }
+  return canonicalReturnUrl;
 }
 
 // CANONICAL helper (restored 17 Aug 2026 to the 09 Aug confirmed-working
@@ -272,13 +228,15 @@ function appendExpressRedirectUrl(link: string, returnUrl: string) {
   }
 }
 
-function appendSessionParams(returnUrl: string, sessionId: string, _clubSubdomain = "") {
+function appendSessionParams(returnUrl: string, sessionId: string, clubSubdomain = "") {
   // Canonical: the return URL carries `stitch_session` so /my-account can call
   // stitch-verify-payment on arrival.
   if (!returnUrl || !sessionId) return returnUrl;
   try {
     const url = new URL(returnUrl);
     url.searchParams.set("stitch_session", sessionId);
+    const sub = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    if (sub) url.searchParams.set("stitch_club", sub);
     return url.toString();
   } catch {
     const sep = returnUrl.includes("?") ? "&" : "?";
@@ -366,38 +324,4 @@ async function createPaymentRequestV2(opts: {
     // Items 3 + 4: hand back the hosted URL exactly as issued — param-free.
     redirect_url: String(redirectBase),
   };
-}
-// Stitch validates the appended redirect host against the club's own Express
-// whitelist. Accepted → 200; not whitelisted → 404 (which is the "404 before
-// paying" bug). Probe the real link and pick the best variant that loads:
-//   1. ?redirect_url=<return>  (branded return, canonical)
-//   2. ?redirect_uri=<return>  (loads, but Stitch keeps its completion page)
-//   3. bare link               (always loads)
-async function pickWorkingLink(link: string, returnUrl: string): Promise<string> {
-  if (!link || !returnUrl) return link;
-  const candidates = [
-    appendExpressRedirectUrl(link, returnUrl),
-    appendExpressParam(link, "redirect_uri", returnUrl),
-  ];
-  for (const candidate of candidates) {
-    try {
-      const resp = await fetch(candidate, { method: "GET", redirect: "manual" });
-      if (resp.status < 400) return candidate;
-      console.warn(`[stitch] link variant rejected (${resp.status}):`, candidate.split("?")[1]?.slice(0, 40));
-    } catch (_) { /* network hiccup — try the next variant */ }
-  }
-  return link;
-}
-
-function appendExpressParam(link: string, key: string, value: string) {
-  try {
-    const url = new URL(link);
-    url.searchParams.delete("redirect_url");
-    url.searchParams.delete("redirect_uri");
-    url.searchParams.set(key, value);
-    return url.toString();
-  } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}${key}=${encodeURIComponent(value)}`;
-  }
 }

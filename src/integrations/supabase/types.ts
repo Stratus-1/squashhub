@@ -10031,6 +10031,7 @@ export type Database = {
             }
             Returns: Json
           }
+      get_sla_prompt_state: { Args: { _club_id: string }; Returns: Json }
       get_squash_totals: { Args: { target_user_id: string }; Returns: Json }
       get_squash_totals_by_member: {
         Args: { target_member_id: string }

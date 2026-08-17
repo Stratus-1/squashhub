@@ -36,7 +36,7 @@ const Email = ({
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>{`${clubName}: your SquashHub trial ends in ${daysRemaining} days — accept the SLA and confirm your billing preferences.`}</Preview>
+    <Preview>{`${clubName}: your SquashHub subscription starts ${billingStartDate} — trial ends in ${daysRemaining} days.`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={header}>
@@ -44,9 +44,9 @@ const Email = ({
         </Section>
         <Section style={content}>
           <Heading style={h2}>Your free trial ends in {daysRemaining} days</Heading>
-          <Text style={p}>Hi {recipientName},</Text>
+          <Text style={p}>Dear {clubName} management,</Text>
           <Text style={p}>
-            Thank you for using SquashHub at <strong>{clubName}</strong>. Your free trial period ends
+            Thank you for using {clubName} on SquashHub. Your free trial period ends
             on <strong>{trialEndDate}</strong>, and your subscription will start on{' '}
             <strong>{billingStartDate}</strong>.
           </Text>
@@ -108,7 +108,7 @@ const Email = ({
 export const template = {
   component: Email,
   subject: (d: Record<string, any>) =>
-    `${d.clubName || 'Your club'} — SquashHub trial ends ${d.trialEndDate || 'soon'}: confirm your billing preferences`,
+    `${d.clubName || 'Your club'} — SquashHub subscription starts ${d.billingStartDate || 'soon'}`,
   displayName: 'Trial Ending — Subscription Starting',
   previewData: {
     clubName: 'Riverside Squash Club',

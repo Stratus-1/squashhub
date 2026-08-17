@@ -52,7 +52,9 @@ export default function ScanPay() {
   const [visitorName, setVisitorName] = useState("");
   const [selected, setSelected] = useState<ScanItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean } | null>(null);
+  const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean } | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
   const [guestChosen, setGuestChosen] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem(GUEST_PREF_KEY) === "1",
   );

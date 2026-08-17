@@ -2451,6 +2451,14 @@ export default function LeagueGameDetail() {
             below, so they can't be accidentally re-selected (which would
             count as a substitution). */}
         {nsaLive && !setupDone && !isSubmitted && (
+          <Button
+            className="w-full h-12 font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg"
+            onClick={() => setSelectWizardOpen(true)}
+          >
+            <Users className="w-4 h-4 mr-2" /> Select players (1 → {positions.length})
+          </Button>
+        )}
+        {nsaLive && !setupDone && !isSubmitted && (
           <RosterPanel
             homeCode={fixture?.home_team_code}
             awayCode={fixture?.away_team_code}
@@ -3036,7 +3044,7 @@ export default function LeagueGameDetail() {
                                 className="text-sm font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg hover:shadow-xl hover:opacity-95 transition-all h-12 px-5 mx-auto flex"
                                 onClick={() => setSetupDone(false)}
                               >
-                                <Users className="w-4 h-4 mr-2" /> Edit Players
+                                <Users className="w-4 h-4 mr-2" /> Edit / Select Players
                               </Button>
                             )}
                           </td>
@@ -3363,6 +3371,18 @@ export default function LeagueGameDetail() {
       )}
 
       {activeMember?.id && nsaLive && (
+        <SelectLineupWizard
+          open={selectWizardOpen}
+          onOpenChange={setSelectWizardOpen}
+          homeCode={fixture?.home_team_code}
+          awayCode={fixture?.away_team_code}
+          homePlayers={nsaHomeTeam?.players || []}
+          awayPlayers={nsaAwayTeam?.players || []}
+          teamSize={positions.length}
+          initialHome={positions.map((p) => ({ code: p.homeCode, name: p.homeName }))}
+          initialAway={positions.map((p) => ({ code: p.awayCode, name: p.awayName }))}
+          onApply={handleWizardApply}
+        />
         <NsaSubmitDialog
           open={nsaDialogOpen}
           onOpenChange={setNsaDialogOpen}

@@ -181,17 +181,18 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // CANONICAL (09 Aug 2026, confirmed working — see issue log §"canonical
-    // once-off / top-up payment flow"): append `redirect_url` (with the club's
-    // validated tenant subdomain host) to the Express hosted link. Body-level
-    // redirect keys are silently dropped by Express. Do not "simplify" this.
-    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
+    // CANONICAL (09 Aug 2026): append `redirect_url` (club tenant subdomain) to
+    // the Express hosted link. BUT whether Stitch accepts that redirect host is
+    // per-club (whitelist on their side): GB accepts it, Riverside 404s. So we
+    // probe the actual link before handing it to the payer and degrade safely.
+    const redirectUrl = await pickWorkingLink(payment.link as string, safeReturnWithSession);
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
     }).eq("id", session.id);
 
     return json({ session_id: session.id, redirect_url: redirectUrl, request_id: payment.id, redirect_mode: "direct" });
+
 
 
   } catch (e: any) {

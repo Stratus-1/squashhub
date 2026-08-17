@@ -6,7 +6,7 @@
  * close the tab automatically after a few seconds.
  */
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -43,11 +43,11 @@ interface PendingSale {
 
 export default function BarPaymentSuccess() {
   const { code = "" } = useParams();
-  const navigate = useNavigate();
 
   const [status, setStatus] = useState<"verifying" | "paid" | "failed" | "no-sale">("verifying");
   const [pending, setPending] = useState<PendingSale | null>(null);
   const [countdown, setCountdown] = useState(5);
+  const [closeBlocked, setCloseBlocked] = useState(false);
   const [canCloseTab] = useState(
     () => typeof window !== "undefined" && Boolean(window.opener),
   );
@@ -130,11 +130,9 @@ export default function BarPaymentSuccess() {
   }, [status, countdown, canCloseTab]);
 
   const attemptClose = () => {
-    if (canCloseTab) {
-      window.close();
-      return;
-    }
-    navigate(`/s/${code}`, { replace: true });
+    window.close();
+    // Browsers block window.close() for tabs the script did not open.
+    setTimeout(() => setCloseBlocked(true), 300);
   };
 
   if (isLoading) {
@@ -222,28 +220,25 @@ export default function BarPaymentSuccess() {
                   <>Your payment has been received.</>
                 )}
               </p>
-              <p className="text-sm font-medium text-accent">
-                {canCloseTab ? "You can close this tab now." : "You can now return to the bar."}
-              </p>
-              {status === "paid" && canCloseTab && (
+              <p className="text-sm font-medium text-accent">Enjoy your evening!</p>
+              {status === "paid" && canCloseTab && countdown > 0 && (
                 <p className="text-xs text-muted-foreground">
                   This tab will close automatically in {countdown}s…
+                </p>
+              )}
+              {closeBlocked && (
+                <p className="text-xs text-muted-foreground">
+                  You can now close this tab.
                 </p>
               )}
             </div>
           )}
 
-          <div className="grid gap-3">
+          {status !== "verifying" && (
             <Button className="w-full gap-2" onClick={attemptClose}>
-              <ShoppingBag className="w-4 h-4" />
-              {canCloseTab ? "Close this tab" : "Done — back to bar"}
+              <ShoppingBag className="w-4 h-4" /> Close
             </Button>
-            {canCloseTab && (
-              <Button variant="ghost" className="w-full gap-2" onClick={() => navigate(`/s/${code}`, { replace: true })}>
-                <ShoppingBag className="w-4 h-4" /> Back to bar
-              </Button>
-            )}
-          </div>
+          )}
         </Card>
       </main>
     </div>

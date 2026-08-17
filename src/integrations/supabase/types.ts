@@ -3171,6 +3171,7 @@ export type Database = {
           nsa_club_id: string | null
           participation_active: boolean
           payment_gateway: string | null
+          payment_gateway_fee_percent: number | null
           payment_gateway_public_key: string | null
           peak_weekday_end: string
           peak_weekday_start: string
@@ -3278,6 +3279,7 @@ export type Database = {
           nsa_club_id?: string | null
           participation_active?: boolean
           payment_gateway?: string | null
+          payment_gateway_fee_percent?: number | null
           payment_gateway_public_key?: string | null
           peak_weekday_end?: string
           peak_weekday_start?: string
@@ -3385,6 +3387,7 @@ export type Database = {
           nsa_club_id?: string | null
           participation_active?: boolean
           payment_gateway?: string | null
+          payment_gateway_fee_percent?: number | null
           payment_gateway_public_key?: string | null
           peak_weekday_end?: string
           peak_weekday_start?: string
@@ -9458,6 +9461,7 @@ export type Database = {
         Args: { _member_id: string }
         Returns: Json
       }
+      club_gateway_fee_percent: { Args: { _club_id: string }; Returns: number }
       count_member_duplicate_hints: {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number
@@ -9891,6 +9895,16 @@ export type Database = {
       }
       person_age: { Args: { _person_id: string }; Returns: number }
       person_age_group: { Args: { _person_id: string }; Returns: string }
+      post_gateway_fee: {
+        Args: {
+          _amount: number
+          _club_id: string
+          _club_member_id?: string
+          _desc: string
+          _journal_ref: string
+        }
+        Returns: number
+      }
       post_journal: {
         Args: {
           p_club_id: string

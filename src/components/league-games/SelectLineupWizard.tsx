@@ -150,7 +150,6 @@ function SideStep({
   picks,
   onToggle,
   onClear,
-  onAddManual,
 }: {
   title: string;
   teamCode?: string | null;
@@ -160,7 +159,7 @@ function SideStep({
   picks: LineupPick[];
   onToggle: (p: NsaTeamPlayer) => void;
   onClear: () => void;
-  onAddManual: (p: NsaTeamPlayer) => void;
+  
 }) {
   const indexByCode = new Map(
     picks.map((p, i) => [(p.code || "").toUpperCase(), i + 1] as const),
@@ -191,7 +190,6 @@ function SideStep({
         </Button>
       </div>
 
-      <AddByNumber onAdd={onAddManual} />
 
 
       <div className="space-y-1 max-h-[46vh] overflow-y-auto pr-1">

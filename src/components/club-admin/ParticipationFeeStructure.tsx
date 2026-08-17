@@ -100,12 +100,22 @@ export function ParticipationFeeStructure({
 
 
       <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
-        Fees are invoiced <strong>monthly in advance</strong>, with the first invoice issued on{" "}
-        <strong>1 September 2026</strong>. Six-monthly or annual upfront payment can be requested
-        on the Subscription tab. Payment can be made by <strong>EFT</strong> or by{" "}
-        <strong>card</strong> — set your preferred method on the Subscription tab so we know how to
-        bill you.
+        Fees are invoiced <strong>monthly in advance</strong>
+        {trialEndLabel ? (
+          <>
+            {" "}— your free trial runs to <strong>{trialEndLabel}</strong>, with the first invoice
+            issued on <strong>{startLabel}</strong>.
+          </>
+        ) : (
+          <>
+            , with the first invoice issued on <strong>{startLabel}</strong>.
+          </>
+        )}{" "}
+        Six-monthly or annual upfront payment can be requested on the Subscription tab. Payment can
+        be made by <strong>EFT</strong> or by <strong>card</strong> — set your preferred method on
+        the Subscription tab so we know how to bill you.
       </p>
+
 
       <p className="text-xs text-muted-foreground italic">
         Invoiced in your club currency ({clubCurrencyName} · {clubCurrencyCode}).

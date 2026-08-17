@@ -59,3 +59,9 @@ verify_jwt = false
 
 [functions.whatsapp-inbound]
 verify_jwt = false
+
+[functions.bar-card-pay]
+verify_jwt = false
+
+[functions.bar-card-verify]
+verify_jwt = false

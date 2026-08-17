@@ -1913,10 +1913,6 @@ export default function LeagueGameDetail() {
     };
   }, [prefillLineup, fixture, existingResult]);
 
-  if (!fixture) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
-  }
-
   const isSubmittedRaw = existingResult?.status === "submitted" || existingResult?.status === "confirmed";
   const hasUnfinishedPlayablePositions = positions.some((pos) => {
     const hasPlayers = !!(pos.homeCode || pos.homeName) && !!(pos.awayCode || pos.awayName);
@@ -1958,6 +1954,14 @@ export default function LeagueGameDetail() {
     setWizardStartEmpty(true);
     setSelectWizardOpen(true);
   }, [nsaLive, setupDone, isSubmitted]);
+
+  // Keep every hook above the loading return. The fixture is undefined on the
+  // first render; conditionally reaching this effect only after it loads makes
+  // React throw "Rendered more hooks than during the previous render" and
+  // leaves Set up & mark on a blank screen.
+  if (!fixture) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  }
 
   // ---- LIVE indicator: any position has an in-progress rally or a fresh marker lock ----
   const isLiveNow = positions.some((p) => !!p.currentGame) || markerLocksFresh.size > 0;

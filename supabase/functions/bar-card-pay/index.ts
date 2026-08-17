@@ -135,6 +135,7 @@ Deno.serve(async (req) => {
         currency: "ZAR",
         payerName: (buyer_name || "Bar customer").slice(0, 40),
         merchantReference: reference,
+        returnUrl: redirectUri,
       }),
     });
     const plJson = await plResp.json().catch(() => ({}));
@@ -172,9 +173,17 @@ function withRedirect(link: string, returnUrl: string) {
 
 function sanitizeReturnUrl(raw: string | null, clubSubdomain: string, code: string) {
   const sub = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  let successSuffix = "";
+  if (raw) {
+    try {
+      successSuffix = new URL(raw).pathname.endsWith("/success") ? "/success" : "";
+    } catch {
+      successSuffix = raw.endsWith("/success") ? "/success" : "";
+    }
+  }
   const fallback = sub
-    ? `https://${sub}.squashhub.co.za/s/${code}`
-    : `${PUBLIC_APP_ORIGIN}/s/${code}`;
+    ? `https://${sub}.squashhub.co.za/s/${code}${successSuffix}`
+    : `${PUBLIC_APP_ORIGIN}/s/${code}${successSuffix}`;
   if (!raw) return fallback;
   try {
     const parsed = new URL(raw);

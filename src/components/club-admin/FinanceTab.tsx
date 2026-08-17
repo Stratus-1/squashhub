@@ -1136,7 +1136,24 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               </div>
             </div>
 
+            {txMethod === "card" && (
+              <div>
+                <Label className="text-xs">Card method</Label>
+                <Select value={txCardMethod} onValueChange={v => setTxCardMethod(v as CardMethod)}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(CARD_METHOD_LABELS) as CardMethod[]).map(m => (
+                      <SelectItem key={m} value={m}>
+                        {CARD_METHOD_LABELS[m]} ({gatewayFeePercent(club, m)}%)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
+
               <Label className="text-xs">Amount ({currencySymbol})</Label>
               <Input type="number" step="0.01" min="0" placeholder="0.00" value={txAmount} onChange={e => setTxAmount(e.target.value)} className="h-9 text-xs" />
               {txMethod === "card" && txAmount && parseFloat(txAmount) > 0 && (

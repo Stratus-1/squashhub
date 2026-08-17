@@ -552,7 +552,7 @@ export default function Bookings() {
           player_a:player_a_member_id(name, user_id, profiles:user_id(name)),
           player_b:player_b_member_id(name, user_id, profiles:user_id(name)),
           group_number,
-          champ:champ_id(name, scoring_mode, match_duration_minutes, group_durations)
+          champ:champ_id(name, match_duration_minutes, group_durations, rules:tournament_rules(scoring_mode))
         `)
         .eq("scheduled_date", dateStr)
         .not("court_id", "is", null)
@@ -563,7 +563,8 @@ export default function Bookings() {
       return (data || []).map((m: any) => {
         const tournamentName = m.champ?.name || "Tournament";
         const start = String(m.scheduled_time || "").slice(0, 5);
-        const isBellsMode = m.champ?.scoring_mode === "time_capped_points";
+        const champRules = Array.isArray(m.champ?.rules) ? m.champ?.rules[0] : m.champ?.rules;
+        const isBellsMode = champRules?.scoring_mode === "time_capped_points";
         const groupDurations = (m.champ?.group_durations || {}) as Record<string, number>;
         const duration = isBellsMode
           ? Number(groupDurations[String(m.group_number)] || m.champ?.match_duration_minutes) || 30

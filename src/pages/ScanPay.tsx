@@ -145,12 +145,19 @@ export default function ScanPay() {
     });
 
   // Returning from the Stitch hosted card page — confirm the payment landed.
+  // This must NEVER block the menu: the bar list renders immediately and the
+  // check runs quietly in the background.
   useEffect(() => {
     const raw = typeof window !== "undefined" ? localStorage.getItem(PENDING_SALE_KEY) : null;
     if (!raw) return;
-    let pending: { saleId: string; itemName: string; total: number; code: string } | null = null;
+    let pending: { saleId: string; itemName: string; total: number; code: string; ts?: number } | null = null;
     try { pending = JSON.parse(raw); } catch { localStorage.removeItem(PENDING_SALE_KEY); return; }
     if (!pending?.saleId || pending.code !== code) return;
+    // Stale leftovers (older than 15 min) are dropped — they only slow the bar down.
+    if (pending.ts && Date.now() - pending.ts > 15 * 60 * 1000) {
+      localStorage.removeItem(PENDING_SALE_KEY);
+      return;
+    }
 
     let cancelled = false;
     setVerifying(true);
@@ -159,6 +166,7 @@ export default function ScanPay() {
       const { data: res } = await supabase.functions.invoke("bar-card-verify", {
         body: { sale_id: pending!.saleId },
       });
+      if (cancelled) return;
       const status = (res as any)?.status;
       if (status === "paid") {
         localStorage.removeItem(PENDING_SALE_KEY);
@@ -166,11 +174,10 @@ export default function ScanPay() {
         setDone({ total: pending!.total, itemName: pending!.itemName, onAccount: false, cardPaid: true });
         return;
       }
-      if (status === "failed" || attempt >= 6) {
+      if (status === "failed" || attempt >= 3) {
         localStorage.removeItem(PENDING_SALE_KEY);
         setVerifying(false);
         if (status === "failed") toast.error("That card payment did not go through.");
-        else toast.message("We're still waiting for the bank to confirm your card payment.");
         return;
       }
       setTimeout(() => poll(attempt + 1), 4000);
@@ -178,6 +185,7 @@ export default function ScanPay() {
     poll();
     return () => { cancelled = true; };
   }, [code]);
+
 
   const continueAsGuest = () => {
     localStorage.setItem(GUEST_PREF_KEY, "1");

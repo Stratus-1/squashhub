@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { Beer, Wine, Coffee, Package, Plus, Minus, ShoppingCart, Receipt, Store, User, Users, CreditCard } from "lucide-react";
+import { Beer, Wine, Coffee, Package, Plus, Minus, ShoppingCart, Receipt, Store, User, Users, CreditCard, QrCode } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
+import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -85,6 +86,7 @@ export default function HonestyBar() {
   const [submitting, setSubmitting] = useState(false);
   const [visitorSaleOpen, setVisitorSaleOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("shop");
+  const [qrOpen, setQrOpen] = useState(false);
 
   const { data: items = [] } = useQuery({
     queryKey: ["bar-items", clubId],
@@ -219,6 +221,16 @@ export default function HonestyBar() {
             </Tooltip>
           </TooltipProvider>
         )}
+
+        <Button
+          variant="outline"
+          className="w-full h-10 gap-2 text-sm"
+          onClick={() => setQrOpen(true)}
+        >
+          <QrCode className="w-4 h-4" />
+          Show / share bar QR code
+        </Button>
+
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid" style={{ gridTemplateColumns: canSeeVisitors ? "1fr 1fr 1fr" : "1fr 1fr" }}>
@@ -384,6 +396,16 @@ export default function HonestyBar() {
         clubId={clubId!}
         loggedByMemberId={memberId}
       />
+
+      <BarMenuQrDialog
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        clubId={clubId}
+        clubName={club?.name}
+        subdomain={(club as any)?.subdomain}
+      />
+
+
 
       <BackToDashboard />
     </div>

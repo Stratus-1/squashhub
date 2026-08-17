@@ -27,15 +27,29 @@ Deno.serve(async (req) => {
     if (sale.payment_status === "paid") return json({ status: "paid" });
     if (!sale.payment_reference) return json({ status: sale.payment_status || "pending" });
 
+    const { data: club } = await admin
+      .from("clubs").select("payment_gateway").eq("id", sale.club_id).maybeSingle();
+    const gateway = String(club?.payment_gateway || "stitch").toLowerCase();
+
     const { data: secrets } = await admin
-      .from("club_secrets").select("payment_gateway_credentials").eq("club_id", sale.club_id).maybeSingle();
+      .from("club_secrets")
+      .select("payment_gateway_credentials, payment_gateway_secret_key")
+      .eq("club_id", sale.club_id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
     const clientId = (creds.client_id || "").trim();
     const clientSecret = (creds.client_secret || "").trim();
-    if (!clientId || !clientSecret) return json({ status: "pending" });
+    const yocoSecretKey = String(creds.secret_key || (secrets as any)?.payment_gateway_secret_key || "").trim();
 
-    const state = await lookupStatus(clientId, clientSecret, sale.payment_reference);
-    const paid = ["PAID", "COMPLETE", "COMPLETED", "PAYMENTINITIATIONREQUESTCOMPLETED"].includes(state);
+    let state = "PENDING";
+    if (gateway === "yoco") {
+      if (!yocoSecretKey) return json({ status: "pending" });
+      state = await lookupYocoStatus(yocoSecretKey, sale.payment_reference);
+    } else {
+      if (!clientId || !clientSecret) return json({ status: "pending" });
+      state = await lookupStatus(clientId, clientSecret, sale.payment_reference);
+    }
+    const paid = ["PAID", "COMPLETE", "COMPLETED", "SUCCESSFUL", "PAYMENTINITIATIONREQUESTCOMPLETED"].includes(state);
+
     const failed = ["EXPIRED", "CANCELLED", "CANCELED", "FAILED", "PAYMENTINITIATIONREQUESTCANCELLED", "PAYMENTINITIATIONREQUESTEXPIRED"].includes(state);
 
     const next = paid ? "paid" : failed ? "failed" : "pending";
@@ -46,7 +60,7 @@ Deno.serve(async (req) => {
         .eq("club_id", sale.club_id)
         .eq("payment_reference", sale.payment_reference);
     }
-    return json({ status: next, stitch_state: state, total: Number(sale.total) });
+    return json({ status: next, gateway, provider_state: state, stitch_state: state, total: Number(sale.total) });
   } catch (e: any) {
     console.error("bar-card-verify error:", e);
     return json({ error: e?.message || "Unexpected error" });
@@ -99,6 +113,24 @@ async function lookupStatus(clientId: string, clientSecret: string, reference: s
     const status = data?.data?.payment?.status || data?.data?.status || data?.status;
     return String(status || "PENDING").toUpperCase();
   } catch {
+    return "PENDING";
+  }
+}
+
+async function lookupYocoStatus(secretKey: string, checkoutId: string) {
+  try {
+    const resp = await fetch(
+      `https://payments.yoco.com/api/checkouts/${encodeURIComponent(checkoutId)}`,
+      { headers: { Authorization: `Bearer ${secretKey}` } },
+    );
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      console.warn("Yoco bar verify failed", resp.status, data);
+      return "PENDING";
+    }
+    return String(data?.status || "PENDING").toUpperCase();
+  } catch (err) {
+    console.warn("Yoco bar verify error", (err as Error)?.message || err);
     return "PENDING";
   }
 }

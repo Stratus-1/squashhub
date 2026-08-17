@@ -46,6 +46,7 @@ import SetPassword from "./pages/SetPassword";
 import OAuthConsent from "./pages/OAuthConsent";
 import PayReturn from "./pages/PayReturn";
 import ScanPay from "./pages/ScanPay";
+import BarPaymentSuccess from "./pages/BarPaymentSuccess";
 import StitchPaymentBridge from "./pages/StitchPaymentBridge";
 
 import StravaCallback from "./pages/StravaCallback";

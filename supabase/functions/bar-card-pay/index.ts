@@ -183,11 +183,10 @@ Deno.serve(async (req) => {
     }
     await admin.from("bar_visitor_sales")
       .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
-    // Bar purchases deliberately do not redirect out of Stitch. The original
-    // Scan-to-Pay tab stays open and polls the sale, then shows the branded
-    // thank-you page. Adding redirect_url to this Express link makes some
-    // tenant payment links return Stitch's 404 before checkout even opens.
-    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: String(link) });
+    // Match the proven member once-off flow: Express ignores returnUrl in the
+    // request body but honours redirect_url on the hosted link. Checkout runs
+    // in the current tab and returns directly to the terminal success route.
+    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: appendRedirectUrl(String(link), redirectUri) });
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
     return json({ error: e?.message || "Unexpected error" });
@@ -226,6 +225,18 @@ function sanitizeReturnUrl(raw: string | null, clubSubdomain: string, code: stri
     return parsed.toString();
   } catch {
     return fallback;
+  }
+}
+
+function appendRedirectUrl(link: string, returnUrl: string) {
+  try {
+    const url = new URL(link);
+    url.searchParams.delete("redirect_uri");
+    url.searchParams.set("redirect_url", returnUrl);
+    return url.toString();
+  } catch {
+    const separator = link.includes("?") ? "&" : "?";
+    return `${link}${separator}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
 }
 
@@ -273,7 +284,5 @@ async function createPaymentRequest(opts: {
   if (!resp.ok || !data?.id || !redirectBase) {
     throw new Error(data?.detail || data?.message || `payment request HTTP ${resp.status}`);
   }
-  // Keep the provider URL untouched. The original bar tab owns verification
-  // and confirmation, so this hosted checkout must not carry a return URL.
-  return { id: String(data.id), redirect_url: String(redirectBase) };
+  return { id: String(data.id), redirect_url: appendRedirectUrl(String(redirectBase), opts.redirectUri) };
 }

@@ -19,11 +19,6 @@ import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart, X } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
-import {
-  prepareStitchPaymentWindow,
-  openStitchPaymentWindow,
-  discardPreparedStitchPaymentWindow,
-} from "@/lib/stitch-checkout";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -198,14 +193,10 @@ export default function ScanPay() {
     navigate(`/auth?redirectTo=${encodeURIComponent(next)}`);
   };
 
-  /** Real card checkout — sends the payer to the club's Stitch hosted page. */
+  /** Real card checkout — hands the current tab to the club's hosted checkout. */
   const payByCardNow = async () => {
     if (cartLines.length === 0) return;
     setSubmitting(true);
-    // Reserve the tab while we still have the user gesture — Stitch Express
-    // parks payers on its own completion screen, so we keep the app tab alive
-    // and show our branded thank-you page there instead.
-    prepareStitchPaymentWindow();
     try {
       const buyerName = member?.name || visitorName.trim() || null;
       const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
@@ -227,14 +218,10 @@ export default function ScanPay() {
           JSON.stringify({ saleId, itemName: cartLabel, total, code, ts: Date.now() }),
         );
       }
-      const keptAppTab = await openStitchPaymentWindow(redirect);
-      if (keptAppTab) {
-        setCart({});
-        setSubmitting(false);
-        navigate(`/s/${code}/success`);
-      }
+      // Use one tab only. The gateway sends this same tab directly to the
+      // terminal success route, avoiding a provider tab plus an uncloseable QR tab.
+      window.location.assign(redirect);
     } catch (err: any) {
-      discardPreparedStitchPaymentWindow();
       toast.error(err.message || "Could not start the card payment");
       setSubmitting(false);
     }

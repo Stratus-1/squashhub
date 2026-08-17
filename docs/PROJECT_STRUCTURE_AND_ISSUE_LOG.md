@@ -88,7 +88,19 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
-### 2026-08-17 · Bar checkout showed two completion experiences
+### 2026-08-17 · Bar checkout trapped the payer in a two-tab close loop
+- **Symptom:** Stitch showed Payment complete; closing it exposed an app Close action that the browser
+  refused to execute, leaving the payer cycling between two terminal screens.
+- **Finding:** The bar flow intentionally stripped Stitch's return URL, opened checkout in a second tab,
+  and relied on JavaScript to close browser tabs. Mobile browsers suspend the original tab during hosted
+  checkout and prohibit scripts from closing a user-opened QR tab.
+- **Fix:** Bar checkout now follows the proven once-off pattern: the current tab opens the hosted page,
+  the exact tenant success URL is supplied as `redirect_url`, and completion lands directly on the plain
+  thank-you page. The impossible Close action has been removed.
+- **Guard:** Scan-to-Pay must remain a single-tab flow. Never use popup polling or `window.close()` for its
+  completion experience; the terminal page contains only the payment message and no navigation.
+
+### 2026-08-17 · Bar checkout showed two completion experiences (SUPERSEDED)
 - **Symptom:** After payment, the customer saw Stitch's completion page and then a branded club/app
   confirmation whose Close button could not close the original QR-scanner tab.
 - **Finding:** The payment provider owns its hosted tab, while browsers prohibit JavaScript from closing

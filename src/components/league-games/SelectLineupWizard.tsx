@@ -111,7 +111,7 @@ function AddByNumberInline({
         <span className="text-xs font-semibold uppercase tracking-wide">
           Insert {side === "home" ? "home" : "visitors"} player
         </span>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onOpenChange(false)}>
+        <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Close" onClick={() => onOpenChange(false)}>
           ×
         </Button>
       </div>

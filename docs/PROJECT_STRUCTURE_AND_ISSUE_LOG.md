@@ -88,6 +88,16 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-17 · Bar payment success “Close this tab” did nothing
+- **Symptom:** After closing Stitch's completion screen, the branded bar payment confirmation appeared,
+  but its **Close this tab** button did not close the original QR scanner tab.
+- **Finding:** Browsers only allow JavaScript to close tabs that were opened by JavaScript. The branded
+  confirmation is deliberately shown in the original scanner tab, so `window.close()` is blocked there.
+- **Fix:** The confirmation now detects whether it is in a script-opened tab. Supported tabs retain the
+  close action and countdown; normal QR tabs show a single **Done — back to bar** action instead.
+- **Guard:** Never present `window.close()` as the primary action on a user-opened payment return page;
+  provide an in-app destination when browser tab closure is unavailable.
+
 ### 2026-08-17 · League “Set up & mark” opened a blank screen
 - **Symptom:** Nelspruit players opening an active internal-league fixture and choosing **Set up & mark**
   landed on a blank page with no way back.

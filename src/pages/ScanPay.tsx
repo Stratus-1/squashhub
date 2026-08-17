@@ -139,6 +139,40 @@ export default function ScanPay() {
     }
   };
 
+  /** Real card checkout — sends the payer to the club's Stitch hosted page. */
+  const payByCardNow = async () => {
+    if (!item) return;
+    setSubmitting(true);
+    try {
+      const buyerName = member?.name || visitorName.trim() || null;
+      const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
+        body: {
+          code,
+          bar_item_id: item.id,
+          quantity: qty,
+          buyer_name: buyerName,
+          return_url: `${window.location.origin}/s/${code}`,
+        },
+      });
+      if (error) throw error;
+      if ((res as any)?.error) throw new Error((res as any).error);
+      const redirect = (res as any)?.redirect_url;
+      const saleId = (res as any)?.sale_id;
+      if (!redirect) throw new Error("Card payment could not be started");
+      if (saleId) {
+        localStorage.setItem(
+          PENDING_SALE_KEY,
+          JSON.stringify({ saleId, itemName: item.name, total, code }),
+        );
+      }
+      window.location.href = redirect;
+    } catch (err: any) {
+      toast.error(err.message || "Could not start the card payment");
+      setSubmitting(false);
+    }
+  };
+
+
   const chargeToAccount = async () => {
     if (!item || !member || !club) return;
     setSubmitting(true);

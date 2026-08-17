@@ -17,6 +17,7 @@ import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
 import { CaptainInviteTeamCard } from "@/components/CaptainInviteTeamCard";
 import { SubscriptionDuePrompt } from "@/components/club-admin/SubscriptionDuePrompt";
+import { SlaOutstandingPrompt } from "@/components/club-admin/SlaOutstandingPrompt";
 import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
@@ -640,6 +641,9 @@ export default function Dashboard() {
               <CaptainInviteTeamCard clubMemberId={myClubMember.id} />
             </div>
           )}
+          {clubId && (
+            <div className="mt-3"><SlaOutstandingPrompt clubId={clubId} /></div>
+          )}
           {(isClubAdmin || isSuperAdmin) && clubId && (
             <div className="mt-3"><SubscriptionDuePrompt clubId={clubId} /></div>
           )}
@@ -1125,6 +1129,12 @@ export default function Dashboard() {
         >
           <SubscriptionDuePrompt clubId={clubId} />
         </motion.div>
+      )}
+
+      {clubId && (
+        <div className="px-4 mt-3">
+          <SlaOutstandingPrompt clubId={clubId} />
+        </div>
       )}
 
       {(isClubAdmin || isSuperAdmin) && clubId && (

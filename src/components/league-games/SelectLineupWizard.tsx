@@ -1,0 +1,268 @@
+/**
+ * SelectLineupWizard — mobile-first, tap-to-pick lineup selection.
+ *
+ * Step 1: Home team — tap players in order (1 → teamSize).
+ * Step 2: Visitors team — same.
+ *
+ * Pre-filled lineups are shown as the starting selection, but EVERY squad
+ * player stays tappable so a captain standing at the club on a phone can
+ * clear and re-pick the whole team in a few taps.
+ */
+
+import { useEffect, useMemo, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { Check, RotateCcw, ArrowRight, ArrowLeft, Users } from "lucide-react";
+import type { NsaTeamPlayer } from "@/hooks/use-nsa";
+
+export type LineupPick = { code: string; name: string };
+
+export interface SelectLineupWizardProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  homeCode?: string | null;
+  awayCode?: string | null;
+  homePlayers: NsaTeamPlayer[];
+  awayPlayers: NsaTeamPlayer[];
+  teamSize: number;
+  /** Current lineup (prefill) — same order as positions. */
+  initialHome: LineupPick[];
+  initialAway: LineupPick[];
+  onApply: (home: LineupPick[], away: LineupPick[]) => void;
+}
+
+const fullName = (p: NsaTeamPlayer) =>
+  `${p.name || ""} ${p.surname || ""}`.trim() || p.code || "—";
+
+function SideStep({
+  title,
+  teamCode,
+  tone,
+  players,
+  teamSize,
+  picks,
+  onToggle,
+  onClear,
+}: {
+  title: string;
+  teamCode?: string | null;
+  tone: "home" | "away";
+  players: NsaTeamPlayer[];
+  teamSize: number;
+  picks: LineupPick[];
+  onToggle: (p: NsaTeamPlayer) => void;
+  onClear: () => void;
+}) {
+  const indexByCode = new Map(
+    picks.map((p, i) => [(p.code || "").toUpperCase(), i + 1] as const),
+  );
+
+  return (
+    <div className="space-y-2">
+      <div
+        className={cn(
+          "flex items-center justify-between px-3 py-2 rounded-md border-2",
+          tone === "home"
+            ? "bg-primary text-primary-foreground border-primary"
+            : "bg-accent text-accent-foreground border-accent",
+        )}
+      >
+        <span className="text-base font-black uppercase tracking-widest">{title}</span>
+        <span className="text-xs font-mono font-black bg-background/25 px-2 py-0.5 rounded border border-background/30">
+          {teamCode || "—"}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground leading-snug">
+          Tap players in order — 1 to {teamSize}. Tap again to unpick.
+        </p>
+        <Button variant="ghost" size="sm" className="text-xs shrink-0" onClick={onClear}>
+          <RotateCcw className="w-3.5 h-3.5 mr-1" /> Clear
+        </Button>
+      </div>
+
+      <div className="space-y-1 max-h-[46vh] overflow-y-auto pr-1">
+        {players.length === 0 && (
+          <div className="text-xs italic text-muted-foreground px-1 py-3">
+            No squad players available for this team.
+          </div>
+        )}
+        {players.map((p) => {
+          const code = (p.code || "").toUpperCase();
+          const pos = indexByCode.get(code);
+          const picked = !!pos;
+          const full = teamSize > 0 && picks.length >= teamSize && !picked;
+          return (
+            <button
+              key={code || fullName(p)}
+              type="button"
+              onClick={() => onToggle(p)}
+              disabled={full}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-3 rounded-lg border text-left transition-colors",
+                picked
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-background hover:bg-muted/60",
+                full && "opacity-40",
+              )}
+            >
+              <span
+                className={cn(
+                  "w-8 h-8 shrink-0 rounded-full grid place-items-center text-sm font-black border",
+                  picked
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted text-muted-foreground border-border",
+                )}
+              >
+                {pos ?? "·"}
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-semibold leading-tight break-words">
+                  {fullName(p)}
+                </span>
+                <span className="block font-mono text-[10px] text-muted-foreground leading-tight">
+                  {p.code}
+                </span>
+              </span>
+              {picked && <Check className="w-4 h-4 text-primary shrink-0" />}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap gap-1">
+        {Array.from({ length: teamSize }).map((_, i) => (
+          <Badge
+            key={i}
+            variant={picks[i] ? "default" : "outline"}
+            className="text-[10px] max-w-full truncate"
+          >
+            {i + 1}. {picks[i]?.name || "—"}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function SelectLineupWizard({
+  open,
+  onOpenChange,
+  homeCode,
+  awayCode,
+  homePlayers,
+  awayPlayers,
+  teamSize,
+  initialHome,
+  initialAway,
+  onApply,
+}: SelectLineupWizardProps) {
+  const [step, setStep] = useState<"home" | "away">("home");
+  const [home, setHome] = useState<LineupPick[]>([]);
+  const [away, setAway] = useState<LineupPick[]>([]);
+
+  // Seed from the current lineup each time the wizard opens.
+  useEffect(() => {
+    if (!open) return;
+    setStep("home");
+    setHome(initialHome.filter((p) => p.code || p.name));
+    setAway(initialAway.filter((p) => p.code || p.name));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const toggle = (side: "home" | "away") => (p: NsaTeamPlayer) => {
+    const code = (p.code || "").toUpperCase();
+    const setter = side === "home" ? setHome : setAway;
+    setter((prev) => {
+      const idx = prev.findIndex((x) => (x.code || "").toUpperCase() === code);
+      if (idx >= 0) return prev.filter((_, i) => i !== idx);
+      if (prev.length >= teamSize) return prev;
+      return [...prev, { code, name: fullName(p) }];
+    });
+  };
+
+  const activePicks = step === "home" ? home : away;
+  const remaining = Math.max(0, teamSize - activePicks.length);
+
+  const stepTitle = useMemo(
+    () => (step === "home" ? "Step 1 of 2 · Home team" : "Step 2 of 2 · Visitors team"),
+    [step],
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Users className="w-4 h-4" /> Select players
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            {stepTitle} — {remaining > 0 ? `${remaining} still to pick` : "team complete"}
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === "home" ? (
+          <SideStep
+            title="Home"
+            teamCode={homeCode}
+            tone="home"
+            players={homePlayers}
+            teamSize={teamSize}
+            picks={home}
+            onToggle={toggle("home")}
+            onClear={() => setHome([])}
+          />
+        ) : (
+          <SideStep
+            title="Visitors"
+            teamCode={awayCode}
+            tone="away"
+            players={awayPlayers}
+            teamSize={teamSize}
+            picks={away}
+            onToggle={toggle("away")}
+            onClear={() => setAway([])}
+          />
+        )}
+
+        <DialogFooter className="flex-row gap-2 sm:justify-between">
+          {step === "away" ? (
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep("home")}>
+              <ArrowLeft className="w-4 h-4 mr-1" /> Home team
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+          )}
+          {step === "home" ? (
+            <Button size="sm" className="flex-1" onClick={() => setStep("away")}>
+              Visitors <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => {
+                onApply(home, away);
+                onOpenChange(false);
+              }}
+            >
+              <Check className="w-4 h-4 mr-1" /> Apply lineup
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

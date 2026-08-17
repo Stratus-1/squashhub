@@ -63,22 +63,25 @@ function AddByNumberInline({
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [looking, setLooking] = useState(false);
+  const [found, setFound] = useState<string | null>(null);
 
   const lookup = async () => {
     const c = code.trim().toUpperCase();
     if (!c) return;
     setLooking(true);
+    setFound(null);
     try {
       const { data } = await supabase
         .from("member_association_affiliations")
         .select("league_association_number, club_members(name)")
         .ilike("league_association_number", c)
         .limit(1);
-      const found = (data as any)?.[0]?.club_members?.name as string | undefined;
-      if (found) {
-        setName(found);
-        toast({ title: "Player found", description: `${c} — ${found}` });
+      const hit = (data as any)?.[0]?.club_members?.name as string | undefined;
+      if (hit) {
+        setName(hit);
+        setFound(hit);
       } else {
+        setFound(null);
         toast({
           title: "Not found",
           description: "No member with that number — type the name manually.",
@@ -101,12 +104,13 @@ function AddByNumberInline({
     });
     setCode("");
     setName("");
+    setFound(null);
   };
 
   if (!open) return null;
 
   return (
-    <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
+    <div className="rounded-lg border-2 border-primary/50 bg-primary/5 p-3 space-y-2 shadow-md">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wide">
           Insert {side === "home" ? "home" : "visitors"} player
@@ -116,30 +120,61 @@ function AddByNumberInline({
         </Button>
       </div>
       <div className="flex gap-2">
-        <Input
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="NSF / league number"
-          className="h-9 text-sm font-mono"
-          maxLength={20}
-        />
+        <div className="relative flex-1">
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-muted-foreground">
+            NSF
+          </span>
+          <Input
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                lookup();
+              }
+            }}
+            placeholder="1234"
+            inputMode="numeric"
+            className="h-9 text-sm font-mono pl-11"
+            maxLength={20}
+          />
+        </div>
         <Button variant="secondary" size="sm" onClick={lookup} disabled={looking || !code.trim()}>
           {looking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Find"}
         </Button>
       </div>
+
+      {found && (
+        <div className="flex items-center justify-between gap-2 rounded-md border border-primary/40 bg-background px-2 py-1.5">
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Found</p>
+            <p className="text-sm font-semibold truncate">{found}</p>
+          </div>
+          <Button size="sm" className="text-xs shrink-0" onClick={add}>
+            <UserPlus className="w-3.5 h-3.5 mr-1" /> Add to squad
+          </Button>
+        </div>
+      )}
+
       <Input
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={(e) => {
+          setName(e.target.value);
+          setFound(null);
+        }}
         placeholder="Player name"
         className="h-9 text-sm"
         maxLength={80}
       />
-      <Button size="sm" className="w-full text-xs" onClick={add} disabled={!code.trim() && !name.trim()}>
-        <UserPlus className="w-3.5 h-3.5 mr-1" /> Add & pick player
-      </Button>
+      {!found && (
+        <Button size="sm" className="w-full text-xs" onClick={add} disabled={!code.trim() && !name.trim()}>
+          <UserPlus className="w-3.5 h-3.5 mr-1" /> Add & pick player
+        </Button>
+      )}
     </div>
   );
 }
+
 
 function SideStep({
   title,
@@ -329,6 +364,15 @@ export function SelectLineupWizard({
           </DialogDescription>
         </DialogHeader>
 
+        <div className="sticky top-0 z-10 bg-background">
+          <AddByNumberInline
+            open={addingPlayer}
+            onOpenChange={setAddingPlayer}
+            side={step}
+            onAdd={addManual(step)}
+          />
+        </div>
+
         {step === "home" ? (
           <SideStep
             title="Home"
@@ -353,12 +397,6 @@ export function SelectLineupWizard({
           />
         )}
 
-        <AddByNumberInline
-          open={addingPlayer}
-          onOpenChange={setAddingPlayer}
-          side={step}
-          onAdd={addManual(step)}
-        />
 
         <DialogFooter className="flex-row gap-2 sm:justify-between">
           {step === "away" ? (

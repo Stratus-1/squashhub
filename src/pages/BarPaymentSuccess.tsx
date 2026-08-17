@@ -55,9 +55,12 @@ export default function BarPaymentSuccess() {
   const { data, isLoading } = useQuery({
     queryKey: ["scan-code", code],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("resolve_qr_short_code", { _code: code });
+      const { data, error } = await supabase.rpc(
+        "resolve_qr_short_code" as never,
+        { _code: code } as never,
+      );
       if (error) throw error;
-      return data as ScanPayload;
+      return data as unknown as ScanPayload;
     },
     enabled: !!code,
   });
@@ -94,7 +97,7 @@ export default function BarPaymentSuccess() {
       const { data: res } = await supabase.functions.invoke("bar-card-verify", {
         body: { sale_id: parsed.saleId },
       });
-      const st = (res as any)?.status;
+      const st = (res as { status?: string } | null)?.status;
       if (st === "paid") {
         localStorage.removeItem(PENDING_SALE_KEY);
         void closeStitchPaymentWindow();

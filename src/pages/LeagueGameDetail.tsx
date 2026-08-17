@@ -1151,16 +1151,19 @@ export default function LeagueGameDetail() {
 
   // Guided "Select players" wizard → replace the whole lineup in one shot.
   const handleWizardApply = useCallback((home: LineupPick[], away: LineupPick[]) => {
-    setPositions((prev) => prev.map((p, i) => ({
+    const nextPositions = positions.map((p, i) => ({
       ...p,
       homeCode: home[i]?.code || "",
       homeName: home[i]?.name || "",
       awayCode: away[i]?.code || "",
       awayName: away[i]?.name || "",
-    })));
+    }));
+    setPositions(nextPositions);
     setExcludedFromGame({ home: {}, away: {} });
     toast.success("Lineup updated");
-  }, []);
+    // Auto-save so the user lands directly on the scoring screen after selection.
+    handleSaveSetup(nextPositions);
+  }, [positions, handleSaveSetup]);
 
   // Drag a roster player onto a specific H/V slot. If the slot is occupied,
   // the new player overwrites it (the displaced player simply returns to the

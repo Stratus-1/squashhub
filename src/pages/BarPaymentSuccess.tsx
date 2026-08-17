@@ -220,7 +220,7 @@ export default function BarPaymentSuccess() {
                   <>Your payment has been received.</>
                 )}
               </p>
-              <p className="text-sm font-medium text-accent">Enjoy your evening!</p>
+              <p className="text-sm font-medium text-accent">Enjoy the squash!</p>
               {status === "paid" && canCloseTab && countdown > 0 && (
                 <p className="text-xs text-muted-foreground">
                   This tab will close automatically in {countdown}s…

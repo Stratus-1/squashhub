@@ -272,6 +272,9 @@ async function createPaymentRequest(opts: {
       expireAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
       payer: { identifier: opts.payerId, fullName: opts.payerName.trim().padEnd(3, " ") },
       metadata: { squashhubBarSale: opts.payerId },
+      // The return destination belongs in the REQUEST BODY. Query params on the
+      // hosted interaction URL are ignored (and `redirect_url` even 404s it).
+      redirectUrl: opts.redirectUri,
       paymentMethods: {
         eft: { enabled: false },
         card: { enabled: true },
@@ -284,5 +287,6 @@ async function createPaymentRequest(opts: {
   if (!resp.ok || !data?.id || !redirectBase) {
     throw new Error(data?.detail || data?.message || `payment request HTTP ${resp.status}`);
   }
-  return { id: String(data.id), redirect_url: appendRedirectUrl(String(redirectBase), opts.redirectUri) };
+  // Hand back the hosted URL exactly as Stitch issued it — never append params.
+  return { id: String(data.id), redirect_url: String(redirectBase) };
 }

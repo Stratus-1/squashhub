@@ -340,6 +340,9 @@ async function createPaymentRequestV2(opts: {
       fullName: opts.payerName.trim(),
     },
     metadata: { squashhubSession: opts.merchantReference },
+    // Item 1: the return destination goes in the BODY of the payment request.
+    // Query params on the hosted interaction URL are ignored by Stitch.
+    redirectUrl: opts.redirectUri,
     paymentMethods: {
       eft: isCardOnly ? { enabled: false } : {
         enabled: true,

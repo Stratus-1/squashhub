@@ -182,11 +182,11 @@ Deno.serve(async (req) => {
     }
     await admin.from("bar_visitor_sales")
       .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
-    // Match the proven Gordon's Bay member top-up flow exactly: do not send a
-    // body-level returnUrl that can override the hosted checkout behaviour.
-    // Express receives the return destination only through redirect_url on the
-    // fresh hosted link, then returns this same tab to the terminal route.
-    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: appendRedirectUrl(String(link), redirectUri) });
+    // Express hosted links are param-free: `redirect_url` 404s the link and
+    // `redirect_uri` is silently ignored, so the payer lands on Stitch's own
+    // completion page. Nothing we can append changes that — the branded return
+    // only comes from the payment-request API above. Return the link as issued.
+    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: String(link) });
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
     return json({ error: e?.message || "Unexpected error" });

@@ -184,7 +184,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               <QrCode className="w-3.5 h-3.5 mr-1" /> QR labels
             </Button>
           </Card>
-          <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
+          <ItemManager clubId={clubId} items={items} loading={itemsLoading} onQrLabels={() => setQrOpen(true)} />
         </div>
       )}
 
@@ -313,7 +313,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
 
 /* ─── Item Manager with edit support ─── */
-function ItemManager({ clubId, items, loading }: { clubId: string; items: BarItem[]; loading: boolean }) {
+function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; items: BarItem[]; loading: boolean; onQrLabels?: () => void }) {
   const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
@@ -478,12 +478,20 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
     <Card className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Bar Items ({items.length})</h3>
-        {!adding && !editItem && (
-          <Button size="sm" variant="outline" onClick={() => { setAdding(true); resetForm(); }}>
-            <Plus className="w-3.5 h-3.5 mr-1" />Add Item
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {onQrLabels && (
+            <Button size="sm" variant="outline" onClick={onQrLabels}>
+              <QrCode className="w-3.5 h-3.5 mr-1" />QR labels
+            </Button>
+          )}
+          {!adding && !editItem && (
+            <Button size="sm" variant="outline" onClick={() => { setAdding(true); resetForm(); }}>
+              <Plus className="w-3.5 h-3.5 mr-1" />Add Item
+            </Button>
+          )}
+        </div>
       </div>
+
 
       {(adding || editItem) && itemForm}
 

@@ -112,14 +112,25 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
 - **Guard:** Scan-to-Pay completion must remain plain and terminal: no logos, return-to-bar navigation,
   amount breakdown, automatic redirect, or promise that a user-opened browser tab can be force-closed.
 
-### 2026-08-17 · Bar checkout returned 404 before payment
+### 2026-08-17 · Bar Express return corrected to Stitch's supported parameter
+- **Symptom:** Successful bar card payments still stopped on Stitch's **Payment complete** page even
+  though normal Gordon's Bay top-ups returned correctly to SquashHub.
+- **Finding:** A fresh bar link with `redirect_url` returned HTTP 404, while the same link with Stitch's
+  documented `redirect_uri` returned HTTP 200. The bar helper was explicitly deleting the supported
+  parameter and replacing it with the invalid spelling.
+- **Fix:** Removed the body-level `returnUrl` and changed the hosted link to use only the validated tenant
+  success URL as `redirect_uri`. A fresh Riverside checkout link was then confirmed reachable.
+- **Guard:** Express once-off payments must have one return instruction only: the hosted link's
+  `redirect_uri`. Do not use `redirect_url` or add body aliases such as `returnUrl`.
+
+### 2026-08-17 · Bar checkout returned 404 before payment (SUPERSEDED)
 - **Symptom:** A QR bar customer reached a **404 page not found** before the card-payment form opened.
 - **Finding:** `bar-card-pay` appended the branded success URL as `redirect_url` to Stitch's hosted
   link. For this club's Express link, that query parameter invalidated the hosted checkout URL.
 - **Fix:** Bar checkout now opens Stitch's returned hosted URL unchanged. The original Scan-to-Pay tab
   remains open, verifies the payment independently, and displays the branded thank-you screen.
-- **Guard:** Bar purchases are a standalone flow: never append return or redirect query parameters to
-  their hosted payment URL. Do not copy the member top-up return strategy into Scan-to-Pay.
+- **Guard:** Superseded by live verification that the failure was the parameter spelling itself:
+  `redirect_url` returned 404, while Stitch's supported `redirect_uri` opened the same fresh link.
 
 ### 2026-08-17 · Bar card payment stopped on Stitch's completion page (SUPERSEDED)
 - **Symptom:** After a QR bar purchase, Stitch showed its own **Payment complete** page; the payer had
@@ -690,4 +701,5 @@ color-coded by row to distinguish options visually.
 `bar-card-pay` / `bar-card-verify` read `clubs.payment_gateway` and route to Stitch or Yoco
 automatically (Yoco uses `club_secrets.payment_gateway_credentials.secret_key`). No per-club code
 changes are needed when a tenant picks a gateway — member fees/top-ups already route via
-`src/lib/club-payments.ts`. Never append query params to Stitch Express links (404).
+`src/lib/club-payments.ts`. Stitch Express bar checkout uses no body-level return aliases and one
+documented `redirect_uri` on the fresh hosted link.

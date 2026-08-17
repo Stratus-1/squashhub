@@ -19,10 +19,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Check, RotateCcw, ArrowRight, ArrowLeft, Users } from "lucide-react";
+import { Check, RotateCcw, ArrowRight, ArrowLeft, Users, UserPlus, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import type { NsaTeamPlayer } from "@/hooks/use-nsa";
+
 
 export type LineupPick = { code: string; name: string };
 
@@ -43,6 +47,94 @@ export interface SelectLineupWizardProps {
 const fullName = (p: NsaTeamPlayer) =>
   `${p.name || ""} ${p.surname || ""}`.trim() || p.code || "—";
 
+/** Add a player who isn't in the squad list, by league / NSF number. */
+function AddByNumber({ onAdd }: { onAdd: (p: NsaTeamPlayer) => void }) {
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [looking, setLooking] = useState(false);
+
+  const lookup = async () => {
+    const c = code.trim().toUpperCase();
+    if (!c) return;
+    setLooking(true);
+    try {
+      const { data } = await supabase
+        .from("member_association_affiliations")
+        .select("league_association_number, club_members(name)")
+        .ilike("league_association_number", c)
+        .limit(1);
+      const found = (data as any)?.[0]?.club_members?.name as string | undefined;
+      if (found) {
+        setName(found);
+        toast({ title: "Player found", description: `${c} — ${found}` });
+      } else {
+        toast({
+          title: "Not found",
+          description: "No member with that number — type the name manually.",
+        });
+      }
+    } finally {
+      setLooking(false);
+    }
+  };
+
+  const add = () => {
+    const c = code.trim().toUpperCase();
+    const n = name.trim();
+    if (!c && !n) return;
+    onAdd({
+      code: c || n,
+      name: n || c,
+      surname: "",
+      result_summary: { won: 0, lost: 0, played: 0 },
+    });
+    setCode("");
+    setName("");
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => setOpen(true)}>
+        <UserPlus className="w-3.5 h-3.5 mr-1" /> Add player by NSF / league number
+      </Button>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-dashed p-2 space-y-2">
+      <div className="flex gap-2">
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="NSF number e.g. NSF1234"
+          className="h-9 text-sm font-mono"
+          maxLength={20}
+        />
+        <Button variant="secondary" size="sm" onClick={lookup} disabled={looking || !code.trim()}>
+          {looking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Find"}
+        </Button>
+      </div>
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Player name"
+        className="h-9 text-sm"
+        maxLength={80}
+      />
+      <div className="flex gap-2">
+        <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+        <Button size="sm" className="flex-1 text-xs" onClick={add} disabled={!code.trim() && !name.trim()}>
+          <Check className="w-3.5 h-3.5 mr-1" /> Add & pick
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function SideStep({
   title,
   teamCode,
@@ -52,6 +144,7 @@ function SideStep({
   picks,
   onToggle,
   onClear,
+  onAddManual,
 }: {
   title: string;
   teamCode?: string | null;
@@ -61,6 +154,7 @@ function SideStep({
   picks: LineupPick[];
   onToggle: (p: NsaTeamPlayer) => void;
   onClear: () => void;
+  onAddManual: (p: NsaTeamPlayer) => void;
 }) {
   const indexByCode = new Map(
     picks.map((p, i) => [(p.code || "").toUpperCase(), i + 1] as const),
@@ -90,6 +184,9 @@ function SideStep({
           <RotateCcw className="w-3.5 h-3.5 mr-1" /> Clear
         </Button>
       </div>
+
+      <AddByNumber onAdd={onAddManual} />
+
 
       <div className="space-y-1 max-h-[46vh] overflow-y-auto pr-1">
         {players.length === 0 && (
@@ -170,6 +267,8 @@ export function SelectLineupWizard({
   const [step, setStep] = useState<"home" | "away">("home");
   const [home, setHome] = useState<LineupPick[]>([]);
   const [away, setAway] = useState<LineupPick[]>([]);
+  const [extraHome, setExtraHome] = useState<NsaTeamPlayer[]>([]);
+  const [extraAway, setExtraAway] = useState<NsaTeamPlayer[]>([]);
 
   // Seed from the current lineup each time the wizard opens.
   useEffect(() => {
@@ -177,6 +276,8 @@ export function SelectLineupWizard({
     setStep("home");
     setHome(initialHome.filter((p) => p.code || p.name));
     setAway(initialAway.filter((p) => p.code || p.name));
+    setExtraHome([]);
+    setExtraAway([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -189,6 +290,18 @@ export function SelectLineupWizard({
       if (prev.length >= teamSize) return prev;
       return [...prev, { code, name: fullName(p) }];
     });
+  };
+
+  const addManual = (side: "home" | "away") => (p: NsaTeamPlayer) => {
+    const code = (p.code || "").toUpperCase();
+    const base = side === "home" ? homePlayers : awayPlayers;
+    const extras = side === "home" ? extraHome : extraAway;
+    const known =
+      base.some((x) => (x.code || "").toUpperCase() === code) ||
+      extras.some((x) => (x.code || "").toUpperCase() === code);
+    if (!known) (side === "home" ? setExtraHome : setExtraAway)((prev) => [...prev, p]);
+    const picks = side === "home" ? home : away;
+    if (!picks.some((x) => (x.code || "").toUpperCase() === code)) toggle(side)(p);
   };
 
   const activePicks = step === "home" ? home : away;
@@ -216,24 +329,27 @@ export function SelectLineupWizard({
             title="Home"
             teamCode={homeCode}
             tone="home"
-            players={homePlayers}
+            players={[...homePlayers, ...extraHome]}
             teamSize={teamSize}
             picks={home}
             onToggle={toggle("home")}
             onClear={() => setHome([])}
+            onAddManual={addManual("home")}
           />
         ) : (
           <SideStep
             title="Visitors"
             teamCode={awayCode}
             tone="away"
-            players={awayPlayers}
+            players={[...awayPlayers, ...extraAway]}
             teamSize={teamSize}
             picks={away}
             onToggle={toggle("away")}
             onClear={() => setAway([])}
+            onAddManual={addManual("away")}
           />
         )}
+
 
         <DialogFooter className="flex-row gap-2 sm:justify-between">
           {step === "away" ? (

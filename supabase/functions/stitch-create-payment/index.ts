@@ -367,6 +367,7 @@ async function createPaymentRequestV2(opts: {
   }
   return {
     id: String(data.id),
-    redirect_url: appendRedirectUri(String(redirectBase), opts.redirectUri),
+    // Items 3 + 4: hand back the hosted URL exactly as issued — param-free.
+    redirect_url: String(redirectBase),
   };
 }

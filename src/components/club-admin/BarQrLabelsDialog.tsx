@@ -6,7 +6,7 @@
  * the product's own barcode — it points at `/s/<code>`, which is unique to this
  * club + item.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -30,11 +30,12 @@ interface Props {
   clubName: string;
   subdomain?: string | null;
   items: Item[];
+  focusItemId?: string | null;
 }
 
 interface CodeRow { id: string; code: string; bar_item_id: string | null; kind: string; active: boolean }
 
-export function BarQrLabelsDialog({ open, onOpenChange, clubId, clubName, subdomain, items }: Props) {
+export function BarQrLabelsDialog({ open, onOpenChange, clubId, clubName, subdomain, items, focusItemId }: Props) {
   const qc = useQueryClient();
   const { format: money } = useClubCurrency();
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -61,14 +62,17 @@ export function BarQrLabelsDialog({ open, onOpenChange, clubId, clubName, subdom
 
   const venueCode = codes.find(c => c.active && c.kind === "venue") || null;
 
-  const activeItems = items.filter(i => i.active);
-  const chosen = activeItems.filter(i => selected[i.id]);
+  const chosen = items.filter(i => selected[i.id]);
+
+  useEffect(() => {
+    if (open && focusItemId) setSelected({ [focusItemId]: true });
+  }, [focusItemId, open]);
 
   const ensureCodes = async () => {
     setBusy(true);
     try {
       const rows: any[] = [];
-      activeItems.forEach(i => {
+      items.forEach(i => {
         if (!codeByItem[i.id]) {
           rows.push({ club_id: clubId, bar_item_id: i.id, kind: "item", code: generateShortCode() });
         }
@@ -133,7 +137,7 @@ export function BarQrLabelsDialog({ open, onOpenChange, clubId, clubName, subdom
             </Button>
             <Button size="sm" variant="outline" onClick={() => {
               const all: Record<string, boolean> = {};
-              activeItems.forEach(i => { if (codeByItem[i.id]) all[i.id] = true; });
+               items.forEach(i => { if (codeByItem[i.id]) all[i.id] = true; });
               setSelected(all);
             }}>Select all</Button>
             <Button size="sm" variant="outline" onClick={() => setSelected({})}>Clear</Button>
@@ -157,10 +161,18 @@ export function BarQrLabelsDialog({ open, onOpenChange, clubId, clubName, subdom
 
           <div className="space-y-1.5">
             {isLoading && <p className="text-sm text-muted-foreground">Loading codes…</p>}
-            {activeItems.map(i => {
+            {items.map(i => {
               const row = codeByItem[i.id];
               return (
                 <div key={i.id} className="flex items-center gap-2 rounded border p-2">
+                  {row && (
+                    <QRCodeSVG
+                      value={buildScanUrl(row.code, subdomain)}
+                      size={52}
+                      className="shrink-0"
+                      aria-label={`${i.name} QR code`}
+                    />
+                  )}
                   <Checkbox
                     checked={!!selected[i.id]}
                     disabled={!row}

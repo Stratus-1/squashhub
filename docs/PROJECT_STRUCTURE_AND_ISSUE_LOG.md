@@ -88,6 +88,14 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-17 · Bar product QR codes were not discoverable
+- **Symptom:** Club admins could see imported bar products but no QR code action or visible QR beside each product.
+- **Finding:** QR creation was exposed only through a bulk labels dialog, generated codes only for active items,
+  and showed URLs rather than an on-screen QR preview.
+- **Fix:** Added a per-product **QR code** action, preselects that product in the labels dialog, includes inactive
+  setup products when generating labels, and renders each generated QR visibly in the dialog.
+- **Guard:** Every bar product row must retain a direct QR action; QR setup must not depend on product activation.
+
 ### 2026-08-17 · Set up and edit stopped at the lineup summary
 - **Symptom:** Opening a fixture to set up and score could stop on the intermediate scorecard with a
   “Select players (1 → 4)” button, while previously selected players were not clearly ordered on mobile.

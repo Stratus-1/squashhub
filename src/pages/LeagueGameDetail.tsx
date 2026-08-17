@@ -1942,6 +1942,15 @@ export default function LeagueGameDetail() {
   // page becomes a pure live-follow scorecard via the realtime channel.
   const isViewMode = (searchParams.get("mode") || "") === "view";
   const isSubmitted = isSubmittedReal || isViewMode;
+
+  // Auto-open the lineup wizard on fresh fixtures so the marker starts with
+  // selecting players instead of showing the intermediate setup screen.
+  useEffect(() => {
+    if (!nsaLive || setupDone || isSubmitted || autoOpenWizardRef.current) return;
+    autoOpenWizardRef.current = true;
+    setSelectWizardOpen(true);
+  }, [nsaLive, setupDone, isSubmitted]);
+
   // ---- LIVE indicator: any position has an in-progress rally or a fresh marker lock ----
   const isLiveNow = positions.some((p) => !!p.currentGame) || markerLocksFresh.size > 0;
 

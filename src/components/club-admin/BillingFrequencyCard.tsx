@@ -49,7 +49,11 @@ export function BillingFrequencyCard({
         ? "biannual_upfront"
         : "monthly";
   const [choice, setChoice] = useState<BillingOption>(current);
+  const currentPay: PaymentMethod | null =
+    c.sla_payment_method === "card" ? "card" : c.sla_payment_method === "eft" ? "eft" : null;
+  const [payMethod, setPayMethod] = useState<PaymentMethod | null>(currentPay);
   const [saving, setSaving] = useState(false);
+
 
   // Active annual cover = an annual invoice (not void) whose period is still running.
   const annualCoverUntil = (() => {

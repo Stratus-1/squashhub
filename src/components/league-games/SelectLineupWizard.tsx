@@ -353,8 +353,50 @@ export function SelectLineupWizard({
           />
         )}
 
+        <AddByNumberInline
+          open={addingPlayer}
+          onOpenChange={setAddingPlayer}
+          side={step}
+          onAdd={addManual(step)}
+        />
 
         <DialogFooter className="flex-row gap-2 sm:justify-between">
+          {step === "away" ? (
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep("home")}>
+              <ArrowLeft className="w-4 h-4 mr-1" /> Home team
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+          )}
+          {!addingPlayer && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex-1"
+              onClick={() => setAddingPlayer(true)}
+            >
+              <UserPlus className="w-4 h-4 mr-1" /> Insert player
+            </Button>
+          )}
+          {step === "home" ? (
+            <Button size="sm" className="flex-1" onClick={() => setStep("away")}>
+              Visitors <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => {
+                onApply(home, away);
+                onOpenChange(false);
+              }}
+            >
+              <Check className="w-4 h-4 mr-1" /> Apply lineup
+            </Button>
+          )}
+        </DialogFooter>
           {step === "away" ? (
             <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep("home")}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Home team

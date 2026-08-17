@@ -110,13 +110,13 @@ function AddByNumberInline({
   if (!open) return null;
 
   return (
-    <div className="rounded-lg border-2 border-primary/50 bg-primary/5 p-3 space-y-2 shadow-md">
+    <div className="rounded-lg border-2 border-primary/50 bg-primary/5 p-3 space-y-3 shadow-md">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wide">
           Insert {side === "home" ? "home" : "visitors"} player
         </span>
-        <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Close" onClick={() => onOpenChange(false)}>
-          ×
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onOpenChange(false)}>
+          <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back to list
         </Button>
       </div>
       <div className="flex gap-2">
@@ -135,23 +135,24 @@ function AddByNumberInline({
             }}
             placeholder="1234"
             inputMode="numeric"
-            className="h-9 text-sm font-mono pl-11"
+            className="h-11 text-base font-mono pl-11"
             maxLength={20}
+            autoFocus
           />
         </div>
-        <Button variant="secondary" size="sm" onClick={lookup} disabled={looking || !code.trim()}>
+        <Button variant="secondary" onClick={lookup} disabled={looking || !code.trim()}>
           {looking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Find"}
         </Button>
       </div>
 
       {found && (
-        <div className="flex items-center justify-between gap-2 rounded-md border border-primary/40 bg-background px-2 py-1.5">
+        <div className="rounded-md border border-primary/40 bg-background p-3 space-y-2">
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Found</p>
-            <p className="text-sm font-semibold truncate">{found}</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Player found</p>
+            <p className="text-base font-bold break-words">{found}</p>
           </div>
-          <Button size="sm" className="text-xs shrink-0" onClick={add}>
-            <UserPlus className="w-3.5 h-3.5 mr-1" /> Add to squad
+          <Button className="w-full" onClick={add}>
+            <UserPlus className="w-4 h-4 mr-1" /> Add to squad & pick
           </Button>
         </div>
       )}
@@ -162,18 +163,19 @@ function AddByNumberInline({
           setName(e.target.value);
           setFound(null);
         }}
-        placeholder="Player name"
-        className="h-9 text-sm"
+        placeholder="Or type player name"
+        className="h-11 text-base"
         maxLength={80}
       />
       {!found && (
-        <Button size="sm" className="w-full text-xs" onClick={add} disabled={!code.trim() && !name.trim()}>
-          <UserPlus className="w-3.5 h-3.5 mr-1" /> Add & pick player
+        <Button className="w-full" onClick={add} disabled={!code.trim() && !name.trim()}>
+          <UserPlus className="w-4 h-4 mr-1" /> Add & pick player
         </Button>
       )}
     </div>
   );
 }
+
 
 
 function SideStep({

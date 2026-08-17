@@ -165,9 +165,30 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
       {step === "items" && (
         <div className="space-y-4">
+          <Card className="p-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-sm">Scan-to-pay QR labels</h3>
+              <p className="text-xs text-muted-foreground">
+                Print club-specific QR stickers per product, plus a venue poster for the whole menu.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setQrOpen(true)}>
+              <QrCode className="w-3.5 h-3.5 mr-1" /> QR labels
+            </Button>
+          </Card>
           <ItemManager clubId={clubId} items={items} loading={itemsLoading} />
         </div>
       )}
+
+      <BarQrLabelsDialog
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        clubId={clubId}
+        clubName={club.name}
+        subdomain={(club as any).subdomain}
+        items={items}
+      />
+
 
       {step === "stock-purchases" && (
         <div className="space-y-4">

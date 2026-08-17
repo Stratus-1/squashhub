@@ -112,6 +112,17 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
 - **Guard:** Scan-to-Pay completion must remain plain and terminal: no logos, return-to-bar navigation,
   amount breakdown, automatic redirect, or promise that a user-opened browser tab can be force-closed.
 
+### 2026-08-17 · Bar Express return aligned with proven Gordon's Bay top-ups
+- **Symptom:** Successful bar card payments still stopped on Stitch's **Payment complete** page even
+  though normal Gordon's Bay top-ups returned correctly to SquashHub.
+- **Finding:** Both flows appended `redirect_url` to the fresh hosted link, but `bar-card-pay` also sent
+  a body-level `returnUrl`. The proven top-up request deliberately sends no body return aliases because
+  Express drops or can override them; the hosted-link parameter is the sole return instruction.
+- **Fix:** Removed `returnUrl` from the bar Express creation body. The bar now matches the confirmed
+  top-up request shape and appends only the validated tenant success URL to the fresh hosted link.
+- **Guard:** Express once-off payments must have one return instruction only: the hosted link's
+  `redirect_url`. Do not add `returnUrl`, `redirectUrl`, or `merchantRedirectUrl` to the request body.
+
 ### 2026-08-17 · Bar checkout returned 404 before payment
 - **Symptom:** A QR bar customer reached a **404 page not found** before the card-payment form opened.
 - **Finding:** `bar-card-pay` appended the branded success URL as `redirect_url` to Stitch's hosted
@@ -690,4 +701,5 @@ color-coded by row to distinguish options visually.
 `bar-card-pay` / `bar-card-verify` read `clubs.payment_gateway` and route to Stitch or Yoco
 automatically (Yoco uses `club_secrets.payment_gateway_credentials.secret_key`). No per-club code
 changes are needed when a tenant picks a gateway — member fees/top-ups already route via
-`src/lib/club-payments.ts`. Never append query params to Stitch Express links (404).
+`src/lib/club-payments.ts`. Stitch Express bar checkout follows the confirmed Gordon's Bay top-up
+shape: no body-level return aliases and one `redirect_url` on the fresh hosted link.

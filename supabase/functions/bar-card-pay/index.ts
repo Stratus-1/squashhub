@@ -172,7 +172,6 @@ Deno.serve(async (req) => {
         currency: "ZAR",
         payerName: (buyer_name || "Bar customer").slice(0, 40),
         merchantReference: reference,
-        returnUrl: redirectUri,
       }),
     });
     const plJson = await plResp.json().catch(() => ({}));
@@ -183,9 +182,10 @@ Deno.serve(async (req) => {
     }
     await admin.from("bar_visitor_sales")
       .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
-    // Match the proven member once-off flow: Express ignores returnUrl in the
-    // request body but honours redirect_url on the hosted link. Checkout runs
-    // in the current tab and returns directly to the terminal success route.
+    // Match the proven Gordon's Bay member top-up flow exactly: do not send a
+    // body-level returnUrl that can override the hosted checkout behaviour.
+    // Express receives the return destination only through redirect_url on the
+    // fresh hosted link, then returns this same tab to the terminal route.
     return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: appendRedirectUrl(String(link), redirectUri) });
   } catch (e: any) {
     console.error("bar-card-pay error:", e);

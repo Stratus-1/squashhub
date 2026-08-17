@@ -15,6 +15,8 @@ import { SEO } from "@/components/SEO";
 import { Loader2, CheckCircle2, XCircle, ShoppingBag } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 import shLogo from "@/assets/sh-logo.png";
+import { closeStitchPaymentWindow } from "@/lib/stitch-checkout";
+
 
 const PENDING_SALE_KEY = "sh.scanpay.pendingSale";
 

@@ -3,16 +3,26 @@ import { FileText, Printer, Layers } from "lucide-react";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { computeTieredCharge } from "@/lib/saas-tiers";
 import { useSaasPricing } from "@/hooks/use-saas-pricing";
+import { useClubBillingStart } from "@/hooks/use-billing-start";
+
 
 /**
  * Tenant-facing fee structure. Mirrors the platform's graduated ("sliding
  * scale") pricing, which applies to every club. All values are read live from
  * the platform pricing settings managed in Super Admin.
  */
-export function ParticipationFeeStructure({ memberCount }: { memberCount?: number | null }) {
+export function ParticipationFeeStructure({
+  memberCount,
+  clubId,
+}: {
+  memberCount?: number | null;
+  clubId?: string;
+}) {
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
+  const { startLabel, trialEndLabel } = useClubBillingStart(clubId);
   const { monthlyTiers, biannualTiers, annualTiers, monthlyMin, biannualMin, annualMin, cap, format: fmt } =
     useSaasPricing(clubCurrencyCode);
+
 
   const billable =
     typeof memberCount === "number"
@@ -90,12 +100,22 @@ export function ParticipationFeeStructure({ memberCount }: { memberCount?: numbe
 
 
       <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
-        Fees are invoiced <strong>monthly in advance</strong>, with the first invoice issued on{" "}
-        <strong>1 September 2026</strong>. Six-monthly or annual upfront payment can be requested
-        on the Subscription tab. Payment can be made by <strong>EFT</strong> or by{" "}
-        <strong>card</strong> — set your preferred method on the Subscription tab so we know how to
-        bill you.
+        Fees are invoiced <strong>monthly in advance</strong>
+        {trialEndLabel ? (
+          <>
+            {" "}— your free trial runs to <strong>{trialEndLabel}</strong>, with the first invoice
+            issued on <strong>{startLabel}</strong>.
+          </>
+        ) : (
+          <>
+            , with the first invoice issued on <strong>{startLabel}</strong>.
+          </>
+        )}{" "}
+        Six-monthly or annual upfront payment can be requested on the Subscription tab. Payment can
+        be made by <strong>EFT</strong> or by <strong>card</strong> — set your preferred method on
+        the Subscription tab so we know how to bill you.
       </p>
+
 
       <p className="text-xs text-muted-foreground italic">
         Invoiced in your club currency ({clubCurrencyName} · {clubCurrencyCode}).

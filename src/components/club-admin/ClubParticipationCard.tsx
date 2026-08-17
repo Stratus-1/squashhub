@@ -19,6 +19,7 @@ import { useSaasPricing } from "@/hooks/use-saas-pricing";
 import { computeTieredCharge } from "@/lib/saas-tiers";
 import { SquashHubSlaContent, SLA_VERSION } from "@/components/SquashHubSlaContent";
 import { ParticipationFeeStructure } from "@/components/club-admin/ParticipationFeeStructure";
+import { useClubBillingStart } from "@/hooks/use-billing-start";
 
 type BillingOption = "monthly" | "biannual_upfront" | "annual_upfront";
 
@@ -26,6 +27,8 @@ export function ClubParticipationCard({ club }: { club: Club }) {
   const { user } = useAuth();
   const updateClub = useUpdateClub();
   const c = club as any;
+  const billingStart = useClubBillingStart(club.id);
+
 
   const isActive = !!c.participation_active;
   const [open, setOpen] = useState(false);
@@ -148,7 +151,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         </div>
       </div>
 
-      <ParticipationFeeStructure memberCount={memberCount} />
+      <ParticipationFeeStructure memberCount={memberCount} clubId={club.id} />
 
 
 
@@ -258,7 +261,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
                   Your choice here sets how SquashHub invoices the club. You can change it later under
                   Billing frequency{allowBiannual || allowAnnual ? "" : " — upfront options are enabled per club by SquashHub"}.
                 </p>
-                <p className="text-xs text-amber-700 dark:text-amber-400">Fees commence September 2026 for the current financial year, and annually thereafter.</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Fees commence {billingStart.startLabel}{billingStart.trialEndLabel ? ` (the day after your trial ends on ${billingStart.trialEndLabel})` : ""}, and annually thereafter.</p>
               </div>
 
 

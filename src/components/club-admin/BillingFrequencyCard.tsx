@@ -11,6 +11,7 @@ import { useUpdateClub, type Club } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { useSaasPricing } from "@/hooks/use-saas-pricing";
 import { computeTieredCharge } from "@/lib/saas-tiers";
+import { useClubBillingStart } from "@/hooks/use-billing-start";
 
 
 type BillingOption = "monthly" | "biannual_upfront" | "annual_upfront";
@@ -43,6 +44,7 @@ export function BillingFrequencyCard({
   const updateClub = useUpdateClub();
   const { code: currencyCode } = useClubCurrency();
   const pricing = useSaasPricing(currencyCode);
+  const billingStart = useClubBillingStart(club.id);
 
   const current: BillingOption =
     c.sla_billing_option === "annual_upfront"
@@ -187,7 +189,7 @@ export function BillingFrequencyCard({
         ) : (
           <>
             Your club is invoiced monthly in advance, based on your member count at the time of each
-            invoice. Invoicing starts 1 September 2026.
+            invoice. Invoicing starts {billingStart.startLabel}.
           </>
         )}
 

@@ -169,10 +169,37 @@ export default function SuperAdminSubscriptions() {
     },
   });
 
+  // Latest invoice state per club — drives the "Paid" indicator.
+  const { data: invoiceState } = useQuery({
+    queryKey: ["sa-club-invoice-state"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("platform_subscription_invoices")
+        .select("club_id, status, total, due_date, paid_at, issued_at")
+        .order("issued_at", { ascending: false })
+        .range(0, 49999);
+      if (error) throw error;
+      const map = new Map<string, { total: number; unpaid: number; overdue: number; lastPaidAt: string | null }>();
+      const today = new Date().toISOString().slice(0, 10);
+      for (const inv of (data || []) as any[]) {
+        const cur = map.get(inv.club_id) || { total: 0, unpaid: 0, overdue: 0, lastPaidAt: null as string | null };
+        cur.total += 1;
+        const st = String(inv.status || "").toLowerCase();
+        if (st === "paid") {
+          if (!cur.lastPaidAt || (inv.paid_at && inv.paid_at > cur.lastPaidAt)) cur.lastPaidAt = inv.paid_at || cur.lastPaidAt;
+        } else if (st !== "cancelled" && st !== "void") {
+          cur.unpaid += 1;
+          if (inv.due_date && String(inv.due_date) < today) cur.overdue += 1;
+        }
+        map.set(inv.club_id, cur);
+      }
+      return map;
+    },
+  });
+
   const { data: clubs = [] } = useQuery({
     queryKey: ["sa-clubs-for-subs"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain, currency_code, sla_billing_option").order("name").range(0, 49999);
+      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain, currency_code, sla_billing_option, sla_accepted_at, sla_accepted_name, participation_active").order("name").range(0, 49999);
       if (error) throw error;
       // Billable member counts — active members only, visitors never billed.
       // Paginate to avoid PostgREST's 1000-row response cap.
@@ -731,6 +758,9 @@ export default function SuperAdminSubscriptions() {
                   <TableHead>Club</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">SLA</TableHead>
+                  <TableHead className="text-center">Payment</TableHead>
+                  <TableHead className="text-center">Club</TableHead>
                   <TableHead className="text-center">Members</TableHead>
                   <TableHead className="text-right">Amount Due</TableHead>
                   <TableHead>Trial Ends</TableHead>
@@ -739,9 +769,9 @@ export default function SuperAdminSubscriptions() {
               </TableHeader>
               <TableBody>
                 {subsLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : subscriptions.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No subscriptions yet</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No subscriptions yet</TableCell></TableRow>
                 ) : (
                   subscriptions.map((sub) => (
                     <TableRow key={sub.id}>
@@ -768,6 +798,43 @@ export default function SuperAdminSubscriptions() {
                           {sub.status}
                         </Badge>
                       </TableCell>
+                      {(() => {
+                        const club: any = clubs.find(c => c.id === sub.club_id);
+                        const inv = invoiceState?.get(sub.club_id);
+                        const slaOk = !!club?.sla_accepted_at;
+                        const trialEnded = !!sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date();
+                        const paidOk = !inv || inv.unpaid === 0;
+                        const overdue = !!inv && inv.overdue > 0;
+                        const clubActive = !trialEnded ? true : slaOk && paidOk;
+                        return (
+                          <>
+                            <TableCell className="text-center">
+                              <Badge
+                                className={`text-[10px] ${slaOk ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" : trialEnded ? "bg-destructive/10 text-destructive" : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"}`}
+                                title={slaOk ? `Signed by ${club?.sla_accepted_name || "—"} on ${new Date(club.sla_accepted_at).toLocaleDateString()}` : trialEnded ? "Trial ended and SLA still outstanding — reminders are being sent" : "Not signed yet (still in trial)"}
+                              >
+                                {slaOk ? "Signed" : "Not signed"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge
+                                className={`text-[10px] ${!inv || inv.total === 0 ? "bg-muted text-muted-foreground" : overdue ? "bg-destructive/10 text-destructive" : inv.unpaid > 0 ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"}`}
+                                title={!inv || inv.total === 0 ? "No invoices issued yet" : `${inv.unpaid} unpaid of ${inv.total} invoice(s)${inv.overdue ? `, ${inv.overdue} overdue` : ""}`}
+                              >
+                                {!inv || inv.total === 0 ? "No invoices" : overdue ? `Overdue (${inv.overdue})` : inv.unpaid > 0 ? `Unpaid (${inv.unpaid})` : "Paid"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge
+                                className={`text-[10px] ${clubActive ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-destructive/10 text-destructive"}`}
+                                title={!trialEnded ? "In trial — club is active" : clubActive ? "SLA signed and invoices paid" : `Blocked: ${[!slaOk ? "SLA not signed" : null, !paidOk ? "invoice outstanding" : null].filter(Boolean).join(" + ")}`}
+                              >
+                                {!trialEnded ? "Active (trial)" : clubActive ? "Active" : "Inactive"}
+                              </Badge>
+                            </TableCell>
+                          </>
+                        );
+                      })()}
                       <TableCell className="text-center">
                         {(() => {
                           const live = clubs.find(c => c.id === sub.club_id)?.member_count ?? sub.member_count;

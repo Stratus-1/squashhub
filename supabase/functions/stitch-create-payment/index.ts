@@ -109,11 +109,7 @@ Deno.serve(async (req) => {
     // 2. Prefer Stitch's documented Payment Request flow. Unlike Express
     // payment-links, this hosted URL honours `redirect_uri` after success.
     const payerName = (member.name || "Member").slice(0, 40).padEnd(3, " ");
-    const safeReturnWithSession = appendSessionParams(
-      safeReturnUrl,
-      session.id,
-      String((club as any).subdomain || "").trim(),
-    );
+    const safeReturnWithSession = safeReturnUrl;
     try {
       const request = await createPaymentRequestV2({
         clientId,
@@ -227,23 +223,6 @@ function appendExpressRedirectUrl(link: string, returnUrl: string) {
     return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
 }
-
-function appendSessionParams(returnUrl: string, sessionId: string, clubSubdomain = "") {
-  // Canonical: the return URL carries `stitch_session` so /my-account can call
-  // stitch-verify-payment on arrival.
-  if (!returnUrl || !sessionId) return returnUrl;
-  try {
-    const url = new URL(returnUrl);
-    url.searchParams.set("stitch_session", sessionId);
-    const sub = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
-    if (sub) url.searchParams.set("stitch_club", sub);
-    return url.toString();
-  } catch {
-    const sep = returnUrl.includes("?") ? "&" : "?";
-    return `${returnUrl}${sep}stitch_session=${encodeURIComponent(sessionId)}`;
-  }
-}
-
 
 async function getPaymentRequestToken(clientId: string, clientSecret: string) {
   const body = new URLSearchParams();

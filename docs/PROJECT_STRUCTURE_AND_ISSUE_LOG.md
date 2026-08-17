@@ -92,11 +92,11 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
 - **Symptom:** Tapping card payment opened a 404 before the hosted payment form; the failure was
   incorrectly attributed to a missing per-club redirect whitelist entry.
 - **Finding:** SquashHub has one shared Stitch redirect because Express permits only five entries.
-  The functions rewrote that callback to each club subdomain and a GET “probe” treated an intermediate
-  response as success, so Riverside received a hosted URL containing an unapproved redirect.
-- **Fix:** Both bar checkout and member once-off payments now append only the shared
-  `https://squashhub.co.za/pay/return` callback. It carries a validated session/club or bar code and
-  `PayReturn` forwards to the correct tenant page after payment. Removed all per-club probing.
+  The functions rewrote that callback to each club subdomain, then added callback query parameters;
+  Stitch validates the complete registered redirect URL, so both variants were rejected.
+- **Fix:** Both bar checkout and member once-off payments now append only the exact, parameter-free
+  `https://squashhub.co.za/pay/return` callback. The browser stores the final tenant destination in
+  the existing `.squashhub.co.za` return cookie and `PayReturn` forwards there. Removed per-club probing.
 - **Guard:** Never require or infer per-club Stitch redirect whitelist entries; payment URLs use the
   one shared SquashHub callback and are handed directly to the browser.
 

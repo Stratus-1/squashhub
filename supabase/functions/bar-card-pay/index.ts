@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     const sale = sales[0];
 
     const reference = `BAR-${String(sale.id).slice(0, 8)}`;
-    const redirectUri = buildSharedReturnUrl(code, String(club.subdomain || ""));
+    const redirectUri = `${PUBLIC_APP_ORIGIN}/pay/return`;
 
     // ---- Yoco tenants -------------------------------------------------
     if (gateway === "yoco") {
@@ -194,14 +194,6 @@ Deno.serve(async (req) => {
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-
-function buildSharedReturnUrl(code: string, clubSubdomain: string) {
-  const sub = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
-  const callback = new URL("/pay/return", PUBLIC_APP_ORIGIN);
-  callback.searchParams.set("bar_code", code);
-  if (sub) callback.searchParams.set("stitch_club", sub);
-  return callback.toString();
 }
 
 function appendRedirectUrl(link: string, returnUrl: string) {

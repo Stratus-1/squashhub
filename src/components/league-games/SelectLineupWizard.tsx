@@ -105,7 +105,9 @@ function AddByNumberInline({
     setCode("");
     setName("");
     setFound(null);
+    onOpenChange(false);
   };
+
 
   if (!open) return null;
 

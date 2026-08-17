@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface ClubSecrets {
   id: string;
@@ -25,15 +26,25 @@ export function useClubSecrets(clubId?: string) {
   return useQuery({
     queryKey: ["club-secrets", clubId],
     queryFn: async () => {
+      // Admins see the full row via RLS.
       const { data, error } = await fromExt("club_secrets")
         .select("*")
         .eq("club_id", clubId!)
         .maybeSingle();
       if (error) throw error;
-      return data as ClubSecrets | null;
+      if (data) return data as ClubSecrets | null;
+
+      // Regular members get only the safe subset (door/relay + banking details).
+      const { data: safe } = await (supabase as any).rpc("get_club_member_config", {
+        _club_id: clubId!,
+      });
+      const row = Array.isArray(safe) ? safe[0] : safe;
+      return (row ?? null) as ClubSecrets | null;
+
     },
     enabled: !!clubId,
   });
+
 }
 
 /** Upsert club secrets */

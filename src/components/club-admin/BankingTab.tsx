@@ -475,28 +475,49 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
           </Select>
         </div>
 
-        {/* Gateway transaction fee */}
+        {/* Gateway transaction fees per payment method */}
         {gateway && (
-          <div className="space-y-1">
-            <Label className="text-xs">Transaction fee (%)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              max="20"
-              className="h-8 text-xs"
-              value={feePercent}
-              onChange={(e) => setFeePercent(e.target.value)}
-              placeholder={String(DEFAULT_FEE_PCT[gateway] ?? 3.5)}
-            />
+          <div className="space-y-2">
+            <Label className="text-xs">Transaction fees (%) per payment method</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {METHOD_FEE_FIELDS.map(f => (
+                <div key={f.key} className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{f.label}</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="20"
+                    className="h-8 text-xs"
+                    value={methodFees[f.key] ?? ""}
+                    onChange={(e) => setMethodFees(p => ({ ...p, [f.key]: e.target.value }))}
+                    placeholder={String(f.default)}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Fallback rate (other / unknown method)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                max="20"
+                className="h-8 text-xs"
+                value={feePercent}
+                onChange={(e) => setFeePercent(e.target.value)}
+                placeholder={String(DEFAULT_FEE_PCT[gateway] ?? 3.5)}
+              />
+            </div>
             <p className="text-[10px] text-muted-foreground">
-              Charged by the gateway on every card payment. The fee is booked automatically:
+              The matching rate is booked automatically on every card payment:
               debit Payment Gateway Fees, credit Current Account — so your bank balance matches
               what actually settles and no month-end reconciliation is needed.
-              Defaults: Yoco 2.9%, Stitch 2.5%.
+              Typical: local card 2.95%, international card 3.4%, Apple/Google Pay 2.95%, Capitec Pay 1.9%.
             </p>
           </div>
         )}
+
 
         {/* Gateway Info */}
         {selectedGateway && (

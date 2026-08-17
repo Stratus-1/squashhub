@@ -183,6 +183,10 @@ const Email = (p: Props) => {
               <Text style={{ ...muted, marginTop: '12px', fontSize: '12px' }}>
                 Secure payment powered by Stitch — cards, instant EFT & PayShap accepted
               </Text>
+              <Text style={{ ...muted, marginTop: '6px', fontSize: '12px' }}>
+                Please note: this payment link expires 24 hours after this email was sent. If it
+                has lapsed, simply request a new link from your club admin — no payment is lost.
+              </Text>
               {manageUrl && (
                 <Text style={{ ...muted, marginTop: '10px' }}>
                   Or view/manage this invoice in your club admin:{' '}

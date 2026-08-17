@@ -321,7 +321,8 @@ async function createPaymentRequestV2(opts: {
   redirectUri: string;
 }) {
   const accessToken = await getPaymentRequestToken(opts.clientId, opts.clientSecret);
-  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  // Link validity: 72h (we tell payers 24h in emails, so there is a grace buffer)
+  const expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
   const isCardOnly = opts.method === "card";
   const body: Record<string, unknown> = {
     amount: { currency: "ZAR", quantity: Number(opts.amount.toFixed(2)) },

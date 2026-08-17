@@ -88,7 +88,16 @@ working.
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
-### 2026-08-17 · Bar card payment stopped on Stitch's completion page
+### 2026-08-17 · Bar checkout returned 404 before payment
+- **Symptom:** A QR bar customer reached a **404 page not found** before the card-payment form opened.
+- **Finding:** `bar-card-pay` appended the branded success URL as `redirect_url` to Stitch's hosted
+  link. For this club's Express link, that query parameter invalidated the hosted checkout URL.
+- **Fix:** Bar checkout now opens Stitch's returned hosted URL unchanged. The original Scan-to-Pay tab
+  remains open, verifies the payment independently, and displays the branded thank-you screen.
+- **Guard:** Bar purchases are a standalone flow: never append return or redirect query parameters to
+  their hosted payment URL. Do not copy the member top-up return strategy into Scan-to-Pay.
+
+### 2026-08-17 · Bar card payment stopped on Stitch's completion page (SUPERSEDED)
 - **Symptom:** After a QR bar purchase, Stitch showed its own **Payment complete** page; the payer had
   to close it manually before seeing SquashHub's branded confirmation in the original bar tab.
 - **Finding:** The Express fallback in `bar-card-pay` sent Stitch's hosted link unchanged and relied on
@@ -96,8 +105,8 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
   body return field and requires `redirect_url` on the hosted link itself.
 - **Fix:** `bar-card-pay` now appends the club-specific branded success URL as the hosted link's
   `redirect_url`, matching `stitch-create-payment`. The public bar header also has a **Close bar** action.
-- **Guard:** Every Express once-off checkout, including QR bar sales, must append `redirect_url` to the
-  hosted link; never restore the disproved assumption that all Express query parameters cause a 404.
+- **Guard:** Superseded for QR bar sales by the standalone, no-redirect checkout above. The member
+  once-off/top-up flow remains separate and is unchanged.
 
 ### 2026-08-17 · Bar payment success “Close this tab” did nothing
 - **Symptom:** After closing Stitch's completion screen, the branded bar payment confirmation appeared,

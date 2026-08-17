@@ -9677,6 +9677,10 @@ export type Database = {
             }[]
           }
       get_next_member_number: { Args: { _club_id: string }; Returns: string }
+      get_or_create_venue_qr_code: {
+        Args: { _club_id: string }
+        Returns: string
+      }
       get_personal_analytics:
         | {
             Args: { days_back?: number; target_user_id: string }

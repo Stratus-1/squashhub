@@ -661,3 +661,9 @@ color-coded by row to distinguish options visually.
 **Fix:** Recreated the INSERT and UPDATE policies so self-service inserts/updates can only use non-admin roles (`member`, `visitor`, `captain`). Club admins retain full role assignment rights. Added a `BEFORE INSERT OR UPDATE OF role` trigger as an extra guard that raises an exception if a non-admin user tries to set `role='admin'`.  
 **Guard:** Re-ran security scan; the critical error is resolved and only warnings remain.
 
+
+### 2026-08-17 — Bar Scan-to-Pay is now gateway-agnostic
+`bar-card-pay` / `bar-card-verify` read `clubs.payment_gateway` and route to Stitch or Yoco
+automatically (Yoco uses `club_secrets.payment_gateway_credentials.secret_key`). No per-club code
+changes are needed when a tenant picks a gateway — member fees/top-ups already route via
+`src/lib/club-payments.ts`. Never append query params to Stitch Express links (404).

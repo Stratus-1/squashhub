@@ -182,11 +182,11 @@ Deno.serve(async (req) => {
     }
     await admin.from("bar_visitor_sales")
       .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
-    // Match the proven Gordon's Bay member top-up flow exactly: do not send a
-    // body-level returnUrl that can override the hosted checkout behaviour.
-    // Express receives the return destination only through redirect_url on the
-    // fresh hosted link, then returns this same tab to the terminal route.
-    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: appendRedirectUrl(String(link), redirectUri) });
+    // Express hosted links are param-free: `redirect_url` 404s the link and
+    // `redirect_uri` is silently ignored, so the payer lands on Stitch's own
+    // completion page. Nothing we can append changes that — the branded return
+    // only comes from the payment-request API above. Return the link as issued.
+    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: String(link) });
   } catch (e: any) {
     console.error("bar-card-pay error:", e);
     return json({ error: e?.message || "Unexpected error" });
@@ -272,6 +272,9 @@ async function createPaymentRequest(opts: {
       expireAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
       payer: { identifier: opts.payerId, fullName: opts.payerName.trim().padEnd(3, " ") },
       metadata: { squashhubBarSale: opts.payerId },
+      // The return destination belongs in the REQUEST BODY. Query params on the
+      // hosted interaction URL are ignored (and `redirect_url` even 404s it).
+      redirectUrl: opts.redirectUri,
       paymentMethods: {
         eft: { enabled: false },
         card: { enabled: true },
@@ -284,5 +287,6 @@ async function createPaymentRequest(opts: {
   if (!resp.ok || !data?.id || !redirectBase) {
     throw new Error(data?.detail || data?.message || `payment request HTTP ${resp.status}`);
   }
-  return { id: String(data.id), redirect_url: appendRedirectUrl(String(redirectBase), opts.redirectUri) };
+  // Hand back the hosted URL exactly as Stitch issued it — never append params.
+  return { id: String(data.id), redirect_url: String(redirectBase) };
 }

@@ -181,9 +181,11 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // Restored: attach the return URL to the hosted link. This is the exact
-    // behaviour that worked before 09 Aug 2026.
-    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
+    // Items 3 + 4: Express hosted links must stay param-free. `redirect_url`
+    // 404s the link outright and `redirect_uri` is ignored, so appending only
+    // breaks checkout. Express payers finish on Stitch's own completion page;
+    // the branded return is only available via the payment-request flow above.
+    const redirectUrl = payment.link as string;
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
@@ -251,35 +253,10 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
   }
 }
 
-function appendRedirectUri(link: string, returnUrl: string) {
-  // Stitch hosted flows honour `redirect_url`; `redirect_uri` is silently
-  // ignored and leaves the payer stranded on Stitch's completion screen.
-  try {
-    const url = new URL(link);
-    url.searchParams.delete("redirect_uri");
-    url.searchParams.set("redirect_url", returnUrl);
-    return url.toString();
-  } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
-  }
-}
-
-function appendExpressRedirectUrl(link: string, returnUrl: string) {
-  // 17 Aug 2026: Stitch Express now 404s a fresh hosted /pay link whenever a
-  // `redirect_url` query param is present (verified live: `?foo=bar` → 200,
-  // `?redirect_url=<anything>` → 404, for both Riverside and Gordon's Bay
-  // links). `redirect_uri` returns 200, which is what the bar checkout uses.
-  try {
-    const url = new URL(link);
-    url.searchParams.delete("redirect_url");
-    url.searchParams.set("redirect_uri", returnUrl);
-    return url.toString();
-  } catch {
-    const sep = link.includes("?") ? "&" : "?";
-    return `${link}${sep}redirect_uri=${encodeURIComponent(returnUrl)}`;
-  }
-}
+// NOTE (17 Aug 2026): helpers that appended `redirect_url` / `redirect_uri` to
+// Stitch hosted links were removed. Verified live: `?foo=bar` → 200,
+// `?redirect_url=<anything>` → 404, `?redirect_uri=...` → 200 but no redirect.
+// Hosted links must be handed to the payer exactly as Stitch issued them.
 
 
 function appendSessionParams(returnUrl: string, _sessionId: string, _clubSubdomain = "") {
@@ -340,6 +317,9 @@ async function createPaymentRequestV2(opts: {
       fullName: opts.payerName.trim(),
     },
     metadata: { squashhubSession: opts.merchantReference },
+    // Item 1: the return destination goes in the BODY of the payment request.
+    // Query params on the hosted interaction URL are ignored by Stitch.
+    redirectUrl: opts.redirectUri,
     paymentMethods: {
       eft: isCardOnly ? { enabled: false } : {
         enabled: true,
@@ -364,6 +344,7 @@ async function createPaymentRequestV2(opts: {
   }
   return {
     id: String(data.id),
-    redirect_url: appendRedirectUri(String(redirectBase), opts.redirectUri),
+    // Items 3 + 4: hand back the hosted URL exactly as issued — param-free.
+    redirect_url: String(redirectBase),
   };
 }

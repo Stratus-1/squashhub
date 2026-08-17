@@ -2,15 +2,13 @@
 
 Yes, this is possible — and the club-ambiguity problem is solved by not relying on the product's own barcode as the identity.
 
-## The core idea
-
-A Castle Light barcode is the same everywhere, so it can never identify a venue. Instead the club prints its **own QR labels** from the app. Each label encodes a link like:
+The QR code the customer scans is not the product barcode. It is a club-generated URL/short-code that contains the club identity plus the product. For example:
 
 ```text
-https://nelspruit.squashhub.co.za/s/<short-code>
+https://nelspruit.squashhub.co.za/s/abc123
 ```
 
-where `<short-code>` maps to one row: this club + this item + this price. Scanning with the phone camera (no app, no login) opens a public product page with the club's branding, price and a Pay button.
+That `abc123` maps to one row: **Nelspruit club + Castle Light + R45**. Even if another club also sells Castle Light, their QR code will have a different short code and a different URL. The product barcode is only used to help the admin find the product in the catalogue quickly; the printed QR code is always club-specific.
 
 Two label modes, both generated in the admin bar screen:
 

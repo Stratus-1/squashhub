@@ -216,7 +216,7 @@ export default function ScanPay() {
       if (saleId) {
         localStorage.setItem(
           PENDING_SALE_KEY,
-          JSON.stringify({ saleId, itemName: cartLabel, total, code }),
+          JSON.stringify({ saleId, itemName: cartLabel, total, code, ts: Date.now() }),
         );
       }
       const keptAppTab = await openStitchPaymentWindow(redirect);

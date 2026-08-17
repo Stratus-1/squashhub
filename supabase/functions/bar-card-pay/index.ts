@@ -229,16 +229,18 @@ function sanitizeReturnUrl(raw: string | null, clubSubdomain: string, code: stri
 }
 
 function appendRedirectUrl(link: string, returnUrl: string) {
+  if (!link || !returnUrl) return link;
   try {
     const url = new URL(link);
-    url.searchParams.delete("redirect_url");
-    url.searchParams.set("redirect_uri", returnUrl);
+    url.searchParams.delete("redirect_uri");
+    url.searchParams.set("redirect_url", returnUrl);
     return url.toString();
   } catch {
     const separator = link.includes("?") ? "&" : "?";
-    return `${link}${separator}redirect_uri=${encodeURIComponent(returnUrl)}`;
+    return `${link}${separator}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
 }
+
 
 async function getToken(clientId: string, clientSecret: string) {
   const body = new URLSearchParams();

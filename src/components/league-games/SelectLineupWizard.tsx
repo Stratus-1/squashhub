@@ -53,17 +53,31 @@ function AddByNumberInline({
   open,
   onOpenChange,
   side,
+  prefix,
   onAdd,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   side: "home" | "away";
+  /** League code prefix pre-filled into the field, e.g. "NSF". */
+  prefix: string;
   onAdd: (p: NsaTeamPlayer) => void;
 }) {
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(prefix);
   const [name, setName] = useState("");
   const [looking, setLooking] = useState(false);
   const [found, setFound] = useState<string | null>(null);
+
+  // Re-seed the prefix each time the form opens (or the league prefix changes).
+  useEffect(() => {
+    if (open) {
+      setCode(prefix);
+      setName("");
+      setFound(null);
+    }
+  }, [open, prefix]);
+
+
 
   const lookup = async () => {
     const c = code.trim().toUpperCase();

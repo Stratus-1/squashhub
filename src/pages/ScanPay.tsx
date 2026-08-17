@@ -114,7 +114,7 @@ export default function ScanPay() {
   const goLogin = () => {
     const next = `/s/${code}`;
     localStorage.removeItem(GUEST_PREF_KEY);
-    navigate(`/auth?redirect=${encodeURIComponent(next)}`);
+    navigate(`/auth?redirectTo=${encodeURIComponent(next)}`);
   };
 
   const payAsGuest = async (method: "card" | "cash") => {

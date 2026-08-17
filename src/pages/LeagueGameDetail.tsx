@@ -1946,6 +1946,9 @@ export default function LeagueGameDetail() {
   // page becomes a pure live-follow scorecard via the realtime channel.
   const isViewMode = (searchParams.get("mode") || "") === "view";
   const isSubmitted = isSubmittedReal || isViewMode;
+  // For NSA fixtures the tap-to-pick wizard is the ONLY setup surface — the
+  // intermediate grid/format/complete-setup page is redundant and hidden.
+  const nsaPreSetup = nsaLive && !setupDone && !isSubmitted;
 
   // Auto-open the lineup wizard on fresh fixtures so the marker starts with
   // selecting players instead of showing the intermediate setup screen.
@@ -2388,7 +2391,7 @@ export default function LeagueGameDetail() {
         </div>
 
         {/* Match format selection — only during setup */}
-        {!setupDone && !isSubmitted && (() => {
+        {!setupDone && !isSubmitted && !nsaPreSetup && (() => {
           const ruleScoring: "par11" | "par15" | null =
             leagueRules?.points_per_game === 15 ? "par15"
             : leagueRules?.points_per_game === 11 ? "par11"
@@ -2530,6 +2533,7 @@ export default function LeagueGameDetail() {
         )}
 
 
+        {!nsaPreSetup && (
         <div className="border rounded-lg overflow-hidden bg-card text-card-foreground">
           <table className="w-full text-xs bg-card text-card-foreground">
             <thead>
@@ -3166,6 +3170,7 @@ export default function LeagueGameDetail() {
             </tbody>
           </table>
         </div>
+        )}
         </DndContext>
 
         {/* Winner badge */}
@@ -3179,7 +3184,7 @@ export default function LeagueGameDetail() {
         )}
 
         {/* Setup / scoring buttons */}
-        {!setupDone && !isSubmitted && (
+        {!setupDone && !isSubmitted && !nsaPreSetup && (
           <div className="space-y-2">
             <Button
               size="sm"

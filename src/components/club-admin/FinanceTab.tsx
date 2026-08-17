@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { postJournal } from "@/lib/post-journal";
-import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote, Landmark } from "lucide-react";
 import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { useState, useRef, useEffect, type ReactNode, type ComponentType } from "react";
@@ -650,6 +650,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         onBalances={(filter) => { setBalancesFilter(filter); setBalancesSearch(""); setBalancesOpen(true); }}
         onBill={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }}
         onEnterTx={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }}
+        moneyAccounts={["bank_current", "bank", "cash"]
+          .filter((a) => CHART_OF_ACCOUNTS[a as keyof typeof CHART_OF_ACCOUNTS])
+          .map((a) => ({ account: a, label: getLabel(a), balance: getBalance(a), display: money(getBalance(a)) }))}
+        onSelectAccount={(a) => setAccountFilter(a)}
       >
         {(view, setView) => (
           <Tabs value={view} onValueChange={setView} className="w-full mt-4">
@@ -1820,10 +1824,12 @@ interface FinanceHubProps {
   onBalances: (filter: "outstanding" | "credit" | "all") => void;
   onBill: () => void;
   onEnterTx: () => void;
+  moneyAccounts: Array<{ account: string; label: string; balance: number; display: string }>;
+  onSelectAccount: (account: string) => void;
   children: (view: FinanceView, setView: (v: string) => void) => ReactNode;
 }
 
-function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, children }: FinanceHubProps) {
+function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, moneyAccounts, onSelectAccount, children }: FinanceHubProps) {
   const [view, setView] = useState<FinanceView>("");
   const [hubStep, setHubStep] = useState("0");
 
@@ -1900,31 +1906,61 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
 
       <SetupSteps steps={steps} value={hubStep} onChange={setHubStep} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {active.tiles.map((t, i) => {
-          const Icon = t.icon;
-          const handleClick = t.onClick ? t.onClick : () => setView(t.key);
-          return (
-            <button
-              key={`${active.title}-${i}`}
-              onClick={handleClick}
-              className="group text-left rounded-lg border bg-card hover:border-primary/50 hover:shadow-md transition-all p-4 relative"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="rounded-md bg-primary/10 text-primary p-2">
-                  <Icon className="w-4 h-4" />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {active.tiles.map((t, i) => {
+            const Icon = t.icon;
+            const handleClick = t.onClick ? t.onClick : () => setView(t.key);
+            return (
+              <button
+                key={`${active.title}-${i}`}
+                onClick={handleClick}
+                className="group text-left rounded-lg border bg-card hover:border-primary/50 hover:shadow-md transition-all p-4 relative"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="rounded-md bg-primary/10 text-primary p-2">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  {t.badge && t.badge > 0 ? (
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{t.badge}</Badge>
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  )}
                 </div>
-                {t.badge && t.badge > 0 ? (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{t.badge}</Badge>
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                )}
-              </div>
-              <p className="text-sm font-semibold mt-3">{t.label}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{t.desc}</p>
-            </button>
-          );
-        })}
+                <p className="text-sm font-semibold mt-3">{t.label}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{t.desc}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Bank / cash account shortcuts */}
+        <Card className="p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Landmark className="w-4 h-4 text-primary" />
+            <p className="text-sm font-semibold">Bank accounts</p>
+          </div>
+          <p className="text-[11px] text-muted-foreground mb-2 leading-snug">
+            Jump straight to the transactions of a bank or cash account.
+          </p>
+          <div className="space-y-1.5">
+            {moneyAccounts.map((a) => (
+              <button
+                key={a.account}
+                onClick={() => { onSelectAccount(a.account); setView("by-account"); }}
+                className="w-full text-left rounded-md border bg-background hover:border-primary/50 hover:shadow-sm transition-all px-3 py-2 flex items-center justify-between gap-2"
+              >
+                <span className="text-xs font-medium">{a.label}</span>
+                <span className={cn("text-xs font-semibold tabular-nums", a.balance >= 0 ? "text-green-600" : "text-destructive")}>
+                  {a.display}
+                </span>
+              </button>
+            ))}
+            {moneyAccounts.length === 0 && (
+              <p className="text-[11px] text-muted-foreground">No bank or cash accounts yet.</p>
+            )}
+          </div>
+        </Card>
       </div>
 
       <SetupStepNav steps={steps} value={hubStep} onChange={setHubStep} />
@@ -1932,4 +1968,5 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
     </div>
   );
 }
+
 

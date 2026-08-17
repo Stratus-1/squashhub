@@ -1,0 +1,1 @@
+DELETE FROM public.bar_visitor_sales WHERE id IN ('4e230e40-a2f7-4125-a18c-3e4e462ccbf8','63af5d84-0020-4e28-8796-7f109b8e9913');

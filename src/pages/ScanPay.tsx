@@ -195,7 +195,7 @@ export default function ScanPay() {
           code,
           lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
           buyer_name: buyerName,
-          return_url: `${window.location.origin}/s/${code}`,
+          return_url: `${window.location.origin}/s/${code}/success`,
         },
       });
       if (error) throw error;

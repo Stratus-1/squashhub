@@ -136,26 +136,21 @@ function AddByNumberInline({
         </Button>
       </div>
       <div className="flex gap-2">
-        <div className="relative flex-1">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-muted-foreground">
-            NSF
-          </span>
-          <Input
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                lookup();
-              }
-            }}
-            placeholder="1234"
-            inputMode="numeric"
-            className="h-11 text-base font-mono pl-11"
-            maxLength={20}
-            autoFocus
-          />
-        </div>
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              lookup();
+            }
+          }}
+          placeholder={`${prefix}1234`}
+          className="h-11 text-base font-mono flex-1"
+          maxLength={20}
+          autoFocus
+        />
+
         <Button variant="secondary" onClick={lookup} disabled={looking || !code.trim()}>
           {looking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Find"}
         </Button>

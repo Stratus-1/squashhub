@@ -715,3 +715,17 @@ documented `redirect_uri` on the fresh hosted link.
   Express link, matching the bar checkout.
 - **Guard:** `redirect_url` is dead on Stitch Express hosted links — any occurrence 404s the checkout.
   Use `redirect_uri` only.
+
+### 2026-08-17 · ✅ REVERTED to the canonical Stitch shape (record-matched)
+- **Symptom:** repeated changes (`redirect_uri`, body-level `redirectUrl`, param-free links) all
+  ended the payer on Stitch's generic **Payment complete** page.
+- **Evidence used:** `select stitch_redirect_url from stitch_payment_sessions where status='completed'`
+  — **every** historically completed session is
+  `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2F<club>.squashhub.co.za%2Fmy-account`.
+  The only session ever created with `redirect_uri` did not redirect.
+- **Fix:** `stitch-create-payment` and `bar-card-pay` both restored to append **`redirect_url`**
+  (tenant-subdomain host) to the Express hosted link; `appendSessionParams` again adds
+  `stitch_session` to the return URL. Mandate flow was already canonical — untouched.
+- **Guard:** the completed-session `stitch_redirect_url` string is the source of truth. If a fresh
+  link 404s with `redirect_url`, the **host** is wrong or not whitelisted for that club's Stitch
+  credentials — fix the host, never strip the parameter, never swap to `redirect_uri`.

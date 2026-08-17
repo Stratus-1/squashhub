@@ -181,17 +181,18 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // Items 3 + 4: Express hosted links must stay param-free. `redirect_url`
-    // 404s the link outright and `redirect_uri` is ignored, so appending only
-    // breaks checkout. Express payers finish on Stitch's own completion page;
-    // the branded return is only available via the payment-request flow above.
-    const redirectUrl = payment.link as string;
+    // CANONICAL (09 Aug 2026, confirmed working — see issue log §"canonical
+    // once-off / top-up payment flow"): append `redirect_url` (with the club's
+    // validated tenant subdomain host) to the Express hosted link. Body-level
+    // redirect keys are silently dropped by Express. Do not "simplify" this.
+    const redirectUrl = appendExpressRedirectUrl(payment.link as string, safeReturnWithSession);
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
     }).eq("id", session.id);
 
     return json({ session_id: session.id, redirect_url: redirectUrl, request_id: payment.id, redirect_mode: "direct" });
+
 
   } catch (e: any) {
     console.error("stitch-create-payment error:", e);
@@ -253,20 +254,37 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = "") {
   }
 }
 
-// NOTE (17 Aug 2026): helpers that appended `redirect_url` / `redirect_uri` to
-// Stitch hosted links were removed. Verified live: `?foo=bar` → 200,
-// `?redirect_url=<anything>` → 404, `?redirect_uri=...` → 200 but no redirect.
-// Hosted links must be handed to the payer exactly as Stitch issued them.
-
-
-function appendSessionParams(returnUrl: string, _sessionId: string, _clubSubdomain = "") {
-  // Stitch Express appears to validate the return URL as an exact whitelist
-  // match. Any appended query params, even our own stitch_session/status, can
-  // make Stitch keep the payer on /pay/complete instead of redirecting. The
-  // browser already stores the pending session before checkout, and /pay/return
-  // uses the apex cookie to route the payer back to their club subdomain.
-  return returnUrl;
+// CANONICAL helper (restored 17 Aug 2026 to the 09 Aug confirmed-working
+// shape). Express honours `redirect_url` on a FRESH hosted link provided the
+// host is the club's whitelisted tenant subdomain. A 404 here means the host is
+// wrong / not whitelisted for that club's credentials — fix the host, never
+// strip the parameter.
+function appendExpressRedirectUrl(link: string, returnUrl: string) {
+  if (!link || !returnUrl) return link;
+  try {
+    const url = new URL(link);
+    url.searchParams.set("redirect_url", returnUrl);
+    return url.toString();
+  } catch {
+    const sep = link.includes("?") ? "&" : "?";
+    return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
+  }
 }
+
+function appendSessionParams(returnUrl: string, sessionId: string, _clubSubdomain = "") {
+  // Canonical: the return URL carries `stitch_session` so /my-account can call
+  // stitch-verify-payment on arrival.
+  if (!returnUrl || !sessionId) return returnUrl;
+  try {
+    const url = new URL(returnUrl);
+    url.searchParams.set("stitch_session", sessionId);
+    return url.toString();
+  } catch {
+    const sep = returnUrl.includes("?") ? "&" : "?";
+    return `${returnUrl}${sep}stitch_session=${encodeURIComponent(sessionId)}`;
+  }
+}
+
 
 async function getPaymentRequestToken(clientId: string, clientSecret: string) {
   const body = new URLSearchParams();

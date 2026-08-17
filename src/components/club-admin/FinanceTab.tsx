@@ -81,7 +81,24 @@ const CREDIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[
 // Default gateway fee percentages by provider (overridable per club in Banking settings)
 const DEFAULT_GATEWAY_FEE_PCT: Record<string, number> = { yoco: 2.9, stitch: 2.5 };
 const FALLBACK_GATEWAY_FEE_PCT = 3.5;
-export const gatewayFeePercent = (club: any): number => {
+export type CardMethod = "card_local" | "card_intl" | "wallet" | "capitec";
+export const CARD_METHOD_LABELS: Record<CardMethod, string> = {
+  card_local: "Card — local",
+  card_intl: "Card — international",
+  wallet: "Apple Pay / Google Pay",
+  capitec: "Capitec Pay",
+};
+const CARD_METHOD_COLUMN: Record<CardMethod, string> = {
+  card_local: "gateway_fee_pct_card_local",
+  card_intl: "gateway_fee_pct_card_intl",
+  wallet: "gateway_fee_pct_wallet",
+  capitec: "gateway_fee_pct_capitec",
+};
+export const gatewayFeePercent = (club: any, method?: CardMethod | null): number => {
+  if (method) {
+    const perMethod = Number(club?.[CARD_METHOD_COLUMN[method]]);
+    if (Number.isFinite(perMethod) && perMethod >= 0) return perMethod;
+  }
   const explicit = Number(club?.payment_gateway_fee_percent);
   if (Number.isFinite(explicit) && explicit >= 0) return explicit;
   const g = String(club?.payment_gateway || "").toLowerCase();
@@ -108,7 +125,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const queryClient = useQueryClient();
   const { data: members } = useClubMembers(clubId);
   const [accountFilter, setAccountFilter] = useState<string>("all");
-  const gatewayPct = gatewayFeePercent(club);
+  const [txCardMethod, setTxCardMethod] = useState<CardMethod>("card_local");
+  const gatewayPct = gatewayFeePercent(club, txCardMethod);
   const GATEWAY_FEE_RATE = gatewayPct / 100;
   const gatewayPctLabel = `${gatewayPct}%`;
   const [journalSearch, setJournalSearch] = useState("");
@@ -1118,7 +1136,24 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               </div>
             </div>
 
+            {txMethod === "card" && (
+              <div>
+                <Label className="text-xs">Card method</Label>
+                <Select value={txCardMethod} onValueChange={v => setTxCardMethod(v as CardMethod)}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(CARD_METHOD_LABELS) as CardMethod[]).map(m => (
+                      <SelectItem key={m} value={m}>
+                        {CARD_METHOD_LABELS[m]} ({gatewayFeePercent(club, m)}%)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
+
               <Label className="text-xs">Amount ({currencySymbol})</Label>
               <Input type="number" step="0.01" min="0" placeholder="0.00" value={txAmount} onChange={e => setTxAmount(e.target.value)} className="h-9 text-xs" />
               {txMethod === "card" && txAmount && parseFloat(txAmount) > 0 && (

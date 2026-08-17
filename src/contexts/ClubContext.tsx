@@ -55,7 +55,7 @@ const PUBLIC_CLUB_COLS =
 // Restricted columns (payments, honesty bar, face enrolment) — only granted to
 // authenticated users. Fetched separately and merged into the club object.
 const RESTRICTED_CLUB_COLS =
-  "id, payment_gateway, payment_gateway_public_key, payment_gateway_fee_percent, honesty_bar_enabled, face_enrolment_required, booking_slot_minutes, booking_open_time, booking_last_slot_time, peak_weekday_start, peak_weekday_end, peak_weekend_start, peak_weekend_end, max_peak_bookings_per_day, max_bookings_per_day, lights_integration_enabled, light_fee_per_hour";
+  "id, payment_gateway, payment_gateway_public_key, payment_gateway_fee_percent, gateway_fee_pct_card_local, gateway_fee_pct_card_intl, gateway_fee_pct_wallet, gateway_fee_pct_capitec, honesty_bar_enabled, face_enrolment_required, booking_slot_minutes, booking_open_time, booking_last_slot_time, peak_weekday_start, peak_weekday_end, peak_weekend_start, peak_weekend_end, max_peak_bookings_per_day, max_bookings_per_day, lights_integration_enabled, light_fee_per_hour";
 
 export function ClubProvider({ children }: { children: ReactNode }) {
   const location = useLocation();

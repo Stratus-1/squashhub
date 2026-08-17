@@ -37,6 +37,19 @@ type GatewayDef = {
 
 const DEFAULT_FEE_PCT: Record<string, number> = { yoco: 2.9, stitch: 2.5 };
 
+// Per-method gateway rates (local SA market defaults)
+const METHOD_FEE_FIELDS = [
+  { key: "gateway_fee_pct_card_local", label: "Card — local", default: 2.95 },
+  { key: "gateway_fee_pct_card_intl", label: "Card — international", default: 3.4 },
+  { key: "gateway_fee_pct_wallet", label: "Apple Pay / Google Pay", default: 2.95 },
+  { key: "gateway_fee_pct_capitec", label: "Capitec Pay", default: 1.9 },
+] as const;
+type MethodFeeKey = (typeof METHOD_FEE_FIELDS)[number]["key"];
+const methodFeesFromClub = (club: any): Record<string, string> =>
+  Object.fromEntries(
+    METHOD_FEE_FIELDS.map(f => [f.key, club?.[f.key] != null ? String(club[f.key]) : ""])
+  );
+
 const GATEWAYS: GatewayDef[] = [
   {
     id: "payfast",
@@ -245,6 +258,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const [feePercent, setFeePercent] = useState(
     (club as any).payment_gateway_fee_percent != null ? String((club as any).payment_gateway_fee_percent) : ""
   );
+  const [methodFees, setMethodFees] = useState<Record<string, string>>(() => methodFeesFromClub(club));
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
   const [acceptedMethods, setAcceptedMethods] = useState<Set<string>>(
@@ -262,6 +276,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   useEffect(() => {
     setGateway(club.payment_gateway || "");
     setFeePercent((club as any).payment_gateway_fee_percent != null ? String((club as any).payment_gateway_fee_percent) : "");
+    setMethodFees(methodFeesFromClub(club));
     setAcceptedMethods(new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"]));
   }, [club.payment_gateway, (club as any).accepted_payment_methods]);
 
@@ -311,6 +326,11 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
     const newGateway = value === "__none__" ? "" : value;
     setGateway(newGateway);
     setFeePercent(newGateway ? String(DEFAULT_FEE_PCT[newGateway] ?? 3.5) : "");
+    setMethodFees(
+      newGateway
+        ? Object.fromEntries(METHOD_FEE_FIELDS.map(f => [f.key, String(f.default)]))
+        : Object.fromEntries(METHOD_FEE_FIELDS.map(f => [f.key, ""]))
+    );
     setCredentials({});
     setVisibleFields(new Set());
   };
@@ -325,6 +345,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const resetGateway = () => {
     setGateway(club.payment_gateway || "");
     setFeePercent((club as any).payment_gateway_fee_percent != null ? String((club as any).payment_gateway_fee_percent) : "");
+    setMethodFees(methodFeesFromClub(club));
     const saved = (secrets as any)?.payment_gateway_credentials;
     setCredentials(saved && typeof saved === "object" ? saved : {});
   };
@@ -343,6 +364,12 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         payment_gateway: gateway || null,
         payment_gateway_public_key: null, // migrated to credentials JSON
         payment_gateway_fee_percent: feePercent.trim() === "" ? null : Number(feePercent),
+        ...Object.fromEntries(
+          METHOD_FEE_FIELDS.map(f => [
+            f.key,
+            (methodFees[f.key] ?? "").trim() === "" ? null : Number(methodFees[f.key]),
+          ])
+        ),
         accepted_payment_methods: Array.from(acceptedMethods),
       } as any);
 
@@ -475,28 +502,49 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
           </Select>
         </div>
 
-        {/* Gateway transaction fee */}
+        {/* Gateway transaction fees per payment method */}
         {gateway && (
-          <div className="space-y-1">
-            <Label className="text-xs">Transaction fee (%)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              max="20"
-              className="h-8 text-xs"
-              value={feePercent}
-              onChange={(e) => setFeePercent(e.target.value)}
-              placeholder={String(DEFAULT_FEE_PCT[gateway] ?? 3.5)}
-            />
+          <div className="space-y-2">
+            <Label className="text-xs">Transaction fees (%) per payment method</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {METHOD_FEE_FIELDS.map(f => (
+                <div key={f.key} className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{f.label}</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="20"
+                    className="h-8 text-xs"
+                    value={methodFees[f.key] ?? ""}
+                    onChange={(e) => setMethodFees(p => ({ ...p, [f.key]: e.target.value }))}
+                    placeholder={String(f.default)}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Fallback rate (other / unknown method)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                max="20"
+                className="h-8 text-xs"
+                value={feePercent}
+                onChange={(e) => setFeePercent(e.target.value)}
+                placeholder={String(DEFAULT_FEE_PCT[gateway] ?? 3.5)}
+              />
+            </div>
             <p className="text-[10px] text-muted-foreground">
-              Charged by the gateway on every card payment. The fee is booked automatically:
+              The matching rate is booked automatically on every card payment:
               debit Payment Gateway Fees, credit Current Account — so your bank balance matches
               what actually settles and no month-end reconciliation is needed.
-              Defaults: Yoco 2.9%, Stitch 2.5%.
+              Typical: local card 2.95%, international card 3.4%, Apple/Google Pay 2.95%, Capitec Pay 1.9%.
             </p>
           </div>
         )}
+
 
         {/* Gateway Info */}
         {selectedGateway && (

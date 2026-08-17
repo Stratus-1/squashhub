@@ -36,7 +36,7 @@ const Email = ({
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>{`${clubName}: your SquashHub trial ends in ${daysRemaining} days — confirm your billing preferences.`}</Preview>
+    <Preview>{`${clubName}: your SquashHub trial ends in ${daysRemaining} days — accept the SLA and confirm your billing preferences.`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={header}>

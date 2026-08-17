@@ -3053,7 +3053,12 @@ export default function LeagueGameDetail() {
                               <Button
                                 size="lg"
                                 className="text-sm font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg hover:shadow-xl hover:opacity-95 transition-all h-12 px-5 mx-auto flex"
-                                onClick={() => { setSetupDone(false); if (nsaLive) setSelectWizardOpen(true); }}
+                                onClick={() => {
+                                  // Go straight to the tap-to-pick wizard; only fall back to the
+                                  // manual setup grid when no NSA roster is available.
+                                  if (nsaLive) setSelectWizardOpen(true);
+                                  else setSetupDone(false);
+                                }}
                               >
                                 <Users className="w-4 h-4 mr-2" /> Edit / Select Players
                               </Button>

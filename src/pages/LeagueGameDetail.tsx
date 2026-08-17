@@ -2477,16 +2477,10 @@ export default function LeagueGameDetail() {
             <Users className="w-4 h-4 mr-2" /> Select players (1 → {positions.length})
           </Button>
         )}
-        {nsaLive && !setupDone && !isSubmitted && (
-          <RosterPanel
-            homeCode={fixture?.home_team_code}
-            awayCode={fixture?.away_team_code}
-            homePlayers={(nsaHomeTeam?.players || []).filter(p => !excludedFromGame.home[(p.code || "").toUpperCase()])}
-            awayPlayers={(nsaAwayTeam?.players || []).filter(p => !excludedFromGame.away[(p.code || "").toUpperCase()])}
-            assignedCodes={assignedCodes}
-            onAssign={handleRosterAssign}
-          />
-        )}
+        {/* Squad roster panel is intentionally hidden pre-setup for NSA fixtures —
+            the tap-to-pick wizard (above) is the single entry point so markers
+            always see numbered positions 1 → N. */}
+
         {!isSubmitted && (Object.keys(excludedFromGame.home).length > 0 || Object.keys(excludedFromGame.away).length > 0) && (
           <div className="border border-dashed border-amber-300 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-2 text-[11px] space-y-1.5">
             <div className="flex items-center gap-1.5 font-semibold text-amber-800 dark:text-amber-200">

@@ -123,10 +123,16 @@ export function BillingFrequencyCard({
 
 
 
+  const dirty = choice !== current || payMethod !== currentPay;
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateClub.mutateAsync({ id: club.id, sla_billing_option: choice } as any);
+      await updateClub.mutateAsync({
+        id: club.id,
+        sla_billing_option: choice,
+        sla_payment_method: payMethod,
+      } as any);
       toast.success(
         choice === "annual_upfront"
           ? "Set to annual upfront — your next invoice will cover 12 months."
@@ -140,6 +146,7 @@ export function BillingFrequencyCard({
       setSaving(false);
     }
   };
+
 
   return (
     <Card className="p-4 space-y-3">

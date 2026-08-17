@@ -1,43 +1,17 @@
-/**
- * Branded payment success page for Scan-to-Pay card checkouts.
- *
- * Reached after the payer completes a Stitch card payment. Shows the tenant
- * club logo and the SquashHub app logo, confirms the amount, and tries to
- * close the tab automatically after a few seconds.
- */
+/** Plain confirmation screen for Scan-to-Pay card checkouts. */
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
-import { Loader2, CheckCircle2, XCircle, ShoppingBag } from "lucide-react";
-import { formatMoney } from "@/lib/qr-shortcodes";
-import shLogo from "@/assets/sh-logo.png";
+import { Loader2, X } from "lucide-react";
 import { closeStitchPaymentWindow } from "@/lib/stitch-checkout";
 
 
 const PENDING_SALE_KEY = "sh.scanpay.pendingSale";
 
-interface ScanPayload {
-  found: boolean;
-  kind?: "item" | "venue";
-  code?: string;
-  club?: {
-    id: string;
-    name: string;
-    logo_url: string | null;
-    subdomain: string | null;
-    currency_code: string | null;
-    bar_enabled: boolean;
-  };
-}
-
 interface PendingSale {
   saleId: string;
-  itemName: string;
-  total: number;
   code: string;
 }
 
@@ -45,27 +19,7 @@ export default function BarPaymentSuccess() {
   const { code = "" } = useParams();
 
   const [status, setStatus] = useState<"verifying" | "paid" | "failed" | "no-sale">("verifying");
-  const [pending, setPending] = useState<PendingSale | null>(null);
-  const [countdown, setCountdown] = useState(5);
-  const [closeBlocked, setCloseBlocked] = useState(false);
-  const [canCloseTab] = useState(
-    () => typeof window !== "undefined" && Boolean(window.opener),
-  );
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["scan-code", code],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc(
-        "resolve_qr_short_code" as never,
-        { _code: code } as never,
-      );
-      if (error) throw error;
-      return data as unknown as ScanPayload;
-    },
-    enabled: !!code,
-  });
-
-  const club = data?.club;
+  const [dismissed, setDismissed] = useState(false);
 
   // Read the pending sale from local storage and poll until the bank confirms.
   useEffect(() => {
@@ -89,8 +43,6 @@ export default function BarPaymentSuccess() {
       return;
     }
 
-    setPending(parsed);
-
     let cancelled = false;
     const poll = async (attempt = 0) => {
       if (cancelled) return;
@@ -109,7 +61,7 @@ export default function BarPaymentSuccess() {
         setStatus(st === "failed" ? "failed" : "no-sale");
         return;
       }
-      setTimeout(() => poll(attempt + 1), 3000);
+      setTimeout(() => poll(attempt + 1), 2000);
     };
     poll();
 
@@ -118,128 +70,48 @@ export default function BarPaymentSuccess() {
     };
   }, [code]);
 
-  // Auto-close the tab after the payment is confirmed.
-  useEffect(() => {
-    if (status !== "paid" || !canCloseTab) return;
-    if (countdown <= 0) {
-      window.close();
-      return;
-    }
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [status, countdown, canCloseTab]);
-
   const attemptClose = () => {
     window.close();
-    // Browsers block window.close() for tabs the script did not open.
-    setTimeout(() => setCloseBlocked(true), 300);
+    // A QR-scanner tab was opened by the user, so browsers may refuse to close
+    // it. In that case finish the experience in-place instead of redirecting.
+    setTimeout(() => setDismissed(true), 200);
   };
 
-  if (isLoading) {
+  if (dismissed) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div className="min-h-screen bg-background flex items-center justify-center px-6 text-center">
+        <p className="text-base text-muted-foreground">Bye.</p>
       </div>
     );
   }
-
-  if (!data?.found || !club) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-6 text-center">
-        <div>
-          <h1 className="text-lg font-semibold mb-1">Code not recognised</h1>
-          <p className="text-sm text-muted-foreground">This QR code is no longer active.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const currency = club?.currency_code;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex items-center justify-center px-6 text-center">
       <SEO
-        title={`Payment successful · ${club.name}`}
+        title="Payment complete"
         description="Thank you for your payment"
         path={`/s/${code}/success`}
         noIndex
       />
-
-      <header className="px-4 py-5 flex items-center justify-center gap-4 border-b">
-        {club.logo_url ? (
-          <img
-            src={club.logo_url}
-            alt={`${club.name} logo`}
-            className="h-12 w-12 object-contain rounded"
-          />
+      <main className="w-full max-w-sm space-y-6">
+        {status === "verifying" ? (
+          <>
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
+            <p className="text-sm text-muted-foreground">Completing your payment…</p>
+          </>
+        ) : status === "failed" ? (
+          <>
+            <h1 className="text-xl font-semibold">Payment not confirmed.</h1>
+            <p className="text-sm text-muted-foreground">Please check with the bar if your card was charged.</p>
+            <Button className="w-full gap-2" onClick={attemptClose}><X className="h-4 w-4" /> Close</Button>
+          </>
         ) : (
-          <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
-            {club.name.slice(0, 2).toUpperCase()}
-          </div>
+          <>
+            <h1 className="text-xl font-semibold">Thank you for your payment.</h1>
+            <p className="text-base text-muted-foreground">Enjoy your squash. Bye.</p>
+            <Button className="w-full gap-2" onClick={attemptClose}><X className="h-4 w-4" /> Close</Button>
+          </>
         )}
-        <span className="text-muted-foreground">×</span>
-        <img src={shLogo} alt="SquashHub" className="h-12 w-12 object-contain rounded" />
-      </header>
-
-      <main className="flex-1 flex items-center justify-center p-6">
-        <Card className="max-w-sm w-full p-8 text-center space-y-6">
-          {status === "verifying" ? (
-            <div className="space-y-4">
-              <Loader2 className="w-10 h-10 mx-auto animate-spin text-primary" />
-              <h1 className="text-lg font-semibold">Waiting for your card payment…</h1>
-              <p className="text-sm text-muted-foreground">
-                Finish the payment in the secure payment tab. This page updates
-                automatically — you can leave it open.
-              </p>
-
-            </div>
-          ) : status === "failed" ? (
-            <div className="space-y-4">
-              <XCircle className="w-12 h-12 mx-auto text-destructive" />
-              <h1 className="text-lg font-semibold">Payment not confirmed</h1>
-              <p className="text-sm text-muted-foreground">
-                We could not confirm the card payment. If you were charged, please show this screen at the bar.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <CheckCircle2 className="w-10 h-10 text-primary" />
-              </div>
-              <h1 className="text-xl font-semibold text-primary">Thank you very much!</h1>
-              <p className="text-sm text-muted-foreground">
-                {status === "paid" && pending ? (
-                  <>
-                    Your payment of{" "}
-                    <strong className="text-foreground">
-                      {formatMoney(pending.total, currency)}
-                    </strong>{" "}
-                    for <strong className="text-foreground">{pending.itemName}</strong> has been received.
-                  </>
-                ) : (
-                  <>Your payment has been received.</>
-                )}
-              </p>
-              <p className="text-sm font-medium text-accent">Enjoy the squash!</p>
-              {status === "paid" && canCloseTab && countdown > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  This tab will close automatically in {countdown}s…
-                </p>
-              )}
-              {closeBlocked && (
-                <p className="text-xs text-muted-foreground">
-                  You can now close this tab.
-                </p>
-              )}
-            </div>
-          )}
-
-          {status !== "verifying" && (
-            <Button className="w-full gap-2" onClick={attemptClose}>
-              <ShoppingBag className="w-4 h-4" /> Close
-            </Button>
-          )}
-        </Card>
       </main>
     </div>
   );

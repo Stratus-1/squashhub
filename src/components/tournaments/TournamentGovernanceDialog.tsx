@@ -124,7 +124,8 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
     ...(owner?.owner_org_id ? [owner.owner_org_id] : []),
   ]);
   const ownableOrgs = unrestricted ? orgs : orgs.filter((o) => allowedOrgIds.has(o.id));
-  const ownerLocked = !unrestricted && ownableOrgs.length <= 1;
+  // Lock only when there is nothing the user could choose ("Unassigned" always counts as an option).
+  const ownerLocked = !unrestricted && ownableOrgs.length === 0;
 
   const save = useSaveTournamentGovernance(id);
   const setOwner = useSetTournamentOwner(id);

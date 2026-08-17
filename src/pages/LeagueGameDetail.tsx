@@ -3166,6 +3166,7 @@ export default function LeagueGameDetail() {
             </tbody>
           </table>
         </div>
+        )}
         </DndContext>
 
         {/* Winner badge */}

@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { postJournal } from "@/lib/post-journal";
-import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote, Landmark } from "lucide-react";
 import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { useState, useRef, useEffect, type ReactNode, type ComponentType } from "react";
@@ -650,6 +650,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         onBalances={(filter) => { setBalancesFilter(filter); setBalancesSearch(""); setBalancesOpen(true); }}
         onBill={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }}
         onEnterTx={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }}
+        moneyAccounts={["bank_current", "bank", "cash"]
+          .filter((a) => CHART_OF_ACCOUNTS[a as keyof typeof CHART_OF_ACCOUNTS])
+          .map((a) => ({ account: a, label: getLabel(a), balance: getBalance(a), display: money(getBalance(a)) }))}
+        onSelectAccount={(a) => setAccountFilter(a)}
       >
         {(view, setView) => (
           <Tabs value={view} onValueChange={setView} className="w-full mt-4">

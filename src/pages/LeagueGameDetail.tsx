@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RosterPanel } from "@/components/league-games/RosterPanel";
+import { SelectLineupWizard, type LineupPick } from "@/components/league-games/SelectLineupWizard";
 import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
 import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";
 import { AdminManualScoreDialog } from "@/components/league-games/AdminManualScoreDialog";
@@ -273,6 +274,7 @@ export default function LeagueGameDetail() {
 
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
+  const [selectWizardOpen, setSelectWizardOpen] = useState(false);
   // Players removed from THIS fixture's lineup by the captain.
   // They won't reappear in the NSA Squad pool (so they can't be accidentally
   // re-added and counted as subs). The captain can restore them via the
@@ -1145,6 +1147,19 @@ export default function LeagueGameDetail() {
     });
     clearFromExcluded(side, codeUpper);
   }, [assignedCodes, clearFromExcluded]);
+
+  // Guided "Select players" wizard → replace the whole lineup in one shot.
+  const handleWizardApply = useCallback((home: LineupPick[], away: LineupPick[]) => {
+    setPositions((prev) => prev.map((p, i) => ({
+      ...p,
+      homeCode: home[i]?.code || "",
+      homeName: home[i]?.name || "",
+      awayCode: away[i]?.code || "",
+      awayName: away[i]?.name || "",
+    })));
+    setExcludedFromGame({ home: {}, away: {} });
+    toast.success("Lineup updated");
+  }, []);
 
   // Drag a roster player onto a specific H/V slot. If the slot is occupied,
   // the new player overwrites it (the displaced player simply returns to the

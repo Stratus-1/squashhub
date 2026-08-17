@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart } from "lucide-react";
+import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart, X } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 import {
   prepareStitchPaymentWindow,
@@ -288,10 +288,19 @@ export default function ScanPay() {
         {club.logo_url ? (
           <img src={club.logo_url} alt={`${club.name} logo`} className="w-10 h-10 rounded object-contain" />
         ) : null}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-base font-semibold truncate">{club.name}</h1>
           <p className="text-[11px] text-muted-foreground">Scan to pay · Bar &amp; shop</p>
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="shrink-0 gap-1.5"
+          onClick={() => navigate("/", { replace: true })}
+        >
+          <X className="h-4 w-4" /> Close bar
+        </Button>
       </header>
 
       <main className="px-4 py-4 max-w-md mx-auto space-y-4">

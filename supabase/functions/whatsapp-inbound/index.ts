@@ -8,6 +8,10 @@
 // `whatsapp_interactions` for that phone number, and the answer is written
 // straight into the app (event RSVP, tournament entry, ...).
 //
+// If the pending row has been cleaned up, we also fall back to the most recent
+// outbound message we sent to that number, as long as it was interactive and
+// within the last 7 days.
+//
 // Configured in Twilio: Messaging → Sender → "When a message comes in" →
 //   https://<project>.supabase.co/functions/v1/whatsapp-inbound
 //
@@ -38,9 +42,71 @@ function normalisePhone(raw?: string | null, defaultCc = "27"): string | null {
 function parseAnswer(payload: string, text: string): "yes" | "no" | "stop" | null {
   const raw = `${payload} ${text}`.toLowerCase().trim();
   if (/\b(stop|unsubscribe|opt\s*out)\b/.test(raw)) return "stop";
-  if (/\b(yes|y|ja|yebo|in|confirm|accept|attending|going|👍)\b/.test(raw)) return "yes";
-  if (/\b(no|n|nee|out|decline|cant|can't|cannot|not)\b/.test(raw)) return "no";
+  if (
+    /\b(yes|y|ja|yebo|ok|okay|sure|definitely|absolutely|in|confirm|accept|attending|going|register|play|enter|join|👍)\b/
+      .test(raw)
+  ) {
+    return "yes";
+  }
+  if (
+    /\b(no|n|nee|out|decline|cant|can't|cannot|not|withdraw|deregister|not\s*playing|not\s*interested|busy|👎)\b/
+      .test(raw)
+  ) {
+    return "no";
+  }
   return null;
+}
+
+interface ResolvedInteraction {
+  id?: string;
+  club_id: string;
+  member_id?: string | null;
+  kind: string;
+  target_id?: string | null;
+  prompt?: string | null;
+}
+
+async function resolveInteraction(
+  admin: ReturnType<typeof createClient>,
+  from: string,
+): Promise<ResolvedInteraction | null> {
+  // Most recent pending question we asked this number.
+  const { data: pending } = await admin
+    .from("whatsapp_interactions")
+    .select("id, club_id, member_id, kind, target_id, prompt")
+    .eq("phone", from)
+    .eq("status", "pending")
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (pending) return pending;
+
+  // Fallback: the most recent outbound message we sent to this number that
+  // included an interactive question. This catches replies that arrive after
+  // a pending interaction row has expired or been cleaned up.
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: log } = await admin
+    .from("whatsapp_send_log")
+    .select("club_id, member_id, payload")
+    .eq("to_phone", from)
+    .eq("direction", "out")
+    .gt("created_at", weekAgo)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!log) return null;
+  const payload = (log.payload ?? {}) as { interaction?: ResolvedInteraction };
+  if (!payload.interaction) return null;
+  return {
+    club_id: log.club_id!,
+    member_id: log.member_id ?? null,
+    kind: payload.interaction.kind,
+    target_id: payload.interaction.target_id ?? null,
+    prompt: payload.interaction.prompt ?? null,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -63,16 +129,7 @@ Deno.serve(async (req) => {
 
     if (!from) return twiml();
 
-    // Most recent pending question we asked this number.
-    const { data: interaction } = await admin
-      .from("whatsapp_interactions")
-      .select("id, club_id, member_id, kind, target_id")
-      .eq("phone", from)
-      .eq("status", "pending")
-      .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const interaction = await resolveInteraction(admin, from);
 
     // Fall back to the last club we messaged this number from, so the inbound
     // message is still logged (and billed) against the right club.
@@ -152,7 +209,7 @@ Deno.serve(async (req) => {
     if (!interaction) return twiml();
 
     if (!answer) {
-      return twiml("Sorry, I didn't catch that. Please reply YES or NO.");
+      return twiml("Sorry, I didn't catch that. Please reply YES to enter or NO to decline.");
     }
 
     let reply = answer === "yes" ? "Thanks — you're confirmed." : "Noted — thanks for letting us know.";
@@ -189,12 +246,18 @@ Deno.serve(async (req) => {
           if (error) console.error("champ entry failed", error);
           reply = "You're entered. Open SquashHub to pick your partner and settle the entry fee.";
         } else {
-          const { error } = await admin
-            .from("club_champs_registrations")
-            .update({ status: "cancelled" })
-            .eq("champ_id", interaction.target_id)
-            .eq("club_member_id", interaction.member_id);
+          const { error } = await admin.from("club_champs_registrations").upsert(
+            {
+              champ_id: interaction.target_id,
+              club_member_id: interaction.member_id,
+              status: "cancelled",
+              confirmation_source: "rsvp",
+              confirmed_at: new Date().toISOString(),
+            },
+            { onConflict: "champ_id,club_member_id" },
+          );
           applied = !error;
+          if (error) console.error("champ entry decline failed", error);
           reply = "Noted — you're not entered for this tournament.";
         }
       } else {
@@ -202,14 +265,29 @@ Deno.serve(async (req) => {
       }
     }
 
-    await admin
-      .from("whatsapp_interactions")
-      .update({
+    if (interaction.id) {
+      await admin
+        .from("whatsapp_interactions")
+        .update({
+          status: applied ? "answered" : "failed",
+          response: answer,
+          responded_at: new Date().toISOString(),
+        })
+        .eq("id", interaction.id);
+    } else {
+      // Fallback path: record the answer so the conversation is still auditable.
+      await admin.from("whatsapp_interactions").insert({
+        club_id: interaction.club_id,
+        member_id: interaction.member_id ?? null,
+        phone: from,
+        kind: interaction.kind,
+        target_id: interaction.target_id ?? null,
+        prompt: interaction.prompt ?? "Replied to a recent WhatsApp invite",
         status: applied ? "answered" : "failed",
         response: answer,
         responded_at: new Date().toISOString(),
-      })
-      .eq("id", interaction.id);
+      });
+    }
 
     return twiml(reply);
   } catch (e) {

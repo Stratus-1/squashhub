@@ -754,3 +754,9 @@ documented `redirect_uri` on the fresh hosted link.
   `redirect_uri` (loads, Stitch keeps its completion page) → bare link. No club can 404 again.
 - **To get the branded return for a club:** whitelist `<subdomain>.squashhub.co.za` on that club's
   Stitch account. Until then that club finishes on Stitch's completion page by design.
+
+### 2026-08-18 · WhatsApp replies now register/decline tournament entries (and events)
+- **Symptom:** Members could reply to WhatsApp event/tournament invites, but the reply parser was narrow and the match could fail if the pending `whatsapp_interactions` row had expired or been cleaned up.
+- **Fix:** `whatsapp-inbound` now understands natural replies such as `register`, `play`, `enter`, `join`, `ok`, `sure`, `withdraw`, `not playing`, etc. If no pending interaction row exists, it falls back to the most recent outbound `whatsapp_send_log` for that phone, provided the message was interactive and within 7 days. Tournament declines now also upsert a `cancelled` registration row instead of silently failing when the row was absent. `send-whatsapp` now stores the interaction payload in the outbound log so the fallback can recover the right tournament/event.
+- **Guard:** Deployed both `send-whatsapp` and `whatsapp-inbound` edge functions. Bulk tournament invites from the wizard and WhatsApp event invites already send the interactive question; the replies now reliably update `club_champs_registrations` or `club_event_rsvps`.
+

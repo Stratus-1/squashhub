@@ -40,8 +40,32 @@ const Email = ({
     <Body style={main}>
       <Container style={container}>
         <Section style={header}>
-          <Heading style={h1}>SquashHub</Heading>
+          <Row>
+            <Column style={{ verticalAlign: 'middle' as const }}>
+              <Img
+                src="https://squashhub.co.za/pwa-192x192.png"
+                width="40"
+                height="40"
+                alt="SquashHub"
+                style={logoImg}
+              />
+            </Column>
+            <Column style={{ verticalAlign: 'middle' as const, paddingLeft: '10px' }}>
+              <Heading style={h1}>SquashHub</Heading>
+            </Column>
+            {clubLogoUrl && (
+              <Column style={{ verticalAlign: 'middle' as const, textAlign: 'right' as const }}>
+                <Img
+                  src={clubLogoUrl}
+                  height="40"
+                  alt={clubName}
+                  style={clubLogoImg}
+                />
+              </Column>
+            )}
+          </Row>
         </Section>
+
         <Section style={content}>
           <Heading style={h2}>Your free trial ends in {daysRemaining} days</Heading>
           <Text style={p}>Dear {clubName} management,</Text>

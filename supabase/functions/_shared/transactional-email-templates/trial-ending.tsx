@@ -7,6 +7,9 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
+  Column,
+  Row,
   Preview,
   Section,
   Text,
@@ -22,6 +25,7 @@ interface Props {
   memberCount?: number
   estimatedMonthly?: string
   subscriptionUrl?: string
+  clubLogoUrl?: string
 }
 
 const Email = ({
@@ -33,6 +37,7 @@ const Email = ({
   memberCount,
   estimatedMonthly,
   subscriptionUrl = 'https://squashhub.co.za',
+  clubLogoUrl,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -40,8 +45,32 @@ const Email = ({
     <Body style={main}>
       <Container style={container}>
         <Section style={header}>
-          <Heading style={h1}>SquashHub</Heading>
+          <Row>
+            <Column style={{ verticalAlign: 'middle' as const }}>
+              <Img
+                src="https://squashhub.co.za/pwa-192x192.png"
+                width="40"
+                height="40"
+                alt="SquashHub"
+                style={logoImg}
+              />
+            </Column>
+            <Column style={{ verticalAlign: 'middle' as const, paddingLeft: '10px' }}>
+              <Heading style={h1}>SquashHub</Heading>
+            </Column>
+            {clubLogoUrl && (
+              <Column style={{ verticalAlign: 'middle' as const, textAlign: 'right' as const }}>
+                <Img
+                  src={clubLogoUrl}
+                  height="40"
+                  alt={clubName}
+                  style={clubLogoImg}
+                />
+              </Column>
+            )}
+          </Row>
         </Section>
+
         <Section style={content}>
           <Heading style={h2}>Your free trial ends in {daysRemaining} days</Heading>
           <Text style={p}>Dear {clubName} management,</Text>
@@ -119,12 +148,15 @@ export const template = {
     memberCount: 84,
     estimatedMonthly: 'R 462.00',
     subscriptionUrl: 'https://riverside.squashhub.co.za/club-admin?tab=subscription',
+    clubLogoUrl: '',
   },
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 const container = { maxWidth: '560px', margin: '0 auto', padding: '20px 0' }
 const header = { padding: '16px 24px', borderBottom: '1px solid #e5e7eb' }
+const logoImg = { display: 'block', borderRadius: '8px' }
+const clubLogoImg = { display: 'inline-block', maxHeight: '40px', maxWidth: '120px' }
 const h1 = { margin: 0, fontSize: '18px', color: '#1E3A5F' }
 const content = { padding: '24px' }
 const h2 = { fontSize: '20px', color: '#0f172a', margin: '0 0 12px' }

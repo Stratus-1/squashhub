@@ -13,7 +13,7 @@ const corsHeaders = {
 const STITCH_BASE = "https://express.stitch.money/api/v1";
 const STITCH_TOKEN_URL = "https://secure.stitch.money/connect/token";
 const STITCH_API_BASE = "https://api.stitch.money/v2";
-const PUBLIC_APP_ORIGIN = "https://squashhub.co.za";
+const PUBLIC_APP_ORIGIN = "https://www.squashhub.co.za";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

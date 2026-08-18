@@ -7,6 +7,9 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
+  Column,
+  Row,
   Preview,
   Section,
   Text,
@@ -22,6 +25,7 @@ interface Props {
   memberCount?: number
   estimatedMonthly?: string
   subscriptionUrl?: string
+  clubLogoUrl?: string
 }
 
 const Email = ({
@@ -33,6 +37,7 @@ const Email = ({
   memberCount,
   estimatedMonthly,
   subscriptionUrl = 'https://squashhub.co.za',
+  clubLogoUrl,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -143,12 +148,15 @@ export const template = {
     memberCount: 84,
     estimatedMonthly: 'R 462.00',
     subscriptionUrl: 'https://riverside.squashhub.co.za/club-admin?tab=subscription',
+    clubLogoUrl: '',
   },
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 const container = { maxWidth: '560px', margin: '0 auto', padding: '20px 0' }
 const header = { padding: '16px 24px', borderBottom: '1px solid #e5e7eb' }
+const logoImg = { display: 'block', borderRadius: '8px' }
+const clubLogoImg = { display: 'inline-block', maxHeight: '40px', maxWidth: '120px' }
 const h1 = { margin: 0, fontSize: '18px', color: '#1E3A5F' }
 const content = { padding: '24px' }
 const h2 = { fontSize: '20px', color: '#0f172a', margin: '0 0 12px' }

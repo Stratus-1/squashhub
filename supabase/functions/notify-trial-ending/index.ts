@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
 
       const { data: club } = await admin
         .from('clubs')
-        .select('id, name, subdomain')
+        .select('id, name, subdomain, logo_url')
         .eq('id', sub.club_id)
         .maybeSingle()
       if (!club) continue
@@ -161,6 +161,7 @@ Deno.serve(async (req) => {
               daysRemaining: leadDays,
               memberCount: memberCount ?? undefined,
               subscriptionUrl,
+              clubLogoUrl: (club as any).logo_url || undefined,
             },
           },
         })

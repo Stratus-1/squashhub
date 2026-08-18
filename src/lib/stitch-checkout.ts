@@ -79,10 +79,10 @@ export function buildStitchReturnUrl(pathAndSearch: string) {
   try {
     const target = new URL(safePath, originHere);
     rememberPayReturnTarget(target.toString());
-    return "https://squashhub.co.za/pay/return";
+    return "https://www.squashhub.co.za/pay/return";
   } catch {
     rememberPayReturnTarget(`${originHere}/my-account`);
-    return "https://squashhub.co.za/pay/return";
+    return "https://www.squashhub.co.za/pay/return";
   }
 }
 

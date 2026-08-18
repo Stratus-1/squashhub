@@ -260,6 +260,7 @@ Deno.serve(async (req) => {
         status,
         error,
         sent_by: userId,
+        payload: payload.interaction ? { interaction: payload.interaction } : null,
       });
 
       // Register the pending question so the member's Yes/No reply can be

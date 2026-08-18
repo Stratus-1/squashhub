@@ -88,40 +88,49 @@ Deno.serve(async (req) => {
         .eq('club_id', club.id)
         .maybeSingle()
 
+      const isSendable = (e?: string | null) =>
+        !!e && /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(e) && !/\.local$/i.test(e)
+
       const recipients = new Map<string, string>() // email -> name
       for (const e of (profile?.emails as string[] | null) || []) {
-        if (e) recipients.set(e.toLowerCase(), profile?.contact_name || 'there')
+        if (isSendable(e)) recipients.set(e.toLowerCase(), profile?.contact_name || 'there')
       }
 
-      // Plus club officers / finance admins.
-      const { data: members } = await admin
-        .from('club_members')
-        .select('id, name, email, role, status')
-        .eq('club_id', club.id)
-        .eq('status', 'active')
+      // Only fall back to club officers / finance admins when the club has NOT
+      // set billing contacts on the billing information page.
+      if (recipients.size === 0) {
+        const { data: members } = await admin
+          .from('club_members')
+          .select('id, name, email, role, status')
+          .eq('club_id', club.id)
+          .eq('status', 'active')
 
-      const { data: perms } = await admin
-        .from('club_member_permissions')
-        .select('club_member_id, custom_permissions, is_full_admin, club_permission_roles(permissions, is_full_admin)')
+        const { data: perms } = await admin
+          .from('club_member_permissions')
+          .select('club_member_id, custom_permissions, is_full_admin, club_permission_roles(permissions, is_full_admin)')
 
-      const permByMember = new Map<string, any>()
-      for (const p of perms || []) permByMember.set(p.club_member_id, p)
+        const permByMember = new Map<string, any>()
+        for (const p of perms || []) permByMember.set(p.club_member_id, p)
 
-      for (const m of members || []) {
-        if (!m.email) continue
-        const p: any = permByMember.get(m.id)
-        const rolePerms: string[] = p?.club_permission_roles?.permissions || []
-        const custom: string[] = p?.custom_permissions || []
-        const isOfficer =
-          m.role === 'admin' ||
-          p?.is_full_admin ||
-          p?.club_permission_roles?.is_full_admin ||
-          rolePerms.includes('finance') ||
-          custom.includes('finance')
-        if (isOfficer) recipients.set(String(m.email).toLowerCase(), m.name || 'there')
+        for (const m of members || []) {
+          if (!isSendable(m.email)) continue
+          const p: any = permByMember.get(m.id)
+          const rolePerms: string[] = p?.club_permission_roles?.permissions || []
+          const custom: string[] = p?.custom_permissions || []
+          const isOfficer =
+            m.role === 'admin' ||
+            p?.is_full_admin ||
+            p?.club_permission_roles?.is_full_admin ||
+            rolePerms.includes('finance') ||
+            custom.includes('finance')
+          if (isOfficer) recipients.set(String(m.email).toLowerCase(), m.name || 'there')
+        }
       }
 
-      for (const e of ccEmails) recipients.set(String(e).toLowerCase(), 'SquashHub team')
+      for (const e of ccEmails) {
+        if (isSendable(e)) recipients.set(String(e).toLowerCase(), 'SquashHub team')
+      }
+
 
       // Billable member count for the estimate line.
       const { count: memberCount } = await admin

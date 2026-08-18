@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}))
     const onlyClubId: string | undefined = body.clubId
     const force: boolean = !!body.force
+    const resendTag: string = body.resendTag ? `-${String(body.resendTag).slice(0, 40)}` : ''
 
     // Lead time (days before trial end) — configurable in platform settings.
     const { data: setting } = await admin
@@ -151,7 +152,7 @@ Deno.serve(async (req) => {
           body: {
             templateName: 'trial-ending',
             recipientEmail: email,
-            idempotencyKey: `trial-ending-${club.id}-${trialKey}-${email}`,
+            idempotencyKey: `trial-ending-${club.id}-${trialKey}-${email}${resendTag}`,
             templateData: {
               clubName: club.name,
               recipientName: name,

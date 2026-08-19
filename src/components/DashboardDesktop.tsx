@@ -65,6 +65,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
   const [scope, setScope] = useState<StatsScope>("me");
   const { data: clubStats } = useClubAnalytics(30);
 
+  const flags = useSidebarFlags();
   const winRate = Math.max(0, Math.min(100, Math.round(props.winRate)));
   // Club "win rate" = confirmation rate over last 30 days
   const clubConfirmRate =
@@ -230,6 +231,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
         </div>
 
         {/* BOOKINGS card */}
+        {flags.bookingsEnabled && (
         <div className="col-span-12 xl:col-span-5">
           <Card className="bg-card/95 border-border backdrop-blur-md p-5 rounded-2xl h-full">
             <div className="flex items-center justify-between mb-4">

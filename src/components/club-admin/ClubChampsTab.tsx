@@ -1217,6 +1217,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       registration_required: registrationRequired,
       invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
       invite_source: inviteSource,
+      entry_source: entrySource,
+      approval_gate: approvalGate,
       invite_include_reserves: inviteIncludeReserves,
       invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
       handicap_mode: matchType === "singles" ? handicapMode : "none",
@@ -2924,6 +2926,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
+            entry_source: entrySource,
+            approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
@@ -2989,6 +2993,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
+            entry_source: entrySource,
+            approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
@@ -3819,6 +3825,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setRegistrationRequired((champ as any).registration_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
     setInviteSource(((champ as any).invite_source as any) || "manual");
+    setEntrySource((((champ as any).entry_source as any) || ((champ.registration_mode === "invite") ? "admin" : "self")));
+    setApprovalGate((((champ as any).approval_gate as any) || "none"));
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
     setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
     setHandicapMode(((champ as any).handicap_mode as any) || "none");

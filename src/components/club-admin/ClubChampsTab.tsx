@@ -6080,91 +6080,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
             </WizardSection>
+            {matchType === "singles" && (
             <WizardSection
-              title={"Invitations & entry list"}
-              summary={invitesApply ? "Invite list" : "Open sign-up"}
+              title={"Handicap scoring"}
+              summary={handicapMode === "none" ? "No handicap" : "Handicap enabled"}
               complete={true}
-              defaultOpen={invitesApply}
+              defaultOpen={handicapMode !== "none"}
             >
-            <p className="text-[11px] text-muted-foreground">
-              Who may enter is set in “Name, category &amp; eligibility” (currently{" "}
-              <strong>{ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.label || eligibilityScope}</strong>).
-              The questions above decide how they get in.
-            </p>
 
-
-
-
-
-
-            {/* Invite source — only meaningful in invite mode */}
-            {registrationUsesInviteList && (
-              <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
-                <Label className="text-sm">Initial invite list comes from…</Label>
-                <div className="flex flex-wrap items-center gap-4 text-sm">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="invite-source"
-                      checked={inviteSource === "manual"}
-                      onChange={() => setInviteSource("manual")}
-                    />
-                    Manual tick-list
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="invite-source"
-                      checked={inviteSource === "leagues"}
-                      onChange={() => setInviteSource("leagues")}
-                    />
-                    By league (pick on the Players step)
-                  </label>
-                </div>
-                {inviteSource === "leagues" && (
-                  <div className="space-y-2 pt-1">
-                    <Label className="text-xs text-muted-foreground">Pick which leagues to seed from</Label>
-                    {leagueGroups.length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic">No leagues found for this club.</p>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto rounded border border-border/50 bg-background/60 p-2">
-                        {leagueGroups.map((g) => {
-                          const allOn = g.leagueIds.every((id) => sourceLeagueIds.has(id));
-                          const someOn = !allOn && g.leagueIds.some((id) => sourceLeagueIds.has(id));
-                          return (
-                            <label key={g.key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1.5 py-1">
-                              <Checkbox
-                                checked={allOn ? true : someOn ? "indeterminate" : false}
-                                onCheckedChange={() => toggleSourceGroup(g.leagueIds)}
-                              />
-                              <span className="truncate">{g.label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
-                      <Checkbox
-                        checked={inviteIncludeReserves}
-                        onCheckedChange={(c) => {
-                          setInviteIncludeReserves(!!c);
-                          if (sourceLeagueIds.size > 0) applyLeaguePrefill(new Set(sourceLeagueIds));
-                        }}
-                      />
-                      Include reserves
-                    </label>
-                    {hasLeagueSelection && (
-                      <p className="text-xs text-muted-foreground">
-                        {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} seeded from {sourceLeagueIds.size} league{sourceLeagueIds.size === 1 ? "" : "s"}.
-                      </p>
-                    )}
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  This only seeds the starting roster. You can still pull in any player from any league as a sub at any time — no cutoff.
-                </p>
-              </div>
-            )}
 
             {/* League-ranking handicap — singles only */}
             {matchType === "singles" && (

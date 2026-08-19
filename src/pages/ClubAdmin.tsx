@@ -118,6 +118,20 @@ export default function ClubAdmin() {
   const club = (adminClub || baseClub) as typeof baseClub;
   // Hooks must run on every render — call before any early returns.
   const setupStatus = useSetupStatus(club?.id ?? "", club as any);
+  const { enabled: enabledCaps, hasRows: hasCapRows, isLoading: capsLoading } = useCapabilities(club?.id);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const capsReady = !capsLoading && !!club?.id;
+
+  // First-run: a club with no capability rows yet gets the Quick Setup prompt once.
+  useEffect(() => {
+    if (!capsReady || hasCapRows || !club?.id) return;
+    const key = `sh.quicksetup.seen.${club.id}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+    } catch { /* ignore */ }
+    setWizardOpen(true);
+  }, [capsReady, hasCapRows, club?.id]);
 
   if (isLoading || (baseClub?.id && isFetchingAdminClub && !adminClub)) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -135,8 +149,10 @@ export default function ClubAdmin() {
     if (!tab.permission) return false; // permissions tab only for full admins
     return myPermissions.has(tab.permission);
   };
-  const visibleSetup = SETUP_TABS.filter(permFilter);
-  const visibleOps = OPERATIONS_TABS.filter(permFilter);
+  // Capability filter — core tabs (no capability) are always visible.
+  const capFilter = (tab: AdminTab) => !tab.capability || enabledCaps.has(tab.capability);
+  const visibleSetup = SETUP_TABS.filter(permFilter).filter(capFilter);
+  const visibleOps = OPERATIONS_TABS.filter(permFilter).filter(capFilter);
   const visibleTabs = [...visibleSetup, ...visibleOps];
 
   // If active tab isn't visible, switch to first visible (safe: setState in render triggers rerender, doesn't change hook order)

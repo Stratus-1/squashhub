@@ -1131,6 +1131,50 @@ export type Database = {
           },
         ]
       }
+      club_capabilities: {
+        Row: {
+          capability: string
+          club_id: string
+          created_at: string
+          disabled_at: string | null
+          enabled: boolean
+          enabled_at: string | null
+          enabled_by: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          capability: string
+          club_id: string
+          created_at?: string
+          disabled_at?: string | null
+          enabled?: boolean
+          enabled_at?: string | null
+          enabled_by?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          capability?: string
+          club_id?: string
+          created_at?: string
+          disabled_at?: string | null
+          enabled?: boolean
+          enabled_at?: string | null
+          enabled_by?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_capabilities_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_champs_entries: {
         Row: {
           champ_id: string
@@ -9559,6 +9603,10 @@ export type Database = {
       club_gateway_fee_percent: {
         Args: { _club_id: string; _method?: string }
         Returns: number
+      }
+      club_has_capability: {
+        Args: { _capability: string; _club_id: string }
+        Returns: boolean
       }
       count_member_duplicate_hints: {
         Args: { _club_id: string; _name: string; _phone: string }

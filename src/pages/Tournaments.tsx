@@ -777,7 +777,7 @@ export default function Tournaments() {
             </Badge>
           )}
 
-          {today && !isLive(m) && <Badge className="text-[10px] shrink-0">Today</Badge>}
+          {today && !isLive(m) && !isPaused(m) && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
 
         {isLive(m) && (
@@ -790,6 +790,18 @@ export default function Tournaments() {
             <span className="w-1.5 h-1.5 rounded-full bg-current" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
           </button>
         )}
+
+        {isPaused(m) && (
+          <button
+            type="button"
+            title="Nobody is marking this game — resume from the current score"
+            className="inline-flex items-center gap-1 rounded-full border border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[10px] font-semibold shrink-0 px-2.5 py-1 hover:bg-amber-500/20"
+            onClick={(e) => { e.stopPropagation(); openMarker(m, markRoute, `${teamA} vs ${teamB}`); }}
+          >
+            <PauseCircle className="w-3 h-3" /> Paused {m.side_a_points ?? 0}-{m.side_b_points ?? 0} · Resume
+          </button>
+        )}
+
 
         {!isPlaceholder && (
           <Button

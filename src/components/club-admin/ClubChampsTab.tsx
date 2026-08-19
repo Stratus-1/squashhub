@@ -5167,6 +5167,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     <span className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
                                       Bye: {byeForLeague(gn).replace(/_/g, " ")}
                                     </span>
+                                    <span className="inline-flex items-center rounded border border-rose-500/40 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:text-rose-400">
+                                      No show: {describeForfeitRule(forfeitRuleForLeague(gn), forfeitPointsForLeague(gn))}
+                                    </span>
                                   )}
                                   {collapsed && playoffsForLeague(gn) && (
                                     <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
@@ -5470,6 +5473,59 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   }}
                                 />
                               )}
+                              {/* Forfeit / no-show rule — options come from THIS league's
+                                  scoring format, so a standard best-of league can only take a
+                                  walkover or a no-result, never an arbitrary points award. */}
+                              {(() => {
+                                const sc = scoringForLeague(gn);
+                                const opts = forfeitOptionsForScoring(sc);
+                                const rule = forfeitRuleForLeague(gn);
+                                const pts = forfeitPointsForLeague(gn);
+                                const hint = opts.find((o) => o.value === rule)?.hint || "";
+                                return (
+                                  <div className="space-y-1 pt-1">
+                                    <SegRow
+                                      label="Forfeit / no-show rule"
+                                      value={rule}
+                                      color="rose"
+                                      options={opts.map((o) => ({ v: o.value, l: o.label }))}
+                                      onChange={(v) =>
+                                        setLeagueForfeitRules((m) => ({ ...m, [key]: v as ForfeitRule }))
+                                      }
+                                    />
+                                    {rule === "award_points" && (
+                                      <div className="flex flex-wrap items-center gap-2 pl-0.5">
+                                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Opponent</Label>
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          value={pts.opponent}
+                                          onChange={(e) =>
+                                            setLeagueForfeitPoints((m) => ({
+                                              ...m,
+                                              [key]: { opponent: Math.max(0, Math.round(Number(e.target.value)) || 0), player: pts.player },
+                                            }))
+                                          }
+                                          className="h-7 w-16 text-xs"
+                                        />
+                                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Absent player</Label>
+                                        <Input
+                                          type="number"
+                                          value={pts.player}
+                                          onChange={(e) =>
+                                            setLeagueForfeitPoints((m) => ({
+                                              ...m,
+                                              [key]: { opponent: pts.opponent, player: Math.round(Number(e.target.value)) || 0 },
+                                            }))
+                                          }
+                                          className="h-7 w-16 text-xs"
+                                        />
+                                      </div>
+                                    )}
+                                    <p className="text-[10px] text-muted-foreground pl-0.5">{hint}</p>
+                                  </div>
+                                );
+                              })()}
                               <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5 pt-1">
                                 <input
                                   type="checkbox"

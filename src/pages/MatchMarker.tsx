@@ -24,6 +24,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 
 function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
   const scores: Array<{ a: number; b: number }> = [];
+  let parsedCurrent: { a: number; b: number } | null = null;
   try {
     const raw = row?.game_scores;
     const parsed = typeof raw === "string" && raw.trim()
@@ -40,17 +41,18 @@ function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
     const current = parsed?.current;
     const currentA = Number(current?.a) || 0;
     const currentB = Number(current?.b) || 0;
-    if (currentA > 0 || currentB > 0) scores.push({ a: currentA, b: currentB });
+    if (currentA > 0 || currentB > 0) parsedCurrent = { a: currentA, b: currentB };
   } catch {
     // Ignore old/plain score strings; current side points below are the source of truth for live scores.
   }
 
   const sideA = Number(row?.side_a_points) || 0;
   const sideB = Number(row?.side_b_points) || 0;
-  if (sideA > 0 || sideB > 0) {
-    const last = scores[scores.length - 1];
-    if (!last || last.a !== sideA || last.b !== sideB) scores.push({ a: sideA, b: sideB });
-  }
+  // The dedicated live columns are the authoritative current-game score.
+  // Fall back to game_scores.current only for older rows. Keeping completed
+  // sets and the current rally separate prevents Resume from rebuilding 0-0.
+  const current = sideA > 0 || sideB > 0 ? { a: sideA, b: sideB } : parsedCurrent;
+  if (current) scores.push(current);
   return scores;
 }
 
@@ -666,6 +668,7 @@ export default function MatchMarker() {
           <MarkerSetup onStart={startConfig} />
         ) : (
           <MarkerScoreboard
+            key={config.source && config.sourceId ? `${config.source}:${config.sourceId}` : "manual-marker"}
             config={config}
             initialScores={
               config.source === "tournament"

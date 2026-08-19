@@ -18,6 +18,9 @@ import { setScoringActive } from "@/lib/scoring-lock";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useChampMarkerHeartbeat } from "@/hooks/use-champ-marker-lock";
+
 
 /**
  * Bells doubles scorer.
@@ -36,8 +39,19 @@ export default function BellsMarker() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isSuperAdmin = useIsSuperAdmin();
-  const { isAdmin } = useMemberContext();
+  const { isAdmin, activeMember } = useMemberContext();
   const canAdminEdit = isSuperAdmin || isAdmin;
+  const { user } = useAuth();
+
+  // Marker presence: keeps the LIVE chip honest — it falls away as soon as
+  // whoever is running the bell leaves this screen.
+  useChampMarkerHeartbeat(
+    matchId || null,
+    user?.id,
+    (activeMember as any)?.name || user?.email || "Marker",
+    !!matchId,
+  );
+
 
   const { data: match, isLoading } = useQuery({
     queryKey: ["bells-match", matchId],

@@ -2,6 +2,8 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
+import { useChampMarkerLocks } from "@/hooks/use-champ-marker-lock";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -96,6 +98,12 @@ export default function ClubChampsView() {
   });
 
   const isDoubles = champ?.match_type === "doubles";
+
+  // Only badge a match LIVE while a marker is actually present (fresh heartbeat).
+  const { freshMatchIds } = useChampMarkerLocks(
+    (matches as any[]).filter((m: any) => m.status === "in_progress").map((m: any) => m.id),
+  );
+
 
   const { data: clubInfo } = useQuery({
     queryKey: ["club-payment-gateway", champ?.club_id],
@@ -1781,15 +1789,23 @@ export default function ClubChampsView() {
         {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
         {(() => {
           if (completed) return null;
-          if (isLiveMatch) {
+          if (isLiveMatch && freshMatchIds.has(m.id)) {
             return (
               <span className="live-indicator text-[10px] px-2.5 py-1">
                 LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
               </span>
             );
           }
+          if (isLiveMatch) {
+            return (
+              <Badge variant="outline" className="text-[10px] border-amber-500/60 text-amber-700 dark:text-amber-300">
+                Paused {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
+              </Badge>
+            );
+          }
           return <Badge variant="secondary" className="text-[10px]">{m.status}</Badge>;
         })()}
+
 
         {canManage && !completed && m.scheduled_date && m.scheduled_time && (
           <SwapFixtureButton

@@ -880,6 +880,17 @@ export default function Dashboard() {
             <span className="text-xs font-medium leading-tight text-center">My Profile</span>
           </Button>
           <DashboardWifiCard asTile />
+          {!hasMarkerSession && (
+            <Button
+              variant="outline"
+              className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-400 hover:bg-violet-500/20"
+              onClick={() => navigate("/match-marker")}
+              title="Score a social, ladder or practice game live — league and tournament games are marked from their own fixture screens"
+            >
+              <Crosshair className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">Score a Match</span>
+            </Button>
+          )}
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-400 hover:bg-sky-500/20" onClick={() => navigate("/help")}>
             <GraduationCap className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Help &amp; Tutorials</span>

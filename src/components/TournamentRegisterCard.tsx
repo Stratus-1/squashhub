@@ -264,17 +264,22 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const eligiblePartners = (() => {
     const g = champ?.gender;
     const takenIds = new Set<string>();
+    const registeredPaid = new Set<string>();
     registeredOthers.forEach((r: any) => {
       if (r.partner_member_id) {
         takenIds.add(r.club_member_id);
         takenIds.add(r.partner_member_id);
       }
+      if (r.status === "paid" || r.status === "waived") registeredPaid.add(r.club_member_id);
     });
     let list = members.filter((m: any) => m.id !== memberId && !takenIds.has(m.id));
     if (g === "men") list = list.filter((m: any) => m.gender && ["men", "male", "m"].includes(m.gender.toLowerCase()));
     else if (g === "ladies") list = list.filter((m: any) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()));
+    // Where an entry fee applies, a partner must have registered and paid first.
+    if (paymentRequired) list = list.filter((m: any) => registeredPaid.has(m.id));
     return list;
   })();
+
 
   const now = new Date();
   const closesAt = champ?.registration_closes_at ? new Date(champ.registration_closes_at) : null;

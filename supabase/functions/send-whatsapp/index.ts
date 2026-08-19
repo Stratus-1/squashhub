@@ -10,6 +10,7 @@
 // Clubs must opt in (clubs.whatsapp_enabled) before anything is sent.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { clubHasCapability } from "../_shared/capabilities.ts";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/twilio";
 
@@ -108,6 +109,16 @@ Deno.serve(async (req) => {
       .eq("id", clubId)
       .maybeSingle();
     const clubName = club?.name ?? "SquashHub";
+
+    if (!(await clubHasCapability(admin, clubId, "whatsapp"))) {
+      return json(
+        {
+          error:
+            "WhatsApp messaging is switched off for this club. Turn it on under Club Admin → Manage Features.",
+        },
+        403,
+      );
+    }
 
     if (!club?.whatsapp_enabled) {
       return json(

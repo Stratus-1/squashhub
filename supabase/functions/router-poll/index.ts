@@ -10,6 +10,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { getDriver, DRIVERS, type RouterReading } from "./drivers.ts";
+import { clubHasCapability } from "../_shared/capabilities.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -25,6 +26,10 @@ const MB = 1024 * 1024;
 type Admin = ReturnType<typeof createClient>;
 
 async function pollClub(admin: Admin, clubId: string, opts: { persistAlerts: boolean }) {
+  // Member Wi-Fi / internet monitoring switched off for this club → do nothing.
+  if (!(await clubHasCapability(admin, clubId, "wifi"))) {
+    throw new Error("Member Wi-Fi & internet monitoring is switched off for this club");
+  }
   const [{ data: config }, { data: secrets }, { data: bundle }] = await Promise.all([
     admin.from("club_router_configs").select("*").eq("club_id", clubId).maybeSingle(),
     admin
@@ -273,6 +278,10 @@ Deno.serve(async (req) => {
           !c.last_polled_at ||
           now - new Date(c.last_polled_at).getTime() >= (c.poll_interval_minutes || 15) * 60_000;
         if (!due) continue;
+        if (!(await clubHasCapability(admin, c.club_id, "wifi"))) {
+          results[c.club_id] = "skipped: wifi capability off";
+          continue;
+        }
         try {
           await pollClub(admin, c.club_id, { persistAlerts: true });
           results[c.club_id] = "ok";

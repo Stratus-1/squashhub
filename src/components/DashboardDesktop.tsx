@@ -457,7 +457,7 @@ function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigat
   ];
 
   const activities: Tile[] = [
-    { title: "Mark a Game",       url: "/match-marker", icon: Crosshair,   color: "emerald" },
+    { title: "Score a Match",     url: "/match-marker", icon: Crosshair,   color: "emerald" },
     ...(flags.ladderEnabled
       ? [{ title: "Club Ladderboard", url: "/ladder", icon: Trophy, color: "amber" } as Tile]
       : []),

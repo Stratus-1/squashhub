@@ -92,7 +92,7 @@ export function AppSidebar() {
         { title: "My Account", url: "/my-account", icon: Wallet },
       ]
     : [
-        { title: "Mark a Game", url: "/match-marker", icon: Crosshair },
+        { title: "Score a Match", url: "/match-marker", icon: Crosshair },
         ...(ladderEnabled ? [{ title: "Club Ladderboard", url: "/ladder", icon: Trophy }] : []),
         ...(hasLeagues ? [{ title: "Leagues", url: "/league-games", icon: Trophy }] : []),
         ...(tournamentsEnabled ? [{ title: "Tournaments", url: "/tournaments", icon: Trophy }] : []),

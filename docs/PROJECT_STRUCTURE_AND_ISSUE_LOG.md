@@ -821,3 +821,8 @@ documented `redirect_uri` on the fresh hosted link.
 - **Still advisory:** nothing consumes the capacity number as a constraint; setup is never blocked.
 - **Model limitations:** there is no per-match turnaround/changeover field (only `court_rotation_minutes`, which shifts court ownership rather than consuming time) and no per-league court ownership — outside "run leagues side by side", each league is sized as if it can use every selected court, so per-league maxima must be read individually, not summed. `playoff_break_minutes` is charged once across all courts.
 - **Tests:** `src/test/capacity.test.ts` (21) and `src/test/capacity-panel.test.tsx` (2).
+
+## Dashboard "Mark a Game" tile + Tournaments lifecycle default (2026)
+- Dashboard: marker tile renamed "Score a Match", demoted to the end of the tile grid; it only leads the grid (as pulsing "Resume Marking") when a marker session is active. Sidebar/desktop nav labels renamed to match.
+- Tournaments.tsx: tabs are now controlled and always open on "Current" (never auto-jump to Past). Past detection covers completed/cancelled/abandoned/archived plus end_date < today; current list sorts running-now first then soonest start. Tab labels carry counts, empty Current state links to Past, Past shows 8 most recent with "Show all", Standings has an empty state.
+- Known gap (unchanged): the tournaments query is still club-scoped (`eq club_id`), so association/federation events hosted at other clubs are not listed even where eligibility would allow entry.

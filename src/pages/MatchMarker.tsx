@@ -13,6 +13,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { setScoringActive } from "@/lib/scoring-lock";
 import { enqueueRankingDelta } from "@/lib/ranking-points";
+import {
+  fetchChampMarkerLock,
+  isLockFresh,
+  useChampMarkerHeartbeat,
+  useChampMarkerLock,
+} from "@/hooks/use-champ-marker-lock";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
   const scores: Array<{ a: number; b: number }> = [];

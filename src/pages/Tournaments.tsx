@@ -150,11 +150,12 @@ export default function Tournaments() {
   const upcomingMatches = allMatches
     .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || m.status === "placeholder" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))
     .sort((a: any, b: any) => {
-      // Live matches float to the top
-      const aLive = isLive(a);
-      const bLive = isLive(b);
-      if (aLive && !bLive) return -1;
-      if (bLive && !aLive) return 1;
+      // Live (actively marked) matches float to the top, paused ones just below
+      const rank = (m: any) => (isLive(m) ? 0 : isPaused(m) ? 1 : 2);
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return ra - rb;
+
       const aKey = `${a.scheduled_date || "9999-12-31"} ${a.scheduled_time || "23:59:59"}`;
       const bKey = `${b.scheduled_date || "9999-12-31"} ${b.scheduled_time || "23:59:59"}`;
       const k = aKey.localeCompare(bKey);

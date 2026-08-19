@@ -45,7 +45,16 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { pathname, search } = useLocation();
-  const { hasLeagues, honestyBarEnabled, hasAnyAdminAccess, isAssociation } = useSidebarFlags();
+  const {
+    hasLeagues,
+    honestyBarEnabled,
+    hasAnyAdminAccess,
+    isAssociation,
+    bookingsEnabled,
+    ladderEnabled,
+    tournamentsEnabled,
+    eventsEnabled,
+  } = useSidebarFlags();
   const { data: profile } = useProfile();
   const { activeMember } = useMemberContext();
 

@@ -873,8 +873,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
   // Tournament category / capacity / seeding — stored on the tournaments row.
   const [eventType, setEventType] = useState<string>(scope === "club" ? "club_championship" : "open_tournament");
-  // Who may enter — lives on tournament_governance (kept in sync from the wizard).
-  const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "open");
+  // `eligibilityScope` is declared near the top of the component because the
+  // eligible player pool query depends on it.
   // Load the saved eligibility whenever a different tournament is opened for edit.
   useEffect(() => {
     if (wizardGovernance?.eligibility_scope) setEligibilityScope(wizardGovernance.eligibility_scope);

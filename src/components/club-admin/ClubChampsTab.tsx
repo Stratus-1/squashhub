@@ -6340,8 +6340,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 : <span className="text-muted-foreground italic">Go back to the Courts step to set the dates.</span>}
             </div>
 
-            {/* Registration window — only when registration is required */}
-            {registrationRequired && (
+            {/* Registration window — only when someone other than the organiser enters players */}
+            {registrationWindowApplies && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-sm">Registration opens</Label>

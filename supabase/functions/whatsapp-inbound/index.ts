@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
       if (interaction.id) {
         await admin
           .from("whatsapp_interactions")
-          .update({ status: "needs_review", response: text || buttonPayload })
+          .update({ status: "needs_review", response: `unknown: ${(text || buttonPayload).slice(0, 300)}` })
           .eq("id", interaction.id);
       } else {
         await admin.from("whatsapp_interactions").insert({
@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
           target_id: interaction.target_id ?? null,
           prompt: interaction.prompt ?? "Replied to a recent WhatsApp invite",
           status: "needs_review",
-          response: text || buttonPayload,
+          response: `unknown: ${(text || buttonPayload).slice(0, 300)}`,
         });
       }
       return twiml("Sorry, I didn't catch that. Please reply YES to enter or NO to decline.");

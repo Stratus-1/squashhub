@@ -1366,8 +1366,15 @@ export default function Tournaments() {
                           </p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <Badge variant="secondary" className="text-[10px]">
-                            {champ.status === "completed" ? "completed" : "ended"}
+                          <Badge
+                            variant={isCancelledTournament(champ) ? "destructive" : "secondary"}
+                            className="text-[10px]"
+                          >
+                            {isCancelledTournament(champ)
+                              ? "Cancelled"
+                              : champ.status === "completed"
+                                ? "completed"
+                                : "ended"}
                           </Badge>
                           <Button
                             variant="outline"

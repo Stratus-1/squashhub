@@ -455,7 +455,7 @@ function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigat
     ...(hasLeagues
       ? [{ title: "Leagues", url: "/league-games", icon: Trophy, color: "orange" } as Tile]
       : []),
-    { title: "Club Tournaments",  url: "/tournaments",  icon: Trophy,      color: "fuchsia" },
+    { title: "Tournaments",  url: "/tournaments",  icon: Trophy,      color: "fuchsia" },
     { title: "Events",            url: "/events",       icon: CalendarDays, color: "violet" },
     ...(honestyBarEnabled
       ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine, color: "rose" } as Tile]

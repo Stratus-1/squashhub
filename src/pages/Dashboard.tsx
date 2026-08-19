@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { useCapabilities } from "@/hooks/use-club-capabilities";
 import { fromExt } from "@/lib/supabase-ext";
 
 import { CreateClubEvent } from "@/components/CreateClubEvent";
@@ -108,7 +109,15 @@ export default function Dashboard() {
     },
     enabled: !!clubId,
   });
-  const hasLeagues = (clubLeagueAssociations || []).length > 0;
+  // Capability gating — a club only sees the modules it actually uses.
+  const { enabled: clubCaps, hasRows: hasCapRows } = useCapabilities(clubId);
+  const capOn = (slug: string) => !hasCapRows || clubCaps.has(slug);
+  const bookingsEnabled = capOn("bookings");
+  const ladderEnabled = capOn("ladder");
+  const tournamentsEnabled = capOn("tournaments");
+  const eventsEnabled = capOn("events");
+  const barEnabled = capOn("bar");
+  const hasLeagues = capOn("leagues") && (clubLeagueAssociations || []).length > 0;
   // Recent match results for the active member
   const { data: recentMatches } = useQuery({
     queryKey: ["club-recent-matches", myMemberId || effectiveUserId],
@@ -675,7 +684,7 @@ export default function Dashboard() {
           myMemberId={myMemberId}
           myLeagueFixtures={myLeagueFixtures || []}
           hasLeagues={hasLeagues}
-          honestyBarEnabled={!!(effectiveClub as any)?.honesty_bar_enabled}
+          honestyBarEnabled={barEnabled && !!(effectiveClub as any)?.honesty_bar_enabled}
           hasAnyAdminAccess={hasAnyAdminAccess}
           isVisitor={(myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor"}
           eventsSlot={<CreateClubEvent />}
@@ -805,14 +814,18 @@ export default function Dashboard() {
       {/* Primary Actions — Book, Ladder, Profile */}
       <div className="px-4 mt-4">
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          <Button className="flex-col h-auto py-3 gap-1.5 bg-primary text-primary-foreground border border-border bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => navigate("/bookings")}>
+          {bookingsEnabled && (
+<Button className="flex-col h-auto py-3 gap-1.5 bg-primary text-primary-foreground border border-border bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => navigate("/bookings")}>
             <Calendar className="w-5 h-5" />
             <span className="text-xs font-medium">Court Bookings</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20" onClick={() => navigate("/ladder")}>
+)}
+          {ladderEnabled && (
+<Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20" onClick={() => navigate("/ladder")}>
             <Trophy className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Club Ladder</span>
           </Button>
+)}
           <Button
             variant="outline"
             className={cn(
@@ -828,20 +841,24 @@ export default function Dashboard() {
               {hasMarkerSession ? "Resume Marking" : "Mark a Game"}
             </span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-pink-500/40 bg-pink-500/10 text-pink-700 dark:text-pink-400 hover:bg-pink-500/20" onClick={() => navigate("/events")}>
+          {eventsEnabled && (
+<Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-pink-500/40 bg-pink-500/10 text-pink-700 dark:text-pink-400 hover:bg-pink-500/20" onClick={() => navigate("/events")}>
             <CalendarDays className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Events</span>
           </Button>
+)}
           {hasLeagues && (
             <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-500/20" onClick={() => navigate("/league-games")}>
               <Trophy className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Leagues</span>
             </Button>
           )}
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20" onClick={() => navigate("/tournaments")}>
+          {tournamentsEnabled && (
+<Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20" onClick={() => navigate("/tournaments")}>
             <Trophy className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Tournaments</span>
           </Button>
+)}
           {/* My Profile still desktop-only; My Account shown on all viewports per request */}
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />
@@ -866,7 +883,7 @@ export default function Dashboard() {
       </div>
 
       {/* Honesty Bar Quick Access */}
-      {effectiveClub && (effectiveClub as any)?.honesty_bar_enabled && (
+      {effectiveClub && barEnabled && (effectiveClub as any)?.honesty_bar_enabled && (
         <div className="px-4 mt-2">
           <Card
             className="p-3 flex items-center gap-3 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/30 bg-amber-500/5"

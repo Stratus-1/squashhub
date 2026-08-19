@@ -34,39 +34,42 @@ import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
+import { CORE_SETUP_KEYS, type Capability } from "@/lib/capabilities";
+import { useCapabilities } from "@/hooks/use-club-capabilities";
+import { FeaturesTab } from "@/components/club-admin/FeaturesTab";
+import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
 
 
-type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean };
+type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability };
 
 const SETUP_TABS: AdminTab[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
-  { value: "courts", label: "Courts", icon: LayoutGrid, permission: "courts", color: "cyan" },
-  { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald" },
-  { value: "banking", label: "Banking", icon: Banknote, permission: "banking", color: "green" },
-  { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
-  { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true },
-  { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true },
-  
-  { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose", noStatus: true },
+  { value: "features", label: "Features", icon: Sparkles, color: "violet", noStatus: true },
+  { value: "courts", label: "Courts & Bookings", icon: LayoutGrid, permission: "courts", color: "cyan", capability: "bookings" },
+  { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald", capability: "membership_fees" },
+  { value: "banking", label: "Banking & Payments", icon: Banknote, permission: "banking", color: "green", capability: "payments" },
+  { value: "access", label: "Door Access", icon: DoorOpen, permission: "access", color: "pink", capability: "access_control" },
+  { value: "ladder", label: "Ladder & Ranking", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true, capability: "ladder" },
+  { value: "ranking-points", label: "Ranking Points", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true, capability: "ranking_points" },
+
+  { value: "bar", label: "Bar / POS", icon: Beer, permission: "bar", color: "rose", noStatus: true, capability: "bar" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
   { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
-  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true },
-  { value: "router", label: "Internet", icon: Router, color: "cyan", noStatus: true },
+  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true, capability: "whatsapp" },
+  { value: "router", label: "Member Wi-Fi", icon: Router, color: "cyan", noStatus: true, capability: "wifi" },
 ];
 
 const OPERATIONS_TABS: AdminTab[] = [
   { value: "members", label: "Members", icon: Users, permission: "members", color: "indigo" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
-  { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
-  { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
-  { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
-  { value: "leagues", label: "Leagues Setup/Creation", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
-  { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
+  { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky", capability: "visitors" },
+  { value: "finance", label: "Club Books", icon: Landmark, permission: "finance", color: "teal", capability: "finance" },
+  { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow", capability: "tournaments" },
+  { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
+  { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
 ];
-
-const ADMIN_TABS: AdminTab[] = [...SETUP_TABS, ...OPERATIONS_TABS];
 
 const COLOR_STYLES: Record<string, string> = {
   blue: "border-blue-500/50 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:hover:bg-blue-500/25",
@@ -115,6 +118,20 @@ export default function ClubAdmin() {
   const club = (adminClub || baseClub) as typeof baseClub;
   // Hooks must run on every render — call before any early returns.
   const setupStatus = useSetupStatus(club?.id ?? "", club as any);
+  const { enabled: enabledCaps, hasRows: hasCapRows, isLoading: capsLoading } = useCapabilities(club?.id);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const capsReady = !capsLoading && !!club?.id;
+
+  // First-run: a club with no capability rows yet gets the Quick Setup prompt once.
+  useEffect(() => {
+    if (!capsReady || hasCapRows || !club?.id) return;
+    const key = `sh.quicksetup.seen.${club.id}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+    } catch { /* ignore */ }
+    setWizardOpen(true);
+  }, [capsReady, hasCapRows, club?.id]);
 
   if (isLoading || (baseClub?.id && isFetchingAdminClub && !adminClub)) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -132,8 +149,10 @@ export default function ClubAdmin() {
     if (!tab.permission) return false; // permissions tab only for full admins
     return myPermissions.has(tab.permission);
   };
-  const visibleSetup = SETUP_TABS.filter(permFilter);
-  const visibleOps = OPERATIONS_TABS.filter(permFilter);
+  // Capability filter — core tabs (no capability) are always visible.
+  const capFilter = (tab: AdminTab) => !tab.capability || enabledCaps.has(tab.capability);
+  const visibleSetup = SETUP_TABS.filter(permFilter).filter(capFilter);
+  const visibleOps = OPERATIONS_TABS.filter(permFilter).filter(capFilter);
   const visibleTabs = [...visibleSetup, ...visibleOps];
 
   // If active tab isn't visible, switch to first visible (safe: setState in render triggers rerender, doesn't change hook order)
@@ -165,11 +184,16 @@ export default function ClubAdmin() {
       case "whatsapp": return <div className="mt-4"><WhatsAppBillingCard clubId={club.id} /></div>;
       case "router": return <RouterTab clubId={club.id} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
+      case "features": return <FeaturesTab clubId={club.id} club={club} />;
       default: return null;
     }
   };
 
   const activeTabMeta = visibleTabs.find(t => t.value === activeTab);
+
+  // Explicit core progress — optional modules are reported per tile instead.
+  const coreKeys = CORE_SETUP_KEYS.filter(k => visibleSetup.concat(visibleOps).some(t => t.value === k));
+  const coreDone = coreKeys.filter(k => setupStatus[k as keyof SetupStatusMap] === "complete").length;
 
   return (
     <div className="min-h-screen pb-20 text-[13px]">
@@ -184,11 +208,9 @@ export default function ClubAdmin() {
             <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
               <div className="flex items-center justify-between">
                 <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Setup &amp; Configuration</h3>
-                {(() => {
-                  const total = visibleSetup.filter(t => !t.noStatus).length;
-                  const done = visibleSetup.filter(t => !t.noStatus && setupStatus[t.value as keyof SetupStatusMap] === "complete").length;
-                  return <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">{done}/{total} complete</span>;
-                })()}
+                <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">
+                  Core setup: {coreDone}/{coreKeys.length} complete
+                </span>
               </div>
               <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2 md:gap-2.5">
 
@@ -227,7 +249,9 @@ export default function ClubAdmin() {
                           "text-[8px] md:text-[9px] font-medium leading-none uppercase tracking-wide",
                           isActive ? "opacity-90" : isComplete ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
                         )}>
-                          {isComplete ? "Complete" : "Please complete"}
+                          {tab.capability
+                            ? (isComplete ? "On — ready" : "On — needs setup")
+                            : (isComplete ? "Complete" : "Please complete")}
                         </span>
                       )}
                     </button>
@@ -277,6 +301,7 @@ export default function ClubAdmin() {
             {renderContent()}
           </div>
         </div>
+        <QuickSetupWizard clubId={club.id} open={wizardOpen} onOpenChange={setWizardOpen} />
         <BackToDashboard />
       </div>
     </div>

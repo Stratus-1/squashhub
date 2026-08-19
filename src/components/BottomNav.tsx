@@ -2,6 +2,7 @@ import { Home, Calendar, Wine, Trophy, CalendarDays, Wallet, User } from "lucide
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useClubContext } from "@/contexts/ClubContext";
+import { useSidebarFlags } from "@/hooks/use-sidebar-flags";
 
 const baseNavItems = [
   { to: "/", icon: Home, label: "Home" },
@@ -12,8 +13,8 @@ const baseNavItems = [
 
 export function BottomNav() {
   const { club } = useClubContext();
-  
-  const honestyBarEnabled = !!club?.honesty_bar_enabled;
+  const { honestyBarEnabled, bookingsEnabled, eventsEnabled } = useSidebarFlags();
+
   const isAssociation = (club as any)?.tenant_type === "association";
 
   let navItems = baseNavItems;
@@ -28,11 +29,15 @@ export function BottomNav() {
       baseNavItems[2], // Account
       baseNavItems[3], // Profile
     ];
-  } else if (honestyBarEnabled) {
+  } else {
     navItems = [
       baseNavItems[0],
-      baseNavItems[1],
-      { to: "/honesty-bar", icon: Wine, label: "Bar" },
+      ...(bookingsEnabled
+        ? [baseNavItems[1]]
+        : eventsEnabled
+        ? [{ to: "/events", icon: CalendarDays, label: "Events" }]
+        : []),
+      ...(honestyBarEnabled ? [{ to: "/honesty-bar", icon: Wine, label: "Bar" }] : []),
       baseNavItems[2], // Account
       baseNavItems[3], // Profile
     ];

@@ -45,7 +45,16 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { pathname, search } = useLocation();
-  const { hasLeagues, honestyBarEnabled, hasAnyAdminAccess, isAssociation } = useSidebarFlags();
+  const {
+    hasLeagues,
+    honestyBarEnabled,
+    hasAnyAdminAccess,
+    isAssociation,
+    bookingsEnabled,
+    ladderEnabled,
+    tournamentsEnabled,
+    eventsEnabled,
+  } = useSidebarFlags();
   const { data: profile } = useProfile();
   const { activeMember } = useMemberContext();
 
@@ -72,7 +81,7 @@ export function AppSidebar() {
       ]
     : [
         { title: "Stats", url: "/analytics", icon: BarChart3 },
-        { title: "Bookings", url: "/bookings", icon: Calendar },
+        ...(bookingsEnabled ? [{ title: "Bookings", url: "/bookings", icon: Calendar }] : []),
       ];
 
   const activityItems: Item[] = isAssociation
@@ -84,10 +93,10 @@ export function AppSidebar() {
       ]
     : [
         { title: "Mark a Game", url: "/match-marker", icon: Crosshair },
-        { title: "Club Ladderboard", url: "/ladder", icon: Trophy },
+        ...(ladderEnabled ? [{ title: "Club Ladderboard", url: "/ladder", icon: Trophy }] : []),
         ...(hasLeagues ? [{ title: "Leagues", url: "/league-games", icon: Trophy }] : []),
-        { title: "Tournaments", url: "/tournaments", icon: Trophy },
-        { title: "Events", url: "/events", icon: CalendarDays },
+        ...(tournamentsEnabled ? [{ title: "Tournaments", url: "/tournaments", icon: Trophy }] : []),
+        ...(eventsEnabled ? [{ title: "Events", url: "/events", icon: CalendarDays }] : []),
         ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),
         { title: "My Account", url: "/my-account", icon: Wallet },
       ];

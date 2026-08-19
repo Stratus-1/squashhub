@@ -67,3 +67,61 @@ describe("classifyReply", () => {
     expect(res.normalised).toBe("sorry cant play tonight");
   });
 });
+
+/**
+ * Regression suite for the reported bug: negative sentences that contain
+ * positive activity words ("play", "attend", "coming") were being read as YES,
+ * which created tournament entries awaiting payment.
+ */
+const reportedNegatives = [
+  "Sorry, can't play tonight",
+  "Not playing this weekend",
+  "I won't be able to play",
+  "Can't make it",
+  "cannot play",
+  "won't play",
+  "not coming",
+  "won't attend",
+  "sorry I can't",
+  "no thanks",
+  "CAN'T MAKE IT!!!",
+  "Not playing.",
+  "no thanks, not attending this one",
+  "I’m not coming, sorry",
+];
+
+const reportedPositives = [
+  "yes",
+  "Yes I can play",
+  "I'm playing",
+  "I'll be there",
+  "I can attend",
+  "count me in",
+  "YES!!",
+  "yes please, count me in",
+  "Count me in — can't wait",
+  "Yes, no problem",
+];
+
+const mustNotAutoRegister = [
+  "maybe",
+  "I'll let you know tomorrow",
+  "not sure yet",
+  "who is my partner?",
+  "what time does it start",
+  "?",
+];
+
+describe("classifyReply — reported regressions", () => {
+  it.each(reportedNegatives)("declines %j", (text) => {
+    expect(classifyReply(null, text).intent).toBe("no");
+  });
+
+  it.each(reportedPositives)("accepts %j", (text) => {
+    expect(classifyReply(null, text).intent).toBe("yes");
+  });
+
+  it.each(mustNotAutoRegister)("never auto-registers on %j", (text) => {
+    expect(classifyReply(null, text).intent).toBe("unknown");
+  });
+});

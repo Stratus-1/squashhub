@@ -41,6 +41,14 @@ export function normaliseReply(raw: string): string {
 
 const STOP = /\b(stop|unsubscribe|opt\s?out|remove me)\b/;
 
+/**
+ * Phrases that contain a negative word but carry no decline meaning. They are
+ * stripped before scoring so "count me in, can't wait" stays a YES.
+ * Note: "opt out" is intentionally NOT listed — it is handled by STOP above.
+ */
+const IDIOMS =
+  /\b(no (problem|worries|probs|doubt|stress)|cant wait|cannot wait|no thanks? needed)\b/g;
+
 /** Replies that express uncertainty — never mutate state on these. */
 const AMBIGUOUS: RegExp[] = [
   /\b(maybe|perhaps|possibly|probably|hopefully)\b/,
@@ -113,13 +121,18 @@ export function classifyReply(payload: string | null | undefined, text?: string 
     }
   }
 
-  const ambiguous = matched(AMBIGUOUS, normalised);
+  // Idioms that merely *contain* a negative word ("no problem", "can't wait")
+  // are neutralised before the negative pass so they can't flip a yes to a no.
+  const scored = normalised.replace(IDIOMS, " ").replace(/\s+/g, " ").trim();
+  if (!scored) return { intent: "unknown", normalised, reason: "idiom-only" };
+
+  const ambiguous = matched(AMBIGUOUS, scored);
   if (ambiguous) return { intent: "unknown", normalised, reason: `ambiguous:${ambiguous.source}` };
 
-  const negative = matched(NEGATIVE, normalised);
+  const negative = matched(NEGATIVE, scored);
   if (negative) return { intent: "no", normalised, reason: `negative:${negative.source}` };
 
-  const positive = matched(POSITIVE, normalised);
+  const positive = matched(POSITIVE, scored);
   if (positive) return { intent: "yes", normalised, reason: `positive:${positive.source}` };
 
   return { intent: "unknown", normalised, reason: "no-match" };

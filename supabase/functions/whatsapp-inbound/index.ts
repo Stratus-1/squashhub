@@ -49,7 +49,8 @@ interface ResolvedInteraction {
 }
 
 async function resolveInteraction(
-  admin: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  admin: any,
   from: string,
 ): Promise<ResolvedInteraction | null> {
   // Most recent pending question we asked this number.
@@ -80,11 +81,11 @@ async function resolveInteraction(
     .maybeSingle();
 
   if (!log) return null;
-  const payload = (log.payload ?? {}) as { interaction?: ResolvedInteraction };
+  const payload = ((log as any).payload ?? {}) as { interaction?: ResolvedInteraction };
   if (!payload.interaction) return null;
   return {
-    club_id: log.club_id!,
-    member_id: log.member_id ?? null,
+    club_id: (log as any).club_id!,
+    member_id: (log as any).member_id ?? null,
     kind: payload.interaction.kind,
     target_id: payload.interaction.target_id ?? null,
     prompt: payload.interaction.prompt ?? null,
@@ -199,7 +200,7 @@ Deno.serve(async (req) => {
       if (interaction.id) {
         await admin
           .from("whatsapp_interactions")
-          .update({ status: "needs_review", response: text || buttonPayload })
+          .update({ status: "needs_review", response: `unknown: ${(text || buttonPayload).slice(0, 300)}` })
           .eq("id", interaction.id);
       } else {
         await admin.from("whatsapp_interactions").insert({
@@ -210,7 +211,7 @@ Deno.serve(async (req) => {
           target_id: interaction.target_id ?? null,
           prompt: interaction.prompt ?? "Replied to a recent WhatsApp invite",
           status: "needs_review",
-          response: text || buttonPayload,
+          response: `unknown: ${(text || buttonPayload).slice(0, 300)}`,
         });
       }
       return twiml("Sorry, I didn't catch that. Please reply YES to enter or NO to decline.");

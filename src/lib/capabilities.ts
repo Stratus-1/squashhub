@@ -102,8 +102,8 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
     question: "Do you charge membership or subscription fees?",
     description: "Fee categories, renewals, invoices and member statements.",
     group: "money",
-    requires: ["finance"],
-    worksWith: ["payments", "whatsapp"],
+    requires: [],
+    worksWith: ["finance", "payments", "whatsapp"],
     defaultOn: false,
     tabs: ["fees"],
   },
@@ -113,7 +113,8 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
     question: "Do members pay you through the app (card, EFT or debit order)?",
     description: "Bank details, payment gateway and debit-order mandates.",
     group: "money",
-    requires: ["finance"],
+    requires: [],
+    worksWith: ["finance", "membership_fees"],
     defaultOn: false,
     tabs: ["banking"],
   },
@@ -133,8 +134,8 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
     question: "Do you run a bar or tuck shop?",
     description: "Stock, honesty-bar tabs, visitor sales and scan-to-pay QR codes.",
     group: "money",
-    requires: ["finance"],
-    worksWith: ["payments", "visitors"],
+    requires: [],
+    worksWith: ["finance", "payments", "visitors"],
     defaultOn: false,
     tabs: ["bar"],
   },
@@ -144,8 +145,8 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
     question: "Does your club play in leagues?",
     description: "League setup, fixtures, line-ups, results and awards.",
     group: "competition",
-    requires: ["bookings"],
-    worksWith: ["ladder", "ranking_points"],
+    requires: [],
+    worksWith: ["bookings", "ladder", "ranking_points"],
     defaultOn: false,
     tabs: ["leagues", "awards"],
   },
@@ -155,8 +156,8 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
     question: "Do you run tournaments or club champs?",
     description: "Tournament wizard, draws, entries and scheduling.",
     group: "competition",
-    requires: ["bookings"],
-    worksWith: ["payments", "visitors"],
+    requires: [],
+    worksWith: ["bookings", "payments", "visitors"],
     defaultOn: false,
     tabs: ["champs"],
   },
@@ -285,3 +286,45 @@ export const DEFAULT_CAPABILITIES: Capability[] = CAPABILITY_LIST.filter((c) => 
 );
 
 export type ModuleState = "off" | "needs_setup" | "ready";
+
+/**
+ * Should an admin tab be shown?
+ *
+ * Core tabs (no capability tag) are always visible. Optional tabs appear only
+ * when their capability is enabled. Fails open when a club has no capability
+ * rows yet, so un-migrated tenants keep everything.
+ */
+export function isTabVisible(
+  tab: { capability?: Capability },
+  enabled: Set<string>,
+  hasRows = true
+): boolean {
+  if (!tab.capability) return true;
+  if (!hasRows) return true;
+  return enabled.has(tab.capability);
+}
+
+/** Which setup-status key (if any) tells us whether a capability is configured. */
+export const CAPABILITY_SETUP_KEY: Partial<Record<Capability, string>> = {
+  bookings: "courts",
+  membership_fees: "fees",
+  payments: "banking",
+  access_control: "access",
+};
+
+/**
+ * Module status shown on an optional tile:
+ *  - "off"         capability disabled (data kept, just hidden)
+ *  - "needs_setup" enabled but configuration is incomplete
+ *  - "ready"       enabled and configured
+ */
+export function moduleState(
+  slug: Capability,
+  enabled: Set<string>,
+  setupStatus: Record<string, string> = {}
+): ModuleState {
+  if (!enabled.has(slug)) return "off";
+  const key = CAPABILITY_SETUP_KEY[slug];
+  if (key && setupStatus[key] !== "complete") return "needs_setup";
+  return "ready";
+}

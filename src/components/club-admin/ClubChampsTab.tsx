@@ -3050,7 +3050,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // first, otherwise the FK on club_champs_entries.club_member_id fails.
       let resolvedPairDbId = (id: string) => toDbId(id);
       if (isDoubles) {
-        const rawIds = (groups as DoublePair[][]).flatMap((gp) => gp.flatMap((p) => [p.player1Id, p.player2Id]));
+        const incomplete = (groups as DoublePair[][]).flatMap((gp) => gp).filter((p) => !p?.player1Id || !p?.player2Id);
+        if (incomplete.length > 0) {
+          throw new Error(`${incomplete.length} pair${incomplete.length === 1 ? " has" : "s have"} a missing player — fix the pairing before saving`);
+        }
+        const rawIds = (groups as DoublePair[][]).flatMap((gp) => gp.flatMap((p) => [p.player1Id, p.player2Id])).filter(Boolean) as string[];
         const resolved = await promoteVisitorIds(rawIds);
         const idMap = new Map<string, string>();
         rawIds.forEach((raw, i) => idMap.set(raw, resolved[i]));
@@ -3074,7 +3078,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           entries.map((e) => ({ player1Id: e.club_member_id, player2Id: e.partner_member_id })),
         );
       } else {
-        const rawIds = (groups as ClubMember[][]).flatMap((gp) => gp.map((p) => p.id));
+        const rawIds = (groups as ClubMember[][]).flatMap((gp) => gp.map((p) => p.id)).filter(Boolean) as string[];
         const resolved = await promoteVisitorIds(rawIds);
         const idMap = new Map<string, string>();
         rawIds.forEach((raw, i) => idMap.set(raw, resolved[i]));

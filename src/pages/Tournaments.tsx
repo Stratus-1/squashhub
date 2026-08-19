@@ -87,15 +87,30 @@ export default function Tournaments() {
   });
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  // Lifecycle split. "Past" = finished by status, or the last playing day is
+  // behind us. Everything else (planning, open, running today) is current and
+  // is what a member should land on.
+  const PAST_STATUSES = new Set(["completed", "cancelled", "abandoned", "archived"]);
   const isPastChamp = (c: any) =>
-    c.status === "completed" || (c.end_date && c.end_date < todayStr);
-  const champs = allChamps.filter((c: any) => !isPastChamp(c));
+    PAST_STATUSES.has(String(c.status || "").toLowerCase()) ||
+    (!!c.end_date && c.end_date < todayStr);
+  // Current first: running now, then the soonest start date.
+  const champs = allChamps
+    .filter((c: any) => !isPastChamp(c))
+    .sort((a: any, b: any) => {
+      const running = (c: any) =>
+        c.start_date && c.start_date <= todayStr && (!c.end_date || c.end_date >= todayStr) ? 0 : 1;
+      const r = running(a) - running(b);
+      if (r !== 0) return r;
+      return (a.start_date || "9999-12-31").localeCompare(b.start_date || "9999-12-31");
+    });
   const pastChamps = allChamps
     .filter(isPastChamp)
     .sort((a: any, b: any) => (b.end_date || "").localeCompare(a.end_date || ""));
 
   const champIds = allChamps.map((c: any) => c.id);
   const champIdsKey = champIds.slice().sort().join("|");
+
 
   const { data: allEntries = [] } = useQuery({
     queryKey: ["tournaments-all-entries", champIds],

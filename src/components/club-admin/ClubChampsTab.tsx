@@ -5010,6 +5010,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </div>
             </WizardSection>
 
+            {/* Capacity validation — lives here because it needs BOTH the structure
+                (leagues, formats, pools, match length) and the schedule (dates,
+                windows, courts). Advisory only: it never blocks setup. */}
+            <WizardSection
+              title={"Capacity check"}
+              summary={"Does the plan fit in the court time you have?"}
+              complete={true}
+              autoCollapse={false}
+              defaultOpen={true}
+            >
+              <CapacityCheck
+                customizeDailySchedule={customizeDailySchedule}
+                daySchedules={daySchedules}
+                startDate={startDate}
+                endDate={endDate}
+                playDays={Array.from(playDays)}
+                startTime={startTime}
+                endTime={endTime}
+                selectedCourtIds={Array.from(selectedCourtIds)}
+                leagues={capacityLeagues}
+                isDoubles={isDoubles}
+                crossLeague={roundFormat === "cross_league"}
+                parallelLeagues={parallelLeagues}
+                onParallelLeaguesChange={setParallelLeagues}
+                playoffBreakMinutes={playoffBreakMinutes}
+              />
+            </WizardSection>
 
 
             <WizardSection

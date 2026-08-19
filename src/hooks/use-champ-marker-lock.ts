@@ -153,6 +153,9 @@ export function useChampMarkerHeartbeat(
     let cancelled = false;
     const beat = async () => {
       try {
+        // Never steal the lock back from someone who legitimately took over.
+        const existing = await fetchChampMarkerLock(matchId);
+        if (existing && existing.user_id !== userId && isLockFresh(existing)) return;
         await table().upsert({
           match_id: matchId,
           user_id: userId,

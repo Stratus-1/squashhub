@@ -1789,15 +1789,23 @@ export default function ClubChampsView() {
         {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
         {(() => {
           if (completed) return null;
-          if (isLiveMatch) {
+          if (isLiveMatch && freshMatchIds.has(m.id)) {
             return (
               <span className="live-indicator text-[10px] px-2.5 py-1">
                 LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
               </span>
             );
           }
+          if (isLiveMatch) {
+            return (
+              <Badge variant="outline" className="text-[10px] border-amber-500/60 text-amber-700 dark:text-amber-300">
+                Paused {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
+              </Badge>
+            );
+          }
           return <Badge variant="secondary" className="text-[10px]">{m.status}</Badge>;
         })()}
+
 
         {canManage && !completed && m.scheduled_date && m.scheduled_time && (
           <SwapFixtureButton

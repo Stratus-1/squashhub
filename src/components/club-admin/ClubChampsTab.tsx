@@ -3751,6 +3751,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPaymentRequired(true);
     setInviteMethods(new Set(["app"]));
     setInviteSource("manual");
+    setEntrySource("self");
+    setApprovalGate("none");
     setInviteIncludeReserves(true);
     setInviteExcludedMemberIds(new Set());
     setHandicapMode("none");

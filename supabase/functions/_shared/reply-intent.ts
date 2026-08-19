@@ -65,8 +65,7 @@ const NEGATIVE: RegExp[] = [
   /\b(unable|unavailable)\b/,
   /\b(decline|declined|declining)\b/,
   /\b(withdraw|withdrawing|deregister|pull out|opt out)\b/,
-  /\b(count me out|leave me out|skip( me|
- this)?)\b/,
+  /\b(count me out|leave me out|skip (me|this)|sit (this|it) out)\b/,
   /\b(sorry|apologies)\b.*\b(cant|cannot|wont|no|not|another time|next time)\b/,
   /\b(another|next) time\b/,
   /\bim out\b/,

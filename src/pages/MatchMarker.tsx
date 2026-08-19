@@ -252,6 +252,7 @@ export default function MatchMarker() {
         const next = new URLSearchParams(prev);
         next.delete("source");
         next.delete("matchId");
+        next.delete("takeover");
         return next;
       }, { replace: true });
     };

@@ -3018,7 +3018,36 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate]);
+
+  /**
+   * Structure side of the capacity check: one entry per league, carrying the
+   * league's own format, match length, pools, Swiss rounds, play-off flag and
+   * the field size (real roster if there is one, otherwise the planned count).
+   */
+  const capacityLeagues = useMemo(() => {
+    const count = Math.max(0, numGroups || 0);
+    return Array.from({ length: count }, (_, i) => {
+      const gn = i + 1;
+      const key = String(gn);
+      const fmt = formatForLeague(gn);
+      const roster = ((groups as any[])[i] || []).length;
+      return {
+        groupNumber: gn,
+        label: groupLabels[key] || `League ${gn}`,
+        format: fmt,
+        slotMinutes:
+          fmt === "cross_league"
+            ? Number(groupDurations["1"]) || matchDuration || 0
+            : Number(groupDurations[key]) || matchDuration || 0,
+        pools: Math.max(1, Number(swissPools[key]) || 1),
+        rounds: Number(swissRounds[key]) || 0,
+        entities: roster || Math.max(0, Number(expectedPlayers[key]) || 0),
+        playoffs: playoffsForLeague(gn),
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numGroups, groups, groupLabels, groupDurations, matchDuration, swissPools, swissRounds, expectedPlayers, leaguePlayoffs, leagueFormats, usePerLeagueFormats, roundFormat]);
+
 
   // Create/update champ
   const createChamp = useMutation({

@@ -144,25 +144,25 @@ export default function MatchMarker() {
   useEffect(() => {
     if (!searchParams.has("matchId") && !searchParams.has("bookingId")) return;
     try {
-      // Preserve stored marker config if it already belongs to this same
-      // match/booking — otherwise the spectator gate below can't tell the
-      // real scorer apart from a random second device, and they get bounced
-      // out of their own live match.
+      // Same match/booking → keep this device's in-progress scoring state (server,
+      // serve side, undo history). Different one → wipe it. Either way we clear the
+      // stored *config* so the database is always re-read and the board resumes at
+      // the real score instead of 0-0 when local state is missing or stale.
       const matchId = searchParams.get("matchId");
       const bookingId = searchParams.get("bookingId");
       const raw = localStorage.getItem(MARKER_CONFIG_KEY);
+      let sameTarget = false;
       if (raw) {
         const existing = JSON.parse(raw);
         const targetId = matchId || bookingId;
-        if (existing?.sourceId && targetId && existing.sourceId === targetId) {
-          return;
-        }
+        sameTarget = !!(existing?.sourceId && targetId && existing.sourceId === targetId);
       }
       localStorage.removeItem(MARKER_CONFIG_KEY);
-      localStorage.removeItem(MARKER_STATE_KEY);
+      if (!sameTarget) localStorage.removeItem(MARKER_STATE_KEY);
     } catch {}
     setConfig(null);
   }, [searchParams]);
+
 
   useEffect(() => {
     const src = searchParams.get("source");

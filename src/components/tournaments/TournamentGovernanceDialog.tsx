@@ -81,12 +81,6 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
   const { data: orgs = [] } = useOwnerOrganisations();
   const { data: audit = [] } = useTournamentGovernanceAudit(id);
   const { data: owner } = useTournamentOwner(id);
-  const eligibility = useTournamentEligibility({
-    scope: (form?.eligibility_scope as string) || "club",
-    clubId: owner?.club_id ?? null,
-    ownerOrgId: owner?.owner_org_id ?? null,
-    enabled: !!id,
-  });
   const { data: venues = [] } = useTournamentVenues(id);
   const { data: clubs = [] } = useHostClubs();
   const { data: platformPct = 0 } = usePlatformTournamentFeePct();
@@ -140,6 +134,13 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
   const deleteVenue = useDeleteTournamentVenue(id);
 
   const [form, setForm] = useState<TournamentGovernance | null>(null);
+  const eligibility = useTournamentEligibility({
+    scope: (form?.eligibility_scope as string) || "club",
+    clubId: owner?.club_id ?? null,
+    ownerOrgId: owner?.owner_org_id ?? null,
+    enabled: !!id,
+  });
+
   const [newVenueClub, setNewVenueClub] = useState<string>("");
   useEffect(() => {
     if (gov) setForm(gov);

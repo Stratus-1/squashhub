@@ -11,6 +11,7 @@ import { useMyClub } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { QRCodeSVG } from "qrcode.react";
+import { useHasCapability } from "@/hooks/use-club-capabilities";
 
 type ClubWifi = {
   ssid: string;
@@ -53,6 +54,7 @@ export function DashboardWifiCard({ asTile = false }: { asTile?: boolean } = {})
   const clubId = (clubData?.club as { id?: string } | undefined)?.id;
   const { activeMember } = useMemberContext();
   const memberId = activeMember?.id;
+  const wifiOn = useHasCapability("wifi", clubId);
   const { format } = useClubCurrency();
   const qc = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
@@ -117,6 +119,7 @@ export function DashboardWifiCard({ asTile = false }: { asTile?: boolean } = {})
 
 
   // Hidden entirely unless the club has switched Wi-Fi on in Access Control
+  if (!wifiOn) return null;
   if (status && !status.wifi_enabled) return null;
 
 

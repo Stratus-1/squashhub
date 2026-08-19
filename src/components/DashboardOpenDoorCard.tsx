@@ -22,6 +22,7 @@ import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { useDoorProximity } from "@/hooks/use-door-proximity";
 import { format } from "date-fns";
 import { formatLatLngDM } from "@/lib/geo-format";
+import { useHasCapability } from "@/hooks/use-club-capabilities";
 
 const errorMessage = (e: unknown, fallback: string) =>
   e instanceof Error ? e.message : fallback;
@@ -43,6 +44,7 @@ export function DashboardOpenDoorCard() {
     door_geofence_radius_m?: number | null;
     door_auto_unlock_radius_m?: number | null;
   } | undefined;
+  const accessOn = useHasCapability("access_control", club?.id);
   const { data: clubSecrets } = useClubSecrets(club?.id);
   const { data: accessPublic } = useQuery({
     enabled: !!club?.id,

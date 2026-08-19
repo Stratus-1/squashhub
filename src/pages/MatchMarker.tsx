@@ -88,6 +88,39 @@ export default function MatchMarker() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { activeMember } = useMemberContext();
+  const markerName = (activeMember as any)?.name || user?.email || "A marker";
+
+  // ---- Tournament marker presence + hand-over ----
+  const tournamentMatchId =
+    config?.source === "tournament" && config.sourceId ? config.sourceId : null;
+  useChampMarkerHeartbeat(tournamentMatchId, user?.id, markerName, !!tournamentMatchId);
+  const {
+    lock: champLock,
+    fresh: champLockFresh,
+    approveTakeover,
+    declineTakeover,
+  } = useChampMarkerLock(tournamentMatchId, user?.id, markerName);
+  const [handoverOpen, setHandoverOpen] = useState(false);
+  const takeoverRequester = champLock?.takeover_requested_by && champLock.user_id === user?.id
+    ? champLock.takeover_requested_name || "Another marker"
+    : null;
+
+  useEffect(() => {
+    setHandoverOpen(!!takeoverRequester);
+  }, [takeoverRequester]);
+
+  // Somebody else now holds the lock (approved or forced take-over) → step out
+  // of the marker and watch the game live instead of writing conflicting scores.
+  useEffect(() => {
+    if (!tournamentMatchId || !champLock || !user) return;
+    if (champLockFresh && champLock.user_id !== user.id) {
+      toast.info(`${champLock.user_name} has taken over marking`, {
+        description: "Switching you to the live score.",
+      });
+      navigate(`/tournament-live/${tournamentMatchId}`, { replace: true });
+    }
+  }, [champLock, champLockFresh, tournamentMatchId, user, navigate]);
 
   const markTournamentLive = useCallback(async (matchId: string, scores: Array<{ a: number; b: number }> = []) => {
     const current = scores[scores.length - 1];

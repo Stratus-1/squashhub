@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,15 @@ import { Label } from "@/components/ui/label";
 import { fromExt } from "@/lib/supabase-ext";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import {
+  buildForfeitPayload,
+  describeForfeitRule,
+  forfeitOptionsForScoring,
+  pointsForLeague,
+  ruleForLeague,
+  type ForfeitPointsMap,
+  type ForfeitRuleMap,
+} from "@/lib/tournaments/forfeit";
 
 interface Props {
   open: boolean;
@@ -58,8 +67,40 @@ export function NoShowInjuredDialog({
   const [cascadePromptOpen, setCascadePromptOpen] = useState(false);
   const [pendingForfeitMemberId, setPendingForfeitMemberId] = useState<string | null>(null);
 
-  const opponentPoints = Number(champ?.no_show_opponent_points ?? 10);
-  const playerPoints = Number(champ?.no_show_player_points ?? 0);
+  // Per-league rules live on the tournaments row (the club_champs view only carries
+  // the legacy tournament-wide points, which we still use as the fallback).
+  const { data: leagueCfg } = useQuery({
+    queryKey: ["tournament-forfeit-config", champId],
+    enabled: !!champId,
+    queryFn: async () => {
+      const { data, error } = await fromExt("tournaments")
+        .select("league_forfeit_rules, league_forfeit_points, league_scoring_modes")
+        .eq("id", champId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data || null) as {
+        league_forfeit_rules: ForfeitRuleMap | null;
+        league_forfeit_points: ForfeitPointsMap | null;
+        league_scoring_modes: Record<string, "standard" | "time_capped_points"> | null;
+      } | null;
+    },
+  });
+
+  /** Scoring format, forfeit rule and points for the league a match sits in. */
+  function configFor(m: any) {
+    const gn = Number(m?.group_number ?? 1) || 1;
+    const scoring =
+      leagueCfg?.league_scoring_modes?.[String(gn)] ??
+      (champ?.scoring_mode === "time_capped_points" ? "time_capped_points" : "standard");
+    const rule = ruleForLeague(leagueCfg?.league_forfeit_rules, gn, scoring);
+    const points = pointsForLeague(leagueCfg?.league_forfeit_points, gn, {
+      opponent: champ?.no_show_opponent_points,
+      player: champ?.no_show_player_points,
+    });
+    return { scoring, rule, points };
+  }
+
+  const activeCfg = configFor(match);
 
   useEffect(() => {
     if (open) setAbsentSide("a");
@@ -68,27 +109,24 @@ export function NoShowInjuredDialog({
   const sideAName = useMemo(() => getName(match?.player_a_member_id), [match, getName]);
   const sideBName = useMemo(() => getName(match?.player_b_member_id), [match, getName]);
 
-  function buildForfeitPayload(m: any, absentMemberId: string) {
-    const absentIsA = m.player_a_member_id === absentMemberId;
-    const aPts = absentIsA ? playerPoints : opponentPoints;
-    const bPts = absentIsA ? opponentPoints : playerPoints;
-    const winnerMemberId = absentIsA ? m.player_b_member_id : m.player_a_member_id;
-    return {
-      status: "completed",
-      winner_member_id: winnerMemberId,
-      side_a_points: aPts,
-      side_b_points: bPts,
-      score: absentIsA ? "No show (B w/o)" : "No show (A w/o)",
-      game_scores: null,
-      forfeit_member_id: absentMemberId,
-    };
+  /** Payload for one match, using that match's own league rule. */
+  function forfeitPayloadFor(m: any, absentMemberId: string) {
+    const { rule, points } = configFor(m);
+    return buildForfeitPayload({
+      match: m,
+      absentMemberId,
+      rule,
+      points,
+      bestOf: Number(champ?.best_of) || 3,
+      pointsPerGame: Number(champ?.points_per_game) || 11,
+    });
   }
 
   const applyOne = useMutation({
     mutationFn: async () => {
       if (!match) throw new Error("No match");
       const absentMemberId = absentSide === "a" ? match.player_a_member_id : match.player_b_member_id;
-      const payload = buildForfeitPayload(match, absentMemberId);
+      const payload = forfeitPayloadFor(match, absentMemberId);
       const { error } = await fromExt("club_champs_matches").update(payload).eq("id", match.id);
       if (error) throw error;
       return absentMemberId as string;
@@ -129,7 +167,7 @@ export function NoShowInjuredDialog({
           (m.player_a_member_id === absentMemberId || m.player_b_member_id === absentMemberId),
       );
       for (const m of remaining) {
-        const payload = buildForfeitPayload(m, absentMemberId);
+        const payload = forfeitPayloadFor(m, absentMemberId);
         const { error } = await fromExt("club_champs_matches").update(payload).eq("id", m.id);
         if (error) throw error;
       }
@@ -171,7 +209,11 @@ export function NoShowInjuredDialog({
           <DialogHeader>
             <DialogTitle>No Show / Injured</DialogTitle>
             <DialogDescription>
-              Award {opponentPoints} pts to the opponent and {playerPoints} pts to the absent player. The match will be marked completed.
+              {forfeitOptionsForScoring(activeCfg.scoring).find((o) => o.value === activeCfg.rule)?.hint ||
+                "The match will be marked completed."}{" "}
+              <span className="font-medium text-foreground">
+                ({describeForfeitRule(activeCfg.rule, activeCfg.points)} — set per league in the tournament Structure step.)
+              </span>
             </DialogDescription>
           </DialogHeader>
 
@@ -216,7 +258,7 @@ export function NoShowInjuredDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Apply to remaining games?</AlertDialogTitle>
             <AlertDialogDescription>
-              <b>{absentName}</b> has <b>{remainingCount}</b> remaining scheduled match{remainingCount === 1 ? "" : "es"} in this tournament. Mark them all as No Show / Injured too? Each opponent will receive {opponentPoints} points; {absentName} will record {playerPoints}.
+              <b>{absentName}</b> has <b>{remainingCount}</b> remaining scheduled match{remainingCount === 1 ? "" : "es"} in this tournament. Mark them all as No Show / Injured too? Each game uses its own league's forfeit rule.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

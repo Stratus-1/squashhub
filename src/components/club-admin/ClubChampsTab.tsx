@@ -2,6 +2,17 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
+import {
+  defaultForfeitRule,
+  describeForfeitRule,
+  forfeitOptionsForScoring,
+  pointsForLeague as forfeitPointsFor,
+  ruleForLeague as forfeitRuleFor,
+  type ForfeitPoints,
+  type ForfeitPointsMap,
+  type ForfeitRule,
+  type ForfeitRuleMap,
+} from "@/lib/tournaments/forfeit";
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
@@ -566,7 +577,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs, league_bye_handling")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -707,6 +718,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const playoffsForLeague = (gn: number): boolean => leaguePlayoffs[String(gn)] === true;
   const byeForLeague = (gn: number): "no_match" | "walkover_win" | "neutral" =>
     leagueByeHandling[String(gn)] ?? ((byeHandling || "no_match") as "no_match" | "walkover_win" | "neutral");
+  // Per-league forfeit / no-show rule. The consequence of a no-show depends on how
+  // the league is scored, so each league owns its own rule (League 1 can award a
+  // walkover while a Bells league awards points).
+  const [leagueForfeitRules, setLeagueForfeitRules] = useState<ForfeitRuleMap>({});
+  const [leagueForfeitPoints, setLeagueForfeitPoints] = useState<ForfeitPointsMap>({});
+  const forfeitRuleForLeague = (gn: number): ForfeitRule =>
+    forfeitRuleFor(leagueForfeitRules, gn, scoringForLeague(gn));
+  const forfeitPointsForLeague = (gn: number): ForfeitPoints =>
+    forfeitPointsFor(leagueForfeitPoints, gn, {
+      opponent: noShowOpponentPoints,
+      player: noShowPlayerPoints,
+    });
   const winConditionForLeague = (gn: number): "win_by_2" | "sudden_death" =>
     leagueWinConditions[String(gn)] ?? winCondition;
   /** Set one league's scoring format; keeps tournament-level in sync with league 1. */
@@ -1348,6 +1371,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       league_play_all_games: Object.keys(leaguePlayAll).length > 0 ? leaguePlayAll : null,
       league_playoffs: Object.keys(leaguePlayoffs).length > 0 ? leaguePlayoffs : null,
       league_bye_handling: Object.keys(leagueByeHandling).length > 0 ? leagueByeHandling : null,
+      league_forfeit_rules: Object.keys(leagueForfeitRules).length > 0 ? leagueForfeitRules : null,
+      league_forfeit_points: Object.keys(leagueForfeitPoints).length > 0 ? leagueForfeitPoints : null,
       participating_club_ids: venueClubIds.filter((id) => id !== clubId),
     };
     const saveExtras = async (id: string) => {
@@ -4026,6 +4051,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const inheritedPA: Record<string, boolean> = {};
     const inheritedPO: Record<string, boolean> = {};
     const inheritedBH: Record<string, "no_match" | "walkover_win" | "neutral"> = {};
+    const lfr = ((ex as any).league_forfeit_rules as ForfeitRuleMap | null) || null;
+    const lfp = ((ex as any).league_forfeit_points as ForfeitPointsMap | null) || null;
+    const inheritedFR: ForfeitRuleMap = {};
+    const inheritedFP: ForfeitPointsMap = {};
     for (let i = 1; i <= (champ.num_groups || 0); i++) {
       inheritedS[String(i)] = (lsm?.[String(i)] as any) ?? ((champ as any).scoring_mode === "time_capped_points" ? "time_capped_points" : "standard");
       inheritedP[String(i)] = (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : 11));
@@ -4034,6 +4063,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       inheritedPA[String(i)] = lpa?.[String(i)] === true;
       inheritedPO[String(i)] = lpo?.[String(i)] ?? !!(champ as any).enable_playoffs;
       inheritedBH[String(i)] = (lbh?.[String(i)] as any) ?? (((champ as any).bye_handling as any) || "no_match");
+      // Forfeit rule: stored per league, otherwise derived from the league's format.
+      // Legacy tournaments (which only had tournament-wide no-show points) map onto
+      // "award points" for points-based leagues and a walkover for standard leagues.
+      inheritedFR[String(i)] = (lfr?.[String(i)] as ForfeitRule) ?? defaultForfeitRule(inheritedS[String(i)]);
+      inheritedFP[String(i)] = {
+        opponent: Number(lfp?.[String(i)]?.opponent ?? (champ as any).no_show_opponent_points ?? 10) || 0,
+        player: Number(lfp?.[String(i)]?.player ?? (champ as any).no_show_player_points ?? 0) || 0,
+      };
     }
     setLeagueScoringModes(inheritedS);
     setLeaguePointsPerGame(inheritedP);
@@ -4042,6 +4079,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setLeaguePlayAll(inheritedPA);
     setLeaguePlayoffs(inheritedPO);
     setLeagueByeHandling(inheritedBH);
+    setLeagueForfeitRules(inheritedFR);
+    setLeagueForfeitPoints(inheritedFP);
     // Seed the tournament-level win condition from League 1 for compatibility.
     if (inheritedW["1"]) setWinCondition(inheritedW["1"]);
 
@@ -5129,6 +5168,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       Bye: {byeForLeague(gn).replace(/_/g, " ")}
                                     </span>
                                   )}
+                                  {collapsed && (
+                                    <span className="inline-flex items-center rounded border border-rose-500/40 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:text-rose-400">
+                                      No show: {describeForfeitRule(forfeitRuleForLeague(gn), forfeitPointsForLeague(gn))}
+                                    </span>
+                                  )}
                                   {collapsed && playoffsForLeague(gn) && (
                                     <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
                                       Playoffs
@@ -5431,6 +5475,59 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   }}
                                 />
                               )}
+                              {/* Forfeit / no-show rule — options come from THIS league's
+                                  scoring format, so a standard best-of league can only take a
+                                  walkover or a no-result, never an arbitrary points award. */}
+                              {(() => {
+                                const sc = scoringForLeague(gn);
+                                const opts = forfeitOptionsForScoring(sc);
+                                const rule = forfeitRuleForLeague(gn);
+                                const pts = forfeitPointsForLeague(gn);
+                                const hint = opts.find((o) => o.value === rule)?.hint || "";
+                                return (
+                                  <div className="space-y-1 pt-1">
+                                    <SegRow
+                                      label="Forfeit / no-show rule"
+                                      value={rule}
+                                      color="red"
+                                      options={opts.map((o) => ({ v: o.value, l: o.label }))}
+                                      onChange={(v) =>
+                                        setLeagueForfeitRules((m) => ({ ...m, [key]: v as ForfeitRule }))
+                                      }
+                                    />
+                                    {rule === "award_points" && (
+                                      <div className="flex flex-wrap items-center gap-2 pl-0.5">
+                                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Opponent</Label>
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          value={pts.opponent}
+                                          onChange={(e) =>
+                                            setLeagueForfeitPoints((m) => ({
+                                              ...m,
+                                              [key]: { opponent: Math.max(0, Math.round(Number(e.target.value)) || 0), player: pts.player },
+                                            }))
+                                          }
+                                          className="h-7 w-16 text-xs"
+                                        />
+                                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Absent player</Label>
+                                        <Input
+                                          type="number"
+                                          value={pts.player}
+                                          onChange={(e) =>
+                                            setLeagueForfeitPoints((m) => ({
+                                              ...m,
+                                              [key]: { opponent: pts.opponent, player: Math.round(Number(e.target.value)) || 0 },
+                                            }))
+                                          }
+                                          className="h-7 w-16 text-xs"
+                                        />
+                                      </div>
+                                    )}
+                                    <p className="text-[10px] text-muted-foreground pl-0.5">{hint}</p>
+                                  </div>
+                                );
+                              })()}
                               <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5 pt-1">
                                 <input
                                   type="checkbox"
@@ -6225,42 +6322,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </WizardSection>
             )}
             <WizardSection
-              title={"No-shows & registration window"}
-              summary={registrationRequired ? "Registration window & no-show rule" : "No registration required"}
+              title={"Registration window"}
+              summary={registrationRequired ? "Registration window" : "No registration required"}
               complete={true}
               defaultOpen={true}
             >
-            {/* No Show / Injured rule — applies when a player can't play.
-                Opponent gets the opponent points; the absent player records the
-                player points (can be negative as a penalty). */}
-            <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
-              <Label className="text-sm">No Show / Injured rule</Label>
-              <div className="flex flex-wrap items-center gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs whitespace-nowrap">Points for opponent</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={noShowOpponentPoints}
-                    onChange={(e) => setNoShowOpponentPoints(Math.max(0, Math.round(Number(e.target.value)) || 0))}
-                    className="h-8 w-20"
-                  />
+            {/* No-show / forfeit handling lives on each league card in the Structure
+                step, because the consequence depends on that league's scoring format.
+                The legacy tournament-wide points fields are kept for compatibility only
+                (they seed per-league defaults) and are deliberately not editable here. */}
+            <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs space-y-1">
+              <span className="font-medium text-foreground">Forfeit / no-show rule:</span>{" "}
+              <span className="text-muted-foreground">
+                set per league on the <span className="font-medium text-foreground">Structure</span> step — a
+                standard best-of league takes a walkover or a no-result, a Bells league can award points.
+              </span>
+              {numGroups > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => (
+                    <span
+                      key={gn}
+                      className="inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium"
+                    >
+                      {groupLabels[String(gn)] || `League ${gn}`}: {describeForfeitRule(forfeitRuleForLeague(gn), forfeitPointsForLeague(gn))}
+                    </span>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs whitespace-nowrap">Points for player</Label>
-                  <Input
-                    type="number"
-                    step={1}
-                    value={noShowPlayerPoints}
-                    onChange={(e) => setNoShowPlayerPoints(Math.round(Number(e.target.value)) || 0)}
-                    className="h-8 w-20"
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Used when an admin marks a tournament game as <b>No Show / Injured</b> on the scorecard. Defaults: 10 for the opponent, 0 for the absent player (can be negative as a penalty).
-              </p>
+              )}
             </div>
 
 

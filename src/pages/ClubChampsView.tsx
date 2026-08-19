@@ -15,6 +15,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useHasPermission } from "@/hooks/use-club-permissions";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { toast } from "sonner";
+import { isVoidResult } from "@/lib/tournaments/forfeit";
 import { cn } from "@/lib/utils";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
@@ -263,7 +264,12 @@ export default function ClubChampsView() {
       (m: any) => matchBelongsToGroup(m) && !m.is_bye,
     );
 
-    const groupMatches = sortMatchesChrono(groupMatchesAll.filter((m: any) => m.status === "completed"));
+    // "No result" forfeits (per-league neutral rule) are closed out but must not
+    // help or hurt anyone in the standings — or in playoff qualification, which
+    // ranks off these same rows.
+    const groupMatches = sortMatchesChrono(
+      groupMatchesAll.filter((m: any) => m.status === "completed" && !isVoidResult(m)),
+    );
     const groupByes = matches.filter(
       (m: any) => matchBelongsToGroup(m) && m.is_bye,
     );
@@ -290,7 +296,7 @@ export default function ClubChampsView() {
       // Per-game points for the member, in chronological order across ALL scheduled matches
       // (so an unplayed slot leaves a gap = '-')
       const gamePoints: (number | null)[] = scheduledForMember(memberId).map((m: any) => {
-        if (m.status !== "completed") return null;
+        if (m.status !== "completed" || isVoidResult(m)) return null;
         const isA =
           m.player_a_member_id === memberId ||
           (isDoubles && m.partner_a_member_id === memberId);

@@ -29,25 +29,6 @@ import { useSetupStatus } from "@/hooks/use-setup-status";
 import { Sparkles } from "lucide-react";
 import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
 
-/** Which setup-status key (if any) tells us whether a capability is configured. */
-const SETUP_KEY: Partial<Record<Capability, string>> = {
-  bookings: "courts",
-  membership_fees: "fees",
-  payments: "banking",
-  access_control: "access",
-};
-
-export function moduleState(
-  slug: Capability,
-  enabled: Set<string>,
-  setupStatus: Record<string, string>
-): ModuleState {
-  if (!enabled.has(slug)) return "off";
-  const key = SETUP_KEY[slug];
-  if (key && setupStatus[key] !== "complete") return "needs_setup";
-  return "ready";
-}
-
 const STATE_STYLES: Record<ModuleState, string> = {
   off: "border-border text-muted-foreground",
   needs_setup: "border-amber-500/40 text-amber-700 dark:text-amber-400",

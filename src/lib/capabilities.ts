@@ -304,6 +304,14 @@ export function isTabVisible(
   return enabled.has(tab.capability);
 }
 
+/** Which setup-status key (if any) tells us whether a capability is configured. */
+export const CAPABILITY_SETUP_KEY: Partial<Record<Capability, string>> = {
+  bookings: "courts",
+  membership_fees: "fees",
+  payments: "banking",
+  access_control: "access",
+};
+
 /**
  * Module status shown on an optional tile:
  *  - "off"         capability disabled (data kept, just hidden)
@@ -313,8 +321,10 @@ export function isTabVisible(
 export function moduleState(
   slug: Capability,
   enabled: Set<string>,
-  complete: boolean
+  setupStatus: Record<string, string> = {}
 ): ModuleState {
   if (!enabled.has(slug)) return "off";
-  return complete ? "ready" : "needs_setup";
+  const key = CAPABILITY_SETUP_KEY[slug];
+  if (key && setupStatus[key] !== "complete") return "needs_setup";
+  return "ready";
 }

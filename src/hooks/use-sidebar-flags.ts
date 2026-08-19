@@ -55,10 +55,26 @@ export function useSidebarFlags() {
     enabled: !!clubId,
   });
 
+  const { enabled: caps } = useCapabilities(clubId);
+  const isAssociation = (effectiveClub as any)?.tenant_type === "association";
+  // Associations don't use the club capability model — never gate them.
+  const cap = (slug: string) => isAssociation || caps.has(slug);
+
   return {
-    hasLeagues: (clubLeagueAssociations || []).length > 0 || (externalAffiliationCount || 0) > 0,
-    honestyBarEnabled: !!(effectiveClub as any)?.honesty_bar_enabled,
+    hasLeagues:
+      cap("leagues") &&
+      ((clubLeagueAssociations || []).length > 0 || (externalAffiliationCount || 0) > 0),
+    honestyBarEnabled: cap("bar") && !!(effectiveClub as any)?.honesty_bar_enabled,
     hasAnyAdminAccess: isClubAdmin || myPermissions.size > 0,
-    isAssociation: (effectiveClub as any)?.tenant_type === "association",
+    isAssociation,
+    bookingsEnabled: cap("bookings"),
+    ladderEnabled: cap("ladder"),
+    tournamentsEnabled: cap("tournaments"),
+    eventsEnabled: cap("events"),
+    visitorsEnabled: cap("visitors"),
+    wifiEnabled: cap("wifi"),
+    accessControlEnabled: cap("access_control"),
+    financeEnabled: cap("finance"),
+    feesEnabled: cap("membership_fees"),
   };
 }

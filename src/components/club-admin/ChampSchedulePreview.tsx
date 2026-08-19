@@ -12,6 +12,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { assignPools, entityIdForEntry, type Entry as SwissEntry } from "@/lib/swiss-pairing";
+import { getBucketColor } from "@/lib/tournament-colors";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { cn } from "@/lib/utils";
 

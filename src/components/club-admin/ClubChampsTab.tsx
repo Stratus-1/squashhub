@@ -5801,6 +5801,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     setRegistrationRequired(true);
                     setRegistrationMode("open" as any);
                     setPaymentRequired(true);
+                    setEntrySource("self");
                     if (!feeOn) setEntryFeeRand("");
                   },
                 },
@@ -5813,6 +5814,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     setRegistrationRequired(true);
                     setRegistrationMode("open" as any);
                     setPaymentRequired(false);
+                    setEntrySource("self");
                     setEntryFeeRand("0");
                   },
                 },
@@ -5825,6 +5827,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     setRegistrationRequired(false);
                     setRegistrationMode("invite" as any);
                     setPaymentRequired(false);
+                    setEntrySource("admin");
                     setEntryFeeRand("0");
                   },
                 },
@@ -5837,6 +5840,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     setRegistrationRequired(true);
                     setRegistrationMode("invite" as any);
                     setPaymentRequired(true);
+                    setEntrySource("admin");
                     if (!feeOn) setEntryFeeRand("");
                   },
                 },

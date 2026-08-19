@@ -5982,113 +5982,79 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </div>
 
             <WizardSection
-              title={"Entry fee & payment"}
-              summary={Number(entryFeeRand) > 0 ? `R${entryFeeRand} entry fee` : "Free entry"}
-              complete={true}
-              defaultOpen={true}
+              title={"Payment methods"}
+              summary={isPaidTournament ? `R${entryFeeRand} · ${Array.from(paymentMethods).join(", ") || "no method"}` : "Free entry — nothing to collect"}
+              complete={!isPaidTournament || paymentMethods.size > 0}
+              defaultOpen={isPaidTournament}
             >
-            {/* Registration-required toggle — when off, the entire invite/window
-                section collapses and the admin seeds the roster directly on the
-                Players step. */}
-            <div className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3">
-              <Switch
-                id="registration-required"
-                checked={registrationRequired}
-                onCheckedChange={(v) => setRegistrationRequired(!!v)}
-              />
-              <div className="space-y-0.5">
-                <Label htmlFor="registration-required" className="text-sm font-medium cursor-pointer">
-                  Players need to register / be invited
+            {!isPaidTournament ? (
+              <p className="text-xs text-muted-foreground">
+                This tournament is free — no payment methods, invoices or proof-of-payment steps are shown to players.
+              </p>
+            ) : (
+              <div className="rounded-lg border-2 border-border bg-slate-100 dark:bg-slate-800/40 shadow-sm p-3 space-y-2">
+                <Label className="text-sm font-semibold">
+                  Accepted payment methods <span className="text-destructive">*</span>
                 </Label>
-                <p className="text-xs text-muted-foreground">
-                  Turn on when entry is conditional on members opting in (e.g. paid tournaments, fixed deadlines). Turn off when the admin simply picks the roster — the registration window then disappears, but the "Who can register" / invite list controls below remain so you can still seed players from a shortlist or open audience.
+                <p className="text-[11px] text-muted-foreground">
+                  Tick the methods you'll accept for this tournament. Configure your online gateway and bank details in Club Admin → Banking.
                 </p>
-              </div>
-            </div>
-
-            {/* Entry fee + payment methods — payment-methods panel slides in beside the fee when amount > 0 */}
-            <div className={Number(entryFeeRand) > 0 ? "grid grid-cols-1 md:grid-cols-2 gap-4 items-start" : ""}>
-              <div className="space-y-2">
-                <Label className="text-sm">Entry fee (ZAR)</Label>
-                <Input
-                  type="number" min={0} step="1" inputMode="decimal"
-                  value={entryFeeRand}
-                  onChange={(e) => setEntryFeeRand(e.target.value)}
-                  placeholder="0 = free"
-                />
-                <p className="text-xs text-muted-foreground">Set 0 for a free tournament.</p>
-              </div>
-
-              {Number(entryFeeRand) > 0 && (
-                <div className="rounded-lg border-2 border-border bg-slate-100 dark:bg-slate-800/40 shadow-sm p-3 space-y-2">
-                  <Label className="text-sm font-semibold">
-                    Accepted payment methods <span className="text-destructive">*</span>
-                  </Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    Tick the methods you'll accept for this tournament. Configure your online gateway and bank details in Club Admin → Banking.
-                  </p>
-                  <div className="space-y-1.5">
-                    {/* Online gateway — only when the club has configured one */}
-                    {clubPaymentConfig?.gateway ? (
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox
-                          checked={paymentMethods.has("card")}
-                          onCheckedChange={(c) => {
-                            const next = new Set(paymentMethods);
-                            c ? next.add("card") : next.delete("card");
-                            setPaymentMethods(next);
-                          }}
-                        />
-                        Online ({clubPaymentConfig.gatewayLabel}) — card / instant pay
-                      </label>
-                    ) : (
-                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                        No online gateway configured. Add one in Club Admin → Banking to accept card / instant payments.
-                      </p>
-                    )}
-
-                    {/* EFT — only when bank details exist */}
-                    {clubPaymentConfig?.eftConfigured ? (
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox
-                          checked={paymentMethods.has("eft")}
-                          onCheckedChange={(c) => {
-                            const next = new Set(paymentMethods);
-                            c ? next.add("eft") : next.delete("eft");
-                            setPaymentMethods(next);
-                          }}
-                        />
-                        EFT (bank transfer — admin marks paid)
-                      </label>
-                    ) : (
-                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                        EFT unavailable — add bank details in Club Admin → Banking to enable.
-                      </p>
-                    )}
-
-                    {/* Cash at club — always available */}
+                <div className="space-y-1.5">
+                  {clubPaymentConfig?.gateway ? (
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
                       <Checkbox
-                        checked={paymentMethods.has("cash")}
+                        checked={paymentMethods.has("card")}
                         onCheckedChange={(c) => {
                           const next = new Set(paymentMethods);
-                          c ? next.add("cash") : next.delete("cash");
+                          c ? next.add("card") : next.delete("card");
                           setPaymentMethods(next);
                         }}
                       />
-                      Cash at club (admin marks paid)
+                      Online ({clubPaymentConfig.gatewayLabel}) — card / instant pay
                     </label>
-                  </div>
+                  ) : (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                      No online gateway configured. Add one in Club Admin → Banking to accept card / instant payments.
+                    </p>
+                  )}
 
-                  <div className="flex items-center gap-3 pt-2 border-t border-border/60">
-                    <Switch id="payment-required" checked={paymentRequired} onCheckedChange={setPaymentRequired} />
-                    <Label htmlFor="payment-required" className="text-xs">
-                      Player must pay before they qualify to play
-                    </Label>
-                  </div>
+                  {clubPaymentConfig?.eftConfigured ? (
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={paymentMethods.has("eft")}
+                        onCheckedChange={(c) => {
+                          const next = new Set(paymentMethods);
+                          c ? next.add("eft") : next.delete("eft");
+                          setPaymentMethods(next);
+                        }}
+                      />
+                      EFT (bank transfer — admin marks paid)
+                    </label>
+                  ) : (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                      EFT unavailable — add bank details in Club Admin → Banking to enable.
+                    </p>
+                  )}
+
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={paymentMethods.has("cash")}
+                      onCheckedChange={(c) => {
+                        const next = new Set(paymentMethods);
+                        c ? next.add("cash") : next.delete("cash");
+                        setPaymentMethods(next);
+                      }}
+                    />
+                    Cash at club (admin marks paid)
+                  </label>
                 </div>
-              )}
-            </div>
+                <p className="text-[11px] text-muted-foreground pt-2 border-t border-border/60">
+                  {paymentTiming === "after_acceptance"
+                    ? "Players are asked to pay only once their entry is accepted."
+                    : "Players are asked to pay as soon as they enter."}
+                </p>
+              </div>
+            )}
 
             {/* Fee shares and refunds live in Governance — shown read-only so
                 there is a single place to edit them. */}

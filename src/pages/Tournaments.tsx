@@ -1341,7 +1341,8 @@ export default function Tournaments() {
                   No past tournaments yet. Completed events will be archived here.
                 </Card>
               ) : (
-                pastChamps.map((champ: any) => {
+                <>
+                  {(showAllPast ? pastChamps : pastChamps.slice(0, 8)).map((champ: any) => {
                   const isDoubles = champ.match_type === "doubles";
                   return (
                     <Card key={champ.id} className="opacity-90">
@@ -1373,7 +1374,13 @@ export default function Tournaments() {
                       </CardHeader>
                     </Card>
                   );
-                })
+                  })}
+                  {!showAllPast && pastChamps.length > 8 && (
+                    <Button variant="ghost" size="sm" className="w-full" onClick={() => setShowAllPast(true)}>
+                      Show all {pastChamps.length} past tournaments
+                    </Button>
+                  )}
+                </>
               )}
             </TabsContent>
           </Tabs>

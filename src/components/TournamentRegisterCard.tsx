@@ -414,34 +414,27 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           </div>
 
           {acceptsEft && (showEft || myReg.status === "pending_eft") && (
-            <Card className="p-3 bg-muted/50 space-y-1">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Bank Details</p>
-                {bankDetails && (
-                  <Button size="sm" variant="ghost" className="h-6 text-[10px] gap-1" onClick={copyBankDetails}>
-                    <Copy className="w-3 h-3" /> Copy
-                  </Button>
-                )}
-              </div>
-              {!bankDetails ? (
-                <p className="text-xs text-muted-foreground">
-                  Bank details not yet captured by the club. Please contact your club admin to arrange EFT — they will mark you paid once received.
-                </p>
-              ) : (
-                <>
-                  {bankDetails.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {bankDetails.bank_name}</p>}
-                  {bankDetails.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {bankDetails.bank_account_name}</p>}
-                  {bankDetails.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {bankDetails.bank_account_number}</p>}
-                  {bankDetails.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {bankDetails.bank_branch_code}</p>}
-                  <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {(champ?.name || "Tournament").slice(0, 20)}</p>
-                  <p className="text-xs font-semibold"><span className="text-muted-foreground">Amount:</span> {money(entryFee)}</p>
-                </>
-              )}
-              <p className="text-[11px] text-amber-700 dark:text-amber-400 pt-1">
-                After making your EFT, the club admin will confirm receipt and mark your entry as paid.
-              </p>
-            </Card>
+            <EftPaymentPanel
+              clubId={clubId}
+              clubMemberId={memberId}
+              amountLabel={money(entryFee)}
+              reference={String(champ?.name || "Tournament").slice(0, 20)}
+              proofPath={myReg.proof_url}
+              onProofUploaded={async (path) => {
+                const { data: auth } = await supabase.auth.getUser();
+                const { error } = await fromExt("club_champs_registrations").update({
+                  status: "pending_eft",
+                  proof_url: path,
+                  proof_uploaded_at: new Date().toISOString(),
+                  proof_uploaded_by: auth.user?.id || null,
+                }).eq("id", myReg.id);
+                if (error) throw error;
+                await refetch();
+                qc.invalidateQueries({ queryKey: ["tournament-registrations", champ.id] });
+              }}
+            />
           )}
+
 
           {acceptsCard && paymentGateway === "yoco" && (
             <FnbPaymentNotice showEftFallback={acceptsEft} />

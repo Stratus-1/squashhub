@@ -9854,6 +9854,10 @@ export type Database = {
         Args: { _league_id: string; _user_id: string }
         Returns: boolean
       }
+      is_member_eligible_for_tournament: {
+        Args: { _club_member_id: string; _tournament_id: string }
+        Returns: boolean
+      }
       is_member_owner: { Args: { _member_id: string }; Returns: boolean }
       is_national_admin: { Args: { _user_id: string }; Returns: boolean }
       is_person_self: { Args: { _person_id: string }; Returns: boolean }
@@ -9960,6 +9964,8 @@ export type Database = {
           org_id: string
         }[]
       }
+      org_federation_root: { Args: { _org_id: string }; Returns: string }
+      org_owning_association: { Args: { _org_id: string }; Returns: string }
       people_duplicate_candidates: {
         Args: { _limit?: number }
         Returns: {
@@ -10224,6 +10230,21 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      tournament_eligibility_summary: {
+        Args: { _tournament_id: string }
+        Returns: {
+          club_count: number
+          member_count: number
+          scope: string
+          scope_org_name: string
+        }[]
+      }
+      tournament_eligible_club_ids: {
+        Args: { _tournament_id: string }
+        Returns: {
+          club_id: string
+        }[]
       }
       viewer_is_opposing_captain_for_registration: {
         Args: {

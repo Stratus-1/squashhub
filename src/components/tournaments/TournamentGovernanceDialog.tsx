@@ -32,6 +32,7 @@ import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
 
 
 interface Props {
@@ -133,6 +134,13 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
   const deleteVenue = useDeleteTournamentVenue(id);
 
   const [form, setForm] = useState<TournamentGovernance | null>(null);
+  const eligibility = useTournamentEligibility({
+    scope: (form?.eligibility_scope as string) || "club",
+    clubId: owner?.club_id ?? null,
+    ownerOrgId: owner?.owner_org_id ?? null,
+    enabled: !!id,
+  });
+
   const [newVenueClub, setNewVenueClub] = useState<string>("");
   useEffect(() => {
     if (gov) setForm(gov);
@@ -300,11 +308,17 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                   <Select value={form.eligibility_scope} onValueChange={(v) => set("eligibility_scope", v as any)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="club">Club members only</SelectItem>
-                      <SelectItem value="association">Association members</SelectItem>
-                      <SelectItem value="open">Open entry</SelectItem>
+                      <SelectItem value="club">Members of the owning club</SelectItem>
+                      <SelectItem value="association">Members of the owning association</SelectItem>
+                      <SelectItem value="open">Open to everyone</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Sets who is eligible. Who actually receives an invitation is configured in Entry &amp; fees / Players.
+                  </p>
+                  {eligibility && (
+                    <p className="text-[11px] font-medium text-primary">Eligible: {eligibility.summary}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>Minimum age</Label>

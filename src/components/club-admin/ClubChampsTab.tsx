@@ -39,6 +39,7 @@ import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
+import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
 
 interface ClubChampsTabProps {
   /** Primary host club — its courts are the default venue and new events are filed under it. */
@@ -73,11 +74,23 @@ const EVENT_TYPES: { value: string; label: string }[] = [
   { value: "national_championship", label: "National championship" },
 ];
 
-/** Who may enter — stored on tournament_governance.eligibility_scope. */
-const ELIGIBILITY_SCOPES: { value: string; label: string }[] = [
-  { value: "club", label: "Members of the host club only" },
-  { value: "association", label: "Members of the owning association" },
-  { value: "open", label: "Open — anyone may enter" },
+/**
+ * Who may enter — stored on tournament_governance.eligibility_scope.
+ * Values are unchanged; only the wording and the resolver behind them.
+ * The scope defines the ELIGIBLE POPULATION only, never who is invited.
+ */
+const ELIGIBILITY_SCOPES: { value: string; label: string; hint: string }[] = [
+  { value: "club", label: "Members of the owning club", hint: "Only members attached to the host club." },
+  {
+    value: "association",
+    label: "Members of the owning association",
+    hint: "Every member of every club affiliated to the owning association.",
+  },
+  {
+    value: "open",
+    label: "Open to everyone",
+    hint: "Every member under the federation, including unaffiliated clubs.",
+  },
 ];
 
 /**
@@ -452,28 +465,40 @@ function SegRow({
 export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  // Clubs whose members and courts are available to this tournament. At club
-  // level this is just the club itself, so behaviour is identical to before.
+  // Clubs whose courts are available to this tournament. At club level this is
+  // just the club itself, so behaviour is identical to before.
   const venueClubIds = useMemo(() => {
     const ids = new Set<string>([clubId, ...(participatingClubIds || [])]);
     return Array.from(ids).filter(Boolean);
   }, [clubId, participatingClubIds]);
   const multiClub = venueClubIds.length > 1;
 
+  // Who may enter — governance field, kept here because the eligible player
+  // pool is derived from it (club / owning association / whole federation).
+  const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "open");
+  const eligibility = useTournamentEligibility({ scope: eligibilityScope, clubId, ownerOrgId });
+
+  // Player pool = every member of every eligible club (plus host/venue clubs).
+  const playerPoolClubIds = useMemo(() => {
+    const ids = new Set<string>([...venueClubIds, ...(eligibility?.clubIds || [])]);
+    return Array.from(ids).filter(Boolean).sort();
+  }, [venueClubIds, eligibility?.clubIds]);
+  const widePool = playerPoolClubIds.length > 1;
+
   const { data: clubMembers = [] } = useClubMembers(clubId);
   const { data: pooledMembers = [] } = useQuery({
-    queryKey: ["tournament-member-pool", venueClubIds],
+    queryKey: ["tournament-member-pool", playerPoolClubIds],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
         .select("*, profiles:user_id(name, email, phone, avatar_url), club:club_id(name)")
-        .in("club_id", venueClubIds)
+        .in("club_id", playerPoolClubIds)
         .order("name");
       if (error) throw error;
       return (data || []) as ClubMember[];
     },
-    enabled: multiClub,
+    enabled: widePool,
   });
-  const members = multiClub ? pooledMembers : clubMembers;
+  const members = widePool ? pooledMembers : clubMembers;
   const whatsappEnabled = useWhatsAppEnabled(clubId);
   const isSuperAdmin = useIsSuperAdmin();
 
@@ -848,8 +873,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
   // Tournament category / capacity / seeding — stored on the tournaments row.
   const [eventType, setEventType] = useState<string>(scope === "club" ? "club_championship" : "open_tournament");
-  // Who may enter — lives on tournament_governance (kept in sync from the wizard).
-  const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "open");
+  // `eligibilityScope` is declared near the top of the component because the
+  // eligible player pool query depends on it.
   // Load the saved eligibility whenever a different tournament is opened for edit.
   useEffect(() => {
     if (wizardGovernance?.eligibility_scope) setEligibilityScope(wizardGovernance.eligibility_scope);
@@ -4556,14 +4581,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Age limits and licence requirements live in <strong>Governance → Eligibility</strong>.
+                    Sets who is <strong>eligible</strong>. Who actually receives an invitation is configured in{" "}
+                    <strong>Entry &amp; fees / Players</strong>.
                   </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.hint}
+                  </p>
+                  {eligibility && (
+                    <p className="text-[11px] font-medium text-primary mt-1">Eligible: {eligibility.summary}</p>
+                  )}
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                This sets <strong>who is eligible</strong>. Whether they sign themselves up or you invite them is set once, on the{" "}
-                <strong>Entries &amp; seeding</strong> step ("how do players enter?"). Ranking status lives on the scoring
-                settings, and the sanctioning authority in <strong>Governance</strong>.
+                Eligibility is not an invitation list — it only decides who <em>may</em> take part. Age limits and licence
+                requirements live in <strong>Governance → Eligibility</strong>; ranking status lives on the scoring settings
+                and the sanctioning authority in <strong>Governance</strong>.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

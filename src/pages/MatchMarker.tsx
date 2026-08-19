@@ -684,6 +684,36 @@ export default function MatchMarker() {
           />
         )}
       </div>
+
+      <AlertDialog open={handoverOpen} onOpenChange={setHandoverOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{takeoverRequester} wants to take over marking</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hand over and they continue from the current score — you'll switch to the live view.
+              Decline and you stay in charge of the marking.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { declineTakeover(); }}>No, I keep marking</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const id = tournamentMatchId;
+                await approveTakeover();
+                try {
+                  localStorage.removeItem(MARKER_CONFIG_KEY);
+                  localStorage.removeItem(MARKER_STATE_KEY);
+                } catch {}
+                toast.success("Marking handed over");
+                if (id) navigate(`/tournament-live/${id}`, { replace: true });
+              }}
+            >
+              Yes, hand over
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <BackToDashboard />
     </div>
   );

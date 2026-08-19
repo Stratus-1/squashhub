@@ -88,6 +88,17 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-19 · Second tournament Resume could show a blank marker
+- **Symptom:** Resume worked once, but after leaving the marker and returning through Tournaments, a second
+  Resume could render a blank screen; refreshing the browser made the marker work again.
+- **Finding:** Tournament hydration replaced its own linked URL (`source` + `matchId`) with the bare
+  `/match-marker` route after loading. That discarded the route's authoritative match identity and could leave
+  React Router's next in-app visit with stale marker state until a full page refresh rebuilt it.
+- **Fix:** Keep the linked tournament marker URL stable for the whole scoring session. Every refresh,
+  back/forward visit, and repeated Resume now retains the match ID and re-hydrates the database score.
+- **Guard:** Never strip a linked marker's source ID from its active URL; local marker storage supplements the
+  server score but must not become the only identity for a tournament scoring route.
+
 ### 2026-08-19 · Tournament marker could silently present a new 0-0 game
 - **Symptom:** A tournament game visibly stored at 4-4 could open the toss prompt and a fresh 0-0 marker,
   while league games resumed correctly from their current rally.

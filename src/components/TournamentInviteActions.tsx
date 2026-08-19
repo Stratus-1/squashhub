@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { TournamentInviteRegisterDialog } from "@/components/tournaments/TournamentInviteRegisterDialog";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";

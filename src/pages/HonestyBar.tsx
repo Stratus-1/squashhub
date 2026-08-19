@@ -228,7 +228,7 @@ export default function HonestyBar() {
           onClick={() => setQrOpen(true)}
         >
           <QrCode className="w-4 h-4" />
-          Show / share bar QR code
+          Show / share Menu QR code
         </Button>
 
 

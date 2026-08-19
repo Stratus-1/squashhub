@@ -251,23 +251,7 @@ export default function Tournaments() {
     });
   }, [upcomingMatches, allChamps, poolByMatchId]);
 
-  const bucketColor = (key: string) => {
-    if (!key) return null;
-    // Deterministic hue derived from the bucket key itself, so a bucket's
-    // colour never shifts when the total number of buckets changes (e.g. when
-    // placeholders are added/filled or a pair is moved between slots).
-    let h = 0;
-    for (let i = 0; i < key.length; i++) {
-      h = (h * 31 + key.charCodeAt(i)) >>> 0;
-    }
-    const hue = (h + 15) % 360;
-    return {
-      border: `hsl(${hue} 70% 45%)`,
-      bg: `hsl(${hue} 70% 45% / 0.10)`,
-      chipBg: `hsl(${hue} 70% 45% / 0.18)`,
-      chipText: `hsl(${hue} 70% 30%)`,
-    };
-  };
+  const bucketColor = (key: string) => getBucketColor(key);
 
   const bucketLabel = (b: { champId: string; group: number | null; pool: number | null; stage?: string | null; stageLabel?: string | null }, opts: { withChamp?: boolean } = {}) => {
     const champ = allChamps.find((c: any) => c.id === b.champId);

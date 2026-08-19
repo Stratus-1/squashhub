@@ -127,17 +127,7 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
     });
   }, [matches, poolByMatchId]);
 
-  const bucketColor = (key: string) => {
-    const idx = buckets.findIndex((b) => b.key === key);
-    if (idx < 0) return null;
-    const hue = Math.round(((idx * 360) / Math.max(buckets.length, 1) + 15) % 360);
-    return {
-      border: `hsl(${hue} 70% 45%)`,
-      bg: `hsl(${hue} 70% 45% / 0.10)`,
-      chipBg: `hsl(${hue} 70% 45% / 0.18)`,
-      chipText: `hsl(${hue} 70% 30%)`,
-    };
-  };
+  const bucketColor = (key: string) => getBucketColor(key);
 
   const bucketLabel = (b: { group: number | null; pool: number | null; stage?: string | null; stageLabel?: string | null }) => {
     if (b.stage) return b.stageLabel || "Play-offs";

@@ -5,12 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Router, Wifi, WifiOff } from "lucide-react";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import {
-import { useHasCapability } from "@/hooks/use-club-capabilities";
   computeUsage,
   formatData,
   useActiveBundle,
   useRouterConfig,
 } from "@/hooks/use-router-monitor";
+import { useHasCapability } from "@/hooks/use-club-capabilities";
 
 /**
  * Compact internet / data bundle widget. Only shown to club admins of clubs

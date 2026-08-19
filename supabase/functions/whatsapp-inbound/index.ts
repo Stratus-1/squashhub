@@ -49,7 +49,8 @@ interface ResolvedInteraction {
 }
 
 async function resolveInteraction(
-  admin: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  admin: any,
   from: string,
 ): Promise<ResolvedInteraction | null> {
   // Most recent pending question we asked this number.
@@ -80,11 +81,11 @@ async function resolveInteraction(
     .maybeSingle();
 
   if (!log) return null;
-  const payload = (log.payload ?? {}) as { interaction?: ResolvedInteraction };
+  const payload = ((log as any).payload ?? {}) as { interaction?: ResolvedInteraction };
   if (!payload.interaction) return null;
   return {
-    club_id: log.club_id!,
-    member_id: log.member_id ?? null,
+    club_id: (log as any).club_id!,
+    member_id: (log as any).member_id ?? null,
     kind: payload.interaction.kind,
     target_id: payload.interaction.target_id ?? null,
     prompt: payload.interaction.prompt ?? null,

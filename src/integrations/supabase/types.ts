@@ -8337,6 +8337,7 @@ export type Database = {
           federation_fee_cents: number
           payment_methods: string[]
           payment_required: boolean
+          payment_timing: string
           refund_cutoff_date: string | null
           refund_policy: string
           registration_closes_at: string | null
@@ -8367,6 +8368,7 @@ export type Database = {
           federation_fee_cents?: number
           payment_methods?: string[]
           payment_required?: boolean
+          payment_timing?: string
           refund_cutoff_date?: string | null
           refund_policy?: string
           registration_closes_at?: string | null
@@ -8397,6 +8399,7 @@ export type Database = {
           federation_fee_cents?: number
           payment_methods?: string[]
           payment_required?: boolean
+          payment_timing?: string
           refund_cutoff_date?: string | null
           refund_policy?: string
           registration_closes_at?: string | null
@@ -9292,6 +9295,7 @@ export type Database = {
           partner_mode: string | null
           payment_methods: string[] | null
           payment_required: boolean | null
+          payment_timing: string | null
           play_all_games: boolean | null
           play_days: number[] | null
           playoff_break_minutes: number | null

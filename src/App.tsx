@@ -436,9 +436,9 @@ function AppRoutes() {
         <Route path="/clubs" element={<Clubs />} />
 
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
-        <Route path="/events" element={<Events />} />
-        <Route path="/events/:id" element={<EventDetail />} />
-        <Route path="/tournaments" element={<Tournaments />} />
+        <Route path="/events" element={<CapabilityRoute capability="events"><Events /></CapabilityRoute>} />
+        <Route path="/events/:id" element={<CapabilityRoute capability="events"><EventDetail /></CapabilityRoute>} />
+        <Route path="/tournaments" element={<CapabilityRoute capability="tournaments"><Tournaments /></CapabilityRoute>} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/lights" element={<LightsIntegration />} />
         <Route path="/unsubscribe" element={<Unsubscribe />} />

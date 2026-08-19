@@ -4422,10 +4422,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Invitation-only is set on the <strong>Registration</strong> step ("who can register"), ranking status on
-                the scoring settings ("counts for ranking points"), and the sanctioning authority in{" "}
-                <strong>Governance</strong> — so any category can be combined with any of them.
+                This sets <strong>who is eligible</strong>. Whether they sign themselves up or you invite them is set once, on the{" "}
+                <strong>Entries &amp; seeding</strong> step ("how do players enter?"). Ranking status lives on the scoring
+                settings, and the sanctioning authority in <strong>Governance</strong>.
               </p>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <Label className="text-xs font-medium">Max entrants (optional)</Label>

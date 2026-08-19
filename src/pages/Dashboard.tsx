@@ -108,7 +108,15 @@ export default function Dashboard() {
     },
     enabled: !!clubId,
   });
-  const hasLeagues = (clubLeagueAssociations || []).length > 0;
+  // Capability gating — a club only sees the modules it actually uses.
+  const { enabled: clubCaps, hasRows: hasCapRows } = useCapabilities(clubId);
+  const capOn = (slug: string) => !hasCapRows || clubCaps.has(slug);
+  const bookingsEnabled = capOn("bookings");
+  const ladderEnabled = capOn("ladder");
+  const tournamentsEnabled = capOn("tournaments");
+  const eventsEnabled = capOn("events");
+  const barEnabled = capOn("bar");
+  const hasLeagues = capOn("leagues") && (clubLeagueAssociations || []).length > 0;
   // Recent match results for the active member
   const { data: recentMatches } = useQuery({
     queryKey: ["club-recent-matches", myMemberId || effectiveUserId],

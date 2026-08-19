@@ -26,7 +26,7 @@ import { FinalizeTournamentSetupDialog } from "@/components/tournaments/Finalize
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
-import { getBucketColor } from "@/lib/tournament-colors";
+import { getBucketColor, buildBucketColorMap } from "@/lib/tournament-colors";
 import { assignPools, entityIdForEntry, type Entry as SwissEntry } from "@/lib/swiss-pairing";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -251,7 +251,13 @@ export default function Tournaments() {
     });
   }, [upcomingMatches, allChamps, poolByMatchId]);
 
-  const bucketColor = (key: string) => getBucketColor(key);
+  // Give every league/pool bucket its own distinct colour (sorted order), so
+  // Pool A and Pool B of the same league never look alike.
+  const bucketColorMap = useMemo(
+    () => buildBucketColorMap(buckets.map((b) => b.key)),
+    [buckets]
+  );
+  const bucketColor = (key: string) => bucketColorMap.get(key) ?? getBucketColor(key);
 
   const bucketLabel = (b: { champId: string; group: number | null; pool: number | null; stage?: string | null; stageLabel?: string | null }, opts: { withChamp?: boolean } = {}) => {
     const champ = allChamps.find((c: any) => c.id === b.champId);

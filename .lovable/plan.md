@@ -1,120 +1,120 @@
-# Tournament entry & payment setup — review and simplification spec
+# Tournament Governance — single source of truth + readiness gate
 
-Review only. No code or database changes proposed for this turn; this is the product/UX specification.
+Review based on the Governance dialog (`TournamentGovernanceDialog`), the setup wizard (`ClubChampsTab`), and Riverside's live tournament rows.
 
-## 1. What exists today (verified)
+## What Riverside shows today
 
-The whole entry configuration lives in one wizard step, **Registration & Payment**, inside `ClubChampsTab`, and writes to `tournament_governance` (through the `club_champs` view). Riverside's four tournaments confirm the fields in use.
+- **Riverside Open** (status `planning`): entry fee R0 but `payment_required = true`; sanction status `pending` with a sanctioning body chosen but no sanction reference; federation share 5c and association share 4c on a free event; entries open and close at the *same* minute (18 Aug 23:34); competition level `regional` while the event is owned/run at club level.
+- Three older Riverside events: `payment_required = true` on a free Bells evening, no refund policy or cut-off on paid events (R150, R120).
 
-Controls currently on the page:
+None of this blocked activation, because nothing checks governance before a tournament goes live.
 
-| Control | Values | Stored as |
-|---|---|---|
-| Entry model presets (4 cards) | open+paid, open+free, admin+free, admin+paid | none — they just set the toggles below |
-| "Players need to register / be invited" | on / off | `registration_required` |
-| Entry fee (ZAR) | number, 0 = free | `entry_fee_cents` |
-| Accepted payment methods | card / EFT / cash (gated on club banking setup) | `payment_methods` |
-| "Player must pay before they qualify" | on / off | `payment_required` |
-| "How do players enter?" | open sign-up / invite-only | `registration_mode` |
-| "Who puts a player on the list?" | player / organiser / team manager | `entry_source` |
-| "Organiser must accept each entry" | on / off | `approval_gate` |
-| Initial invite list comes from… | manual tick-list / by league | `invite_source`, `source_league_ids` |
-| Invite methods | app / email | `invite_methods` |
-| Registration window | opens / closes datetimes | `registration_opens_at`, `registration_closes_at` |
-| Partner selection (doubles) | admin pairs / players choose | `partner_mode` |
-| Who may enter (step 1, elsewhere) | club / association / open | `eligibility_scope` |
-| Fee shares, refunds (read-only here) | federation/association share, refund policy + cut-off | Governance dialog |
+## Duplicated / overlapping controls
 
-Participant states actually present in `club_champs_registrations` today: `pending_payment`, `pending_eft`, `paid`, `waived`, `cancelled`, plus the booleans `invited_by_admin`, `partner_confirmed`, and the EFT proof columns. There is **no** distinct "invited but not yet answered", "accepted" or "approved" state — `pending_payment` is overloaded to mean all three, and `paid` is overloaded to mean "in the field" even for free events (99+67 free entries sit at `paid` today).
-
-## 2. Why the page feels messy
-
-1. **Two competing layers.** The four preset cards and the eight raw toggles below both claim to set the same thing. Presets only highlight when a fragile four-way condition matches, so an admin who nudges one toggle sees every card go dark and assumes something broke.
-2. **Three fields answer nearly the same question.** `registration_mode` (open vs invite), `entry_source` (player vs organiser) and `registration_required` overlap almost completely — invite-only + self-entry, or open sign-up + organiser-enters, are contradictory combinations the UI still allows.
-3. **Payment timing is implicit.** `payment_required` reads "must pay before they qualify", but there is no way to say "pay only after I accept you". With `approval_gate` now present, payment-before vs payment-after-approval is undefined.
-4. **Free events are misrepresented.** A free tournament still stores `payment_required: true` (all four Riverside rows do) and lands entrants in `paid`, which is meaningless wording for a free club night.
-5. **Eligibility lives on another step** while a helper paragraph on this step explains the difference — a sign the model is being explained instead of being obvious.
-6. **Dead options in context.** Payment methods, EFT panels, registration windows and invite sources stay visible in configurations where they do nothing.
-
-## 3. Proposed model — three questions, conditional disclosure
-
-Replace the preset grid and eight toggles with three sequential questions. Everything else appears only when the answers demand it.
-
-**Q1 — Who gets into this tournament?**
-- *Players enter themselves* (open sign-up)
-- *I choose the field* (organiser selects)
-- *Team managers enter their squads* (regional/national only; hidden at club scope)
-
-**Q2 — Does an entry need to be confirmed?**
-Shown for all three answers, with wording that adapts:
-- Self-entry: *No confirmation — entering is final* | *I review and accept each entry*
-- Organiser-selected: *No confirmation — the player is simply in* | *The player must accept the invitation*
-- Team-manager: *No confirmation* | *I review and accept each squad*
-
-**Q3 — Is there an entry fee?**
-- *Free*
-- *R___ payable* → then, and only then, a single radio for **when**: *Payment due immediately on entry* | *Payment due only once the entry is accepted*, plus accepted payment methods.
-
-Everything downstream is conditional: the registration window appears only for self-entry or team-manager entry; the invite list source and invite methods appear only when the organiser chooses the field; payment methods, EFT bank panel and refund summary appear only when a fee is set; partner selection stays where it is (doubles only).
-
-### The five required scenarios
-
-| Scenario | Q1 | Q2 | Q3 |
+| Concept | Wizard | Governance dialog | Verdict |
 |---|---|---|---|
-| A — internal, free, admin selects | I choose the field | No confirmation | Free |
-| B — internal, free, admin invites, must confirm | I choose the field | Player must accept | Free |
-| C — club, free, self-register | Players enter themselves | No confirmation | Free |
-| D — paid, self-register with payment | Players enter themselves | No confirmation | R__, due on entry |
-| E — invite/approval, pay after acceptance | Either | Accept required | R__, due after acceptance |
+| Who may enter (eligibility scope) | editable (Step 1, synced into governance) | editable (Eligibility tab) | Duplicated — two editors, last save wins |
+| Entries open / close | editable | read-only summary | Already correct |
+| Entry fee, payment required | editable | read-only summary | Already correct |
+| Registration mode / entry source / approval gate | editable (new Q1/Q2) | not shown | Correct, but governance should *show* it |
+| Payment timing | editable | absent | Governance should show it read-only |
+| Age limits, licence required, eligibility notes | absent | editable | Correct |
+| Sanctioning (status, authority, reference, notes), competition level | absent | editable | Correct |
+| Owning body | Step 1 owner picker | Ownership tab | Duplicated |
+| Fee shares, refunds, host venues/host fees | absent | editable | Correct |
+| Dates (play dates) | editable (Courts step) | venue rows only | Correct |
+| Scoring/rules (points, best-of, handicap, no-show) | editable | absent | Correct |
 
-### Mapping onto existing storage (no data loss)
+### Authoritative location (proposed)
 
-| New answer | Existing columns written |
-|---|---|
-| Q1 = players enter themselves | `registration_mode='open'`, `entry_source='self'`, `registration_required=true` |
-| Q1 = I choose the field | `registration_mode='invite'`, `entry_source='admin'` |
-| Q1 = team managers | `registration_mode='invite'`, `entry_source='team_manager'` |
-| Q2 = no confirmation | `approval_gate='none'`; for organiser-selected also `registration_required=false` |
-| Q2 = accept/confirm required | `approval_gate='admin_accept'` (self/team) or `registration_required=true` (invitation acceptance) |
-| Q3 = free | `entry_fee_cents=0`, `payment_required=false` |
-| Q3 = paid, due on entry | fee > 0, `payment_required=true`, new meaning "before acceptance" |
-| Q3 = paid, due after acceptance | fee > 0, `payment_required=true` + `approval_gate='admin_accept'`; ordering carried by a single new flag `payment_timing` ('on_entry' \| 'after_acceptance') |
+- **Wizard owns:** name, format, dates/courts, scoring & rules, entry flow (entry source, confirmation, fee amount, payment timing, payment methods), registration window, invites, partner mode, ranking-points flag.
+- **Governance owns:** owning body, competition level, sanctioning block, age limits, licence requirement, eligibility scope, eligibility notes, fee shares (federation/association), host venues & host compensation, refund policy and cut-off, audit history.
+- **Changes required to remove double-editing:**
+  1. Eligibility scope becomes **governance-owned**. Wizard Step 1 shows it read-only with a "Change in Governance" link (or keeps the editor but writes through the same mutation and drops the separate upsert — pick governance-owned for consistency).
+  2. Owning body becomes **governance-owned**; wizard shows the owner as read-only text.
+  3. Governance gains a read-only "Entry flow" panel: entry source · confirmation · fee · payment timing · window, each deep-linking back to the wizard step.
+  4. Governance `registration_required` / `registration_mode` are never edited in the dialog (already true) — remove them from anything that looks editable and keep them in the audit labels only.
 
-Only one new field (`payment_timing`) is needed; everything else is a re-read of columns already populated. Existing tournaments map cleanly: current rows with `payment_required=true` and a zero fee are read as **Free** regardless of the flag, which fixes the four Riverside rows without touching data.
+## Governance completeness (calculated, not a checkbox)
 
-## 4. Participant state machine
+A pure function `getGovernanceReadiness(tournament, governance, venues, owner)` returns `{ status: 'complete' | 'needs_attention', missing: Item[], warnings: Item[] }`, where each item has `{ key, label, section: 'ownership'|'eligibility'|'fees'|'venues'|'wizard:registration', severity: 'required'|'warning' }`.
 
-One status column, explicit states, replacing today's overloaded `pending_payment` / `paid`:
+### Required by context
+
+Always required:
+- Owning body assigned
+- Eligibility scope set
+- At least one venue (host club) — required once a draw or schedule exists
+- Play dates set (start/end)
+
+Association / regional / national (competition level ≠ club, or owner is association/federation):
+- Competition level
+- Sanction status; if `pending` or `approved`: sanctioning authority; if `approved`: sanction reference
+- Refund policy (and cut-off date when policy is not "No refunds")
+
+Paid events (`entry_fee_cents > 0`):
+- At least one payment method
+- Refund policy (cut-off required unless "No refunds")
+- Fee shares must not exceed the entry fee (already computed by `computeFeeSplit.overAllocated`)
+- Payment timing set
+
+Free events (`entry_fee_cents = 0`):
+- Warn if `payment_required = true`, or if federation/association shares are non-zero (exactly Riverside Open's state)
+
+Self-entry / open registration (`entry_source = self`):
+- Entries open and close both set, close strictly after open
+- Entries close on or before the start date (warning if after)
+
+Organiser-selected / invite (`entry_source = admin` or `team_manager`):
+- At least one invite delivery method
+- At least one player on the entry list before invites are sent
+
+Age / licence restrictions:
+- If min or max age set: both must be sane (min < max) and eligibility notes recommended (warning)
+- If licence required: sanctioning authority required (a licence check needs a body that issues it)
+
+Approval gate on (`approval_gate = admin_accept`) or payment after acceptance:
+- Confirmation contact channel present (invite method or email) — warning only
+
+### UI: Governance status card
+
+Placed at the top of the Governance dialog and as a compact strip on the tournament card in the tournaments list:
 
 ```text
-                 (organiser picks)              (player enters)
-                      selected                     registered
-                         |                              |
-              [invitation sent]                  [accept gate?]
-                         v                              v
-                      invited  --declined-->  withdrawn / declined
-                         |
-                  (player accepts)
-                         v
-                     accepted  --organiser rejects--> declined
-                         |
-                 [fee due? / timing]
-                         v
-                    payment_due --paid/waived--> confirmed (in the field)
-                         |
-                    (no payment)  ------------> confirmed
+Governance — Riverside Open              [Needs attention · 4 items]
+ x  Sanction reference missing            -> Ownership
+ x  Entries close must be after open      -> Setup - Who plays & what it costs
+ !  Free event but shares are set (R0.09) -> Fees & refunds
+ !  Payment required is on for a free event -> Setup - Who plays & what it costs
 ```
 
-States: `selected`, `invited`, `accepted`, `registered`, `payment_due`, `confirmed`, `withdrawn`, `declined`, `cancelled`. Compatibility: today's `pending_payment` splits into `invited` / `payment_due`, `pending_eft` becomes `payment_due` with proof attached, `paid` and `waived` both become `confirmed` (payment recorded separately), `cancelled` stays.
+- Green "Complete" badge with a one-line summary when nothing is outstanding.
+- Every row is a button that opens the owning tab (or opens the wizard on the right step).
+- Same card rendered read-only inside the wizard Review step so the admin sees the blockers before pressing Generate.
 
-## 5. Admin-facing wording
+### Hard block vs warn
 
-- Step title: **Who plays and what it costs** (replaces "Registration & Payment").
-- Summary line under the step: "Riverside Open — I choose the field · players must accept · free".
-- Entry list badges: *Selected*, *Invited*, *Accepted*, *Payment due*, *Confirmed*, *Withdrawn*, *Declined*.
-- Player-facing button text follows the same states: "Accept invitation", "Register", "Register & pay", "Pay entry fee".
-- Never show "Paid" for a free tournament; show "Confirmed".
+| Action | Behaviour |
+|---|---|
+| Save draft / edit wizard | Never blocked |
+| Open registration (entries become visible/enterable) | Hard block on required items |
+| Send invites | Hard block on required items + at least one invite method + non-empty list |
+| Generate draw / schedule | Hard block on required items |
+| Publish / set status `active` | Hard block on required items |
+| Set status `completed` | Warn only |
+| Any warning-severity item | Toast + confirm dialog listing them; admin can proceed |
 
-## 6. What stays where
+Blocked buttons stay clickable and open the status card explaining exactly what is missing (never a silently disabled button with no reason).
 
-Fee splits (federation/association share), refund policy and cut-off, sanctioning and eligibility scope stay in the Governance dialog and remain read-only on this step — one place to edit, one place to see.
+## Technical notes
+
+- New file `src/lib/tournaments/governance-readiness.ts` — pure function plus `REQUIRED_BY_CONTEXT` rules, unit-testable with no React.
+- New component `src/components/tournaments/GovernanceStatusCard.tsx` — used in the dialog, in the wizard Review step, and (compact variant) on the tournament list card.
+- No schema change needed: every rule reads existing `tournament_governance`, `tournament_venues`, `tournaments` and `club_champs` columns, including the recently added `entry_source`, `approval_gate` and `payment_timing`.
+- Server-side backstop (optional, phase 2): a `BEFORE UPDATE` trigger on `tournaments` rejecting `status -> 'active'` when the same rules fail, so an API caller cannot bypass the UI.
+- Gating hooks: wrap the existing `setChampStatus` mutation, the invite send path, and the Generate Schedule button in a shared `useGovernanceGate(tournamentId)` helper returning `{ ready, missing, requireReady(action) }`.
+- The "Who plays and what it costs" step keeps its three questions and gains only a read-only governance summary block (owner · level · sanction · eligibility · refunds) with a "Open governance" link — no new editors.
+
+## Out of scope for this change
+
+Fee-split maths, host compensation rates, and the audit trail stay exactly as they are.

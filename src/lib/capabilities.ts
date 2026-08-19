@@ -286,3 +286,35 @@ export const DEFAULT_CAPABILITIES: Capability[] = CAPABILITY_LIST.filter((c) => 
 );
 
 export type ModuleState = "off" | "needs_setup" | "ready";
+
+/**
+ * Should an admin tab be shown?
+ *
+ * Core tabs (no capability tag) are always visible. Optional tabs appear only
+ * when their capability is enabled. Fails open when a club has no capability
+ * rows yet, so un-migrated tenants keep everything.
+ */
+export function isTabVisible(
+  tab: { capability?: Capability },
+  enabled: Set<string>,
+  hasRows = true
+): boolean {
+  if (!tab.capability) return true;
+  if (!hasRows) return true;
+  return enabled.has(tab.capability);
+}
+
+/**
+ * Module status shown on an optional tile:
+ *  - "off"         capability disabled (data kept, just hidden)
+ *  - "needs_setup" enabled but configuration is incomplete
+ *  - "ready"       enabled and configured
+ */
+export function moduleState(
+  slug: Capability,
+  enabled: Set<string>,
+  complete: boolean
+): ModuleState {
+  if (!enabled.has(slug)) return "off";
+  return complete ? "ready" : "needs_setup";
+}

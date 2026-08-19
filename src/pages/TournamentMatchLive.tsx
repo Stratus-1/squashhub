@@ -105,13 +105,19 @@ export default function TournamentMatchLive() {
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
           <div className="flex items-center gap-2">
-            {live && (
+            {live && fresh && (
               <span className="live-indicator text-[11px] px-2.5 py-1">
                 <Radio className="w-3 h-3" /> LIVE
               </span>
             )}
+            {live && !fresh && (
+              <Badge variant="outline" className="text-[11px] border-amber-500/60 text-amber-700 dark:text-amber-300">
+                Paused · no marker
+              </Badge>
+            )}
             {completed && <Badge variant="secondary" className="text-[11px]">Final</Badge>}
           </div>
+
         </div>
 
         {loading && <p className="text-sm text-muted-foreground">Loading live score…</p>}

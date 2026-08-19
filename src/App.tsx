@@ -455,10 +455,10 @@ function AppRoutes() {
         <Route path="/s/:code/success" element={<BarPaymentSuccess />} />
         <Route path="/c/:subdomain/s/:code" element={<ScanPay />} />
         <Route path="/c/:subdomain/s/:code/success" element={<BarPaymentSuccess />} />
-        <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
-        <Route path="/ladder" element={<ProtectedRoute><Ladder /></ProtectedRoute>} />
+        <Route path="/bookings" element={<ProtectedRoute><CapabilityRoute capability="bookings"><Bookings /></CapabilityRoute></ProtectedRoute>} />
+        <Route path="/ladder" element={<ProtectedRoute><CapabilityRoute capability="ladder"><Ladder /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/challenges/new" element={<Navigate to="/ladder" replace />} />
-        <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
+        <Route path="/challenges" element={<ProtectedRoute><CapabilityRoute capability="ladder"><Challenges /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/match-tracker/:bookingId" element={<ProtectedRoute><MatchTracker /></ProtectedRoute>} />
         <Route path="/match-marker" element={<ProtectedRoute><MatchMarker /></ProtectedRoute>} />
         <Route path="/bells-marker/:matchId" element={<ProtectedRoute><BellsMarker /></ProtectedRoute>} />
@@ -486,10 +486,10 @@ function AppRoutes() {
           </ProtectedRoute>
         } />
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
-        <Route path="/honesty-bar" element={<ProtectedRoute><HonestyBar /></ProtectedRoute>} />
+        <Route path="/honesty-bar" element={<ProtectedRoute><CapabilityRoute capability="bar"><HonestyBar /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/club-champs/:champId" element={<ProtectedRoute><ClubChampsView /></ProtectedRoute>} />
-        <Route path="/league-games" element={<ProtectedRoute><LeagueGames /></ProtectedRoute>} />
-        <Route path="/league-games/:fixtureId" element={<ProtectedRoute><LeagueGameDetail /></ProtectedRoute>} />
+        <Route path="/league-games" element={<ProtectedRoute><CapabilityRoute capability="leagues"><LeagueGames /></CapabilityRoute></ProtectedRoute>} />
+        <Route path="/league-games/:fixtureId" element={<ProtectedRoute><CapabilityRoute capability="leagues"><LeagueGameDetail /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/c/:subdomain" element={<ClubLanding />} />
         <Route path="/league" element={<LeagueSignup />} />
         <Route path="/admin" element={<AdminRoute><SuperAdminLayout /></AdminRoute>}>

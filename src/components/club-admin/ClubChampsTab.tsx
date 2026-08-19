@@ -2,6 +2,17 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
+import {
+  defaultForfeitRule,
+  describeForfeitRule,
+  forfeitOptionsForScoring,
+  pointsForLeague as forfeitPointsFor,
+  ruleForLeague as forfeitRuleFor,
+  type ForfeitPoints,
+  type ForfeitPointsMap,
+  type ForfeitRule,
+  type ForfeitRuleMap,
+} from "@/lib/tournaments/forfeit";
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
@@ -566,7 +577,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs, league_bye_handling")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -707,6 +718,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const playoffsForLeague = (gn: number): boolean => leaguePlayoffs[String(gn)] === true;
   const byeForLeague = (gn: number): "no_match" | "walkover_win" | "neutral" =>
     leagueByeHandling[String(gn)] ?? ((byeHandling || "no_match") as "no_match" | "walkover_win" | "neutral");
+  // Per-league forfeit / no-show rule. The consequence of a no-show depends on how
+  // the league is scored, so each league owns its own rule (League 1 can award a
+  // walkover while a Bells league awards points).
+  const [leagueForfeitRules, setLeagueForfeitRules] = useState<ForfeitRuleMap>({});
+  const [leagueForfeitPoints, setLeagueForfeitPoints] = useState<ForfeitPointsMap>({});
+  const forfeitRuleForLeague = (gn: number): ForfeitRule =>
+    forfeitRuleFor(leagueForfeitRules, gn, scoringForLeague(gn));
+  const forfeitPointsForLeague = (gn: number): ForfeitPoints =>
+    forfeitPointsFor(leagueForfeitPoints, gn, {
+      opponent: noShowOpponentPoints,
+      player: noShowPlayerPoints,
+    });
   const winConditionForLeague = (gn: number): "win_by_2" | "sudden_death" =>
     leagueWinConditions[String(gn)] ?? winCondition;
   /** Set one league's scoring format; keeps tournament-level in sync with league 1. */
@@ -1348,6 +1371,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       league_play_all_games: Object.keys(leaguePlayAll).length > 0 ? leaguePlayAll : null,
       league_playoffs: Object.keys(leaguePlayoffs).length > 0 ? leaguePlayoffs : null,
       league_bye_handling: Object.keys(leagueByeHandling).length > 0 ? leagueByeHandling : null,
+      league_forfeit_rules: Object.keys(leagueForfeitRules).length > 0 ? leagueForfeitRules : null,
+      league_forfeit_points: Object.keys(leagueForfeitPoints).length > 0 ? leagueForfeitPoints : null,
       participating_club_ids: venueClubIds.filter((id) => id !== clubId),
     };
     const saveExtras = async (id: string) => {

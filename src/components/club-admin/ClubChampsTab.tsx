@@ -853,6 +853,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteIncludeReserves, setInviteIncludeReserves] = useState<boolean>(true);
   const [inviteExcludedMemberIds, setInviteExcludedMemberIds] = useState<Set<string>>(new Set());
 
+  // Who puts a player on the entry list, and whether an admin must accept it.
+  const [entrySource, setEntrySource] = useState<"self" | "admin" | "team_manager">("self");
+  const [approvalGate, setApprovalGate] = useState<"none" | "admin_accept">("none");
+
   // Handicap (singles only): none, by league ranking, or by club ladder
   // Handicap source:
   //  - none         → no handicap
@@ -1213,6 +1217,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       registration_required: registrationRequired,
       invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
       invite_source: inviteSource,
+      entry_source: entrySource,
+      approval_gate: approvalGate,
       invite_include_reserves: inviteIncludeReserves,
       invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
       handicap_mode: matchType === "singles" ? handicapMode : "none",
@@ -2920,6 +2926,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
+            entry_source: entrySource,
+            approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
@@ -2985,6 +2993,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
+            entry_source: entrySource,
+            approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
@@ -3741,6 +3751,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPaymentRequired(true);
     setInviteMethods(new Set(["app"]));
     setInviteSource("manual");
+    setEntrySource("self");
+    setApprovalGate("none");
     setInviteIncludeReserves(true);
     setInviteExcludedMemberIds(new Set());
     setHandicapMode("none");
@@ -3815,6 +3827,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setRegistrationRequired((champ as any).registration_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
     setInviteSource(((champ as any).invite_source as any) || "manual");
+    setEntrySource((((champ as any).entry_source as any) || ((champ.registration_mode === "invite") ? "admin" : "self")));
+    setApprovalGate((((champ as any).approval_gate as any) || "none"));
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
     setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
     setHandicapMode(((champ as any).handicap_mode as any) || "none");
@@ -5787,6 +5801,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     setRegistrationRequired(true);
                     setRegistrationMode("open" as any);
                     setPaymentRequired(true);
+                    setEntrySource("self");
                     if (!feeOn) setEntryFeeRand("");
                   },
                 },
@@ -5799,6 +5814,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     setRegistrationRequired(true);
                     setRegistrationMode("open" as any);
                     setPaymentRequired(false);
+                    setEntrySource("self");
                     setEntryFeeRand("0");
                   },
                 },
@@ -5811,6 +5827,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     setRegistrationRequired(false);
                     setRegistrationMode("invite" as any);
                     setPaymentRequired(false);
+                    setEntrySource("admin");
                     setEntryFeeRand("0");
                   },
                 },
@@ -5823,6 +5840,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     setRegistrationRequired(true);
                     setRegistrationMode("invite" as any);
                     setPaymentRequired(true);
+                    setEntrySource("admin");
                     if (!feeOn) setEntryFeeRand("");
                   },
                 },
@@ -6012,6 +6030,42 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 which decides <em>which</em> players are eligible. This setting decides <em>how</em> they get in.
               </p>
             </div>
+
+            {/* Entry source — who physically puts a name on the list. Regional and
+                national events often enter whole teams through a team manager. */}
+            <div className="space-y-2">
+              <Label className="text-sm">Who puts a player on the list?</Label>
+              <Select value={entrySource} onValueChange={(v) => setEntrySource(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="self">The player — enters themselves</SelectItem>
+                  <SelectItem value="admin">The organiser — admin picks the field</SelectItem>
+                  <SelectItem value="team_manager">A team manager / club captain — enters their players</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Team-manager entry is used for regional and national events where a club or province enters a squad on behalf of its players.
+              </p>
+            </div>
+
+            {/* Approval gate — entry is only final once the organiser accepts it. */}
+            <div className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3">
+              <Switch
+                id="approval-gate"
+                checked={approvalGate === "admin_accept"}
+                onCheckedChange={(v) => setApprovalGate(v ? "admin_accept" : "none")}
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="approval-gate" className="text-sm font-medium cursor-pointer">
+                  Organiser must accept each entry
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Entries stay provisional until an organiser accepts them — used for selection events, licence checks and capped fields. Leave off for ordinary club tournaments.
+                </p>
+              </div>
+            </div>
+
+
 
 
             {/* Invite source — only meaningful in invite mode */}

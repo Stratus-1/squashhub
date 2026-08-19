@@ -8323,6 +8323,7 @@ export type Database = {
       }
       tournament_governance: {
         Row: {
+          approval_gate: string
           association_fee_cents: number
           competition_level: string
           created_at: string
@@ -8332,6 +8333,7 @@ export type Database = {
           eligibility_requires_licence: boolean
           eligibility_scope: string
           entry_fee_cents: number
+          entry_source: string
           federation_fee_cents: number
           payment_methods: string[]
           payment_required: boolean
@@ -8351,6 +8353,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_gate?: string
           association_fee_cents?: number
           competition_level?: string
           created_at?: string
@@ -8360,6 +8363,7 @@ export type Database = {
           eligibility_requires_licence?: boolean
           eligibility_scope?: string
           entry_fee_cents?: number
+          entry_source?: string
           federation_fee_cents?: number
           payment_methods?: string[]
           payment_required?: boolean
@@ -8379,6 +8383,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_gate?: string
           association_fee_cents?: number
           competition_level?: string
           created_at?: string
@@ -8388,6 +8393,7 @@ export type Database = {
           eligibility_requires_licence?: boolean
           eligibility_scope?: string
           entry_fee_cents?: number
+          entry_source?: string
           federation_fee_cents?: number
           payment_methods?: string[]
           payment_required?: boolean
@@ -9234,6 +9240,7 @@ export type Database = {
       club_champs: {
         Row: {
           affects_ranking_points: boolean | null
+          approval_gate: string | null
           association_fee_cents: number | null
           avoid_back_to_back: boolean | null
           best_of: number | null
@@ -9257,6 +9264,7 @@ export type Database = {
           end_time: string | null
           entries_locked: boolean | null
           entry_fee_cents: number | null
+          entry_source: string | null
           expected_players: Json | null
           federation_fee_cents: number | null
           gender: string | null

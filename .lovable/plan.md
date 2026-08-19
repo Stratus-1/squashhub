@@ -96,3 +96,45 @@ Governance stays exactly where it is — no participant controls move into it, n
 - New `useTournamentRoster(champId)` hook: single query joining registrations + entries + `get_champ_signup_status`, keyed so existing `champ-registrations` invalidations also refresh it.
 - New `TournamentRosterTable` component rendered inside the Players step's WizardSection; action mutations mirror the ones in `TournamentRegistrationsDialog` so semantics are identical.
 - Migration: `alter table club_champs_registrations add column participation_status text, add column withdrawn_at timestamptz;` plus a backfill update. No drops, no constraint changes, no RLS changes.
+
+---
+
+# Part 2: Consolidate all dates and times into one step
+
+Right now tournament start/end dates, play days, daily start/end times and courts live on the **Courts** step, while registration open/close date-times sit further along on the Registration step. Two places to think about time.
+
+## The change
+
+Rename the Courts step to **Dates & Courts** and move `registration_opens_at` / `registration_closes_at` into it, in their own block under the play dates. The registration block is shown only when the chosen entry flow actually uses a window — the existing `registrationWindowApplies` condition (registration required and entry source is not "I choose the field").
+
+The Registration step then covers only: who enters, confirmation/approval, fee and payment timing, invite delivery and messaging, and doubles partner behaviour. That matches its title, "Who plays and what it costs".
+
+## Step order has to change
+
+`registrationWindowApplies` depends on the entry source, which is chosen on the Registration step — currently *after* Courts. If the registration dates move to Courts while Courts stays second, the fields would be gated on an answer the user hasn't given yet.
+
+Recommended order after simplification:
+
+```text
+1. Category          (name, gender, singles/doubles)
+2. Format            (was "Structure & capacity")
+3. Who plays & costs (was "Registration")
+4. Dates & Courts    (was "Courts" — now also registration window)
+5. Players           (unified roster, from Part 1)
+6. Groups
+7. Schedule
+8. Review
+```
+
+Moving Dates & Courts after the entry-flow questions also reads better: decide what the event is and who plays, then pick when and where.
+
+## Validation moves with the fields
+
+The three registration-window checks (open required, close required, close after open) move from the `registration` case into the `courts` case of the step validator, still behind `registrationWindowApplies`. Everything else in both cases stays.
+
+## Risks for this part
+
+- The abbreviated flows used when players self-pair (`["category","courts","structure","registration","players","review"]`) hardcode step order in two places and must be re-ordered to match, or the wizard will jump backwards.
+- The "Back to dates" shortcut on the Schedule step targets the `courts` step id. Keep the internal id `courts` and change only the label, so no navigation, autosave key, or draft-restore path breaks.
+- Saved drafts store no step id, so in-flight tournaments are unaffected.
+- No database change: `registration_opens_at` / `registration_closes_at` stay on the tournament row and keep being written by the same save paths.

@@ -41,6 +41,14 @@ export function normaliseReply(raw: string): string {
 
 const STOP = /\b(stop|unsubscribe|opt\s?out|remove me)\b/;
 
+/**
+ * Phrases that contain a negative word but carry no decline meaning. They are
+ * stripped before scoring so "count me in, can't wait" stays a YES.
+ * Note: "opt out" is intentionally NOT listed — it is handled by STOP above.
+ */
+const IDIOMS =
+  /\b(no (problem|worries|probs|doubt|stress)|cant wait|cannot wait|no thanks? needed)\b/g;
+
 /** Replies that express uncertainty — never mutate state on these. */
 const AMBIGUOUS: RegExp[] = [
   /\b(maybe|perhaps|possibly|probably|hopefully)\b/,

@@ -121,10 +121,10 @@ export function classifyReply(payload: string | null | undefined, text?: string 
   const ambiguous = matched(AMBIGUOUS, scored);
   if (ambiguous) return { intent: "unknown", normalised, reason: `ambiguous:${ambiguous.source}` };
 
-  const negative = matched(NEGATIVE, normalised);
+  const negative = matched(NEGATIVE, scored);
   if (negative) return { intent: "no", normalised, reason: `negative:${negative.source}` };
 
-  const positive = matched(POSITIVE, normalised);
+  const positive = matched(POSITIVE, scored);
   if (positive) return { intent: "yes", normalised, reason: `positive:${positive.source}` };
 
   return { intent: "unknown", normalised, reason: "no-match" };

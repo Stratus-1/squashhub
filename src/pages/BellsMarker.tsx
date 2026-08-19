@@ -18,6 +18,9 @@ import { setScoringActive } from "@/lib/scoring-lock";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useChampMarkerHeartbeat } from "@/hooks/use-champ-marker-lock";
+
 
 /**
  * Bells doubles scorer.

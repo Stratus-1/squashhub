@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
-import { CORE_SETUP_KEYS, type Capability } from "@/lib/capabilities";
+import { CORE_SETUP_KEYS, isTabVisible, type Capability } from "@/lib/capabilities";
 import { useCapabilities } from "@/hooks/use-club-capabilities";
 import { FeaturesTab } from "@/components/club-admin/FeaturesTab";
 import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
@@ -150,7 +150,7 @@ export default function ClubAdmin() {
     return myPermissions.has(tab.permission);
   };
   // Capability filter — core tabs (no capability) are always visible.
-  const capFilter = (tab: AdminTab) => !tab.capability || enabledCaps.has(tab.capability);
+  const capFilter = (tab: AdminTab) => isTabVisible(tab, enabledCaps, hasCapRows);
   const visibleSetup = SETUP_TABS.filter(permFilter).filter(capFilter);
   const visibleOps = OPERATIONS_TABS.filter(permFilter).filter(capFilter);
   const visibleTabs = [...visibleSetup, ...visibleOps];

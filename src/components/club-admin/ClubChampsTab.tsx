@@ -4237,6 +4237,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
           m.push("At least one play day");
         }
+        // Registration window lives on this step now (all dates in one place).
+        if (registrationWindowApplies) {
+          if (!registrationOpensAt) m.push("Registration opens (date & time)");
+          if (!registrationClosesAt) m.push("Registration closes (date & time)");
+          if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
+            m.push("Registration close must be after registration open");
+          }
+        }
         break;
       }
       case "structure": {
@@ -4245,13 +4253,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
       case "registration": {
         if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
-        if (registrationWindowApplies) {
-          if (!registrationOpensAt) m.push("Registration opens (date & time)");
-          if (!registrationClosesAt) m.push("Registration closes (date & time)");
-          if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
-            m.push("Registration close must be after registration open");
-          }
-        }
         if (invitesApply && inviteMethods.size === 0) m.push("At least one invite delivery method");
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
           m.push("At least one accepted payment method");
@@ -6238,21 +6239,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <span className="font-medium text-foreground">Tournament dates:</span>{" "}
               {startDate && endDate
                 ? <span>{startDate} → {endDate}</span>
-                : <span className="text-muted-foreground italic">Go back to the Courts step to set the dates.</span>}
+                : <span className="text-muted-foreground italic">Set these on the Dates & Courts step.</span>}
             </div>
 
-            {/* Registration window — only when someone other than the organiser enters players */}
+            {/* Registration window is set on the "Dates & Courts" step so every
+                date lives in one place. */}
             {registrationWindowApplies && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-sm">Registration opens</Label>
-                  <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-sm">Registration closes</Label>
-                  <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
-                </div>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Registration opens/closes on the <span className="font-medium text-foreground">Dates &amp; Courts</span> step.
+              </p>
             )}
 
 

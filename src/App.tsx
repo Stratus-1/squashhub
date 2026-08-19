@@ -462,6 +462,7 @@ function AppRoutes() {
         <Route path="/match-tracker/:bookingId" element={<ProtectedRoute><MatchTracker /></ProtectedRoute>} />
         <Route path="/match-marker" element={<ProtectedRoute><MatchMarker /></ProtectedRoute>} />
         <Route path="/bells-marker/:matchId" element={<ProtectedRoute><BellsMarker /></ProtectedRoute>} />
+        <Route path="/tournament-live/:matchId" element={<ProtectedRoute><TournamentMatchLive /></ProtectedRoute>} />
         <Route path="/tv" element={<MarkerTv />} />
         <Route path="/tv/club/:subdomain" element={<MarkerTv />} />
         <Route path="/tv/club/:subdomain/court/:court" element={<MarkerTv />} />

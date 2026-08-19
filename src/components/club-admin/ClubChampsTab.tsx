@@ -108,7 +108,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
   category: "Category",
   courts: "Courts",
   structure: "Structure & Capacity",
-  registration: "Registration",
+  registration: "Who plays & what it costs",
   players: "Players",
   groups: "Leagues",
   schedule: "Schedule",
@@ -856,6 +856,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Who puts a player on the entry list, and whether an admin must accept it.
   const [entrySource, setEntrySource] = useState<"self" | "admin" | "team_manager">("self");
   const [approvalGate, setApprovalGate] = useState<"none" | "admin_accept">("none");
+  // When the entry fee falls due: straight away, or only once the entry is accepted.
+  const [paymentTiming, setPaymentTiming] = useState<"on_entry" | "after_acceptance">("on_entry");
 
   // Handicap (singles only): none, by league ranking, or by club ladder
   // Handicap source:
@@ -1124,6 +1126,63 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const effectiveRegistrationMode = ((registrationMode || "open")) as "open" | "invite";
   const registrationUsesInviteList = effectiveRegistrationMode === "invite";
   const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationUsesInviteList;
+
+  /* ── Entry flow (Q1/Q2/Q3) derived from the existing governance columns ──
+     Q1 = entrySource, Q2 = confirmation, Q3 = fee + payment timing. Nothing new
+     is stored except `payment_timing`; the legacy columns keep their meaning. */
+  const entryFeeAmount = Math.max(0, Number(entryFeeRand) || 0);
+  const isPaidTournament = entryFeeAmount > 0;
+  // Confirmation means different things per entry source: an organiser-picked
+  // player "confirms" by accepting the invitation (registration_required), a
+  // self/team entry is confirmed by the organiser accepting it (approval_gate).
+  const confirmationRequired =
+    entrySource === "admin" ? registrationRequired : approvalGate === "admin_accept";
+  // Registration windows only make sense when someone other than the organiser
+  // puts names on the list.
+  const registrationWindowApplies = registrationRequired && entrySource !== "admin";
+  // Invitations are only sent when the organiser builds the list.
+  const invitesApply = entrySource !== "self";
+
+  const applyEntrySource = (v: "self" | "admin" | "team_manager") => {
+    setEntrySource(v);
+    setRegistrationMode(v === "self" ? "open" : "invite");
+    if (v === "admin") {
+      setRegistrationRequired(confirmationRequired);
+      setApprovalGate("none");
+    } else {
+      setRegistrationRequired(true);
+      setApprovalGate(confirmationRequired ? "admin_accept" : "none");
+    }
+  };
+
+  const applyConfirmation = (on: boolean) => {
+    if (entrySource === "admin") {
+      setRegistrationRequired(on);
+      setApprovalGate("none");
+    } else {
+      setRegistrationRequired(true);
+      setApprovalGate(on ? "admin_accept" : "none");
+    }
+  };
+
+  const applyEntryFee = (value: string) => {
+    setEntryFeeRand(value);
+    const amount = Math.max(0, Number(value) || 0);
+    setPaymentRequired(amount > 0);
+    if (amount <= 0) setPaymentTiming("on_entry");
+  };
+
+  const entrySourceLabel =
+    entrySource === "admin" ? "I choose the field"
+      : entrySource === "team_manager" ? "team managers enter squads"
+      : "players enter themselves";
+  const confirmationLabel = confirmationRequired
+    ? (entrySource === "admin" ? "players must accept" : "organiser must approve")
+    : "no confirmation needed";
+  const feeLabel = !isPaidTournament
+    ? "free"
+    : `R${entryFeeAmount} ${paymentTiming === "after_acceptance" ? "payable after acceptance" : "payable on entry"}`;
+  const entryFlowSummary = `${champName || "This tournament"} — ${entrySourceLabel} · ${confirmationLabel} · ${feeLabel}`;
   // Defer pair formation only when players self-pair (need registrations to
   // arrive first). Admin-pair mode always gets the full wizard so the admin can
   // pick players and build pairs upfront — deferring it was jumping the admin
@@ -3753,6 +3812,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteSource("manual");
     setEntrySource("self");
     setApprovalGate("none");
+    setPaymentTiming("on_entry");
     setInviteIncludeReserves(true);
     setInviteExcludedMemberIds(new Set());
     setHandicapMode("none");
@@ -3829,6 +3889,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteSource(((champ as any).invite_source as any) || "manual");
     setEntrySource((((champ as any).entry_source as any) || ((champ.registration_mode === "invite") ? "admin" : "self")));
     setApprovalGate((((champ as any).approval_gate as any) || "none"));
+    setPaymentTiming((((champ as any).payment_timing as any) || "on_entry"));
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
     setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
     setHandicapMode(((champ as any).handicap_mode as any) || "none");
@@ -4119,16 +4180,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         break;
       }
       case "registration": {
-        if (!registrationMode) m.push("Choose who can register");
         if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
-        if (registrationRequired) {
+        if (registrationWindowApplies) {
           if (!registrationOpensAt) m.push("Registration opens (date & time)");
           if (!registrationClosesAt) m.push("Registration closes (date & time)");
           if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
             m.push("Registration close must be after registration open");
           }
-          if (inviteMethods.size === 0) m.push("At least one invite delivery method");
         }
+        if (invitesApply && inviteMethods.size === 0) m.push("At least one invite delivery method");
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
           m.push("At least one accepted payment method");
         }
@@ -5782,204 +5842,219 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       {step === "registration" && (
         <Card>
           <CardHeader>
-            <CardTitle>Registration &amp; Payment</CardTitle>
+            <CardTitle>Who plays and what it costs</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Decide how members enter this tournament and whether they must pay to qualify.
+              Three questions define the entry flow. Everything else on this step appears only when it applies.
             </p>
+            <p className="text-xs font-medium text-primary">{entryFlowSummary}</p>
           </CardHeader>
           <CardContent className="space-y-5">
-            {/* ── Entry model presets — the four ways players get onto the list ── */}
-            {(() => {
-              const feeOn = Number(entryFeeRand) > 0;
-              const models = [
-                {
-                  id: "open_paid",
-                  title: "Open invitation — register & pay",
-                  desc: "Anyone eligible adds their own name. Entry fee must be paid before the entry is approved.",
-                  active: registrationRequired && registrationMode === "open" && paymentRequired && feeOn,
-                  apply: () => {
-                    setRegistrationRequired(true);
-                    setRegistrationMode("open" as any);
-                    setPaymentRequired(true);
-                    setEntrySource("self");
-                    if (!feeOn) setEntryFeeRand("");
-                  },
-                },
-                {
-                  id: "open_free",
-                  title: "Open invitation — register, no fee",
-                  desc: "Anyone eligible adds their own name and confirms. No entry fee is charged.",
-                  active: registrationRequired && registrationMode === "open" && !feeOn,
-                  apply: () => {
-                    setRegistrationRequired(true);
-                    setRegistrationMode("open" as any);
-                    setPaymentRequired(false);
-                    setEntrySource("self");
-                    setEntryFeeRand("0");
-                  },
-                },
-                {
-                  id: "admin_free",
-                  title: "Admin selects players — invite optional",
-                  desc: "The admin puts players on the list. No fee, no self sign-up; invites are optional confirmation.",
-                  active: !registrationRequired && registrationMode === "invite" && !feeOn,
-                  apply: () => {
-                    setRegistrationRequired(false);
-                    setRegistrationMode("invite" as any);
-                    setPaymentRequired(false);
-                    setEntrySource("admin");
-                    setEntryFeeRand("0");
-                  },
-                },
-                {
-                  id: "admin_paid",
-                  title: "Admin selects players — confirm & pay",
-                  desc: "The admin puts players on the list, but each player must confirm and pay before their entry is approved.",
-                  active: registrationRequired && registrationMode === "invite" && paymentRequired && feeOn,
-                  apply: () => {
-                    setRegistrationRequired(true);
-                    setRegistrationMode("invite" as any);
-                    setPaymentRequired(true);
-                    setEntrySource("admin");
-                    if (!feeOn) setEntryFeeRand("");
-                  },
-                },
-              ];
-              return (
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Entry model</Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    Pick how players get onto the entry list. This sets the options below — you can still fine-tune them.
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {models.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={m.apply}
-                        className={`text-left rounded-lg border p-3 transition-colors ${
-                          m.active
-                            ? "border-primary bg-primary/10 ring-1 ring-primary"
-                            : "border-border bg-muted/20 hover:bg-muted/40"
-                        }`}
-                      >
-                        <div className="text-sm font-medium">{m.title}</div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5">{m.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            <WizardSection
-              title={"Entry fee & payment"}
-              summary={Number(entryFeeRand) > 0 ? `R${entryFeeRand} entry fee` : "Free entry"}
-              complete={true}
-              defaultOpen={true}
-            >
-            {/* Registration-required toggle — when off, the entire invite/window
-                section collapses and the admin seeds the roster directly on the
-                Players step. */}
-            <div className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3">
-              <Switch
-                id="registration-required"
-                checked={registrationRequired}
-                onCheckedChange={(v) => setRegistrationRequired(!!v)}
-              />
-              <div className="space-y-0.5">
-                <Label htmlFor="registration-required" className="text-sm font-medium cursor-pointer">
-                  Players need to register / be invited
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Turn on when entry is conditional on members opting in (e.g. paid tournaments, fixed deadlines). Turn off when the admin simply picks the roster — the registration window then disappears, but the "Who can register" / invite list controls below remain so you can still seed players from a shortlist or open audience.
-                </p>
+            {/* ── Q1 · Who gets into this tournament? ── */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">1. Who gets into this tournament?</Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {([
+                  { v: "self", title: "Players enter themselves", desc: "Eligible players add their own name to the entry list." },
+                  { v: "admin", title: "I choose the field", desc: "The organiser picks who plays — no public sign-up." },
+                  ...(scope !== "club"
+                    ? [{ v: "team_manager", title: "Team managers enter their squads", desc: "Clubs or provinces enter players on their behalf." }]
+                    : []),
+                ] as { v: "self" | "admin" | "team_manager"; title: string; desc: string }[]).map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => applyEntrySource(o.v)}
+                    className={`text-left rounded-lg border p-3 transition-colors ${
+                      entrySource === o.v
+                        ? "border-primary bg-primary/10 ring-1 ring-primary"
+                        : "border-border bg-muted/20 hover:bg-muted/40"
+                    }`}
+                  >
+                    <div className="text-sm font-medium">{o.title}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{o.desc}</div>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Entry fee + payment methods — payment-methods panel slides in beside the fee when amount > 0 */}
-            <div className={Number(entryFeeRand) > 0 ? "grid grid-cols-1 md:grid-cols-2 gap-4 items-start" : ""}>
-              <div className="space-y-2">
-                <Label className="text-sm">Entry fee (ZAR)</Label>
-                <Input
-                  type="number" min={0} step="1" inputMode="decimal"
-                  value={entryFeeRand}
-                  onChange={(e) => setEntryFeeRand(e.target.value)}
-                  placeholder="0 = free"
-                />
-                <p className="text-xs text-muted-foreground">Set 0 for a free tournament.</p>
+            {/* ── Q2 · Does an entry need confirmation? ── */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">2. Does an entry need to be confirmed?</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {([
+                  {
+                    on: false,
+                    title: entrySource === "admin" ? "No — the player is simply in" : "No — entering is final",
+                    desc: entrySource === "admin"
+                      ? "Selected players go straight onto the roster."
+                      : "An entry counts the moment it is submitted.",
+                  },
+                  {
+                    on: true,
+                    title: entrySource === "admin" ? "Yes — the player must accept the invitation" : "Yes — I review and accept each entry",
+                    desc: entrySource === "admin"
+                      ? "Invited players confirm before they count as entered."
+                      : "Entries stay provisional until the organiser accepts them.",
+                  },
+                ]).map((o) => (
+                  <button
+                    key={String(o.on)}
+                    type="button"
+                    onClick={() => applyConfirmation(o.on)}
+                    className={`text-left rounded-lg border p-3 transition-colors ${
+                      confirmationRequired === o.on
+                        ? "border-primary bg-primary/10 ring-1 ring-primary"
+                        : "border-border bg-muted/20 hover:bg-muted/40"
+                    }`}
+                  >
+                    <div className="text-sm font-medium">{o.title}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{o.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Q3 · Is there an entry fee? ── */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">3. Is there an entry fee?</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyEntryFee("0")}
+                  className={`text-left rounded-lg border p-3 transition-colors ${
+                    !isPaidTournament
+                      ? "border-primary bg-primary/10 ring-1 ring-primary"
+                      : "border-border bg-muted/20 hover:bg-muted/40"
+                  }`}
+                >
+                  <div className="text-sm font-medium">Free</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">No money changes hands — nobody is asked to pay.</div>
+                </button>
+                <div
+                  className={`rounded-lg border p-3 ${
+                    isPaidTournament ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20"
+                  }`}
+                >
+                  <Label className="text-sm font-medium">Entry fee (ZAR)</Label>
+                  <Input
+                    type="number" min={0} step="1" inputMode="decimal"
+                    value={isPaidTournament ? entryFeeRand : ""}
+                    onChange={(e) => applyEntryFee(e.target.value)}
+                    placeholder="e.g. 120"
+                    className="mt-1 h-9"
+                  />
+                </div>
               </div>
 
-              {Number(entryFeeRand) > 0 && (
-                <div className="rounded-lg border-2 border-border bg-slate-100 dark:bg-slate-800/40 shadow-sm p-3 space-y-2">
-                  <Label className="text-sm font-semibold">
-                    Accepted payment methods <span className="text-destructive">*</span>
-                  </Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    Tick the methods you'll accept for this tournament. Configure your online gateway and bank details in Club Admin → Banking.
-                  </p>
-                  <div className="space-y-1.5">
-                    {/* Online gateway — only when the club has configured one */}
-                    {clubPaymentConfig?.gateway ? (
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox
-                          checked={paymentMethods.has("card")}
-                          onCheckedChange={(c) => {
-                            const next = new Set(paymentMethods);
-                            c ? next.add("card") : next.delete("card");
-                            setPaymentMethods(next);
-                          }}
-                        />
-                        Online ({clubPaymentConfig.gatewayLabel}) — card / instant pay
-                      </label>
-                    ) : (
-                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                        No online gateway configured. Add one in Club Admin → Banking to accept card / instant payments.
-                      </p>
-                    )}
-
-                    {/* EFT — only when bank details exist */}
-                    {clubPaymentConfig?.eftConfigured ? (
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox
-                          checked={paymentMethods.has("eft")}
-                          onCheckedChange={(c) => {
-                            const next = new Set(paymentMethods);
-                            c ? next.add("eft") : next.delete("eft");
-                            setPaymentMethods(next);
-                          }}
-                        />
-                        EFT (bank transfer — admin marks paid)
-                      </label>
-                    ) : (
-                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                        EFT unavailable — add bank details in Club Admin → Banking to enable.
-                      </p>
-                    )}
-
-                    {/* Cash at club — always available */}
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={paymentMethods.has("cash")}
-                        onCheckedChange={(c) => {
-                          const next = new Set(paymentMethods);
-                          c ? next.add("cash") : next.delete("cash");
-                          setPaymentMethods(next);
+              {isPaidTournament && (
+                <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                  <Label className="text-sm">When is the fee due?</Label>
+                  <div className="flex flex-wrap items-center gap-4 text-sm">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="payment-timing"
+                        checked={paymentTiming === "on_entry"}
+                        onChange={() => setPaymentTiming("on_entry")}
+                      />
+                      On entry — pay to be on the list
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="payment-timing"
+                        checked={paymentTiming === "after_acceptance"}
+                        onChange={() => {
+                          setPaymentTiming("after_acceptance");
+                          if (!confirmationRequired) applyConfirmation(true);
                         }}
                       />
-                      Cash at club (admin marks paid)
+                      After acceptance — pay once the entry is confirmed
                     </label>
                   </div>
-
-                  <div className="flex items-center gap-3 pt-2 border-t border-border/60">
-                    <Switch id="payment-required" checked={paymentRequired} onCheckedChange={setPaymentRequired} />
-                    <Label htmlFor="payment-required" className="text-xs">
-                      Player must pay before they qualify to play
-                    </Label>
-                  </div>
+                  {paymentTiming === "after_acceptance" && !confirmationRequired && (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                      Paying after acceptance needs a confirmation step — question 2 will be switched on.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
+
+            <WizardSection
+              title={"Payment methods"}
+              summary={isPaidTournament ? `R${entryFeeRand} · ${Array.from(paymentMethods).join(", ") || "no method"}` : "Free entry — nothing to collect"}
+              complete={!isPaidTournament || paymentMethods.size > 0}
+              defaultOpen={isPaidTournament}
+            >
+            {!isPaidTournament ? (
+              <p className="text-xs text-muted-foreground">
+                This tournament is free — no payment methods, invoices or proof-of-payment steps are shown to players.
+              </p>
+            ) : (
+              <div className="rounded-lg border-2 border-border bg-slate-100 dark:bg-slate-800/40 shadow-sm p-3 space-y-2">
+                <Label className="text-sm font-semibold">
+                  Accepted payment methods <span className="text-destructive">*</span>
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Tick the methods you'll accept for this tournament. Configure your online gateway and bank details in Club Admin → Banking.
+                </p>
+                <div className="space-y-1.5">
+                  {clubPaymentConfig?.gateway ? (
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={paymentMethods.has("card")}
+                        onCheckedChange={(c) => {
+                          const next = new Set(paymentMethods);
+                          c ? next.add("card") : next.delete("card");
+                          setPaymentMethods(next);
+                        }}
+                      />
+                      Online ({clubPaymentConfig.gatewayLabel}) — card / instant pay
+                    </label>
+                  ) : (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                      No online gateway configured. Add one in Club Admin → Banking to accept card / instant payments.
+                    </p>
+                  )}
+
+                  {clubPaymentConfig?.eftConfigured ? (
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={paymentMethods.has("eft")}
+                        onCheckedChange={(c) => {
+                          const next = new Set(paymentMethods);
+                          c ? next.add("eft") : next.delete("eft");
+                          setPaymentMethods(next);
+                        }}
+                      />
+                      EFT (bank transfer — admin marks paid)
+                    </label>
+                  ) : (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                      EFT unavailable — add bank details in Club Admin → Banking to enable.
+                    </p>
+                  )}
+
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={paymentMethods.has("cash")}
+                      onCheckedChange={(c) => {
+                        const next = new Set(paymentMethods);
+                        c ? next.add("cash") : next.delete("cash");
+                        setPaymentMethods(next);
+                      }}
+                    />
+                    Cash at club (admin marks paid)
+                  </label>
+                </div>
+                <p className="text-[11px] text-muted-foreground pt-2 border-t border-border/60">
+                  {paymentTiming === "after_acceptance"
+                    ? "Players are asked to pay only once their entry is accepted."
+                    : "Players are asked to pay as soon as they enter."}
+                </p>
+              </div>
+            )}
 
             {/* Fee shares and refunds live in Governance — shown read-only so
                 there is a single place to edit them. */}
@@ -6006,64 +6081,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
             </WizardSection>
             <WizardSection
-              title={"Entries & seeding"}
-              summary={`${effectiveRegistrationMode === "invite" ? "Invite list" : effectiveRegistrationMode === "open" ? "Open sign-up" : "Mode not set"}`}
-              complete={!!effectiveRegistrationMode}
-              defaultOpen={true}
+              title={"Invitations & entry list"}
+              summary={invitesApply ? "Invite list" : "Open sign-up"}
+              complete={true}
+              defaultOpen={invitesApply}
             >
-            {/* Registration mode — always visible. Even when registration is not
-                required, this still controls how the admin seeds the player
-                roster (open audience vs invite shortlist). */}
-            <div className="space-y-2">
-              <Label className="text-sm">How do players enter?</Label>
-              <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
-                <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                  <SelectItem value="open">Open sign-up — eligible players register themselves</SelectItem>
-                  <SelectItem value="invite">Invite-only — admin shortlists the players</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">
-                Not the same as <strong>Who may enter</strong> (set in “Name, category &amp; eligibility”, currently{" "}
-                <strong>{ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.label || eligibilityScope}</strong>),
-                which decides <em>which</em> players are eligible. This setting decides <em>how</em> they get in.
-              </p>
-            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Who may enter is set in “Name, category &amp; eligibility” (currently{" "}
+              <strong>{ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.label || eligibilityScope}</strong>).
+              The questions above decide how they get in.
+            </p>
 
-            {/* Entry source — who physically puts a name on the list. Regional and
-                national events often enter whole teams through a team manager. */}
-            <div className="space-y-2">
-              <Label className="text-sm">Who puts a player on the list?</Label>
-              <Select value={entrySource} onValueChange={(v) => setEntrySource(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="self">The player — enters themselves</SelectItem>
-                  <SelectItem value="admin">The organiser — admin picks the field</SelectItem>
-                  <SelectItem value="team_manager">A team manager / club captain — enters their players</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">
-                Team-manager entry is used for regional and national events where a club or province enters a squad on behalf of its players.
-              </p>
-            </div>
 
-            {/* Approval gate — entry is only final once the organiser accepts it. */}
-            <div className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3">
-              <Switch
-                id="approval-gate"
-                checked={approvalGate === "admin_accept"}
-                onCheckedChange={(v) => setApprovalGate(v ? "admin_accept" : "none")}
-              />
-              <div className="space-y-0.5">
-                <Label htmlFor="approval-gate" className="text-sm font-medium cursor-pointer">
-                  Organiser must accept each entry
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Entries stay provisional until an organiser accepts them — used for selection events, licence checks and capped fields. Leave off for ordinary club tournaments.
-                </p>
-              </div>
-            </div>
 
 
 
@@ -6311,8 +6340,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 : <span className="text-muted-foreground italic">Go back to the Courts step to set the dates.</span>}
             </div>
 
-            {/* Registration window — only when registration is required */}
-            {registrationRequired && (
+            {/* Registration window — only when someone other than the organiser enters players */}
+            {registrationWindowApplies && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-sm">Registration opens</Label>

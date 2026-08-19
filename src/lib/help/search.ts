@@ -98,7 +98,7 @@ const ADMIN_PROMPTS: Array<QuickPrompt & { capability?: string }> = [
 const PAGE_PROMPTS: Array<{ match: RegExp; prompts: QuickPrompt[] }> = [
   { match: /^\/bookings/, prompts: [{ label: "Cancel a booking", query: "How do I cancel a booking?" }, { label: "Invite a guest", query: "How do I invite a guest?" }] },
   { match: /^\/tournaments|^\/club-champs/, prompts: [{ label: "Enter a tournament", query: "How do I enter a tournament?" }] },
-  { match: /^\/marker/, prompts: [{ label: "Score a match", query: "How do I score a match?" }] },
+  { match: /^\/match-marker/, prompts: [{ label: "Score a match", query: "How do I score a match?" }] },
   { match: /^\/ladder|^\/challenges/, prompts: [{ label: "Challenge a player", query: "How do I challenge someone on the ladder?" }] },
   { match: /^\/honesty-bar|^\/scan-pay/, prompts: [{ label: "Buy at the bar", query: "How do I buy something at the bar?" }] },
   { match: /^\/my-account/, prompts: [{ label: "Pay my fees", query: "How do I pay my fees?" }, { label: "Pay for family", query: "Can I pay for my child?" }] },

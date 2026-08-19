@@ -188,7 +188,7 @@ export default function HonestyBar() {
   if (!clubId || !club?.honesty_bar_enabled) {
     return (
       <div className="bottom-nav-safe">
-        <PageHeader title="Honesty Bar" backTo="/" />
+        <PageHeader title="Bar / POS" backTo="/" />
         <div className="px-4 mt-8 text-center text-muted-foreground">
           <p>The honesty bar is not currently available at your club.</p>
         </div>
@@ -199,8 +199,8 @@ export default function HonestyBar() {
 
   return (
     <div className="bottom-nav-safe">
-      <SEO title="Honesty Bar" description="Log your bar items" path="/honesty-bar" noIndex />
-      <PageHeader title="Honesty Bar" backTo="/" />
+      <SEO title="Bar / POS" description="Buy bar items — pay now or charge to your member account" path="/honesty-bar" noIndex />
+      <PageHeader title="Bar / POS" backTo="/" />
 
       <div className="px-4 space-y-4 mt-2">
         {canSeeVisitors && (

@@ -97,7 +97,7 @@ export function AppSidebar() {
         ...(hasLeagues ? [{ title: "Leagues", url: "/league-games", icon: Trophy }] : []),
         ...(tournamentsEnabled ? [{ title: "Tournaments", url: "/tournaments", icon: Trophy }] : []),
         ...(eventsEnabled ? [{ title: "Events", url: "/events", icon: CalendarDays }] : []),
-        ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),
+        ...(honestyBarEnabled ? [{ title: "Bar / POS", url: "/honesty-bar", icon: Wine }] : []),
         { title: "My Account", url: "/my-account", icon: Wallet },
       ];
 

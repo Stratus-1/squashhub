@@ -108,7 +108,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
   category: "Category",
   courts: "Courts",
   structure: "Structure & Capacity",
-  registration: "Registration",
+  registration: "Who plays & what it costs",
   players: "Players",
   groups: "Leagues",
   schedule: "Schedule",
@@ -856,6 +856,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Who puts a player on the entry list, and whether an admin must accept it.
   const [entrySource, setEntrySource] = useState<"self" | "admin" | "team_manager">("self");
   const [approvalGate, setApprovalGate] = useState<"none" | "admin_accept">("none");
+  // When the entry fee falls due: straight away, or only once the entry is accepted.
+  const [paymentTiming, setPaymentTiming] = useState<"on_entry" | "after_acceptance">("on_entry");
 
   // Handicap (singles only): none, by league ranking, or by club ladder
   // Handicap source:
@@ -1124,6 +1126,63 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const effectiveRegistrationMode = ((registrationMode || "open")) as "open" | "invite";
   const registrationUsesInviteList = effectiveRegistrationMode === "invite";
   const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationUsesInviteList;
+
+  /* ── Entry flow (Q1/Q2/Q3) derived from the existing governance columns ──
+     Q1 = entrySource, Q2 = confirmation, Q3 = fee + payment timing. Nothing new
+     is stored except `payment_timing`; the legacy columns keep their meaning. */
+  const entryFeeAmount = Math.max(0, Number(entryFeeRand) || 0);
+  const isPaidTournament = entryFeeAmount > 0;
+  // Confirmation means different things per entry source: an organiser-picked
+  // player "confirms" by accepting the invitation (registration_required), a
+  // self/team entry is confirmed by the organiser accepting it (approval_gate).
+  const confirmationRequired =
+    entrySource === "admin" ? registrationRequired : approvalGate === "admin_accept";
+  // Registration windows only make sense when someone other than the organiser
+  // puts names on the list.
+  const registrationWindowApplies = registrationRequired && entrySource !== "admin";
+  // Invitations are only sent when the organiser builds the list.
+  const invitesApply = entrySource !== "self";
+
+  const applyEntrySource = (v: "self" | "admin" | "team_manager") => {
+    setEntrySource(v);
+    setRegistrationMode(v === "self" ? "open" : "invite");
+    if (v === "admin") {
+      setRegistrationRequired(confirmationRequired);
+      setApprovalGate("none");
+    } else {
+      setRegistrationRequired(true);
+      setApprovalGate(confirmationRequired ? "admin_accept" : "none");
+    }
+  };
+
+  const applyConfirmation = (on: boolean) => {
+    if (entrySource === "admin") {
+      setRegistrationRequired(on);
+      setApprovalGate("none");
+    } else {
+      setRegistrationRequired(true);
+      setApprovalGate(on ? "admin_accept" : "none");
+    }
+  };
+
+  const applyEntryFee = (value: string) => {
+    setEntryFeeRand(value);
+    const amount = Math.max(0, Number(value) || 0);
+    setPaymentRequired(amount > 0);
+    if (amount <= 0) setPaymentTiming("on_entry");
+  };
+
+  const entrySourceLabel =
+    entrySource === "admin" ? "I choose the field"
+      : entrySource === "team_manager" ? "team managers enter squads"
+      : "players enter themselves";
+  const confirmationLabel = confirmationRequired
+    ? (entrySource === "admin" ? "players must accept" : "organiser must approve")
+    : "no confirmation needed";
+  const feeLabel = !isPaidTournament
+    ? "free"
+    : `R${entryFeeAmount} ${paymentTiming === "after_acceptance" ? "payable after acceptance" : "payable on entry"}`;
+  const entryFlowSummary = `${champName || "This tournament"} — ${entrySourceLabel} · ${confirmationLabel} · ${feeLabel}`;
   // Defer pair formation only when players self-pair (need registrations to
   // arrive first). Admin-pair mode always gets the full wizard so the admin can
   // pick players and build pairs upfront — deferring it was jumping the admin
@@ -3753,6 +3812,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteSource("manual");
     setEntrySource("self");
     setApprovalGate("none");
+    setPaymentTiming("on_entry");
     setInviteIncludeReserves(true);
     setInviteExcludedMemberIds(new Set());
     setHandicapMode("none");
@@ -3829,6 +3889,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteSource(((champ as any).invite_source as any) || "manual");
     setEntrySource((((champ as any).entry_source as any) || ((champ.registration_mode === "invite") ? "admin" : "self")));
     setApprovalGate((((champ as any).approval_gate as any) || "none"));
+    setPaymentTiming((((champ as any).payment_timing as any) || "on_entry"));
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
     setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
     setHandicapMode(((champ as any).handicap_mode as any) || "none");
@@ -4119,16 +4180,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         break;
       }
       case "registration": {
-        if (!registrationMode) m.push("Choose who can register");
         if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
-        if (registrationRequired) {
+        if (registrationWindowApplies) {
           if (!registrationOpensAt) m.push("Registration opens (date & time)");
           if (!registrationClosesAt) m.push("Registration closes (date & time)");
           if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
             m.push("Registration close must be after registration open");
           }
-          if (inviteMethods.size === 0) m.push("At least one invite delivery method");
         }
+        if (invitesApply && inviteMethods.size === 0) m.push("At least one invite delivery method");
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
           m.push("At least one accepted payment method");
         }

@@ -97,7 +97,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     id: "record-result",
     title: "How do I record a result I already played?",
     summary:
-      "Open Matches and use Record a result. Enter the opponent (member or visitor) and the game scores; your opponent confirms, or it auto-confirms after your club's window.",
+      "Use Record a result. Enter the opponent (member or visitor) and the game scores; your opponent confirms, or it auto-confirms after your club's window.",
     keywords: ["record", "result", "past", "history", "confirm", "opponent", "log"],
     route: "/add-result",
     routeLabel: "Record a result",

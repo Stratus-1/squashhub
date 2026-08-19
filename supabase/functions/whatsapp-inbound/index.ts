@@ -17,6 +17,7 @@
 //
 // verify_jwt = false (Twilio cannot send a Supabase JWT).
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { classifyReply, type ReplyClassification } from "../_shared/reply-intent.ts";
 
 function twiml(message?: string) {
   const body = message
@@ -36,25 +37,6 @@ function normalisePhone(raw?: string | null, defaultCc = "27"): string | null {
   else if (s.startsWith("0")) s = defaultCc + s.slice(1);
   if (s.length < 8 || s.length > 15) return null;
   return s;
-}
-
-/** Read an intent out of a button payload or free text. */
-function parseAnswer(payload: string, text: string): "yes" | "no" | "stop" | null {
-  const raw = `${payload} ${text}`.toLowerCase().trim();
-  if (/\b(stop|unsubscribe|opt\s*out)\b/.test(raw)) return "stop";
-  if (
-    /\b(yes|y|ja|yebo|ok|okay|sure|definitely|absolutely|in|confirm|accept|attending|going|register|play|enter|join|👍)\b/
-      .test(raw)
-  ) {
-    return "yes";
-  }
-  if (
-    /\b(no|n|nee|out|decline|cant|can't|cannot|not|withdraw|deregister|not\s*playing|not\s*interested|busy|👎)\b/
-      .test(raw)
-  ) {
-    return "no";
-  }
-  return null;
 }
 
 interface ResolvedInteraction {
@@ -161,7 +143,10 @@ Deno.serve(async (req) => {
       memberId = memberId ?? lastOut?.member_id ?? null;
     }
 
-    const answer = parseAnswer(buttonPayload, text);
+    // Deterministic, negation-aware classification. Shared with the app so the
+    // webhook and the UI can never disagree about what a reply meant.
+    const classification: ReplyClassification = classifyReply(buttonPayload, text);
+    const answer = classification.intent;
 
     // Log the inbound message. Replies land inside the free 24h service window,
     // so they are recorded at the (cheaper) service rate.
@@ -195,7 +180,7 @@ Deno.serve(async (req) => {
         body: buttonPayload || text,
         provider_sid: sid,
         status: "received",
-        payload: params,
+        payload: { ...params, intent: answer, intent_reason: classification.reason },
       });
     }
 
@@ -208,7 +193,26 @@ Deno.serve(async (req) => {
 
     if (!interaction) return twiml();
 
-    if (!answer) {
+    if (answer === "unknown") {
+      // Never guess: leave the interaction pending, flag it for an admin and
+      // ask the member for an unambiguous answer.
+      if (interaction.id) {
+        await admin
+          .from("whatsapp_interactions")
+          .update({ status: "needs_review", response: text || buttonPayload })
+          .eq("id", interaction.id);
+      } else {
+        await admin.from("whatsapp_interactions").insert({
+          club_id: interaction.club_id,
+          member_id: interaction.member_id ?? null,
+          phone: from,
+          kind: interaction.kind,
+          target_id: interaction.target_id ?? null,
+          prompt: interaction.prompt ?? "Replied to a recent WhatsApp invite",
+          status: "needs_review",
+          response: text || buttonPayload,
+        });
+      }
       return twiml("Sorry, I didn't catch that. Please reply YES to enter or NO to decline.");
     }
 
@@ -232,11 +236,20 @@ Deno.serve(async (req) => {
         reply = answer === "yes" ? "You're in — see you there!" : "No problem, we've marked you as unavailable.";
       } else if (interaction.kind === "champ_entry") {
         if (answer === "yes") {
+          // Acceptance and payment are separate concerns: only ask for money
+          // when the tournament actually charges an entry fee.
+          const { data: champ } = await admin
+            .from("club_champs")
+            .select("entry_fee, payment_required")
+            .eq("id", interaction.target_id)
+            .maybeSingle();
+          const fee = Number((champ as any)?.entry_fee ?? 0);
+          const needsPayment = fee > 0 && (champ as any)?.payment_required !== false;
           const { error } = await admin.from("club_champs_registrations").upsert(
             {
               champ_id: interaction.target_id,
               club_member_id: interaction.member_id,
-              status: "pending_payment",
+              status: needsPayment ? "pending_payment" : "paid",
               confirmation_source: "rsvp",
               confirmed_at: new Date().toISOString(),
             },
@@ -244,7 +257,9 @@ Deno.serve(async (req) => {
           );
           applied = !error;
           if (error) console.error("champ entry failed", error);
-          reply = "You're entered. Open SquashHub to pick your partner and settle the entry fee.";
+          reply = needsPayment
+            ? "You're entered. Open SquashHub to pick your partner and settle the entry fee."
+            : "You're entered — see you on court!";
         } else {
           const { error } = await admin.from("club_champs_registrations").upsert(
             {
@@ -270,7 +285,7 @@ Deno.serve(async (req) => {
         .from("whatsapp_interactions")
         .update({
           status: applied ? "answered" : "failed",
-          response: answer,
+          response: `${answer}: ${(text || buttonPayload).slice(0, 300)}`,
           responded_at: new Date().toISOString(),
         })
         .eq("id", interaction.id);
@@ -284,7 +299,7 @@ Deno.serve(async (req) => {
         target_id: interaction.target_id ?? null,
         prompt: interaction.prompt ?? "Replied to a recent WhatsApp invite",
         status: applied ? "answered" : "failed",
-        response: answer,
+        response: `${answer}: ${(text || buttonPayload).slice(0, 300)}`,
         responded_at: new Date().toISOString(),
       });
     }

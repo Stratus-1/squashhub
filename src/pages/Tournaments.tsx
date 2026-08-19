@@ -128,10 +128,14 @@ export default function Tournaments() {
   });
 
   const today = todayStr;
-  // LIVE means an active marker is currently scoring. A scheduled Bells match
-  // may still have a future bell_ends_at after the marker exits; that keeps the
-  // countdown resumable without showing the flickering LIVE badge.
-  const isLive = (m: any) => {
+  // Marker presence drives the LIVE chip: a game is only "live" while someone
+  // is actually scoring it (fresh heartbeat in champ_marker_locks). When the
+  // marker walks away the game stays in_progress with its score intact, but is
+  // shown as "Paused · Resume" so anyone may pick it up.
+  const { freshMatchIds } = useChampMarkerLocks(
+    (allMatches || []).filter((m: any) => m.status === "in_progress").map((m: any) => m.id),
+  );
+  const inPlay = (m: any) => {
     if (m.status !== "in_progress") return false;
     const champ = allChamps.find((c: any) => c.id === m.champ_id);
     if (champ?.scoring_mode !== "time_capped_points") return true;
@@ -139,6 +143,9 @@ export default function Tournaments() {
     const paused = typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0;
     return bellActive || paused;
   };
+  const isLive = (m: any) => inPlay(m) && freshMatchIds.has(m.id);
+  const isPaused = (m: any) => inPlay(m) && !freshMatchIds.has(m.id);
+
   const activeChampIds = new Set(champs.map((c: any) => c.id));
   const upcomingMatches = allMatches
     .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || m.status === "placeholder" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))

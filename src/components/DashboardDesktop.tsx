@@ -279,6 +279,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
             )}
           </Card>
         </div>
+        )}
 
         {/* Collapsible sections */}
         <div className="col-span-12 mt-2">

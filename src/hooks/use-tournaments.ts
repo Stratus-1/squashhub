@@ -41,7 +41,14 @@ export interface TournamentGovernance {
   registration_closes_at: string | null;
   entry_fee_cents: number;
   federation_fee_cents: number;
+  /** Federation levy as a percentage of the entry fee (stacks with the fixed amount). */
+  federation_fee_pct: number;
   association_fee_cents: number;
+  /** Association levy as a percentage of the entry fee (stacks with the fixed amount). */
+  association_fee_pct: number;
+  /** Other explicit expenses charged against the event. */
+  other_expenses_cents: number;
+  other_expenses_label: string | null;
   payment_required: boolean;
   refund_policy: "none" | "full_before_cutoff" | "partial_before_cutoff";
   refund_cutoff_date: string | null;
@@ -78,7 +85,7 @@ export interface TournamentVenue {
 }
 
 const GOV_FIELDS =
-  "tournament_id, sanction_status, sanctioning_org_id, sanction_reference, sanction_notes, competition_level, eligibility_min_age, eligibility_max_age, eligibility_requires_licence, eligibility_scope, eligibility_notes, registration_required, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, federation_fee_cents, association_fee_cents, payment_required, refund_policy, refund_cutoff_date";
+  "tournament_id, sanction_status, sanctioning_org_id, sanction_reference, sanction_notes, competition_level, eligibility_min_age, eligibility_max_age, eligibility_requires_licence, eligibility_scope, eligibility_notes, registration_required, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, federation_fee_cents, federation_fee_pct, association_fee_cents, association_fee_pct, other_expenses_cents, other_expenses_label, payment_required, refund_policy, refund_cutoff_date";
 
 const RULES_FIELDS =
   "tournament_id, scoring_mode, draw_type, standard_of_play, round_format, best_of, points_per_game, win_condition, handicap_mode, handicap_multiplier, handicap_divider, bye_handling, play_all_games, affects_ranking_points, no_show_opponent_points, no_show_player_points";

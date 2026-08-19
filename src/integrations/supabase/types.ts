@@ -8325,6 +8325,7 @@ export type Database = {
         Row: {
           approval_gate: string
           association_fee_cents: number
+          association_fee_pct: number
           competition_level: string
           created_at: string
           eligibility_max_age: number | null
@@ -8335,6 +8336,9 @@ export type Database = {
           entry_fee_cents: number
           entry_source: string
           federation_fee_cents: number
+          federation_fee_pct: number
+          other_expenses_cents: number
+          other_expenses_label: string | null
           payment_methods: string[]
           payment_required: boolean
           payment_timing: string
@@ -8356,6 +8360,7 @@ export type Database = {
         Insert: {
           approval_gate?: string
           association_fee_cents?: number
+          association_fee_pct?: number
           competition_level?: string
           created_at?: string
           eligibility_max_age?: number | null
@@ -8366,6 +8371,9 @@ export type Database = {
           entry_fee_cents?: number
           entry_source?: string
           federation_fee_cents?: number
+          federation_fee_pct?: number
+          other_expenses_cents?: number
+          other_expenses_label?: string | null
           payment_methods?: string[]
           payment_required?: boolean
           payment_timing?: string
@@ -8387,6 +8395,7 @@ export type Database = {
         Update: {
           approval_gate?: string
           association_fee_cents?: number
+          association_fee_pct?: number
           competition_level?: string
           created_at?: string
           eligibility_max_age?: number | null
@@ -8397,6 +8406,9 @@ export type Database = {
           entry_fee_cents?: number
           entry_source?: string
           federation_fee_cents?: number
+          federation_fee_pct?: number
+          other_expenses_cents?: number
+          other_expenses_label?: string | null
           payment_methods?: string[]
           payment_required?: boolean
           payment_timing?: string
@@ -10250,6 +10262,30 @@ export type Database = {
         Args: { _tournament_id: string }
         Returns: {
           club_id: string
+        }[]
+      }
+      tournament_fee_allocation: {
+        Args: { p_tournament_id: string }
+        Returns: {
+          association_fee_cents: number
+          entry_fee_cents: number
+          federation_fee_cents: number
+          host_fee_cents: number
+          other_expenses_cents: number
+          over_allocated: boolean
+          owner_kind: string
+          owner_name: string
+          owner_net_cents: number
+          owner_org_id: string
+          platform_fee_cents: number
+        }[]
+      }
+      tournament_owner_entity: {
+        Args: { p_tournament_id: string }
+        Returns: {
+          owner_kind: string
+          owner_name: string
+          owner_org_id: string
         }[]
       }
       viewer_is_opposing_captain_for_registration: {

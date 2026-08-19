@@ -24,7 +24,7 @@ import {
   useTournamentVenues,
   type TournamentGovernance,
 } from "@/hooks/use-tournaments";
-import { centsToRand, computeFeeSplit, randToCents } from "@/lib/tournaments/fee-split";
+import { centsToRand, computeFeeSplit, ownerLabel, randToCents, type OwnerKind } from "@/lib/tournaments/fee-split";
 import { useOrgSettings } from "@/hooks/use-org-settings";
 import { usePlatformTournamentFeePct } from "@/components/admin/PlatformTournamentFeeCard";
 import { useHasPermission } from "@/hooks/use-club-permissions";
@@ -63,8 +63,12 @@ const FIELD_LABELS: Record<string, string> = {
   registration_opens_at: "Entries open",
   registration_closes_at: "Entries close",
   entry_fee_cents: "Entry fee",
-  federation_fee_cents: "Federation share",
-  association_fee_cents: "Association share",
+  federation_fee_cents: "Federation levy (fixed)",
+  federation_fee_pct: "Federation levy (%)",
+  association_fee_cents: "Association levy (fixed)",
+  association_fee_pct: "Association levy (%)",
+  other_expenses_cents: "Other expenses",
+  other_expenses_label: "Other expenses label",
   payment_required: "Payment required",
   refund_policy: "Refund policy",
   refund_cutoff_date: "Refund cut-off",
@@ -149,12 +153,24 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
   const set = <K extends keyof TournamentGovernance>(k: K, v: TournamentGovernance[K]) =>
     setForm((f) => (f ? { ...f, [k]: v } : f));
 
+  // The owner selected on the Ownership tab is the single source of truth for
+  // who the residual beneficiary is — Fees & refunds never re-asks.
+  const ownerOrg = orgs.find((o) => o.id === owner?.owner_org_id) ?? null;
+  const fallbackOwnerOrg = orgs.find((o) => o.club_id && o.club_id === owner?.club_id) ?? null;
+  const effectiveOwner = ownerOrg ?? fallbackOwnerOrg;
+  const ownerKind = (effectiveOwner?.kind ?? "club") as OwnerKind;
+  const ownerDisplay = ownerLabel(effectiveOwner?.name, ownerKind);
+
   const split = computeFeeSplit({
     entryFeeCents: form?.entry_fee_cents ?? 0,
+    ownerKind,
     federationFeeCents: form?.federation_fee_cents ?? 0,
+    federationFeePct: Number(form?.federation_fee_pct ?? 0),
     associationFeeCents: form?.association_fee_cents ?? 0,
+    associationFeePct: Number(form?.association_fee_pct ?? 0),
     hostFeeCents: venues.reduce((s, v) => s + (v.host_fee_cents || 0), 0),
     hostSharePct: venues.reduce((s, v) => s + Number(v.host_share_pct || 0), 0),
+    otherExpensesCents: form?.other_expenses_cents ?? 0,
     platformFeePct: platformPct ?? 0,
   });
 
@@ -162,7 +178,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
   const submit = async () => {
     if (!form) return;
     if (split.overAllocated) {
-      toast.error("Federation, association and host shares exceed the entry fee");
+      toast.error("Levies, host compensation and expenses exceed the entry fee");
       return;
     }
     try {
@@ -378,24 +394,82 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                 </div>
                 <p className="text-xs text-muted-foreground">Set in the tournament setup → Registration step.</p>
               </div>
-              <div className={`grid gap-3 ${clubScope ? "grid-cols-1" : "grid-cols-2"}`}>
-                {!clubScope && (
+              <div className="rounded-md border p-3 text-sm space-y-1">
+                <div>
+                  Owner (residual beneficiary): <strong>{ownerDisplay}</strong>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Set on the Ownership tab. Everything left after the deductions below belongs to the owner —
+                  a levy is never charged back to the body that owns the event.
+                </p>
+              </div>
+
+              {split.federationApplies ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Federation levy — fixed (R per entry)</Label>
+                    <Input
+                      type="number" min={0} step="0.01"
+                      value={centsToRand(form.federation_fee_cents)}
+                      onChange={(e) => set("federation_fee_cents", randToCents(e.target.value))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Federation levy — percentage (%)</Label>
+                    <Input
+                      type="number" min={0} max={100} step="0.01"
+                      value={Number(form.federation_fee_pct ?? 0)}
+                      onChange={(e) => set("federation_fee_pct", Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="rounded-md border border-dashed p-2.5 text-xs text-muted-foreground">
+                  No federation levy: Squash South Africa owns this event, so it keeps the residual instead.
+                </p>
+              )}
+
+              {split.associationApplies ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Association levy — fixed (R per entry)</Label>
+                    <Input
+                      type="number" min={0} step="0.01"
+                      value={centsToRand(form.association_fee_cents)}
+                      onChange={(e) => set("association_fee_cents", randToCents(e.target.value))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Association levy — percentage (%)</Label>
+                    <Input
+                      type="number" min={0} max={100} step="0.01"
+                      value={Number(form.association_fee_pct ?? 0)}
+                      onChange={(e) => set("association_fee_pct", Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="rounded-md border border-dashed p-2.5 text-xs text-muted-foreground">
+                  No association levy: this event is owned at association or federation level, so the association
+                  would only be charging itself.
+                </p>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Federation share (R)</Label>
+                  <Label>Other expenses (R per entry)</Label>
                   <Input
                     type="number" min={0} step="0.01"
-                    value={centsToRand(form.federation_fee_cents)}
-                    onChange={(e) => set("federation_fee_cents", randToCents(e.target.value))}
+                    value={centsToRand(form.other_expenses_cents)}
+                    onChange={(e) => set("other_expenses_cents", randToCents(e.target.value))}
                   />
                 </div>
-                )}
-
                 <div className="space-y-1">
-                  <Label>Association share (R)</Label>
+                  <Label>What for?</Label>
                   <Input
-                    type="number" min={0} step="0.01"
-                    value={centsToRand(form.association_fee_cents)}
-                    onChange={(e) => set("association_fee_cents", randToCents(e.target.value))}
+                    value={form.other_expenses_label ?? ""}
+                    onChange={(e) => set("other_expenses_label", e.target.value || null)}
+                    placeholder="e.g. Referees, balls, trophies"
                   />
                 </div>
               </div>
@@ -411,8 +485,8 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      set("federation_fee_cents", ownerDefaults.default_federation_fee_cents);
-                      set("association_fee_cents", ownerDefaults.default_association_fee_cents);
+                      if (split.federationApplies) set("federation_fee_cents", ownerDefaults.default_federation_fee_cents);
+                      if (split.associationApplies) set("association_fee_cents", ownerDefaults.default_association_fee_cents);
                     }}
                   >
                     Apply defaults
@@ -421,16 +495,29 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
               ) : null}
 
               <div className={`rounded-md border p-3 text-sm space-y-1 ${split.overAllocated ? "border-destructive text-destructive" : ""}`}>
-                <div>
-                  SquashHub admin fee ({platformPct}%): <strong>R {centsToRand(split.platform)}</strong>
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Allocation per entry
                 </div>
-                <div>Federation: <strong>R {centsToRand(split.federation)}</strong></div>
-
-                <div>Association: <strong>R {centsToRand(split.association)}</strong></div>
-                <div>Host compensation: <strong>R {centsToRand(split.host)}</strong></div>
-                <div>Owning body retains: <strong>R {centsToRand(split.owner)}</strong></div>
-                {split.overAllocated && <div>Shares exceed the entry fee</div>}
+                <div>Gross entry fee: <strong>R {centsToRand(split.entry)}</strong></div>
+                <div>− SquashHub admin fee ({platformPct}%): <strong>R {centsToRand(split.platform)}</strong></div>
+                {split.federationApplies && (
+                  <div>− Federation levy: <strong>R {centsToRand(split.federation)}</strong></div>
+                )}
+                {split.associationApplies && (
+                  <div>− Association levy: <strong>R {centsToRand(split.association)}</strong></div>
+                )}
+                <div>− Host / venue compensation: <strong>R {centsToRand(split.host)}</strong></div>
+                {split.other > 0 && (
+                  <div>
+                    − {form.other_expenses_label || "Other expenses"}: <strong>R {centsToRand(split.other)}</strong>
+                  </div>
+                )}
+                <div className="border-t pt-1">
+                  = Net retained by {ownerDisplay}: <strong>R {centsToRand(split.owner)}</strong>
+                </div>
+                {split.overAllocated && <div>Deductions exceed the entry fee</div>}
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Refund policy</Label>

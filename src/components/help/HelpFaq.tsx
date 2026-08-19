@@ -119,7 +119,7 @@ export const FAQS: Faq[] = [
   },
   {
     role: "member",
-    category: "Honesty Bar",
+    category: "Bar / POS",
     q: "How does the honesty bar work?",
     a: "Tap what you took, confirm the total, and it lands on your bar tab. Pay it off any time from My Account — no queue, no barman.",
   },
@@ -195,9 +195,9 @@ export const FAQS: Faq[] = [
   },
   {
     role: "admin",
-    category: "Honesty Bar",
+    category: "Bar / POS",
     q: "How do I restock the bar?",
-    a: "Honesty Bar → Purchases. Log the case, the app updates unit cost and stock on hand. Sales are cash-basis, so margin and stock value are always current.",
+    a: "Bar / POS → Purchases. Log the case, the app updates unit cost and stock on hand. Sales are cash-basis, so margin and stock value are always current.",
   },
   {
     role: "admin",

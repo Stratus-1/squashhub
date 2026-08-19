@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { TournamentInviteRegisterDialog } from "@/components/tournaments/TournamentInviteRegisterDialog";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
@@ -47,6 +49,8 @@ export function TournamentInviteActions({ notification, champId, registrationId,
   const [searchParams, setSearchParams] = useSearchParams();
   const { linkedMembers } = useMemberContext();
   const verifiedRef = useRef<string | null>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
+
   const data = notification?.data || {};
   const resolvedChampId = champId || data.champ_id;
   const isPartnerInvite = notification?.type === "tournament_partner_invite";
@@ -356,9 +360,14 @@ export function TournamentInviteActions({ notification, champId, registrationId,
           {!isAccepted && !isDeclined && (
             <>
               <div className="flex flex-col sm:flex-row gap-2 mt-3">
-                <Button size="sm" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => respond.mutate(true)}>
-                  {respond.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : yocoReady && paymentRequired ? <CreditCard className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-                  {isPartnerInvite ? "Accept Partner" : paymentRequired && yocoReady ? `Pay & Register ${formatMoney(entryFeeCents)}` : "Accept Invite"}
+                <Button
+                  size="sm"
+                  className="h-8 text-xs flex-1"
+                  disabled={respond.isPending}
+                  onClick={() => (isPartnerInvite ? respond.mutate(true) : setRegisterOpen(true))}
+                >
+                  {respond.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : paymentRequired ? <CreditCard className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                  {isPartnerInvite ? "Accept Partner" : paymentRequired ? `Register to accept · ${formatMoney(entryFeeCents)}` : "Register to accept"}
                 </Button>
                 <Button size="sm" variant="outline" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => respond.mutate(false)}>
                   <XCircle className="w-3 h-3 mr-1" /> Decline
@@ -369,6 +378,30 @@ export function TournamentInviteActions({ notification, champId, registrationId,
               )}
             </>
           )}
+
+          {/* Accepted but still owing / still needs a partner — reopen the sheet */}
+          {isAccepted && !isPartnerInvite && (status === "pending_payment" || status === "pending_eft" || (champ?.match_type === "doubles" && champ?.partner_mode === "players" && !registration?.partner_member_id)) && (
+            <Button size="sm" variant="outline" className="h-8 text-xs mt-3 w-full" onClick={() => setRegisterOpen(true)}>
+              {status === "pending_payment" || status === "pending_eft" ? "Pay entry fee / upload proof" : "Choose your partner"}
+            </Button>
+          )}
+
+          {!isPartnerInvite && (
+            <TournamentInviteRegisterDialog
+              open={registerOpen}
+              onOpenChange={setRegisterOpen}
+              champ={champ}
+              registration={registration}
+              paymentGateway={clubInfo?.payment_gateway || null}
+              onAccepted={markNotificationRead}
+              onDone={async () => {
+                await refetchRegistration();
+                invalidateNotifications();
+                onResolved?.();
+              }}
+            />
+          )}
+
         </div>
       </div>
     </Card>

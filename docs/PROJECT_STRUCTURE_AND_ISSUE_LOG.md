@@ -760,3 +760,13 @@ documented `redirect_uri` on the fresh hosted link.
 - **Fix:** `whatsapp-inbound` now understands natural replies such as `register`, `play`, `enter`, `join`, `ok`, `sure`, `withdraw`, `not playing`, etc. If no pending interaction row exists, it falls back to the most recent outbound `whatsapp_send_log` for that phone, provided the message was interactive and within 7 days. Tournament declines now also upsert a `cancelled` registration row instead of silently failing when the row was absent. `send-whatsapp` now stores the interaction payload in the outbound log so the fallback can recover the right tournament/event.
 - **Guard:** Deployed both `send-whatsapp` and `whatsapp-inbound` edge functions. Bulk tournament invites from the wizard and WhatsApp event invites already send the interactive question; the replies now reliably update `club_champs_registrations` or `club_event_rsvps`.
 
+
+### 2026-08-19 · Tournament invites: register to accept, partner rules, EFT proof upload
+- **Symptom:** Invite cards only offered "Accept Invite" — no partner selection, no bank details, and no way to submit proof for EFT-only tournaments.
+- **Fix:** New `src/components/tournaments/TournamentInviteRegisterDialog.tsx` (opened from `TournamentInviteActions.tsx`) walks the player through accept/register → pay (card or EFT) → partner. New shared `src/components/payments/EftPaymentPanel.tsx` shows bank details, reference and amount with a proof-of-payment upload; also used by `TournamentRegisterCard.tsx`.
+- **Partner rules (three invite shapes):**
+  1. Invited **with** an entry fee → must register and be paid before picking a partner, and only players who are themselves registered *and* paid appear in the picker.
+  2. Invited **without** a fee → accept, then pick any eligible club member (partner need not register first).
+  3. `partner_mode != 'players'` (admin pairs) → no picker; the player only confirms they can play.
+- **Data:** `club_champs_registrations` gained `proof_url`, `proof_uploaded_at`, `proof_uploaded_by`. Private storage bucket `payment-proofs` with path `<club_id>/<club_member_id>/<file>`; members read/write their own, club admins read/delete their club's. Trigger `trg_champ_proof_uploaded` notifies club admins on upload.
+- **Admin:** `TournamentRegistrationsDialog.tsx` shows a "Proof" button (signed URL, 5 min) next to EFT paid / Waive.

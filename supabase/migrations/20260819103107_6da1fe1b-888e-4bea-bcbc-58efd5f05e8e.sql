@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.notify_admins_champ_proof_uploaded() FROM PUBLIC, anon, authenticated;

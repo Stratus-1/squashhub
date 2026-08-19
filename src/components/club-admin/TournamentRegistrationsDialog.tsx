@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, X, Check, UserPlus, Lock, Unlock, MessageCircle } from "lucide-react";
+import { Loader2, Plus, X, Check, UserPlus, Lock, Unlock, MessageCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { openWhatsApp, normalisePhoneForWhatsApp } from "@/lib/whatsapp";
 
@@ -356,6 +356,27 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                           <MessageCircle className="w-3 h-3 mr-1" />Remind
                         </Button>
                       )}
+                      {r.proof_url && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs text-primary"
+                          title="View uploaded proof of payment"
+                          onClick={async () => {
+                            const { supabase } = await import("@/integrations/supabase/client");
+                            const { data, error } = await supabase.storage
+                              .from("payment-proofs")
+                              .createSignedUrl(r.proof_url, 300);
+                            if (error || !data?.signedUrl) {
+                              toast.error("Could not open the proof of payment");
+                              return;
+                            }
+                            window.open(data.signedUrl, "_blank", "noopener");
+                          }}
+                        >
+                          <FileText className="w-3 h-3 mr-1" />Proof
+                        </Button>
+                      )}
                       {(r.status === "pending_payment" || r.status === "pending_eft") && (
                         <>
                           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => markPaid.mutate(r)} disabled={markPaid.isPending}>
@@ -364,6 +385,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => waiveFee.mutate(r)}>Waive</Button>
                         </>
                       )}
+
                       {isDoubles && (
                         <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setOverrideRegId(r.id); setOverridePartnerId(r.partner_member_id || ""); }}>
                           Partner

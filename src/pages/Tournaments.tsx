@@ -764,13 +764,19 @@ export default function Tournaments() {
             </Badge>
           )}
 
-          {isLive(m) && (
-            <span className="live-indicator text-[10px] shrink-0 px-2.5 py-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-current" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
-            </span>
-          )}
           {today && !isLive(m) && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
+
+        {isLive(m) && (
+          <button
+            type="button"
+            title="Watch this game live"
+            className="live-indicator text-[10px] shrink-0 px-2.5 py-1 hover:opacity-90"
+            onClick={(e) => { e.stopPropagation(); navigate(`/tournament-live/${m.id}`); }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-current" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
+          </button>
+        )}
 
         {!isPlaceholder && (
           <Button
@@ -780,7 +786,7 @@ export default function Tournaments() {
             title={tournamentFormat.key === "time_capped_points" ? "Start the bell timer and score this game" : "Open the marker to score this match"}
             onClick={(e) => {
               e.stopPropagation();
-              navigate(markRoute);
+              openMarker(m, markRoute, `${teamA} vs ${teamB}`);
             }}
           >
             {tournamentFormat.key === "time_capped_points"

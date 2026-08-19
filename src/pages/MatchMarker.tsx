@@ -20,6 +20,7 @@ import {
   useChampMarkerLock,
 } from "@/hooks/use-champ-marker-lock";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { useMemberContext } from "@/contexts/MemberContext";
 
 function parseTournamentScores(row: any): Array<{ a: number; b: number }> {

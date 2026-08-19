@@ -74,11 +74,23 @@ const EVENT_TYPES: { value: string; label: string }[] = [
   { value: "national_championship", label: "National championship" },
 ];
 
-/** Who may enter — stored on tournament_governance.eligibility_scope. */
-const ELIGIBILITY_SCOPES: { value: string; label: string }[] = [
-  { value: "club", label: "Members of the host club only" },
-  { value: "association", label: "Members of the owning association" },
-  { value: "open", label: "Open — anyone may enter" },
+/**
+ * Who may enter — stored on tournament_governance.eligibility_scope.
+ * Values are unchanged; only the wording and the resolver behind them.
+ * The scope defines the ELIGIBLE POPULATION only, never who is invited.
+ */
+const ELIGIBILITY_SCOPES: { value: string; label: string; hint: string }[] = [
+  { value: "club", label: "Members of the owning club", hint: "Only members attached to the host club." },
+  {
+    value: "association",
+    label: "Members of the owning association",
+    hint: "Every member of every club affiliated to the owning association.",
+  },
+  {
+    value: "open",
+    label: "Open to everyone",
+    hint: "Every member under the federation, including unaffiliated clubs.",
+  },
 ];
 
 /**

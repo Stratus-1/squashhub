@@ -6031,6 +6031,42 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </p>
             </div>
 
+            {/* Entry source — who physically puts a name on the list. Regional and
+                national events often enter whole teams through a team manager. */}
+            <div className="space-y-2">
+              <Label className="text-sm">Who puts a player on the list?</Label>
+              <Select value={entrySource} onValueChange={(v) => setEntrySource(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="self">The player — enters themselves</SelectItem>
+                  <SelectItem value="admin">The organiser — admin picks the field</SelectItem>
+                  <SelectItem value="team_manager">A team manager / club captain — enters their players</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Team-manager entry is used for regional and national events where a club or province enters a squad on behalf of its players.
+              </p>
+            </div>
+
+            {/* Approval gate — entry is only final once the organiser accepts it. */}
+            <div className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3">
+              <Switch
+                id="approval-gate"
+                checked={approvalGate === "admin_accept"}
+                onCheckedChange={(v) => setApprovalGate(v ? "admin_accept" : "none")}
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="approval-gate" className="text-sm font-medium cursor-pointer">
+                  Organiser must accept each entry
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Entries stay provisional until an organiser accepts them — used for selection events, licence checks and capped fields. Leave off for ordinary club tournaments.
+                </p>
+              </div>
+            </div>
+
+
+
 
             {/* Invite source — only meaningful in invite mode */}
             {registrationUsesInviteList && (

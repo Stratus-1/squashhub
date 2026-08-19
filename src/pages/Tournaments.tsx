@@ -1296,6 +1296,11 @@ export default function Tournaments() {
 
 
             <TabsContent value="standings" className="mt-4 space-y-3">
+              {champs.length === 0 && (
+                <Card className="p-6 text-center text-sm text-muted-foreground">
+                  No tournament is running. Standings for finished events are under <span className="font-medium">Past</span>.
+                </Card>
+              )}
               {champs.map((champ: any) => {
                 return (
 

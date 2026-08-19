@@ -1045,13 +1045,13 @@ export default function Tournaments() {
             No tournaments yet
           </Card>
         ) : (
-          <Tabs defaultValue={champs.length === 0 ? "past" : "upcoming"} className="w-full">
+          <Tabs value={champTab} onValueChange={setChampTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-auto gap-1 bg-muted p-1">
               <TabsTrigger
                 value="upcoming"
                 className="text-sm py-2.5 font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
               >
-                🗓️ Upcoming
+                🗓️ Current{champs.length > 0 ? ` (${champs.length})` : ""}
               </TabsTrigger>
               <TabsTrigger
                 value="standings"
@@ -1063,7 +1063,7 @@ export default function Tournaments() {
                 value="past"
                 className="text-sm py-2.5 font-semibold border-2 border-slate-500/60 data-[state=active]:bg-slate-700 data-[state=active]:text-white data-[state=active]:border-slate-700 data-[state=active]:shadow-md transition-all"
               >
-                ✓ Past
+                ✓ Past{pastChamps.length > 0 ? ` (${pastChamps.length})` : ""}
               </TabsTrigger>
             </TabsList>
 
@@ -1071,13 +1071,24 @@ export default function Tournaments() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Trophy className="w-4 h-4" /> Upcoming Tournaments
+                    <Trophy className="w-4 h-4" /> Current &amp; upcoming tournaments
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {champs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No upcoming tournaments.</p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Nothing running or scheduled right now.
+                      </p>
+                      {pastChamps.length > 0 && (
+                        <Button variant="outline" size="sm" className="gap-1" onClick={() => setChampTab("past")}>
+                          View {pastChamps.length} past tournament{pastChamps.length === 1 ? "" : "s"}
+                          <ChevronRight className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
                   ) : (
+
                     <div className="space-y-1.5">
                       {champs.map((champ: any) => {
                         const isDoubles = champ.match_type === "doubles";

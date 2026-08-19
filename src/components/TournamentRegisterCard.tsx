@@ -14,6 +14,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Trophy, Loader2, CreditCard, Check, Landmark, Copy, Search } from "lucide-react";
 import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
+import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
+
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,
   clearPendingClubSession, startClubCheckout, verifyClubCheckout, pollStitchPayment,

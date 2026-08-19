@@ -178,7 +178,6 @@ export default function MatchMarker() {
           id, champ_id, handicap_a, handicap_b, status, side_a_points, side_b_points, game_scores,
           player_a_member_id, player_b_member_id,
           partner_a_member_id, partner_b_member_id,
-          club_champs!inner(id, club_id, match_type, scoring_mode, points_per_game, best_of, play_all_games, win_condition),
           player_a:player_a_member_id(id, name, club_member_number),
           player_b:player_b_member_id(id, name, club_member_number),
           partner_a:partner_a_member_id(id, name, club_member_number),
@@ -190,7 +189,12 @@ export default function MatchMarker() {
       if (cancelled || error || !data) return;
 
       const row = data as any;
-      const champ = Array.isArray(row.club_champs) ? row.club_champs[0] : row.club_champs;
+      const { data: champData, error: champError } = await fromExt("club_champs")
+        .select("id, club_id, match_type, scoring_mode, points_per_game, best_of, play_all_games, win_condition")
+        .eq("id", row.champ_id)
+        .maybeSingle();
+      if (cancelled || champError || !champData) return;
+      const champ = champData as any;
       if (champ?.scoring_mode === "time_capped_points") {
         navigate(`/bells-marker/${matchId}`, { replace: true });
         return;

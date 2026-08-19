@@ -39,6 +39,7 @@ import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
+import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
 
 interface ClubChampsTabProps {
   /** Primary host club — its courts are the default venue and new events are filed under it. */

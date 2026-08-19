@@ -6168,10 +6168,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             {editingChampId && wizardGovernance && (
               <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
                 <div className="font-medium uppercase tracking-wide text-muted-foreground">Governance</div>
+                {/* Levies are ownership-aware: only shown when the beneficiary is
+                    not also the owner (Governance → Fees & refunds is authoritative). */}
                 {scope !== "club" && (
-                  <div>Federation share: <strong>R {((wizardGovernance.federation_fee_cents || 0) / 100).toFixed(2)}</strong></div>
+                  <div>
+                    Federation levy: <strong>R {((wizardGovernance.federation_fee_cents || 0) / 100).toFixed(2)}</strong>
+                    {Number(wizardGovernance.federation_fee_pct || 0) > 0 ? ` + ${Number(wizardGovernance.federation_fee_pct)}%` : ""}
+                  </div>
                 )}
-                <div>Association share: <strong>R {((wizardGovernance.association_fee_cents || 0) / 100).toFixed(2)}</strong></div>
+                <div>
+                  Association levy: <strong>R {((wizardGovernance.association_fee_cents || 0) / 100).toFixed(2)}</strong>
+                  {Number(wizardGovernance.association_fee_pct || 0) > 0 ? ` + ${Number(wizardGovernance.association_fee_pct)}%` : ""}
+                </div>
+                {Number(wizardGovernance.other_expenses_cents || 0) > 0 && (
+                  <div>
+                    {wizardGovernance.other_expenses_label || "Other expenses"}:{" "}
+                    <strong>R {((wizardGovernance.other_expenses_cents || 0) / 100).toFixed(2)}</strong>
+                  </div>
+                )}
                 <div>
                   Refunds: <strong>
                     {wizardGovernance.refund_policy === "none" ? "No refunds"

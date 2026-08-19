@@ -11,6 +11,7 @@ import { format, isPast, isToday } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
+import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 
@@ -158,7 +159,7 @@ export function MyChampionships() {
         <h2 className="text-sm font-semibold font-heading flex items-center gap-1.5">
           <Trophy className="w-4 h-4" /> My Tournaments
         </h2>
-        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/events")}>
+        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/tournaments")}>
           View all <ChevronRight className="w-3 h-3 ml-1" />
         </Button>
       </div>
@@ -209,6 +210,9 @@ export function MyChampionships() {
                 <p className="text-sm font-semibold truncate">{champ.name}</p>
                 <p className="text-[11px] text-muted-foreground">
                   {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"}
+                  {(champ.start_date || champ.end_date) && (
+                    <> · {champ.start_date}{champ.end_date && champ.end_date !== champ.start_date ? ` to ${champ.end_date}` : ""}</>
+                  )}
                   {isDoubles && partnerName && <> · Partner: <span className="font-medium text-foreground">{partnerName}</span></>}
                 </p>
               </div>

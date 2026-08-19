@@ -328,6 +328,9 @@ export default function Tournaments() {
     return parts.join(" · ") || "Unassigned";
   };
 
+  // Members always land on what is running/coming up; history is one tap away.
+  const [champTab, setChampTab] = useState<string>("upcoming");
+  const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [groupBySlot, setGroupBySlot] = useState<boolean>(() => {

@@ -15,6 +15,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, addDays } from "date-fns";
+import { isCurrentTournament } from "@/lib/tournaments/lifecycle";
+import { isActionableTournamentMatch, isActionableLeagueFixture } from "@/lib/tournaments/actionable-match";
+
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
 export type ScoringFormat = "par11" | "par15" | "english9";
@@ -312,11 +315,25 @@ export function MarkerSetup({ onStart }: Props) {
   // League filter mode: "mine" (default — fixtures my league/team plays in) or "all"
   const [leagueScope, setLeagueScope] = useState<"mine" | "all">("mine");
 
-  // Fetch active tournament matches (scheduled, not yet completed)
+  // Fetch markable tournament matches: parent tournament must be genuinely
+  // current, and the match itself non-terminal and scheduled today or later.
   const { data: tournamentMatches = [] } = useQuery({
     queryKey: ["marker-tournament-matches", clubId],
     queryFn: async () => {
       if (!clubId) return [];
+      const todayISO = format(new Date(), "yyyy-MM-dd");
+
+      // 1. Current tournaments for this club only (lifecycle-filtered).
+      const { data: allChamps } = await supabase
+        .from("club_champs")
+        .select("id, name, club_id, status, start_date, end_date, match_type, scoring_mode, points_per_game, best_of, play_all_games, win_condition")
+        .eq("club_id", clubId);
+
+      const champs = (allChamps || []).filter((c: any) => isCurrentTournament(c, todayISO));
+      if (champs.length === 0) return [];
+      const champMap = new Map(champs.map((c: any) => [c.id, c]));
+
+      // 2. Their non-terminal, scheduled-from-today matches.
       const { data, error } = await supabase
         .from("club_champs_matches")
         .select(`
@@ -329,26 +346,20 @@ export function MarkerSetup({ onStart }: Props) {
           partner_a:partner_a_member_id(id, name, club_member_number),
           partner_b:partner_b_member_id(id, name, club_member_number)
         `)
+        .in("champ_id", champs.map((c: any) => c.id))
         .in("status", ["scheduled", "in_progress"])
+        .gte("scheduled_date", todayISO)
         .order("scheduled_date", { ascending: true });
       if (error) throw error;
 
-      // Fetch champs info for names
-      const champIds = [...new Set((data || []).map((m) => m.champ_id))];
-      if (champIds.length === 0) return [];
-
-      const { data: champs } = await supabase
-        .from("club_champs")
-        .select("id, name, club_id, match_type, scoring_mode, points_per_game, best_of, play_all_games, win_condition")
-        .in("id", champIds)
-        .eq("club_id", clubId);
-
-      const clubChampIds = new Set((champs || []).map((c) => c.id));
+      const rows = (data || []).filter((m: any) =>
+        isActionableTournamentMatch(m, champMap.get(m.champ_id) as any, { today: todayISO }),
+      );
+      if (rows.length === 0) return [];
 
       // Backfill any names RLS-hid via FK joins (e.g. cross-club viewers) using client-side maps
       const memberIds = new Set<string>();
-      (data || []).forEach((m: any) => {
-        if (!clubChampIds.has(m.champ_id)) return;
+      rows.forEach((m: any) => {
         if (m.player_a_member_id && !m.player_a) memberIds.add(m.player_a_member_id);
         if (m.player_b_member_id && !m.player_b) memberIds.add(m.player_b_member_id);
         if (m.partner_a_member_id && !m.partner_a) memberIds.add(m.partner_a_member_id);
@@ -380,12 +391,9 @@ export function MarkerSetup({ onStart }: Props) {
         }
       }
 
-      const champMap = new Map((champs || []).map((c) => [c.id, c]));
-
-      return (data || [])
-        .filter((m) => clubChampIds.has(m.champ_id))
-        .map((m) => normalizeTournamentMatch(m, champMap.get(m.champ_id), memberMap));
+      return rows.map((m: any) => normalizeTournamentMatch(m, champMap.get(m.champ_id), memberMap));
     },
+
     enabled: !!clubId,
     staleTime: 2 * 60 * 1000,
   });

@@ -55,16 +55,23 @@ export default function TournamentMatchLive() {
           player_b:player_b_member_id(id, name, profiles:user_id(name)),
           partner_a:partner_a_member_id(id, name, profiles:user_id(name)),
           partner_b:partner_b_member_id(id, name, profiles:user_id(name)),
-          court:court_id(name),
-          club_champs:champ_id(id, name, match_type, scoring_mode, best_of, points_per_game)
+          court:court_id(name)
         `)
         .eq("id", matchId)
         .maybeSingle();
       if (cancelled) return;
       const row = data as any;
       setMatch(row || null);
-      const c = Array.isArray(row?.club_champs) ? row.club_champs[0] : row?.club_champs;
-      setChamp(c || null);
+      if (row?.champ_id) {
+        const { data: champRow } = await fromExt("club_champs")
+          .select("id, name, match_type, scoring_mode, best_of, points_per_game")
+          .eq("id", row.champ_id)
+          .maybeSingle();
+        if (cancelled) return;
+        setChamp(champRow || null);
+      } else {
+        setChamp(null);
+      }
       setLoading(false);
     };
     load();

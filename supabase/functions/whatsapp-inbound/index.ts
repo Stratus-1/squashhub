@@ -240,10 +240,10 @@ Deno.serve(async (req) => {
           // when the tournament actually charges an entry fee.
           const { data: champ } = await admin
             .from("club_champs")
-            .select("entry_fee, payment_required")
+            .select("entry_fee_cents, payment_required")
             .eq("id", interaction.target_id)
             .maybeSingle();
-          const fee = Number((champ as any)?.entry_fee ?? 0);
+          const fee = Number((champ as any)?.entry_fee_cents ?? 0);
           const needsPayment = fee > 0 && (champ as any)?.payment_required !== false;
           const { error } = await admin.from("club_champs_registrations").upsert(
             {

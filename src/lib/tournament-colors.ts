@@ -38,3 +38,20 @@ export function getBucketColor(key: string | null | undefined): BucketColor | nu
   }
   return PALETTE[h % PALETTE.length];
 }
+
+/** Palette colour by explicit index — used to guarantee neighbouring buckets
+ * (e.g. Pool A / Pool B of the same league) never share a colour. */
+export function getBucketColorAt(index: number): BucketColor {
+  return PALETTE[((index % PALETTE.length) + PALETTE.length) % PALETTE.length];
+}
+
+/** Assign a distinct colour to each key, in the order given. */
+export function buildBucketColorMap(keys: (string | null | undefined)[]): Map<string, BucketColor> {
+  const map = new Map<string, BucketColor>();
+  let i = 0;
+  for (const k of keys) {
+    if (!k || map.has(k)) continue;
+    map.set(k, getBucketColorAt(i++));
+  }
+  return map;
+}

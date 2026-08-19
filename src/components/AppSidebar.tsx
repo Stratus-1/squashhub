@@ -86,7 +86,7 @@ export function AppSidebar() {
         { title: "Mark a Game", url: "/match-marker", icon: Crosshair },
         { title: "Club Ladderboard", url: "/ladder", icon: Trophy },
         ...(hasLeagues ? [{ title: "Leagues", url: "/league-games", icon: Trophy }] : []),
-        { title: "Club Tournaments", url: "/tournaments", icon: Trophy },
+        { title: "Tournaments", url: "/tournaments", icon: Trophy },
         { title: "Events", url: "/events", icon: CalendarDays },
         ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),
         { title: "My Account", url: "/my-account", icon: Wallet },

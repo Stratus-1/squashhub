@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { useCapabilities } from "@/hooks/use-club-capabilities";
 import { fromExt } from "@/lib/supabase-ext";
 
 import { CreateClubEvent } from "@/components/CreateClubEvent";

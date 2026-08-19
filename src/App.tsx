@@ -54,6 +54,7 @@ import MatchTracker from "./pages/MatchTracker";
 import MatchMarker from "./pages/MatchMarker";
 import BellsMarker from "./pages/BellsMarker";
 import MarkerTv from "./pages/MarkerTv";
+import TournamentMatchLive from "./pages/TournamentMatchLive";
 import AddMatchResult from "./pages/AddMatchResult";
 import PlayerProfile from "./pages/PlayerProfile";
 import RegisterClub from "./pages/RegisterClub";
@@ -461,6 +462,7 @@ function AppRoutes() {
         <Route path="/match-tracker/:bookingId" element={<ProtectedRoute><MatchTracker /></ProtectedRoute>} />
         <Route path="/match-marker" element={<ProtectedRoute><MatchMarker /></ProtectedRoute>} />
         <Route path="/bells-marker/:matchId" element={<ProtectedRoute><BellsMarker /></ProtectedRoute>} />
+        <Route path="/tournament-live/:matchId" element={<ProtectedRoute><TournamentMatchLive /></ProtectedRoute>} />
         <Route path="/tv" element={<MarkerTv />} />
         <Route path="/tv/club/:subdomain" element={<MarkerTv />} />
         <Route path="/tv/club/:subdomain/court/:court" element={<MarkerTv />} />

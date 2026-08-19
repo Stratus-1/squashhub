@@ -13,6 +13,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { setScoringActive } from "@/lib/scoring-lock";
 import { enqueueRankingDelta } from "@/lib/ranking-points";
+import {
+  fetchChampMarkerLock,
+  isLockFresh,
+  useChampMarkerHeartbeat,
+  useChampMarkerLock,
+} from "@/hooks/use-champ-marker-lock";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
   const scores: Array<{ a: number; b: number }> = [];
@@ -80,6 +88,39 @@ export default function MatchMarker() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { activeMember } = useMemberContext();
+  const markerName = (activeMember as any)?.name || user?.email || "A marker";
+
+  // ---- Tournament marker presence + hand-over ----
+  const tournamentMatchId =
+    config?.source === "tournament" && config.sourceId ? config.sourceId : null;
+  useChampMarkerHeartbeat(tournamentMatchId, user?.id, markerName, !!tournamentMatchId);
+  const {
+    lock: champLock,
+    fresh: champLockFresh,
+    approveTakeover,
+    declineTakeover,
+  } = useChampMarkerLock(tournamentMatchId, user?.id, markerName);
+  const [handoverOpen, setHandoverOpen] = useState(false);
+  const takeoverRequester = champLock?.takeover_requested_by && champLock.user_id === user?.id
+    ? champLock.takeover_requested_name || "Another marker"
+    : null;
+
+  useEffect(() => {
+    setHandoverOpen(!!takeoverRequester);
+  }, [takeoverRequester]);
+
+  // Somebody else now holds the lock (approved or forced take-over) → step out
+  // of the marker and watch the game live instead of writing conflicting scores.
+  useEffect(() => {
+    if (!tournamentMatchId || !champLock || !user) return;
+    if (champLockFresh && champLock.user_id !== user.id) {
+      toast.info(`${champLock.user_name} has taken over marking`, {
+        description: "Switching you to the live score.",
+      });
+      navigate(`/tournament-live/${tournamentMatchId}`, { replace: true });
+    }
+  }, [champLock, champLockFresh, tournamentMatchId, user, navigate]);
 
   const markTournamentLive = useCallback(async (matchId: string, scores: Array<{ a: number; b: number }> = []) => {
     const current = scores[scores.length - 1];
@@ -153,27 +194,23 @@ export default function MatchMarker() {
         return;
       }
 
-      // Spectator gate: if this match is already being marked (status = in_progress)
-      // and THIS device is not the one that started it, bounce back to the fixture
-      // list — the live score already streams in there via realtime. This prevents
-      // two devices from opening the marker on the same match and clobbering scores.
-      if (row.status === "in_progress") {
-        let isOwnerDevice = false;
+      // Marker lock gate: ownership now lives in `champ_marker_locks`, not in
+      // this browser's local storage. If someone else is actively marking (fresh
+      // heartbeat) and we did not arrive with an approved/forced take-over, send
+      // the viewer to the read-only live scoreboard instead of a blank 0-0 board.
+      if (searchParams.get("takeover") !== "1") {
         try {
-          const raw = localStorage.getItem(MARKER_CONFIG_KEY);
-          if (raw) {
-            const existing = JSON.parse(raw);
-            if (existing?.source === "tournament" && existing?.sourceId === matchId) {
-              isOwnerDevice = true;
-            }
+          const lock = await fetchChampMarkerLock(matchId);
+          if (!cancelled && lock && isLockFresh(lock) && lock.user_id !== user?.id) {
+            toast.info(`${lock.user_name} is marking this match`, {
+              description: "Showing the live score instead.",
+            });
+            navigate(`/tournament-live/${matchId}`, { replace: true });
+            return;
           }
-        } catch {}
-        if (!isOwnerDevice) {
-          toast.info("This match is already being marked", {
-            description: "Live scores appear on the tournament fixtures list.",
-          });
-          navigate("/tournaments", { replace: true });
-          return;
+        } catch (e) {
+          // Lock lookup must never block scoring.
+          console.warn("Marker lock check failed", e);
         }
       }
 
@@ -256,6 +293,7 @@ export default function MatchMarker() {
         const next = new URLSearchParams(prev);
         next.delete("source");
         next.delete("matchId");
+        next.delete("takeover");
         return next;
       }, { replace: true });
     };
@@ -646,6 +684,36 @@ export default function MatchMarker() {
           />
         )}
       </div>
+
+      <AlertDialog open={handoverOpen} onOpenChange={setHandoverOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{takeoverRequester} wants to take over marking</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hand over and they continue from the current score — you'll switch to the live view.
+              Decline and you stay in charge of the marking.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { declineTakeover(); }}>No, I keep marking</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const id = tournamentMatchId;
+                await approveTakeover();
+                try {
+                  localStorage.removeItem(MARKER_CONFIG_KEY);
+                  localStorage.removeItem(MARKER_STATE_KEY);
+                } catch {}
+                toast.success("Marking handed over");
+                if (id) navigate(`/tournament-live/${id}`, { replace: true });
+              }}
+            >
+              Yes, hand over
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <BackToDashboard />
     </div>
   );

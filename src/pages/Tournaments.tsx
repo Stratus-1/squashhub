@@ -28,6 +28,9 @@ import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { getBucketColor, buildBucketColorMap } from "@/lib/tournament-colors";
 import { assignPools, entityIdForEntry, type Entry as SwissEntry } from "@/lib/swiss-pairing";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchChampMarkerLock, isLockFresh } from "@/hooks/use-champ-marker-lock";
+import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDialog";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
@@ -40,6 +43,35 @@ export default function Tournaments() {
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
   const [finalizeChamp, setFinalizeChamp] = useState<any | null>(null);
+  const { user } = useAuth();
+  const [takeover, setTakeover] = useState<
+    { matchId: string; markRoute: string; label: string; markerName: string } | null
+  >(null);
+
+  /**
+   * Marking a tournament game: if someone else holds a fresh marker lock we
+   * offer "watch live" or "ask to take over" instead of silently bouncing
+   * (or, worse, letting two devices clobber each other's score).
+   */
+  const openMarker = async (m: any, markRoute: string, label: string) => {
+    try {
+      const lock = await fetchChampMarkerLock(m.id);
+      if (lock && isLockFresh(lock) && lock.user_id !== user?.id) {
+        setTakeover({
+          matchId: m.id,
+          // Approved/forced hand-over must not be bounced by the marker's own gate.
+          markRoute: markRoute + (markRoute.includes("?") ? "&" : "?") + "takeover=1",
+          label,
+          markerName: lock.user_name,
+        });
+        return;
+      }
+    } catch (e) {
+      // Never block scoring because the lock lookup failed.
+      console.warn("Marker lock check failed", e);
+    }
+    navigate(markRoute);
+  };
 
   const { data: allChamps = [], isLoading: champsLoading } = useQuery({
     queryKey: ["tournaments-list", clubId],
@@ -738,13 +770,19 @@ export default function Tournaments() {
             </Badge>
           )}
 
-          {isLive(m) && (
-            <span className="live-indicator text-[10px] shrink-0 px-2.5 py-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-current" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
-            </span>
-          )}
           {today && !isLive(m) && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
+
+        {isLive(m) && (
+          <button
+            type="button"
+            title="Watch this game live"
+            className="live-indicator text-[10px] shrink-0 px-2.5 py-1 hover:opacity-90"
+            onClick={(e) => { e.stopPropagation(); navigate(`/tournament-live/${m.id}`); }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-current" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
+          </button>
+        )}
 
         {!isPlaceholder && (
           <Button
@@ -754,7 +792,7 @@ export default function Tournaments() {
             title={tournamentFormat.key === "time_capped_points" ? "Start the bell timer and score this game" : "Open the marker to score this match"}
             onClick={(e) => {
               e.stopPropagation();
-              navigate(markRoute);
+              openMarker(m, markRoute, `${teamA} vs ${teamB}`);
             }}
           >
             {tournamentFormat.key === "time_capped_points"
@@ -1309,6 +1347,19 @@ export default function Tournaments() {
         defaultChampId={addSlotChampId}
         invalidateKeys={[["tournaments-all-matches", champIds]]}
       />
+
+      <MarkerTakeoverDialog
+        open={!!takeover}
+        onOpenChange={(o) => { if (!o) setTakeover(null); }}
+        matchId={takeover?.matchId || null}
+        markRoute={takeover?.markRoute || ""}
+        matchLabel={takeover?.label}
+        markerName={takeover?.markerName}
+        requesterName={activeMember?.name || user?.email || "A marker"}
+        isAdmin={isClubAdmin}
+      />
+
+
 
     </div>
   );

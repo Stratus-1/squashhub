@@ -846,6 +846,50 @@ export type Database = {
           },
         ]
       }
+      champ_marker_locks: {
+        Row: {
+          created_at: string
+          heartbeat_at: string
+          match_id: string
+          takeover_declined_at: string | null
+          takeover_requested_at: string | null
+          takeover_requested_by: string | null
+          takeover_requested_name: string | null
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string
+          heartbeat_at?: string
+          match_id: string
+          takeover_declined_at?: string | null
+          takeover_requested_at?: string | null
+          takeover_requested_by?: string | null
+          takeover_requested_name?: string | null
+          user_id: string
+          user_name?: string
+        }
+        Update: {
+          created_at?: string
+          heartbeat_at?: string
+          match_id?: string
+          takeover_declined_at?: string | null
+          takeover_requested_at?: string | null
+          takeover_requested_by?: string | null
+          takeover_requested_name?: string | null
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "champ_marker_locks_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "club_champs_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_association_payable_batches: {
         Row: {
           bank_account: string | null

@@ -153,27 +153,23 @@ export default function MatchMarker() {
         return;
       }
 
-      // Spectator gate: if this match is already being marked (status = in_progress)
-      // and THIS device is not the one that started it, bounce back to the fixture
-      // list — the live score already streams in there via realtime. This prevents
-      // two devices from opening the marker on the same match and clobbering scores.
-      if (row.status === "in_progress") {
-        let isOwnerDevice = false;
+      // Marker lock gate: ownership now lives in `champ_marker_locks`, not in
+      // this browser's local storage. If someone else is actively marking (fresh
+      // heartbeat) and we did not arrive with an approved/forced take-over, send
+      // the viewer to the read-only live scoreboard instead of a blank 0-0 board.
+      if (searchParams.get("takeover") !== "1") {
         try {
-          const raw = localStorage.getItem(MARKER_CONFIG_KEY);
-          if (raw) {
-            const existing = JSON.parse(raw);
-            if (existing?.source === "tournament" && existing?.sourceId === matchId) {
-              isOwnerDevice = true;
-            }
+          const lock = await fetchChampMarkerLock(matchId);
+          if (!cancelled && lock && isLockFresh(lock) && lock.user_id !== user?.id) {
+            toast.info(`${lock.user_name} is marking this match`, {
+              description: "Showing the live score instead.",
+            });
+            navigate(`/tournament-live/${matchId}`, { replace: true });
+            return;
           }
-        } catch {}
-        if (!isOwnerDevice) {
-          toast.info("This match is already being marked", {
-            description: "Live scores appear on the tournament fixtures list.",
-          });
-          navigate("/tournaments", { replace: true });
-          return;
+        } catch (e) {
+          // Lock lookup must never block scoring.
+          console.warn("Marker lock check failed", e);
         }
       }
 

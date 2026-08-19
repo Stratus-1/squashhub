@@ -5774,6 +5774,86 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
+            {/* ── Entry model presets — the four ways players get onto the list ── */}
+            {(() => {
+              const feeOn = Number(entryFeeRand) > 0;
+              const models = [
+                {
+                  id: "open_paid",
+                  title: "Open invitation — register & pay",
+                  desc: "Anyone eligible adds their own name. Entry fee must be paid before the entry is approved.",
+                  active: registrationRequired && registrationMode === "open" && paymentRequired && feeOn,
+                  apply: () => {
+                    setRegistrationRequired(true);
+                    setRegistrationMode("open" as any);
+                    setPaymentRequired(true);
+                    if (!feeOn) setEntryFeeRand("");
+                  },
+                },
+                {
+                  id: "open_free",
+                  title: "Open invitation — register, no fee",
+                  desc: "Anyone eligible adds their own name and confirms. No entry fee is charged.",
+                  active: registrationRequired && registrationMode === "open" && !feeOn,
+                  apply: () => {
+                    setRegistrationRequired(true);
+                    setRegistrationMode("open" as any);
+                    setPaymentRequired(false);
+                    setEntryFeeRand("0");
+                  },
+                },
+                {
+                  id: "admin_free",
+                  title: "Admin selects players — invite optional",
+                  desc: "The admin puts players on the list. No fee, no self sign-up; invites are optional confirmation.",
+                  active: !registrationRequired && registrationMode === "invite" && !feeOn,
+                  apply: () => {
+                    setRegistrationRequired(false);
+                    setRegistrationMode("invite" as any);
+                    setPaymentRequired(false);
+                    setEntryFeeRand("0");
+                  },
+                },
+                {
+                  id: "admin_paid",
+                  title: "Admin selects players — confirm & pay",
+                  desc: "The admin puts players on the list, but each player must confirm and pay before their entry is approved.",
+                  active: registrationRequired && registrationMode === "invite" && paymentRequired && feeOn,
+                  apply: () => {
+                    setRegistrationRequired(true);
+                    setRegistrationMode("invite" as any);
+                    setPaymentRequired(true);
+                    if (!feeOn) setEntryFeeRand("");
+                  },
+                },
+              ];
+              return (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Entry model</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Pick how players get onto the entry list. This sets the options below — you can still fine-tune them.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {models.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={m.apply}
+                        className={`text-left rounded-lg border p-3 transition-colors ${
+                          m.active
+                            ? "border-primary bg-primary/10 ring-1 ring-primary"
+                            : "border-border bg-muted/20 hover:bg-muted/40"
+                        }`}
+                      >
+                        <div className="text-sm font-medium">{m.title}</div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">{m.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             <WizardSection
               title={"Entry fee & payment"}
               summary={Number(entryFeeRand) > 0 ? `R${entryFeeRand} entry fee` : "Free entry"}

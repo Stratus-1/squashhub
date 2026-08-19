@@ -43,6 +43,29 @@ export default function Tournaments() {
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
   const [finalizeChamp, setFinalizeChamp] = useState<any | null>(null);
+  const { user } = useAuth();
+  const [takeover, setTakeover] = useState<
+    { matchId: string; markRoute: string; label: string; markerName: string } | null
+  >(null);
+
+  /**
+   * Marking a tournament game: if someone else holds a fresh marker lock we
+   * offer "watch live" or "ask to take over" instead of silently bouncing
+   * (or, worse, letting two devices clobber each other's score).
+   */
+  const openMarker = async (m: any, markRoute: string, label: string) => {
+    try {
+      const lock = await fetchChampMarkerLock(m.id);
+      if (lock && isLockFresh(lock) && lock.user_id !== user?.id) {
+        setTakeover({ matchId: m.id, markRoute, label, markerName: lock.user_name });
+        return;
+      }
+    } catch (e) {
+      // Never block scoring because the lock lookup failed.
+      console.warn("Marker lock check failed", e);
+    }
+    navigate(markRoute);
+  };
 
   const { data: allChamps = [], isLoading: champsLoading } = useQuery({
     queryKey: ["tournaments-list", clubId],

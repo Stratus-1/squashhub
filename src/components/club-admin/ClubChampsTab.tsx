@@ -853,6 +853,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteIncludeReserves, setInviteIncludeReserves] = useState<boolean>(true);
   const [inviteExcludedMemberIds, setInviteExcludedMemberIds] = useState<Set<string>>(new Set());
 
+  // Who puts a player on the entry list, and whether an admin must accept it.
+  const [entrySource, setEntrySource] = useState<"self" | "admin" | "team_manager">("self");
+  const [approvalGate, setApprovalGate] = useState<"none" | "admin_accept">("none");
+
   // Handicap (singles only): none, by league ranking, or by club ladder
   // Handicap source:
   //  - none         → no handicap

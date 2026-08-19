@@ -29,10 +29,12 @@ export function MyChampionships() {
       const { data, error } = await fromExt("club_champs")
         .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode")
         .eq("club_id", clubId!)
-        .neq("status", "completed")
         .order("start_date");
       if (error) throw error;
-      return data || [];
+      // Only genuinely current/upcoming tournaments belong on the dashboard —
+      // finished, cancelled and undated rows are filtered out here so this
+      // surface matches the Tournaments page exactly.
+      return splitTournamentsByLifecycle((data || []) as any[]).current;
     },
     enabled: !!clubId,
   });

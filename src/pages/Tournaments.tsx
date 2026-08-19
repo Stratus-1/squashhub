@@ -1342,6 +1342,19 @@ export default function Tournaments() {
         invalidateKeys={[["tournaments-all-matches", champIds]]}
       />
 
+      <MarkerTakeoverDialog
+        open={!!takeover}
+        onOpenChange={(o) => { if (!o) setTakeover(null); }}
+        matchId={takeover?.matchId || null}
+        markRoute={takeover?.markRoute || ""}
+        matchLabel={takeover?.label}
+        markerName={takeover?.markerName}
+        requesterName={activeMember?.name || user?.email || "A marker"}
+        isAdmin={isClubAdmin}
+      />
+
+
+
     </div>
   );
 }

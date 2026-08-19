@@ -301,6 +301,7 @@ export default function ClubAdmin() {
             {renderContent()}
           </div>
         </div>
+        <QuickSetupWizard clubId={club.id} open={wizardOpen} onOpenChange={setWizardOpen} />
         <BackToDashboard />
       </div>
     </div>

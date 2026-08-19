@@ -770,3 +770,8 @@ documented `redirect_uri` on the fresh hosted link.
   3. `partner_mode != 'players'` (admin pairs) → no picker; the player only confirms they can play.
 - **Data:** `club_champs_registrations` gained `proof_url`, `proof_uploaded_at`, `proof_uploaded_by`. Private storage bucket `payment-proofs` with path `<club_id>/<club_member_id>/<file>`; members read/write their own, club admins read/delete their club's. Trigger `trg_champ_proof_uploaded` notifies club admins on upload.
 - **Admin:** `TournamentRegistrationsDialog.tsx` shows a "Proof" button (signed URL, 5 min) next to EFT paid / Waive.
+
+## Marker presence: LIVE falls away when the marker exits
+- LIVE chips (Tournaments list, ClubChampsView, TournamentMatchLive) are now driven by a fresh heartbeat in `champ_marker_locks`, not by `status = in_progress`. Matches with no active marker show an amber "Paused · Resume" chip that opens the marker.
+- `useChampMarkerHeartbeat` releases the lock immediately on `pagehide` / tab hide (previously only on unmount), and is now also used by `BellsMarker`.
+- `MatchMarker` no longer early-returns on a cached marker config for the same match, so the board always re-reads the DB score and resumes at the real score instead of 0-0. Local scoring state (server/serve side/undo) is kept when it is the same match.

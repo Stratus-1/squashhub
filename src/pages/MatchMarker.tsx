@@ -104,6 +104,7 @@ export default function MatchMarker() {
     declineTakeover,
   } = useChampMarkerLock(tournamentMatchId, user?.id, markerName);
   const [handoverOpen, setHandoverOpen] = useState(false);
+  const [tournamentLoadState, setTournamentLoadState] = useState<"idle" | "loading" | "error">("idle");
   const takeoverRequester = champLock?.takeover_requested_by && champLock.user_id === user?.id
     ? champLock.takeover_requested_name || "Another marker"
     : null;
@@ -173,6 +174,7 @@ export default function MatchMarker() {
 
     let cancelled = false;
     const loadLinkedTournamentMatch = async () => {
+      setTournamentLoadState("loading");
       const { data, error } = await fromExt("club_champs_matches")
         .select(`
           id, champ_id, handicap_a, handicap_b, status, side_a_points, side_b_points, game_scores,
@@ -186,15 +188,42 @@ export default function MatchMarker() {
         .eq("id", matchId)
         .maybeSingle();
 
-      if (cancelled || error || !data) return;
+      if (cancelled) return;
+      if (error || !data) {
+        console.error("Could not load tournament match for marking", error);
+        setTournamentLoadState("error");
+        toast.error("Could not load the saved tournament score", {
+          description: "Please retry. The marker will not start a new 0–0 game.",
+        });
+        return;
+      }
 
       const row = data as any;
-      const { data: champData, error: champError } = await fromExt("club_champs")
-        .select("id, club_id, match_type, scoring_mode, points_per_game, best_of, play_all_games, win_condition")
-        .eq("id", row.champ_id)
-        .maybeSingle();
-      if (cancelled || champError || !champData) return;
-      const champ = champData as any;
+      // Read the parent and its scoring rules directly. The compatibility
+      // `club_champs` view is security-invoker and a rules/governance policy
+      // change can hide the joined row even when this match itself is visible.
+      // League marking does not depend on such a compatibility join; tournament
+      // resume should be equally direct and server-authoritative.
+      const [{ data: tournamentData, error: tournamentError }, { data: rulesData, error: rulesError }] = await Promise.all([
+        fromExt("tournaments")
+          .select("id, club_id, match_type")
+          .eq("id", row.champ_id)
+          .maybeSingle(),
+        fromExt("tournament_rules")
+          .select("tournament_id, scoring_mode, points_per_game, best_of, play_all_games, win_condition")
+          .eq("tournament_id", row.champ_id)
+          .maybeSingle(),
+      ]);
+      if (cancelled) return;
+      if (tournamentError || rulesError || !tournamentData) {
+        console.error("Could not load tournament scoring rules", tournamentError || rulesError);
+        setTournamentLoadState("error");
+        toast.error("Could not load the tournament scoring rules", {
+          description: "Please retry. Your saved score has not been changed.",
+        });
+        return;
+      }
+      const champ = { ...(tournamentData as any), ...(rulesData as any) };
       if (champ?.scoring_mode === "time_capped_points") {
         navigate(`/bells-marker/${matchId}`, { replace: true });
         return;
@@ -291,6 +320,7 @@ export default function MatchMarker() {
 
       if (cancelled) return;
       setConfig(nextConfig);
+      setTournamentLoadState("idle");
       // Do NOT flip the tournament match to in_progress just because someone
       // opened the marker — only handleLiveScore (after a real point) should
       // set status=in_progress. Otherwise merely viewing a match strands it
@@ -668,7 +698,15 @@ export default function MatchMarker() {
       />
 
       <div className="px-4 mt-3 mb-6 max-w-lg mx-auto">
-        {!config ? (
+        {!config && tournamentLoadState === "loading" ? (
+          <div className="py-12 text-center text-sm text-muted-foreground">Loading saved tournament score…</div>
+        ) : !config && tournamentLoadState === "error" ? (
+          <div className="py-10 text-center space-y-3">
+            <p className="text-sm font-medium">The saved tournament score could not be loaded.</p>
+            <p className="text-xs text-muted-foreground">A new 0–0 game has not been started.</p>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
+          </div>
+        ) : !config ? (
           <MarkerSetup onStart={startConfig} />
         ) : (
           <MarkerScoreboard

@@ -5167,6 +5167,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     <span className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
                                       Bye: {byeForLeague(gn).replace(/_/g, " ")}
                                     </span>
+                                  )}
+                                  {collapsed && (
                                     <span className="inline-flex items-center rounded border border-rose-500/40 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:text-rose-400">
                                       No show: {describeForfeitRule(forfeitRuleForLeague(gn), forfeitPointsForLeague(gn))}
                                     </span>

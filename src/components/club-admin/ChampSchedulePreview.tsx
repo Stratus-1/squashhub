@@ -127,7 +127,13 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
     });
   }, [matches, poolByMatchId]);
 
-  const bucketColor = (key: string) => getBucketColor(key);
+  // Distinct colour per league/pool bucket so pools within the same league
+  // never share a colour.
+  const bucketColorMap = useMemo(
+    () => buildBucketColorMap(buckets.map((b) => b.key)),
+    [buckets]
+  );
+  const bucketColor = (key: string) => bucketColorMap.get(key) ?? getBucketColor(key);
 
   const bucketLabel = (b: { group: number | null; pool: number | null; stage?: string | null; stageLabel?: string | null }) => {
     if (b.stage) return b.stageLabel || "Play-offs";

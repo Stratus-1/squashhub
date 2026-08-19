@@ -5643,7 +5643,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               This structure is sized against real court time on the <strong>Dates, Times &amp; Courts</strong> step,
               once the dates, playing times and courts are set.
             </div>
-            </WizardSection>
           </CardContent>
         </Card>
       )}

@@ -1497,8 +1497,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-  // Helper to strip "visitor-" prefix for DB inserts
-  const toDbId = (id: string) => id.replace(/^visitor-/, "");
+  // Helper to strip "visitor-" prefix for DB inserts. Null-safe: an incomplete
+  // pair (e.g. a withdrawn partner) must not crash the whole save.
+  const toDbId = (id?: string | null) => (id ? String(id).replace(/^visitor-/, "") : null) as any;
 
   const syncDoublesRegistrationsForPairs = async (
     champIdToUse: string,

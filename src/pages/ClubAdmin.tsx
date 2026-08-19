@@ -249,7 +249,9 @@ export default function ClubAdmin() {
                           "text-[8px] md:text-[9px] font-medium leading-none uppercase tracking-wide",
                           isActive ? "opacity-90" : isComplete ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
                         )}>
-                          {isComplete ? "Complete" : "Please complete"}
+                          {tab.capability
+                            ? (isComplete ? "On — ready" : "On — needs setup")
+                            : (isComplete ? "Complete" : "Please complete")}
                         </span>
                       )}
                     </button>

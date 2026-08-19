@@ -18,7 +18,7 @@ export const PERMISSION_SLUGS = [
   { value: "leagues", label: "Leagues" },
   { value: "champs", label: "Tournaments" },
   { value: "events", label: "Events (create club events)" },
-  { value: "bar", label: "Honesty Bar" },
+  { value: "bar", label: "Bar / POS" },
   { value: "access", label: "Access Control" },
   { value: "communications", label: "Communications" },
   { value: "affiliation", label: "Affiliation (own tournaments for the club's association)" },

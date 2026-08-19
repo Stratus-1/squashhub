@@ -859,6 +859,17 @@ export default function Dashboard() {
             <span className="text-xs font-medium leading-tight text-center">Tournaments</span>
           </Button>
 )}
+          {effectiveClub && barEnabled && (effectiveClub as any)?.honesty_bar_enabled && (
+            <Button
+              variant="outline"
+              className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20"
+              onClick={() => navigate("/honesty-bar")}
+              title="Buy drinks & snacks — pay now or charge to your member account"
+            >
+              <Wine className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">Bar / POS</span>
+            </Button>
+          )}
           {/* My Profile still desktop-only; My Account shown on all viewports per request */}
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />
@@ -882,24 +893,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Honesty Bar Quick Access */}
-      {effectiveClub && barEnabled && (effectiveClub as any)?.honesty_bar_enabled && (
-        <div className="px-4 mt-2">
-          <Card
-            className="p-3 flex items-center gap-3 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/30 bg-amber-500/5"
-            onClick={() => navigate("/honesty-bar")}
-          >
-            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-500/15">
-              <Wine className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Honesty Bar</p>
-              <p className="text-xs text-muted-foreground">Log drinks & snacks to your tab</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-          </Card>
-        </div>
-      )}
 
       {/* Arrears / suspension banner (always visible if applicable) */}
       <MemberSuspensionBanner />

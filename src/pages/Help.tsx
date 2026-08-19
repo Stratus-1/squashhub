@@ -35,7 +35,7 @@ export const CATEGORIES = [
   "Members & Billing",
   "Leagues",
   "Tournaments",
-  "Honesty Bar",
+  "Bar / POS",
   "Communications",
   "Admin & Reporting",
 ] as const;

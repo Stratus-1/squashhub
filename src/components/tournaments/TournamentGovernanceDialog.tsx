@@ -300,11 +300,17 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                   <Select value={form.eligibility_scope} onValueChange={(v) => set("eligibility_scope", v as any)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="club">Club members only</SelectItem>
-                      <SelectItem value="association">Association members</SelectItem>
-                      <SelectItem value="open">Open entry</SelectItem>
+                      <SelectItem value="club">Members of the owning club</SelectItem>
+                      <SelectItem value="association">Members of the owning association</SelectItem>
+                      <SelectItem value="open">Open to everyone</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Sets who is eligible. Who actually receives an invitation is configured in Entry &amp; fees / Players.
+                  </p>
+                  {eligibility && (
+                    <p className="text-[11px] font-medium text-primary">Eligible: {eligibility.summary}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>Minimum age</Label>

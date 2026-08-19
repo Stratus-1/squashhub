@@ -1655,7 +1655,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
     }
     return ids.map((id) => {
-      if (!id.startsWith("visitor-")) return id;
+      if (typeof id !== "string" || !id.startsWith("visitor-")) return id;
       const vid = id.slice("visitor-".length);
       return promoted.get(vid) || id;
     });

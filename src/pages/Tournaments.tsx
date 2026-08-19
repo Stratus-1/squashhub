@@ -29,7 +29,7 @@ import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { getBucketColor, buildBucketColorMap } from "@/lib/tournament-colors";
 import { assignPools, entityIdForEntry, type Entry as SwissEntry } from "@/lib/swiss-pairing";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchChampMarkerLock, isLockFresh } from "@/hooks/use-champ-marker-lock";
+import { fetchChampMarkerLock, isLockFresh, useChampMarkerLocks } from "@/hooks/use-champ-marker-lock";
 import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDialog";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };

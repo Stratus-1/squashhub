@@ -57,7 +57,13 @@ export default function Tournaments() {
     try {
       const lock = await fetchChampMarkerLock(m.id);
       if (lock && isLockFresh(lock) && lock.user_id !== user?.id) {
-        setTakeover({ matchId: m.id, markRoute, label, markerName: lock.user_name });
+        setTakeover({
+          matchId: m.id,
+          // Approved/forced hand-over must not be bounced by the marker's own gate.
+          markRoute: markRoute + (markRoute.includes("?") ? "&" : "?") + "takeover=1",
+          label,
+          markerName: lock.user_name,
+        });
         return;
       }
     } catch (e) {

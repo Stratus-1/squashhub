@@ -66,7 +66,7 @@ function serializeLiveScores(games: GameScore[], current?: { a: number; b: numbe
 }
 
 export default function MatchMarker() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [config, setConfig] = useState<MarkerConfig | null>(() => {
     if (new URLSearchParams(window.location.search).has("matchId")) return null;
     try {
@@ -326,18 +326,17 @@ export default function MatchMarker() {
       // opened the marker — only handleLiveScore (after a real point) should
       // set status=in_progress. Otherwise merely viewing a match strands it
       // as "LIVE 0-0" and creates a phantom resume prompt for the viewer.
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete("source");
-        next.delete("matchId");
-        next.delete("takeover");
-        return next;
-      }, { replace: true });
+      // Keep the linked-match URL intact while marking. Replacing it with the
+      // bare `/match-marker` route left React Router with a stale in-memory
+      // marker entry after Back → Tournaments → Resume; the second visit could
+      // mount without a stable match identity until a full browser refresh.
+      // A stable URL also means refresh/back-forward always re-hydrates this
+      // exact match from the database instead of relying on local state alone.
     };
 
     loadLinkedTournamentMatch();
     return () => { cancelled = true; };
-  }, [config?.sourceId, markTournamentLive, navigate, searchParams, setSearchParams]);
+  }, [config?.sourceId, markTournamentLive, navigate, searchParams, user?.id]);
 
   useEffect(() => {
     if (config?.source !== "tournament" || !config.sourceId) return;

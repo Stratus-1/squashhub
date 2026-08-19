@@ -465,28 +465,40 @@ function SegRow({
 export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  // Clubs whose members and courts are available to this tournament. At club
-  // level this is just the club itself, so behaviour is identical to before.
+  // Clubs whose courts are available to this tournament. At club level this is
+  // just the club itself, so behaviour is identical to before.
   const venueClubIds = useMemo(() => {
     const ids = new Set<string>([clubId, ...(participatingClubIds || [])]);
     return Array.from(ids).filter(Boolean);
   }, [clubId, participatingClubIds]);
   const multiClub = venueClubIds.length > 1;
 
+  // Who may enter — governance field, kept here because the eligible player
+  // pool is derived from it (club / owning association / whole federation).
+  const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "open");
+  const eligibility = useTournamentEligibility({ scope: eligibilityScope, clubId, ownerOrgId });
+
+  // Player pool = every member of every eligible club (plus host/venue clubs).
+  const playerPoolClubIds = useMemo(() => {
+    const ids = new Set<string>([...venueClubIds, ...(eligibility?.clubIds || [])]);
+    return Array.from(ids).filter(Boolean).sort();
+  }, [venueClubIds, eligibility?.clubIds]);
+  const widePool = playerPoolClubIds.length > 1;
+
   const { data: clubMembers = [] } = useClubMembers(clubId);
   const { data: pooledMembers = [] } = useQuery({
-    queryKey: ["tournament-member-pool", venueClubIds],
+    queryKey: ["tournament-member-pool", playerPoolClubIds],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
         .select("*, profiles:user_id(name, email, phone, avatar_url), club:club_id(name)")
-        .in("club_id", venueClubIds)
+        .in("club_id", playerPoolClubIds)
         .order("name");
       if (error) throw error;
       return (data || []) as ClubMember[];
     },
-    enabled: multiClub,
+    enabled: widePool,
   });
-  const members = multiClub ? pooledMembers : clubMembers;
+  const members = widePool ? pooledMembers : clubMembers;
   const whatsappEnabled = useWhatsAppEnabled(clubId);
   const isSuperAdmin = useIsSuperAdmin();
 

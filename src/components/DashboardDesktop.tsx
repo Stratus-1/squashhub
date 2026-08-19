@@ -17,6 +17,7 @@ import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
 import { DashboardWifiCard } from "@/components/DashboardWifiCard";
 import { DashboardRouterCard } from "@/components/DashboardRouterCard";
+import { useSidebarFlags } from "@/hooks/use-sidebar-flags";
 
 interface DashboardDesktopProps {
   clubName: string;
@@ -444,19 +445,28 @@ const TILE_STYLES: Record<string, { chipBg: string; chipText: string }> = {
 
 
 function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigate }: QuickAccessProps) {
+  const flags = useSidebarFlags();
   const home: Tile[] = [
     { title: "Stats",    url: "/analytics", icon: BarChart3,  color: "sky" },
-    { title: "Court Bookings", url: "/bookings", icon: Calendar, color: "blue" },
+    ...(flags.bookingsEnabled
+      ? [{ title: "Court Bookings", url: "/bookings", icon: Calendar, color: "blue" } as Tile]
+      : []),
   ];
 
   const activities: Tile[] = [
     { title: "Mark a Game",       url: "/match-marker", icon: Crosshair,   color: "emerald" },
-    { title: "Club Ladderboard",  url: "/ladder",       icon: Trophy,      color: "amber" },
+    ...(flags.ladderEnabled
+      ? [{ title: "Club Ladderboard", url: "/ladder", icon: Trophy, color: "amber" } as Tile]
+      : []),
     ...(hasLeagues
       ? [{ title: "Leagues", url: "/league-games", icon: Trophy, color: "orange" } as Tile]
       : []),
-    { title: "Tournaments",  url: "/tournaments",  icon: Trophy,      color: "fuchsia" },
-    { title: "Events",            url: "/events",       icon: CalendarDays, color: "violet" },
+    ...(flags.tournamentsEnabled
+      ? [{ title: "Tournaments", url: "/tournaments", icon: Trophy, color: "fuchsia" } as Tile]
+      : []),
+    ...(flags.eventsEnabled
+      ? [{ title: "Events", url: "/events", icon: CalendarDays, color: "violet" } as Tile]
+      : []),
     ...(honestyBarEnabled
       ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine, color: "rose" } as Tile]
       : []),

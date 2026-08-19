@@ -5916,16 +5916,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 required, this still controls how the admin seeds the player
                 roster (open audience vs invite shortlist). */}
             <div className="space-y-2">
-              <Label className="text-sm">Who can register?</Label>
+              <Label className="text-sm">How do players enter?</Label>
               <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
                 <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                  <SelectItem value="open">Open — any eligible club member</SelectItem>
-                  <SelectItem value="invite">Invite-only — admin shortlists members</SelectItem>
+                  <SelectItem value="open">Open sign-up — eligible players register themselves</SelectItem>
+                  <SelectItem value="invite">Invite-only — admin shortlists the players</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Not the same as <strong>Who may enter</strong> (set in “Name, category &amp; eligibility”, currently{" "}
+                <strong>{ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.label || eligibilityScope}</strong>),
+                which decides <em>which</em> players are eligible. This setting decides <em>how</em> they get in.
+              </p>
             </div>
+
 
             {/* Invite source — only meaningful in invite mode */}
             {registrationUsesInviteList && (

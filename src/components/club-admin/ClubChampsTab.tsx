@@ -1497,8 +1497,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-  // Helper to strip "visitor-" prefix for DB inserts
-  const toDbId = (id: string) => id.replace(/^visitor-/, "");
+  // Helper to strip "visitor-" prefix for DB inserts. Null-safe: an incomplete
+  // pair (e.g. a withdrawn partner) must not crash the whole save.
+  const toDbId = (id?: string | null) => (id ? String(id).replace(/^visitor-/, "") : null) as any;
 
   const syncDoublesRegistrationsForPairs = async (
     champIdToUse: string,
@@ -1617,7 +1618,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // the same visitor reuses the same member row instead of creating duplicates.
   // Returns the input list with visitor-* IDs mapped to the promoted member IDs.
   const promoteVisitorIds = async (ids: string[]): Promise<string[]> => {
-    const visitorIds = ids.filter((id) => id.startsWith("visitor-")).map((id) => id.slice("visitor-".length));
+    const visitorIds = ids.filter((id) => typeof id === "string" && id.startsWith("visitor-")).map((id) => id.slice("visitor-".length));
     if (visitorIds.length === 0) return ids;
     const markers = visitorIds.map((vid) => `visitor:${vid}`);
     // Fetch already-promoted rows
@@ -1654,7 +1655,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
     }
     return ids.map((id) => {
-      if (!id.startsWith("visitor-")) return id;
+      if (typeof id !== "string" || !id.startsWith("visitor-")) return id;
       const vid = id.slice("visitor-".length);
       return promoted.get(vid) || id;
     });
@@ -3049,7 +3050,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // first, otherwise the FK on club_champs_entries.club_member_id fails.
       let resolvedPairDbId = (id: string) => toDbId(id);
       if (isDoubles) {
-        const rawIds = (groups as DoublePair[][]).flatMap((gp) => gp.flatMap((p) => [p.player1Id, p.player2Id]));
+        const incomplete = (groups as DoublePair[][]).flatMap((gp) => gp).filter((p) => !p?.player1Id || !p?.player2Id);
+        if (incomplete.length > 0) {
+          throw new Error(`${incomplete.length} pair${incomplete.length === 1 ? " has" : "s have"} a missing player — fix the pairing before saving`);
+        }
+        const rawIds = (groups as DoublePair[][]).flatMap((gp) => gp.flatMap((p) => [p.player1Id, p.player2Id])).filter(Boolean) as string[];
         const resolved = await promoteVisitorIds(rawIds);
         const idMap = new Map<string, string>();
         rawIds.forEach((raw, i) => idMap.set(raw, resolved[i]));
@@ -3073,7 +3078,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           entries.map((e) => ({ player1Id: e.club_member_id, player2Id: e.partner_member_id })),
         );
       } else {
-        const rawIds = (groups as ClubMember[][]).flatMap((gp) => gp.map((p) => p.id));
+        const rawIds = (groups as ClubMember[][]).flatMap((gp) => gp.map((p) => p.id)).filter(Boolean) as string[];
         const resolved = await promoteVisitorIds(rawIds);
         const idMap = new Map<string, string>();
         rawIds.forEach((raw, i) => idMap.set(raw, resolved[i]));

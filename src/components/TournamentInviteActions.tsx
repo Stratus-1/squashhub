@@ -49,6 +49,8 @@ export function TournamentInviteActions({ notification, champId, registrationId,
   const [searchParams, setSearchParams] = useSearchParams();
   const { linkedMembers } = useMemberContext();
   const verifiedRef = useRef<string | null>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
+
   const data = notification?.data || {};
   const resolvedChampId = champId || data.champ_id;
   const isPartnerInvite = notification?.type === "tournament_partner_invite";

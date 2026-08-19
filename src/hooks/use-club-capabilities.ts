@@ -93,8 +93,8 @@ export function useSetCapability(clubId?: string) {
       const { data: rows } = await fromExt("club_capabilities")
         .select("capability, enabled")
         .eq("club_id", clubId);
-      const current = new Set(
-        (rows || []).filter((r: any) => r.enabled).map((r: any) => r.capability as string)
+      const current = new Set<string>(
+        ((rows || []) as any[]).filter((r) => r.enabled).map((r) => String(r.capability))
       );
 
       const targets: Capability[] = enabled

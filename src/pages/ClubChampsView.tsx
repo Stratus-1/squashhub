@@ -97,6 +97,12 @@ export default function ClubChampsView() {
 
   const isDoubles = champ?.match_type === "doubles";
 
+  // Only badge a match LIVE while a marker is actually present (fresh heartbeat).
+  const { freshMatchIds } = useChampMarkerLocks(
+    (matches as any[]).filter((m: any) => m.status === "in_progress").map((m: any) => m.id),
+  );
+
+
   const { data: clubInfo } = useQuery({
     queryKey: ["club-payment-gateway", champ?.club_id],
     queryFn: async () => {

@@ -103,14 +103,16 @@ type WizardStep = "category" | "courts" | "structure" | "registration" | "player
 type GenderCategory = "men" | "ladies" | "mixed" | "open";
 type MatchType = "singles" | "doubles";
 
-const STEPS: WizardStep[] = ["category", "courts", "structure", "registration", "players", "groups", "schedule", "review"];
+// Step ids are intentionally unchanged (drafts, deep links and shortcuts rely
+// on them) — only the order and the human labels were reworked.
+const STEPS: WizardStep[] = ["category", "structure", "registration", "courts", "players", "groups", "schedule", "review"];
 const STEP_LABELS: Record<WizardStep, string> = {
-  category: "Category",
-  courts: "Courts",
-  structure: "Structure & Capacity",
-  registration: "Who plays & what it costs",
+  category: "Basics",
+  courts: "Dates & Courts",
+  structure: "Structure",
+  registration: "Entry & fees",
   players: "Players",
-  groups: "Leagues",
+  groups: "Allocate players",
   schedule: "Schedule",
   review: "Review & Generate",
   preview: "Preview Schedule",
@@ -565,7 +567,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Wizard state
   const [gender, setGender] = useState<GenderCategory>("men");
   const [matchType, setMatchType] = useState<MatchType>("singles");
-  const [enablePlayoffs, setEnablePlayoffs] = useState(false);
+  // NOTE: `enablePlayoffs` is derived from the per-league playoff settings
+  // (see below). Playoffs are edited per league only — there is no separate
+  // tournament-level switch any more.
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [playerSearch, setPlayerSearch] = useState("");
   const [numGroups, setNumGroups] = useState(0);
@@ -658,6 +662,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [leaguePlayAll, setLeaguePlayAll] = useState<Record<string, boolean>>({});
   // Per-league playoffs: which leagues run their own knockout / finals stage.
   const [leaguePlayoffs, setLeaguePlayoffs] = useState<Record<string, boolean>>({});
+  /**
+   * Tournament-level playoff flag — DERIVED, never edited directly.
+   * Kept only so the legacy `enable_playoffs` column and downstream
+   * generation/scheduling code keep working unchanged.
+   */
+  const enablePlayoffs = useMemo(
+    () => Object.values(leaguePlayoffs).some(Boolean),
+    [leaguePlayoffs],
+  );
   // Per-league bye handling (falls back to the tournament-level rule).
   const [leagueByeHandling, setLeagueByeHandling] = useState<Record<string, "no_match" | "walkover_win" | "neutral">>({});
   const scoringForLeague = (gn: number): "standard" | "time_capped_points" =>
@@ -666,7 +679,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     leaguePointsPerGame[String(gn)] ?? ((pointsPerGame === 15 ? 15 : 11));
   const bestOfForLeague = (gn: number): 3 | 5 => leagueBestOf[String(gn)] ?? ((bestOf === 5 ? 5 : 3));
   const playAllForLeague = (gn: number): boolean => leaguePlayAll[String(gn)] ?? false;
-  const playoffsForLeague = (gn: number): boolean => leaguePlayoffs[String(gn)] ?? enablePlayoffs;
+  const playoffsForLeague = (gn: number): boolean => leaguePlayoffs[String(gn)] === true;
   const byeForLeague = (gn: number): "no_match" | "walkover_win" | "neutral" =>
     leagueByeHandling[String(gn)] ?? ((byeHandling || "no_match") as "no_match" | "walkover_win" | "neutral");
   const winConditionForLeague = (gn: number): "win_by_2" | "sudden_death" =>
@@ -1193,8 +1206,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const activeSteps = useMemo<WizardStep[]>(() => {
     if (!awaitingPlayerPairs) return STEPS;
     return selfPairInviteSelection
-      ? ["category", "courts", "structure", "registration", "players", "review"]
-      : ["category", "courts", "structure", "registration", "review"];
+      ? ["category", "structure", "registration", "courts", "players", "review"]
+      : ["category", "structure", "registration", "courts", "review"];
   }, [awaitingPlayerPairs, selfPairInviteSelection]);
   const stepIdx = activeSteps.indexOf(step);
 
@@ -1775,6 +1788,56 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     () => allSelectablePlayers.filter((m: any) => selectedPlayerIds.has(m.id)),
     [allSelectablePlayers, selectedPlayerIds]
   );
+
+  /**
+   * Keep league allocations seeded automatically.
+   *
+   * The Allocate step no longer asks how many leagues there are (Structure owns
+   * that), so entrants must be distributed the moment the roster or the league
+   * count changes. Existing manual placements are preserved; only new or
+   * out-of-range entrants are (re)seeded with a snake draft.
+   */
+  useEffect(() => {
+    if (!showWizard) return;
+    const n = numGroups || 0;
+    if (n < 1) return;
+    const snake = (i: number) => (Math.floor(i / n) % 2 === 0 ? i % n : n - 1 - (i % n));
+
+    if (isDoubles) {
+      const ids = doublesPairs.map((p) => p.id);
+      if (ids.length === 0) return;
+      const stale = ids.some((id) => {
+        const g = pairGroupAssignments.get(id);
+        return g === undefined || g >= n;
+      }) || pairGroupAssignments.size !== ids.length;
+      if (!stale) return;
+      setPairGroupAssignments((prev) => {
+        const next = new Map<string, number>();
+        ids.forEach((id, i) => {
+          const existing = prev.get(id);
+          next.set(id, existing !== undefined && existing < n ? existing : snake(i));
+        });
+        return next;
+      });
+      return;
+    }
+
+    const ids = selectedPlayers.map((p: any) => p.id);
+    if (ids.length === 0) return;
+    const stale = ids.some((id) => {
+      const g = groupAssignments.get(id);
+      return g === undefined || g >= n;
+    }) || groupAssignments.size !== ids.length;
+    if (!stale) return;
+    setGroupAssignments((prev) => {
+      const next = new Map<string, number>();
+      ids.forEach((id, i) => {
+        const existing = prev.get(id);
+        next.set(id, existing !== undefined && existing < n ? existing : snake(i));
+      });
+      return next;
+    });
+  }, [showWizard, numGroups, isDoubles, doublesPairs, selectedPlayers, groupAssignments, pairGroupAssignments]);
 
   // Number of "entities" (players for singles, pairs for doubles)
   const entityCount = isDoubles ? doublesPairs.length : selectedPlayerIds.size;
@@ -3763,7 +3826,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setStep("category");
     setGender("men");
     setMatchType("singles");
-    setEnablePlayoffs(false);
+    setLeaguePlayoffs({});
     setNumGroups(0);
     setChampName("");
     setStartDate("");
@@ -3842,7 +3905,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setEditingChampId(champ.id);
     setGender(champ.gender);
     setMatchType(champ.match_type || "singles");
-    setEnablePlayoffs(champ.enable_playoffs || false);
+    // Playoffs are restored per league further down (inheritedPO falls back to
+    // the legacy tournament-level `enable_playoffs` column).
     setChampName(champ.name);
     setNumGroups(champ.num_groups);
     setStartDate(champ.start_date);
@@ -4173,6 +4237,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
           m.push("At least one play day");
         }
+        // Registration window lives on this step now (all dates in one place).
+        if (registrationWindowApplies) {
+          if (!registrationOpensAt) m.push("Registration opens (date & time)");
+          if (!registrationClosesAt) m.push("Registration closes (date & time)");
+          if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
+            m.push("Registration close must be after registration open");
+          }
+        }
         break;
       }
       case "structure": {
@@ -4181,13 +4253,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
       case "registration": {
         if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
-        if (registrationWindowApplies) {
-          if (!registrationOpensAt) m.push("Registration opens (date & time)");
-          if (!registrationClosesAt) m.push("Registration closes (date & time)");
-          if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) {
-            m.push("Registration close must be after registration open");
-          }
-        }
         if (invitesApply && inviteMethods.size === 0) m.push("At least one invite delivery method");
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
           m.push("At least one accepted payment method");
@@ -4877,122 +4942,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
             <WizardSection
-              title={"Scheduling & playoffs"}
-              summary={enablePlayoffs ? "Playoffs enabled" : "No playoffs"}
-              complete={true}
-              defaultOpen={true}
+              title={"Registration window"}
+              summary={registrationWindowApplies
+                ? `${registrationOpensAt || "opens?"} → ${registrationClosesAt || "closes?"}`
+                : "Not needed for this entry flow"}
+              complete={!registrationWindowApplies || (!!registrationOpensAt && !!registrationClosesAt)}
+              defaultOpen={registrationWindowApplies}
             >
-            {/* Schedule density — fill vs spread. Court bookings are made on the final Review step. */}
-            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-              <p className="text-sm font-medium">How should games be scheduled?</p>
-              <p className="text-[11px] text-muted-foreground">
-                Controls how the generator fills the available time. You can rebuild the schedule after changing this.
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className={cn(
-                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
-                  scheduleMode === "fill" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
-                )}>
-                  <input
-                    type="radio"
-                    name="schedule-mode"
-                    className="mt-0.5"
-                    checked={scheduleMode === "fill"}
-                    onChange={() => setScheduleMode("fill")}
-                  />
-                  <div className="space-y-0.5">
-                    <div className="text-sm font-medium">Fill up games — finish as quickly as possible</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Packs every slot on the earliest day first. Later days are only used if needed — the tournament may finish in fewer days than selected.
-                    </div>
-                  </div>
-                </label>
-                <label className={cn(
-                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
-                  scheduleMode === "spread" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
-                )}>
-                  <input
-                    type="radio"
-                    name="schedule-mode"
-                    className="mt-0.5"
-                    checked={scheduleMode === "spread"}
-                    onChange={() => setScheduleMode("spread")}
-                  />
-                  <div className="space-y-0.5">
-                    <div className="text-sm font-medium">Spread across available times</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Interleaves games evenly across all selected play-days so nobody is loaded onto a single day.
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Playoff finishing options — only when playoffs are enabled */}
-            {enablePlayoffs && (
-              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+            {registrationWindowApplies ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <p className="text-sm font-medium">Playoff finishing options</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Fine-tune when the finals happen after the pool stage ends.
-                  </p>
+                  <Label className="text-sm">Registration opens</Label>
+                  <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="playoff-break" className="text-xs">
-                      Break after last pool match
-                    </Label>
-                    <div id="playoff-break" className="grid grid-cols-4 gap-1">
-                      {[0, 15, 30, 45, 60, 90, 120].map((minutes) => (
-                        <Button
-                          key={minutes}
-                          type="button"
-                          size="sm"
-                          variant={playoffBreakMinutes === minutes ? "default" : "outline"}
-                          className="h-8 px-2 text-xs"
-                          disabled={!!playoffDate}
-                          onClick={() => setPlayoffBreakMinutes(minutes)}
-                        >
-                          {minutes === 0 ? "None" : minutes === 90 ? "1½h" : minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
-                        </Button>
-                      ))}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Applies to fill-mode when playoffs run on the same day as pool play.
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="playoff-date" className="text-xs">
-                      Play finals on a specific date (optional)
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="playoff-date"
-                        type="date"
-                        className="h-9"
-                        value={playoffDate}
-                        min={startDate || undefined}
-                        max={endDate || undefined}
-                        onChange={(e) => setPlayoffDate(e.target.value)}
-                      />
-                      {playoffDate && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-9"
-                          onClick={() => setPlayoffDate("")}
-                        >
-                          Clear
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Overrides the break setting — finals are forced onto this date.
-                    </p>
-                  </div>
+                <div>
+                  <Label className="text-sm">Registration closes</Label>
+                  <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
                 </div>
               </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                The organiser picks the field for this tournament, so there is no public registration window to set.
+              </p>
             )}
             </WizardSection>
           </CardContent>
@@ -5042,21 +5013,35 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <div className="text-sm font-semibold">Tournament Structure <span className="text-destructive">*</span></div>
                   <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league has its own format, category (Men’s / Ladies’ / Mixed / Open), pools and planned player count — so one tournament can run a Ladies’ league next to a Men’s and a Mixed league. Singles vs doubles is applied to every league in the event.</div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      className="h-3.5 w-3.5"
-                      checked={enablePlayoffs}
-                      onChange={(e) => {
-                        setEnablePlayoffs(e.target.checked);
-                        // Master switch — every league follows it again until
-                        // individually overridden on its card.
-                        setLeaguePlayoffs({});
-                      }}
-                    />
-                    Include playoffs (set per league below)
-                  </label>
+                {/* Playoffs are owned by each league card below. These are
+                    bulk shortcuts that write the per-league settings — not a
+                    second source of truth. */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                    Playoffs: {(() => {
+                      const on = Array.from({ length: numGroups || 0 }, (_, i) => playoffsForLeague(i + 1)).filter(Boolean).length;
+                      if (!numGroups) return "—";
+                      return on === 0 ? "none" : on === numGroups ? "all leagues" : `${on} of ${numGroups}`;
+                    })()}
+                  </span>
+                  <Button
+                    type="button" size="sm" variant="outline" className="h-7 text-[11px]"
+                    disabled={!numGroups}
+                    onClick={() => {
+                      const next: Record<string, boolean> = {};
+                      for (let i = 1; i <= (numGroups || 0); i++) next[String(i)] = true;
+                      setLeaguePlayoffs(next);
+                    }}
+                  >
+                    All
+                  </Button>
+                  <Button
+                    type="button" size="sm" variant="outline" className="h-7 text-[11px]"
+                    disabled={!numGroups}
+                    onClick={() => setLeaguePlayoffs({})}
+                  >
+                    None
+                  </Button>
                 </div>
               </div>
 
@@ -5421,14 +5406,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   checked={playoffsForLeague(gn)}
                                   onChange={(e) => {
                                     const on = e.target.checked;
-                                    setLeaguePlayoffs((m) => {
-                                      const next = { ...m, [key]: on };
-                                      // Keep the tournament-level flag in sync: on when any league runs playoffs.
-                                      const anyOn = Array.from({ length: numGroups || 0 }, (_, i) =>
-                                        next[String(i + 1)] ?? enablePlayoffs).some(Boolean);
-                                      setEnablePlayoffs(anyOn);
-                                      return next;
-                                    });
+                                    setLeaguePlayoffs((m) => ({ ...m, [key]: on }));
                                   }}
                                 />
                                 Playoffs / finals for this league
@@ -6261,21 +6239,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <span className="font-medium text-foreground">Tournament dates:</span>{" "}
               {startDate && endDate
                 ? <span>{startDate} → {endDate}</span>
-                : <span className="text-muted-foreground italic">Go back to the Courts step to set the dates.</span>}
+                : <span className="text-muted-foreground italic">Set these on the Dates & Courts step.</span>}
             </div>
 
-            {/* Registration window — only when someone other than the organiser enters players */}
+            {/* Registration window is set on the "Dates & Courts" step so every
+                date lives in one place. */}
             {registrationWindowApplies && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-sm">Registration opens</Label>
-                  <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-sm">Registration closes</Label>
-                  <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
-                </div>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Registration opens/closes on the <span className="font-medium text-foreground">Dates &amp; Courts</span> step.
+              </p>
             )}
 
 
@@ -6782,39 +6754,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       {/* ── STEP: GROUPS ── */}
       {step === "groups" && (
         <Card>
-          <CardHeader><CardTitle>Number of Leagues</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Allocate players</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Move {entityCount} {isDoubles ? "pairs" : "players"} between the leagues you defined in Structure.
+            </p>
+          </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label>Divide {entityCount} {isDoubles ? "pairs" : "players"} into how many leagues?</Label>
-              <Select value={numGroups > 0 ? String(numGroups) : ""} onValueChange={(v) => {
-                const n = Number(v);
-                setNumGroups(n);
-                if (isDoubles) {
-                  const newMap = new Map<string, number>();
-                  doublesPairs.forEach((p, i) => {
-                    const cycle = Math.floor(i / n);
-                    const idx = cycle % 2 === 0 ? i % n : n - 1 - (i % n);
-                    newMap.set(p.id, idx);
-                  });
-                  setPairGroupAssignments(newMap);
-                } else {
-                  const newMap = new Map<string, number>();
-                  selectedPlayers.forEach((p, i) => {
-                    const cycle = Math.floor(i / n);
-                    const idx = cycle % 2 === 0 ? i % n : n - 1 - (i % n);
-                    newMap.set(p.id, idx);
-                  });
-                  setGroupAssignments(newMap);
-                }
-              }}>
-                <SelectTrigger className="w-32 mt-1"><SelectValue placeholder="Please select" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                  {Array.from({ length: Math.floor(entityCount / 2) }, (_, i) => i + 1).map((n) => (
-                    <SelectItem key={n} value={String(n)}>{n} league{n > 1 ? "s" : ""}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Read-only echo of the structure decision — Structure is the single
+                authority for how many leagues exist and what they are called. */}
+            <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+              <div className="text-xs">
+                <div className="font-medium text-foreground">
+                  {numGroups || 0} league{numGroups === 1 ? "" : "s"} defined in Structure
+                </div>
+                <div className="text-muted-foreground">
+                  {Array.from({ length: numGroups || 0 }, (_, i) =>
+                    groupLabels[String(i + 1)]?.trim() || `League ${i + 1}`).join(" · ") || "No leagues yet"}
+                </div>
+              </div>
+              <Button
+                type="button" variant="ghost" size="sm" className="h-7 text-xs"
+                onClick={() => goToStep("structure")}
+              >
+                Edit in Structure
+              </Button>
             </div>
             <Separator />
             <p className="text-xs text-muted-foreground">
@@ -7045,6 +7009,126 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
+
+            <WizardSection
+              title={"Generation mode & playoff timing"}
+              summary={`${scheduleMode === "fill" ? "Fill up" : "Spread"}${enablePlayoffs ? " · playoffs scheduled" : ""}`}
+              complete={true}
+              defaultOpen={true}
+            >
+            {/* Schedule density — fill vs spread. Court bookings are made on the final Review step. */}
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+              <p className="text-sm font-medium">How should games be scheduled?</p>
+              <p className="text-[11px] text-muted-foreground">
+                Controls how the generator fills the available time. You can rebuild the schedule after changing this.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
+                  scheduleMode === "fill" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
+                )}>
+                  <input
+                    type="radio"
+                    name="schedule-mode"
+                    className="mt-0.5"
+                    checked={scheduleMode === "fill"}
+                    onChange={() => setScheduleMode("fill")}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium">Fill up games — finish as quickly as possible</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Packs every slot on the earliest day first. Later days are only used if needed — the tournament may finish in fewer days than selected.
+                    </div>
+                  </div>
+                </label>
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border p-2.5 cursor-pointer transition-colors",
+                  scheduleMode === "spread" ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
+                )}>
+                  <input
+                    type="radio"
+                    name="schedule-mode"
+                    className="mt-0.5"
+                    checked={scheduleMode === "spread"}
+                    onChange={() => setScheduleMode("spread")}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium">Spread across available times</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Interleaves games evenly across all selected play-days so nobody is loaded onto a single day.
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Playoff finishing options — only when at least one league runs playoffs */}
+            {enablePlayoffs && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Playoff finishing options</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Fine-tune when the finals happen after the pool stage ends.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="playoff-break" className="text-xs">
+                      Break after last pool match
+                    </Label>
+                    <div id="playoff-break" className="grid grid-cols-4 gap-1">
+                      {[0, 15, 30, 45, 60, 90, 120].map((minutes) => (
+                        <Button
+                          key={minutes}
+                          type="button"
+                          size="sm"
+                          variant={playoffBreakMinutes === minutes ? "default" : "outline"}
+                          className="h-8 px-2 text-xs"
+                          disabled={!!playoffDate}
+                          onClick={() => setPlayoffBreakMinutes(minutes)}
+                        >
+                          {minutes === 0 ? "None" : minutes === 90 ? "1½h" : minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Applies to fill-mode when playoffs run on the same day as pool play.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="playoff-date" className="text-xs">
+                      Play finals on a specific date (optional)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="playoff-date"
+                        type="date"
+                        className="h-9"
+                        value={playoffDate}
+                        min={startDate || undefined}
+                        max={endDate || undefined}
+                        onChange={(e) => setPlayoffDate(e.target.value)}
+                      />
+                      {playoffDate && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-9"
+                          onClick={() => setPlayoffDate("")}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Overrides the break setting — finals are forced onto this date.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            </WizardSection>
 
             {scoringMode === "time_capped_points" && numGroups > 0 && (
               <div className="rounded-lg border p-3 bg-muted/30 space-y-3">

@@ -5842,95 +5842,144 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       {step === "registration" && (
         <Card>
           <CardHeader>
-            <CardTitle>Registration &amp; Payment</CardTitle>
+            <CardTitle>Who plays and what it costs</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Decide how members enter this tournament and whether they must pay to qualify.
+              Three questions define the entry flow. Everything else on this step appears only when it applies.
             </p>
+            <p className="text-xs font-medium text-primary">{entryFlowSummary}</p>
           </CardHeader>
           <CardContent className="space-y-5">
-            {/* ── Entry model presets — the four ways players get onto the list ── */}
-            {(() => {
-              const feeOn = Number(entryFeeRand) > 0;
-              const models = [
-                {
-                  id: "open_paid",
-                  title: "Open invitation — register & pay",
-                  desc: "Anyone eligible adds their own name. Entry fee must be paid before the entry is approved.",
-                  active: registrationRequired && registrationMode === "open" && paymentRequired && feeOn,
-                  apply: () => {
-                    setRegistrationRequired(true);
-                    setRegistrationMode("open" as any);
-                    setPaymentRequired(true);
-                    setEntrySource("self");
-                    if (!feeOn) setEntryFeeRand("");
+            {/* ── Q1 · Who gets into this tournament? ── */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">1. Who gets into this tournament?</Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {([
+                  { v: "self", title: "Players enter themselves", desc: "Eligible players add their own name to the entry list." },
+                  { v: "admin", title: "I choose the field", desc: "The organiser picks who plays — no public sign-up." },
+                  ...(scope !== "club"
+                    ? [{ v: "team_manager", title: "Team managers enter their squads", desc: "Clubs or provinces enter players on their behalf." }]
+                    : []),
+                ] as { v: "self" | "admin" | "team_manager"; title: string; desc: string }[]).map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => applyEntrySource(o.v)}
+                    className={`text-left rounded-lg border p-3 transition-colors ${
+                      entrySource === o.v
+                        ? "border-primary bg-primary/10 ring-1 ring-primary"
+                        : "border-border bg-muted/20 hover:bg-muted/40"
+                    }`}
+                  >
+                    <div className="text-sm font-medium">{o.title}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{o.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Q2 · Does an entry need confirmation? ── */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">2. Does an entry need to be confirmed?</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {([
+                  {
+                    on: false,
+                    title: entrySource === "admin" ? "No — the player is simply in" : "No — entering is final",
+                    desc: entrySource === "admin"
+                      ? "Selected players go straight onto the roster."
+                      : "An entry counts the moment it is submitted.",
                   },
-                },
-                {
-                  id: "open_free",
-                  title: "Open invitation — register, no fee",
-                  desc: "Anyone eligible adds their own name and confirms. No entry fee is charged.",
-                  active: registrationRequired && registrationMode === "open" && !feeOn,
-                  apply: () => {
-                    setRegistrationRequired(true);
-                    setRegistrationMode("open" as any);
-                    setPaymentRequired(false);
-                    setEntrySource("self");
-                    setEntryFeeRand("0");
+                  {
+                    on: true,
+                    title: entrySource === "admin" ? "Yes — the player must accept the invitation" : "Yes — I review and accept each entry",
+                    desc: entrySource === "admin"
+                      ? "Invited players confirm before they count as entered."
+                      : "Entries stay provisional until the organiser accepts them.",
                   },
-                },
-                {
-                  id: "admin_free",
-                  title: "Admin selects players — invite optional",
-                  desc: "The admin puts players on the list. No fee, no self sign-up; invites are optional confirmation.",
-                  active: !registrationRequired && registrationMode === "invite" && !feeOn,
-                  apply: () => {
-                    setRegistrationRequired(false);
-                    setRegistrationMode("invite" as any);
-                    setPaymentRequired(false);
-                    setEntrySource("admin");
-                    setEntryFeeRand("0");
-                  },
-                },
-                {
-                  id: "admin_paid",
-                  title: "Admin selects players — confirm & pay",
-                  desc: "The admin puts players on the list, but each player must confirm and pay before their entry is approved.",
-                  active: registrationRequired && registrationMode === "invite" && paymentRequired && feeOn,
-                  apply: () => {
-                    setRegistrationRequired(true);
-                    setRegistrationMode("invite" as any);
-                    setPaymentRequired(true);
-                    setEntrySource("admin");
-                    if (!feeOn) setEntryFeeRand("");
-                  },
-                },
-              ];
-              return (
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Entry model</Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    Pick how players get onto the entry list. This sets the options below — you can still fine-tune them.
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {models.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={m.apply}
-                        className={`text-left rounded-lg border p-3 transition-colors ${
-                          m.active
-                            ? "border-primary bg-primary/10 ring-1 ring-primary"
-                            : "border-border bg-muted/20 hover:bg-muted/40"
-                        }`}
-                      >
-                        <div className="text-sm font-medium">{m.title}</div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5">{m.desc}</div>
-                      </button>
-                    ))}
-                  </div>
+                ]).map((o) => (
+                  <button
+                    key={String(o.on)}
+                    type="button"
+                    onClick={() => applyConfirmation(o.on)}
+                    className={`text-left rounded-lg border p-3 transition-colors ${
+                      confirmationRequired === o.on
+                        ? "border-primary bg-primary/10 ring-1 ring-primary"
+                        : "border-border bg-muted/20 hover:bg-muted/40"
+                    }`}
+                  >
+                    <div className="text-sm font-medium">{o.title}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{o.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Q3 · Is there an entry fee? ── */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">3. Is there an entry fee?</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyEntryFee("0")}
+                  className={`text-left rounded-lg border p-3 transition-colors ${
+                    !isPaidTournament
+                      ? "border-primary bg-primary/10 ring-1 ring-primary"
+                      : "border-border bg-muted/20 hover:bg-muted/40"
+                  }`}
+                >
+                  <div className="text-sm font-medium">Free</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">No money changes hands — nobody is asked to pay.</div>
+                </button>
+                <div
+                  className={`rounded-lg border p-3 ${
+                    isPaidTournament ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20"
+                  }`}
+                >
+                  <Label className="text-sm font-medium">Entry fee (ZAR)</Label>
+                  <Input
+                    type="number" min={0} step="1" inputMode="decimal"
+                    value={isPaidTournament ? entryFeeRand : ""}
+                    onChange={(e) => applyEntryFee(e.target.value)}
+                    placeholder="e.g. 120"
+                    className="mt-1 h-9"
+                  />
                 </div>
-              );
-            })()}
+              </div>
+
+              {isPaidTournament && (
+                <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                  <Label className="text-sm">When is the fee due?</Label>
+                  <div className="flex flex-wrap items-center gap-4 text-sm">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="payment-timing"
+                        checked={paymentTiming === "on_entry"}
+                        onChange={() => setPaymentTiming("on_entry")}
+                      />
+                      On entry — pay to be on the list
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="payment-timing"
+                        checked={paymentTiming === "after_acceptance"}
+                        onChange={() => {
+                          setPaymentTiming("after_acceptance");
+                          if (!confirmationRequired) applyConfirmation(true);
+                        }}
+                      />
+                      After acceptance — pay once the entry is confirmed
+                    </label>
+                  </div>
+                  {paymentTiming === "after_acceptance" && !confirmationRequired && (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                      Paying after acceptance needs a confirmation step — question 2 will be switched on.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
 
             <WizardSection
               title={"Entry fee & payment"}

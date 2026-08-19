@@ -5270,6 +5270,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       className="h-8 text-xs mt-0.5 px-1.5"
                                     />
                                   </div>
+                                  {fmt === "swiss" && (
+                                    <div className="w-16 shrink-0">
+                                      <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Rounds</Label>
+                                      <Input
+                                        type="number"
+                                        min={1}
+                                        max={20}
+                                        placeholder="auto"
+                                        title="How many Swiss rounds each pool plays"
+                                        value={swissRounds[key] ? String(swissRounds[key]) : ""}
+                                        onChange={(e) => {
+                                          const v = Number(e.target.value);
+                                          setSwissRounds((m) => {
+                                            const next = { ...m };
+                                            if (v > 0) next[key] = Math.min(20, Math.round(v));
+                                            else delete next[key];
+                                            return next;
+                                          });
+                                        }}
+                                        className="h-8 text-xs mt-0.5 px-1.5"
+                                      />
+                                    </div>
+                                  )}
                                   <div className="w-20 shrink-0">
                                     <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
                                       {isDoubles ? "Pairs" : "Players"}

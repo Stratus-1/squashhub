@@ -4581,14 +4581,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Age limits and licence requirements live in <strong>Governance → Eligibility</strong>.
+                    Sets who is <strong>eligible</strong>. Who actually receives an invitation is configured in{" "}
+                    <strong>Entry &amp; fees / Players</strong>.
                   </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.hint}
+                  </p>
+                  {eligibility && (
+                    <p className="text-[11px] font-medium text-primary mt-1">Eligible: {eligibility.summary}</p>
+                  )}
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                This sets <strong>who is eligible</strong>. Whether they sign themselves up or you invite them is set once, on the{" "}
-                <strong>Entries &amp; seeding</strong> step ("how do players enter?"). Ranking status lives on the scoring
-                settings, and the sanctioning authority in <strong>Governance</strong>.
+                Eligibility is not an invitation list — it only decides who <em>may</em> take part. Age limits and licence
+                requirements live in <strong>Governance → Eligibility</strong>; ranking status lives on the scoring settings
+                and the sanctioning authority in <strong>Governance</strong>.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

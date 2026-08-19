@@ -122,10 +122,11 @@ export function BarQrLabelsDialog({ open, onOpenChange, clubId, clubName, subdom
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto print:max-w-none print:max-h-none print:overflow-visible print:shadow-none print:border-0">
         <DialogHeader className="print:hidden">
-          <DialogTitle className="flex items-center gap-2"><QrCode className="w-4 h-4" /> QR labels</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><QrCode className="w-4 h-4" /> Product QR labels</DialogTitle>
           <DialogDescription>
-            Print club-specific stickers. Each QR opens {clubName}&apos;s scan-to-pay page for that exact product —
-            members can charge it to their account, visitors pay at the bar.
+            Print club-specific stickers — one per product. Each QR opens {clubName}&apos;s scan-to-pay page for
+            that exact item, so a customer buys it in a tap: visitors pay by card, members can charge it to their
+            member account. The venue poster below is the Menu QR: it opens the whole bar menu instead.
           </DialogDescription>
         </DialogHeader>
 
@@ -150,7 +151,7 @@ export function BarQrLabelsDialog({ open, onOpenChange, clubId, clubName, subdom
             <Card className="p-3 flex items-center gap-3">
               <QRCodeSVG value={buildScanUrl(venueCode.code, subdomain)} size={64} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">Venue poster — whole bar menu</p>
+                <p className="text-sm font-medium">Menu QR — venue poster for the whole bar menu</p>
                 <p className="text-[11px] text-muted-foreground break-all">{buildScanUrl(venueCode.code, subdomain)}</p>
               </div>
               <Button variant="ghost" size="icon" className="h-7 w-7" title="Issue a new code" onClick={() => regenerate(venueCode)}>
@@ -221,9 +222,9 @@ export function BarQrLabelsDialog({ open, onOpenChange, clubId, clubName, subdom
           {venueCode && (
             <div className="mt-6 border rounded p-6 flex flex-col items-center text-center break-before-page">
               <p className="text-xl font-bold">{clubName}</p>
-              <p className="text-sm mb-3">Scan to pay at the bar</p>
+              <p className="text-sm mb-3">Scan to browse the bar menu and pay</p>
               <QRCodeSVG value={buildScanUrl(venueCode.code, subdomain)} size={260} />
-              <p className="text-xs mt-3">Members: log in to charge your account. Visitors: pay by card or cash.</p>
+              <p className="text-xs mt-3">Visitors: pick your items and pay by card. Members: log in to charge your account.</p>
             </div>
           )}
         </div>

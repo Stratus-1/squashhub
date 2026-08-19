@@ -131,8 +131,8 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
   bar: {
     slug: "bar",
     label: "Bar / POS",
-    question: "Do you run a bar or tuck shop?",
-    description: "Stock, honesty-bar tabs, visitor sales and scan-to-pay QR codes.",
+    question: "Do you run a bar, tuck shop or self-service POS?",
+    description: "Stock, member account tabs, visitor card sales and scan-to-pay Menu / Product QR codes.",
     group: "money",
     requires: [],
     worksWith: ["finance", "payments", "visitors"],

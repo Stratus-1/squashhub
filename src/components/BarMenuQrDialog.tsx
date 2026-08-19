@@ -1,5 +1,5 @@
 /**
- * Share the club's Honesty Bar menu QR code.
+ * Share the club's bar Menu QR code (self-service bar & POS).
  *
  * Any club member can open this from the Honesty Bar page, show the QR on
  * screen for a visitor to scan, copy the link, or share it via the native
@@ -43,7 +43,7 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
     return () => { cancelled = true; };
   }, [open, clubId, subdomain, url]);
 
-  const shareText = `${clubName || "Our club"} Honesty Bar — browse the menu and pay: `;
+  const shareText = `${clubName || "Our club"} bar — browse the menu and pay: `;
 
   const copy = async () => {
     if (!url) return;
@@ -55,7 +55,7 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
     if (!url) return;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Honesty Bar menu", text: shareText, url });
+        await navigator.share({ title: "Bar menu", text: shareText, url });
         return;
       } catch { /* user cancelled */ }
     }
@@ -66,9 +66,9 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Honesty Bar QR code</DialogTitle>
+          <DialogTitle>Menu QR code</DialogTitle>
           <DialogDescription>
-            Let a visitor scan this with their phone camera to open the full bar menu and pay.
+            One code for the whole bar. Anyone can scan it with their phone camera to open the full menu, pick items and pay by card — members can also charge purchases to their member account.
           </DialogDescription>
         </DialogHeader>
 

@@ -12,6 +12,7 @@ import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon, AlertTriangle, PackagePlus, FileText, X, Upload, Sparkles, Loader2, QrCode } from "lucide-react";
 import { BarQrLabelsDialog } from "./BarQrLabelsDialog";
+import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -120,7 +121,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
   const toggleBarEnabled = async () => {
     try {
       await updateClub.mutateAsync({ id: club.id, honesty_bar_enabled: !club.honesty_bar_enabled });
-      toast.success(club.honesty_bar_enabled ? "Honesty bar disabled" : "Honesty bar enabled");
+      toast.success(club.honesty_bar_enabled ? "Self-service bar disabled" : "Self-service bar enabled");
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -129,6 +130,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
   const enabled = !!club.honesty_bar_enabled;
   const [step, setStep] = useState("items");
   const [qrOpen, setQrOpen] = useState(false);
+  const [menuQrOpen, setMenuQrOpen] = useState(false);
   const [qrItemId, setQrItemId] = useState<string | null>(null);
   const openQrLabels = (itemId?: string) => {
     setQrItemId(itemId || null);
@@ -136,10 +138,10 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
   };
 
   const barSteps: SetupStep[] = [
-    { id: "items", label: "Items & prices", description: "List everything on sale at the bar with its selling price and current stock.", complete: items.length > 0 },
+    { id: "items", label: "Items & prices", description: "List everything on sale at the bar with its selling price and current stock — this is the menu customers see when they scan.", complete: items.length > 0 },
     { id: "stock-purchases", label: "Stock purchases", description: "Record supplier invoices so stock levels and bar cost of sales stay accurate.", complete: stockPurchases.length > 0 },
-    { id: "member-sales", label: "Member sales", description: "Bar items charged to member accounts — and a way to add a charge on a member's behalf.", complete: enabled },
-    { id: "card-sales", label: "Card sales", description: "Visitor and walk-in sales paid on the card machine instead of a member account.", complete: enabled },
+    { id: "member-sales", label: "Member sales", description: "Purchases charged to a member's account tab — and a way to add a charge on a member's behalf.", complete: enabled },
+    { id: "card-sales", label: "Card sales", description: "Visitor, walk-in and scan-to-pay sales paid by card instead of a member account.", complete: enabled },
   ];
 
 
@@ -147,23 +149,30 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
   return (
     <div className="space-y-6 mt-4">
       <Card className="p-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="font-semibold">Honesty Bar</h3>
+            <h3 className="font-semibold">Self-service Bar &amp; POS</h3>
             <p className="text-sm text-muted-foreground">
-              When enabled, members see the self-service bar tab and items are charged to their account.
-              Disable it to set up products and stock without exposing the bar to members.
+              Let members and visitors buy from the bar without staff assistance. Share one Menu QR for the full
+              product list, or print individual Product QR labels for quick item-by-item purchases. Visitors can
+              select items and pay by card; members can also charge purchases to their member account.
+              Turn it off to set up products and stock without opening the bar to customers.
             </p>
             <p className="text-xs mt-2">
               Status:{" "}
               <span className={enabled ? "text-emerald-600 font-medium" : "text-muted-foreground font-medium"}>
-                {enabled ? "Live to members" : "Hidden from members (admin setup mode)"}
+                {enabled
+                  ? "Self-service purchasing is live for members and visitors"
+                  : "Self-service purchasing is off (admin setup mode)"}
               </span>
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" variant="outline" onClick={() => setMenuQrOpen(true)}>
+              <QrCode className="w-3.5 h-3.5 mr-1" /> Menu QR
+            </Button>
             <Button size="sm" variant="outline" onClick={() => openQrLabels()}>
-              <QrCode className="w-3.5 h-3.5 mr-1" /> QR labels
+              <QrCode className="w-3.5 h-3.5 mr-1" /> Product QR labels
             </Button>
             <Switch
               checked={enabled}
@@ -180,18 +189,34 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         <div className="space-y-4">
           <Card className="p-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="font-semibold text-sm">Scan-to-pay QR labels</h3>
+              <h3 className="font-semibold text-sm">Scan-to-pay QR codes</h3>
               <p className="text-xs text-muted-foreground">
-                Print club-specific QR stickers per product, plus a venue poster for the whole menu.
+                <span className="font-medium text-foreground">Menu QR</span> — one code (poster or screen) that opens
+                your full bar menu: anyone can pick items and pay by card, members can charge to their account.{" "}
+                <span className="font-medium text-foreground">Product QR labels</span> — a club-specific sticker per
+                product so a customer scans straight to that item and buys it in a tap.
               </p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => openQrLabels()}>
-              <QrCode className="w-3.5 h-3.5 mr-1" /> QR labels
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setMenuQrOpen(true)}>
+                <QrCode className="w-3.5 h-3.5 mr-1" /> Menu QR
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => openQrLabels()}>
+                <QrCode className="w-3.5 h-3.5 mr-1" /> Product QR labels
+              </Button>
+            </div>
           </Card>
           <ItemManager clubId={clubId} items={items} loading={itemsLoading} onQrLabels={openQrLabels} />
         </div>
       )}
+
+      <BarMenuQrDialog
+        open={menuQrOpen}
+        onOpenChange={setMenuQrOpen}
+        clubId={clubId}
+        clubName={club.name}
+        subdomain={(club as any).subdomain}
+      />
 
       <BarQrLabelsDialog
         open={qrOpen}
@@ -202,6 +227,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         items={items}
         focusItemId={qrItemId}
       />
+
 
 
       {step === "stock-purchases" && (
@@ -487,7 +513,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
         <div className="flex items-center gap-2">
           {onQrLabels && (
             <Button size="sm" variant="outline" onClick={() => onQrLabels()}>
-              <QrCode className="w-3.5 h-3.5 mr-1" />QR labels
+              <QrCode className="w-3.5 h-3.5 mr-1" />Product QR labels
             </Button>
           )}
           {!adding && !editItem && (

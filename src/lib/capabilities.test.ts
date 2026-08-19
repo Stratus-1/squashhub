@@ -8,6 +8,8 @@ import {
   TAB_CAPABILITY,
   dependentsOf,
   withDependencies,
+  isTabVisible,
+  moduleState,
   type Capability,
 } from "./capabilities";
 
@@ -91,5 +93,42 @@ describe("small-club defaults", () => {
     // Money modules stay off until a club asks for them
     expect(defaults.has("finance")).toBe(false);
     expect(defaults.has("bar")).toBe(false);
+  });
+});
+
+describe("isTabVisible (UI gating)", () => {
+  const enabled = new Set<string>(["bookings", "ladder"]);
+
+  it("always shows core tabs", () => {
+    expect(isTabVisible({}, new Set())).toBe(true);
+  });
+
+  it("shows optional tabs only when enabled", () => {
+    expect(isTabVisible({ capability: "bookings" }, enabled)).toBe(true);
+    expect(isTabVisible({ capability: "bar" }, enabled)).toBe(false);
+  });
+
+  it("fails open for tenants with no capability rows", () => {
+    expect(isTabVisible({ capability: "bar" }, new Set(), false)).toBe(true);
+  });
+});
+
+describe("moduleState (Off / needs setup / ready)", () => {
+  it("reports off for a disabled capability regardless of configuration", () => {
+    expect(moduleState("bookings", new Set(), { courts: "complete" })).toBe("off");
+  });
+
+  it("reports needs_setup when enabled but unconfigured", () => {
+    expect(moduleState("bookings", new Set(["bookings"]), { courts: "incomplete" })).toBe(
+      "needs_setup"
+    );
+  });
+
+  it("reports ready when enabled and configured", () => {
+    expect(moduleState("bookings", new Set(["bookings"]), { courts: "complete" })).toBe("ready");
+  });
+
+  it("treats capabilities with no setup step as ready once on", () => {
+    expect(moduleState("events", new Set(["events"]))).toBe("ready");
   });
 });

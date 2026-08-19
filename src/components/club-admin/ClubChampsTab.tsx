@@ -6092,7 +6092,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             {/* League-ranking handicap — singles only */}
             {matchType === "singles" && (
               <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
-                <Label className="text-sm">Handicap scoring</Label>
+                <Label className="text-sm">Handicap mode</Label>
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input

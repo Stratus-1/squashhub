@@ -1618,7 +1618,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // the same visitor reuses the same member row instead of creating duplicates.
   // Returns the input list with visitor-* IDs mapped to the promoted member IDs.
   const promoteVisitorIds = async (ids: string[]): Promise<string[]> => {
-    const visitorIds = ids.filter((id) => id.startsWith("visitor-")).map((id) => id.slice("visitor-".length));
+    const visitorIds = ids.filter((id) => typeof id === "string" && id.startsWith("visitor-")).map((id) => id.slice("visitor-".length));
     if (visitorIds.length === 0) return ids;
     const markers = visitorIds.map((vid) => `visitor:${vid}`);
     // Fetch already-promoted rows

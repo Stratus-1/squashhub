@@ -859,6 +859,17 @@ export default function Dashboard() {
             <span className="text-xs font-medium leading-tight text-center">Tournaments</span>
           </Button>
 )}
+          {effectiveClub && barEnabled && (effectiveClub as any)?.honesty_bar_enabled && (
+            <Button
+              variant="outline"
+              className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20"
+              onClick={() => navigate("/honesty-bar")}
+              title="Buy drinks & snacks — pay now or charge to your member account"
+            >
+              <Wine className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">Bar / POS</span>
+            </Button>
+          )}
           {/* My Profile still desktop-only; My Account shown on all viewports per request */}
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />

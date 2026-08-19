@@ -840,7 +840,7 @@ export default function Dashboard() {
           )}
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20" onClick={() => navigate("/tournaments")}>
             <Trophy className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Club Tournaments</span>
+            <span className="text-xs font-medium leading-tight text-center">Tournaments</span>
           </Button>
           {/* My Profile still desktop-only; My Account shown on all viewports per request */}
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>

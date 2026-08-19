@@ -3,6 +3,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
+import { useCapabilities } from "@/hooks/use-club-capabilities";
 
 /**
  * Visibility flags used by the desktop AppSidebar.

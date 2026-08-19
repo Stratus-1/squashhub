@@ -164,14 +164,26 @@ export function useChampMarkerHeartbeat(
         }, { onConflict: "match_id" });
       } catch (e) { console.warn("Champ marker heartbeat failed", e); }
     };
+    const releaseNow = () => {
+      try { table().delete().eq("match_id", matchId).eq("user_id", userId).then(() => {}, () => {}); } catch {}
+    };
     beat();
     const id = setInterval(() => { if (!cancelled) beat(); }, HEARTBEAT_MS);
+    // Hard close / app switch: drop the lock immediately so the game does not
+    // stay flagged as "being marked" for up to a minute.
+    const onPageHide = () => releaseNow();
+    const onVisibility = () => { if (document.visibilityState === "hidden") releaseNow(); else beat(); };
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       cancelled = true;
       clearInterval(id);
-      table().delete().eq("match_id", matchId).eq("user_id", userId).then(() => {}, () => {});
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      releaseNow();
     };
   }, [active, matchId, userId]);
+
 }
 
 /** Live locks across many matches (fixture list "LIVE"/"being marked" chips). */

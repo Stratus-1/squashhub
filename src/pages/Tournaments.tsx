@@ -251,7 +251,13 @@ export default function Tournaments() {
     });
   }, [upcomingMatches, allChamps, poolByMatchId]);
 
-  const bucketColor = (key: string) => getBucketColor(key);
+  // Give every league/pool bucket its own distinct colour (sorted order), so
+  // Pool A and Pool B of the same league never look alike.
+  const bucketColorMap = useMemo(
+    () => buildBucketColorMap(buckets.map((b) => b.key)),
+    [buckets]
+  );
+  const bucketColor = (key: string) => bucketColorMap.get(key) ?? getBucketColor(key);
 
   const bucketLabel = (b: { champId: string; group: number | null; pool: number | null; stage?: string | null; stageLabel?: string | null }, opts: { withChamp?: boolean } = {}) => {
     const champ = allChamps.find((c: any) => c.id === b.champId);

@@ -1,120 +1,98 @@
-# Tournament Governance — single source of truth + readiness gate
+# One roster: make the Players step the single place to manage participants
 
-Review based on the Governance dialog (`TournamentGovernanceDialog`), the setup wizard (`ClubChampsTab`), and Riverside's live tournament rows.
+Today a tournament's people live in two tables and are managed in two places. `club_champs_registrations` holds the entry workflow (invite, accept, payment, proof of payment, partner). `club_champs_entries` holds the confirmed roster with group/order placement. The wizard's Players step reads and rewrites entries; the separate **Registrations** button opens a second dialog that edits registrations. The two can disagree — the live database currently has 365 non-cancelled registrations with no matching entry row, and 51 entry rows with no registration row.
 
-## What Riverside shows today
+The fix is a read model, not a schema rewrite: derive one participant list from both tables, render it in the Players step, and let every admin action write to the right table underneath.
 
-- **Riverside Open** (status `planning`): entry fee R0 but `payment_required = true`; sanction status `pending` with a sanctioning body chosen but no sanction reference; federation share 5c and association share 4c on a free event; entries open and close at the *same* minute (18 Aug 23:34); competition level `regional` while the event is owned/run at club level.
-- Three older Riverside events: `payment_required = true` on a free Bells evening, no refund policy or cut-off on paid events (R150, R120).
+## 1. The two state axes
 
-None of this blocked activation, because nothing checks governance before a tournament goes live.
+Participation status (never derived from money):
 
-## Duplicated / overlapping controls
+| State | Meaning |
+| --- | --- |
+| `invited` | Organiser invited them; player has not responded |
+| `pending_approval` | Player/team manager entered; organiser must accept |
+| `confirmed` | On the roster; counts for draws, groups and scheduling |
+| `declined` | Player turned the invitation down |
+| `withdrawn` | Was in, then pulled out or was removed by the organiser |
 
-| Concept | Wizard | Governance dialog | Verdict |
-|---|---|---|---|
-| Who may enter (eligibility scope) | editable (Step 1, synced into governance) | editable (Eligibility tab) | Duplicated — two editors, last save wins |
-| Entries open / close | editable | read-only summary | Already correct |
-| Entry fee, payment required | editable | read-only summary | Already correct |
-| Registration mode / entry source / approval gate | editable (new Q1/Q2) | not shown | Correct, but governance should *show* it |
-| Payment timing | editable | absent | Governance should show it read-only |
-| Age limits, licence required, eligibility notes | absent | editable | Correct |
-| Sanctioning (status, authority, reference, notes), competition level | absent | editable | Correct |
-| Owning body | Step 1 owner picker | Ownership tab | Duplicated |
-| Fee shares, refunds, host venues/host fees | absent | editable | Correct |
-| Dates (play dates) | editable (Courts step) | venue rows only | Correct |
-| Scoring/rules (points, best-of, handicap, no-show) | editable | absent | Correct |
+Payment status (only shown when the tournament charges a fee):
 
-### Authoritative location (proposed)
+| State | Meaning |
+| --- | --- |
+| `not_required` | Free tournament — column hidden |
+| `unpaid` | Fee owed, nothing received |
+| `pending_card` | Card checkout started, not settled |
+| `pending_eft` | EFT claimed; proof may be attached and needs review |
+| `paid` | Settled |
+| `waived` | Organiser waived the fee |
 
-- **Wizard owns:** name, format, dates/courts, scoring & rules, entry flow (entry source, confirmation, fee amount, payment timing, payment methods), registration window, invites, partner mode, ranking-points flag.
-- **Governance owns:** owning body, competition level, sanctioning block, age limits, licence requirement, eligibility scope, eligibility notes, fee shares (federation/association), host venues & host compensation, refund policy and cut-off, audit history.
-- **Changes required to remove double-editing:**
-  1. Eligibility scope becomes **governance-owned**. Wizard Step 1 shows it read-only with a "Change in Governance" link (or keeps the editor but writes through the same mutation and drops the separate upsert — pick governance-owned for consistency).
-  2. Owning body becomes **governance-owned**; wizard shows the owner as read-only text.
-  3. Governance gains a read-only "Entry flow" panel: entry source · confirmation · fee · payment timing · window, each deep-linking back to the wizard step.
-  4. Governance `registration_required` / `registration_mode` are never edited in the dialog (already true) — remove them from anything that looks editable and keep them in the audit labels only.
+Plus two display-only flags already available: **on the draw** (has an entries row with a group) and **account activated** (from `get_champ_signup_status`).
 
-## Governance completeness (calculated, not a checkbox)
+## 2. How today's data maps in
 
-A pure function `getGovernanceReadiness(tournament, governance, venues, owner)` returns `{ status: 'complete' | 'needs_attention', missing: Item[], warnings: Item[] }`, where each item has `{ key, label, section: 'ownership'|'eligibility'|'fees'|'venues'|'wizard:registration', severity: 'required'|'warning' }`.
+`club_champs_registrations.status` is currently doing both jobs. Mapping (read-only, no data migration):
 
-### Required by context
+| Legacy row | Participation | Payment |
+| --- | --- | --- |
+| `paid` | `confirmed` | `paid` if fee > 0, else `not_required` |
+| `waived` | `confirmed` | `waived` |
+| `invited` | `invited` | `unpaid` |
+| `pending_payment`, `confirmed_at` null, `invited_by_admin` true | `invited` | `unpaid` |
+| `pending_payment`, `confirmed_at` set | `confirmed` | `pending_card` |
+| `pending_eft` | `confirmed` | `pending_eft` |
+| `cancelled`, `confirmed_at` set | `withdrawn` | unchanged |
+| `cancelled`, never confirmed, was invited | `declined` | n/a |
+| entry row with no registration row | `confirmed` | `not_required` |
 
-Always required:
-- Owning body assigned
-- Eligibility scope set
-- At least one venue (host club) — required once a draw or schedule exists
-- Play dates set (start/end)
+Approval-gated tournaments (`approval_gate = 'admin_accept'` with self entry) read `pending_payment` + no `confirmed_at` as `pending_approval` instead of `invited`.
 
-Association / regional / national (competition level ≠ club, or owner is association/federation):
-- Competition level
-- Sanction status; if `pending` or `approved`: sanctioning authority; if `approved`: sanction reference
-- Refund policy (and cut-off date when policy is not "No refunds")
+One additive, non-destructive migration adds nullable `participation_status` and `withdrawn_at` to `club_champs_registrations`, backfilled with the mapping above. The legacy `status` column keeps being written exactly as it is today so payment webhooks, `accept_tournament_invite`, notification triggers and the invite dialog keep working untouched.
 
-Paid events (`entry_fee_cents > 0`):
-- At least one payment method
-- Refund policy (cut-off required unless "No refunds")
-- Fee shares must not exceed the entry fee (already computed by `computeFeeSplit.overAllocated`)
-- Payment timing set
+## 3. When someone joins the roster
 
-Free events (`entry_fee_cents = 0`):
-- Warn if `payment_required = true`, or if federation/association shares are non-zero (exactly Riverside Open's state)
+A registration row is created the moment anyone enters — admin pick, self sign-up, team-manager entry or invite. An **entries** row (the draw seat) is created only when participation reaches `confirmed` and the organiser is placing people into groups or pairs. That keeps draw generation on the same data it uses now and avoids half-registered players silently appearing in a draw.
 
-Self-entry / open registration (`entry_source = self`):
-- Entries open and close both set, close strictly after open
-- Entries close on or before the start date (warning if after)
+If the tournament requires payment before play, `confirmed` is still reached on acceptance; the unpaid state is shown as a warning badge and can optionally block draw placement — surfaced as a checkbox, not a hidden rule.
 
-Organiser-selected / invite (`entry_source = admin` or `team_manager`):
-- At least one invite delivery method
-- At least one player on the entry list before invites are sent
+## 4. What the Players step becomes
 
-Age / licence restrictions:
-- If min or max age set: both must be sane (min < max) and eligibility notes recommended (warning)
-- If licence required: sanctioning authority required (a licence check needs a body that issues it)
-
-Approval gate on (`approval_gate = admin_accept`) or payment after acceptance:
-- Confirmation contact channel present (invite method or email) — warning only
-
-### UI: Governance status card
-
-Placed at the top of the Governance dialog and as a compact strip on the tournament card in the tournaments list:
+One table, everyone in it, whatever route they arrived by:
 
 ```text
-Governance — Riverside Open              [Needs attention · 4 items]
- x  Sanction reference missing            -> Ownership
- x  Entries close must be after open      -> Setup - Who plays & what it costs
- !  Free event but shares are set (R0.09) -> Fees & refunds
- !  Payment required is on for a free event -> Setup - Who plays & what it costs
+Player            Participation      Payment        Partner    Group
+Willem P.         Confirmed          Paid           Deidre     A
+Sarah M.          Pending approval   Pending EFT*   —          —
+Johan K.          Invited            Unpaid         —          —
+Chris L.          Declined           —              —          —
 ```
 
-- Green "Complete" badge with a one-line summary when nothing is outstanding.
-- Every row is a button that opens the owning tab (or opens the wizard on the right step).
-- Same card rendered read-only inside the wizard Review step so the admin sees the blockers before pressing Generate.
+- Filter chips across the top: All / Confirmed / Awaiting response / Needs approval / Payment outstanding / Out.
+- Row actions by state: Approve, Reject, Mark paid, Waive fee, View proof, Remove/Withdraw, Re-invite, Set partner.
+- Bulk actions on selection: approve, mark paid, waive, remove, invite.
+- The existing "add players" picker stays and becomes the *admin entry* path; picking a member creates a confirmed registration exactly as it does now.
+- Group/pair assignment stays where it is; the roster table is the source of who is eligible to be placed.
+- Counters at the top: confirmed, awaiting, unpaid, on the draw.
 
-### Hard block vs warn
+Behaviour per flow: admin-selected players appear instantly as Confirmed; self-registered appear as Pending approval or Confirmed depending on the approval gate; invited appear as Invited and flip to Confirmed or Declined on their response.
 
-| Action | Behaviour |
-|---|---|
-| Save draft / edit wizard | Never blocked |
-| Open registration (entries become visible/enterable) | Hard block on required items |
-| Send invites | Hard block on required items + at least one invite method + non-empty list |
-| Generate draw / schedule | Hard block on required items |
-| Publish / set status `active` | Hard block on required items |
-| Set status `completed` | Warn only |
-| Any warning-severity item | Toast + confirm dialog listing them; admin can proceed |
+## 5. The Registrations dialog
 
-Blocked buttons stay clickable and open the status card explaining exactly what is missing (never a silently disabled button with no reason).
+Keep it in place for the first release, so nothing regresses while the merged table is exercised on a live tournament. Once the Players step covers approve/reject, mark paid, waive, proof viewing, partner override and cancel — all of which the current dialog does — replace the tournament-card button with **Players**, which opens the wizard directly on that step. The dialog file gets deleted in a follow-up, not in this change. Entries lock/unlock, currently only in that dialog, moves onto the Players step header.
+
+Governance stays exactly where it is — no participant controls move into it, no governance controls move out.
+
+## 6. Risks
+
+- **Doubles pairing** is the most delicate area: `syncDoublesRegistrationsForPairs` rewrites registration rows from pairs, and self-pairing writes partners from the player side. The merged view must never let a roster edit clear a player-confirmed partner. Pair edits keep going through the existing sync helper only.
+- **Destructive re-writes**: `saveEntriesDraft` currently deletes all entries for a tournament and re-inserts. That behaviour is kept as-is, but the roster read model must not depend on entries surviving between saves.
+- **Legacy `paid` overload**: 365 rows are `paid` including free tournaments. The mapping treats `paid` on a zero-fee tournament as `not_required`, so free events won't display misleading "Paid" badges.
+- **Live tournaments**: mapping is read-only and the backfill is additive, so an in-progress tournament sees the same roster it has now, just labelled more precisely.
+- **Notification triggers** fire on `invited_by_admin` INSERT. New roster actions must follow the existing rule: allocation never sets that flag, only an explicit invite does.
 
 ## Technical notes
 
-- New file `src/lib/tournaments/governance-readiness.ts` — pure function plus `REQUIRED_BY_CONTEXT` rules, unit-testable with no React.
-- New component `src/components/tournaments/GovernanceStatusCard.tsx` — used in the dialog, in the wizard Review step, and (compact variant) on the tournament list card.
-- No schema change needed: every rule reads existing `tournament_governance`, `tournament_venues`, `tournaments` and `club_champs` columns, including the recently added `entry_source`, `approval_gate` and `payment_timing`.
-- Server-side backstop (optional, phase 2): a `BEFORE UPDATE` trigger on `tournaments` rejecting `status -> 'active'` when the same rules fail, so an API caller cannot bypass the UI.
-- Gating hooks: wrap the existing `setChampStatus` mutation, the invite send path, and the Generate Schedule button in a shared `useGovernanceGate(tournamentId)` helper returning `{ ready, missing, requireReady(action) }`.
-- The "Who plays and what it costs" step keeps its three questions and gains only a read-only governance summary block (owner · level · sanction · eligibility · refunds) with a "Open governance" link — no new editors.
-
-## Out of scope for this change
-
-Fee-split maths, host compensation rates, and the audit trail stay exactly as they are.
+- New `src/lib/tournament-roster.ts`: `deriveParticipant(reg, entry, champ, governance)` returning `{ participation, payment, onDraw, activated }`, plus `mapLegacyStatus`.
+- New `useTournamentRoster(champId)` hook: single query joining registrations + entries + `get_champ_signup_status`, keyed so existing `champ-registrations` invalidations also refresh it.
+- New `TournamentRosterTable` component rendered inside the Players step's WizardSection; action mutations mirror the ones in `TournamentRegistrationsDialog` so semantics are identical.
+- Migration: `alter table club_champs_registrations add column participation_status text, add column withdrawn_at timestamptz;` plus a backfill update. No drops, no constraint changes, no RLS changes.

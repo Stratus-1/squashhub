@@ -184,11 +184,16 @@ export default function ClubAdmin() {
       case "whatsapp": return <div className="mt-4"><WhatsAppBillingCard clubId={club.id} /></div>;
       case "router": return <RouterTab clubId={club.id} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
+      case "features": return <FeaturesTab clubId={club.id} club={club} />;
       default: return null;
     }
   };
 
   const activeTabMeta = visibleTabs.find(t => t.value === activeTab);
+
+  // Explicit core progress — optional modules are reported per tile instead.
+  const coreKeys = CORE_SETUP_KEYS.filter(k => visibleSetup.concat(visibleOps).some(t => t.value === k));
+  const coreDone = coreKeys.filter(k => setupStatus[k as keyof SetupStatusMap] === "complete").length;
 
   return (
     <div className="min-h-screen pb-20 text-[13px]">
@@ -203,11 +208,9 @@ export default function ClubAdmin() {
             <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
               <div className="flex items-center justify-between">
                 <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Setup &amp; Configuration</h3>
-                {(() => {
-                  const total = visibleSetup.filter(t => !t.noStatus).length;
-                  const done = visibleSetup.filter(t => !t.noStatus && setupStatus[t.value as keyof SetupStatusMap] === "complete").length;
-                  return <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">{done}/{total} complete</span>;
-                })()}
+                <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">
+                  Core setup: {coreDone}/{coreKeys.length} complete
+                </span>
               </div>
               <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2 md:gap-2.5">
 

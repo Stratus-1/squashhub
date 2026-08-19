@@ -50,6 +50,7 @@ import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
+import { CapacityCheck } from "@/components/club-admin/tournament/CapacityCheck";
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
 
 interface ClubChampsTabProps {

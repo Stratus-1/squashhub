@@ -113,7 +113,12 @@ export function classifyReply(payload: string | null | undefined, text?: string 
     }
   }
 
-  const ambiguous = matched(AMBIGUOUS, normalised);
+  // Idioms that merely *contain* a negative word ("no problem", "can't wait")
+  // are neutralised before the negative pass so they can't flip a yes to a no.
+  const scored = normalised.replace(IDIOMS, " ").replace(/\s+/g, " ").trim();
+  if (!scored) return { intent: "unknown", normalised, reason: "idiom-only" };
+
+  const ambiguous = matched(AMBIGUOUS, scored);
   if (ambiguous) return { intent: "unknown", normalised, reason: `ambiguous:${ambiguous.source}` };
 
   const negative = matched(NEGATIVE, normalised);

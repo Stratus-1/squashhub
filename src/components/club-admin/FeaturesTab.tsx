@@ -22,6 +22,7 @@ import {
   type CapabilityGroup,
   type ModuleState,
   dependentsOf,
+  moduleState,
   withDependencies,
 } from "@/lib/capabilities";
 import { useCapabilities, useSetCapability } from "@/hooks/use-club-capabilities";

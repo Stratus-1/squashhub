@@ -1106,8 +1106,30 @@ export default function Tournaments() {
                       })}
                     </div>
                   )}
+
+                  {isClubAdmin && undatedChamps.length > 0 && (
+                    <div className="mt-3 rounded-md border border-dashed p-2">
+                      <p className="text-[11px] font-medium">Needs dates (admin only)</p>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">
+                        These tournaments have no start or end date yet, so members don't see them.
+                      </p>
+                      <div className="space-y-1">
+                        {undatedChamps.map((champ: any) => (
+                          <button
+                            key={champ.id}
+                            onClick={() => navigate(`/club-champs/${champ.id}`)}
+                            className="w-full flex items-center justify-between gap-2 p-1.5 rounded bg-muted/40 hover:bg-muted text-left"
+                          >
+                            <span className="text-xs truncate">{champ.name}</span>
+                            <Badge variant="outline" className="text-[10px] shrink-0">Needs dates</Badge>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
+
 
               <Card>
                 <CardHeader className="pb-2">

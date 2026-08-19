@@ -10,6 +10,7 @@ import {
   useActiveBundle,
   useRouterConfig,
 } from "@/hooks/use-router-monitor";
+import { useHasCapability } from "@/hooks/use-club-capabilities";
 
 /**
  * Compact internet / data bundle widget. Only shown to club admins of clubs
@@ -19,10 +20,11 @@ export function DashboardRouterCard() {
   const { data: clubData } = useMyClub();
   const clubId = (clubData?.club as { id?: string } | undefined)?.id;
   const isAdmin = useIsClubAdmin();
-  const { data: config } = useRouterConfig(isAdmin ? clubId : undefined);
+  const wifiOn = useHasCapability("wifi", clubId);
+  const { data: config } = useRouterConfig(isAdmin && wifiOn ? clubId : undefined);
   const { data: bundle } = useActiveBundle(isAdmin && config?.enabled ? clubId : undefined);
 
-  if (!isAdmin || !config?.enabled) return null;
+  if (!isAdmin || !wifiOn || !config?.enabled) return null;
 
   const status = (config.last_status || {}) as Record<string, any>;
   const online = Boolean(status.online);

@@ -436,9 +436,9 @@ function AppRoutes() {
         <Route path="/clubs" element={<Clubs />} />
 
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
-        <Route path="/events" element={<Events />} />
-        <Route path="/events/:id" element={<EventDetail />} />
-        <Route path="/tournaments" element={<Tournaments />} />
+        <Route path="/events" element={<CapabilityRoute capability="events"><Events /></CapabilityRoute>} />
+        <Route path="/events/:id" element={<CapabilityRoute capability="events"><EventDetail /></CapabilityRoute>} />
+        <Route path="/tournaments" element={<CapabilityRoute capability="tournaments"><Tournaments /></CapabilityRoute>} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/lights" element={<LightsIntegration />} />
         <Route path="/unsubscribe" element={<Unsubscribe />} />
@@ -462,8 +462,8 @@ function AppRoutes() {
         <Route path="/challenges" element={<ProtectedRoute><CapabilityRoute capability="ladder"><Challenges /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/match-tracker/:bookingId" element={<ProtectedRoute><MatchTracker /></ProtectedRoute>} />
         <Route path="/match-marker" element={<ProtectedRoute><MatchMarker /></ProtectedRoute>} />
-        <Route path="/bells-marker/:matchId" element={<ProtectedRoute><BellsMarker /></ProtectedRoute>} />
-        <Route path="/tournament-live/:matchId" element={<ProtectedRoute><TournamentMatchLive /></ProtectedRoute>} />
+        <Route path="/bells-marker/:matchId" element={<ProtectedRoute><CapabilityRoute capability="tournaments"><BellsMarker /></CapabilityRoute></ProtectedRoute>} />
+        <Route path="/tournament-live/:matchId" element={<ProtectedRoute><CapabilityRoute capability="tournaments"><TournamentMatchLive /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/tv" element={<MarkerTv />} />
         <Route path="/tv/club/:subdomain" element={<MarkerTv />} />
         <Route path="/tv/club/:subdomain/court/:court" element={<MarkerTv />} />
@@ -488,7 +488,7 @@ function AppRoutes() {
         } />
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
         <Route path="/honesty-bar" element={<ProtectedRoute><CapabilityRoute capability="bar"><HonestyBar /></CapabilityRoute></ProtectedRoute>} />
-        <Route path="/club-champs/:champId" element={<ProtectedRoute><ClubChampsView /></ProtectedRoute>} />
+        <Route path="/club-champs/:champId" element={<ProtectedRoute><CapabilityRoute capability="tournaments"><ClubChampsView /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/league-games" element={<ProtectedRoute><CapabilityRoute capability="leagues"><LeagueGames /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/league-games/:fixtureId" element={<ProtectedRoute><CapabilityRoute capability="leagues"><LeagueGameDetail /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/c/:subdomain" element={<ClubLanding />} />

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import { clubHasCapability } from "../_shared/capabilities.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -96,15 +97,25 @@ Deno.serve(async (req) => {
     let sent = 0;
     let skipped = 0;
 
+    // Capability memo — disabled modules must not generate reminders.
+    const capMemo = new Map<string, boolean>();
+    const capOn = async (clubId?: string | null, slug?: string) => {
+      if (!clubId || !slug) return true;
+      const key = `${clubId}:${slug}`;
+      if (!capMemo.has(key)) capMemo.set(key, await clubHasCapability(supabaseAdmin, clubId, slug));
+      return capMemo.get(key)!;
+    };
+
     // 1) Booking reminders (tomorrow)
     const { data: bookings } = await supabaseAdmin
       .from("bookings")
-      .select("id,user_id,opponent_id,date,start_time,end_time,court_id,status")
+      .select("id,club_id,user_id,opponent_id,date,start_time,end_time,court_id,status")
       .eq("status", "active")
       .eq("date", tomorrow)
       .limit(500);
 
     for (const b of bookings || []) {
+      if (!(await capOn((b as any).club_id, "bookings"))) continue;
       const start = String((b as any).start_time || "").slice(0, 5);
       const end = String((b as any).end_time || "").slice(0, 5);
       const title = "Court booking tomorrow";
@@ -138,13 +149,14 @@ Deno.serve(async (req) => {
 
     const challengeIds = [...new Set((schedules || []).map((s: any) => String(s.challenge_id)))];
     const { data: challenges } = challengeIds.length
-      ? await supabaseAdmin.from("challenges").select("id,challenger_id,opponent_id").in("id", challengeIds)
+      ? await supabaseAdmin.from("challenges").select("id,club_id,challenger_id,opponent_id").in("id", challengeIds)
       : { data: [] as any[] };
     const challengeMap = new Map((challenges || []).map((c: any) => [String(c.id), c]));
 
     for (const s of schedules || []) {
       const c = challengeMap.get(String((s as any).challenge_id));
       if (!c) continue;
+      if (!(await capOn((c as any).club_id, "ladder"))) continue;
       const start = String((s as any).start_time || "").slice(0, 5);
       const end = String((s as any).end_time || "").slice(0, 5);
       const title = "Match scheduled tomorrow";
@@ -205,11 +217,12 @@ Deno.serve(async (req) => {
       // Fetch all active events with their reminder_hours
       const { data: activeEvents } = await supabaseAdmin
         .from("club_events")
-        .select("id, title, event_type, reminder_hours, start_time, end_time")
+        .select("id, club_id, title, event_type, reminder_hours, start_time, end_time")
         .eq("status", "active")
         .limit(500);
 
       for (const ev of activeEvents || []) {
+        if (!(await capOn((ev as any).club_id, "events"))) continue;
         const reminderHours = (ev as any).reminder_hours || 48;
         // Find instances within the reminder window
         const reminderCutoff = new Date(Date.now() + reminderHours * 60 * 60 * 1000);
@@ -289,6 +302,7 @@ Deno.serve(async (req) => {
 
       for (const club of optedInClubs || []) {
         const clubId = String((club as any).id);
+        if (!(await capOn(clubId, "leagues"))) continue;
         const clubName = String((club as any).name || "your club");
 
         // Collect all recipient member ids

@@ -22,6 +22,7 @@ import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { useDoorProximity } from "@/hooks/use-door-proximity";
 import { format } from "date-fns";
 import { formatLatLngDM } from "@/lib/geo-format";
+import { useHasCapability } from "@/hooks/use-club-capabilities";
 
 const errorMessage = (e: unknown, fallback: string) =>
   e instanceof Error ? e.message : fallback;
@@ -43,6 +44,7 @@ export function DashboardOpenDoorCard() {
     door_geofence_radius_m?: number | null;
     door_auto_unlock_radius_m?: number | null;
   } | undefined;
+  const accessOn = useHasCapability("access_control", club?.id);
   const { data: clubSecrets } = useClubSecrets(club?.id);
   const { data: accessPublic } = useQuery({
     enabled: !!club?.id,
@@ -95,7 +97,7 @@ export function DashboardOpenDoorCard() {
   const radiusM = club?.door_geofence_radius_m ?? 150;
 
   useEffect(() => {
-    if (!autoEnabled || !club?.id) return;
+    if (!autoEnabled || !accessOn || !club?.id) return;
     if (proximity.atDoor) {
       if (autoUnlockFired(club.id, 30 * 60 * 1000)) return;
       markAutoUnlockFired(club.id);
@@ -107,9 +109,9 @@ export function DashboardOpenDoorCard() {
     ) {
       rearmAutoUnlock(club.id);
     }
-  }, [autoEnabled, club?.id, proximity.atDoor, proximity.state, proximity.distance, radiusM]);
+  }, [autoEnabled, accessOn, club?.id, proximity.atDoor, proximity.state, proximity.distance, radiusM]);
 
-  if (!club?.id || !doorEnabled || doorBlocked || visitorBlocked) return null;
+  if (!club?.id || !accessOn || !doorEnabled || doorBlocked || visitorBlocked) return null;
 
   // Geofenced clubs: only surface the tile once the member is actually at the
   // door (admins/staff keep remote access). Hides while locating / far away.

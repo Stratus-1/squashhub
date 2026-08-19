@@ -36,37 +36,36 @@ import { useQuery } from "@tanstack/react-query";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 
-type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean };
+type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability };
 
 const SETUP_TABS: AdminTab[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
-  { value: "courts", label: "Courts", icon: LayoutGrid, permission: "courts", color: "cyan" },
-  { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald" },
-  { value: "banking", label: "Banking", icon: Banknote, permission: "banking", color: "green" },
-  { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
-  { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true },
-  { value: "ranking-points", label: "Ranking Pts", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true },
-  
-  { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose", noStatus: true },
+  { value: "features", label: "Features", icon: Sparkles, color: "violet", noStatus: true },
+  { value: "courts", label: "Courts & Bookings", icon: LayoutGrid, permission: "courts", color: "cyan", capability: "bookings" },
+  { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald", capability: "membership_fees" },
+  { value: "banking", label: "Banking & Payments", icon: Banknote, permission: "banking", color: "green", capability: "payments" },
+  { value: "access", label: "Door Access", icon: DoorOpen, permission: "access", color: "pink", capability: "access_control" },
+  { value: "ladder", label: "Ladder & Ranking", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true, capability: "ladder" },
+  { value: "ranking-points", label: "Ranking Points", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true, capability: "ranking_points" },
+
+  { value: "bar", label: "Bar / POS", icon: Beer, permission: "bar", color: "rose", noStatus: true, capability: "bar" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
   { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
-  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true },
-  { value: "router", label: "Internet", icon: Router, color: "cyan", noStatus: true },
+  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true, capability: "whatsapp" },
+  { value: "router", label: "Member Wi-Fi", icon: Router, color: "cyan", noStatus: true, capability: "wifi" },
 ];
 
 const OPERATIONS_TABS: AdminTab[] = [
   { value: "members", label: "Members", icon: Users, permission: "members", color: "indigo" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
-  { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
-  { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
-  { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
-  { value: "leagues", label: "Leagues Setup/Creation", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
-  { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true },
+  { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky", capability: "visitors" },
+  { value: "finance", label: "Club Books", icon: Landmark, permission: "finance", color: "teal", capability: "finance" },
+  { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow", capability: "tournaments" },
+  { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
+  { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
 ];
-
-const ADMIN_TABS: AdminTab[] = [...SETUP_TABS, ...OPERATIONS_TABS];
 
 const COLOR_STYLES: Record<string, string> = {
   blue: "border-blue-500/50 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:hover:bg-blue-500/25",

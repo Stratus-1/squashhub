@@ -6290,6 +6290,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             )}
 
             </WizardSection>
+            )}
             <WizardSection
               title={"No-shows & registration window"}
               summary={registrationRequired ? "Registration window & no-show rule" : "No registration required"}

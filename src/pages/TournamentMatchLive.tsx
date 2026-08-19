@@ -156,9 +156,10 @@ export default function TournamentMatchLive() {
                 {fresh && lock
                   ? <>Being marked by <span className="font-medium text-foreground">{lock.user_name}</span></>
                   : live
-                    ? "No active marker on this game right now."
+                    ? "Nobody is marking this game right now — you can take over from the current score."
                     : completed ? "This match is finished." : "This match has not started yet."}
               </p>
+
 
               {!completed && (
                 <div className="flex justify-center">

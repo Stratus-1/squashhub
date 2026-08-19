@@ -4051,6 +4051,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const inheritedPA: Record<string, boolean> = {};
     const inheritedPO: Record<string, boolean> = {};
     const inheritedBH: Record<string, "no_match" | "walkover_win" | "neutral"> = {};
+    const lfr = ((ex as any).league_forfeit_rules as ForfeitRuleMap | null) || null;
+    const lfp = ((ex as any).league_forfeit_points as ForfeitPointsMap | null) || null;
+    const inheritedFR: ForfeitRuleMap = {};
+    const inheritedFP: ForfeitPointsMap = {};
     for (let i = 1; i <= (champ.num_groups || 0); i++) {
       inheritedS[String(i)] = (lsm?.[String(i)] as any) ?? ((champ as any).scoring_mode === "time_capped_points" ? "time_capped_points" : "standard");
       inheritedP[String(i)] = (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : 11));
@@ -4059,6 +4063,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       inheritedPA[String(i)] = lpa?.[String(i)] === true;
       inheritedPO[String(i)] = lpo?.[String(i)] ?? !!(champ as any).enable_playoffs;
       inheritedBH[String(i)] = (lbh?.[String(i)] as any) ?? (((champ as any).bye_handling as any) || "no_match");
+      // Forfeit rule: stored per league, otherwise derived from the league's format.
+      // Legacy tournaments (which only had tournament-wide no-show points) map onto
+      // "award points" for points-based leagues and a walkover for standard leagues.
+      inheritedFR[String(i)] = (lfr?.[String(i)] as ForfeitRule) ?? defaultForfeitRule(inheritedS[String(i)]);
+      inheritedFP[String(i)] = {
+        opponent: Number(lfp?.[String(i)]?.opponent ?? (champ as any).no_show_opponent_points ?? 10) || 0,
+        player: Number(lfp?.[String(i)]?.player ?? (champ as any).no_show_player_points ?? 0) || 0,
+      };
     }
     setLeagueScoringModes(inheritedS);
     setLeaguePointsPerGame(inheritedP);
@@ -4067,6 +4079,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setLeaguePlayAll(inheritedPA);
     setLeaguePlayoffs(inheritedPO);
     setLeagueByeHandling(inheritedBH);
+    setLeagueForfeitRules(inheritedFR);
+    setLeagueForfeitPoints(inheritedFP);
     // Seed the tournament-level win condition from League 1 for compatibility.
     if (inheritedW["1"]) setWinCondition(inheritedW["1"]);
 

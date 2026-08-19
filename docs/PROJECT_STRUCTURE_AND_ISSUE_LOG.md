@@ -88,6 +88,18 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-19 · Tournament marker could silently present a new 0-0 game
+- **Symptom:** A tournament game visibly stored at 4-4 could open the toss prompt and a fresh 0-0 marker,
+  while league games resumed correctly from their current rally.
+- **Finding:** League marking hydrates directly from `league_match_results.game_scores + current_game` inside
+  the fixture page. Tournament marking used a second route and depended on the security-invoker `club_champs`
+  compatibility view for settings; any hidden joined rules/governance row made the loader return silently and
+  exposed the generic new-match setup.
+- **Fix:** Tournament marking now reads the match, parent tournament, and scoring rules directly, shows an
+  explicit loading/error state, and refuses to expose a fresh 0-0 setup when a linked match cannot be hydrated.
+- **Guard:** A linked tournament marker must either hydrate its server score or show Retry; read failures must
+  never fall through to `MarkerSetup` or create a replacement 0-0 session.
+
 ### 2026-08-19 · Tournament Resume reopened at 0-0 and LIVE lacked safe takeover
 - **Symptom:** A paused tournament game reopened behind the Start match prompt at 0-0, while the LIVE
   view did not offer the spectator the same consent-based marker hand-over flow.

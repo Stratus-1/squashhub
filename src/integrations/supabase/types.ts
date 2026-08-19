@@ -1382,6 +1382,9 @@ export type Database = {
           partner_confirmed: boolean
           partner_member_id: string | null
           payment_ref: string | null
+          proof_uploaded_at: string | null
+          proof_uploaded_by: string | null
+          proof_url: string | null
           status: string
           updated_at: string
         }
@@ -1401,6 +1404,9 @@ export type Database = {
           partner_confirmed?: boolean
           partner_member_id?: string | null
           payment_ref?: string | null
+          proof_uploaded_at?: string | null
+          proof_uploaded_by?: string | null
+          proof_url?: string | null
           status?: string
           updated_at?: string
         }
@@ -1420,6 +1426,9 @@ export type Database = {
           partner_confirmed?: boolean
           partner_member_id?: string | null
           payment_ref?: string | null
+          proof_uploaded_at?: string | null
+          proof_uploaded_by?: string | null
+          proof_url?: string | null
           status?: string
           updated_at?: string
         }

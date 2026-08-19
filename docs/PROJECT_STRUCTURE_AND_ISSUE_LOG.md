@@ -826,3 +826,15 @@ documented `redirect_uri` on the fresh hosted link.
 - Dashboard: marker tile renamed "Score a Match", demoted to the end of the tile grid; it only leads the grid (as pulsing "Resume Marking") when a marker session is active. Sidebar/desktop nav labels renamed to match.
 - Tournaments.tsx: tabs are now controlled and always open on "Current" (never auto-jump to Past). Past detection covers completed/cancelled/abandoned/archived plus end_date < today; current list sorts running-now first then soonest start. Tab labels carry counts, empty Current state links to Past, Past shows 8 most recent with "Show all", Standings has an empty state.
 - Known gap (unchanged): the tournaments query is still club-scoped (`eq club_id`), so association/federation events hosted at other clubs are not listed even where eligibility would allow entry.
+
+## 2026-08-20 — Tournament lifecycle unified (July/undated rows in "Current")
+Root cause: `src/components/MyChampionships.tsx` (member dashboard) filtered only
+`status != 'completed'`, so July tournaments left in `planning`, cancelled/abandoned
+events and undated rows appeared as current, and its cards printed no dates.
+`Tournaments.tsx` had its own inline copy of the rule.
+Fix: single source of truth `src/lib/tournaments/lifecycle.ts`
+(`isPastTournament` / `isCurrentTournament` / `isNeedsDatesTournament` /
+`splitTournamentsByLifecycle`), used by both surfaces. Undated tournaments are now
+admin-only ("Needs dates"), cancelled ones show a Cancelled badge under Past, and
+dashboard cards show dates. Regression tests: `src/test/tournament-lifecycle.test.ts`.
+No data changes — DB inspection found no malformed/child rows in `club_champs`.

@@ -31,6 +31,7 @@ import { assignPools, entityIdForEntry, type Entry as SwissEntry } from "@/lib/s
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchChampMarkerLock, isLockFresh, useChampMarkerLocks } from "@/hooks/use-champ-marker-lock";
 import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDialog";
+import { splitTournamentsByLifecycle, todayISO, isCancelledTournament } from "@/lib/tournaments/lifecycle";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
@@ -86,27 +87,11 @@ export default function Tournaments() {
     enabled: !!clubId,
   });
 
-  const todayStr = format(new Date(), "yyyy-MM-dd");
-  // Lifecycle split. "Past" = finished by status, or the last playing day is
-  // behind us. Everything else (planning, open, running today) is current and
-  // is what a member should land on.
-  const PAST_STATUSES = new Set(["completed", "cancelled", "abandoned", "archived"]);
-  const isPastChamp = (c: any) =>
-    PAST_STATUSES.has(String(c.status || "").toLowerCase()) ||
-    (!!c.end_date && c.end_date < todayStr);
-  // Current first: running now, then the soonest start date.
-  const champs = allChamps
-    .filter((c: any) => !isPastChamp(c))
-    .sort((a: any, b: any) => {
-      const running = (c: any) =>
-        c.start_date && c.start_date <= todayStr && (!c.end_date || c.end_date >= todayStr) ? 0 : 1;
-      const r = running(a) - running(b);
-      if (r !== 0) return r;
-      return (a.start_date || "9999-12-31").localeCompare(b.start_date || "9999-12-31");
-    });
-  const pastChamps = allChamps
-    .filter(isPastChamp)
-    .sort((a: any, b: any) => (b.end_date || "").localeCompare(a.end_date || ""));
+  const todayStr = todayISO();
+  // Lifecycle split lives in one shared place so every member-facing surface
+  // agrees on what "current" means (see src/lib/tournaments/lifecycle.ts).
+  const { current: champs, past: pastChamps, needsDates: undatedChamps } =
+    splitTournamentsByLifecycle(allChamps as any[], todayStr);
 
   const champIds = allChamps.map((c: any) => c.id);
   const champIdsKey = champIds.slice().sort().join("|");
@@ -1121,8 +1106,30 @@ export default function Tournaments() {
                       })}
                     </div>
                   )}
+
+                  {isClubAdmin && undatedChamps.length > 0 && (
+                    <div className="mt-3 rounded-md border border-dashed p-2">
+                      <p className="text-[11px] font-medium">Needs dates (admin only)</p>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">
+                        These tournaments have no start or end date yet, so members don't see them.
+                      </p>
+                      <div className="space-y-1">
+                        {undatedChamps.map((champ: any) => (
+                          <button
+                            key={champ.id}
+                            onClick={() => navigate(`/club-champs/${champ.id}`)}
+                            className="w-full flex items-center justify-between gap-2 p-1.5 rounded bg-muted/40 hover:bg-muted text-left"
+                          >
+                            <span className="text-xs truncate">{champ.name}</span>
+                            <Badge variant="outline" className="text-[10px] shrink-0">Needs dates</Badge>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
+
 
               <Card>
                 <CardHeader className="pb-2">
@@ -1359,8 +1366,15 @@ export default function Tournaments() {
                           </p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <Badge variant="secondary" className="text-[10px]">
-                            {champ.status === "completed" ? "completed" : "ended"}
+                          <Badge
+                            variant={isCancelledTournament(champ) ? "destructive" : "secondary"}
+                            className="text-[10px]"
+                          >
+                            {isCancelledTournament(champ)
+                              ? "Cancelled"
+                              : champ.status === "completed"
+                                ? "completed"
+                                : "ended"}
                           </Badge>
                           <Button
                             variant="outline"

@@ -97,7 +97,7 @@ export function DashboardOpenDoorCard() {
   const radiusM = club?.door_geofence_radius_m ?? 150;
 
   useEffect(() => {
-    if (!autoEnabled || !club?.id) return;
+    if (!autoEnabled || !accessOn || !club?.id) return;
     if (proximity.atDoor) {
       if (autoUnlockFired(club.id, 30 * 60 * 1000)) return;
       markAutoUnlockFired(club.id);
@@ -109,9 +109,9 @@ export function DashboardOpenDoorCard() {
     ) {
       rearmAutoUnlock(club.id);
     }
-  }, [autoEnabled, club?.id, proximity.atDoor, proximity.state, proximity.distance, radiusM]);
+  }, [autoEnabled, accessOn, club?.id, proximity.atDoor, proximity.state, proximity.distance, radiusM]);
 
-  if (!club?.id || !doorEnabled || doorBlocked || visitorBlocked) return null;
+  if (!club?.id || !accessOn || !doorEnabled || doorBlocked || visitorBlocked) return null;
 
   // Geofenced clubs: only surface the tile once the member is actually at the
   // door (admins/staff keep remote access). Hides while locating / far away.

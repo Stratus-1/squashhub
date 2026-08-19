@@ -36,7 +36,7 @@ import { useQuery } from "@tanstack/react-query";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { CORE_SETUP_KEYS, type Capability } from "@/lib/capabilities";
 import { useCapabilities } from "@/hooks/use-club-capabilities";
-import { FeaturesTab, moduleState } from "@/components/club-admin/FeaturesTab";
+import { FeaturesTab } from "@/components/club-admin/FeaturesTab";
 import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
 
 

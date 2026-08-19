@@ -88,6 +88,17 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-19 · Tournament Resume reopened at 0-0 and LIVE lacked safe takeover
+- **Symptom:** A paused tournament game reopened behind the Start match prompt at 0-0, while the LIVE
+  view did not offer the spectator the same consent-based marker hand-over flow.
+- **Finding:** Resume reconstructed a flat score list without making the database's dedicated current-game
+  columns authoritative, and the live screen linked directly to the marker instead of opening the lock flow.
+- **Fix:** Resume now rebuilds completed games plus the authoritative current rally separately and remounts
+  the scoreboard per tournament match. LIVE remains read-only and offers **Take over marking**, which asks
+  the active marker to approve; a paused game offers **Resume marking** from its stored score.
+- **Guard:** Tournament LIVE routes never grant scoring directly while another fresh marker lock exists;
+  every marker entry must hydrate from the stored tournament score before rendering.
+
 ### 2026-08-17 · Riverside card checkout returned 404 before payment
 - **Symptom:** Tapping card payment opened a 404 before the hosted payment form; the failure was
   incorrectly attributed to a missing per-club redirect whitelist entry.

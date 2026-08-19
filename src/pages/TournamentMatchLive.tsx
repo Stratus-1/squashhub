@@ -10,6 +10,8 @@ import { ArrowLeft, Gavel, Radio } from "lucide-react";
 import { useChampMarkerLock } from "@/hooks/use-champ-marker-lock";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTournamentFormat } from "@/lib/tournament-formats";
+import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDialog";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 type Sets = Array<{ a: number; b: number }>;
 
@@ -34,9 +36,11 @@ export default function TournamentMatchLive() {
   const { matchId } = useParams<{ matchId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const [match, setMatch] = useState<any>(null);
   const [champ, setChamp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [takeoverOpen, setTakeoverOpen] = useState(false);
 
   const { lock, fresh } = useChampMarkerLock(matchId, user?.id);
 
@@ -95,6 +99,16 @@ export default function TournamentMatchLive() {
   const live = match?.status === "in_progress";
 
   const markRoute = match ? getTournamentFormat(champ?.scoring_mode).markerRoute(match.id) : "";
+  const requesterName = activeMember?.name || user?.email || "A marker";
+
+  const takeOverOrResume = () => {
+    if (!markRoute) return;
+    if (fresh && lock && lock.user_id !== user?.id) {
+      setTakeoverOpen(true);
+      return;
+    }
+    navigate(markRoute);
+  };
 
   return (
     <div className="min-h-screen bg-background p-3 sm:p-6">
@@ -163,8 +177,8 @@ export default function TournamentMatchLive() {
 
               {!completed && (
                 <div className="flex justify-center">
-                  <Button size="sm" variant="outline" className="gap-1" onClick={() => navigate(markRoute)}>
-                    <Gavel className="w-3.5 h-3.5" /> Go to marker
+                  <Button size="sm" variant="outline" className="gap-1" onClick={takeOverOrResume}>
+                    <Gavel className="w-3.5 h-3.5" /> {fresh && lock?.user_id !== user?.id ? "Take over marking" : "Resume marking"}
                   </Button>
                 </div>
               )}
@@ -172,6 +186,16 @@ export default function TournamentMatchLive() {
           </Card>
         )}
       </div>
+
+      <MarkerTakeoverDialog
+        open={takeoverOpen}
+        onOpenChange={setTakeoverOpen}
+        matchId={matchId || null}
+        markRoute={markRoute}
+        matchLabel={`${teamA} vs ${teamB}`}
+        markerName={lock?.user_name}
+        requesterName={requesterName}
+      />
     </div>
   );
 }

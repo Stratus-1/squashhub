@@ -34,6 +34,10 @@ import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
+import { CORE_SETUP_KEYS, type Capability } from "@/lib/capabilities";
+import { useCapabilities } from "@/hooks/use-club-capabilities";
+import { FeaturesTab, moduleState } from "@/components/club-admin/FeaturesTab";
+import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
 
 
 type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability };

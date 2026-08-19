@@ -4422,10 +4422,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Invitation-only is set on the <strong>Registration</strong> step ("who can register"), ranking status on
-                the scoring settings ("counts for ranking points"), and the sanctioning authority in{" "}
-                <strong>Governance</strong> — so any category can be combined with any of them.
+                This sets <strong>who is eligible</strong>. Whether they sign themselves up or you invite them is set once, on the{" "}
+                <strong>Entries &amp; seeding</strong> step ("how do players enter?"). Ranking status lives on the scoring
+                settings, and the sanctioning authority in <strong>Governance</strong>.
               </p>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <Label className="text-xs font-medium">Max entrants (optional)</Label>
@@ -5916,16 +5917,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 required, this still controls how the admin seeds the player
                 roster (open audience vs invite shortlist). */}
             <div className="space-y-2">
-              <Label className="text-sm">Who can register?</Label>
+              <Label className="text-sm">How do players enter?</Label>
               <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
                 <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                  <SelectItem value="open">Open — any eligible club member</SelectItem>
-                  <SelectItem value="invite">Invite-only — admin shortlists members</SelectItem>
+                  <SelectItem value="open">Open sign-up — eligible players register themselves</SelectItem>
+                  <SelectItem value="invite">Invite-only — admin shortlists the players</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Not the same as <strong>Who may enter</strong> (set in “Name, category &amp; eligibility”, currently{" "}
+                <strong>{ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.label || eligibilityScope}</strong>),
+                which decides <em>which</em> players are eligible. This setting decides <em>how</em> they get in.
+              </p>
             </div>
+
 
             {/* Invite source — only meaningful in invite mode */}
             {registrationUsesInviteList && (

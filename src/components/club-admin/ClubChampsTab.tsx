@@ -666,10 +666,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss" | "cross_league" | "knockout";
   const [leagueFormats, setLeagueFormats] = useState<Record<string, PerLeagueFormat>>({});
   const [usePerLeagueFormats, setUsePerLeagueFormats] = useState(false);
-  // Knockout: how many independent sections (sub-draws) each league runs.
-  // Keyed by group_number as text. Only meaningful for knockout leagues.
+  // LEGACY: knockout sub-draw count per league ("sections"). The organiser no
+  // longer sees this concept — a knockout division is simply split into pools
+  // and the pool count is written back here so the draw engine, the schedule
+  // and any existing tournament keep working unchanged.
   const [leagueSections, setLeagueSections] = useState<Record<string, number>>({});
-  const sectionsForLeague = (gn: number) => Math.max(1, Number(leagueSections[String(gn)]) || 1);
+  /** Pools in a division — falls back to the legacy section count. */
+  const sectionsForLeague = (gn: number) =>
+    effectivePools({ gn, pools: swissPools, legacySections: leagueSections });
+  // Which club league(s) feed each competition division ("Players from").
+  const [leagueSources, setLeagueSources] = useState<Record<string, DivisionSource>>({});
+  const sourceForLeague = (gn: number) => divisionSource(leagueSources, gn);
+  const setSourceForLeague = (gn: number, next: DivisionSource) =>
+    setLeagueSources((m) => ({ ...m, [String(gn)]: next }));
   // Planning-only per-league expected player counts (keyed by group_number).
   // Purely for the capacity readout in the wizard — not enforced anywhere.
   const [expectedPlayers, setExpectedPlayers] = useState<Record<string, number>>({});

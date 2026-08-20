@@ -6047,6 +6047,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </div>
             </WizardSection>
 
+            {/* Plain-language warnings about each division's players and pools. */}
+            {(() => {
+              const issues = validateDivisions({
+                divisionCount: numGroups,
+                sources: leagueSources,
+                pools: swissPools,
+                formatFor: (gn) => formatForLeague(gn),
+              });
+              if (issues.length === 0) return null;
+              return (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-1">
+                  {issues.map((iss, i) => (
+                    <p key={i} className="text-[11px] text-amber-700 dark:text-amber-400">
+                      <span className="font-semibold">{groupLabels[String(iss.gn)] || `League ${iss.gn}`}:</span>{" "}
+                      {iss.message}
+                    </p>
+                  ))}
+                </div>
+              );
+            })()}
+
             <div className="rounded-lg border border-dashed p-3 bg-muted/20 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">Capacity is checked later.</span>{" "}
               This structure is sized against real court time on the <strong>Dates, Times &amp; Courts</strong> step,

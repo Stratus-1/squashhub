@@ -263,6 +263,41 @@ export function findIneligibleAssignments(
   return out;
 }
 
+/** Club leagues (by stable id) a member is actually registered in. */
+export function memberLeagueIds(memberId: string, registrationsByLeague: Map<string, string[]>): string[] {
+  const out: string[] = [];
+  registrationsByLeague.forEach((members, leagueId) => {
+    if (members.includes(memberId)) out.push(leagueId);
+  });
+  return out;
+}
+
+export interface IneligibleExplanation extends IneligibleAssignment {
+  /** Leagues the player really belongs to (stable ids). */
+  memberLeagueIds: string[];
+  /** Leagues the division draws from (stable ids). */
+  sourceLeagueIds: string[];
+}
+
+/**
+ * Same invariant as `findIneligibleAssignments`, but carrying the evidence so
+ * the UI can state the player's REAL league membership instead of repeating
+ * the division's display label.
+ */
+export function explainIneligibleAssignments(
+  assignments: Map<string, number> | Array<[string, number]>,
+  ctx: EligibilityContext,
+): IneligibleExplanation[] {
+  return findIneligibleAssignments(assignments, ctx).map(({ memberId, gn }) => ({
+    memberId,
+    gn,
+    memberLeagueIds: memberLeagueIds(memberId, ctx.registrationsByLeague),
+    sourceLeagueIds: divisionSource(ctx.sources, gn).leagueIds,
+  }));
+}
+
+
+
 /* ------------------------------------------------- all-leagues expansion */
 
 export interface ExpansionPlanItem {

@@ -97,53 +97,97 @@ export function buildLeagueTree(
   const groups = new Map<string, LeagueTreeGroup>();
   const orphans: LeagueTreeGroup[] = [];
 
-  const ensure = (key: string, label: string, assocName: string, tierNumber: number) => {
+  const ensure = (
+    key: string,
+    label: string,
+    assocName: string,
+    tierNumber: number,
+    seasonYear: number | null,
+  ) => {
     let g = groups.get(key);
     if (!g) {
-      g = { key, label, assocName, tierNumber, children: [] };
+      g = { key, label, assocName, tierNumber, seasonYear, children: [] };
       groups.set(key, g);
     }
     return g;
   };
 
-  const placed: Array<{ league: LeagueTreeInput; key: string; label: string; assoc: string; level: number }> = [];
+  const childOf = (l: LeagueTreeInput): LeagueTreeChild => ({
+    id: l.id,
+    name: l.name,
+    isReserve: l.isReserve ?? isReserveLeague(l.name),
+  });
+
+  const placed: Array<{
+    league: LeagueTreeInput;
+    key: string;
+    label: string;
+    assoc: string;
+    level: number;
+    season: number | null;
+  }> = [];
   const unplaced: LeagueTreeInput[] = [];
 
   leagues.forEach((l) => {
     const assoc = l.assocName || "League";
+    const season = l.seasonYear ?? null;
+    // Stored canonical level wins; a season keeps two years with the same level apart.
+    if (l.level != null) {
+      placed.push({
+        league: l,
+        key: `${l.association_id || assoc}::${season ?? "no-season"}::L${l.level}`,
+        label: levelLabel(l.level),
+        assoc,
+        level: l.level,
+        season,
+      });
+      return;
+    }
     const tier = tierByLeagueId?.get(l.id) || null;
     if (tier) {
       const level = levelFromName(tier) ?? 999;
-      placed.push({ league: l, key: `${l.association_id || assoc}::${tier}`, label: tier, assoc, level });
+      placed.push({
+        league: l,
+        key: `${l.association_id || assoc}::${season ?? "no-season"}::${tier}`,
+        label: tier,
+        assoc,
+        level,
+        season,
+      });
     } else {
       unplaced.push(l);
     }
   });
 
   placed.forEach((p) => {
-    const g = ensure(p.key, p.label, p.assoc, p.level);
-    g.children.push({ id: p.league.id, name: p.league.name, isReserve: isReserveLeague(p.league.name) });
+    const g = ensure(p.key, p.label, p.assoc, p.level, p.season);
+    g.children.push(childOf(p.league));
   });
 
   // Second pass: attach leftovers (reserves and un-fixtured teams) to the level
-  // their own name implies, when such a level exists in the same association.
+  // their own name implies, when such a level exists in the same association
+  // AND the same season — never leak a team across years.
   unplaced.forEach((l) => {
     const assoc = l.assocName || "League";
+    const season = l.seasonYear ?? null;
     const level = levelFromName(l.name);
     const target =
       level != null
         ? Array.from(groups.values()).find(
-            (g) => g.tierNumber === level && g.assocName === assoc,
+            (g) =>
+              g.tierNumber === level &&
+              g.assocName === assoc &&
+              (g.seasonYear ?? null) === season,
           )
         : undefined;
     if (target) {
-      target.children.push({ id: l.id, name: l.name, isReserve: isReserveLeague(l.name) });
+      target.children.push(childOf(l));
       return;
     }
     if (level != null) {
-      const key = `${l.association_id || assoc}::level-${level}`;
-      const g = ensure(key, levelLabel(level), assoc, level);
-      g.children.push({ id: l.id, name: l.name, isReserve: isReserveLeague(l.name) });
+      const key = `${l.association_id || assoc}::${season ?? "no-season"}::level-${level}`;
+      const g = ensure(key, levelLabel(level), assoc, level, season);
+      g.children.push(childOf(l));
       return;
     }
     orphans.push({
@@ -151,12 +195,17 @@ export function buildLeagueTree(
       label: l.name,
       assocName: assoc,
       tierNumber: 9999,
-      children: [{ id: l.id, name: l.name, isReserve: isReserveLeague(l.name) }],
+      seasonYear: season,
+      children: [childOf(l)],
     });
   });
 
   const sorted = Array.from(groups.values()).sort(
-    (a, b) => a.assocName.localeCompare(b.assocName) || a.tierNumber - b.tierNumber || a.label.localeCompare(b.label),
+    (a, b) =>
+      (b.seasonYear ?? 0) - (a.seasonYear ?? 0) ||
+      a.assocName.localeCompare(b.assocName) ||
+      a.tierNumber - b.tierNumber ||
+      a.label.localeCompare(b.label),
   );
   sorted.forEach((g) =>
     g.children.sort(
@@ -166,6 +215,26 @@ export function buildLeagueTree(
   orphans.sort((a, b) => a.label.localeCompare(b.label));
   return [...sorted, ...orphans];
 }
+
+/** Distinct seasons present in a tree, newest first. */
+export function seasonsInTree(groups: LeagueTreeGroup[]): number[] {
+  const set = new Set<number>();
+  groups.forEach((g) => { if (g.seasonYear != null) set.add(g.seasonYear); });
+  return Array.from(set).sort((a, b) => b - a);
+}
+
+/**
+ * Restrict the tree to one season. Groups with no season at all are kept, so a
+ * club that has never had season data behaves exactly as before.
+ */
+export function filterTreeBySeason(
+  groups: LeagueTreeGroup[],
+  season: number | null,
+): LeagueTreeGroup[] {
+  if (season == null) return groups;
+  return groups.filter((g) => g.seasonYear == null || g.seasonYear === season);
+}
+
 
 export type GroupSelectionState = "none" | "some" | "all";
 

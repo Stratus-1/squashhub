@@ -40,6 +40,9 @@ import {
   type DivisionSource,
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
+import { buildLeagueTree } from "@/lib/tournaments/league-tree";
+import { LeagueSourceTree } from "./tournament/LeagueSourceTree";
+
 
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";

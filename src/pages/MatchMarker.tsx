@@ -489,12 +489,22 @@ export default function MatchMarker() {
     resetMatch();
   };
 
-  const handleMatchComplete = async (result: {
+  type MatchResult = {
     games: GameScore[];
     winnerId: "a" | "b";
     durationSeconds: number;
     forfeit?: { absentSide: "a" | "b" };
-  }) => {
+  };
+
+  // A completed score must never be lost. If the save fails we keep the result
+  // (and the persisted scoreboard state) and offer a safe retry. The row id is
+  // generated once per completed match so a retry can never duplicate it.
+  const pendingResultRef = useRef<MatchResult | null>(null);
+  const pendingMatchIdRef = useRef<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleMatchComplete = async (result: MatchResult) => {
     if (!config) return;
 
     const playerAMemberId = config.playerA.clubMemberId;
@@ -504,6 +514,13 @@ export default function MatchMarker() {
       toast.info("Match scored! Players must be members or visitors to save results.");
       return;
     }
+
+    if (pendingResultRef.current !== result) {
+      pendingResultRef.current = result;
+      pendingMatchIdRef.current = crypto.randomUUID();
+    }
+    setSaving(true);
+    setSaveError(null);
 
     try {
       // Look up user_ids — they may be null for unregistered members

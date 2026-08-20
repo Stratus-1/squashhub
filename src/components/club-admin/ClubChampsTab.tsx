@@ -4415,7 +4415,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
       toast.success(
-        `Test invite sent to you via ${methods.join(", ")}. Nothing was recorded against the tournament.`,
+        opts?.asName
+          ? `Test invite for ${opts.asName} sent to you via ${methods.join(", ")}. Nothing was recorded against the tournament.`
+          : `Test invite sent to you via ${methods.join(", ")}. Nothing was recorded against the tournament.`,
       );
     } catch (e: any) {
       toast.error(e?.message || "Failed to send test invite");

@@ -4253,6 +4253,52 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
   }
 
+  // ---- "Send to selected members" picker -------------------------------
+  const [inviteePickerOpen, setInviteePickerOpen] = useState(false);
+  const [inviteeSearch, setInviteeSearch] = useState("");
+  const [selectedInviteeRegIds, setSelectedInviteeRegIds] = useState<Set<string>>(new Set());
+
+  const { data: inviteeRows = [], isLoading: inviteesLoading } = useQuery({
+    queryKey: ["champ-invitees", editingChampId, inviteePickerOpen],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("id, club_member_id, status, invited_by_admin")
+        .eq("champ_id", editingChampId!);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!editingChampId && inviteePickerOpen,
+  });
+
+  const memberNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of members as any[]) m.set(p.id, p.full_name || p.name || "Unknown member");
+    return m;
+  }, [members]);
+
+  const inviteeList = useMemo(() => {
+    const q = inviteeSearch.trim().toLowerCase();
+    return (inviteeRows as any[])
+      .filter((r) => r.club_member_id)
+      .map((r) => ({
+        id: r.id as string,
+        memberId: r.club_member_id as string,
+        name: memberNameById.get(r.club_member_id) || "Unknown member",
+        status: String(r.status || "").toLowerCase(),
+        invited: !!r.invited_by_admin,
+      }))
+      .filter((r) => !q || r.name.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [inviteeRows, inviteeSearch, memberNameById]);
+
+  function inviteeStatusLabel(r: { status: string; invited: boolean }) {
+    if (r.status === "cancelled") return "Declined / cancelled";
+    if (["paid", "registered", "active", "waived"].includes(r.status)) return "Entered";
+    if (r.status === "pending_payment") return r.invited ? "Invited — awaiting payment" : "Awaiting payment";
+    if (r.status === "pending_eft") return "Awaiting EFT proof";
+    return r.invited ? "Invited — no response" : "Not yet invited";
+  }
+
 
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);

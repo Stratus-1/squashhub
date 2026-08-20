@@ -4002,6 +4002,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         (_, i) => formatForLeague(i + 1),
       ).some((f) => f === "knockout");
       if (hasKnockoutDivision && startDate && endDate) {
+        const courtIds = Array.from(selectedCourtIds);
         const gStart = String(startTime || "").slice(0, 5);
         const gEnd = String(endTime || "").slice(0, 5);
         const addBlock = (date: string, cid: number, start: string, end: string) => {

@@ -94,9 +94,9 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
 - **Finding:** The canonical team ids were saved in each division's `league_sources`, while the older
   top-level `source_league_ids` remained empty. Reopening any existing tournament marked that empty invite
   selector as manually edited, permanently blocking the Structure-to-Invite hydration effect.
-- **Fix:** Only treat a saved non-empty invite-team selection as manually authoritative. Save Progress now
-  also derives invite registrations directly from the canonical division team ids and their
-  `member_league_registrations`, so effect timing or legacy empty selector state cannot lose invitees.
+- **Fix:** Only treat a saved non-empty invite-team selection as manually authoritative. The visible count,
+  Save Progress, and Send to all now derive their audience directly from the canonical division team ids and
+  their `member_league_registrations`, so effect timing or legacy empty selector state cannot lose invitees.
 - **Guard:** Division team ids are the authoritative tournament source. Invite persistence must fall back to
   those ids whenever the legacy top-level invite selector is empty.
 

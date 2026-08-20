@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { useProfile } from "@/hooks/use-data";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import AppVersionBadge from "@/components/AppVersionBadge";
 
 type Item = { title: string; url: string; icon: React.ComponentType<{ className?: string }> };
 

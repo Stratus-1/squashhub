@@ -1036,6 +1036,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   type DaySchedule = { date: string; start_time: string; end_time: string; court_ids: number[] | null };
   const [customizeDailySchedule, setCustomizeDailySchedule] = useState(false);
   const [daySchedules, setDaySchedules] = useState<DaySchedule[]>([]);
+
+  /**
+   * Keep the per-day windows in sync with the play days + date range.
+   *
+   * Ticking Mon/Wed/Fri must reserve EVERY Mon, Wed and Fri inside the
+   * tournament window — not just the weekday that happened to be ticked when
+   * the list was first generated. Rows for weekdays that are no longer ticked
+   * (or dates outside the window) are dropped; manually edited rows and extra
+   * windows on a still-valid date are preserved untouched.
+   */
+  useEffect(() => {
+    if (!customizeDailySchedule) return;
+    if (!startDate || !endDate || playDays.size === 0) return;
+    let wanted: Date[];
+    try {
+      wanted = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) })
+        .filter((d) => playDays.has(getDay(d)));
+    } catch {
+      return;
+    }
+    const wantedISO = wanted.map((d) => format(d, "yyyy-MM-dd"));
+    const wantedSet = new Set(wantedISO);
+    setDaySchedules((prev) => {
+      const kept = prev.filter((r) => !r.date || wantedSet.has(r.date));
+      const have = new Set(kept.map((r) => r.date));
+      const added = wantedISO
+        .filter((iso) => !have.has(iso))
+        .map((iso) => ({ date: iso, start_time: startTime, end_time: endTime, court_ids: null }));
+      if (added.length === 0 && kept.length === prev.length) return prev;
+      return [...kept, ...added].sort((a, b) => (a.date || "").localeCompare(b.date || "") || a.start_time.localeCompare(b.start_time));
+    });
+  }, [customizeDailySchedule, startDate, endDate, playDays, startTime, endTime]);
+
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);
 
@@ -3961,6 +3994,51 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
       }
 
+      // Knockout divisions only have their first round dated at save time, so
+      // also reserve every remaining play day in the window (Mon/Wed/Fri etc.)
+      // provisionally — later rounds land inside those blocks.
+      const hasKnockoutDivision = Array.from(
+        { length: Math.max(1, numGroups || 1) },
+        (_, i) => formatForLeague(i + 1),
+      ).some((f) => f === "knockout");
+      if (hasKnockoutDivision && startDate && endDate) {
+        const courtIds = Array.from(selectedCourtIds);
+        const gStart = String(startTime || "").slice(0, 5);
+        const gEnd = String(endTime || "").slice(0, 5);
+        const addBlock = (date: string, cid: number, start: string, end: string) => {
+          const key = `${date}:${cid}`;
+          const existing = slotMap.get(key);
+          if (!existing) {
+            slotMap.set(key, { date, courtId: cid, start, end });
+          } else {
+            if (start < existing.start) existing.start = start;
+            if (end > existing.end) existing.end = end;
+          }
+        };
+        if (customizeDailySchedule && daySchedules.length > 0) {
+          for (const d of daySchedules) {
+            if (!d.date || !d.start_time || !d.end_time) continue;
+            const cs = (d.court_ids && d.court_ids.length > 0)
+              ? d.court_ids.filter((id) => selectedCourtIds.has(id))
+              : courtIds;
+            for (const cid of cs) {
+              addBlock(d.date, cid, String(d.start_time).slice(0, 5), String(d.end_time).slice(0, 5));
+            }
+          }
+        } else if (gStart && gEnd) {
+          const cur = new Date(startDate);
+          const endD = new Date(endDate);
+          while (cur <= endD) {
+            if (playDays.size === 0 || playDays.has(cur.getDay())) {
+              const date = format(cur, "yyyy-MM-dd");
+              for (const cid of courtIds) addBlock(date, cid, gStart, gEnd);
+            }
+            cur.setDate(cur.getDate() + 1);
+          }
+        }
+      }
+
+
       const bookings = Array.from(slotMap.values()).map((s) => ({
         club_id: clubId,
         court_id: s.courtId,
@@ -4043,21 +4121,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       if (!champId) throw new Error("Save the tournament first before booking courts.");
 
       const isBellsMode = scoringMode === "time_capped_points";
+      // Knockout divisions only materialise their FIRST round now — later rounds
+      // are generated as results come in. Booking only the matches that exist
+      // would reserve just the opening evening, so a knockout reserves the whole
+      // play window (every ticked play day across the date range) provisionally.
+      const hasKnockoutDivision = Array.from(
+        { length: Math.max(1, numGroups || 1) },
+        (_, i) => formatForLeague(i + 1),
+      ).some((f) => f === "knockout");
+      const reserveWholeWindow = isBellsMode || hasKnockoutDivision;
       const { data: champRow } = await fromExt("club_champs").select("name").eq("id", champId).maybeSingle();
       const tournamentLabel = ((champRow?.name as string) || champName || "Tournament").trim();
       type Slot = { date: string; courtId: number; start: string; end: string };
 
       let rows: any[];
 
-      if (isBellsMode) {
-        // Bells = many short matches in shared time slots. Don't book per-match;
-        // instead reserve each (date, court) as one global tournament block for
-        // the whole playing window. Derive blocks directly from the tournament's
-        // configured dates + courts (no dependency on per-match scheduled_date,
-        // which may be missing for Bells fixtures).
+      if (reserveWholeWindow) {
+        // Reserve each (date, court) as one tournament block for the playing
+        // window. Derived from the tournament's configured play days + courts,
+        // never from per-match scheduled_date (Bells and phased knockouts don't
+        // have a full set of dated fixtures up front).
         const gStart = String(startTime || "").slice(0, 5);
         const gEnd = String(endTime || "").slice(0, 5);
-        if (!gStart || !gEnd) {
+        const usingDayWindows = customizeDailySchedule && daySchedules.length > 0;
+        if (!usingDayWindows && (!gStart || !gEnd)) {
           throw new Error("Set the tournament start and end time before booking courts.");
         }
         if (!startDate || !endDate) {
@@ -4068,37 +4155,63 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           throw new Error("Select at least one court before booking.");
         }
 
-        // Enumerate play-day dates between startDate and endDate.
-        const dates: string[] = [];
-        const cur = new Date(startDate);
-        const end = new Date(endDate);
-        while (cur <= end) {
-          if (playDays.size === 0 || playDays.has(cur.getDay())) {
-            dates.push(format(cur, "yyyy-MM-dd"));
+        // Per (date, court) window: widest span across that date's sessions.
+        const blocks = new Map<string, Slot>();
+        const addBlock = (date: string, cid: number, start: string, end: string) => {
+          const key = `${date}:${cid}`;
+          const existing = blocks.get(key);
+          if (!existing) {
+            blocks.set(key, { date, courtId: cid, start, end });
+          } else {
+            if (start < existing.start) existing.start = start;
+            if (end > existing.end) existing.end = end;
           }
-          cur.setDate(cur.getDate() + 1);
+        };
+
+        if (usingDayWindows) {
+          for (const d of daySchedules) {
+            if (!d.date || !d.start_time || !d.end_time) continue;
+            const cs = (d.court_ids && d.court_ids.length > 0)
+              ? d.court_ids.filter((id) => selectedCourtIds.has(id))
+              : courtIds;
+            for (const cid of cs) {
+              addBlock(d.date, cid, String(d.start_time).slice(0, 5), String(d.end_time).slice(0, 5));
+            }
+          }
+        } else {
+          // Enumerate EVERY ticked play day between startDate and endDate — so
+          // Mon + Wed + Fri over four weeks reserves all twelve evenings.
+          const cur = new Date(startDate);
+          const end = new Date(endDate);
+          while (cur <= end) {
+            if (playDays.size === 0 || playDays.has(cur.getDay())) {
+              const date = format(cur, "yyyy-MM-dd");
+              for (const cid of courtIds) addBlock(date, cid, gStart, gEnd);
+            }
+            cur.setDate(cur.getDate() + 1);
+          }
         }
-        if (dates.length === 0) {
+
+        if (blocks.size === 0) {
           throw new Error("No play days fall within the tournament date range.");
         }
 
-        rows = dates.flatMap((date) =>
-          courtIds.map((cid) => ({
-            club_id: clubId,
-            court_id: cid,
-            user_id: null,
-            club_member_id: null,
-            date,
-            start_time: gStart,
-            end_time: gEnd,
-            status: "active",
-            is_friendly: false,
-            guest_name: tournamentLabel,
-            source: "club_event",
-            external_id: `champ:${champId}:block:${date}:${cid}`,
-          }))
-        );
+        rows = Array.from(blocks.values()).map((s) => ({
+          club_id: clubId,
+          court_id: s.courtId,
+          user_id: null,
+          club_member_id: null,
+          date: s.date,
+          start_time: s.start,
+          end_time: s.end,
+          status: "active",
+          is_friendly: false,
+          guest_name: tournamentLabel,
+          source: "club_event",
+          external_id: `champ:${champId}:block:${s.date}:${s.courtId}`,
+        }));
       } else {
+
         const { data: champMatches, error: mErr } = await fromExt("club_champs_matches")
           .select("id, scheduled_date, scheduled_time, court_id, player_a_member_id, partner_a_member_id, group_number, is_bye")
           .eq("champ_id", champId);

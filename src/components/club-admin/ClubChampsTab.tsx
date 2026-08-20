@@ -1140,7 +1140,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     queryKey: ["club-leagues-for-tournament", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("leagues")
-        .select("id, name, code, association_id, league_associations:association_id(name, scope)")
+        .select(
+          "id, name, code, association_id, season_year, level, is_reserve, league_associations:association_id(name, scope)",
+        )
         .eq("club_id", clubId)
         .order("name");
       if (error) throw error;
@@ -1149,104 +1151,139 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     enabled: !!clubId,
   });
 
-  // Derive a tier label (e.g. "1st League", "2nd League") for each team-league row.
-  // Tiers live on league_rounds.name (e.g. "1st League round 1") and link to teams via
-  // platform_league_fixtures.home_team_code/away_team_code matched on league.code.
-  const { data: leagueTierMap } = useQuery({
+  /**
+   * Fixture-derived evidence (level + season) for clubs whose league rows have
+   * not been backfilled yet.
+   *
+   * IMPORTANT: `league_rounds.association_id` is the TENANT association, while
+   * `platform_league_fixtures.association_id` is the PLATFORM association.
+   * Mixing the two returns zero rounds and flattens the whole tree — this is the
+   * same resolution the admin Leagues page uses.
+   */
+  const { data: leagueFixtureEvidence } = useQuery({
     queryKey: ["club-league-tiers", clubId, availableLeagues.map((l: any) => l.id).join(",")],
     enabled: availableLeagues.length > 0,
     queryFn: async () => {
-      const assocIds = Array.from(new Set(availableLeagues.map((l: any) => l.association_id).filter(Boolean)));
-      if (assocIds.length === 0) return new Map<string, string>();
+      const assocIds = Array.from(
+        new Set(availableLeagues.map((l: any) => l.association_id).filter(Boolean)),
+      );
+      const evidence = new Map<string, FixtureEvidence>();
+      if (assocIds.length === 0) return evidence;
+
       const { data: assocs } = await fromExt("league_associations")
         .select("id, platform_association_id")
         .in("id", assocIds);
       const platformByAssoc = new Map<string, string>();
-      (assocs || []).forEach((a: any) => platformByAssoc.set(a.id, a.platform_association_id || a.id));
-      const platformIds = Array.from(new Set(Array.from(platformByAssoc.values())));
-      const yr = new Date().getFullYear();
+      (assocs || []).forEach((a: any) =>
+        platformByAssoc.set(a.id, a.platform_association_id || a.id),
+      );
+
+      // Rounds are stored against the tenant association id.
       const { data: rounds } = await fromExt("league_rounds")
-        .select("id, name, round_number, association_id")
-        .in("association_id", platformIds)
-        .gte("round_date", `${yr}-01-01`)
-        .lte("round_date", `${yr}-12-31`);
-      const tierByRound = new Map<string, string>();
+        .select("id, name, round_number, round_date, association_id")
+        .in("association_id", assocIds as string[]);
+
+      const roundInfo = new Map<string, { level: number | null; year: number | null }>();
       (rounds || []).forEach((r: any) => {
-        const tier = (r.name || `Round ${r.round_number}`)
+        const tier = String(r.name || "")
           .replace(/\s+(round|week|wk|rd)\s*\d+\s*$/i, "")
           .trim();
-        tierByRound.set(r.id, tier || `Round ${r.round_number}`);
+        roundInfo.set(r.id, {
+          level: ordinalFromName(tier),
+          year: r.round_date ? new Date(r.round_date).getFullYear() : null,
+        });
       });
-      const roundIds = Array.from(tierByRound.keys());
-      const result = new Map<string, string>();
-      if (roundIds.length === 0) return result;
+      const roundIds = Array.from(roundInfo.keys());
+      if (roundIds.length === 0) return evidence;
+
+      // Fixtures carry the team codes, keyed by the PLATFORM association id.
       const { data: fixtures } = await fromExt("platform_league_fixtures" as any)
         .select("round_id, home_team_code, away_team_code, association_id")
         .in("round_id", roundIds);
-      const tierByTeam = new Map<string, string>();
+
+      type Votes = { levels: Map<number, number>; years: Set<number> };
+      const byTeam = new Map<string, Votes>();
+      const bump = (assoc: string, code: string | null, info: { level: number | null; year: number | null }) => {
+        if (!code || code.startsWith("__")) return;
+        const key = `${assoc}::${code}`;
+        if (!byTeam.has(key)) byTeam.set(key, { levels: new Map(), years: new Set() });
+        const v = byTeam.get(key)!;
+        if (info.level != null) v.levels.set(info.level, (v.levels.get(info.level) || 0) + 1);
+        if (info.year != null) v.years.add(info.year);
+      };
       (fixtures || []).forEach((f: any) => {
-        const tier = tierByRound.get(f.round_id);
-        if (!tier) return;
-        if (f.home_team_code) tierByTeam.set(`${f.association_id}::${f.home_team_code}`, tier);
-        if (f.away_team_code) tierByTeam.set(`${f.association_id}::${f.away_team_code}`, tier);
+        const info = roundInfo.get(f.round_id);
+        if (!info) return;
+        bump(f.association_id, f.home_team_code, info);
+        bump(f.association_id, f.away_team_code, info);
       });
+
       availableLeagues.forEach((l: any) => {
         const platformAssoc = platformByAssoc.get(l.association_id);
         if (!platformAssoc || !l.code) return;
-        const tier = tierByTeam.get(`${platformAssoc}::${l.code}`);
-        if (tier) result.set(l.id, tier);
+        const v = byTeam.get(`${platformAssoc}::${l.code}`);
+        if (!v) return;
+        let level: number | null = null;
+        let best = -1;
+        v.levels.forEach((n, lvl) => { if (n > best) { best = n; level = lvl; } });
+        const years = Array.from(v.years);
+        evidence.set(l.id, { level, seasonYear: years.length === 1 ? years[0] : null });
       });
-      return result;
+      return evidence;
     },
   });
 
-  // Group team-leagues into tier rows (e.g. "Nelspruit Internal League — 1st League").
-  // Leagues without a derivable tier (no fixtures yet) fall back to their own row.
-  const leagueGroups = useMemo(() => {
-    type Group = { key: string; label: string; leagueIds: string[]; tier: string | null; assocName: string; sortKey: number };
-    const grouped = new Map<string, Group>();
-    const ungrouped: Group[] = [];
-    const tierNum = (t: string) => {
-      const m = t.match(/(\d+)/);
-      return m ? parseInt(m[1], 10) : 999;
-    };
-    availableLeagues.forEach((l: any) => {
-      const assocName = l.league_associations?.name || "League";
-      const tier = leagueTierMap?.get(l.id) || null;
-      if (tier) {
-        const key = `${l.association_id}::${tier}`;
-        const ex = grouped.get(key);
-        if (ex) ex.leagueIds.push(l.id);
-        else grouped.set(key, { key, label: `${assocName} — ${tier}`, leagueIds: [l.id], tier, assocName, sortKey: tierNum(tier) });
-      } else {
-        ungrouped.push({ key: `solo::${l.id}`, label: `${assocName} — ${l.name}`, leagueIds: [l.id], tier: null, assocName, sortKey: 9999 });
-      }
-    });
-    const groupedArr = Array.from(grouped.values()).sort(
-      (a, b) => a.assocName.localeCompare(b.assocName) || a.sortKey - b.sortKey || (a.tier || "").localeCompare(b.tier || "")
-    );
-    ungrouped.sort((a, b) => a.label.localeCompare(b.label));
-    return [...groupedArr, ...ungrouped];
-  }, [availableLeagues, leagueTierMap]);
+  /** Stored season/level first, inference second — shared with the Leagues page. */
+  const leagueResolution = useMemo(
+    () =>
+      resolveLeagueSeasonLevels(availableLeagues as any[], {
+        fixtureEvidence: leagueFixtureEvidence ?? null,
+      }),
+    [availableLeagues, leagueFixtureEvidence],
+  );
+
+  const availableSeasons = useMemo(() => seasonsPresent(leagueResolution), [leagueResolution]);
+
+  /** The tournament's own year drives the default source season. */
+  const tournamentYear = useMemo(() => {
+    const y = startDate ? new Date(startDate).getFullYear() : NaN;
+    return Number.isFinite(y) ? y : new Date().getFullYear();
+  }, [startDate]);
+
+  const [sourceSeason, setSourceSeason] = useState<number | null>(null);
+  const [seasonTouched, setSeasonTouched] = useState(false);
+  useEffect(() => {
+    if (seasonTouched) return;
+    setSourceSeason(pickSeasonForYear(availableSeasons, tournamentYear));
+  }, [availableSeasons, tournamentYear, seasonTouched]);
+
+  const seasonIsFallback =
+    sourceSeason != null && isSeasonFallback(availableSeasons, tournamentYear);
 
   /**
-   * Hierarchical "Players from" tree: league level → teams / reserves.
+   * Hierarchical "Players from" tree: season → league level → teams / reserves.
    * Children carry the canonical club league ids, so every downstream consumer
    * (player loading, invites, eligibility, seeding, draws) is unchanged.
    */
-  const leagueTree = useMemo(
-    () =>
-      buildLeagueTree(
-        (availableLeagues as any[]).map((l) => ({
+  const leagueTree = useMemo(() => {
+    const full = buildLeagueTree(
+      (availableLeagues as any[]).map((l) => {
+        const r = leagueResolution.get(l.id);
+        return {
           id: l.id as string,
           name: l.name as string,
           association_id: l.association_id as string | null,
           assocName: l.league_associations?.name || "League",
-        })),
-        leagueTierMap,
-      ),
-    [availableLeagues, leagueTierMap],
-  );
+          level: r?.level ?? null,
+          seasonYear: r?.seasonYear ?? null,
+          isReserve: r?.isReserve ?? null,
+        };
+      }),
+    );
+    return filterTreeBySeason(full, sourceSeason);
+  }, [availableLeagues, leagueResolution, sourceSeason]);
+
+
 
 
 

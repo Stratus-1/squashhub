@@ -326,7 +326,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 
   const steps: SetupStep[] = [
     { id: "affiliations", label: "League affiliations", description: "Step one — link your club to its regional league(s) or add your own internal league, and set how each one behaves.", complete: associations.length > 0 },
-    { id: "create", label: "Create leagues", description: "Step two — create the league teams (Men's, Ladies, Mixed) inside each affiliation and allocate your players.", complete: leagues.length > 0 },
+    { id: "create", label: "League teams", description: "Step two — create the league teams (Men's, Ladies, Mixed) inside each affiliation and allocate your players.", complete: leagues.length > 0 },
   ];
 
   return (

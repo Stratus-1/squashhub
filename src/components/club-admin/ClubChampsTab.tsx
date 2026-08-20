@@ -1283,8 +1283,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return filterTreeBySeason(full, sourceSeason);
   }, [availableLeagues, leagueResolution, sourceSeason]);
 
-
-
+  /** Flat "pick which leagues to seed from" list — same season-scoped groups. */
+  const leagueGroups = useMemo(
+    () =>
+      leagueTree.map((g) => ({
+        key: g.key,
+        label: g.seasonYear != null ? `${g.assocName} — ${g.label} (${g.seasonYear})` : `${g.assocName} — ${g.label}`,
+        leagueIds: g.children.map((c) => c.id),
+      })),
+    [leagueTree],
+  );
 
 
   const toggleSourceGroup = (leagueIds: string[]) => {

@@ -6530,7 +6530,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                           Remove
                         </Button>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );

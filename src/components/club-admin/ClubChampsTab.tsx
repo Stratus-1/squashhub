@@ -1804,10 +1804,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const champIdToUse = champIdOverride || editingChampId;
     if (!champIdToUse) return;
     try {
-      // Self-pair invite mode (doubles where players self-pair): we only
-      // collect the invitee list at this step — there are no pairs yet, so
-      // persist the selection directly to club_champs_registrations.
-      if (selfPairInviteSelection) {
+      // Invite-list tournaments: the selected players (typically pre-filled
+      // from the chosen league teams) become `invited` registration rows as
+      // soon as progress is saved — that list is what "Invite actions" counts
+      // and sends to. Nobody is entered until they accept.
+      if (registrationUsesInviteList) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
         const ids = await promoteVisitorIds(Array.from(selectedPlayerIds));
         const regRows = ids.map((memberId) => ({
@@ -1834,8 +1835,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         } else {
           await delQ;
         }
-        return;
+        qc.invalidateQueries({ queryKey: ["champ-invitees", champIdToUse] });
+        // Self-pair doubles has no pairs yet — the invite list is all there is.
+        if (selfPairInviteSelection) return;
       }
+
       let allocatedMemberIds: string[] = [];
       // Collect every visitor-* ID that will hit the DB so we can promote them
       // to real club_members rows in one batch and build a lookup map.

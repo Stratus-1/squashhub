@@ -4730,7 +4730,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     queryKey: ["champ-invitees", editingChampId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("id, club_member_id, status, invited_by_admin")
+        .select("id, club_member_id, status, invited_by_admin, confirmed_at, paid_at, fee_paid_cents")
         .eq("champ_id", editingChampId!);
       if (error) throw error;
       return (data || []) as any[];

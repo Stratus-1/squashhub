@@ -7203,16 +7203,60 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </p>
               {editingChampId && (
                 <div className="pt-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={invitesSendingFor === editingChampId}
-                    onClick={() => sendChampInvites(editingChampId, { confirm: true })}
-                  >
-                    {invitesSendingFor === editingChampId ? "Sending…" : "Send / Re-send invites"}
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={invitesSendingFor === editingChampId || testInviteSending}
+                      >
+                        {invitesSendingFor === editingChampId
+                          ? "Sending…"
+                          : testInviteSending
+                            ? "Sending test…"
+                            : "Invite actions"}
+                        <ChevronDown className="w-4 h-4 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-72">
+                      <DropdownMenuItem
+                        onSelect={() => sendChampInvites(editingChampId, { confirm: true })}
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        <span>
+                          Send to all invited players
+                          <span className="block text-[11px] text-muted-foreground">Bulk send / re-send — asks for confirmation</span>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setSelectedInviteeRegIds(new Set());
+                          setInviteeSearch("");
+                          setInviteePickerOpen(true);
+                        }}
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        <span>
+                          Send to selected members
+                          <span className="block text-[11px] text-muted-foreground">Pick individual invitees and remind them</span>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => sendTestInvite(editingChampId)}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        <span>
+                          Send test invite to myself
+                          <span className="block text-[11px] text-muted-foreground">Preview only — records nothing</span>
+                        </span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Uses the delivery methods selected above ({Array.from(inviteMethods.size ? inviteMethods : new Set(["app"])).join(", ")}).
+                  </p>
                 </div>
               )}
+
 
               <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2 mt-2">
                 <div className="min-w-0">

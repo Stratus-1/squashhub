@@ -21,6 +21,7 @@ import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
+import { KnockoutCard } from "@/components/tournaments/KnockoutCard";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { UserX, Trophy, Shuffle, RotateCcw } from "lucide-react";
@@ -847,7 +848,11 @@ export default function ClubChampsView() {
   const groupMatchesAll = (matches as any[]).filter((m) => (m.stage || "group") === "group" && !m.is_bye);
   const groupComplete = groupMatchesAll.length > 0 && groupMatchesAll.every((m: any) => m.status === "completed");
   const groupResultsCount = groupMatchesAll.filter((m: any) => m.status === "completed").length;
-  const playoffMatches = (matches as any[]).filter((m) => (m.stage || "group") !== "group");
+  // Knockout ("ko") rows have their own card and phased generator — they must
+  // never be swept into the play-off re-seeding logic.
+  const playoffMatches = (matches as any[]).filter(
+    (m) => (m.stage || "group") !== "group" && (m.stage || "") !== "ko",
+  );
   const playoffsExist = playoffMatches.length > 0;
 
   const generatePlayoffs = useMutation({
@@ -2288,6 +2293,13 @@ export default function ClubChampsView() {
         )}
         {fixtureCards}
         {combinedFixtures}
+        <KnockoutCard
+          champId={champId!}
+          matches={matches as any[]}
+          canManage={canManage}
+          renderMatchRow={renderMatchRow}
+          groupLabel={(gn) => getGroupLabel(champ, gn)}
+        />
         {playoffCard}
       </>
     );

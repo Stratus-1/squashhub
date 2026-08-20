@@ -2649,11 +2649,21 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const sortedLadies = [...selectedLadies].sort((a, b) => parseNum(a) - parseNum(b));
     const sortedMixed = [...selectedMixed].sort((a, b) => parseNum(a) - parseNum(b));
 
+    // The chosen "1st / 2nd / 3rd League" is persisted as a canonical level plus
+    // the season year — the name stays a display label only.
+    const base = (label: string) => ({
+      level: Number.isFinite(parseNum(label)) ? parseNum(label) : null,
+      season_year: year,
+      is_reserve: false,
+      level_source: "manual",
+      season_source: "manual",
+    });
+
     let codeNum = startNum;
     const menEntries = sortedMen.map(label => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `Men's ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking };
+      return { name: `Men's ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ...base(label) };
     });
 
     // Reset numbering for Ladies
@@ -2661,7 +2671,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const ladiesEntries = sortedLadies.map(label => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `Ladies ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking };
+      return { name: `Ladies ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ...base(label) };
     });
 
     // Reset numbering for Mixed
@@ -2669,11 +2679,12 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const mixedEntries = sortedMixed.map(label => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `Mixed ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking };
+      return { name: `Mixed ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ...base(label) };
     });
 
     return [...menEntries, ...ladiesEntries, ...mixedEntries];
   };
+
 
   const entries = buildEntries();
 

@@ -1395,6 +1395,29 @@ export default function Bookings() {
         </div>
       )}
 
+      {usesExternalBooking && externalProvider === "gobook" && gobookCaptchaBlocked && (
+        <div className="px-4 mt-2">
+          <Card className="border-amber-500/50 bg-amber-500/10">
+            <CardContent className="p-3 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-700">
+                  GoBook sync is blocked by a captcha
+                </p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  gobook.co.za has added an "I'm not a robot" check to its login page,
+                  so SquashHub can no longer sign in on your behalf. Your GoBook
+                  username and password are still correct — re-entering them will not
+                  help. Book directly on gobook.co.za until GoBook allows SquashHub
+                  through.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+
       {/* Move-booking banner */}
       {moveSource && (
         <div className="px-4 mt-3">

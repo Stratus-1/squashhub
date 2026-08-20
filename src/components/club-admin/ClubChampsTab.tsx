@@ -7588,83 +7588,106 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               complete={inviteMethods.size > 0}
               defaultOpen={true}
             >
-            {/* Invite source — only meaningful when the organiser builds the list */}
-            {invitesApply && registrationUsesInviteList && (
+            {/* INVITATION AUDIENCE — independent of the Structure/draw source */}
+            {invitesApply && (
               <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
-                <Label className="text-sm">Initial invite list comes from…</Label>
+                <Label className="text-sm">Invitation audience</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Who gets invited. This is separate from the Structure step — the league/team selection there only decides how accepted entrants are grouped and seeded.
+                </p>
                 <div className="flex flex-wrap items-center gap-4 text-sm">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="invite-source"
-                      checked={inviteSource === "manual"}
-                      onChange={() => { setInviteSourceTouched(true); setInviteSource("manual"); }}
-                    />
-                    Manual tick-list
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="invite-source"
-                      checked={inviteSource === "leagues"}
-                      onChange={() => { setInviteSourceTouched(true); setInviteSource("leagues"); }}
-                    />
-                    By league (pick on the Players step)
-                  </label>
+                  {(["all_club", "leagues", "individuals"] as InviteAudienceMode[]).map((mode) => (
+                    <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="invite-audience"
+                        checked={inviteAudience === mode}
+                        onChange={() => setInviteAudience(mode)}
+                      />
+                      {audienceLabel(mode)}
+                    </label>
+                  ))}
                 </div>
-                {inviteSource === "leagues" && (
+
+                {inviteAudience === "leagues" && (
                   <div className="space-y-2 pt-1">
-                    <Label className="text-xs text-muted-foreground">Pick which leagues to seed from</Label>
-                    {structureLeagueIds.size > 0 && !inviteLeaguesTouched && (
-                      <p className="text-[11px] text-muted-foreground">
-                        Following the league/team selection made on the Structure step. Change anything below and this list stops following it.
-                      </p>
-                    )}
-                    {/* Same hierarchical tree as the Structure step: season →
-                        league level → teams / reserves, on canonical ids. */}
+                    <Label className="text-xs text-muted-foreground">Pick which league teams to invite</Label>
                     <div className="rounded border border-border/50 bg-background/60 p-2">
                       <LeagueSourceTree
                         groups={leagueTree}
-                        selected={Array.from(sourceLeagueIds)}
-                        onChange={(ids) => { setInviteLeaguesTouched(true); applyLeaguePrefill(new Set(ids)); }}
+                        selected={Array.from(audienceLeagueIds)}
+                        onChange={(ids) => setAudienceLeagueIds(new Set(ids))}
                       />
                     </div>
-
                     <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
-                      <Checkbox
-                        checked={inviteIncludeReserves}
-                        onCheckedChange={(c) => {
-                          setInviteIncludeReserves(!!c);
-                          if (sourceLeagueIds.size > 0) applyLeaguePrefill(new Set(sourceLeagueIds));
-                        }}
-                      />
+                      <Checkbox checked={inviteIncludeReserves} onCheckedChange={(c) => setInviteIncludeReserves(!!c)} />
                       Include reserves
                     </label>
-                    {hasLeagueSelection && (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} seeded from {sourceLeagueIds.size} team{sourceLeagueIds.size === 1 ? "" : "s"}. They go onto the invite list as <strong>Invited</strong> — nobody is entered until they accept.
-                        </p>
-                        <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-40 overflow-auto">
-                          {inviteTeamBreakdown.map((t) => (
-                            <div key={t.id} className="flex items-center justify-between text-[11px]">
-                              <span className="truncate">{t.name}</span>
-                              <span className={t.count === 0 ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"}>
-                                {t.count} player{t.count === 1 ? "" : "s"}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={audienceIncludeIndividuals}
+                        onCheckedChange={(c) => setAudienceIncludeIndividuals(!!c)}
+                      />
+                      Also invite individually picked members
+                    </label>
+                    {inviteTeamBreakdown.length > 0 && (
+                      <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-40 overflow-auto">
+                        {inviteTeamBreakdown.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between text-[11px]">
+                            <span className="truncate">{t.name}</span>
+                            <span className={t.count === 0 ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"}>
+                              {t.count} player{t.count === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     )}
-
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  This only seeds the starting roster. You can still pull in any player from any league as a sub at any time — no cutoff.
+
+                {(inviteAudience === "individuals" || (inviteAudience === "leagues" && audienceIncludeIndividuals)) && (
+                  <div className="space-y-1.5 pt-1">
+                    <Input
+                      value={audienceSearch}
+                      onChange={(e) => setAudienceSearch(e.target.value)}
+                      placeholder="Search members (league membership not required)"
+                      className="h-8 text-xs"
+                    />
+                    <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-52 overflow-auto">
+                      {(members as any[])
+                        .filter((m) => String(m.status ?? "active").toLowerCase() === "active" && String(m.role ?? "member").toLowerCase() !== "visitor")
+                        .filter((m) => {
+                          const q = audienceSearch.trim().toLowerCase();
+                          if (!q) return true;
+                          return String(memberNameById.get(m.id) || m.name || "").toLowerCase().includes(q);
+                        })
+                        .slice(0, 300)
+                        .map((m) => (
+                          <label key={m.id} className="flex items-center gap-2 text-[11px] cursor-pointer">
+                            <Checkbox
+                              checked={audienceMemberIds.has(m.id)}
+                              onCheckedChange={(c) => {
+                                setAudienceMemberIds((prev) => {
+                                  const next = new Set(prev);
+                                  c ? next.add(m.id) : next.delete(m.id);
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span className="truncate">{memberNameById.get(m.id) || m.name || "Unknown member"}</span>
+                          </label>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">{resolvedAudience.summary}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Anyone who accepts but has no league mapping is still accepted and lands in <strong>Needs division assignment</strong> for you to place.
                 </p>
               </div>
             )}
+
 
             {/* Invite methods — always shown so admins control delivery channel */}
             <div className="space-y-2">

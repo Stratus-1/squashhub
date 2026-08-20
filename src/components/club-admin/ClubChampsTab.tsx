@@ -1867,7 +1867,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Persist current player / pair selections + group assignments as a draft
   // to club_champs_entries. Safe because entries get wiped & rewritten when
   // matches are (re)generated. Requires the parent champ row to exist.
-  const saveEntriesDraft = async (champIdOverride?: string, structureLeagueIdsOverride?: Set<string>) => {
+  const saveEntriesDraft = async (
+    champIdOverride?: string,
+    structureLeagueIdsOverride?: Set<string>,
+    opts?: { inviteRosterOnly?: boolean },
+  ) => {
     const champIdToUse = champIdOverride || editingChampId;
     if (!champIdToUse) return;
     try {

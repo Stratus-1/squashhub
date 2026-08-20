@@ -307,9 +307,18 @@ function buildInviteDetailLines(opts: {
   bestOf?: number;
   registrationRequired?: boolean;
   registrationMode?: "" | "open" | "invite";
+  /** Tournament name — shown as the first detail line when provided. */
+  tournamentName?: string;
+  /**
+   * Effective draw format of every competition division. Drives the
+   * "Draw format" line so a knockout tournament never claims to be a
+   * round-robin. Falls back to `roundFormat` when omitted.
+   */
+  divisionFormats?: string[];
 }): string[] {
   const lines: string[] = [];
   const isDoubles = opts.matchType === "doubles";
+  if (opts.tournamentName?.trim()) lines.push(`Tournament: ${opts.tournamentName.trim()}`);
   lines.push(`Category: ${GENDER_LABELS[opts.gender]} ${isDoubles ? "Doubles" : "Singles"}`);
 
   try {
@@ -323,19 +332,33 @@ function buildInviteDetailLines(opts: {
     lines.push(`Game length: Par ${opts.pointsPerGame} (win by 2), best of ${opts.bestOf}`);
   }
 
+  const FORMAT_LABELS: Record<string, string> = {
+    single_round_robin: "Single round-robin (each plays once)",
+    double_round_robin: "Double round-robin (home & away)",
+    swiss: "Swiss rounds (paired on results)",
+    cross_league: "Cross-league (leagues play each other)",
+    knockout: "Knockout (single elimination)",
+  };
+  const formats = Array.from(
+    new Set((opts.divisionFormats?.length ? opts.divisionFormats : [opts.roundFormat]).filter(Boolean))
+  );
+  const effective = formats.length ? formats : ["single_round_robin"];
   lines.push(
-    `Round format: ${opts.roundFormat === "double_round_robin"
-      ? "Double round-robin (home & away)"
-      : "Single round-robin (each plays once)"}`
+    `Draw format: ${effective.map((f) => FORMAT_LABELS[f] || f).join(" · ")}`
   );
 
-  const byeLabel =
-    opts.byeHandling === "walkover_win"
-      ? "Walkover win — full points"
-      : opts.byeHandling === "neutral"
-      ? "Neutral — excluded from averages"
-      : "No match — bye not recorded";
-  lines.push(`Bye handling: ${byeLabel}`);
+  // Byes only mean something where every entrant is scheduled against the
+  // field — a knockout-only draw has no bye scoring rule to report.
+  if (effective.some((f) => f !== "knockout")) {
+    const byeLabel =
+      opts.byeHandling === "walkover_win"
+        ? "Walkover win — full points"
+        : opts.byeHandling === "neutral"
+        ? "Neutral — excluded from averages"
+        : "No match — bye not recorded";
+    lines.push(`Bye handling: ${byeLabel}`);
+  }
+
 
   if (isDoubles) {
     lines.push(
@@ -741,6 +764,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (roundFormat === "cross_league") return "cross_league";
     return roundFormat;
   };
+  /**
+   * The effective draw format of every division, used by the invite text so
+   * a knockout tournament is described as a knockout.
+   */
+  const inviteDivisionFormats = (): string[] =>
+    Array.from({ length: Math.max(1, numGroups || 1) }, (_, i) => formatForLeague(i + 1) || "").filter(Boolean);
+
   // Per-league gender category and match type (keyed by group_number string).
   // A tournament can therefore hold e.g. a Ladies' league, a Men's league and
   // a Mixed league side by side. Missing entries fall back to the
@@ -4150,6 +4180,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       registrationOpensAt, registrationClosesAt, entryFeeRand,
       pointsPerGame, bestOf,
       registrationRequired, registrationMode: (registrationMode || "open") as any,
+      tournamentName: champName, divisionFormats: inviteDivisionFormats(),
     });
     return `You have been invited to ${champName || "a tournament"}.` +
       (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
@@ -7438,6 +7469,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         registrationOpensAt, registrationClosesAt, entryFeeRand,
                         pointsPerGame, bestOf,
                         registrationRequired, registrationMode: (registrationMode || "open") as any,
+                        tournamentName: champName, divisionFormats: inviteDivisionFormats(),
                       });
                       const bullets = lines.map((l) => `• ${l}`).join("\n");
                       // Strip any previously inserted auto-block (between markers) then prepend fresh.
@@ -8656,6 +8688,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         bestOf={bestOf}
         registrationRequired={registrationRequired}
         registrationMode={registrationMode}
+        divisionFormats={inviteDivisionFormats()}
       />
 
       <ShadowRankPromptDialog
@@ -8849,6 +8882,7 @@ function InvitePreviewDialog({
   bestOf,
   registrationRequired,
   registrationMode,
+  divisionFormats,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -8874,6 +8908,7 @@ function InvitePreviewDialog({
   bestOf: number;
   registrationRequired?: boolean;
   registrationMode?: "" | "open" | "invite";
+  divisionFormats?: string[];
 }) {
   const descHasDetails = /— Tournament details —/.test(description || "");
   const detailLines = descHasDetails ? [] : buildInviteDetailLines({
@@ -8882,6 +8917,7 @@ function InvitePreviewDialog({
     registrationOpensAt, registrationClosesAt, entryFeeRand,
     pointsPerGame, bestOf,
     registrationRequired, registrationMode,
+    tournamentName, divisionFormats,
   });
 
   const appBody =

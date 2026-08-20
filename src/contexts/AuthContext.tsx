@@ -51,6 +51,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     };
 
+    // Only these mean the account/token is genuinely invalid. Anything else
+    // (offline, timeout, 5xx, fetch failure — common right after a PWA update
+    // reload on mobile) must NEVER wipe the stored session.
+    const isDefinitelyInvalid = (error: unknown): boolean => {
+      const e = error as { status?: number; code?: string; message?: string } | null;
+      if (!e) return false;
+      const status = typeof e.status === "number" ? e.status : undefined;
+      const code = (e.code || "").toLowerCase();
+      const msg = (e.message || "").toLowerCase();
+      if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("timeout")) {
+        return false;
+      }
+      if (code.includes("user_not_found") || msg.includes("user not found")) return true;
+      if (status === 401 || status === 403) return true;
+      return false;
+    };
+
     const validateSession = async (s: Session | null) => {
       if (!s?.user) {
         setSession(null);
@@ -58,18 +75,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      // Verify the user still exists server-side. If the auth user was deleted
-      // but the token is still in localStorage, getUser() returns user_not_found.
-      const { data, error } = await supabase.auth.getUser();
-      if (error || !data?.user) {
-        console.warn("[Auth] Stale session detected, forcing local sign-out", error?.message);
-        await forceLocalSignOut();
-        return;
-      }
+      // Trust the locally stored session immediately so a reload (e.g. after a
+      // PWA update) never flashes the login screen.
       setSession(s);
-      setUser(data.user);
+      setUser(s.user);
       setLoading(false);
+
+      // Then verify server-side in the background. Only a definitive auth
+      // rejection clears the session; transient/offline errors are ignored.
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          if (isDefinitelyInvalid(error)) {
+            console.warn("[Auth] Session rejected by server, signing out locally", error.message);
+            await forceLocalSignOut();
+          }
+          return;
+        }
+        if (data?.user) setUser(data.user);
+      } catch {
+        // offline / transient — keep the local session
+      }
     };
+
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);

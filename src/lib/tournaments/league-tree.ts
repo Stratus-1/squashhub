@@ -47,6 +47,8 @@ export interface LeagueTreeGroup {
   tierNumber: number;
   /** Season this group belongs to (null when the club has no season data). */
   seasonYear?: number | null;
+  /** True for the small catch-all group of rows with no confident level. */
+  needsAssignment?: boolean;
   children: LeagueTreeChild[];
 }
 
@@ -95,7 +97,7 @@ export function buildLeagueTree(
   tierByLeagueId?: Map<string, string> | null,
 ): LeagueTreeGroup[] {
   const groups = new Map<string, LeagueTreeGroup>();
-  const orphans: LeagueTreeGroup[] = [];
+  const orphanGroups = new Map<string, LeagueTreeGroup>();
 
   const ensure = (
     key: string,
@@ -222,7 +224,14 @@ export function buildLeagueTree(
       (a, b) => Number(a.isReserve) - Number(b.isReserve) || a.name.localeCompare(b.name),
     ),
   );
-  orphans.sort((a, b) => a.label.localeCompare(b.label));
+  const orphans = Array.from(orphanGroups.values()).sort(
+    (a, b) => a.assocName.localeCompare(b.assocName) || (b.seasonYear ?? 0) - (a.seasonYear ?? 0),
+  );
+  orphans.forEach((g) =>
+    g.children.sort(
+      (a, b) => Number(a.isReserve) - Number(b.isReserve) || a.name.localeCompare(b.name),
+    ),
+  );
   return [...sorted, ...orphans];
 }
 

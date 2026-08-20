@@ -99,6 +99,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const [associationId, setAssociationId] = useState<string>("");
   const [gender, setGender] = useState<Gender>("men");
   const [leagueNumber, setLeagueNumber] = useState<string>("1st");
+  const [seasonYear, setSeasonYear] = useState<number>(new Date().getFullYear());
   const [startPosition, setStartPosition] = useState<number>(1);
   const [numMembers, setNumMembers] = useState<number>(0);
   const [numTeams, setNumTeams] = useState<number>(1);
@@ -263,7 +264,19 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         } else {
           const code = `${codePrefix}${String(nextCode++).padStart(3, "0")}`;
           const { data, error } = await fromExt("leagues")
-            .insert({ club_id: clubId, association_id: associationId, name: teamName, code, reserves_per_team: reserves })
+            .insert({
+              club_id: clubId,
+              association_id: associationId,
+              name: teamName,
+              code,
+              reserves_per_team: reserves,
+              // Canonical structure: season + level, independent of the display name.
+              level: parseInt(leagueNumber, 10) || null,
+              season_year: seasonYear,
+              is_reserve: false,
+              level_source: "manual",
+              season_source: "manual",
+            })
             .select("id")
             .single();
           if (error) throw error;
@@ -283,13 +296,25 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         else {
           const code = `${codePrefix}${String(nextCode++).padStart(3, "0")}`;
           const { data, error } = await fromExt("leagues")
-            .insert({ club_id: clubId, association_id: associationId, name: reservesNameFinal, code })
+            .insert({
+              club_id: clubId,
+              association_id: associationId,
+              name: reservesNameFinal,
+              code,
+              // Reserves inherit the same season + level as their teams.
+              level: parseInt(leagueNumber, 10) || null,
+              season_year: seasonYear,
+              is_reserve: true,
+              level_source: "manual",
+              season_source: "manual",
+            })
             .select("id")
             .single();
           if (error) throw error;
           reservesLeagueId = data.id;
         }
       }
+
 
       // Persist the "players per match" rule for every league row in this batch
       // (regular teams + reserves). Upsert by league_id so re-running setup updates.
@@ -468,6 +493,18 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
                 {ORDINALS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
               </SelectContent>
             </Select>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Season (year)</Label>
+              <Input
+                type="number"
+                value={seasonYear}
+                onChange={(e) => setSeasonYear(parseInt(e.target.value, 10) || new Date().getFullYear())}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                A new season creates a fresh set of teams. Previous years keep their own teams, fixtures and results.
+              </p>
+            </div>
+
             {existingLeagueNames.length > 0 && (
               <Card className="p-2.5 border-warning/40 bg-warning/10 text-xs space-y-1">
                 <p className="font-medium text-foreground">Existing league rows for this number:</p>

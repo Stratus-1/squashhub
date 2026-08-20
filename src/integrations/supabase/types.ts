@@ -5054,11 +5054,16 @@ export type Database = {
           code: string | null
           created_at: string
           id: string
+          is_reserve: boolean | null
+          level: number | null
+          level_source: string | null
           logo_url: string | null
           name: string
           nsa_team_code: string | null
           nsa_team_id: string | null
           reserves_per_team: number
+          season_source: string | null
+          season_year: number | null
           updated_at: string
         }
         Insert: {
@@ -5070,11 +5075,16 @@ export type Database = {
           code?: string | null
           created_at?: string
           id?: string
+          is_reserve?: boolean | null
+          level?: number | null
+          level_source?: string | null
           logo_url?: string | null
           name: string
           nsa_team_code?: string | null
           nsa_team_id?: string | null
           reserves_per_team?: number
+          season_source?: string | null
+          season_year?: number | null
           updated_at?: string
         }
         Update: {
@@ -5086,11 +5096,16 @@ export type Database = {
           code?: string | null
           created_at?: string
           id?: string
+          is_reserve?: boolean | null
+          level?: number | null
+          level_source?: string | null
           logo_url?: string | null
           name?: string
           nsa_team_code?: string | null
           nsa_team_id?: string | null
           reserves_per_team?: number
+          season_source?: string | null
+          season_year?: number | null
           updated_at?: string
         }
         Relationships: [

@@ -1621,7 +1621,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (!clubId) return editingChampId;
     if (!champName.trim() && !editingChampId) return editingChampId;
     const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
-    const payload: Record<string, any> = {
+    const rawPayload: Record<string, any> = {
       name: champName || defaultName,
       gender,
       match_type: matchType,
@@ -1684,6 +1684,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
       playoff_date: playoffDate || null,
     };
+    // A draft can legitimately have unanswered choices ("" in the wizard state).
+    // Those columns are CHECK-constrained, so send them only once chosen.
+    const payload = sanitizeDraftPayload(rawPayload);
     // Fields that live only on the tournaments table (not on the legacy view).
     const extras = {
       event_type: eventType,

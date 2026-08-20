@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   afterAcceptPath,
+  buildInviteTestUrl,
+  inviteTestPath,
+  inviteVerificationKind,
+  inviteVerificationLabel,
+  isInviteVerificationComplete,
   buildInviteUrl,
   inviteFeeCents,
   inviteLoginPath,
@@ -55,9 +60,18 @@ describe("invite state machine", () => {
     expect(inviteState({ ...base, registration_closed: true })).toBe("closed");
   });
 
-  it("requires the signed-in invitee before offering actions", () => {
-    expect(inviteState({ ...base, is_invitee: false })).toBe("needs_login");
+  it("lets the token holder respond without a login", () => {
+    expect(inviteState({ ...base, is_invitee: false, can_respond_public: true })).toBe("actionable");
     expect(inviteState(base)).toBe("actionable");
+  });
+
+  it("falls back to login only for legacy payloads without the public path", () => {
+    expect(inviteState({ ...base, is_invitee: false })).toBe("needs_login");
+  });
+
+  it("keeps revoked/closed handling ahead of the public response path", () => {
+    expect(inviteState({ ...base, can_respond_public: true, revoked: true })).toBe("revoked");
+    expect(inviteState({ found: true, status: "invited", can_respond_public: true, registration_closed: true })).toBe("closed");
   });
 });
 
@@ -71,6 +85,35 @@ describe("fees and routing", () => {
     expect(afterAcceptPath("c1", "pending_eft")).toBe("/club-champs/c1?pay=1");
     expect(afterAcceptPath("c1", "pending_payment")).toBe("/club-champs/c1?pay=1");
     expect(afterAcceptPath("c1", "paid")).toBe("/club-champs/c1");
+  });
+});
+
+describe("recipient verification", () => {
+  it("asks a public visitor for the token-bound detail", () => {
+    expect(inviteVerificationKind({ ...base, is_invitee: false, verification_kind: "phone_last4" })).toBe("phone_last4");
+    expect(inviteVerificationKind({ ...base, is_invitee: false, verification_kind: "surname" })).toBe("surname");
+    expect(inviteVerificationLabel("phone_last4")).toMatch(/last 4/i);
+  });
+
+  it("never asks the already-proven signed-in invitee", () => {
+    expect(inviteVerificationKind({ ...base, is_invitee: true, verification_kind: "phone_last4" })).toBe("none");
+  });
+
+  it("blocks obviously incomplete answers client-side", () => {
+    expect(isInviteVerificationComplete("phone_last4", "12")).toBe(false);
+    expect(isInviteVerificationComplete("phone_last4", "4821")).toBe(true);
+    expect(isInviteVerificationComplete("surname", "P")).toBe(false);
+    expect(isInviteVerificationComplete("surname", " Pretorius ")).toBe(true);
+    expect(isInviteVerificationComplete("none", "")).toBe(true);
+  });
+});
+
+describe("organiser test invitations", () => {
+  it("uses a non-mutating test link that carries no invite token", () => {
+    expect(inviteTestPath("champ-1")).toBe("/i/test/champ-1");
+    const url = buildInviteTestUrl("champ-1", "nsc");
+    expect(url).toBe("https://nsc.squashhub.co.za/i/test/champ-1");
+    expect(url).not.toMatch(/token/);
   });
 });
 

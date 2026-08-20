@@ -44,6 +44,12 @@ export type InvitePayload = {
   tournament_status?: string | null;
   is_invitee?: boolean;
   requires_login?: boolean;
+  /** True when the token can be answered without signing in. */
+  can_respond_public?: boolean;
+  /** What lightweight detail the visitor must supply to prove the link is theirs. */
+  verification_kind?: "none" | "phone_last4" | "surname" | null;
+  /** Set by the organiser-only preview payload — nothing may be mutated. */
+  test?: boolean;
   /** False when the invited membership has never been claimed by an account. */
   member_has_account?: boolean;
 };
@@ -74,13 +80,57 @@ export function inviteState(payload: InvitePayload | null | undefined): InviteSt
   // Accepted but not yet paid — always route to payment, even after close.
   if (payload.confirmed_at && PENDING_PAYMENT_STATUSES.has(status)) return "payment_pending";
   if (payload.registration_closed) return "closed";
+  // A recipient-specific token is proof of invitation. Anyone holding it may
+  // respond without a SquashHub login; a forwarded link is stopped by the
+  // token-bound verification step below, not by a login wall.
+  if (payload.can_respond_public) return "actionable";
   if (!payload.is_invitee) {
-    // The invited membership has never been claimed by a login — the visitor
-    // has to create an account (or claim their membership) first.
+    // Legacy payloads (pre public-response RPC) still fall back to login.
     return payload.member_has_account === false ? "needs_signup" : "needs_login";
   }
   return "actionable";
 
+}
+
+/**
+ * Lightweight recipient check required before a public (not signed-in)
+ * visitor may accept or decline. Signed-in invitees are already proven.
+ */
+export function inviteVerificationKind(
+  payload: InvitePayload | null | undefined,
+): "none" | "phone_last4" | "surname" {
+  if (!payload || payload.is_invitee) return "none";
+  const kind = payload.verification_kind;
+  return kind === "phone_last4" || kind === "surname" ? kind : "none";
+}
+
+export function inviteVerificationLabel(kind: "none" | "phone_last4" | "surname"): string {
+  if (kind === "phone_last4") return "Last 4 digits of your cellphone number";
+  if (kind === "surname") return "Your surname";
+  return "";
+}
+
+/** Client-side sanity check so obvious typos never hit the server. */
+export function isInviteVerificationComplete(
+  kind: "none" | "phone_last4" | "surname",
+  value: string,
+): boolean {
+  if (kind === "none") return true;
+  const v = (value || "").trim();
+  if (kind === "phone_last4") return v.replace(/\D/g, "").length >= 4;
+  return v.length >= 2;
+}
+
+/** Organiser test-invite landing page — always non-mutating. */
+export function inviteTestPath(champId: string): string {
+  return `${INVITE_PATH_PREFIX}/test/${encodeURIComponent(champId)}`;
+}
+
+export function buildInviteTestUrl(champId: string, subdomain?: string | null): string {
+  const path = inviteTestPath(champId);
+  if (subdomain) return `https://${subdomain}.${ROOT_HOST}${path}`;
+  if (typeof window !== "undefined" && window.location?.origin) return `${window.location.origin}${path}`;
+  return `https://${ROOT_HOST}${path}`;
 }
 
 export function inviteFeeCents(payload: InvitePayload | null | undefined): number {

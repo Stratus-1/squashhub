@@ -904,3 +904,15 @@ No data changes — DB inspection found no malformed/child rows in `club_champs`
 - Wizard: `ClubChampsTab` has a `knockout` per-league format with a section-count stepper; capacity treats sections as `pools` and always needs `entrants - 1` matches.
 - Live view: `src/components/tournaments/KnockoutCard.tsx` renders the draw per league/section and exposes "Generate next round" / "Generate league final". Knockout rows (`stage = 'ko'`) are excluded from the play-off card so play-off re-seeding is untouched.
 - Tests: `src/test/knockout.test.ts` (engine) + knockout cases in `src/test/capacity.test.ts`.
+
+## 2026-08-20 — Tournament invitations: public response + organiser test invite
+
+**Issue 1:** The recipient-specific invite link (`/i/<token>`) forced a normal SquashHub login ("Sign in to respond"), contradicting the agreed public-response design.
+
+**Fix:** New `public.respond_tournament_invite_public(token, accept, verify)` (granted to `anon`) responds without a login. A forwarded/stolen link is stopped by a token-bound recipient check instead of a login wall: last 4 digits of the member's cellphone, else surname (`invite_verification_kind` / `invite_verification_ok`). `get_tournament_invite` now returns `can_respond_public` + `verification_kind` (never the answer). Accept is idempotent (already-confirmed rows return their current status); fee rows use the existing `ON CONFLICT` upsert so reloads never duplicate payment obligations. Revoked / closed / invalid tokens still fail safely.
+
+**Issue 2:** "Send test invite to myself" was missing; the existing test send used a REAL invite token.
+
+**Fix:** New non-mutating preview route `/i/test/:champId` backed by organiser-only `get_tournament_invite_preview(champ_id)`. The Invite actions menu now has "Send test invite to myself", delivered to the organiser's own in-app/email channel, clearly marked TEST, with Accept/Decline that only simulate. No registration, count, seeding or payment is touched.
+
+Regression tests: `src/test/invite-link.test.ts` (public actionable state, verification rules, test-link shape).

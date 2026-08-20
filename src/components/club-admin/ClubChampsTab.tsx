@@ -5603,12 +5603,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   )}
                                   {collapsed && playoffsForLeague(gn) && (
                                     <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
-                                      Playoffs
+                                      {fmt === "knockout" ? "Knockout rounds" : "Playoffs"}
                                     </span>
                                   )}
                                   {collapsed && (
                                     <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
-                                      {formatUsesPools(fmt) ? poolLabel(poolsForDivision(gn)) : "Single draw"}
+                                      {formatUsesPools(fmt) ? poolLabelFor(poolsForDivision(gn), fmt) : "Single draw"}
                                       {expectedPlayers[key] ? ` · ${expectedPlayers[key]} ${isDoubles ? "pairs" : "players"}` : ""}
                                     </span>
                                   )}
@@ -5624,10 +5624,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   {/* Read-only summary — the pool count is set
                                       by the single Pools selector below. */}
                                   {formatUsesPools(fmt) && (
-                                    <div className="shrink-0 pb-1.5" title="Set the pool count with the Pools selector below">
-                                      <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Pools</Label>
+                                    <div className="shrink-0 pb-1.5" title={`Set the ${poolNoun(fmt, false)} count with the ${poolSelectorLabel(fmt)} selector below`}>
+                                      <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">{poolSelectorLabel(fmt)}</Label>
                                       <div className="text-xs font-semibold text-teal-700 dark:text-teal-400 mt-1 whitespace-nowrap">
-                                        {poolLabel(poolsForDivision(gn))}
+                                        {poolLabelFor(poolsForDivision(gn), fmt)}
                                       </div>
                                     </div>
                                   )}

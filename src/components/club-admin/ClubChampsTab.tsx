@@ -4351,7 +4351,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // entrant, invitation-token or payment records — only a notification row
   // addressed to the organiser themselves.
   const [testInviteSending, setTestInviteSending] = useState(false);
-  async function sendTestInvite(champId: string) {
+  async function sendTestInvite(
+    champId: string,
+    opts?: { asMemberId?: string; asName?: string },
+  ) {
     if (testInviteSending) return;
     const meId = myMember?.id;
     if (!meId) {
@@ -4371,7 +4374,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
       const sendApp = methods.includes("app");
       const sendEmail = methods.includes("email");
-      const msg = `*** TEST INVITE — preview only, no entry has been recorded ***\n\n${buildInviteBody()}`;
+      const asLine = opts?.asName
+        ? `Previewing the invitation exactly as ${opts.asName} would receive it.\n`
+        : "";
+      const msg = `*** TEST INVITE — preview only, no entry has been recorded ***\n${asLine}\n${buildInviteBody()}`;
+
 
       const { error: insErr } = await fromExt("notifications").insert([{
         club_member_id: meId,
@@ -4382,6 +4389,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         data: {
           champ_id: champId,
           test: true,
+          preview_for_member_id: opts?.asMemberId || null,
+          preview_for_name: opts?.asName || null,
           send_email: sendEmail,
           app_silent: !sendApp,
           description: description.trim() || null,
@@ -4406,7 +4415,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
       toast.success(
-        `Test invite sent to you via ${methods.join(", ")}. Nothing was recorded against the tournament.`,
+        opts?.asName
+          ? `Test invite for ${opts.asName} sent to you via ${methods.join(", ")}. Nothing was recorded against the tournament.`
+          : `Test invite sent to you via ${methods.join(", ")}. Nothing was recorded against the tournament.`,
       );
     } catch (e: any) {
       toast.error(e?.message || "Failed to send test invite");
@@ -4479,6 +4490,32 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
   const effectiveAllInviteCount = allInviteCount || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
+
+  // First real invitee on the list — used for "send a test as an invited player"
+  // so an organiser who isn't part of any team can still preview the exact
+  // invitation an entrant receives. Sending still goes to the organiser only.
+  const sampleInvitee = useMemo(() => {
+    const saved = (inviteeRows as any[])
+      .filter((r) => r.club_member_id && !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()))
+      .map((r) => ({
+        memberId: r.club_member_id as string,
+        name: memberNameById.get(r.club_member_id) || "Unknown member",
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (saved.length > 0) return saved[0];
+    const pending: { memberId: string; name: string }[] = [];
+    const seen = new Set<string>();
+    structureLeagueIds.forEach((leagueId) => {
+      (registrationsByLeague.get(leagueId) || []).forEach((memberId) => {
+        if (inviteExcludedMemberIds.has(memberId) || seen.has(memberId)) return;
+        seen.add(memberId);
+        pending.push({ memberId, name: memberNameById.get(memberId) || "Unknown member" });
+      });
+    });
+    pending.sort((a, b) => a.name.localeCompare(b.name));
+    return pending[0] || null;
+  }, [inviteeRows, memberNameById, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
+
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
   const [registrationsChamp, setRegistrationsChamp] = useState<any | null>(null);

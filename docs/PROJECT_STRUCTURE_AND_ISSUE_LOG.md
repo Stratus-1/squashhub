@@ -88,6 +88,16 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-20 · Tournament selected-member invite failed on registration status constraint
+- **Symptom:** Opening “Send invite to selected members” showed zero invitees and raised
+  `club_champs_registrations_status_check` while preparing the tournament roster.
+- **Finding:** The Invite Actions workflow correctly materialised unaccepted recipients with status
+  `invited`, but the live registration constraint still allowed only payment/final lifecycle states.
+- **Fix:** Added `invited` to the allowed `club_champs_registrations.status` values so the roster can be
+  materialised before a player accepts or pays.
+- **Guard:** Registration constraints must include every state emitted by the invitation lifecycle;
+  `invited` means selected/notified but not yet accepted and must remain distinct from payment states.
+
 ### 2026-08-20 · Legacy tournament draft invite picker remained empty
 - **Symptom:** A saved tournament with league teams selected still showed “0 selected of 0 shown” when
   opening “Send invite to selected members”; some sessions also surfaced a missing one-argument

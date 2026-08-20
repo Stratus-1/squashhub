@@ -7302,6 +7302,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <p className="text-xs text-muted-foreground">
                 This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — use the “Invite actions” button below.
               </p>
+              {!editingChampId && (
+                <div className="pt-2 rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Invite actions</span> (send to all, send to selected members,
+                  send a test to yourself) become available as soon as the tournament is saved — use{" "}
+                  <span className="font-medium text-foreground">Save progress</span> first.
+                </div>
+              )}
               {editingChampId && (
                 <div className="pt-2">
                   <DropdownMenu>

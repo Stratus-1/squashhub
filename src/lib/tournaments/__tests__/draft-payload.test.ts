@@ -40,3 +40,21 @@ describe("sanitizeDraftPayload", () => {
     expect(sanitizeDraftPayload(payload)).toEqual(payload);
   });
 });
+
+describe("sanitizeExtrasPayload", () => {
+  it("drops nulls for NOT NULL tournament columns", async () => {
+    const { sanitizeExtrasPayload } = await import("../draft-payload");
+    const out = sanitizeExtrasPayload({
+      event_type: null,
+      seeding_source: null,
+      league_win_conditions: null,
+      league_sources: {},
+      max_entrants: null,
+    });
+    expect(out).not.toHaveProperty("event_type");
+    expect(out).not.toHaveProperty("seeding_source");
+    expect(out).not.toHaveProperty("league_win_conditions");
+    expect(out.league_sources).toEqual({});
+    expect(out.max_entrants).toBeNull();
+  });
+});

@@ -569,28 +569,33 @@ export default function MatchMarker() {
       if (!memberB) noteParts.push(`Player 2: ${config.playerB.name} (${config.playerB.club})`);
       if (config.source !== 'manual') noteParts.push(`Source: ${config.source} ${config.sourceId || ''}`);
 
-      const { error } = await supabase.from("matches").insert({
-        player_a: memberA?.user_id || null,
-        player_b: memberB?.user_id || null,
-        player_a_member_id: validAMemberId,
-        player_b_member_id: validBMemberId,
-        winner_id: winnerUserId || null,
-        winner_member_id: winnerMemberId,
-        score: scoreStr,
-        game_scores: gameScoresJson,
-        duration_s: result.durationSeconds,
-        submitted_by: user?.id || null,
-        submitted_by_member_id: null,
-        confirmed: autoConfirm,
-        notes: noteParts.join(". "),
-        club_id: config.clubId || null,
-      } as any);
+      // Saved through a security-definer RPC: it authorises club members,
+      // the players themselves, club admins and tournament officials, and is
+      // idempotent on the client-generated id so retries never duplicate.
+      const { error } = await rpcExt("save_marker_match_result", {
+        _match_id: pendingMatchIdRef.current,
+        _club_id: config.clubId || null,
+        _player_a_member_id: validAMemberId,
+        _player_b_member_id: validBMemberId,
+        _winner_member_id: winnerMemberId,
+        _score: scoreStr,
+        _game_scores: gameScoresJson,
+        _duration_s: result.durationSeconds,
+        _confirmed: autoConfirm,
+        _notes: noteParts.join(". "),
+        _tournament_match_id: config.source === "tournament" ? config.sourceId ?? null : null,
+      });
 
       if (error) {
         console.error("Failed to save match:", error);
-        toast.error("Could not save match result");
+        setSaveError(error.message || "Could not save match result");
+        toast.error("Could not save match result — the score is safe, tap Retry.");
         return;
       }
+
+      pendingResultRef.current = null;
+      pendingMatchIdRef.current = null;
+      setSaveError(null);
 
       // Match saved — clear persisted in-progress state
       try {

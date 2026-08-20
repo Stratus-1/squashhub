@@ -40,7 +40,7 @@ import {
   type DivisionSource,
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
-import { buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
+import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
   resolveLeagueSeasonLevels,
   seasonsPresent,
@@ -6058,9 +6058,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           </div>
                                         )}
 
+                                        {/* With "All leagues" ticked the hierarchy stays
+                                            visible and every team reads as selected; the
+                                            moment a child is unticked the source becomes an
+                                            explicit id list. */}
                                         <LeagueSourceTree
                                           groups={leagueTree}
-                                          selected={src.leagueIds}
+                                          selected={
+                                            src.mode === "all" || src.leagueIds.length === 0
+                                              ? allTreeLeagueIds(leagueTree)
+                                              : src.leagueIds
+                                          }
                                           onChange={(ids) =>
                                             setSrc({
                                               mode:

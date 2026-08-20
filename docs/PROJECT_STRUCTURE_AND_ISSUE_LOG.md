@@ -88,6 +88,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-20 · Selected tournament invite picker showed zero members
+- **Symptom:** Structure resolved a non-zero league audience, but “Send invite to selected members” opened an empty picker; a super admin without a club-member row also could not send a test.
+- **Finding:** The picker queried only persisted registration rows and opened before the Structure roster was materialised. Test sends were addressed through a member notification, unnecessarily requiring the organiser to be a club member.
+- **Fix:** Opening the picker now materialises the canonical Structure roster and refreshes the registration query. Test sends now accept and validate any email address and use the app-email function directly, without creating tournament or member-notification records.
+- **Guard:** Selective sends require persisted registration ids, so picker opening must await roster materialisation. Test email recipients must never depend on a club-member identity.
+
 ### 2026-08-20 · Tournament Structure teams showed zero invited members
 - **Symptom:** Selecting all teams in 1st League correctly showed the Structure hierarchy, but Invite Actions
   still displayed zero members even after saving progress.

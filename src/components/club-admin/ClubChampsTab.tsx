@@ -94,6 +94,7 @@ import { getTournamentFormat } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 import { CapacityCheck } from "@/components/club-admin/tournament/CapacityCheck";
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
+import { z } from "zod";
 
 interface ClubChampsTabProps {
   /** Primary host club — its courts are the default venue and new events are filed under it. */
@@ -4346,19 +4347,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
   }
 
-  // Preview-only: sends the organiser a clearly-labelled TEST invitation using
-  // the currently selected delivery methods. It writes NO registration,
-  // entrant, invitation-token or payment records — only a notification row
-  // addressed to the organiser themselves.
+  // Preview-only: sends a clearly-labelled TEST invitation to an explicitly
+  // entered email address. It writes no tournament registration, entrant,
+  // invitation-token, member notification or payment records.
   const [testInviteSending, setTestInviteSending] = useState(false);
+  const [testInviteDialogOpen, setTestInviteDialogOpen] = useState(false);
+  const [testInviteEmail, setTestInviteEmail] = useState("");
+  const [testInviteEmailError, setTestInviteEmailError] = useState("");
+  const [testInvitePreviewAs, setTestInvitePreviewAs] = useState<{ memberId: string; name: string } | null>(null);
+  const testInviteEmailSchema = z.string().trim().email("Enter a valid email address").max(255, "Email address is too long");
+
+  function openTestInviteDialog(previewAs?: { memberId: string; name: string } | null) {
+    setTestInvitePreviewAs(previewAs || null);
+    setTestInviteEmailError("");
+    setTestInviteDialogOpen(true);
+  }
+
   async function sendTestInvite(
     champId: string,
+    recipientEmail: string,
     opts?: { asMemberId?: string; asName?: string },
   ) {
     if (testInviteSending) return;
-    const meId = myMember?.id;
-    if (!meId) {
-      toast.error("Could not identify your member profile — test invite not sent.");
+    const parsedEmail = testInviteEmailSchema.safeParse(recipientEmail);
+    if (!parsedEmail.success) {
+      setTestInviteEmailError(parsedEmail.error.issues[0]?.message || "Enter a valid email address");
       return;
     }
     setTestInviteSending(true);
@@ -4371,54 +4384,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const path = `/club-champs/${champId}`;
       const previewUrl = sub ? `https://${sub}.squashhub.co.za${path}` : path;
 
-      const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
-      const sendApp = methods.includes("app");
-      const sendEmail = methods.includes("email");
-      const asLine = opts?.asName
-        ? `Previewing the invitation exactly as ${opts.asName} would receive it.\n`
-        : "";
-      const msg = `*** TEST INVITE — preview only, no entry has been recorded ***\n${asLine}\n${buildInviteBody()}`;
-
-
-      const { error: insErr } = await fromExt("notifications").insert([{
-        club_member_id: meId,
-        title: "TEST — Tournament invitation preview",
-        message: msg,
-        type: "tournament_invite",
-        url: previewUrl,
-        data: {
-          champ_id: champId,
-          test: true,
-          preview_for_member_id: opts?.asMemberId || null,
-          preview_for_name: opts?.asName || null,
-          send_email: sendEmail,
-          app_silent: !sendApp,
-          description: description.trim() || null,
+      const { error: sendError } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "tournament-invite-preview",
+          recipientEmail: parsedEmail.data,
+          idempotencyKey: `tournament-invite-test-${champId}-${Date.now()}`,
+          templateData: {
+            tournamentName: champName || "Tournament",
+            invitationBody: buildInviteBody(),
+            invitationUrl: previewUrl,
+            previewForName: opts?.asName || null,
+          },
         },
-        read: false,
-      }]);
-      if (insErr) throw insErr;
-
-      if (methods.includes("whatsapp")) {
-        try {
-          await sendWhatsApp({
-            clubId,
-            recipients: [{ member_id: meId }],
-            kind: "champ_invite",
-            category: "utility",
-            body: `${msg}\n\n${previewUrl}`,
-            // No interaction payload — a test must never create an entry.
-          });
-        } catch (waErr: any) {
-          toast.warning(`WhatsApp test invite failed: ${waErr?.message || "unknown error"}`);
-        }
-      }
+      });
+      if (sendError) throw sendError;
 
       toast.success(
         opts?.asName
-          ? `Test invite for ${opts.asName} sent to you via ${methods.join(", ")}. Nothing was recorded against the tournament.`
-          : `Test invite sent to you via ${methods.join(", ")}. Nothing was recorded against the tournament.`,
+          ? `Test invite for ${opts.asName} sent to ${parsedEmail.data}. Nothing was recorded against the tournament.`
+          : `Test invite sent to ${parsedEmail.data}. Nothing was recorded against the tournament.`,
       );
+      setTestInviteDialogOpen(false);
+      setTestInviteEmail("");
+      setTestInvitePreviewAs(null);
     } catch (e: any) {
       toast.error(e?.message || "Failed to send test invite");
     } finally {
@@ -4431,7 +4419,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteeSearch, setInviteeSearch] = useState("");
   const [selectedInviteeRegIds, setSelectedInviteeRegIds] = useState<Set<string>>(new Set());
 
-  const { data: inviteeRows = [], isLoading: inviteesLoading } = useQuery({
+  const { data: inviteeRows = [], isLoading: inviteesLoading, refetch: refetchInvitees } = useQuery({
     queryKey: ["champ-invitees", editingChampId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
@@ -4442,6 +4430,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     },
     enabled: !!editingChampId,
   });
+
+  const [inviteePickerPreparing, setInviteePickerPreparing] = useState(false);
+  async function openInviteePicker() {
+    if (!editingChampId) return;
+    setSelectedInviteeRegIds(new Set());
+    setInviteeSearch("");
+    setInviteePickerOpen(true);
+    setInviteePickerPreparing(true);
+    try {
+      // The picker needs real registration ids for selective sends. Materialise
+      // the canonical Structure roster first, then refresh its own query.
+      await saveEntriesDraft(editingChampId);
+      await refetchInvitees();
+    } catch (error: any) {
+      toast.error(error?.message || "Could not load the selected league members");
+    } finally {
+      setInviteePickerPreparing(false);
+    }
+  }
 
   const memberNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -7464,7 +7471,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               {!editingChampId && (
                 <div className="pt-2 rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">Invite actions</span> (send to all, send to selected members,
-                  send a test to yourself) become available as soon as the tournament is saved — use{" "}
+                   send a test to an email address) become available as soon as the tournament is saved — use{" "}
                   <span className="font-medium text-foreground">Save progress</span> first.
                 </div>
               )}
@@ -7496,11 +7503,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onSelect={() => {
-                          setSelectedInviteeRegIds(new Set());
-                          setInviteeSearch("");
-                          setInviteePickerOpen(true);
-                        }}
+                        onSelect={() => void openInviteePicker()}
                       >
                         <Users className="w-4 h-4 mr-2" />
                         <span>
@@ -7509,12 +7512,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => sendTestInvite(editingChampId)}>
+                      <DropdownMenuItem onSelect={() => openTestInviteDialog()}>
                         <Eye className="w-4 h-4 mr-2" />
                         <span>
-                          Send test invite to myself
+                          Send test to email address
                           <span className="block text-[11px] text-muted-foreground">
-                            Preview only — records nothing. Works even if you aren’t in any team.
+                            Enter any recipient email — no club membership required
                           </span>
                         </span>
                       </DropdownMenuItem>
@@ -7522,10 +7525,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         disabled={!sampleInvitee}
                         onSelect={() => {
                           if (!sampleInvitee) return;
-                          sendTestInvite(editingChampId, {
-                            asMemberId: sampleInvitee.memberId,
-                            asName: sampleInvitee.name,
-                          });
+                          openTestInviteDialog(sampleInvitee);
                         }}
                       >
                         <Eye className="w-4 h-4 mr-2" />
@@ -7535,7 +7535,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             : "Send test as an invited player"}
                           <span className="block text-[11px] text-muted-foreground">
                             {sampleInvitee
-                              ? "Delivered to you — exactly what the first player on the list sees"
+                              ? "Enter an email — preview what the first player sees"
                               : "No invitees yet — select league teams or save progress first"}
                           </span>
                         </span>
@@ -7588,10 +7588,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       </div>
                     </div>
                     <div className="max-h-72 overflow-y-auto rounded-md border divide-y">
-                      {inviteesLoading && (
+                      {(inviteesLoading || inviteePickerPreparing) && (
                         <p className="p-3 text-sm text-muted-foreground">Loading invitees…</p>
                       )}
-                      {!inviteesLoading && inviteeList.length === 0 && (
+                      {!inviteesLoading && !inviteePickerPreparing && inviteeList.length === 0 && (
                         <p className="p-3 text-sm text-muted-foreground">No invitees found for this tournament.</p>
                       )}
                       {inviteeList.map((r) => {
@@ -7630,6 +7630,52 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       {invitesSendingFor === editingChampId
                         ? "Sending…"
                         : `Send to ${selectedInviteeRegIds.size} member${selectedInviteeRegIds.size === 1 ? "" : "s"}`}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={testInviteDialogOpen} onOpenChange={setTestInviteDialogOpen}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Send test invite</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-2">
+                    {testInvitePreviewAs && (
+                      <p className="text-xs text-muted-foreground">
+                        Previewing the invitation as {testInvitePreviewAs.name} would receive it.
+                      </p>
+                    )}
+                    <Label htmlFor="test-invite-email">Recipient email address</Label>
+                    <Input
+                      id="test-invite-email"
+                      type="email"
+                      autoComplete="email"
+                      maxLength={255}
+                      placeholder="name@example.com"
+                      value={testInviteEmail}
+                      onChange={(event) => {
+                        setTestInviteEmail(event.target.value);
+                        if (testInviteEmailError) setTestInviteEmailError("");
+                      }}
+                    />
+                    {testInviteEmailError && <p className="text-xs text-destructive">{testInviteEmailError}</p>}
+                    <p className="text-xs text-muted-foreground">Email only. This test records no tournament entry or invitation response.</p>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setTestInviteDialogOpen(false)}>Cancel</Button>
+                    <Button
+                      type="button"
+                      disabled={testInviteSending || !testInviteEmail.trim()}
+                      onClick={() => {
+                        if (!editingChampId) return;
+                        void sendTestInvite(editingChampId, testInviteEmail, {
+                          asMemberId: testInvitePreviewAs?.memberId,
+                          asName: testInvitePreviewAs?.name,
+                        });
+                      }}
+                    >
+                      {testInviteSending ? "Sending…" : "Send test"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>

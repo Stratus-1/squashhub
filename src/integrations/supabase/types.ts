@@ -8712,7 +8712,7 @@ export type Database = {
           draw_locked_by: string | null
           draw_version: number
           enable_playoffs: boolean
-          end_date: string
+          end_date: string | null
           end_time: string
           entries_locked: boolean
           event_type: string
@@ -8760,7 +8760,7 @@ export type Database = {
           seeding_source: string
           source_league_id: string | null
           source_league_ids: string[]
-          start_date: string
+          start_date: string | null
           start_time: string
           status: string
           swiss_pools: Json | null
@@ -8782,7 +8782,7 @@ export type Database = {
           draw_locked_by?: string | null
           draw_version?: number
           enable_playoffs?: boolean
-          end_date: string
+          end_date?: string | null
           end_time?: string
           entries_locked?: boolean
           event_type?: string
@@ -8830,7 +8830,7 @@ export type Database = {
           seeding_source?: string
           source_league_id?: string | null
           source_league_ids?: string[]
-          start_date: string
+          start_date?: string | null
           start_time?: string
           status?: string
           swiss_pools?: Json | null
@@ -8852,7 +8852,7 @@ export type Database = {
           draw_locked_by?: string | null
           draw_version?: number
           enable_playoffs?: boolean
-          end_date?: string
+          end_date?: string | null
           end_time?: string
           entries_locked?: boolean
           event_type?: string
@@ -8900,7 +8900,7 @@ export type Database = {
           seeding_source?: string
           source_league_id?: string | null
           source_league_ids?: string[]
-          start_date?: string
+          start_date?: string | null
           start_time?: string
           status?: string
           swiss_pools?: Json | null

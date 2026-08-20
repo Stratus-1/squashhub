@@ -5,6 +5,9 @@ import {
   constrainSeeds,
   divisionEligibleIds,
   findIneligibleAssignments,
+  formatUsesPools,
+  poolLabel,
+  poolOptions,
   isEligibleForDivision,
   planAllLeaguesExpansion,
   describeDivisionSource,
@@ -263,5 +266,48 @@ describe("all-leagues expansion", () => {
     // editing division 2 does not touch division 3
     sources["2"] = { mode: "combined", leagueIds: ["l2", "l3"] };
     expect(divisionSource(sources, 3)).toEqual({ mode: "selected", leagueIds: ["l3"] });
+  });
+});
+
+describe("single pool selector", () => {
+  it("only offers a pool selector for formats that use pools", () => {
+    expect(formatUsesPools("knockout")).toBe(true);
+    expect(formatUsesPools("single_round_robin")).toBe(true);
+    expect(formatUsesPools("swiss")).toBe(true);
+    expect(formatUsesPools("cross_league")).toBe(true);
+    expect(formatUsesPools("groups_playoffs" as any)).toBe(false);
+    expect(formatUsesPools(null)).toBe(false);
+  });
+
+  it("labels 1 as a draw and 2+ as pools", () => {
+    expect(poolLabel(1)).toBe("1 draw");
+    expect(poolLabel(2)).toBe("2 pools");
+    expect(poolLabel(8)).toBe("8 pools");
+  });
+
+  it("always includes the current value in the options", () => {
+    expect(poolOptions(1)).toEqual([1, 2, 4, 8]);
+    expect(poolOptions(3)).toEqual([1, 2, 3, 4, 8]);
+    expect(poolOptions(0)).toEqual([1, 2, 4, 8]);
+  });
+
+  it("header summary and selector read the same value (no drift)", () => {
+    const pools = { "1": 4 };
+    const legacySections = { "1": 2 };
+    const value = effectivePools({ gn: 1, pools, legacySections });
+    expect(value).toBe(4);
+    expect(poolLabel(value)).toBe("4 pools");
+  });
+
+  it("falls back to the legacy section count for older tournaments", () => {
+    expect(effectivePools({ gn: 1, pools: {}, legacySections: { "1": 2 } })).toBe(2);
+  });
+
+  it("persists the chosen pool count through save/reload", () => {
+    const pools = { "1": 4 };
+    const saved = sectionsFromPools(pools, () => true, 1, {});
+    // reload: pool map wins, legacy map matches it
+    expect(saved["1"]).toBe(4);
+    expect(effectivePools({ gn: 1, pools: mergeLegacySectionsIntoPools({}, saved), legacySections: saved })).toBe(4);
   });
 });

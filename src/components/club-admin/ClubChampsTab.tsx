@@ -43,7 +43,7 @@ import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFrom
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { DrawLockCard } from "@/components/tournaments/DrawLockCard";
-import { useClubMembers, useIsSuperAdmin, type ClubMember } from "@/hooks/use-club";
+import { useClubMembers, useIsSuperAdmin, useMyClubMember, type ClubMember } from "@/hooks/use-club";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { sendWhatsApp } from "@/lib/whatsapp-send";
 import { Button } from "@/components/ui/button";

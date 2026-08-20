@@ -6455,8 +6455,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 </label>
                                 {fmt === "knockout" && (
                                   <p className="text-[10px] text-muted-foreground pl-6 pt-0.5 leading-relaxed">
-                                    Create subsequent rounds as results are completed, with section winners
-                                    progressing to the division finals. Only the first round is scheduled up front.
+                                    Winners progress to the next knockout round as results are completed,
+                                    through to the section/division final.
                                   </p>
                                 )}
                               </div>

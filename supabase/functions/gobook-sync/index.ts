@@ -352,16 +352,23 @@ async function syncClub(
   try {
     jar = await gobookLogin(cred.gobook_username as string, password);
   } catch (e) {
+    const msg = (e as Error).message;
+    const captcha = msg === "GOBOOK_CAPTCHA_REQUIRED";
     await admin
       .from("member_gobook_credentials")
       .update({
-        last_verification_status: "invalid",
+        // A captcha block is GoBook's doing, not a bad password — never brand
+        // the member's stored credentials invalid for it.
+        last_verification_status: captcha ? "captcha_blocked" : "invalid",
         last_verified_at: new Date().toISOString(),
       })
       .eq("club_member_id", cred.club_member_id);
-    result.skipped_reason = "login_failed: " + (e as Error).message;
+    result.skipped_reason = captcha
+      ? "captcha_required: GoBook's login page now requires a reCAPTCHA"
+      : "login_failed: " + msg;
     return result;
   }
+
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);

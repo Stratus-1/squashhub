@@ -21,6 +21,7 @@ import { template as tournamentEntryConfirmation } from './tournament-entry-conf
 import { template as tournamentEntryImportSummary } from './tournament-entry-import-summary.tsx'
 import { template as trialEnding } from './trial-ending.tsx'
 import { template as slaOutstanding } from './sla-outstanding.tsx'
+import { template as tournamentInvitePreview } from './tournament-invite-preview.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-club-registered': newClubRegistered,
@@ -35,4 +36,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'tournament-entry-import-summary': tournamentEntryImportSummary,
   'trial-ending': trialEnding,
   'sla-outstanding': slaOutstanding,
+  'tournament-invite-preview': tournamentInvitePreview,
 }

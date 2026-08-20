@@ -4180,6 +4180,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       registrationOpensAt, registrationClosesAt, entryFeeRand,
       pointsPerGame, bestOf,
       registrationRequired, registrationMode: (registrationMode || "open") as any,
+      tournamentName: champName, divisionFormats: inviteDivisionFormats(),
     });
     return `You have been invited to ${champName || "a tournament"}.` +
       (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
@@ -7468,6 +7469,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         registrationOpensAt, registrationClosesAt, entryFeeRand,
                         pointsPerGame, bestOf,
                         registrationRequired, registrationMode: (registrationMode || "open") as any,
+                        tournamentName: champName, divisionFormats: inviteDivisionFormats(),
                       });
                       const bullets = lines.map((l) => `• ${l}`).join("\n");
                       // Strip any previously inserted auto-block (between markers) then prepend fresh.
@@ -8686,6 +8688,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         bestOf={bestOf}
         registrationRequired={registrationRequired}
         registrationMode={registrationMode}
+        divisionFormats={inviteDivisionFormats()}
       />
 
       <ShadowRankPromptDialog
@@ -8879,6 +8882,7 @@ function InvitePreviewDialog({
   bestOf,
   registrationRequired,
   registrationMode,
+  divisionFormats,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -8904,6 +8908,7 @@ function InvitePreviewDialog({
   bestOf: number;
   registrationRequired?: boolean;
   registrationMode?: "" | "open" | "invite";
+  divisionFormats?: string[];
 }) {
   const descHasDetails = /— Tournament details —/.test(description || "");
   const detailLines = descHasDetails ? [] : buildInviteDetailLines({
@@ -8912,6 +8917,7 @@ function InvitePreviewDialog({
     registrationOpensAt, registrationClosesAt, entryFeeRand,
     pointsPerGame, bestOf,
     registrationRequired, registrationMode,
+    tournamentName, divisionFormats,
   });
 
   const appBody =

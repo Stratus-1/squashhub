@@ -5,6 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
+import { audienceLabel, resolveInviteAudience, type InviteAudienceMode } from "@/lib/tournaments/invite-audience";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
   defaultForfeitRule,
@@ -1124,6 +1125,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteIncludeReserves, setInviteIncludeReserves] = useState<boolean>(true);
   const [inviteExcludedMemberIds, setInviteExcludedMemberIds] = useState<Set<string>>(new Set());
 
+  /**
+   * INVITATION AUDIENCE — who receives the invitation. Deliberately independent
+   * of the Structure / draw source: a member who plays no league can still be
+   * invited to a club championship.
+   */
+  const [inviteAudience, setInviteAudience] = useState<InviteAudienceMode>("all_club");
+  const [audienceLeagueIds, setAudienceLeagueIds] = useState<Set<string>>(new Set());
+  const [audienceMemberIds, setAudienceMemberIds] = useState<Set<string>>(new Set());
+  const [audienceIncludeIndividuals, setAudienceIncludeIndividuals] = useState(false);
+  const [audienceSearch, setAudienceSearch] = useState("");
+
+
   // Who puts a player on the entry list, and whether an admin must accept it.
   const [entrySource, setEntrySource] = useState<"self" | "admin" | "team_manager">("self");
   const [approvalGate, setApprovalGate] = useState<"none" | "admin_accept">("none");
@@ -1435,13 +1448,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [leagueRegistrationRows, inviteIncludeReserves]);
 
   /**
-   * Structure → invite bridge.
-   *
-   * The organiser picks the competing league level(s) / teams on the Structure
-   * step. Those teams' `member_league_registrations` rows ARE the people who
-   * must be invited (league team row id → registration → club_member_id), so
-   * the invite list follows the Structure selection until the organiser edits
-   * the invite tree by hand.
+   * Structure / draw source. This is ONLY about how accepted entrants are
+   * organised into divisions and seeded — it must never decide who receives an
+   * invitation (see `resolvedAudience` below).
    */
   const [inviteLeaguesTouched, setInviteLeaguesTouched] = useState(false);
   const [inviteSourceTouched, setInviteSourceTouched] = useState(false);
@@ -1456,28 +1465,40 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return out;
   }, [leagueSources, numGroups]);
 
-  useEffect(() => {
-    if (structureLeagueIds.size === 0) return;
-    if (!inviteSourceTouched && inviteSource === "manual") setInviteSource("leagues");
-    if (inviteLeaguesTouched) return;
-    const same =
-      structureLeagueIds.size === sourceLeagueIds.size &&
-      Array.from(structureLeagueIds).every((id) => sourceLeagueIds.has(id));
-    if (same) return;
-    applyLeaguePrefill(new Set(structureLeagueIds));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [structureLeagueIds, inviteSource, inviteSourceTouched, inviteLeaguesTouched]);
+  /** The people who will receive the invitation — explicit organiser choice. */
+  const resolvedAudience = useMemo(
+    () =>
+      resolveInviteAudience({
+        mode: inviteAudience,
+        members: (members || []) as any[],
+        leagueIds: Array.from(audienceLeagueIds),
+        registrationsByLeague,
+        individualIds: Array.from(audienceMemberIds),
+        includeIndividuals: audienceIncludeIndividuals,
+        excludedIds: inviteExcludedMemberIds,
+      }),
+    [
+      inviteAudience,
+      members,
+      audienceLeagueIds,
+      registrationsByLeague,
+      audienceMemberIds,
+      audienceIncludeIndividuals,
+      inviteExcludedMemberIds,
+    ],
+  );
 
-  /** Team-by-team breakdown of who the league selection puts on the invite list. */
+  /** Team-by-team breakdown of who the audience league selection reaches. */
   const inviteTeamBreakdown = useMemo(() => {
-    return Array.from(sourceLeagueIds)
+    return Array.from(audienceLeagueIds)
       .map((id) => ({
         id,
         name: leagueNameById.get(id) || "Unknown team",
         count: (registrationsByLeague.get(id) || []).filter((mid) => !inviteExcludedMemberIds.has(mid)).length,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [sourceLeagueIds, leagueNameById, registrationsByLeague, inviteExcludedMemberIds]);
+  }, [audienceLeagueIds, leagueNameById, registrationsByLeague, inviteExcludedMemberIds]);
+
 
 
   /**
@@ -1780,6 +1801,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       registration_required: registrationRequired,
       invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
       invite_source: inviteSource,
+      invite_audience: inviteAudience,
+      invite_audience_league_ids: Array.from(audienceLeagueIds),
+      invite_audience_member_ids: Array.from(audienceMemberIds),
+      invite_audience_include_individuals: audienceIncludeIndividuals,
       entry_source: entrySource,
       approval_gate: approvalGate,
       invite_include_reserves: inviteIncludeReserves,
@@ -1870,34 +1895,42 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // matches are (re)generated. Requires the parent champ row to exist.
   const saveEntriesDraft = async (
     champIdOverride?: string,
-    structureLeagueIdsOverride?: Set<string>,
-    opts?: { inviteRosterOnly?: boolean },
+    _legacyStructureLeagueIds?: Set<string>,
+    opts?: { inviteRosterOnly?: boolean; materializeAudience?: boolean },
   ) => {
     const champIdToUse = champIdOverride || editingChampId;
     if (!champIdToUse) return;
     try {
-      const effectiveStructureLeagueIds = structureLeagueIdsOverride || structureLeagueIds;
-      // Invite-list tournaments: the selected players (typically pre-filled
-      // from the chosen league teams) become `invited` registration rows as
-      // soon as progress is saved — that list is what "Invite actions" counts
-      // and sends to. Nobody is entered until they accept.
+      // The invite roster comes from the INVITATION AUDIENCE only — never from
+      // the Structure / draw source. A member who plays no league is still
+      // invited when the audience is "All club members".
       const inviteSeedIds = new Set(selectedPlayerIds);
-      // Query the selected Structure teams at save time instead of trusting an
-      // earlier async prefill. This guarantees Save Progress has the canonical
-      // roster even if the organiser saves immediately after opening a draft.
-      if (effectiveStructureLeagueIds.size > 0) {
-        const { data: structureRegs, error: structureRegsErr } = await fromExt("member_league_registrations")
+      let audienceIds = resolvedAudience.memberIds;
+      if (inviteAudience === "leagues" && audienceLeagueIds.size > 0) {
+        // Re-read at save time so the roster is canonical even if the cached
+        // registration query is stale.
+        const { data: audienceRegs, error: audienceRegsErr } = await fromExt("member_league_registrations")
           .select("club_member_id, is_reserve")
-          .in("league_id", Array.from(effectiveStructureLeagueIds));
-        if (structureRegsErr) throw structureRegsErr;
-        (structureRegs || []).forEach((r: any) => {
+          .in("league_id", Array.from(audienceLeagueIds));
+        if (audienceRegsErr) throw audienceRegsErr;
+        const fresh = new Set(audienceIds);
+        (audienceRegs || []).forEach((r: any) => {
           if (!r.club_member_id || inviteExcludedMemberIds.has(r.club_member_id)) return;
           if (!inviteIncludeReserves && r.is_reserve) return;
-          inviteSeedIds.add(r.club_member_id);
+          fresh.add(r.club_member_id);
         });
+        audienceIds = Array.from(fresh);
       }
-      const seedsFromLeagues = effectiveStructureLeagueIds.size > 0 && inviteSeedIds.size > 0;
-      if (registrationUsesInviteList || seedsFromLeagues) {
+      // Open (self-registration) tournaments with an "all club members"
+      // audience are not materialised as rows on save — the roster is created
+      // when the organiser actually sends invitations.
+      const seedsFromAudience =
+        audienceIds.length > 0 &&
+        (registrationUsesInviteList || opts?.materializeAudience || inviteAudience !== "all_club");
+      if (seedsFromAudience) audienceIds.forEach((id) => inviteSeedIds.add(id));
+      if (registrationUsesInviteList || seedsFromAudience) {
+
+
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
         const ids = await promoteVisitorIds(Array.from(inviteSeedIds));
         const regRows = ids.map((memberId) => ({
@@ -3660,6 +3693,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
+            invite_audience: inviteAudience,
+            invite_audience_league_ids: Array.from(audienceLeagueIds),
+            invite_audience_member_ids: Array.from(audienceMemberIds),
+            invite_audience_include_individuals: audienceIncludeIndividuals,
             entry_source: entrySource,
             approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
@@ -3728,6 +3765,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
+            invite_audience: inviteAudience,
+            invite_audience_league_ids: Array.from(audienceLeagueIds),
+            invite_audience_member_ids: Array.from(audienceMemberIds),
+            invite_audience_include_individuals: audienceIncludeIndividuals,
             entry_source: entrySource,
             approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
@@ -4540,10 +4581,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         throw new Error("Select league teams and save the tournament before sending a test invitation.");
       }
 
-      const selectedTeamIds = structureLeagueIds.size > 0
-        ? new Set(structureLeagueIds)
-        : new Set(sourceLeagueIds);
-      await saveEntriesDraft(champId, selectedTeamIds, { inviteRosterOnly: true });
+      await saveEntriesDraft(champId, undefined, { inviteRosterOnly: true, materializeAudience: true });
 
       const { data: previewRegistration, error: registrationError } = await fromExt("club_champs_registrations")
         .select("id")
@@ -4707,10 +4745,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // drafts stored the same stable team ids only in `source_league_ids`, so
       // retain that as a compatibility fallback rather than materialising an
       // empty audience.
-      const selectedTeamIds = structureLeagueIds.size > 0
-        ? new Set(structureLeagueIds)
-        : new Set(sourceLeagueIds);
-      await saveEntriesDraft(editingChampId, selectedTeamIds, { inviteRosterOnly: true });
+      await saveEntriesDraft(editingChampId, undefined, { inviteRosterOnly: true, materializeAudience: true });
       await refetchInvitees();
     } catch (error: any) {
       toast.error(error?.message || "Could not load the selected league members");
@@ -5029,6 +5064,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPaymentTiming((((champ as any).payment_timing as any) || "on_entry"));
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
     setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
+    setInviteAudience((((champ as any).invite_audience as InviteAudienceMode) || "all_club"));
+    setAudienceLeagueIds(new Set(((champ as any).invite_audience_league_ids as string[]) || []));
+    setAudienceMemberIds(new Set(((champ as any).invite_audience_member_ids as string[]) || []));
+    setAudienceIncludeIndividuals(!!(champ as any).invite_audience_include_individuals);
     setHandicapMode(((champ as any).handicap_mode as any) || "none");
     setHandicapDivider(Math.max(1, Number((champ as any).handicap_divider) || 1));
     setHandicapMultiplier(Math.max(1, Number((champ as any).handicap_multiplier) || 1));
@@ -7549,83 +7588,106 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               complete={inviteMethods.size > 0}
               defaultOpen={true}
             >
-            {/* Invite source — only meaningful when the organiser builds the list */}
-            {invitesApply && registrationUsesInviteList && (
+            {/* INVITATION AUDIENCE — independent of the Structure/draw source */}
+            {invitesApply && (
               <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
-                <Label className="text-sm">Initial invite list comes from…</Label>
+                <Label className="text-sm">Invitation audience</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Who gets invited. This is separate from the Structure step — the league/team selection there only decides how accepted entrants are grouped and seeded.
+                </p>
                 <div className="flex flex-wrap items-center gap-4 text-sm">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="invite-source"
-                      checked={inviteSource === "manual"}
-                      onChange={() => { setInviteSourceTouched(true); setInviteSource("manual"); }}
-                    />
-                    Manual tick-list
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="invite-source"
-                      checked={inviteSource === "leagues"}
-                      onChange={() => { setInviteSourceTouched(true); setInviteSource("leagues"); }}
-                    />
-                    By league (pick on the Players step)
-                  </label>
+                  {(["all_club", "leagues", "individuals"] as InviteAudienceMode[]).map((mode) => (
+                    <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="invite-audience"
+                        checked={inviteAudience === mode}
+                        onChange={() => setInviteAudience(mode)}
+                      />
+                      {audienceLabel(mode)}
+                    </label>
+                  ))}
                 </div>
-                {inviteSource === "leagues" && (
+
+                {inviteAudience === "leagues" && (
                   <div className="space-y-2 pt-1">
-                    <Label className="text-xs text-muted-foreground">Pick which leagues to seed from</Label>
-                    {structureLeagueIds.size > 0 && !inviteLeaguesTouched && (
-                      <p className="text-[11px] text-muted-foreground">
-                        Following the league/team selection made on the Structure step. Change anything below and this list stops following it.
-                      </p>
-                    )}
-                    {/* Same hierarchical tree as the Structure step: season →
-                        league level → teams / reserves, on canonical ids. */}
+                    <Label className="text-xs text-muted-foreground">Pick which league teams to invite</Label>
                     <div className="rounded border border-border/50 bg-background/60 p-2">
                       <LeagueSourceTree
                         groups={leagueTree}
-                        selected={Array.from(sourceLeagueIds)}
-                        onChange={(ids) => { setInviteLeaguesTouched(true); applyLeaguePrefill(new Set(ids)); }}
+                        selected={Array.from(audienceLeagueIds)}
+                        onChange={(ids) => setAudienceLeagueIds(new Set(ids))}
                       />
                     </div>
-
                     <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
-                      <Checkbox
-                        checked={inviteIncludeReserves}
-                        onCheckedChange={(c) => {
-                          setInviteIncludeReserves(!!c);
-                          if (sourceLeagueIds.size > 0) applyLeaguePrefill(new Set(sourceLeagueIds));
-                        }}
-                      />
+                      <Checkbox checked={inviteIncludeReserves} onCheckedChange={(c) => setInviteIncludeReserves(!!c)} />
                       Include reserves
                     </label>
-                    {hasLeagueSelection && (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} seeded from {sourceLeagueIds.size} team{sourceLeagueIds.size === 1 ? "" : "s"}. They go onto the invite list as <strong>Invited</strong> — nobody is entered until they accept.
-                        </p>
-                        <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-40 overflow-auto">
-                          {inviteTeamBreakdown.map((t) => (
-                            <div key={t.id} className="flex items-center justify-between text-[11px]">
-                              <span className="truncate">{t.name}</span>
-                              <span className={t.count === 0 ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"}>
-                                {t.count} player{t.count === 1 ? "" : "s"}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={audienceIncludeIndividuals}
+                        onCheckedChange={(c) => setAudienceIncludeIndividuals(!!c)}
+                      />
+                      Also invite individually picked members
+                    </label>
+                    {inviteTeamBreakdown.length > 0 && (
+                      <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-40 overflow-auto">
+                        {inviteTeamBreakdown.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between text-[11px]">
+                            <span className="truncate">{t.name}</span>
+                            <span className={t.count === 0 ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"}>
+                              {t.count} player{t.count === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     )}
-
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  This only seeds the starting roster. You can still pull in any player from any league as a sub at any time — no cutoff.
+
+                {(inviteAudience === "individuals" || (inviteAudience === "leagues" && audienceIncludeIndividuals)) && (
+                  <div className="space-y-1.5 pt-1">
+                    <Input
+                      value={audienceSearch}
+                      onChange={(e) => setAudienceSearch(e.target.value)}
+                      placeholder="Search members (league membership not required)"
+                      className="h-8 text-xs"
+                    />
+                    <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-52 overflow-auto">
+                      {(members as any[])
+                        .filter((m) => String(m.status ?? "active").toLowerCase() === "active" && String(m.role ?? "member").toLowerCase() !== "visitor")
+                        .filter((m) => {
+                          const q = audienceSearch.trim().toLowerCase();
+                          if (!q) return true;
+                          return String(memberNameById.get(m.id) || m.name || "").toLowerCase().includes(q);
+                        })
+                        .slice(0, 300)
+                        .map((m) => (
+                          <label key={m.id} className="flex items-center gap-2 text-[11px] cursor-pointer">
+                            <Checkbox
+                              checked={audienceMemberIds.has(m.id)}
+                              onCheckedChange={(c) => {
+                                setAudienceMemberIds((prev) => {
+                                  const next = new Set(prev);
+                                  c ? next.add(m.id) : next.delete(m.id);
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span className="truncate">{memberNameById.get(m.id) || m.name || "Unknown member"}</span>
+                          </label>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">{resolvedAudience.summary}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Anyone who accepts but has no league mapping is still accepted and lands in <strong>Needs division assignment</strong> for you to place.
                 </p>
               </div>
             )}
+
 
             {/* Invite methods — always shown so admins control delivery channel */}
             <div className="space-y-2">

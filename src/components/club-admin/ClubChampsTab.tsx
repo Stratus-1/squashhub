@@ -4810,6 +4810,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const effectiveAllInviteCount = allInviteCount || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
 
+  /** Live acceptance picture for this tournament (drives the Players step). */
+  const entrantCounts = useMemo(
+    () => countEntrantsByCategory(inviteeRows as any[], { paymentRequired: paymentRequired && entryFeeAmount > 0 }),
+    [inviteeRows, paymentRequired, entryFeeAmount],
+  );
+
+  /** Accepted entrants who belong to no source league — need a division by hand. */
+  const acceptedNeedingDivision = useMemo(() => {
+    const inAnyLeague = new Set<string>();
+    registrationsByLeague.forEach((ids) => ids.forEach((id) => inAnyLeague.add(id)));
+    return filterParticipatingEntrants(inviteeRows as any[], {
+      paymentRequired: paymentRequired && entryFeeAmount > 0,
+    })
+      .filter((r: any) => r.club_member_id && !inAnyLeague.has(r.club_member_id))
+      .map((r: any) => ({
+        memberId: r.club_member_id as string,
+        name: memberNameById.get(r.club_member_id) || "Unknown member",
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [inviteeRows, registrationsByLeague, memberNameById, paymentRequired, entryFeeAmount]);
+
+
   // First real invitee on the list — used for "send a test as an invited player"
   // so an organiser who isn't part of any team can still preview the exact
   // invitation an entrant receives. Sending still goes to the organiser only.

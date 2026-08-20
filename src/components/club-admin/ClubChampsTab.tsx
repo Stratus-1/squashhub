@@ -1804,10 +1804,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const champIdToUse = champIdOverride || editingChampId;
     if (!champIdToUse) return;
     try {
-      // Self-pair invite mode (doubles where players self-pair): we only
-      // collect the invitee list at this step — there are no pairs yet, so
-      // persist the selection directly to club_champs_registrations.
-      if (selfPairInviteSelection) {
+      // Invite-list tournaments: the selected players (typically pre-filled
+      // from the chosen league teams) become `invited` registration rows as
+      // soon as progress is saved — that list is what "Invite actions" counts
+      // and sends to. Nobody is entered until they accept.
+      const seedsFromLeagues = inviteSource === "leagues" && selectedPlayerIds.size > 0;
+      if (registrationUsesInviteList || seedsFromLeagues) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
         const ids = await promoteVisitorIds(Array.from(selectedPlayerIds));
         const regRows = ids.map((memberId) => ({
@@ -1824,18 +1826,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
         // Remove any previously-invited members no longer in the selection
         // (only drop rows that haven't been confirmed/paid yet, so we never
-        // wipe a member who's already registered through payment).
-        const delQ = fromExt("club_champs_registrations")
-          .delete()
-          .eq("champ_id", champIdToUse)
-          .in("status", ["invited", "pending_payment", "pending_eft"]);
-        if (ids.length > 0) {
-          await delQ.not("club_member_id", "in", `(${ids.join(",")})`);
-        } else {
-          await delQ;
+        // wipe a member who's already registered through payment). Open
+        // tournaments keep every row — self-registrations are not ours to prune.
+        if (registrationUsesInviteList) {
+          const delQ = fromExt("club_champs_registrations")
+            .delete()
+            .eq("champ_id", champIdToUse)
+            .eq("invited_by_admin", true)
+            .in("status", ["invited", "pending_payment", "pending_eft"]);
+          if (ids.length > 0) {
+            await delQ.not("club_member_id", "in", `(${ids.join(",")})`);
+          } else {
+            await delQ;
+          }
         }
-        return;
+        qc.invalidateQueries({ queryKey: ["champ-invitees", champIdToUse] });
+        // Self-pair doubles has no pairs yet — the invite list is all there is.
+        if (selfPairInviteSelection) return;
       }
+
+
       let allocatedMemberIds: string[] = [];
       // Collect every visitor-* ID that will hit the DB so we can promote them
       // to real club_members rows in one batch and build a lookup map.
@@ -7439,6 +7449,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Uses the delivery methods selected above ({Array.from(inviteMethods.size ? inviteMethods : new Set(["app"])).join(", ")}).
                   </p>
+                  {allInviteCount === 0 && selectedPlayerIds.size > 0 && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-1">
+                      {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} are seeded from the selected league teams but not written to the invite list yet — hit <span className="font-medium">Save progress</span> to add them.
+                    </p>
+                  )}
+
                 </div>
               )}
 

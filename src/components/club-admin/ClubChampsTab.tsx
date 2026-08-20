@@ -3982,9 +3982,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const sendingInvitesRef = useRef<Set<string>>(new Set());
   const [invitesSendingFor, setInvitesSendingFor] = useState<string | null>(null);
 
+  // Builds the invitation body shared by in-app / email / WhatsApp channels.
+  function buildInviteBody() {
+    const descHasDetails = /— Tournament details —/.test(description);
+    const detailLines = descHasDetails ? [] : buildInviteDetailLines({
+      gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+      startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
+      registrationOpensAt, registrationClosesAt, entryFeeRand,
+      pointsPerGame, bestOf,
+      registrationRequired, registrationMode: (registrationMode || "open") as any,
+    });
+    return `You have been invited to ${champName || "a tournament"}.` +
+      (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
+      (description.trim() ? `\n\n${description.trim()}` : "");
+  }
+
   // Shared helper: send invite notifications (and flag rows as invited) for a champ.
-  // Used by both the post-create prompt and the "Send / Re-send invites" button.
-  async function sendChampInvites(champId: string, opts?: { confirm?: boolean }) {
+  // Used by the post-create prompt and the "Invite actions" menu.
+  // opts.registrationIds restricts the send to specific invitees (selective reminders).
+  async function sendChampInvites(champId: string, opts?: { confirm?: boolean; registrationIds?: string[] }) {
+    const only = opts?.registrationIds && opts.registrationIds.length > 0 ? new Set(opts.registrationIds) : null;
     if (sendingInvitesRef.current.has(champId)) {
       toast.info("Invites are already being sent — please wait.");
       return;
@@ -3992,7 +4009,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     sendingInvitesRef.current.add(champId);
     setInvitesSendingFor(champId);
     try {
-      if (opts?.confirm && !confirm("Send invite notification/email to all invited members now?")) return;
+      if (opts?.confirm && !confirm(
+        only
+          ? `Send the invitation to ${only.size} selected member${only.size === 1 ? "" : "s"} now?`
+          : "Send invite notification/email to all invited members now?",
+      )) return;
+
 
       // If the wizard is currently open editing this tournament in invite mode,
       // ensure the registrations table reflects the latest audience selection

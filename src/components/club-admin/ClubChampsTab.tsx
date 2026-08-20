@@ -4662,6 +4662,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setRegistrationRequired((champ as any).registration_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
     setInviteSource(((champ as any).invite_source as any) || "manual");
+    // An existing tournament's saved invite list is authoritative — never let
+    // the Structure bridge overwrite it when reopening for edit.
+    setInviteSourceTouched(true);
+    setInviteLeaguesTouched(true);
     setEntrySource((((champ as any).entry_source as any) || ((champ.registration_mode === "invite") ? "admin" : "self")));
     setApprovalGate((((champ as any).approval_gate as any) || "none"));
     setPaymentTiming((((champ as any).payment_timing as any) || "on_entry"));

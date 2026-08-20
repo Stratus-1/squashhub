@@ -1447,13 +1447,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [leagueRegistrationRows, inviteIncludeReserves]);
 
   /**
-   * Structure → invite bridge.
-   *
-   * The organiser picks the competing league level(s) / teams on the Structure
-   * step. Those teams' `member_league_registrations` rows ARE the people who
-   * must be invited (league team row id → registration → club_member_id), so
-   * the invite list follows the Structure selection until the organiser edits
-   * the invite tree by hand.
+   * Structure / draw source. This is ONLY about how accepted entrants are
+   * organised into divisions and seeded — it must never decide who receives an
+   * invitation (see `resolvedAudience` below).
    */
   const [inviteLeaguesTouched, setInviteLeaguesTouched] = useState(false);
   const [inviteSourceTouched, setInviteSourceTouched] = useState(false);
@@ -1468,28 +1464,40 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return out;
   }, [leagueSources, numGroups]);
 
-  useEffect(() => {
-    if (structureLeagueIds.size === 0) return;
-    if (!inviteSourceTouched && inviteSource === "manual") setInviteSource("leagues");
-    if (inviteLeaguesTouched) return;
-    const same =
-      structureLeagueIds.size === sourceLeagueIds.size &&
-      Array.from(structureLeagueIds).every((id) => sourceLeagueIds.has(id));
-    if (same) return;
-    applyLeaguePrefill(new Set(structureLeagueIds));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [structureLeagueIds, inviteSource, inviteSourceTouched, inviteLeaguesTouched]);
+  /** The people who will receive the invitation — explicit organiser choice. */
+  const resolvedAudience = useMemo(
+    () =>
+      resolveInviteAudience({
+        mode: inviteAudience,
+        members: (members || []) as any[],
+        leagueIds: Array.from(audienceLeagueIds),
+        registrationsByLeague,
+        individualIds: Array.from(audienceMemberIds),
+        includeIndividuals: audienceIncludeIndividuals,
+        excludedIds: inviteExcludedMemberIds,
+      }),
+    [
+      inviteAudience,
+      members,
+      audienceLeagueIds,
+      registrationsByLeague,
+      audienceMemberIds,
+      audienceIncludeIndividuals,
+      inviteExcludedMemberIds,
+    ],
+  );
 
-  /** Team-by-team breakdown of who the league selection puts on the invite list. */
+  /** Team-by-team breakdown of who the audience league selection reaches. */
   const inviteTeamBreakdown = useMemo(() => {
-    return Array.from(sourceLeagueIds)
+    return Array.from(audienceLeagueIds)
       .map((id) => ({
         id,
         name: leagueNameById.get(id) || "Unknown team",
         count: (registrationsByLeague.get(id) || []).filter((mid) => !inviteExcludedMemberIds.has(mid)).length,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [sourceLeagueIds, leagueNameById, registrationsByLeague, inviteExcludedMemberIds]);
+  }, [audienceLeagueIds, leagueNameById, registrationsByLeague, inviteExcludedMemberIds]);
+
 
 
   /**

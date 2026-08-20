@@ -1291,18 +1291,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return filterTreeBySeason(full, sourceSeason);
   }, [availableLeagues, leagueResolution, sourceSeason]);
 
-  /** Flat "pick which leagues to seed from" list — same season-scoped groups. */
-  const leagueGroups = useMemo(
-    () =>
-      leagueTree.map((g) => ({
-        key: g.key,
-        label: g.seasonYear != null ? `${g.assocName} — ${g.label} (${g.seasonYear})` : `${g.assocName} — ${g.label}`,
-        leagueIds: g.children.map((c) => c.id),
-      })),
-    [leagueTree],
-  );
-
-
   const toggleSourceGroup = (leagueIds: string[]) => {
     const next = new Set(sourceLeagueIds);
     const allOn = leagueIds.every((id) => next.has(id));
@@ -4519,6 +4507,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPairGroupAssignments(new Map());
     setPairOrder([]);
     setSourceLeagueIds(new Set());
+    // A brand-new tournament must never inherit the previous one's selector
+    // state: season pick and eligibility overrides are cleared too.
+    setSourceSeason(null);
+    setSeasonTouched(false);
+    setEligibilityOverrides(new Set());
     setRegistrationMode("");
     setPartnerMode("");
     setRegistrationOpensAt("");

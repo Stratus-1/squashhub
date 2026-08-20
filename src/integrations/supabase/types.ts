@@ -5048,6 +5048,9 @@ export type Database = {
         Row: {
           affects_ranking_points: boolean
           allow_cross_gender_guests: boolean
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
           association_id: string | null
           captain_member_id: string | null
           club_id: string
@@ -5069,6 +5072,9 @@ export type Database = {
         Insert: {
           affects_ranking_points?: boolean
           allow_cross_gender_guests?: boolean
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           association_id?: string | null
           captain_member_id?: string | null
           club_id: string
@@ -5090,6 +5096,9 @@ export type Database = {
         Update: {
           affects_ranking_points?: boolean
           allow_cross_gender_guests?: boolean
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           association_id?: string | null
           captain_member_id?: string | null
           club_id?: string
@@ -9597,6 +9606,15 @@ export type Database = {
         Args: { _note?: string; _pending_id: string }
         Returns: undefined
       }
+      archive_club_season: {
+        Args: {
+          _association_id?: string
+          _club_id: string
+          _reason?: string
+          _season_year: number
+        }
+        Returns: number
+      }
       assign_role_to_member: {
         Args: { _club_id: string; _member_id: string; _role_name: string }
         Returns: undefined
@@ -10430,6 +10448,14 @@ export type Database = {
           owner_name: string
           owner_org_id: string
         }[]
+      }
+      unarchive_club_season: {
+        Args: {
+          _association_id?: string
+          _club_id: string
+          _season_year: number
+        }
+        Returns: number
       }
       viewer_is_opposing_captain_for_registration: {
         Args: {

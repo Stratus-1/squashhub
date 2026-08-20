@@ -163,7 +163,8 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     queryFn: async () => {
       let q = fromExt("leagues")
         .select("id, name, code, nsa_team_code, captain_member_id, allow_cross_gender_guests, association_id")
-        .eq("club_id", clubId);
+        .eq("club_id", clubId)
+        .is("archived_at", null);
       if (associationId) q = q.eq("association_id", associationId);
       const { data, error } = await q;
       if (error) throw error;

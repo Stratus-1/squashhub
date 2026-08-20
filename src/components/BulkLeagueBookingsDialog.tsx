@@ -81,7 +81,8 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
       const { data, error } = await (supabase as any)
         .from("leagues")
         .select("code, nsa_team_code, association_id")
-        .eq("club_id", clubId);
+        .eq("club_id", clubId)
+        .is("archived_at", null);
       if (error) throw error;
       const codes = new Set<string>();
       const assocIds = new Set<string>();

@@ -153,6 +153,8 @@ interface LeaguePlayer {
   shadow_player_rank?: number | null;
 }
 
+import { SeasonArchiveCard } from "./SeasonArchiveCard";
+
 interface LeagueWithPlayers extends League {
   players: LeaguePlayer[];
 }
@@ -474,6 +476,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onEditSetup={(assocId, list) => openEditSetup(assocId, "mixed", list)}
           />
         </div>
+
+        <SeasonArchiveCard clubId={clubId} />
 
         {otherLeagues.length > 0 && (
           <div className="mt-4">

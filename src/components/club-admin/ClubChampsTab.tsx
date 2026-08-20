@@ -167,24 +167,27 @@ function normaliseEventType(value: string | null | undefined, scope: string): st
 
 
 
-type WizardStep = "category" | "courts" | "structure" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
+type WizardStep = "category" | "courts" | "structure" | "registration" | "invites" | "players" | "groups" | "schedule" | "review" | "preview";
 type GenderCategory = "men" | "ladies" | "mixed" | "open";
 type MatchType = "singles" | "doubles";
 
 // Step ids are intentionally unchanged (drafts, deep links and shortcuts rely
 // on them) — only the order and the human labels were reworked.
-const STEPS: WizardStep[] = ["category", "structure", "registration", "courts", "players", "groups", "schedule", "review"];
+// Invites come after Dates & Courts so the message can quote real dates/venues.
+const STEPS: WizardStep[] = ["category", "structure", "registration", "courts", "invites", "players", "groups", "schedule", "review"];
 const STEP_LABELS: Record<WizardStep, string> = {
   category: "Basics",
   courts: "Dates & Courts",
   structure: "Structure",
   registration: "Entry & fees",
+  invites: "Invites & messaging",
   players: "Players",
   groups: "Allocate players",
   schedule: "Schedule",
   review: "Review & Generate",
   preview: "Preview Schedule",
 };
+
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -1651,8 +1654,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const activeSteps = useMemo<WizardStep[]>(() => {
     if (!awaitingPlayerPairs) return STEPS;
     return selfPairInviteSelection
-      ? ["category", "structure", "registration", "courts", "players", "review"]
-      : ["category", "structure", "registration", "courts", "review"];
+      ? ["category", "structure", "registration", "courts", "invites", "players", "review"]
+      : ["category", "structure", "registration", "courts", "invites", "review"];
   }, [awaitingPlayerPairs, selfPairInviteSelection]);
   const stepIdx = activeSteps.indexOf(step);
 
@@ -5119,12 +5122,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
       case "registration": {
         if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
-        if (invitesApply && inviteMethods.size === 0) m.push("At least one invite delivery method");
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
           m.push("At least one accepted payment method");
         }
         break;
       }
+      case "invites": {
+        if (invitesApply && inviteMethods.size === 0) m.push("At least one invite delivery method");
+        break;
+      }
+
       case "players": {
         if (selfPairInviteSelection) {
           if (selectedPlayerIds.size < 2) m.push("Select at least 2 players");
@@ -7247,6 +7254,61 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 are owned by the Dates & Courts and Structure steps — no duplicate
                 read-only summary here. */}
 
+
+
+
+
+
+
+            <WizardSection
+              title={"Partner selection"}
+              summary={isDoubles ? (partnerMode === "admin" ? "Admin pairs players" : partnerMode === "players" ? "Players choose partners" : "Not set") : "Singles — no partners needed"}
+              complete={!isDoubles || !!partnerMode}
+              defaultOpen={true}
+            >
+            {/* Partner mode — doubles only */}
+            {isDoubles && (
+              <div className="space-y-2">
+                <Label className="text-sm">Partner selection</Label>
+                <Select
+                  value={partnerMode}
+                  onValueChange={(v) => setPartnerMode(v as any)}
+                  onOpenChange={(open) => {
+                    if (!open) return;
+                    const y = window.scrollY;
+                    requestAnimationFrame(() => window.scrollTo({ top: y }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
+                  <SelectContent position="popper" sideOffset={4} onCloseAutoFocus={(e) => e.preventDefault()}>
+                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
+                    <SelectItem value="admin">Admin pairs all players</SelectItem>
+                    <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Only applies to doubles. Switch to Singles in Step 1 to hide this option.
+                </p>
+              </div>
+            )}
+            {!isDoubles && (
+              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                <strong className="text-foreground">Partner selection</strong> appears here for doubles tournaments. This tournament is set to <em>Singles</em> — go back to Step 1 (Category) and pick <em>Doubles</em> to enable partner pairing options.
+              </div>
+            )}
+
+
+            </WizardSection>
+          </CardContent>
+        </Card>
+      )}
+
+      {step === "invites" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Invites &amp; messaging</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <WizardSection
               title={"Invites & messaging"}
               summary={`${Array.from(inviteMethods).join(", ") || "no channel"} · ${description ? "custom message" : "default message"}`}
@@ -7728,51 +7790,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </div>
 
             </div>
-            </WizardSection>
-
-
-
-
-
-
-            <WizardSection
-              title={"Partner selection"}
-              summary={isDoubles ? (partnerMode === "admin" ? "Admin pairs players" : partnerMode === "players" ? "Players choose partners" : "Not set") : "Singles — no partners needed"}
-              complete={!isDoubles || !!partnerMode}
-              defaultOpen={true}
-            >
-            {/* Partner mode — doubles only */}
-            {isDoubles && (
-              <div className="space-y-2">
-                <Label className="text-sm">Partner selection</Label>
-                <Select
-                  value={partnerMode}
-                  onValueChange={(v) => setPartnerMode(v as any)}
-                  onOpenChange={(open) => {
-                    if (!open) return;
-                    const y = window.scrollY;
-                    requestAnimationFrame(() => window.scrollTo({ top: y }));
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent position="popper" sideOffset={4} onCloseAutoFocus={(e) => e.preventDefault()}>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="admin">Admin pairs all players</SelectItem>
-                    <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Only applies to doubles. Switch to Singles in Step 1 to hide this option.
-                </p>
-              </div>
-            )}
-            {!isDoubles && (
-              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                <strong className="text-foreground">Partner selection</strong> appears here for doubles tournaments. This tournament is set to <em>Singles</em> — go back to Step 1 (Category) and pick <em>Doubles</em> to enable partner pairing options.
-              </div>
-            )}
-
-
             </WizardSection>
           </CardContent>
         </Card>

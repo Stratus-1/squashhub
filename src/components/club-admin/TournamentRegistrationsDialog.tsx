@@ -199,7 +199,8 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
         <div className="space-y-3">
           <div className="flex items-center gap-3 text-xs flex-wrap">
-            <Badge variant="default">Paid {paidCount}</Badge>
+            <Badge variant="default">Registered {participatingCount}</Badge>
+            <Badge variant="secondary">Paid {paidCount}</Badge>
             <Badge variant="outline">Pending {pendingCount}</Badge>
             <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
               Active {activeRegistrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}

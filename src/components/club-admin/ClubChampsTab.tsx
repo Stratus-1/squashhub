@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
+import { buildInviteUrl } from "@/lib/tournaments/invite-link";
 import {
   defaultForfeitRule,
   describeForfeitRule,
@@ -4055,7 +4057,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         .maybeSingle();
       const sub = (clubRow as any)?.subdomain as string | undefined;
       const path = `/club-champs/${champId}`;
-      const inviteUrl = sub ? `https://${sub}.squashhub.co.za${path}` : path;
+      const fallbackUrl = sub ? `https://${sub}.squashhub.co.za${path}` : path;
+
+      // Mint (idempotently) a recipient-specific invitation token per invitee.
+      // The same canonical /i/<token> URL is used by in-app, email and WhatsApp.
+      const tokenByRegistration = new Map<string, string>();
+      try {
+        const { data: tokenRows, error: tokenErr } = await (supabase as any).rpc(
+          "ensure_tournament_invite_tokens",
+          { p_champ_id: champId },
+        );
+        if (tokenErr) throw tokenErr;
+        for (const t of (tokenRows || []) as any[]) {
+          if (t?.registration_id && t?.invite_token) tokenByRegistration.set(t.registration_id, t.invite_token);
+        }
+      } catch (tokErr: any) {
+        console.warn("Could not mint invitation tokens:", tokErr?.message || tokErr);
+      }
+      const urlForRegistration = (registrationId: string) => {
+        const token = tokenByRegistration.get(registrationId);
+        return token ? buildInviteUrl(token, sub) : fallbackUrl;
+      };
 
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
       const sendApp = methods.includes("app");
@@ -4078,7 +4100,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         title: "Tournament invitation",
         message: msg,
         type: "tournament_invite",
-        url: inviteUrl,
+        url: urlForRegistration(r.id),
         data: {
           champ_id: champId,
           send_email: sendEmail,
@@ -4097,21 +4119,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // WhatsApp channel — members reply YES/NO and the whatsapp-inbound
       // webhook writes the entry back into club_champs_registrations.
       if (methods.includes("whatsapp")) {
-        try {
-          await sendWhatsApp({
-            clubId,
-            recipients: rows.map((r: any) => ({ member_id: r.club_member_id })),
-            kind: "champ_invite",
-            category: "utility",
-            body: `${msg}\n\nReply YES to enter or NO to decline.\n${inviteUrl}`,
-            interaction: {
-              kind: "champ_entry",
-              targetId: champId,
-              prompt: `Entry for ${champName || "tournament"}`,
-            },
-          });
-        } catch (waErr: any) {
-          toast.warning(`WhatsApp invites failed: ${waErr?.message || "unknown error"}`);
+        // Each recipient gets their own canonical invitation link, so the
+        // WhatsApp message carries exactly the same URL as email / in-app.
+        for (const r of rows as any[]) {
+          try {
+            await sendWhatsApp({
+              clubId,
+              recipients: [{ member_id: r.club_member_id }],
+              kind: "champ_invite",
+              category: "utility",
+              body: `${msg}\n\nReply YES to enter or NO to decline.\n${urlForRegistration(r.id)}`,
+              interaction: {
+                kind: "champ_entry",
+                targetId: champId,
+                prompt: `Entry for ${champName || "tournament"}`,
+              },
+            });
+          } catch (waErr: any) {
+            toast.warning(`WhatsApp invites failed: ${waErr?.message || "unknown error"}`);
+            break;
+          }
         }
       }
 

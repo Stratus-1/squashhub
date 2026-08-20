@@ -66,6 +66,7 @@ import ClubChampsView from "./pages/ClubChampsView";
 import ClubLanding from "./pages/ClubLanding";
 import ClubAuth from "./pages/ClubAuth";
 import BookingResponse from "./pages/BookingResponse";
+import TournamentInvite from "./pages/TournamentInvite";
 import Achievements from "./pages/Achievements";
 import Feed from "./pages/Feed";
 import Availability from "./pages/Availability";
@@ -514,6 +515,9 @@ function AppRoutes() {
           <Route path="events/:id" element={<AdminEventEditor />} />
         </Route>
         <Route path="/booking-response" element={<BookingResponse />} />
+        {/* Public, recipient-specific tournament invitation link (email / in-app / WhatsApp) */}
+        <Route path="/i/:token" element={<TournamentInvite />} />
+        <Route path="/c/:subdomain/i/:token" element={<TournamentInvite />} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
         <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />

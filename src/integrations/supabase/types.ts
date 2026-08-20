@@ -1420,9 +1420,14 @@ export type Database = {
           confirmed_at: string | null
           confirmed_by: string | null
           created_at: string
+          declined_at: string | null
           fee_paid_cents: number
           fee_payment_id: string | null
           id: string
+          invite_revoked_at: string | null
+          invite_token: string | null
+          invite_token_created_at: string | null
+          invite_viewed_at: string | null
           invited_at: string | null
           invited_by_admin: boolean
           paid_at: string | null
@@ -1442,9 +1447,14 @@ export type Database = {
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string
+          declined_at?: string | null
           fee_paid_cents?: number
           fee_payment_id?: string | null
           id?: string
+          invite_revoked_at?: string | null
+          invite_token?: string | null
+          invite_token_created_at?: string | null
+          invite_viewed_at?: string | null
           invited_at?: string | null
           invited_by_admin?: boolean
           paid_at?: string | null
@@ -1464,9 +1474,14 @@ export type Database = {
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string
+          declined_at?: string | null
           fee_paid_cents?: number
           fee_payment_id?: string | null
           id?: string
+          invite_revoked_at?: string | null
+          invite_token?: string | null
+          invite_token_created_at?: string | null
+          invite_viewed_at?: string | null
           invited_at?: string | null
           invited_by_admin?: boolean
           paid_at?: string | null
@@ -9676,6 +9691,14 @@ export type Database = {
         Args: { _association_id: string }
         Returns: string
       }
+      ensure_tournament_invite_tokens: {
+        Args: { p_champ_id: string }
+        Returns: {
+          club_member_id: string
+          invite_token: string
+          registration_id: string
+        }[]
+      }
       find_unclaimed_memberships: {
         Args: never
         Returns: {
@@ -9896,6 +9919,7 @@ export type Database = {
           team_code: string
         }[]
       }
+      get_tournament_invite: { Args: { p_token: string }; Returns: Json }
       get_wifi_access_status: {
         Args: { _club_member_id: string }
         Returns: {
@@ -10047,6 +10071,7 @@ export type Database = {
         }
         Returns: number
       }
+      new_invite_token: { Args: never; Returns: string }
       next_bottom_ladder_position: {
         Args: { _club_id: string; _gender: string }
         Returns: number
@@ -10188,6 +10213,10 @@ export type Database = {
       respond_to_booking_invite: {
         Args: { invite_token: string; new_status: string; reason?: string }
         Returns: undefined
+      }
+      respond_tournament_invite: {
+        Args: { p_accept: boolean; p_token: string }
+        Returns: Json
       }
       save_bells_match_result: {
         Args: {

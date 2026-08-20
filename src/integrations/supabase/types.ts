@@ -9175,6 +9175,10 @@ export type Database = {
           group_labels: Json | null
           id: string
           include_visitors: boolean
+          invite_audience: string
+          invite_audience_include_individuals: boolean
+          invite_audience_league_ids: string[]
+          invite_audience_member_ids: string[]
           invite_excluded_member_ids: string[]
           invite_include_reserves: boolean
           invite_methods: string[]
@@ -9245,6 +9249,10 @@ export type Database = {
           group_labels?: Json | null
           id?: string
           include_visitors?: boolean
+          invite_audience?: string
+          invite_audience_include_individuals?: boolean
+          invite_audience_league_ids?: string[]
+          invite_audience_member_ids?: string[]
           invite_excluded_member_ids?: string[]
           invite_include_reserves?: boolean
           invite_methods?: string[]
@@ -9315,6 +9323,10 @@ export type Database = {
           group_labels?: Json | null
           id?: string
           include_visitors?: boolean
+          invite_audience?: string
+          invite_audience_include_individuals?: boolean
+          invite_audience_league_ids?: string[]
+          invite_audience_member_ids?: string[]
           invite_excluded_member_ids?: string[]
           invite_include_reserves?: boolean
           invite_methods?: string[]

@@ -88,6 +88,18 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-20 · Tournament Structure teams showed zero invited members
+- **Symptom:** Selecting all teams in 1st League correctly showed the Structure hierarchy, but Invite Actions
+  still displayed zero members even after saving progress.
+- **Finding:** The canonical team ids were saved in each division's `league_sources`, while the older
+  top-level `source_league_ids` remained empty. Reopening any existing tournament marked that empty invite
+  selector as manually edited, permanently blocking the Structure-to-Invite hydration effect.
+- **Fix:** Only treat a saved non-empty invite-team selection as manually authoritative. Save Progress now
+  also derives invite registrations directly from the canonical division team ids and their
+  `member_league_registrations`, so effect timing or legacy empty selector state cannot lose invitees.
+- **Guard:** Division team ids are the authoritative tournament source. Invite persistence must fall back to
+  those ids whenever the legacy top-level invite selector is empty.
+
 ### 2026-08-19 · Second tournament Resume could show a blank marker
 - **Symptom:** Resume worked once, but after leaving the marker and returning through Tournaments, a second
   Resume could render a blank screen; refreshing the browser made the marker work again.

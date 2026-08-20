@@ -1411,6 +1411,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [sourceLeagueIds, leagueNameById, registrationsByLeague, inviteExcludedMemberIds]);
 
+  /**
+   * Saving must not depend on the Structure → Invite synchronising effect having
+   * completed first. Existing drafts can have canonical division team ids while
+   * the older top-level invite selector is still empty, so derive the roster
+   * directly from those teams as the authoritative fallback.
+   */
+  const structureSeedPlayerIds = useMemo(() => {
+    const ids = new Set<string>();
+    structureLeagueIds.forEach((leagueId) => {
+      (registrationsByLeague.get(leagueId) || []).forEach((memberId) => {
+        if (!inviteExcludedMemberIds.has(memberId)) ids.add(memberId);
+      });
+    });
+    return ids;
+  }, [structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
+
 
   /**
    * Players the admin has deliberately kept in a division they do not qualify
@@ -1808,10 +1824,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // from the chosen league teams) become `invited` registration rows as
       // soon as progress is saved — that list is what "Invite actions" counts
       // and sends to. Nobody is entered until they accept.
-      const seedsFromLeagues = inviteSource === "leagues" && selectedPlayerIds.size > 0;
+      const inviteSeedIds = new Set(selectedPlayerIds);
+      structureSeedPlayerIds.forEach((memberId) => inviteSeedIds.add(memberId));
+      const seedsFromLeagues = structureLeagueIds.size > 0 && inviteSeedIds.size > 0;
       if (registrationUsesInviteList || seedsFromLeagues) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
-        const ids = await promoteVisitorIds(Array.from(selectedPlayerIds));
+        const ids = await promoteVisitorIds(Array.from(inviteSeedIds));
         const regRows = ids.map((memberId) => ({
           champ_id: champIdToUse,
           club_member_id: memberId,
@@ -4671,11 +4689,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPaymentRequired((champ as any).payment_required !== false);
     setRegistrationRequired((champ as any).registration_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
-    setInviteSource(((champ as any).invite_source as any) || "manual");
-    // An existing tournament's saved invite list is authoritative — never let
-    // the Structure bridge overwrite it when reopening for edit.
-    setInviteSourceTouched(true);
-    setInviteLeaguesTouched(true);
+    const loadedInviteSource = (((champ as any).invite_source as any) || "manual");
+    setInviteSource(loadedInviteSource);
+    // A genuinely saved invite-team selection is authoritative. Older drafts
+    // often have only per-division Structure team ids; an empty legacy invite
+    // selector must remain untouched so the Structure bridge can hydrate it.
+    const hasSavedInviteTeams = initialLeagueIds.length > 0;
+    setInviteSourceTouched(hasSavedInviteTeams || loadedInviteSource === "leagues");
+    setInviteLeaguesTouched(hasSavedInviteTeams);
     setEntrySource((((champ as any).entry_source as any) || ((champ.registration_mode === "invite") ? "admin" : "self")));
     setApprovalGate((((champ as any).approval_gate as any) || "none"));
     setPaymentTiming((((champ as any).payment_timing as any) || "on_entry"));

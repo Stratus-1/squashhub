@@ -4461,11 +4461,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       requestAnimationFrame(() => {
         stepIssuesRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
-      toast({
-        title: "A few things still needed",
-        description: missing.join(" · "),
-        variant: "destructive",
-      });
+      toast.error("A few things still needed", { description: missing.join(" · ") });
+
       return;
     }
     goToStep(activeSteps[stepIdx + 1]);

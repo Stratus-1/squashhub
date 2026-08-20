@@ -5859,18 +5859,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   return (
                                     <div className="rounded-md border bg-muted/30 p-2 space-y-1.5">
                                       <SegRow
-                                        label="Pools"
+                                        label={fmt === "knockout" ? "Knockout structure" : "Pools"}
                                         value={String(pools)}
                                         color="violet"
-                                        options={poolOptions(pools).map((n) => ({ v: String(n), l: poolLabel(n) }))}
+                                        options={poolOptions(pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
                                         onChange={(v) => setPoolsForDivision(gn, Number(v) || 1)}
                                       />
                                       <p className="text-[11px] text-muted-foreground">
                                         {entrants > 0
-                                          ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per ${pools > 1 ? "pool" : "draw"}. `
+                                          ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per ${pools > 1 ? poolNoun(fmt, false) : "draw"}. `
                                           : ""}
                                         {fmt === "knockout"
-                                          ? "Seeds are spread evenly across pools from the ladder; pool winners meet in this division's final."
+                                          ? "Seeds are spread evenly across sections from the ladder; section winners meet in this division's final."
                                           : fmt === "cross_league"
                                             ? "Each pool plays every other pool."
                                             : pools > 1

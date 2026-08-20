@@ -31,6 +31,11 @@ void initDeepLinks();
 // Register the PWA service worker (no-op in iframe / preview / native).
 registerServiceWorker();
 
+// If a PWA update reload relaunched us at start_url, go back to the page the
+// user was on (auth/session is untouched — it lives in localStorage).
+restoreRouteAfterUpdate();
+
+
 // Swap the manifest to a per-tenant version so the home-screen label shows
 // the club name (e.g. "Highveld Squash Club") instead of "SquashHub".
 void applyDynamicManifest();

@@ -27,6 +27,14 @@ export function LeagueSourceTree({ groups, selected, onChange }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const visible = useMemo(() => filterLeagueTree(groups, query), [groups, query]);
+  /** Groups that already have a selected child open by default. */
+  const autoOpen = useMemo(() => {
+    const set = new Set<string>();
+    groups.forEach((g) => {
+      if (g.children.some((c) => selected.includes(c.id))) set.add(g.key);
+    });
+    return set;
+  }, [groups, selected]);
   const summary = useMemo(() => summarizeTreeSelection(groups, selected), [groups, selected]);
   const searching = query.trim().length > 0;
 
@@ -52,7 +60,7 @@ export function LeagueSourceTree({ groups, selected, onChange }: Props) {
         )}
         {visible.map((g) => {
           const state = groupSelectionState(g, selected);
-          const open = searching || expanded[g.key];
+          const open = searching || (expanded[g.key] ?? autoOpen.has(g.key));
           return (
             <div key={g.key} className="rounded-md border border-border/50">
               <div className="flex items-center gap-1.5 px-1.5 py-1">
@@ -72,7 +80,12 @@ export function LeagueSourceTree({ groups, selected, onChange }: Props) {
                     ref={(el) => { if (el) el.indeterminate = state === "some"; }}
                     onChange={() => onChange(toggleGroup(g, selected))}
                   />
-                  <span className="truncate">{g.label}</span>
+                  <span className="truncate">
+                    {g.label}
+                    {g.seasonYear != null && (
+                      <span className="ml-1 font-normal text-muted-foreground">({g.seasonYear})</span>
+                    )}
+                  </span>
                 </label>
                 <Badge variant="secondary" className="h-4 px-1.5 text-[9px] font-normal shrink-0">
                   <Users className="h-2.5 w-2.5 mr-0.5" />

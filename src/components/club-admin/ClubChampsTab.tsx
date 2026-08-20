@@ -3994,6 +3994,50 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
       }
 
+      // Knockout divisions only have their first round dated at save time, so
+      // also reserve every remaining play day in the window (Mon/Wed/Fri etc.)
+      // provisionally — later rounds land inside those blocks.
+      const hasKnockoutDivision = Array.from(
+        { length: Math.max(1, numGroups || 1) },
+        (_, i) => formatForLeague(i + 1),
+      ).some((f) => f === "knockout");
+      if (hasKnockoutDivision && startDate && endDate) {
+        const gStart = String(startTime || "").slice(0, 5);
+        const gEnd = String(endTime || "").slice(0, 5);
+        const addBlock = (date: string, cid: number, start: string, end: string) => {
+          const key = `${date}:${cid}`;
+          const existing = slotMap.get(key);
+          if (!existing) {
+            slotMap.set(key, { date, courtId: cid, start, end });
+          } else {
+            if (start < existing.start) existing.start = start;
+            if (end > existing.end) existing.end = end;
+          }
+        };
+        if (customizeDailySchedule && daySchedules.length > 0) {
+          for (const d of daySchedules) {
+            if (!d.date || !d.start_time || !d.end_time) continue;
+            const cs = (d.court_ids && d.court_ids.length > 0)
+              ? d.court_ids.filter((id) => selectedCourtIds.has(id))
+              : courtIds;
+            for (const cid of cs) {
+              addBlock(d.date, cid, String(d.start_time).slice(0, 5), String(d.end_time).slice(0, 5));
+            }
+          }
+        } else if (gStart && gEnd) {
+          const cur = new Date(startDate);
+          const endD = new Date(endDate);
+          while (cur <= endD) {
+            if (playDays.size === 0 || playDays.has(cur.getDay())) {
+              const date = format(cur, "yyyy-MM-dd");
+              for (const cid of courtIds) addBlock(date, cid, gStart, gEnd);
+            }
+            cur.setDate(cur.getDate() + 1);
+          }
+        }
+      }
+
+
       const bookings = Array.from(slotMap.values()).map((s) => ({
         club_id: clubId,
         court_id: s.courtId,

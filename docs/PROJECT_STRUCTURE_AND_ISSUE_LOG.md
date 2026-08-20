@@ -839,6 +839,12 @@ documented `redirect_uri` on the fresh hosted link.
 - **Data:** `club_champs_registrations` gained `proof_url`, `proof_uploaded_at`, `proof_uploaded_by`. Private storage bucket `payment-proofs` with path `<club_id>/<club_member_id>/<file>`; members read/write their own, club admins read/delete their club's. Trigger `trg_champ_proof_uploaded` notifies club admins on upload.
 - **Admin:** `TournamentRegistrationsDialog.tsx` shows a "Proof" button (signed URL, 5 min) next to EFT paid / Waive.
 
+### 2026-08-20 · Tournament test emails opened a non-actionable generic page
+- **Symptom:** Clicking the emailed test invitation opened `/club-champs/:id`, which showed “Registration pending” and no Accept / Decline controls.
+- **Finding:** The test-send path explicitly used the generic tournament URL. Real sends also silently fell back to that URL when secure token minting failed, hiding the underlying error and delivering a link that could not identify the invitee.
+- **Fix:** Test emails now use the first selected invitee (or the explicitly chosen sample player), materialise that registration if needed, mint its secure token, and link to `/i/:token`. Real sends now fail visibly before notifications are inserted if any recipient-specific token is missing; they never send the generic page as an invitation.
+- **Guard:** Every tournament invitation channel must use `buildInviteUrl(token, subdomain)`. `/club-champs/:id` is a tournament view/payment destination only, never an initial RSVP link.
+
 ## Marker presence: LIVE falls away when the marker exits
 - LIVE chips (Tournaments list, ClubChampsView, TournamentMatchLive) are now driven by a fresh heartbeat in `champ_marker_locks`, not by `status = in_progress`. Matches with no active marker show an amber "Paused · Resume" chip that opens the marker.
 - `useChampMarkerHeartbeat` releases the lock immediately on `pagehide` / tab hide (previously only on unmount), and is now also used by `BellsMarker`.

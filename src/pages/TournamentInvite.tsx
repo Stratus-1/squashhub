@@ -194,6 +194,25 @@ export default function TournamentInvite() {
     );
   }
 
+  if (state === "needs_signup") {
+    return shell(
+      <>
+        {header}
+        {detailList}
+        <p className="text-sm text-muted-foreground">
+          You don't have a SquashHub login yet. Create one with this invitation — we'll link it to your club
+          membership automatically and bring you straight back here to confirm your entry.
+        </p>
+        <Button className="w-full" onClick={() => navigate(inviteSignupPath(token))}>
+          <UserPlus className="w-4 h-4 mr-2" /> Create your account
+        </Button>
+        <Button variant="outline" className="w-full" onClick={() => navigate(inviteLoginPath(token))}>
+          <LogIn className="w-4 h-4 mr-2" /> I already have an account
+        </Button>
+      </>,
+    );
+  }
+
   if (state === "needs_login") {
     return shell(
       <>
@@ -208,6 +227,7 @@ export default function TournamentInvite() {
       </>,
     );
   }
+
 
   const busy = respond.isPending;
   return shell(

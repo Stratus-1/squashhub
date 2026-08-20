@@ -302,8 +302,10 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           door_geofence_enabled: geofence.enabled,
           door_latitude: latNum,
           door_longitude: lngNum,
-          door_geofence_radius_m: Math.max(3, Math.min(2000, Number(geofence.radius) || 150)),
-          door_auto_unlock_radius_m: Math.max(3, Math.min(500, Number(geofence.autoRadius) || 5)),
+          // Phone GPS is accurate to ~10–30 m, so anything under 25 m makes the
+          // "Open Door" tile effectively impossible to reach. Keep a sane floor.
+          door_geofence_radius_m: Math.max(25, Math.min(2000, Number(geofence.radius) || 150)),
+          door_auto_unlock_radius_m: Math.max(8, Math.min(500, Number(geofence.autoRadius) || 8)),
           door_auto_unlock_enabled: geofence.enabled && geofence.auto,
 
         } as any)
@@ -918,28 +920,32 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                   <Label>Button radius (metres)</Label>
                   <Input
                     type="number"
-                    min={3}
+                    min={25}
                     max={2000}
                     value={geofence.radius}
                     onChange={(e) => setGeofence((p) => ({ ...p, radius: e.target.value }))}
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    How close a member must be for the "Open Door" tile to appear. 20–150 m works well.
+                    How close a member must be for the "Open Door" tile to appear. 50–150 m works
+                    well. Phone GPS is only accurate to about 10–30 m, so anything under 25 m
+                    hides the tile even when the member is standing at the door (minimum 25 m).
                   </p>
                 </div>
                 <div className="space-y-1">
                   <Label>Auto-unlock radius (metres)</Label>
                   <Input
                     type="number"
-                    min={3}
+                    min={8}
                     max={500}
                     value={geofence.autoRadius}
                     onChange={(e) => setGeofence((p) => ({ ...p, autoRadius: e.target.value }))}
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Tight ring right at the door (4–5 m) where the door opens by itself. Must be smaller than the button radius.
+                    Tight ring right at the door (10–15 m) where the door opens by itself. Must be
+                    smaller than the button radius.
                   </p>
                 </div>
+
                 <Button type="button" variant="outline" size="sm" disabled={locating} onClick={useMyLocation} className="gap-1.5">
                   <MapPin className="w-3.5 h-3.5" />
                   {locating ? "Getting location…" : "Use my current location (stand at the door)"}

@@ -43,7 +43,7 @@ import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFrom
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { DrawLockCard } from "@/components/tournaments/DrawLockCard";
-import { useClubMembers, useIsSuperAdmin, type ClubMember } from "@/hooks/use-club";
+import { useClubMembers, useIsSuperAdmin, useMyClubMember, type ClubMember } from "@/hooks/use-club";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { sendWhatsApp } from "@/lib/whatsapp-send";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy, Check, ChevronDown } from "lucide-react";
+import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy, Check, ChevronDown, Send } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, eachDayOfInterval, getDay, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -524,6 +526,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const widePool = playerPoolClubIds.length > 1;
 
   const { data: clubMembers = [] } = useClubMembers(clubId);
+  const { data: myMember } = useMyClubMember();
+
   const { data: pooledMembers = [] } = useQuery({
     queryKey: ["tournament-member-pool", playerPoolClubIds],
     queryFn: async () => {
@@ -3821,9 +3825,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           }
         } else if (inviteTiming === "scheduled" && inviteScheduledAt) {
           const when = new Date(inviteScheduledAt);
-          toast.info(`Reminder: send invites on ${when.toLocaleString()} via the edit dialog → “Send / Re-send invites”.`, { duration: 8000 });
+          toast.info(`Reminder: send invites on ${when.toLocaleString()} via the edit dialog → “Invite actions”.`, { duration: 8000 });
         } else {
-          toast.info(`Tournament saved. Open the edit dialog and click “Send / Re-send invites” when you're ready to notify ${inviteeCount} member${inviteeCount === 1 ? "" : "s"}.`, { duration: 7000 });
+          toast.info(`Tournament saved. Open the edit dialog and click “Invite actions” when you're ready to notify ${inviteeCount} member${inviteeCount === 1 ? "" : "s"}.`, { duration: 7000 });
         }
       }
 
@@ -3982,9 +3986,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const sendingInvitesRef = useRef<Set<string>>(new Set());
   const [invitesSendingFor, setInvitesSendingFor] = useState<string | null>(null);
 
+  // Builds the invitation body shared by in-app / email / WhatsApp channels.
+  function buildInviteBody() {
+    const descHasDetails = /— Tournament details —/.test(description);
+    const detailLines = descHasDetails ? [] : buildInviteDetailLines({
+      gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+      startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
+      registrationOpensAt, registrationClosesAt, entryFeeRand,
+      pointsPerGame, bestOf,
+      registrationRequired, registrationMode: (registrationMode || "open") as any,
+    });
+    return `You have been invited to ${champName || "a tournament"}.` +
+      (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
+      (description.trim() ? `\n\n${description.trim()}` : "");
+  }
+
   // Shared helper: send invite notifications (and flag rows as invited) for a champ.
-  // Used by both the post-create prompt and the "Send / Re-send invites" button.
-  async function sendChampInvites(champId: string, opts?: { confirm?: boolean }) {
+  // Used by the post-create prompt and the "Invite actions" menu.
+  // opts.registrationIds restricts the send to specific invitees (selective reminders).
+  async function sendChampInvites(champId: string, opts?: { confirm?: boolean; registrationIds?: string[] }) {
+    const only = opts?.registrationIds && opts.registrationIds.length > 0 ? new Set(opts.registrationIds) : null;
     if (sendingInvitesRef.current.has(champId)) {
       toast.info("Invites are already being sent — please wait.");
       return;
@@ -3992,7 +4013,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     sendingInvitesRef.current.add(champId);
     setInvitesSendingFor(champId);
     try {
-      if (opts?.confirm && !confirm("Send invite notification/email to all invited members now?")) return;
+      if (opts?.confirm && !confirm(
+        only
+          ? `Send the invitation to ${only.size} selected member${only.size === 1 ? "" : "s"} now?`
+          : "Send invite notification/email to all invited members now?",
+      )) return;
+
 
       // If the wizard is currently open editing this tournament in invite mode,
       // ensure the registrations table reflects the latest audience selection
@@ -4000,12 +4026,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // an admin expanded the audience from a shortlist to "all members") get a
       // registration row and therefore receive the invite. We only insert
       // missing rows — existing rows (paid / cancelled / etc.) are left intact.
-      const shouldBackfillOpenAudience = editingChampId === champId && registrationRequired && effectiveRegistrationMode === "open";
-      const audienceMemberIds = shouldBackfillOpenAudience
-        ? members.filter((m) => memberMatchesTournamentGender(m.gender, gender)).map((m) => m.id)
-        : await promoteVisitorIds(Array.from(selectedPlayerIds));
+      const shouldBackfillOpenAudience = !only && editingChampId === champId && registrationRequired && effectiveRegistrationMode === "open";
+      const audienceMemberIds = only
+        ? []
+        : shouldBackfillOpenAudience
+          ? members.filter((m) => memberMatchesTournamentGender(m.gender, gender)).map((m) => m.id)
+          : await promoteVisitorIds(Array.from(selectedPlayerIds));
 
-      if (editingChampId === champId && audienceMemberIds.length > 0) {
+      if (!only && editingChampId === champId && audienceMemberIds.length > 0) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
         const newRegs = audienceMemberIds.map((memberId) => ({
           champ_id: champId,
@@ -4031,22 +4059,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Skip anyone already paid, waived, registered or cancelled — they don't
       // need another invite. Also skip rows without a member id.
       const SKIP_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
-      let rows = (regs || []).filter((r: any) =>
-        r.club_member_id && !SKIP_STATUSES.has(String(r.status || "").toLowerCase())
-      );
-      if (rows.length === 0) {
-        const all = (regs || []).filter((r: any) =>
-          r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled"
+      let rows: any[];
+      if (only) {
+        // Selective reminder: the organiser explicitly picked these recipients,
+        // so status filtering is deliberately skipped.
+        rows = (regs || []).filter((r: any) => r.club_member_id && only.has(r.id));
+        if (rows.length === 0) {
+          toast.info("None of the selected invitees could be found.");
+          return;
+        }
+      } else {
+        rows = (regs || []).filter((r: any) =>
+          r.club_member_id && !SKIP_STATUSES.has(String(r.status || "").toLowerCase())
         );
-        if (all.length === 0) {
-          toast.info("No invitees to notify.");
-          return;
+        if (rows.length === 0) {
+          const all = (regs || []).filter((r: any) =>
+            r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled"
+          );
+          if (all.length === 0) {
+            toast.info("No invitees to notify.");
+            return;
+          }
+          if (!confirm(`Everyone is already registered. Re-send invite to all ${all.length} invited member${all.length === 1 ? "" : "s"} anyway?`)) {
+            return;
+          }
+          rows = all;
         }
-        if (!confirm(`Everyone is already registered. Re-send invite to all ${all.length} invited member${all.length === 1 ? "" : "s"} anyway?`)) {
-          return;
-        }
-        rows = all;
       }
+
 
       // Build a tenant-aware absolute URL so the recipient lands on the correct
       // club host (e.g. https://nsc.squashhub.co.za/club-champs/...) — without
@@ -4082,17 +4122,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
       const sendApp = methods.includes("app");
       const sendEmail = methods.includes("email");
-      const descHasDetails = /— Tournament details —/.test(description);
-      const detailLines = descHasDetails ? [] : buildInviteDetailLines({
-        gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
-        startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
-        registrationOpensAt, registrationClosesAt, entryFeeRand,
-        pointsPerGame, bestOf,
-        registrationRequired, registrationMode: (registrationMode || "open") as any,
-      });
-      const msg = `You have been invited to ${champName || "a tournament"}.` +
-        (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
-        (description.trim() ? `\n\n${description.trim()}` : "");
+      const msg = buildInviteBody();
+
 
 
       const notifRows = rows.map((r: any) => ({
@@ -4142,7 +4173,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
       }
 
-      toast.success(`Sent invites to ${rows.length} member${rows.length === 1 ? "" : "s"}.`);
+      toast.success(
+        only
+          ? `Reminder sent to ${rows.length} selected member${rows.length === 1 ? "" : "s"}.`
+          : `Sent invites to ${rows.length} member${rows.length === 1 ? "" : "s"}.`,
+      );
     } catch (e: any) {
       toast.error(e?.message || "Failed to send invites");
     } finally {
@@ -4150,6 +4185,122 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setInvitesSendingFor((cur) => (cur === champId ? null : cur));
     }
   }
+
+  // Preview-only: sends the organiser a clearly-labelled TEST invitation using
+  // the currently selected delivery methods. It writes NO registration,
+  // entrant, invitation-token or payment records — only a notification row
+  // addressed to the organiser themselves.
+  const [testInviteSending, setTestInviteSending] = useState(false);
+  async function sendTestInvite(champId: string) {
+    if (testInviteSending) return;
+    const meId = myMember?.id;
+    if (!meId) {
+      toast.error("Could not identify your member profile — test invite not sent.");
+      return;
+    }
+    setTestInviteSending(true);
+    try {
+      const { data: clubRow } = await fromExt("clubs")
+        .select("subdomain")
+        .eq("id", clubId)
+        .maybeSingle();
+      const sub = (clubRow as any)?.subdomain as string | undefined;
+      const path = `/club-champs/${champId}`;
+      const previewUrl = sub ? `https://${sub}.squashhub.co.za${path}` : path;
+
+      const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
+      const sendApp = methods.includes("app");
+      const sendEmail = methods.includes("email");
+      const msg = `*** TEST INVITE — preview only, no entry has been recorded ***\n\n${buildInviteBody()}`;
+
+      const { error: insErr } = await fromExt("notifications").insert([{
+        club_member_id: meId,
+        title: "TEST — Tournament invitation preview",
+        message: msg,
+        type: "tournament_invite",
+        url: previewUrl,
+        data: {
+          champ_id: champId,
+          test: true,
+          send_email: sendEmail,
+          app_silent: !sendApp,
+          description: description.trim() || null,
+        },
+        read: false,
+      }]);
+      if (insErr) throw insErr;
+
+      if (methods.includes("whatsapp")) {
+        try {
+          await sendWhatsApp({
+            clubId,
+            recipients: [{ member_id: meId }],
+            kind: "champ_invite",
+            category: "utility",
+            body: `${msg}\n\n${previewUrl}`,
+            // No interaction payload — a test must never create an entry.
+          });
+        } catch (waErr: any) {
+          toast.warning(`WhatsApp test invite failed: ${waErr?.message || "unknown error"}`);
+        }
+      }
+
+      toast.success(
+        `Test invite sent to you via ${methods.join(", ")}. Nothing was recorded against the tournament.`,
+      );
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send test invite");
+    } finally {
+      setTestInviteSending(false);
+    }
+  }
+
+  // ---- "Send to selected members" picker -------------------------------
+  const [inviteePickerOpen, setInviteePickerOpen] = useState(false);
+  const [inviteeSearch, setInviteeSearch] = useState("");
+  const [selectedInviteeRegIds, setSelectedInviteeRegIds] = useState<Set<string>>(new Set());
+
+  const { data: inviteeRows = [], isLoading: inviteesLoading } = useQuery({
+    queryKey: ["champ-invitees", editingChampId, inviteePickerOpen],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("id, club_member_id, status, invited_by_admin")
+        .eq("champ_id", editingChampId!);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!editingChampId && inviteePickerOpen,
+  });
+
+  const memberNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of members as any[]) m.set(p.id, p.name || p.profiles?.name || p.full_name || "Unknown member");
+    return m;
+  }, [members]);
+
+  const inviteeList = useMemo(() => {
+    const q = inviteeSearch.trim().toLowerCase();
+    return (inviteeRows as any[])
+      .filter((r) => r.club_member_id)
+      .map((r) => ({
+        id: r.id as string,
+        memberId: r.club_member_id as string,
+        name: memberNameById.get(r.club_member_id) || "Unknown member",
+        status: String(r.status || "").toLowerCase(),
+        invited: !!r.invited_by_admin,
+      }))
+      .filter((r) => !q || r.name.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [inviteeRows, inviteeSearch, memberNameById]);
+
+  function inviteeStatusLabel(r: { status: string; invited: boolean }) {
+    if (r.status === "cancelled") return "Declined / cancelled";
+    if (["paid", "registered", "active", "waived"].includes(r.status)) return "Entered";
+    if (r.status === "pending_payment") return r.invited ? "Invited — awaiting payment" : "Awaiting payment";
+    if (r.status === "pending_eft") return "Awaiting EFT proof";
+    return r.invited ? "Invited — no response" : "Not yet invited";
+  }
+
 
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
@@ -6991,13 +7142,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     className="max-w-xs h-8 text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
-                    You'll get a reminder near this time. Automated send-out isn't wired up yet — use “Send / Re-send invites” when ready.
+                    You'll get a reminder near this time. Automated send-out isn't wired up yet — use “Invite actions” when ready.
                   </p>
                 </div>
               )}
               {inviteTiming === "manual" && (
                 <p className="text-xs text-muted-foreground">
-                  Tournament is saved without notifying anyone. Open the edit dialog and click “Send / Re-send invites” when you're ready.
+                  Tournament is saved without notifying anyone. Open the edit dialog and click “Invite actions” when you're ready.
                 </p>
               )}
             </div>
@@ -7050,20 +7201,146 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 onChange={(e) => setDescription(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — use the “Send / Re-send invites” button below.
+                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — use the “Invite actions” button below.
               </p>
               {editingChampId && (
                 <div className="pt-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={invitesSendingFor === editingChampId}
-                    onClick={() => sendChampInvites(editingChampId, { confirm: true })}
-                  >
-                    {invitesSendingFor === editingChampId ? "Sending…" : "Send / Re-send invites"}
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={invitesSendingFor === editingChampId || testInviteSending}
+                      >
+                        {invitesSendingFor === editingChampId
+                          ? "Sending…"
+                          : testInviteSending
+                            ? "Sending test…"
+                            : "Invite actions"}
+                        <ChevronDown className="w-4 h-4 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-72">
+                      <DropdownMenuItem
+                        onSelect={() => sendChampInvites(editingChampId, { confirm: true })}
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        <span>
+                          Send to all invited players
+                          <span className="block text-[11px] text-muted-foreground">Bulk send / re-send — asks for confirmation</span>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setSelectedInviteeRegIds(new Set());
+                          setInviteeSearch("");
+                          setInviteePickerOpen(true);
+                        }}
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        <span>
+                          Send to selected members
+                          <span className="block text-[11px] text-muted-foreground">Pick individual invitees and remind them</span>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => sendTestInvite(editingChampId)}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        <span>
+                          Send test invite to myself
+                          <span className="block text-[11px] text-muted-foreground">Preview only — records nothing</span>
+                        </span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Uses the delivery methods selected above ({Array.from(inviteMethods.size ? inviteMethods : new Set(["app"])).join(", ")}).
+                  </p>
                 </div>
               )}
+
+              {/* Selective invite reminders */}
+              <Dialog open={inviteePickerOpen} onOpenChange={setInviteePickerOpen}>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Send invite to selected members</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <Input
+                      placeholder="Search invitees…"
+                      value={inviteeSearch}
+                      onChange={(e) => setInviteeSearch(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{selectedInviteeRegIds.size} selected of {inviteeList.length} shown</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="underline"
+                          onClick={() => setSelectedInviteeRegIds(new Set(inviteeList.map((r) => r.id)))}
+                        >
+                          Select all shown
+                        </button>
+                        <button
+                          type="button"
+                          className="underline"
+                          onClick={() => setSelectedInviteeRegIds(new Set())}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto rounded-md border divide-y">
+                      {inviteesLoading && (
+                        <p className="p-3 text-sm text-muted-foreground">Loading invitees…</p>
+                      )}
+                      {!inviteesLoading && inviteeList.length === 0 && (
+                        <p className="p-3 text-sm text-muted-foreground">No invitees found for this tournament.</p>
+                      )}
+                      {inviteeList.map((r) => {
+                        const checked = selectedInviteeRegIds.has(r.id);
+                        return (
+                          <label key={r.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-muted/40">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                setSelectedInviteeRegIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (v) next.add(r.id); else next.delete(r.id);
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span className="flex-1 min-w-0 truncate">{r.name}</span>
+                            <span className="text-[11px] text-muted-foreground shrink-0">{inviteeStatusLabel(r)}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setInviteePickerOpen(false)}>Cancel</Button>
+                    <Button
+                      type="button"
+                      disabled={selectedInviteeRegIds.size === 0 || invitesSendingFor === editingChampId}
+                      onClick={async () => {
+                        if (!editingChampId) return;
+                        const ids = Array.from(selectedInviteeRegIds);
+                        setInviteePickerOpen(false);
+                        await sendChampInvites(editingChampId, { confirm: true, registrationIds: ids });
+                      }}
+                    >
+                      {invitesSendingFor === editingChampId
+                        ? "Sending…"
+                        : `Send to ${selectedInviteeRegIds.size} member${selectedInviteeRegIds.size === 1 ? "" : "s"}`}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+
+
 
               <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2 mt-2">
                 <div className="min-w-0">

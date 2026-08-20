@@ -18,6 +18,8 @@ export interface ClubCapabilityRow {
   enabled: boolean;
   enabled_at: string | null;
   disabled_at: string | null;
+  /** Null until a club admin explicitly changes the switch (seeded rows only). */
+  enabled_by: string | null;
 }
 
 /** Raw capability rows for a club. */

@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { MarkerSetup, type MarkerConfig } from "@/components/marker/MarkerSetup";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
-import { fromExt } from "@/lib/supabase-ext";
+import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -489,12 +489,22 @@ export default function MatchMarker() {
     resetMatch();
   };
 
-  const handleMatchComplete = async (result: {
+  type MatchResult = {
     games: GameScore[];
     winnerId: "a" | "b";
     durationSeconds: number;
     forfeit?: { absentSide: "a" | "b" };
-  }) => {
+  };
+
+  // A completed score must never be lost. If the save fails we keep the result
+  // (and the persisted scoreboard state) and offer a safe retry. The row id is
+  // generated once per completed match so a retry can never duplicate it.
+  const pendingResultRef = useRef<MatchResult | null>(null);
+  const pendingMatchIdRef = useRef<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleMatchComplete = async (result: MatchResult) => {
     if (!config) return;
 
     const playerAMemberId = config.playerA.clubMemberId;
@@ -504,6 +514,13 @@ export default function MatchMarker() {
       toast.info("Match scored! Players must be members or visitors to save results.");
       return;
     }
+
+    if (pendingResultRef.current !== result) {
+      pendingResultRef.current = result;
+      pendingMatchIdRef.current = crypto.randomUUID();
+    }
+    setSaving(true);
+    setSaveError(null);
 
     try {
       // Look up user_ids — they may be null for unregistered members
@@ -524,7 +541,6 @@ export default function MatchMarker() {
       const validAMemberId = memberA ? playerAMemberId : null;
       const validBMemberId = memberB ? playerBMemberId : null;
       const winnerMemberId = result.winnerId === "a" ? validAMemberId : validBMemberId;
-      const winnerUserId = result.winnerId === "a" ? memberA?.user_id : memberB?.user_id;
 
       const isForfeit = !!result.forfeit;
       const absentLabel = isForfeit ? (result.forfeit!.absentSide === "a" ? "A" : "B") : null;
@@ -552,28 +568,33 @@ export default function MatchMarker() {
       if (!memberB) noteParts.push(`Player 2: ${config.playerB.name} (${config.playerB.club})`);
       if (config.source !== 'manual') noteParts.push(`Source: ${config.source} ${config.sourceId || ''}`);
 
-      const { error } = await supabase.from("matches").insert({
-        player_a: memberA?.user_id || null,
-        player_b: memberB?.user_id || null,
-        player_a_member_id: validAMemberId,
-        player_b_member_id: validBMemberId,
-        winner_id: winnerUserId || null,
-        winner_member_id: winnerMemberId,
-        score: scoreStr,
-        game_scores: gameScoresJson,
-        duration_s: result.durationSeconds,
-        submitted_by: user?.id || null,
-        submitted_by_member_id: null,
-        confirmed: autoConfirm,
-        notes: noteParts.join(". "),
-        club_id: config.clubId || null,
-      } as any);
+      // Saved through a security-definer RPC: it authorises club members,
+      // the players themselves, club admins and tournament officials, and is
+      // idempotent on the client-generated id so retries never duplicate.
+      const { error } = await rpcExt("save_marker_match_result", {
+        _match_id: pendingMatchIdRef.current,
+        _club_id: config.clubId || null,
+        _player_a_member_id: validAMemberId,
+        _player_b_member_id: validBMemberId,
+        _winner_member_id: winnerMemberId,
+        _score: scoreStr,
+        _game_scores: gameScoresJson,
+        _duration_s: result.durationSeconds,
+        _confirmed: autoConfirm,
+        _notes: noteParts.join(". "),
+        _tournament_match_id: config.source === "tournament" ? config.sourceId ?? null : null,
+      });
 
       if (error) {
         console.error("Failed to save match:", error);
-        toast.error("Could not save match result");
+        setSaveError(error.message || "Could not save match result");
+        toast.error("Could not save match result — the score is safe, tap Retry.");
         return;
       }
+
+      pendingResultRef.current = null;
+      pendingMatchIdRef.current = null;
+      setSaveError(null);
 
       // Match saved — clear persisted in-progress state
       try {
@@ -683,10 +704,18 @@ export default function MatchMarker() {
           });
         } catch { /* non-critical */ }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving match:", err);
-      toast.error("Could not save match result");
+      setSaveError(err?.message || "Could not save match result");
+      toast.error("Could not save match result — the score is safe, tap Retry.");
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const retrySave = () => {
+    const pending = pendingResultRef.current;
+    if (pending) handleMatchComplete(pending);
   };
 
   return (
@@ -698,6 +727,17 @@ export default function MatchMarker() {
       />
 
       <div className="px-4 mt-3 mb-6 max-w-lg mx-auto">
+        {saveError && (
+          <div className="mb-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 space-y-2">
+            <p className="text-sm font-semibold">The result has not been saved yet.</p>
+            <p className="text-xs text-muted-foreground break-words">
+              Your score is kept on this device — nothing is lost. {saveError}
+            </p>
+            <Button size="sm" onClick={retrySave} disabled={saving}>
+              {saving ? "Saving…" : "Retry save"}
+            </Button>
+          </div>
+        )}
         {!config && tournamentLoadState === "loading" ? (
           <div className="py-12 text-center text-sm text-muted-foreground">Loading saved tournament score…</div>
         ) : !config && tournamentLoadState === "error" ? (

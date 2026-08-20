@@ -35,7 +35,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { CORE_SETUP_KEYS, isTabVisible, type Capability } from "@/lib/capabilities";
-import { useCapabilities } from "@/hooks/use-club-capabilities";
+import { useClubCapabilityRows, useCapabilities } from "@/hooks/use-club-capabilities";
 import { FeaturesTab } from "@/components/club-admin/FeaturesTab";
 import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
 
@@ -46,7 +46,9 @@ const SETUP_TABS: AdminTab[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
   { value: "features", label: "Features", icon: Sparkles, color: "violet", noStatus: true },
-  { value: "courts", label: "Courts & Bookings", icon: LayoutGrid, permission: "courts", color: "cyan", capability: "bookings" },
+  // Courts is core: admins must always be able to add courts, otherwise a club
+  // with Court Bookings off could never set them up (circular dependency).
+  { value: "courts", label: "Courts & Bookings", icon: LayoutGrid, permission: "courts", color: "cyan" },
   { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald", capability: "membership_fees" },
   { value: "banking", label: "Banking & Payments", icon: Banknote, permission: "banking", color: "green", capability: "payments" },
   { value: "access", label: "Door Access", icon: DoorOpen, permission: "access", color: "pink", capability: "access_control" },
@@ -122,16 +124,25 @@ export default function ClubAdmin() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const capsReady = !capsLoading && !!club?.id;
 
-  // First-run: a club with no capability rows yet gets the Quick Setup prompt once.
+  // First-run: open Quick Setup once for a genuinely new club. New clubs get
+  // seeded capability rows by a DB trigger, so "no rows" is never true — the
+  // real signal is that no admin has ever touched the capabilities
+  // (enabled_by is null on every row) and core setup is still incomplete.
+  const { data: capRows } = useClubCapabilityRows(club?.id);
+  const untouchedCaps = !!capRows?.length && capRows.every((r) => !r.enabled_by);
+  const coreIncomplete =
+    setupStatus.club !== "complete" || setupStatus.courts !== "complete";
   useEffect(() => {
-    if (!capsReady || hasCapRows || !club?.id) return;
+    if (!capsReady || !club?.id) return;
+    if (!(untouchedCaps || !hasCapRows)) return;
+    if (!coreIncomplete) return;
     const key = `sh.quicksetup.seen.${club.id}`;
     try {
       if (localStorage.getItem(key)) return;
       localStorage.setItem(key, "1");
     } catch { /* ignore */ }
     setWizardOpen(true);
-  }, [capsReady, hasCapRows, club?.id]);
+  }, [capsReady, hasCapRows, untouchedCaps, coreIncomplete, club?.id]);
 
   if (isLoading || (baseClub?.id && isFetchingAdminClub && !adminClub)) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 

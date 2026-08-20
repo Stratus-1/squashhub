@@ -16,6 +16,7 @@ export type LeagueFormat =
   | "double_round_robin"
   | "cross_league"
   | "swiss"
+  | "knockout"
   | "";
 
 /** One real playing window: a date, a time range and the courts available in it. */
@@ -194,6 +195,10 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
   const perLeague: CapacityLeagueResult[] = leagues.map((L, idx) => {
     const gn = L.groupNumber;
     const isSwiss = L.format === "swiss";
+    // Knockout: sections are carried in `pools`. A knockout league always
+    // needs exactly (entrants - 1) real matches — every match eliminates one
+    // entrant — including the league final between section winners.
+    const isKnockout = L.format === "knockout";
     const isDouble = L.format === "double_round_robin";
     const slot = Math.max(0, Number(L.slotMinutes) || 0);
     const pools = Math.max(1, Number(L.pools) || 1);
@@ -237,12 +242,16 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
     const swissMaxPerPool = isSwiss && rounds > 0 ? Math.floor(gamesPerPoolAvailable / rounds) * 2 : 0;
     const swissMaxEntities = isSwiss ? swissMaxPerPool * pools : 0;
 
-    const maxEntities = isSwiss ? swissMaxEntities : rrMaxEntities;
+    const knockoutMaxEntities = gamesAvailable > 0 ? gamesAvailable + 1 : 0;
+    const maxEntities = isKnockout ? knockoutMaxEntities : isSwiss ? swissMaxEntities : rrMaxEntities;
     const maxPlayers = isDoubles ? maxEntities * 2 : maxEntities;
 
     const rrGamesNeeded =
       perPoolActual > 1 ? ((perPoolActual * (perPoolActual - 1)) / (isDouble ? 1 : 2)) * pools : 0;
-    const gamesNeeded = isSwiss
+    const knockoutGamesNeeded = entities > 1 ? entities - 1 : 0;
+    const gamesNeeded = isKnockout
+      ? knockoutGamesNeeded
+      : isSwiss
       ? rounds > 0
         ? Math.ceil(perPoolActual / 2) * rounds * pools
         : 0
@@ -262,7 +271,8 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
             : entities >= 2
               ? 2
               : 0;
-    const playoffGames = L.playoffs ? playoffMatchesForBracket(bracketSize) : 0;
+    // A knockout league already ends in a final — no separate play-off stage.
+    const playoffGames = L.playoffs && !isKnockout ? playoffMatchesForBracket(bracketSize) : 0;
     const totalGamesNeeded = gamesNeeded + playoffGames;
 
     return {

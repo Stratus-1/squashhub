@@ -1263,6 +1263,7 @@ export type Database = {
           scheduled_date: string | null
           scheduled_time: string | null
           score: string | null
+          section_number: number | null
           side_a_points: number | null
           side_b_points: number | null
           stage: string
@@ -1299,6 +1300,7 @@ export type Database = {
           scheduled_date?: string | null
           scheduled_time?: string | null
           score?: string | null
+          section_number?: number | null
           side_a_points?: number | null
           side_b_points?: number | null
           stage?: string
@@ -1335,6 +1337,7 @@ export type Database = {
           scheduled_date?: string | null
           scheduled_time?: string | null
           score?: string | null
+          section_number?: number | null
           side_a_points?: number | null
           side_b_points?: number | null
           stage?: string
@@ -8724,6 +8727,8 @@ export type Database = {
           invite_include_reserves: boolean
           invite_methods: string[]
           invite_source: string
+          knockout_seeds: Json | null
+          knockout_seeds_at: string | null
           league_best_of: Json | null
           league_bye_handling: Json | null
           league_forfeit_points: Json | null
@@ -8735,6 +8740,7 @@ export type Database = {
           league_playoffs: Json | null
           league_points_per_game: Json | null
           league_scoring_modes: Json | null
+          league_sections: Json
           league_win_conditions: Json
           match_duration_minutes: number
           match_type: string
@@ -8789,6 +8795,8 @@ export type Database = {
           invite_include_reserves?: boolean
           invite_methods?: string[]
           invite_source?: string
+          knockout_seeds?: Json | null
+          knockout_seeds_at?: string | null
           league_best_of?: Json | null
           league_bye_handling?: Json | null
           league_forfeit_points?: Json | null
@@ -8800,6 +8808,7 @@ export type Database = {
           league_playoffs?: Json | null
           league_points_per_game?: Json | null
           league_scoring_modes?: Json | null
+          league_sections?: Json
           league_win_conditions?: Json
           match_duration_minutes?: number
           match_type?: string
@@ -8854,6 +8863,8 @@ export type Database = {
           invite_include_reserves?: boolean
           invite_methods?: string[]
           invite_source?: string
+          knockout_seeds?: Json | null
+          knockout_seeds_at?: string | null
           league_best_of?: Json | null
           league_bye_handling?: Json | null
           league_forfeit_points?: Json | null
@@ -8865,6 +8876,7 @@ export type Database = {
           league_playoffs?: Json | null
           league_points_per_game?: Json | null
           league_scoring_modes?: Json | null
+          league_sections?: Json
           league_win_conditions?: Json
           match_duration_minutes?: number
           match_type?: string
@@ -9357,7 +9369,10 @@ export type Database = {
           invite_include_reserves: boolean | null
           invite_methods: string[] | null
           invite_source: string | null
+          knockout_seeds: Json | null
+          knockout_seeds_at: string | null
           league_formats: Json | null
+          league_sections: Json | null
           league_win_conditions: Json | null
           match_duration_minutes: number | null
           match_type: string | null
@@ -10202,6 +10217,7 @@ export type Database = {
           scheduled_date: string | null
           scheduled_time: string | null
           score: string | null
+          section_number: number | null
           side_a_points: number | null
           side_b_points: number | null
           stage: string
@@ -10310,6 +10326,7 @@ export type Database = {
           scheduled_date: string | null
           scheduled_time: string | null
           score: string | null
+          section_number: number | null
           side_a_points: number | null
           side_b_points: number | null
           stage: string

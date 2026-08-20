@@ -206,3 +206,47 @@ describe("helpers", () => {
     expect(formatCourtMinutes(120)).toBe("2h");
   });
 });
+
+describe("knockout capacity", () => {
+  const sessions = [{ date: "2026-09-05", minutes: 600, courts: 4 }];
+
+  it("needs exactly entrants - 1 matches, whatever the section count", () => {
+    const one = computeCapacity({
+      sessions,
+      leagues: [league({ format: "knockout", pools: 1, entities: 16 })],
+      isDoubles: false,
+      parallelLeagues: false,
+    });
+    const four = computeCapacity({
+      sessions,
+      leagues: [league({ format: "knockout", pools: 4, entities: 16 })],
+      isDoubles: false,
+      parallelLeagues: false,
+    });
+    expect(one.perLeague[0].totalGamesNeeded).toBe(15);
+    expect(four.perLeague[0].totalGamesNeeded).toBe(15);
+    expect(four.perLeague[0].fits).toBe(true);
+  });
+
+  it("ignores a separate play-off stage for knockout leagues", () => {
+    const res = computeCapacity({
+      sessions,
+      leagues: [league({ format: "knockout", pools: 2, entities: 8, playoffs: true })],
+      isDoubles: false,
+      parallelLeagues: false,
+    });
+    expect(res.perLeague[0].playoffGames).toBe(0);
+    expect(res.perLeague[0].totalGamesNeeded).toBe(7);
+  });
+
+  it("reports a shortfall when there are not enough slots", () => {
+    const res = computeCapacity({
+      sessions: [{ date: "2026-09-05", minutes: 60, courts: 1 }],
+      leagues: [league({ format: "knockout", pools: 2, entities: 16 })],
+      isDoubles: false,
+      parallelLeagues: false,
+    });
+    expect(res.perLeague[0].fits).toBe(false);
+    expect(res.perLeague[0].maxEntities).toBe(4); // 3 slots → 4 entrants
+  });
+});

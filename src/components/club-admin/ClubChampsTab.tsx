@@ -13,6 +13,7 @@ import {
   type ForfeitRule,
   type ForfeitRuleMap,
 } from "@/lib/tournaments/forfeit";
+import { buildLeagueFirstRound, distributeSeedsBalanced, suggestSectionCount } from "@/lib/tournaments/knockout";
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
@@ -651,15 +652,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // has no entry here, the tournament-wide `roundFormat` applies. Only used
   // when `usePerLeagueFormats` is enabled — hidden while roundFormat is
   // `cross_league` (which is inherently tournament-wide).
-  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss" | "cross_league";
+  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss" | "cross_league" | "knockout";
   const [leagueFormats, setLeagueFormats] = useState<Record<string, PerLeagueFormat>>({});
   const [usePerLeagueFormats, setUsePerLeagueFormats] = useState(false);
+  // Knockout: how many independent sections (sub-draws) each league runs.
+  // Keyed by group_number as text. Only meaningful for knockout leagues.
+  const [leagueSections, setLeagueSections] = useState<Record<string, number>>({});
+  const sectionsForLeague = (gn: number) => Math.max(1, Number(leagueSections[String(gn)]) || 1);
   // Planning-only per-league expected player counts (keyed by group_number).
   // Purely for the capacity readout in the wizard — not enforced anywhere.
   const [expectedPlayers, setExpectedPlayers] = useState<Record<string, number>>({});
   // Effective format for a given league number (1-based). A per-league
   // override wins; otherwise the tournament default applies.
-  const formatForLeague = (gn: number): "single_round_robin" | "double_round_robin" | "cross_league" | "swiss" | "" => {
+  const formatForLeague = (gn: number): PerLeagueFormat | "" => {
     if (usePerLeagueFormats && leagueFormats[String(gn)]) return leagueFormats[String(gn)];
     if (roundFormat === "cross_league") return "cross_league";
     return roundFormat;
@@ -766,6 +771,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     double_round_robin: { label: "Round robin (double)", short: "Double RR", desc: "Play each opponent twice — home & away." },
     swiss: { label: "Swiss pairing", short: "Swiss", desc: "Fixed rounds; admin re-pairs each round by score." },
     cross_league: { label: "Cross league", short: "Cross league", desc: "This league plays against the other leagues instead of within itself." },
+    knockout: { label: "Knockout", short: "Knockout", desc: "Straight elimination. Split into sections; seeds spread evenly and section winners meet in the league final." },
   };
   const addLeagueOfFormat = (fmt: PerLeagueFormat) => {
     const gn = (numGroups || 0) + 1;
@@ -787,8 +793,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
     }
+    if (fmt === "knockout") {
+      setLeagueSections((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
+    }
     setUsePerLeagueFormats(true);
     if (fmt === "cross_league") setRoundFormat("cross_league");
+    else if (fmt === "knockout") { if (!roundFormat) setRoundFormat("single_round_robin"); }
     else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
   };
   /** Set one league's gender, materialising the others so nothing shifts. */
@@ -827,6 +837,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       return out;
     };
     setLeagueFormats(shift);
+    setLeagueSections(shift);
     setSwissPools(shift);
     setSwissRounds(shift);
     setGroupLabels(shift);
@@ -1314,6 +1325,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
       expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
       league_formats: usePerLeagueFormats ? leagueFormats : null,
+      league_sections: Object.keys(leagueSections).length > 0 ? leagueSections : {},
       points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
       best_of: bestOf > 0 ? bestOf : null,
       play_all_games: playAllGames,
@@ -2111,6 +2123,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       isBye?: boolean;
       byeEntityId?: string;
       date?: string; time?: string; courtId?: number;
+      /** Knockout draws only — section + round label carried through to the DB. */
+      koSection?: number;
+      koStageLabel?: string;
     };
 
     // Build the universal slot list from sessions (used by non-Bells scheduling).
@@ -2277,6 +2292,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
     };
 
+    // Knockout league — only the FIRST round of every section is materialised
+    // now. Later rounds are generated in the live tournament view once their
+    // feeder round is complete (phased generation).
+    const buildKnockoutLeague = (gi: number, ids: string[]) => {
+      const gn = gi + 1;
+      const sections = Math.min(sectionsForLeague(gn), Math.max(1, ids.length));
+      const seeds = ids.map((id, i) => ({ memberId: id, seed: i + 1 }));
+      const assignments = distributeSeedsBalanced(seeds, sections);
+      const rows = buildLeagueFirstRound({ champId: "preview", groupNumber: gn, assignments });
+      for (const r of rows) {
+        allMatches.push({
+          groupNum: gn,
+          roundNum: r.round_number,
+          entityA: r.player_a_member_id ?? r.bye_member_id ?? "",
+          entityB: r.player_b_member_id ?? r.bye_member_id ?? "",
+          leg: null,
+          isBye: r.is_bye,
+          byeEntityId: r.is_bye ? r.bye_member_id ?? undefined : undefined,
+          koSection: r.section_number,
+          koStageLabel: r.stage_label,
+        });
+      }
+    };
+
     {
       const perLeagueIds: string[][] = isDoubles
         ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
@@ -2290,6 +2329,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         const f = formatForLeague(gi + 1);
         if (f === "swiss") {
           buildSwissLeague(gi, ids);
+        } else if (f === "knockout") {
+          buildKnockoutLeague(gi, ids);
         } else if (f === "cross_league") {
           if (poolsForLeague(gi + 1) > 1) ingestCrossPools(gi, ids);
           else crossAcross.push({ ids, gn: gi + 1 });
@@ -3041,14 +3082,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           fmt === "cross_league"
             ? Number(groupDurations["1"]) || matchDuration || 0
             : Number(groupDurations[key]) || matchDuration || 0,
-        pools: Math.max(1, Number(swissPools[key]) || 1),
+        // Knockout carries its section count in `pools` — the capacity engine
+        // treats both as "independent sub-draws of this league".
+        pools: fmt === "knockout"
+          ? Math.max(1, Number(leagueSections[key]) || 1)
+          : Math.max(1, Number(swissPools[key]) || 1),
         rounds: Number(swissRounds[key]) || 0,
         entities: roster || Math.max(0, Number(expectedPlayers[key]) || 0),
         playoffs: playoffsForLeague(gn),
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numGroups, groups, groupLabels, groupDurations, matchDuration, swissPools, swissRounds, expectedPlayers, leaguePlayoffs, leagueFormats, usePerLeagueFormats, roundFormat]);
+  }, [numGroups, groups, groupLabels, groupDurations, matchDuration, swissPools, swissRounds, expectedPlayers, leaguePlayoffs, leagueFormats, leagueSections, usePerLeagueFormats, roundFormat]);
 
 
   // Create/update champ
@@ -3105,6 +3150,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats ? leagueFormats : null,
+            league_sections: Object.keys(leagueSections).length > 0 ? leagueSections : {},
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
             play_all_games: playAllGames,
@@ -3172,6 +3218,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats ? leagueFormats : null,
+            league_sections: Object.keys(leagueSections).length > 0 ? leagueSections : {},
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
             play_all_games: playAllGames,
@@ -3333,6 +3380,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             scheduled_time: isBye ? null : m.time,
             court_id: isBye ? null : m.courtId,
             leg: m.leg ?? null,
+            section_number: m.koSection ?? null,
+            stage: m.koSection ? "ko" : null,
+            stage_label: m.koStageLabel ?? null,
             is_bye: isBye,
             bye_member_id: isBye ? resolvedPairDbId(pairA?.player1Id || m.entityA) : null,
             status: isBye
@@ -3350,6 +3400,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           scheduled_time: isBye ? null : m.time,
           court_id: isBye ? null : m.courtId,
           leg: m.leg ?? null,
+          section_number: m.koSection ?? null,
+          stage: m.koSection ? "ko" : null,
+          stage_label: m.koStageLabel ?? null,
           is_bye: isBye,
           bye_member_id: isBye ? toDbId(m.entityA) : null,
           status: isBye
@@ -3924,6 +3977,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setSwissRounds({});
     setExpectedPlayers({});
     setLeagueFormats({});
+    setLeagueSections({});
     setLeagueGenders({});
     setLeagueMatchTypes({});
     setUsePerLeagueFormats(false);
@@ -4015,6 +4069,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setRoundFormat((champ.round_format as any) || "");
     const lf = ((champ as any).league_formats as Record<string, PerLeagueFormat> | null) || null;
     setLeagueFormats(lf || {});
+    setLeagueSections(((champ as any).league_sections as Record<string, number>) || {});
     setUsePerLeagueFormats(!!lf && Object.keys(lf).length > 0);
     setExpectedPlayers(((champ as any).expected_players as Record<string, number>) || {});
     setByeHandling((champ.bye_handling as any) || "");
@@ -5353,29 +5408,62 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 label="Draw format"
                                 value={fmt === "double_round_robin" ? "single_round_robin" : fmt}
                                 color="violet"
-                                options={[
-                                  { v: "single_round_robin", l: "Round robin" },
-                                  { v: "swiss", l: "Swiss pairing" },
-                                  { v: "cross_league", l: "Cross league" },
-                                ]}
-                                onChange={(v) => {
-                                  const nv = v as PerLeagueFormat;
-                                  setLeagueFormats((m) => ({ ...m, [key]: nv }));
-                                  setUsePerLeagueFormats(true);
-                                  if (nv === "swiss") {
-                                    setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
-                                    setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
-                                  }
-                                  if (nv === "cross_league") setRoundFormat("cross_league");
-                                  else {
-                                    // Drop cross-league mode once no league uses it.
-                                    const next = { ...leagueFormats, [key]: nv };
-                                    const stillCross = Array.from({ length: numGroups || 0 }, (_, i) => next[String(i + 1)]).some((f) => f === "cross_league");
-                                    if (!stillCross && (!roundFormat || roundFormat === "cross_league")) setRoundFormat(nv as any);
-                                  }
-                                }}
-                              />
-                              {(fmt === "single_round_robin" || fmt === "double_round_robin") && (
+                                 options={[
+                                   { v: "single_round_robin", l: "Round robin" },
+                                   { v: "knockout", l: "Knockout" },
+                                   { v: "swiss", l: "Swiss pairing" },
+                                   { v: "cross_league", l: "Cross league" },
+                                 ]}
+                                 onChange={(v) => {
+                                   const nv = v as PerLeagueFormat;
+                                   setLeagueFormats((m) => ({ ...m, [key]: nv }));
+                                   setUsePerLeagueFormats(true);
+                                   if (nv === "swiss") {
+                                     setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
+                                     setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
+                                   }
+                                   if (nv === "knockout") {
+                                     const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
+                                     setLeagueSections((m) => ({ ...m, [key]: m[key] || suggestSectionCount(entrants) }));
+                                   }
+                                   if (nv === "cross_league") setRoundFormat("cross_league");
+                                   else {
+                                     // Drop cross-league mode once no league uses it.
+                                     const next = { ...leagueFormats, [key]: nv };
+                                     const stillCross = Array.from({ length: numGroups || 0 }, (_, i) => next[String(i + 1)]).some((f) => f === "cross_league");
+                                     if (!stillCross && (!roundFormat || roundFormat === "cross_league")) {
+                                       setRoundFormat(nv === "knockout" ? "single_round_robin" : (nv as any));
+                                     }
+                                   }
+                                 }}
+                               />
+                               {fmt === "knockout" && (() => {
+                                 const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
+                                 const sections = sectionsForLeague(gn);
+                                 const suggested = suggestSectionCount(entrants);
+                                 const perSection = sections > 0 ? Math.ceil(entrants / sections) : 0;
+                                 return (
+                                   <div className="rounded-md border bg-muted/30 p-2 space-y-1.5">
+                                     <SegRow
+                                       label="Knockout sections"
+                                       value={String(sections)}
+                                       color="violet"
+                                       options={[1, 2, 4, 8].map((n) => ({ v: String(n), l: n === 1 ? "1 draw" : `${n} sections` }))}
+                                       onChange={(v) => setLeagueSections((m) => ({ ...m, [key]: Number(v) || 1 }))}
+                                     />
+                                     <p className="text-[11px] text-muted-foreground">
+                                       {entrants > 0
+                                         ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perSection} per section. Seeds are spread evenly across sections from the ladder; section winners meet in the league final.`
+                                         : "Seeds are spread evenly across sections from the ladder; section winners meet in the league final."}
+                                       {entrants > 0 && sections !== suggested ? ` Suggested: ${suggested}.` : ""}
+                                     </p>
+                                     <p className="text-[11px] text-muted-foreground">
+                                       Only the first round is scheduled up front — later rounds are created as each round finishes.
+                                     </p>
+                                   </div>
+                                 );
+                               })()}
+                               {(fmt === "single_round_robin" || fmt === "double_round_robin") && (
                                 <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
                                   <input
                                     type="checkbox"
@@ -5691,7 +5779,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   {/* Format palette */}
                   <div className="border-t lg:border-t-0 lg:border-l border-border bg-muted/30 p-3 space-y-2">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Format palette</div>
-                    {(["single_round_robin", "swiss", "cross_league"] as PerLeagueFormat[]).map((fmt) => {
+                    {(["single_round_robin", "knockout", "swiss", "cross_league"] as PerLeagueFormat[]).map((fmt) => {
                       const meta = FORMAT_META[fmt];
                       return (
                         <button

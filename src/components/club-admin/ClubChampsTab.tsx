@@ -7339,7 +7339,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       >
                         <Send className="w-4 h-4 mr-2" />
                         <span>
-                          Send to all invited players
+                          Send to all invited players ({allInviteCount})
                           <span className="block text-[11px] text-muted-foreground">Bulk send / re-send — asks for confirmation</span>
                         </span>
                       </DropdownMenuItem>
@@ -7352,7 +7352,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       >
                         <Users className="w-4 h-4 mr-2" />
                         <span>
-                          Send to selected members
+                          Send to selected members{selectedInviteCount > 0 ? ` (${selectedInviteCount})` : ""}
                           <span className="block text-[11px] text-muted-foreground">Pick individual invitees and remind them</span>
                         </span>
                       </DropdownMenuItem>

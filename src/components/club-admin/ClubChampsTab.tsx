@@ -16,15 +16,21 @@ import {
 import { buildLeagueFirstRound, distributeSeedsBalanced, suggestSectionCount } from "@/lib/tournaments/knockout";
 import {
   DEFAULT_DIVISION_SOURCE,
+  constrainIds,
   describeDivisionSource,
+  divisionEligibleIds,
   divisionSource,
   effectivePools,
+  findIneligibleAssignments,
   mergeLegacySectionsIntoPools,
   parseDivisionSources,
+  planAllLeaguesExpansion,
   sectionsFromPools,
   validateDivisions,
   type DivisionSource,
+  type EligibilityContext,
 } from "@/lib/tournaments/divisions";
+
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";

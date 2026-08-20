@@ -4361,18 +4361,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // Returns a list of friendly reasons why the current step can't advance.
   // Empty array means the user can click Next.
+  // Every entry must belong to a field that is *edited on that step* — match
+  // rules (scoring / round format / par / best-of) live on Structure, so they
+  // are validated there, not on Basics.
   const missingForStep = (): string[] => {
     const m: string[] = [];
     switch (step) {
       case "category": {
         if (!gender) m.push("Gender category");
         if (!matchType) m.push("Match type (Singles or Doubles)");
-        if (!scoringMode) m.push("Scoring format");
-        if (scoringMode === "standard") {
-          if (!pointsPerGame) m.push("Game length (Par 11 or 15)");
-          if (!bestOf) m.push("Best of (3 or 5)");
-        }
-        if (!roundFormat) m.push("Round format");
         break;
       }
       case "courts": {
@@ -4399,8 +4396,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
       case "structure": {
         if (!(numGroups >= 1)) m.push("At least one league");
+        if (!scoringMode) m.push("Scoring format");
+        if (scoringMode === "standard") {
+          if (!pointsPerGame) m.push("Game length (Par 11 or 15)");
+          if (!bestOf) m.push("Best of (3 or 5)");
+        }
+        if (!roundFormat) m.push("Round format");
         break;
       }
+
       case "registration": {
         if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
         if (invitesApply && inviteMethods.size === 0) m.push("At least one invite delivery method");

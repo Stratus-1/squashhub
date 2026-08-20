@@ -1,0 +1,1 @@
+GRANT SELECT (participation_active, visitors_can_book, visitor_booking_fee, external_booking_provider, external_booking_url, external_booking_label, uses_gobook, gobook_url, contact_person_name) ON public.clubs TO anon;

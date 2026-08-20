@@ -47,11 +47,9 @@ export function resolveInviteRecipients(input: {
     if (rows.length !== selected.length) {
       // Stale / malformed ids: fail closed rather than sending a partial or
       // (worse) a widened audience.
-      return {
-        ok: false,
-        error:
-          "Some selected members are no longer valid for this tournament. Nothing was sent — reopen the list and try again.",
-      };
+      return fail(
+        "Some selected members are no longer valid for this tournament. Nothing was sent — reopen the list and try again.",
+      );
     }
     return pass(rows);
   }

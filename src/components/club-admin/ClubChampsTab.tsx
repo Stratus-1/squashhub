@@ -4670,7 +4670,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       inheritedB[String(i)] = (Number(lbo?.[String(i)]) === 5 ? 5 : Number(lbo?.[String(i)]) === 3 ? 3 : (Number((champ as any).best_of) === 5 ? 5 : 3));
       inheritedW[String(i)] = (lwc?.[String(i)] === "sudden_death" ? "sudden_death" : (lwc?.[String(i)] === "win_by_2" ? "win_by_2" : ((champ as any).win_condition || "win_by_2")));
       inheritedPA[String(i)] = lpa?.[String(i)] === true;
-      inheritedPO[String(i)] = lpo?.[String(i)] ?? !!(champ as any).enable_playoffs;
+      // Back-compat: a knockout division saved before the progression flag existed
+      // is treated as "continue through knockout stages" (that was always the intent).
+      {
+        const fmtI = (lf?.[String(i)] as PerLeagueFormat | undefined) ?? ((champ.round_format as any) as PerLeagueFormat | undefined);
+        inheritedPO[String(i)] = lpo?.[String(i)] ?? (fmtI === "knockout" ? true : !!(champ as any).enable_playoffs);
+      }
       inheritedBH[String(i)] = (lbh?.[String(i)] as any) ?? (((champ as any).bye_handling as any) || "no_match");
       // Forfeit rule: stored per league, otherwise derived from the league's format.
       // Legacy tournaments (which only had tournament-wide no-show points) map onto
@@ -5833,8 +5838,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     {numGroups > 0 ? (
                       Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => {
                         const key = String(gn);
+                        // The card must reflect the division's REAL draw format.
+                        // Knockout / cross league were previously dropped by this
+                        // fallback, which made knockout divisions render as round
+                        // robin (wrong pool wording and wrong bottom control).
+                        const rf = roundFormat as string;
                         const fmt: PerLeagueFormat = (leagueFormats[key]
-                          ?? (roundFormat === "swiss" || roundFormat === "double_round_robin" || roundFormat === "single_round_robin"
+                          ?? (rf === "swiss" || rf === "double_round_robin"
+                              || rf === "single_round_robin" || rf === "knockout"
+                              || rf === "cross_league"
                               ? (roundFormat as PerLeagueFormat)
                               : "single_round_robin"));
                         const meta = FORMAT_META[fmt];
@@ -6146,8 +6158,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     if (nv === "knockout") {
                                       const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
                                       setSwissPools((m) => ({ ...m, [key]: m[key] || suggestSectionCount(entrants) }));
-                                      // Knockout progresses through rounds by default.
-                                      setLeaguePlayoffs((m) => ({ ...m, [key]: m[key] ?? true }));
+                                      // Newly configured knockout division: progression ON by default.
+                                      // (A division already on knockout keeps the organiser's choice.)
+                                      if (fmt !== "knockout") setLeaguePlayoffs((m) => ({ ...m, [key]: true }));
                                     }
                                     if (nv === "cross_league") setRoundFormat("cross_league");
                                     else {
@@ -6449,8 +6462,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 </label>
                                 {fmt === "knockout" && (
                                   <p className="text-[10px] text-muted-foreground pl-6 pt-0.5 leading-relaxed">
-                                    Create subsequent rounds as results are completed, with section winners
-                                    progressing to the division finals. Only the first round is scheduled up front.
+                                    Winners progress to the next knockout round as results are completed,
+                                    through to the section/division final.
                                   </p>
                                 )}
                               </div>

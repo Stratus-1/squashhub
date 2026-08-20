@@ -97,6 +97,149 @@ export function constrainSeeds<T extends { member_id: string }>(seeds: T[], cand
   return seeds.filter((s) => allowed.has(s.member_id));
 }
 
+/** Same constraint, for the plain id lists used by the draw builders. */
+export function constrainIds(ids: string[], candidates: string[], overrides?: Iterable<string>): string[] {
+  const allowed = new Set(candidates);
+  const ok = new Set(overrides || []);
+  return ids.filter((id) => allowed.has(id) || ok.has(id));
+}
+
+export interface EligibilityContext {
+  sources: Record<string, DivisionSource>;
+  allLeagueIds: string[];
+  registrationsByLeague: Map<string, string[]>;
+  /** Ids the admin has explicitly kept in a division despite not qualifying. */
+  overrides?: Set<string>;
+}
+
+/** Eligible member ids for one division ("Players from"). */
+export function divisionEligibleIds(gn: number, ctx: EligibilityContext): string[] {
+  return resolveDivisionCandidates({
+    source: divisionSource(ctx.sources, gn),
+    allLeagueIds: ctx.allLeagueIds,
+    registrationsByLeague: ctx.registrationsByLeague,
+  });
+}
+
+/**
+ * Is this player allowed in the division?
+ *
+ * A division on "all leagues" accepts anyone (including guests/visitors that
+ * have no league registration at all) — the source is not a restriction there.
+ * A restricted division only accepts members registered in its source leagues,
+ * unless the admin has explicitly overridden that entry.
+ */
+export function isEligibleForDivision(memberId: string, gn: number, ctx: EligibilityContext): boolean {
+  const src = divisionSource(ctx.sources, gn);
+  if (src.mode === "all" || src.leagueIds.length === 0) return true;
+  if (ctx.overrides?.has(memberId)) return true;
+  return divisionEligibleIds(gn, ctx).includes(memberId);
+}
+
+export interface IneligibleAssignment {
+  memberId: string;
+  gn: number;
+}
+
+/**
+ * Players assigned to a division they do not belong to — whether they were
+ * auto-loaded, added by hand or moved after the source changed. This makes the
+ * source selection an invariant of the division, not a one-off load filter.
+ */
+export function findIneligibleAssignments(
+  assignments: Map<string, number> | Array<[string, number]>,
+  ctx: EligibilityContext,
+): IneligibleAssignment[] {
+  const entries = Array.isArray(assignments) ? assignments : Array.from(assignments.entries());
+  const cache = new Map<number, Set<string>>();
+  const out: IneligibleAssignment[] = [];
+  entries.forEach(([memberId, gn]) => {
+    const src = divisionSource(ctx.sources, gn);
+    if (src.mode === "all" || src.leagueIds.length === 0) return;
+    if (ctx.overrides?.has(memberId)) return;
+    if (!cache.has(gn)) cache.set(gn, new Set(divisionEligibleIds(gn, ctx)));
+    if (!cache.get(gn)!.has(memberId)) out.push({ memberId, gn });
+  });
+  return out;
+}
+
+/* ------------------------------------------------- all-leagues expansion */
+
+export interface ExpansionPlanItem {
+  gn: number;
+  leagueId: string;
+  label: string;
+  /** Division the template settings should be cloned from. */
+  templateGn: number;
+  isNew: boolean;
+}
+
+export interface ExpansionPlan {
+  items: ExpansionPlanItem[];
+  created: ExpansionPlanItem[];
+  skipped: Array<{ leagueId: string; gn: number }>;
+  divisionCount: number;
+}
+
+/**
+ * "All leagues" means one independent competition per source league — NOT one
+ * merged draw. This plans that expansion: every active source league that is
+ * not already the source of a division gets its own division appended, cloning
+ * the template division's settings. Re-running is idempotent: leagues already
+ * covered are skipped, manual divisions are untouched.
+ */
+export function planAllLeaguesExpansion(args: {
+  templateGn: number;
+  divisionCount: number;
+  sources: Record<string, DivisionSource>;
+  leagues: Array<{ id: string; name: string }>;
+  labels?: Record<string, string>;
+}): ExpansionPlan {
+  const { templateGn, sources, leagues } = args;
+  const divisionCount = Math.max(0, Math.floor(args.divisionCount));
+
+  // League → division that already owns it as an exclusive (non-combined) source.
+  const owned = new Map<string, number>();
+  for (let gn = 1; gn <= divisionCount; gn++) {
+    const src = divisionSource(sources, gn);
+    if (src.mode !== "selected" || src.leagueIds.length !== 1) continue;
+    const lid = src.leagueIds[0];
+    if (!owned.has(lid)) owned.set(lid, gn);
+  }
+
+  const items: ExpansionPlanItem[] = [];
+  const created: ExpansionPlanItem[] = [];
+  const skipped: Array<{ leagueId: string; gn: number }> = [];
+  let nextGn = divisionCount + 1;
+  let reuseTemplate = true;
+
+  leagues.forEach((l) => {
+    const existing = owned.get(l.id);
+    if (existing) {
+      skipped.push({ leagueId: l.id, gn: existing });
+      items.push({ gn: existing, leagueId: l.id, label: args.labels?.[String(existing)] || l.name, templateGn, isNew: false });
+      return;
+    }
+    // The template division itself becomes the first generated division when
+    // it is still on "all leagues" — no orphan draw is left behind.
+    const tmplSrc = divisionSource(sources, templateGn);
+    let gn: number;
+    if (reuseTemplate && templateGn <= divisionCount && tmplSrc.mode === "all") {
+      gn = templateGn;
+      reuseTemplate = false;
+    } else {
+      gn = nextGn++;
+    }
+    const item: ExpansionPlanItem = { gn, leagueId: l.id, label: l.name, templateGn, isNew: gn > divisionCount };
+    items.push(item);
+    created.push(item);
+    owned.set(l.id, gn);
+  });
+
+  return { items, created, skipped, divisionCount: Math.max(divisionCount, nextGn - 1) };
+}
+
+
 /* --------------------------------------------------------------- pools */
 
 /**

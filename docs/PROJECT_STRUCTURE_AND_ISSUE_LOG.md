@@ -88,6 +88,20 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-20 · Legacy tournament draft invite picker remained empty
+- **Symptom:** A saved tournament with league teams selected still showed “0 selected of 0 shown” when
+  opening “Send invite to selected members”; some sessions also surfaced a missing one-argument
+  `can_manage_tournament(uuid)` permission error.
+- **Finding:** Older drafts stored their stable team ids in `source_league_ids`, while picker preparation
+  passed only the newer per-division Structure ids into roster materialisation. When those newer ids were
+  absent, the selected team set was silently empty. Eligibility enforcement also depended on a compatibility
+  permission overload instead of the canonical two-argument function.
+- **Fix:** Picker preparation now falls back to the saved `source_league_ids` and materialises those teams'
+  member registrations before refetching. Backend eligibility and token functions call the canonical
+  permission function with the signed-in user explicitly.
+- **Guard:** Tournament team ids remain stable across both storage generations; invite materialisation must
+  prefer per-division ids but never discard a non-empty legacy team selection.
+
 ### 2026-08-20 · Selected tournament invite picker showed zero members
 - **Symptom:** Structure resolved a non-zero league audience, but “Send invite to selected members” opened an empty picker; a super admin without a club-member row also could not send a test.
 - **Finding:** The picker queried only persisted registration rows and opened before the Structure roster was materialised. Test sends were addressed through a member notification, unnecessarily requiring the organiser to be a club member.

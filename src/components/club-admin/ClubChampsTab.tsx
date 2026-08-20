@@ -4491,6 +4491,32 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const effectiveAllInviteCount = allInviteCount || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
 
+  // First real invitee on the list — used for "send a test as an invited player"
+  // so an organiser who isn't part of any team can still preview the exact
+  // invitation an entrant receives. Sending still goes to the organiser only.
+  const sampleInvitee = useMemo(() => {
+    const saved = (inviteeRows as any[])
+      .filter((r) => r.club_member_id && !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()))
+      .map((r) => ({
+        memberId: r.club_member_id as string,
+        name: memberNameById.get(r.club_member_id) || "Unknown member",
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (saved.length > 0) return saved[0];
+    const pending: { memberId: string; name: string }[] = [];
+    const seen = new Set<string>();
+    structureLeagueIds.forEach((leagueId) => {
+      (registrationsByLeague.get(leagueId) || []).forEach((memberId) => {
+        if (inviteExcludedMemberIds.has(memberId) || seen.has(memberId)) return;
+        seen.add(memberId);
+        pending.push({ memberId, name: memberNameById.get(memberId) || "Unknown member" });
+      });
+    });
+    pending.sort((a, b) => a.name.localeCompare(b.name));
+    return pending[0] || null;
+  }, [inviteeRows, memberNameById, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
+
+
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
   const [registrationsChamp, setRegistrationsChamp] = useState<any | null>(null);
   const [bulkImportChamp, setBulkImportChamp] = useState<any | null>(null);

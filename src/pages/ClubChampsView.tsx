@@ -1473,12 +1473,14 @@ export default function ClubChampsView() {
                         {name}
                         {partnerName && <span className="text-muted-foreground"> & {partnerName}</span>}
                         {isMe && <Badge variant="secondary" className="text-[9px] ml-1.5">You</Badge>}
-                        {myInvite && <span className="text-[10px] text-primary ml-1.5">· click to register</span>}
+                        {myInvite && <span className="text-[10px] text-primary ml-1.5">· click to {kind === "accepted" ? "pay" : "register"}</span>}
                       </span>
-                      <Badge variant={kind === "registered" ? "default" : "outline"} className="text-[10px]">
+                      <Badge variant={kind === "registered" ? "default" : kind === "accepted" ? "secondary" : "outline"} className="text-[10px]">
                         {kind === "registered"
                           ? (r.status === "waived" ? "Entered" : "Registered")
-                          : r.status === "pending_eft" ? "EFT pending" : "Invited"}
+                          : kind === "accepted"
+                            ? (r.status === "pending_eft" ? "Accepted · EFT pending" : "Accepted · fee due")
+                            : r.status === "pending_eft" ? "EFT pending" : "Invited"}
                       </Badge>
                     </li>
                   );
@@ -1497,14 +1499,24 @@ export default function ClubChampsView() {
                       )}
                     </div>
 
+                    {accepted.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                          Accepted — Entry Fee Outstanding ({accepted.length})
+                        </p>
+                        <ul className="space-y-1.5">{accepted.map((r) => renderRow(r, "accepted"))}</ul>
+                      </div>
+                    )}
+
                     {invited.length > 0 && (
                       <div>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                          Invited — Awaiting Payment ({invited.length})
+                          Invited — Awaiting Reply ({invited.length})
                         </p>
                         <ul className="space-y-1.5">{invited.map((r) => renderRow(r, "invited"))}</ul>
                       </div>
                     )}
+
                   </div>
                 );
               })()}

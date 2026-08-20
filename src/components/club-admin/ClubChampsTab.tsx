@@ -23,10 +23,12 @@ import {
   divisionEligibleIds,
   divisionSource,
   effectivePools,
+  explainIneligibleAssignments,
   findIneligibleAssignments,
   formatUsesPools,
   mergeLegacySectionsIntoPools,
   parseDivisionSources,
+  resolveDivisionSources,
   planAllLeaguesExpansion,
   poolLabel,
   poolLabelFor,
@@ -4542,7 +4544,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setMaxEntrants(ex.max_entrants ? String(ex.max_entrants) : "");
     setMaxPerLeague(ex.max_per_league ? String(ex.max_per_league) : "");
     setSeedingSource(ex.seeding_source || "ladder");
-    setLeagueSources(parseDivisionSources(ex.league_sources as any, ex.league_source_modes as any));
+    setLeagueSources(
+      parseDivisionSources(
+        ex.league_sources as any,
+        ex.league_source_modes as any,
+        (availableLeagues as any[]).map((l) => ({ id: l.id as string, name: l.name as string })),
+      ),
+    );
     // Per-league category. Older tournaments have none — every league simply
     // inherits the tournament-level gender / match type.
     const lg = (ex.league_genders as Record<string, GenderCategory> | null) || null;

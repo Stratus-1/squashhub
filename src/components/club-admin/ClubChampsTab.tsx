@@ -4776,18 +4776,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         name: memberNameById.get(r.club_member_id) || "Unknown member",
         status: String(r.status || "").toLowerCase(),
         invited: !!r.invited_by_admin,
+        category: classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }),
       }))
       .filter((r) => !q || r.name.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [inviteeRows, inviteeSearch, memberNameById]);
+  }, [inviteeRows, inviteeSearch, memberNameById, paymentRequired, entryFeeAmount]);
 
-  function inviteeStatusLabel(r: { status: string; invited: boolean }) {
-    if (r.status === "cancelled") return "Declined / cancelled";
-    if (["paid", "registered", "active", "waived"].includes(r.status)) return "Entered";
-    if (r.status === "pending_payment") return r.invited ? "Invited — awaiting payment" : "Awaiting payment";
-    if (r.status === "pending_eft") return "Awaiting EFT proof";
-    return r.invited ? "Invited — no response" : "Not yet invited";
+  function inviteeStatusLabel(r: { status: string; invited: boolean; category?: any }) {
+    const category =
+      r.category ??
+      classifyEntrant({ status: r.status }, { paymentRequired: paymentRequired && entryFeeAmount > 0 });
+    if (category === "pending_invite" && !r.invited) return "Not yet invited";
+    return ENTRANT_CATEGORY_LABEL[category as keyof typeof ENTRANT_CATEGORY_LABEL];
   }
+
   const SKIP_INVITE_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
   const allInviteCount = useMemo(
     () =>

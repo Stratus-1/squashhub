@@ -1367,6 +1367,52 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [leagueRegistrationRows, inviteIncludeReserves]);
 
   /**
+   * Structure → invite bridge.
+   *
+   * The organiser picks the competing league level(s) / teams on the Structure
+   * step. Those teams' `member_league_registrations` rows ARE the people who
+   * must be invited (league team row id → registration → club_member_id), so
+   * the invite list follows the Structure selection until the organiser edits
+   * the invite tree by hand.
+   */
+  const [inviteLeaguesTouched, setInviteLeaguesTouched] = useState(false);
+  const [inviteSourceTouched, setInviteSourceTouched] = useState(false);
+
+  const structureLeagueIds = useMemo(() => {
+    const out = new Set<string>();
+    for (let gn = 1; gn <= Math.max(1, numGroups); gn++) {
+      const src = divisionSource(leagueSources, gn);
+      if (src.mode === "all" || src.leagueIds.length === 0) continue;
+      src.leagueIds.forEach((id) => out.add(id));
+    }
+    return out;
+  }, [leagueSources, numGroups]);
+
+  useEffect(() => {
+    if (structureLeagueIds.size === 0) return;
+    if (!inviteSourceTouched && inviteSource === "manual") setInviteSource("leagues");
+    if (inviteLeaguesTouched) return;
+    const same =
+      structureLeagueIds.size === sourceLeagueIds.size &&
+      Array.from(structureLeagueIds).every((id) => sourceLeagueIds.has(id));
+    if (same) return;
+    applyLeaguePrefill(new Set(structureLeagueIds));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [structureLeagueIds, inviteSource, inviteSourceTouched, inviteLeaguesTouched]);
+
+  /** Team-by-team breakdown of who the league selection puts on the invite list. */
+  const inviteTeamBreakdown = useMemo(() => {
+    return Array.from(sourceLeagueIds)
+      .map((id) => ({
+        id,
+        name: leagueNameById.get(id) || "Unknown team",
+        count: (registrationsByLeague.get(id) || []).filter((mid) => !inviteExcludedMemberIds.has(mid)).length,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [sourceLeagueIds, leagueNameById, registrationsByLeague, inviteExcludedMemberIds]);
+
+
+  /**
    * Players the admin has deliberately kept in a division they do not qualify
    * for. Entries are never dropped silently — this is the explicit override.
    */

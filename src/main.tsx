@@ -4,6 +4,8 @@ import App from "./App.tsx";
 import "./index.css";
 import { initDeepLinks } from "@/lib/deep-links";
 import { registerServiceWorker } from "@/lib/pwa-register";
+import { restoreRouteAfterUpdate } from "@/lib/pwa-update";
+
 import { isStandalone, markInstalled } from "@/lib/pwa-detect";
 import { applyDynamicManifest } from "@/lib/dynamic-manifest";
 

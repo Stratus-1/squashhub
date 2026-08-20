@@ -4389,6 +4389,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         data: {
           champ_id: champId,
           test: true,
+          preview_for_member_id: opts?.asMemberId || null,
+          preview_for_name: opts?.asName || null,
           send_email: sendEmail,
           app_silent: !sendApp,
           description: description.trim() || null,

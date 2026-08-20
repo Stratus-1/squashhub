@@ -5833,8 +5833,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     {numGroups > 0 ? (
                       Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => {
                         const key = String(gn);
+                        // The card must reflect the division's REAL draw format.
+                        // Knockout / cross league were previously dropped by this
+                        // fallback, which made knockout divisions render as round
+                        // robin (wrong pool wording and wrong bottom control).
                         const fmt: PerLeagueFormat = (leagueFormats[key]
-                          ?? (roundFormat === "swiss" || roundFormat === "double_round_robin" || roundFormat === "single_round_robin"
+                          ?? (roundFormat === "swiss" || roundFormat === "double_round_robin"
+                              || roundFormat === "single_round_robin" || roundFormat === "knockout"
+                              || roundFormat === "cross_league"
                               ? (roundFormat as PerLeagueFormat)
                               : "single_round_robin"));
                         const meta = FORMAT_META[fmt];

@@ -285,6 +285,11 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        {!collapsed && (
+          <div className="px-2 pt-2">
+            <AppVersionBadge className="text-sidebar-foreground/50" />
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

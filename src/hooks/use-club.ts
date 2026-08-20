@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
+import { filterActiveLeagues } from "@/lib/leagues/archive";
 
 export interface Club {
   id: string;

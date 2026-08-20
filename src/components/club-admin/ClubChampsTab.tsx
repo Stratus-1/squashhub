@@ -4441,26 +4441,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-      const notifRows = rows.map((r: any) => ({
-        club_member_id: r.club_member_id,
-        title: "Tournament invitation",
-        message: msg,
-        type: "tournament_invite",
-        url: urlForRegistration(r.id),
-        data: {
-          champ_id: champId,
-          send_email: sendEmail,
-          app_silent: !sendApp,
-          description: description.trim() || null,
-        },
-        read: false,
-      }));
-      const { error: insErr } = await fromExt("notifications").insert(notifRows);
-      if (insErr) throw insErr;
-      // Flag rows as invited so the badge appears + re-sends remain idempotent
-      await fromExt("club_champs_registrations")
-        .update({ invited_by_admin: true })
-        .in("id", rows.map((r: any) => r.id));
+      // Server-enforced dispatch: the RPC only notifies the exact registration
+      // ids supplied, verifies they belong to this tournament, records an audit
+      // row with requested vs sent counts, and refuses an empty set.
+      const recipients = rows.map((r: any) => ({ registration_id: r.id, url: urlForRegistration(r.id) }));
+      const { data: sendRes, error: sendErr } = await (supabase as any).rpc("send_champ_invite_notifications", {
+        p_champ_id: champId,
+        p_recipients: recipients,
+        p_title: "Tournament invitation",
+        p_message: msg,
+        p_send_email: sendEmail,
+        p_app_silent: !sendApp,
+        p_description: description.trim() || null,
+        p_mode: mode,
+      });
+      if (sendErr) throw sendErr;
+      const sentCount = Number((sendRes as any)?.sent ?? rows.length);
+      if (sentCount !== rows.length) {
+        toast.warning(`Intended ${rows.length} recipient${rows.length === 1 ? "" : "s"}, delivered ${sentCount}.`);
+      }
+
 
       // WhatsApp channel — members reply YES/NO and the whatsapp-inbound
       // webhook writes the entry back into club_champs_registrations.

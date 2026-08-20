@@ -39,3 +39,26 @@ export function sanitizeDraftPayload<T extends Record<string, any>>(payload: T):
   }
   return out as Partial<T>;
 }
+
+/**
+ * Columns on `tournaments` that are NOT NULL with a default. The wizard sends
+ * `null` for these while a draft is still empty, which fails with a 23502.
+ * Omitting them keeps the default (insert) or the stored value (update).
+ */
+export const NON_NULLABLE_EXTRAS_FIELDS = [
+  "event_type",
+  "seeding_source",
+  "participating_club_ids",
+  "league_win_conditions",
+  "league_sections",
+  "league_sources",
+  "league_source_modes",
+] as const;
+
+export function sanitizeExtrasPayload<T extends Record<string, any>>(payload: T): Partial<T> {
+  const out: Record<string, any> = { ...payload };
+  for (const key of NON_NULLABLE_EXTRAS_FIELDS) {
+    if (key in out && (out[key] === null || out[key] === undefined)) delete out[key];
+  }
+  return out as Partial<T>;
+}

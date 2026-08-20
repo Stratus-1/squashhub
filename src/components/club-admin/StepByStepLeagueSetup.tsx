@@ -99,6 +99,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const [associationId, setAssociationId] = useState<string>("");
   const [gender, setGender] = useState<Gender>("men");
   const [leagueNumber, setLeagueNumber] = useState<string>("1st");
+  const [seasonYear, setSeasonYear] = useState<number>(new Date().getFullYear());
   const [startPosition, setStartPosition] = useState<number>(1);
   const [numMembers, setNumMembers] = useState<number>(0);
   const [numTeams, setNumTeams] = useState<number>(1);

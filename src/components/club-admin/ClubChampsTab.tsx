@@ -5662,47 +5662,47 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                      setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
                                      setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
                                    }
-                                   if (nv === "knockout") {
-                                     const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
-                                     setLeagueSections((m) => ({ ...m, [key]: m[key] || suggestSectionCount(entrants) }));
-                                   }
-                                   if (nv === "cross_league") setRoundFormat("cross_league");
-                                   else {
-                                     // Drop cross-league mode once no league uses it.
-                                     const next = { ...leagueFormats, [key]: nv };
-                                     const stillCross = Array.from({ length: numGroups || 0 }, (_, i) => next[String(i + 1)]).some((f) => f === "cross_league");
-                                     if (!stillCross && (!roundFormat || roundFormat === "cross_league")) {
-                                       setRoundFormat(nv === "knockout" ? "single_round_robin" : (nv as any));
-                                     }
-                                   }
-                                 }}
-                               />
-                               {fmt === "knockout" && (() => {
-                                 const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
-                                 const sections = sectionsForLeague(gn);
-                                 const suggested = suggestSectionCount(entrants);
-                                 const perSection = sections > 0 ? Math.ceil(entrants / sections) : 0;
-                                 return (
-                                   <div className="rounded-md border bg-muted/30 p-2 space-y-1.5">
-                                     <SegRow
-                                       label="Knockout sections"
-                                       value={String(sections)}
-                                       color="violet"
-                                       options={[1, 2, 4, 8].map((n) => ({ v: String(n), l: n === 1 ? "1 draw" : `${n} sections` }))}
-                                       onChange={(v) => setLeagueSections((m) => ({ ...m, [key]: Number(v) || 1 }))}
-                                     />
-                                     <p className="text-[11px] text-muted-foreground">
-                                       {entrants > 0
-                                         ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perSection} per section. Seeds are spread evenly across sections from the ladder; section winners meet in the league final.`
-                                         : "Seeds are spread evenly across sections from the ladder; section winners meet in the league final."}
-                                       {entrants > 0 && sections !== suggested ? ` Suggested: ${suggested}.` : ""}
-                                     </p>
-                                     <p className="text-[11px] text-muted-foreground">
-                                       Only the first round is scheduled up front — later rounds are created as each round finishes.
-                                     </p>
-                                   </div>
-                                 );
-                               })()}
+                                    if (nv === "knockout") {
+                                      const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
+                                      setSwissPools((m) => ({ ...m, [key]: m[key] || suggestSectionCount(entrants) }));
+                                    }
+                                    if (nv === "cross_league") setRoundFormat("cross_league");
+                                    else {
+                                      // Drop cross-league mode once no league uses it.
+                                      const next = { ...leagueFormats, [key]: nv };
+                                      const stillCross = Array.from({ length: numGroups || 0 }, (_, i) => next[String(i + 1)]).some((f) => f === "cross_league");
+                                      if (!stillCross && (!roundFormat || roundFormat === "cross_league")) {
+                                        setRoundFormat(nv === "knockout" ? "single_round_robin" : (nv as any));
+                                      }
+                                    }
+                                  }}
+                                />
+                                {fmt === "knockout" && (() => {
+                                  const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
+                                  const pools = sectionsForLeague(gn);
+                                  const suggested = suggestSectionCount(entrants);
+                                  const perPool = pools > 0 ? Math.ceil(entrants / pools) : 0;
+                                  return (
+                                    <div className="rounded-md border bg-muted/30 p-2 space-y-1.5">
+                                      <SegRow
+                                        label="Pools"
+                                        value={String(pools)}
+                                        color="violet"
+                                        options={[1, 2, 4, 8].map((n) => ({ v: String(n), l: n === 1 ? "1 draw" : `${n} pools` }))}
+                                        onChange={(v) => setSwissPools((m) => ({ ...m, [key]: Number(v) || 1 }))}
+                                      />
+                                      <p className="text-[11px] text-muted-foreground">
+                                        {entrants > 0
+                                          ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per pool. Seeds are spread evenly across pools from the ladder; pool winners meet in this division's final.`
+                                          : "Seeds are spread evenly across pools from the ladder; pool winners meet in this division's final."}
+                                        {entrants > 0 && pools !== suggested ? ` Suggested: ${suggested}.` : ""}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground">
+                                        Only the first round is scheduled up front — later rounds are created as each round finishes.
+                                      </p>
+                                    </div>
+                                  );
+                                })()}
                                {(fmt === "single_round_robin" || fmt === "double_round_robin") && (
                                 <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
                                   <input

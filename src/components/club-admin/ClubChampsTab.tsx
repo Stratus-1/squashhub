@@ -1808,10 +1808,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // from the chosen league teams) become `invited` registration rows as
       // soon as progress is saved — that list is what "Invite actions" counts
       // and sends to. Nobody is entered until they accept.
-      const seedsFromLeagues = inviteSource === "leagues" && selectedPlayerIds.size > 0;
+      const inviteSeedIds = new Set(selectedPlayerIds);
+      // Query the selected Structure teams at save time instead of trusting an
+      // earlier async prefill. This guarantees Save Progress has the canonical
+      // roster even if the organiser saves immediately after opening a draft.
+      if (structureLeagueIds.size > 0) {
+        const { data: structureRegs, error: structureRegsErr } = await fromExt("member_league_registrations")
+          .select("club_member_id, is_reserve")
+          .in("league_id", Array.from(structureLeagueIds));
+        if (structureRegsErr) throw structureRegsErr;
+        (structureRegs || []).forEach((r: any) => {
+          if (!r.club_member_id || inviteExcludedMemberIds.has(r.club_member_id)) return;
+          if (!inviteIncludeReserves && r.is_reserve) return;
+          inviteSeedIds.add(r.club_member_id);
+        });
+      }
+      const seedsFromLeagues = structureLeagueIds.size > 0 && inviteSeedIds.size > 0;
       if (registrationUsesInviteList || seedsFromLeagues) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
-        const ids = await promoteVisitorIds(Array.from(selectedPlayerIds));
+        const ids = await promoteVisitorIds(Array.from(inviteSeedIds));
         const regRows = ids.map((memberId) => ({
           champ_id: champIdToUse,
           club_member_id: memberId,
@@ -4151,6 +4166,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     sendingInvitesRef.current.add(champId);
     setInvitesSendingFor(champId);
     try {
+      // Structure selections are authoritative. Materialise their invite rows
+      // before confirmation/counting so an older draft with an empty legacy
+      // invite selector can still send immediately and never expands to every
+      // club member by mistake.
+      if (!only && editingChampId === champId && structureLeagueIds.size > 0) {
+        await saveEntriesDraft(champId);
+      }
       if (opts?.confirm && !confirm(
         only
           ? `Send the invitation to ${only.size} selected member${only.size === 1 ? "" : "s"} now?`
@@ -4164,7 +4186,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // an admin expanded the audience from a shortlist to "all members") get a
       // registration row and therefore receive the invite. We only insert
       // missing rows — existing rows (paid / cancelled / etc.) are left intact.
-      const shouldBackfillOpenAudience = !only && editingChampId === champId && registrationRequired && effectiveRegistrationMode === "open";
+      const shouldBackfillOpenAudience = !only && editingChampId === champId && structureLeagueIds.size === 0 && registrationRequired && effectiveRegistrationMode === "open";
       const audienceMemberIds = only
         ? []
         : shouldBackfillOpenAudience
@@ -4446,6 +4468,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       ).length,
     [inviteeRows],
   );
+  const structureInviteCount = useMemo(() => {
+    const ids = new Set<string>();
+    structureLeagueIds.forEach((leagueId) => {
+      (registrationsByLeague.get(leagueId) || []).forEach((memberId) => {
+        if (!inviteExcludedMemberIds.has(memberId)) ids.add(memberId);
+      });
+    });
+    return ids.size;
+  }, [structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
+  const effectiveAllInviteCount = allInviteCount || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
@@ -4671,11 +4703,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPaymentRequired((champ as any).payment_required !== false);
     setRegistrationRequired((champ as any).registration_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
-    setInviteSource(((champ as any).invite_source as any) || "manual");
-    // An existing tournament's saved invite list is authoritative — never let
-    // the Structure bridge overwrite it when reopening for edit.
-    setInviteSourceTouched(true);
-    setInviteLeaguesTouched(true);
+    const loadedInviteSource = (((champ as any).invite_source as any) || "manual");
+    setInviteSource(loadedInviteSource);
+    // A genuinely saved invite-team selection is authoritative. Older drafts
+    // often have only per-division Structure team ids; an empty legacy invite
+    // selector must remain untouched so the Structure bridge can hydrate it.
+    const hasSavedInviteTeams = initialLeagueIds.length > 0;
+    setInviteSourceTouched(hasSavedInviteTeams || loadedInviteSource === "leagues");
+    setInviteLeaguesTouched(hasSavedInviteTeams);
     setEntrySource((((champ as any).entry_source as any) || ((champ.registration_mode === "invite") ? "admin" : "self")));
     setApprovalGate((((champ as any).approval_gate as any) || "none"));
     setPaymentTiming((((champ as any).payment_timing as any) || "on_entry"));
@@ -7419,7 +7454,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       >
                         <Send className="w-4 h-4 mr-2" />
                         <span>
-                          Send to all invited players ({allInviteCount})
+                          Send to all invited players ({effectiveAllInviteCount})
                           <span className="block text-[11px] text-muted-foreground">Bulk send / re-send — asks for confirmation</span>
                         </span>
                       </DropdownMenuItem>
@@ -7449,9 +7484,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Uses the delivery methods selected above ({Array.from(inviteMethods.size ? inviteMethods : new Set(["app"])).join(", ")}).
                   </p>
-                  {allInviteCount === 0 && selectedPlayerIds.size > 0 && (
+                  {allInviteCount === 0 && effectiveAllInviteCount > 0 && (
                     <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-1">
-                      {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} are seeded from the selected league teams but not written to the invite list yet — hit <span className="font-medium">Save progress</span> to add them.
+                      {effectiveAllInviteCount} player{effectiveAllInviteCount === 1 ? "" : "s"} are ready from the selected league teams. They will be added to the invite list when you save or send.
                     </p>
                   )}
 

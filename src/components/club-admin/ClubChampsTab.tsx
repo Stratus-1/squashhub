@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteUrl } from "@/lib/tournaments/invite-link";
-import { sanitizeDraftPayload } from "@/lib/tournaments/draft-payload";
+import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
   defaultForfeitRule,
   describeForfeitRule,
@@ -1715,7 +1715,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       ),
     };
     const saveExtras = async (id: string) => {
-      const { error } = await fromExt("tournaments").update(extras).eq("id", id);
+      const { error } = await fromExt("tournaments").update(sanitizeExtrasPayload(extras)).eq("id", id);
       if (error) console.warn("Tournament extras save failed:", error.message);
       // "Who may enter" is a governance field — keep the single copy in sync.
       const { error: govErr } = await fromExt("tournament_governance")

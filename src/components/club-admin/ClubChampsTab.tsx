@@ -3173,7 +3173,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats ? leagueFormats : null,
-            league_sections: Object.keys(leagueSections).length > 0 ? leagueSections : {},
+            league_sections: sectionsFromPools(swissPools, (gn) => formatForLeague(gn) === "knockout", numGroups, leagueSections),
             points_per_game: pointsPerGame > 0 ? pointsPerGame : 11,
             best_of: bestOf > 0 ? bestOf : null,
             play_all_games: playAllGames,

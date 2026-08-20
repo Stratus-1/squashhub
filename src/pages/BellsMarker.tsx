@@ -535,8 +535,6 @@ export default function BellsMarker() {
           const { data: members } = await supabase
             .rpc("get_bells_participant_min", { _member_ids: memberIds });
           const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
-          const aUser = (memberMap.get(match.player_a_member_id) as any)?.user_id || null;
-          const bUser = (memberMap.get(match.player_b_member_id) as any)?.user_id || null;
           const clubIdResolved = (memberMap.values().next().value as any)?.club_id || null;
           // Same authorised, idempotent save path as the Live Match Marker.
           const { error: mirrorError } = await rpcExt("save_marker_match_result", {

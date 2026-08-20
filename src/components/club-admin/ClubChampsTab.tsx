@@ -1410,6 +1410,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       league_forfeit_rules: Object.keys(leagueForfeitRules).length > 0 ? leagueForfeitRules : null,
       league_forfeit_points: Object.keys(leagueForfeitPoints).length > 0 ? leagueForfeitPoints : null,
       participating_club_ids: venueClubIds.filter((id) => id !== clubId),
+      // "Players from" per competition division.
+      league_sources: Object.fromEntries(
+        Object.entries(leagueSources).map(([k, v]) => [k, v.leagueIds]),
+      ),
+      league_source_modes: Object.fromEntries(
+        Object.entries(leagueSources).map(([k, v]) => [k, v.mode]),
+      ),
     };
     const saveExtras = async (id: string) => {
       const { error } = await fromExt("tournaments").update(extras).eq("id", id);

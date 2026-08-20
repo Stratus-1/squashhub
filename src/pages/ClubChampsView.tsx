@@ -1436,9 +1436,13 @@ export default function ClubChampsView() {
                 const registered = visible
                   .filter((r: any) => r.status === "paid" || r.status === "waived")
                   .sort(byLeaguePos);
-                const invited = visible
-                  .filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft")
-                  .sort(byLeaguePos);
+                const pendingPayment = visible
+                  .filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft");
+                // Accepted the invitation but the entry fee is still outstanding.
+                const accepted = pendingPayment.filter((r: any) => !!r.confirmed_at).sort(byLeaguePos);
+                const invited = pendingPayment.filter((r: any) => !r.confirmed_at).sort(byLeaguePos);
+
+
 
 
                 const renderRow = (r: any, kind: "registered" | "invited") => {

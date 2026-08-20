@@ -4274,7 +4274,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   const memberNameById = useMemo(() => {
     const m = new Map<string, string>();
-    for (const p of members as any[]) m.set(p.id, p.full_name || p.name || "Unknown member");
+    for (const p of members as any[]) m.set(p.id, p.name || p.profiles?.name || p.full_name || "Unknown member");
     return m;
   }, [members]);
 

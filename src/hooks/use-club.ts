@@ -159,6 +159,11 @@ export interface League {
   code?: string;
   nsa_team_id?: string | null;
   logo_url?: string | null;
+  season_year?: number | null;
+  level?: number | null;
+  is_reserve?: boolean | null;
+  /** Set when the season was explicitly archived by an admin. */
+  archived_at?: string | null;
 }
 
 export interface NationalBodyFee {
@@ -460,8 +465,15 @@ export function useMyLeagueRegistration(clubMemberId?: string) {
   });
 }
 
-/** Get leagues for a club */
-export function useLeagues(clubId?: string) {
+/**
+ * Get leagues for a club.
+ *
+ * Archived seasons are hidden by default so no day-to-day workflow picks them
+ * up. Pass `{ includeArchived: true }` for historical/archive views — the query
+ * itself always fetches everything, so both views share one cache entry.
+ */
+export function useLeagues(clubId?: string, opts?: { includeArchived?: boolean }) {
+  const includeArchived = !!opts?.includeArchived;
   return useQuery({
     queryKey: ["leagues", clubId],
     queryFn: async () => {
@@ -475,6 +487,7 @@ export function useLeagues(clubId?: string) {
       if (error) throw error;
       return (data || []) as League[];
     },
+    select: (rows: League[]) => (includeArchived ? rows : filterActiveLeagues(rows)),
     enabled: !!clubId,
     placeholderData: (prev) => prev,
     staleTime: 30_000,

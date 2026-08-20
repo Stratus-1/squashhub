@@ -7136,7 +7136,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       type="radio"
                       name="invite-source"
                       checked={inviteSource === "manual"}
-                      onChange={() => setInviteSource("manual")}
+                      onChange={() => { setInviteSourceTouched(true); setInviteSource("manual"); }}
                     />
                     Manual tick-list
                   </label>
@@ -7145,7 +7145,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       type="radio"
                       name="invite-source"
                       checked={inviteSource === "leagues"}
-                      onChange={() => setInviteSource("leagues")}
+                      onChange={() => { setInviteSourceTouched(true); setInviteSource("leagues"); }}
                     />
                     By league (pick on the Players step)
                   </label>
@@ -7153,13 +7153,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {inviteSource === "leagues" && (
                   <div className="space-y-2 pt-1">
                     <Label className="text-xs text-muted-foreground">Pick which leagues to seed from</Label>
+                    {structureLeagueIds.size > 0 && !inviteLeaguesTouched && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Following the league/team selection made on the Structure step. Change anything below and this list stops following it.
+                      </p>
+                    )}
                     {/* Same hierarchical tree as the Structure step: season →
                         league level → teams / reserves, on canonical ids. */}
                     <div className="rounded border border-border/50 bg-background/60 p-2">
                       <LeagueSourceTree
                         groups={leagueTree}
                         selected={Array.from(sourceLeagueIds)}
-                        onChange={(ids) => applyLeaguePrefill(new Set(ids))}
+                        onChange={(ids) => { setInviteLeaguesTouched(true); applyLeaguePrefill(new Set(ids)); }}
                       />
                     </div>
 
@@ -7174,10 +7179,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       Include reserves
                     </label>
                     {hasLeagueSelection && (
-                      <p className="text-xs text-muted-foreground">
-                        {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} seeded from {sourceLeagueIds.size} league{sourceLeagueIds.size === 1 ? "" : "s"}.
-                      </p>
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} seeded from {sourceLeagueIds.size} team{sourceLeagueIds.size === 1 ? "" : "s"}. They go onto the invite list as <strong>Invited</strong> — nobody is entered until they accept.
+                        </p>
+                        <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-40 overflow-auto">
+                          {inviteTeamBreakdown.map((t) => (
+                            <div key={t.id} className="flex items-center justify-between text-[11px]">
+                              <span className="truncate">{t.name}</span>
+                              <span className={t.count === 0 ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"}>
+                                {t.count} player{t.count === 1 ? "" : "s"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
                     )}
+
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">

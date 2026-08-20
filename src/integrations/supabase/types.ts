@@ -10510,6 +10510,10 @@ export type Database = {
         }[]
       }
       get_tournament_invite: { Args: { p_token: string }; Returns: Json }
+      get_tournament_invite_preview: {
+        Args: { p_champ_id: string }
+        Returns: Json
+      }
       get_wifi_access_status: {
         Args: { _club_member_id: string }
         Returns: {
@@ -10539,6 +10543,14 @@ export type Database = {
         Returns: boolean
       }
       has_wifi_access: { Args: { _club_member_id: string }; Returns: boolean }
+      invite_verification_kind: {
+        Args: { p_member_id: string }
+        Returns: string
+      }
+      invite_verification_ok: {
+        Args: { p_member_id: string; p_verify: string }
+        Returns: boolean
+      }
       is_bells_participant_member: {
         Args: { _member_id: string }
         Returns: boolean
@@ -10806,6 +10818,10 @@ export type Database = {
       }
       respond_tournament_invite: {
         Args: { p_accept: boolean; p_token: string }
+        Returns: Json
+      }
+      respond_tournament_invite_public: {
+        Args: { p_accept: boolean; p_token: string; p_verify?: string }
         Returns: Json
       }
       save_bells_match_result: {

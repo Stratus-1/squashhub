@@ -1916,9 +1916,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         });
         audienceIds = Array.from(fresh);
       }
-      audienceIds.forEach((id) => inviteSeedIds.add(id));
-      const seedsFromAudience = audienceIds.length > 0;
+      // Open (self-registration) tournaments with an "all club members"
+      // audience are not materialised as rows on save — the roster is created
+      // when the organiser actually sends invitations.
+      const seedsFromAudience =
+        audienceIds.length > 0 && (registrationUsesInviteList || inviteAudience !== "all_club");
+      if (seedsFromAudience) audienceIds.forEach((id) => inviteSeedIds.add(id));
       if (registrationUsesInviteList || seedsFromAudience) {
+
 
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
         const ids = await promoteVisitorIds(Array.from(inviteSeedIds));

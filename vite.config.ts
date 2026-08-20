@@ -30,7 +30,9 @@ export default defineConfig(() => ({
     VitePWA({
       // Use injectManifest? No — generateSW is simpler. Use existing manifest.webmanifest.
       strategies: "generateSW",
-      registerType: "autoUpdate",
+      // "prompt": a waiting SW is surfaced as Update now / Later instead of
+      // silently activating and reloading mid-task.
+      registerType: "prompt",
       injectRegister: null, // we register manually with iframe/preview guard
       // Use the manifest file we ship in /public — don't let the plugin overwrite it.
       manifest: false,
@@ -47,7 +49,8 @@ export default defineConfig(() => ({
       workbox: {
         cleanupOutdatedCaches: true,
         clientsClaim: true,
-        skipWaiting: true,
+        // Never take over silently — the user confirms via the update banner.
+        skipWaiting: false,
         // Never cache OAuth, auth-callbacks, supabase fn endpoints, sw files.
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [

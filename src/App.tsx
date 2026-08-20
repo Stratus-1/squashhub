@@ -15,6 +15,7 @@ import { DesktopShell } from "@/components/DesktopShell";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { UpdatePrompt } from "@/components/UpdatePrompt";
 import { NotificationListener } from "@/components/NotificationListener";
 import { NotificationActionModal } from "@/components/NotificationActionModal";
 import { NativePushListener } from "@/components/NativePushListener";
@@ -530,7 +531,8 @@ function AppRoutes() {
       {user && !isTvRoute && <LiveSessionBanner />}
       {user && !isTvRoute && <ViewingAsBanner />}
       {user && <PushNotificationPrompt />}
-      <InstallPrompt />
+      {user && !isTvRoute && <InstallPrompt />}
+      {!isTvRoute && <UpdatePrompt />}
       {user && <NotificationListener />}
       {user && <NotificationActionModal />}
       {user && <NativePushListener />}

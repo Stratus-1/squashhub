@@ -1,21 +1,26 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Download, X, Share2 } from "lucide-react";
+import { Download, X, Share2, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { Capacitor } from "@capacitor/core";
-import { useClubContext } from "@/contexts/ClubContext";
-import { setDecision, shouldAsk } from "@/lib/permission-cache";
 import {
-  isStandalone as detectStandalone,
-  wasInstalled,
-  handleReinstallSignal,
-  recordInstalled,
-} from "@/lib/pwa-detect";
+  canShowInstallPrompt,
+  detectPlatform,
+  isIosSafariUa,
+  isPreviewContext,
+  markInstallCompleted,
+  readInstallCompleted,
+  readSnoozedUntil,
+  writeSnooze,
+  clearInstallCompleted,
+  clearSnooze,
+} from "@/lib/pwa-install";
+import { isStandalone as detectStandalone, recordInstalled } from "@/lib/pwa-detect";
 
 // Routes where the install prompt must never appear — it can overlap
-// form buttons on small phones and block the user from finishing signup.
+// form buttons and block the user from finishing a task.
 const BLOCKED_PATH_PREFIXES = [
   "/auth",
   "/club-auth",
@@ -31,169 +36,152 @@ const BLOCKED_PATH_PREFIXES = [
   "/match-tracker",
 ];
 
-
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-function isIos(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  return /iPhone|iPad|iPod/i.test(ua) || (/Mac/i.test(ua) && "ontouchend" in document);
-}
-
-// iOS can only "Add to Home Screen" from Safari — showing the hint inside
-// Chrome/Firefox/Instagram/Facebook in-app browsers just confuses people.
-function isIosSafari(): boolean {
-  if (!isIos()) return false;
-  const ua = navigator.userAgent || "";
-  return !/CriOS|FxiOS|EdgiOS|OPiOS|Instagram|FBAN|FBAV|Line\//i.test(ua);
-}
-
-
+/**
+ * First-party INSTALL prompt (distinct from the update banner).
+ * Desktop Chromium/Edge, Android Chromium: driven by a real captured
+ * `beforeinstallprompt`. iOS Safari: manual Add-to-Home-Screen guidance.
+ */
 export function InstallPrompt() {
-  const { subdomain } = useClubContext();
   const { pathname } = useLocation();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [show, setShow] = useState(false);
   const [iosSheet, setIosSheet] = useState(false);
-  const [iosSafari, setIosSafari] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
-  const onBlockedRoute = BLOCKED_PATH_PREFIXES.some((p) => pathname.startsWith(p));
-
-  // Restrict per project memory: only club subdomains trigger install prompts.
-  const allowedHost = !!subdomain;
+  const blockedRoute = BLOCKED_PATH_PREFIXES.some((p) => pathname.startsWith(p));
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+  const platform = detectPlatform(ua, typeof document !== "undefined" && "ontouchend" in document);
 
   useEffect(() => {
-    if (!allowedHost) return;
-    if (onBlockedRoute) return;
-    if (Capacitor.isNativePlatform()) return;
-    // Already running as installed PWA — never show install card.
-    if (detectStandalone()) return;
+    if (Capacitor.isNativePlatform() || isPreviewContext()) return;
 
-    // Android / Chromium
     const onBip = (e: Event) => {
       e.preventDefault();
-      // Browser only fires this when app is NOT installed. If we had a
-      // cached "installed/granted" state, the user uninstalled — wipe
-      // the stale flags so we can prompt them again.
-      handleReinstallSignal();
+      // The browser only fires this when the app is NOT installed. If we had
+      // stale "installed"/snooze state, the user uninstalled — reset it.
+      if (!detectStandalone() && readInstallCompleted()) {
+        clearInstallCompleted();
+        clearSnooze();
+      }
       setDeferred(e as BeforeInstallPromptEvent);
-      if (shouldAsk("install-prompt-android")) {
-        // Slight delay so it doesn't fight with auth UX
-        setTimeout(() => setShow(true), 4000);
-      }
     };
-    window.addEventListener("beforeinstallprompt", onBip);
-
-    // iOS — no `beforeinstallprompt`. If we previously cached "installed"
-    // but we are clearly not running standalone, the user uninstalled —
-    // reset the cached prompt decision so the A2HS hint can show again.
-    if (isIos() && wasInstalled() && !detectStandalone()) {
-      handleReinstallSignal();
-    }
-
-    // iOS never fires a native install prompt. Show our own instructions on
-    // every new browser session until the app is actually running standalone.
-    // sessionStorage means closing it does not permanently suppress the guide.
-    if (isIos()) {
-      const dismissedThisSession = window.sessionStorage.getItem("sh.install.ios.dismissed") === "1";
-      if (dismissedThisSession) {
-        return () => window.removeEventListener("beforeinstallprompt", onBip);
-      }
-      const t = setTimeout(() => {
-        setIosSafari(isIosSafari());
-        setIosSheet(true);
-        setShow(true);
-      }, 2000);
-      return () => {
-        window.removeEventListener("beforeinstallprompt", onBip);
-        clearTimeout(t);
-      };
-    }
-
-    return () => window.removeEventListener("beforeinstallprompt", onBip);
-  }, [allowedHost, onBlockedRoute]);
-
-  // Hide immediately if the user navigates onto a blocked route (e.g. /auth)
-  // — otherwise the toast can sit over the signup form and block submit.
-  useEffect(() => {
-    if (onBlockedRoute && show) setShow(false);
-  }, [onBlockedRoute, show]);
-
-  // Listen for actual installation
-  useEffect(() => {
     const onInstalled = () => {
+      markInstallCompleted();
       recordInstalled();
-      setShow(false);
-    };
-    window.addEventListener("appinstalled", onInstalled);
-    return () => window.removeEventListener("appinstalled", onInstalled);
-  }, []);
-
-
-  if (!allowedHost || onBlockedRoute || !show) return null;
-
-  const handleInstall = async () => {
-    if (deferred) {
-      try {
-        await deferred.prompt();
-        const choice = await deferred.userChoice;
-        setDecision(
-          "install-prompt-android",
-          choice.outcome === "accepted" ? "granted" : "dismissed"
-        );
-      } catch {
-        setDecision("install-prompt-android", "dismissed");
-      }
       setDeferred(null);
-      setShow(false);
+      setIosSheet(false);
+    };
+
+    window.addEventListener("beforeinstallprompt", onBip);
+    window.addEventListener("appinstalled", onInstalled);
+
+    // iOS never fires beforeinstallprompt — offer the manual guidance once
+    // per browser session, in Safari only.
+    let t: number | undefined;
+    if (platform === "ios" && isIosSafariUa(ua) && !detectStandalone()) {
+      const dismissedThisSession =
+        window.sessionStorage.getItem("sh.install.ios.dismissed") === "1";
+      if (!dismissedThisSession) {
+        t = window.setTimeout(() => setIosSheet(true), 4000);
+      }
     }
-  };
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBip);
+      window.removeEventListener("appinstalled", onInstalled);
+      if (t) window.clearTimeout(t);
+    };
+  }, [platform, ua]);
+
+  const handleInstall = useCallback(async () => {
+    if (!deferred) return;
+    try {
+      await deferred.prompt();
+      const choice = await deferred.userChoice;
+      if (choice.outcome === "accepted") markInstallCompleted();
+      else writeSnooze();
+    } catch {
+      writeSnooze();
+    }
+    setDeferred(null);
+  }, [deferred]);
 
   const handleDismiss = () => {
     if (iosSheet) {
-      window.sessionStorage.setItem("sh.install.ios.dismissed", "1");
+      try {
+        window.sessionStorage.setItem("sh.install.ios.dismissed", "1");
+      } catch {
+        /* ignore */
+      }
+      setIosSheet(false);
     } else {
-      setDecision("install-prompt-android", "dismissed");
+      writeSnooze();
     }
-    setShow(false);
+    setDismissed(true);
   };
+
+  const showNative = canShowInstallPrompt({
+    standalone: detectStandalone(),
+    native: Capacitor.isNativePlatform(),
+    preview: isPreviewContext(),
+    blockedRoute,
+    alreadyInstalled: readInstallCompleted(),
+    snoozedUntil: readSnoozedUntil(),
+    hasDeferredPrompt: !!deferred,
+    now: Date.now(),
+  });
+
+  const showIos = iosSheet && !blockedRoute && !detectStandalone();
+  const visible = !dismissed && (showNative || showIos);
+  if (!visible) return null;
+
+  const desktop = platform === "desktop";
 
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: 60 }}
+        initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 60 }}
-        className="fixed bottom-4 left-4 right-4 z-[60] max-w-md mx-auto"
+        exit={{ opacity: 0, y: 40 }}
+        className={
+          desktop
+            ? "fixed bottom-6 right-6 z-[60] w-[22rem] max-w-[calc(100vw-3rem)]"
+            : "fixed bottom-4 left-4 right-4 z-[60] max-w-md mx-auto"
+        }
       >
         <Card className="border-primary/30 shadow-xl">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                {iosSheet ? <Share2 className="w-5 h-5 text-primary" /> : <Download className="w-5 h-5 text-primary" />}
+                {showIos ? (
+                  <Share2 className="w-5 h-5 text-primary" />
+                ) : desktop ? (
+                  <Monitor className="w-5 h-5 text-primary" />
+                ) : (
+                  <Download className="w-5 h-5 text-primary" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">Install the app</p>
-                {iosSheet ? (
+                <p className="text-sm font-semibold">Install SquashHub</p>
+                {showIos ? (
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    {iosSafari ? (
-                      <>Tap <Share2 className="inline w-3 h-3 mx-0.5" /> <span className="font-medium">Share</span> in Safari,
-                      then choose <span className="font-medium">"Add to Home Screen"</span>.</>
-                    ) : (
-                      <>Open this page in <span className="font-medium">Safari</span>, tap <Share2 className="inline w-3 h-3 mx-0.5" /> <span className="font-medium">Share</span>,
-                      then choose <span className="font-medium">"Add to Home Screen"</span>.</>
-                    )}
+                    Tap <Share2 className="inline w-3 h-3 mx-0.5" />{" "}
+                    <span className="font-medium">Share</span> in Safari, then choose{" "}
+                    <span className="font-medium">"Add to Home Screen"</span>.
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Add SquashHub to your home screen for a faster, full-screen experience.
+                    {desktop
+                      ? "Install SquashHub on this computer for quicker access."
+                      : "Add SquashHub to your home screen for a faster, full-screen experience."}
                   </p>
                 )}
                 <div className="flex gap-2 mt-3">
-                  {!iosSheet && (
+                  {!showIos && (
                     <Button size="sm" onClick={handleInstall} className="text-xs h-8">
                       Install
                     </Button>
@@ -204,7 +192,7 @@ export function InstallPrompt() {
                     onClick={handleDismiss}
                     className="text-xs h-8 text-muted-foreground"
                   >
-                    {iosSheet ? "Got it" : "Not now"}
+                    {showIos ? "Got it" : "Not now"}
                   </Button>
                 </div>
               </div>
@@ -212,7 +200,6 @@ export function InstallPrompt() {
                 onClick={handleDismiss}
                 aria-label="Dismiss install prompt"
                 className="-m-2 p-2 text-muted-foreground hover:text-foreground touch-manipulation"
-                style={{ touchAction: "manipulation" }}
               >
                 <X className="w-5 h-5" />
               </button>

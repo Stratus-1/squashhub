@@ -227,6 +227,8 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
                   : "never"}{" "}
                 {meta.last_verification_status === "ok" ? (
                   <CheckCircle2 className="inline h-3 w-3 text-emerald-500" />
+                ) : meta.last_verification_status === "captcha_blocked" ? (
+                  <span className="text-amber-600">(blocked by GoBook captcha)</span>
                 ) : meta.last_verification_status === "invalid" ? (
                   <span className="text-destructive">(invalid)</span>
                 ) : null}
@@ -260,6 +262,17 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               </Button>
             </div>
           </div>
+          {meta.last_verification_status === "captcha_blocked" && (
+            <Alert>
+              <AlertDescription className="text-xs">
+                Your GoBook details look fine — gobook.co.za has added a
+                "I'm not a robot" reCAPTCHA to its login page, so SquashHub
+                can no longer sign in for you. Nothing you re-enter here will
+                change that; GoBook has to allow SquashHub through (or provide
+                an API). Book directly on gobook.co.za in the meantime.
+              </AlertDescription>
+            </Alert>
+          )}
           {meta.last_verification_status === "invalid" && (
             <Alert variant="destructive">
               <AlertDescription className="text-xs">
@@ -267,6 +280,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               </AlertDescription>
             </Alert>
           )}
+
           {!meta.has_pin && (
             <Alert variant="destructive">
               <AlertDescription className="text-xs">

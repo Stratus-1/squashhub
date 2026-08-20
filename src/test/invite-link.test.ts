@@ -4,6 +4,7 @@ import {
   buildInviteUrl,
   inviteFeeCents,
   inviteLoginPath,
+  inviteSignupPath,
   inviteState,
   inviteePath,
   type InvitePayload,

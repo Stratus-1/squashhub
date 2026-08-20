@@ -848,3 +848,11 @@ No data changes — DB inspection found no malformed/child rows in `club_champs`
 **Fix:** new pure helpers in `src/lib/league/lineup.ts` (`shouldKeepSavedRow`, `resolveLineupPositions`, `applyPrefillSlot`, `lineupDiffers`); saved player rows are always authoritative; precedence is fixture override → week lineup → registrations; new `persistLineupPlayers()` saves every lineup edit immediately (players only, never scores) with stale-write detection and a "Lineup saved" badge.
 **DB:** additive audit columns `league_match_results.lineup_set_by/lineup_set_at`, `league_fixture_results.lineup_confirmed_by/lineup_confirmed_at`. No RLS changes.
 **Tests:** `src/test/league-lineup.test.ts` (12) incl. reserve → reopen → match start round-trip and multi-reserve positions.
+
+## Club Championship knockout (2026-08)
+
+- Schema: `tournaments.league_sections` / `knockout_seeds` / `knockout_seeds_at`, `club_champs_matches.section_number`; `club_champs` view + triggers updated.
+- Engine: `src/lib/tournaments/knockout.ts` — balanced (snake) seed distribution across sections, phased round generation (first round only up front), byes, league final between section winners.
+- Wizard: `ClubChampsTab` has a `knockout` per-league format with a section-count stepper; capacity treats sections as `pools` and always needs `entrants - 1` matches.
+- Live view: `src/components/tournaments/KnockoutCard.tsx` renders the draw per league/section and exposes "Generate next round" / "Generate league final". Knockout rows (`stage = 'ko'`) are excluded from the play-off card so play-off re-seeding is untouched.
+- Tests: `src/test/knockout.test.ts` (engine) + knockout cases in `src/test/capacity.test.ts`.

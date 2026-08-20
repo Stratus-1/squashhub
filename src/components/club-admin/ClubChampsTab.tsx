@@ -845,8 +845,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
     }
     if (fmt === "knockout") {
-      // One draw by default — the organiser splits it into pools if they want.
+      // One draw by default — the organiser splits it into sections if they want.
       setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
+      // Knockout progresses through rounds to the division final by default.
+      setLeaguePlayoffs((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? true }));
     }
     setUsePerLeagueFormats(true);
     if (fmt === "cross_league") setRoundFormat("cross_league");
@@ -5836,6 +5838,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     if (nv === "knockout") {
                                       const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
                                       setSwissPools((m) => ({ ...m, [key]: m[key] || suggestSectionCount(entrants) }));
+                                      // Knockout progresses through rounds by default.
+                                      setLeaguePlayoffs((m) => ({ ...m, [key]: m[key] ?? true }));
                                     }
                                     if (nv === "cross_league") setRoundFormat("cross_league");
                                     else {

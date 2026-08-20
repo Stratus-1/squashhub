@@ -4166,6 +4166,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     sendingInvitesRef.current.add(champId);
     setInvitesSendingFor(champId);
     try {
+      // Structure selections are authoritative. Materialise their invite rows
+      // before confirmation/counting so an older draft with an empty legacy
+      // invite selector can still send immediately and never expands to every
+      // club member by mistake.
+      if (!only && editingChampId === champId && structureLeagueIds.size > 0) {
+        await saveEntriesDraft(champId);
+      }
       if (opts?.confirm && !confirm(
         only
           ? `Send the invitation to ${only.size} selected member${only.size === 1 ? "" : "s"} now?`
@@ -4179,7 +4186,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // an admin expanded the audience from a shortlist to "all members") get a
       // registration row and therefore receive the invite. We only insert
       // missing rows — existing rows (paid / cancelled / etc.) are left intact.
-      const shouldBackfillOpenAudience = !only && editingChampId === champId && registrationRequired && effectiveRegistrationMode === "open";
+      const shouldBackfillOpenAudience = !only && editingChampId === champId && structureLeagueIds.size === 0 && registrationRequired && effectiveRegistrationMode === "open";
       const audienceMemberIds = only
         ? []
         : shouldBackfillOpenAudience
@@ -4461,6 +4468,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       ).length,
     [inviteeRows],
   );
+  const structureInviteCount = useMemo(() => {
+    const ids = new Set<string>();
+    structureLeagueIds.forEach((leagueId) => {
+      (registrationsByLeague.get(leagueId) || []).forEach((memberId) => {
+        if (!inviteExcludedMemberIds.has(memberId)) ids.add(memberId);
+      });
+    });
+    return ids.size;
+  }, [structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
+  const effectiveAllInviteCount = allInviteCount || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
@@ -7437,7 +7454,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       >
                         <Send className="w-4 h-4 mr-2" />
                         <span>
-                          Send to all invited players ({allInviteCount})
+                          Send to all invited players ({effectiveAllInviteCount})
                           <span className="block text-[11px] text-muted-foreground">Bulk send / re-send — asks for confirmation</span>
                         </span>
                       </DropdownMenuItem>
@@ -7467,9 +7484,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Uses the delivery methods selected above ({Array.from(inviteMethods.size ? inviteMethods : new Set(["app"])).join(", ")}).
                   </p>
-                  {allInviteCount === 0 && selectedPlayerIds.size > 0 && (
+                  {allInviteCount === 0 && effectiveAllInviteCount > 0 && (
                     <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-1">
-                      {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} are seeded from the selected league teams but not written to the invite list yet — hit <span className="font-medium">Save progress</span> to add them.
+                      {effectiveAllInviteCount} player{effectiveAllInviteCount === 1 ? "" : "s"} are ready from the selected league teams. They will be added to the invite list when you save or send.
                     </p>
                   )}
 

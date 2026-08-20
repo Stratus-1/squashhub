@@ -1124,6 +1124,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteIncludeReserves, setInviteIncludeReserves] = useState<boolean>(true);
   const [inviteExcludedMemberIds, setInviteExcludedMemberIds] = useState<Set<string>>(new Set());
 
+  /**
+   * INVITATION AUDIENCE — who receives the invitation. Deliberately independent
+   * of the Structure / draw source: a member who plays no league can still be
+   * invited to a club championship.
+   */
+  const [inviteAudience, setInviteAudience] = useState<InviteAudienceMode>("all_club");
+  const [audienceLeagueIds, setAudienceLeagueIds] = useState<Set<string>>(new Set());
+  const [audienceMemberIds, setAudienceMemberIds] = useState<Set<string>>(new Set());
+  const [audienceIncludeIndividuals, setAudienceIncludeIndividuals] = useState(false);
+  const [audienceSearch, setAudienceSearch] = useState("");
+
+
   // Who puts a player on the entry list, and whether an admin must accept it.
   const [entrySource, setEntrySource] = useState<"self" | "admin" | "team_manager">("self");
   const [approvalGate, setApprovalGate] = useState<"none" | "admin_accept">("none");

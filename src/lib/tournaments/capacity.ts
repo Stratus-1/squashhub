@@ -16,6 +16,7 @@ export type LeagueFormat =
   | "double_round_robin"
   | "cross_league"
   | "swiss"
+  | "knockout"
   | "";
 
 /** One real playing window: a date, a time range and the courts available in it. */

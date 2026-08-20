@@ -3825,9 +3825,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           }
         } else if (inviteTiming === "scheduled" && inviteScheduledAt) {
           const when = new Date(inviteScheduledAt);
-          toast.info(`Reminder: send invites on ${when.toLocaleString()} via the edit dialog → “Send / Re-send invites”.`, { duration: 8000 });
+          toast.info(`Reminder: send invites on ${when.toLocaleString()} via the edit dialog → “Invite actions”.`, { duration: 8000 });
         } else {
-          toast.info(`Tournament saved. Open the edit dialog and click “Send / Re-send invites” when you're ready to notify ${inviteeCount} member${inviteeCount === 1 ? "" : "s"}.`, { duration: 7000 });
+          toast.info(`Tournament saved. Open the edit dialog and click “Invite actions” when you're ready to notify ${inviteeCount} member${inviteeCount === 1 ? "" : "s"}.`, { duration: 7000 });
         }
       }
 
@@ -7142,13 +7142,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     className="max-w-xs h-8 text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
-                    You'll get a reminder near this time. Automated send-out isn't wired up yet — use “Send / Re-send invites” when ready.
+                    You'll get a reminder near this time. Automated send-out isn't wired up yet — use “Invite actions” when ready.
                   </p>
                 </div>
               )}
               {inviteTiming === "manual" && (
                 <p className="text-xs text-muted-foreground">
-                  Tournament is saved without notifying anyone. Open the edit dialog and click “Send / Re-send invites” when you're ready.
+                  Tournament is saved without notifying anyone. Open the edit dialog and click “Invite actions” when you're ready.
                 </p>
               )}
             </div>
@@ -7201,7 +7201,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 onChange={(e) => setDescription(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — use the “Send / Re-send invites” button below.
+                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — use the “Invite actions” button below.
               </p>
               {editingChampId && (
                 <div className="pt-2">

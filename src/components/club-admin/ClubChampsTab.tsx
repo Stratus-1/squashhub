@@ -167,24 +167,27 @@ function normaliseEventType(value: string | null | undefined, scope: string): st
 
 
 
-type WizardStep = "category" | "courts" | "structure" | "registration" | "players" | "groups" | "schedule" | "review" | "preview";
+type WizardStep = "category" | "courts" | "structure" | "registration" | "invites" | "players" | "groups" | "schedule" | "review" | "preview";
 type GenderCategory = "men" | "ladies" | "mixed" | "open";
 type MatchType = "singles" | "doubles";
 
 // Step ids are intentionally unchanged (drafts, deep links and shortcuts rely
 // on them) — only the order and the human labels were reworked.
-const STEPS: WizardStep[] = ["category", "structure", "registration", "courts", "players", "groups", "schedule", "review"];
+// Invites come after Dates & Courts so the message can quote real dates/venues.
+const STEPS: WizardStep[] = ["category", "structure", "registration", "courts", "invites", "players", "groups", "schedule", "review"];
 const STEP_LABELS: Record<WizardStep, string> = {
   category: "Basics",
   courts: "Dates & Courts",
   structure: "Structure",
   registration: "Entry & fees",
+  invites: "Invites & messaging",
   players: "Players",
   groups: "Allocate players",
   schedule: "Schedule",
   review: "Review & Generate",
   preview: "Preview Schedule",
 };
+
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

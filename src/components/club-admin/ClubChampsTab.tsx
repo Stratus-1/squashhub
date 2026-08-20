@@ -764,6 +764,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (roundFormat === "cross_league") return "cross_league";
     return roundFormat;
   };
+  /**
+   * The effective draw format of every division, used by the invite text so
+   * a knockout tournament is described as a knockout.
+   */
+  const inviteDivisionFormats = (): string[] =>
+    Array.from({ length: Math.max(1, numGroups || 1) }, (_, i) => formatForLeague(i + 1) || "").filter(Boolean);
+
   // Per-league gender category and match type (keyed by group_number string).
   // A tournament can therefore hold e.g. a Ladies' league, a Men's league and
   // a Mixed league side by side. Missing entries fall back to the

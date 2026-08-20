@@ -67,8 +67,8 @@ export default defineConfig(() => ({
           /\/manifest\.webmanifest$/,
         ],
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
-        // 5MB max per asset
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // 12MB max per asset (main bundle currently ~5.3MB)
+        maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         runtimeCaching: [
           {
             // HTML navigations: NetworkFirst so deploys land quickly.

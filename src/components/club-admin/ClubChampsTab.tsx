@@ -5551,6 +5551,99 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 category, entity type and scoring all per league. */}
                             {!collapsed && (
                             <div className="space-y-2">
+                              {/* Who may play in THIS division. Real club league ids —
+                                  the population also seeds the draw. */}
+                              {(() => {
+                                const src = sourceForLeague(gn);
+                                const setSrc = (next: DivisionSource) => setSourceForLeague(gn, next);
+                                const toggle = (id: string) => {
+                                  const has = src.leagueIds.includes(id);
+                                  const ids = has ? src.leagueIds.filter((x) => x !== id) : [...src.leagueIds, id];
+                                  setSrc({ mode: ids.length === 0 ? "all" : src.mode === "all" ? "selected" : src.mode, leagueIds: ids });
+                                };
+                                return (
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Label className="text-[9px] uppercase tracking-wider text-muted-foreground w-full sm:w-auto">
+                                      Players from
+                                    </Label>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]">
+                                          {describeDivisionSource(src, leagueNameById)}
+                                          <ChevronDown className="ml-1 h-3 w-3" />
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent align="start" className="w-72 p-2 space-y-1.5">
+                                        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                                          <input
+                                            type="checkbox"
+                                            className="h-3.5 w-3.5 accent-violet-500"
+                                            checked={src.mode === "all" || src.leagueIds.length === 0}
+                                            onChange={() => setSrc({ ...DEFAULT_DIVISION_SOURCE })}
+                                          />
+                                          All leagues
+                                        </label>
+                                        <p className="text-[10px] text-muted-foreground leading-snug">
+                                          “All leagues” means anyone in the club’s leagues may enter this division — it does not
+                                          merge other divisions into this draw.
+                                        </p>
+                                        <Separator />
+                                        <div className="max-h-52 overflow-auto space-y-1">
+                                          {(availableLeagues as any[]).length === 0 && (
+                                            <p className="text-[11px] text-muted-foreground">No club leagues yet.</p>
+                                          )}
+                                          {(availableLeagues as any[]).map((l) => (
+                                            <label key={l.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                                              <input
+                                                type="checkbox"
+                                                className="h-3.5 w-3.5 accent-violet-500"
+                                                checked={src.leagueIds.includes(l.id)}
+                                                onChange={() => toggle(l.id)}
+                                              />
+                                              <span className="truncate">{l.name}</span>
+                                            </label>
+                                          ))}
+                                        </div>
+                                        {src.leagueIds.length > 1 && (
+                                          <>
+                                            <Separator />
+                                            <label className="flex items-start gap-2 text-xs font-medium cursor-pointer">
+                                              <input
+                                                type="checkbox"
+                                                className="h-3.5 w-3.5 mt-0.5 accent-violet-500"
+                                                checked={src.mode === "combined"}
+                                                onChange={(e) =>
+                                                  setSrc({ ...src, mode: e.target.checked ? "combined" : "selected" })
+                                                }
+                                              />
+                                              <span>
+                                                Combined competition
+                                                <span className="block text-[10px] font-normal text-muted-foreground">
+                                                  Mix these leagues into one draw with one winner.
+                                                </span>
+                                              </span>
+                                            </label>
+                                          </>
+                                        )}
+                                      </PopoverContent>
+                                    </Popover>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-[11px]"
+                                      onClick={() => applyDivisionPrefill(gn)}
+                                    >
+                                      Load players
+                                    </Button>
+                                    {src.mode === "selected" && src.leagueIds.length > 1 && (
+                                      <span className="text-[10px] text-amber-600 dark:text-amber-500">
+                                        More than one league — tick “Combined competition” or split into separate divisions.
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               <SegRow
                                 label="Draw format"
                                 value={fmt === "double_round_robin" ? "single_round_robin" : fmt}

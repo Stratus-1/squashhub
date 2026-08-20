@@ -1367,6 +1367,52 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [leagueRegistrationRows, inviteIncludeReserves]);
 
   /**
+   * Structure → invite bridge.
+   *
+   * The organiser picks the competing league level(s) / teams on the Structure
+   * step. Those teams' `member_league_registrations` rows ARE the people who
+   * must be invited (league team row id → registration → club_member_id), so
+   * the invite list follows the Structure selection until the organiser edits
+   * the invite tree by hand.
+   */
+  const [inviteLeaguesTouched, setInviteLeaguesTouched] = useState(false);
+  const [inviteSourceTouched, setInviteSourceTouched] = useState(false);
+
+  const structureLeagueIds = useMemo(() => {
+    const out = new Set<string>();
+    for (let gn = 1; gn <= Math.max(1, numGroups); gn++) {
+      const src = divisionSource(leagueSources, gn);
+      if (src.mode === "all" || src.leagueIds.length === 0) continue;
+      src.leagueIds.forEach((id) => out.add(id));
+    }
+    return out;
+  }, [leagueSources, numGroups]);
+
+  useEffect(() => {
+    if (structureLeagueIds.size === 0) return;
+    if (!inviteSourceTouched && inviteSource === "manual") setInviteSource("leagues");
+    if (inviteLeaguesTouched) return;
+    const same =
+      structureLeagueIds.size === sourceLeagueIds.size &&
+      Array.from(structureLeagueIds).every((id) => sourceLeagueIds.has(id));
+    if (same) return;
+    applyLeaguePrefill(new Set(structureLeagueIds));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [structureLeagueIds, inviteSource, inviteSourceTouched, inviteLeaguesTouched]);
+
+  /** Team-by-team breakdown of who the league selection puts on the invite list. */
+  const inviteTeamBreakdown = useMemo(() => {
+    return Array.from(sourceLeagueIds)
+      .map((id) => ({
+        id,
+        name: leagueNameById.get(id) || "Unknown team",
+        count: (registrationsByLeague.get(id) || []).filter((mid) => !inviteExcludedMemberIds.has(mid)).length,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [sourceLeagueIds, leagueNameById, registrationsByLeague, inviteExcludedMemberIds]);
+
+
+  /**
    * Players the admin has deliberately kept in a division they do not qualify
    * for. Entries are never dropped silently — this is the explicit override.
    */
@@ -4529,6 +4575,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPaymentRequired(true);
     setInviteMethods(new Set(["app"]));
     setInviteSource("manual");
+    setInviteSourceTouched(false);
+    setInviteLeaguesTouched(false);
     setEntrySource("self");
     setApprovalGate("none");
     setPaymentTiming("on_entry");
@@ -4614,6 +4662,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setRegistrationRequired((champ as any).registration_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
     setInviteSource(((champ as any).invite_source as any) || "manual");
+    // An existing tournament's saved invite list is authoritative — never let
+    // the Structure bridge overwrite it when reopening for edit.
+    setInviteSourceTouched(true);
+    setInviteLeaguesTouched(true);
     setEntrySource((((champ as any).entry_source as any) || ((champ.registration_mode === "invite") ? "admin" : "self")));
     setApprovalGate((((champ as any).approval_gate as any) || "none"));
     setPaymentTiming((((champ as any).payment_timing as any) || "on_entry"));
@@ -7090,7 +7142,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       type="radio"
                       name="invite-source"
                       checked={inviteSource === "manual"}
-                      onChange={() => setInviteSource("manual")}
+                      onChange={() => { setInviteSourceTouched(true); setInviteSource("manual"); }}
                     />
                     Manual tick-list
                   </label>
@@ -7099,7 +7151,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       type="radio"
                       name="invite-source"
                       checked={inviteSource === "leagues"}
-                      onChange={() => setInviteSource("leagues")}
+                      onChange={() => { setInviteSourceTouched(true); setInviteSource("leagues"); }}
                     />
                     By league (pick on the Players step)
                   </label>
@@ -7107,13 +7159,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {inviteSource === "leagues" && (
                   <div className="space-y-2 pt-1">
                     <Label className="text-xs text-muted-foreground">Pick which leagues to seed from</Label>
+                    {structureLeagueIds.size > 0 && !inviteLeaguesTouched && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Following the league/team selection made on the Structure step. Change anything below and this list stops following it.
+                      </p>
+                    )}
                     {/* Same hierarchical tree as the Structure step: season →
                         league level → teams / reserves, on canonical ids. */}
                     <div className="rounded border border-border/50 bg-background/60 p-2">
                       <LeagueSourceTree
                         groups={leagueTree}
                         selected={Array.from(sourceLeagueIds)}
-                        onChange={(ids) => applyLeaguePrefill(new Set(ids))}
+                        onChange={(ids) => { setInviteLeaguesTouched(true); applyLeaguePrefill(new Set(ids)); }}
                       />
                     </div>
 
@@ -7128,10 +7185,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       Include reserves
                     </label>
                     {hasLeagueSelection && (
-                      <p className="text-xs text-muted-foreground">
-                        {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} seeded from {sourceLeagueIds.size} league{sourceLeagueIds.size === 1 ? "" : "s"}.
-                      </p>
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} seeded from {sourceLeagueIds.size} team{sourceLeagueIds.size === 1 ? "" : "s"}. They go onto the invite list as <strong>Invited</strong> — nobody is entered until they accept.
+                        </p>
+                        <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-40 overflow-auto">
+                          {inviteTeamBreakdown.map((t) => (
+                            <div key={t.id} className="flex items-center justify-between text-[11px]">
+                              <span className="truncate">{t.name}</span>
+                              <span className={t.count === 0 ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"}>
+                                {t.count} player{t.count === 1 ? "" : "s"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
                     )}
+
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">

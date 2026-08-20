@@ -308,6 +308,6 @@ describe("single pool selector", () => {
     const saved = sectionsFromPools(pools, () => true, 1, {});
     // reload: pool map wins, legacy map matches it
     expect(saved["1"]).toBe(4);
-    expect(effectivePools({ gn: 1, pools: mergeLegacySectionsIntoPools({}, saved), legacySections: saved })).toBe(4);
+    expect(effectivePools({ gn: 1, pools: mergeLegacySectionsIntoPools({}, saved, 1), legacySections: saved })).toBe(4);
   });
 });

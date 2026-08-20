@@ -321,6 +321,27 @@ export function poolLabel(n: number): string {
   return n <= 1 ? "1 draw" : `${n} pools`;
 }
 
+/**
+ * Knockout divisions are split into SECTIONS, not pools — a pool implies a
+ * round-robin group, whereas these are independent knockout draws whose
+ * winners meet in the division final.
+ */
+export function poolNoun(format: string | null | undefined, plural = true): string {
+  if (String(format || "") === "knockout") return plural ? "sections" : "section";
+  return plural ? "pools" : "pool";
+}
+
+/** Organiser-facing label for a pool/section count, per format. */
+export function poolLabelFor(n: number, format: string | null | undefined): string {
+  if (n <= 1) return "1 draw";
+  return `${n} ${poolNoun(format)}`;
+}
+
+/** Heading for the single pool/section selector, per format. */
+export function poolSelectorLabel(format: string | null | undefined): string {
+  return String(format || "") === "knockout" ? "Sections" : "Pools";
+}
+
 /** Choices for the single pool selector, always including the current value. */
 export function poolOptions(current: number, base: number[] = [1, 2, 4, 8]): number[] {
   const n = Math.max(1, Math.floor(current) || 1);

@@ -27,6 +27,9 @@ import {
   parseDivisionSources,
   planAllLeaguesExpansion,
   poolLabel,
+  poolLabelFor,
+  poolNoun,
+  poolSelectorLabel,
   poolOptions,
   sectionsFromPools,
   validateDivisions,
@@ -842,8 +845,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
     }
     if (fmt === "knockout") {
-      // One draw by default — the organiser splits it into pools if they want.
+      // One draw by default — the organiser splits it into sections if they want.
       setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
+      // Knockout progresses through rounds to the division final by default.
+      setLeaguePlayoffs((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? true }));
     }
     setUsePerLeagueFormats(true);
     if (fmt === "cross_league") setRoundFormat("cross_league");
@@ -5600,12 +5605,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   )}
                                   {collapsed && playoffsForLeague(gn) && (
                                     <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
-                                      Playoffs
+                                      {fmt === "knockout" ? "Knockout rounds" : "Playoffs"}
                                     </span>
                                   )}
                                   {collapsed && (
                                     <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
-                                      {formatUsesPools(fmt) ? poolLabel(poolsForDivision(gn)) : "Single draw"}
+                                      {formatUsesPools(fmt) ? poolLabelFor(poolsForDivision(gn), fmt) : "Single draw"}
                                       {expectedPlayers[key] ? ` · ${expectedPlayers[key]} ${isDoubles ? "pairs" : "players"}` : ""}
                                     </span>
                                   )}
@@ -5621,10 +5626,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   {/* Read-only summary — the pool count is set
                                       by the single Pools selector below. */}
                                   {formatUsesPools(fmt) && (
-                                    <div className="shrink-0 pb-1.5" title="Set the pool count with the Pools selector below">
-                                      <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Pools</Label>
+                                    <div className="shrink-0 pb-1.5" title={`Set the ${poolNoun(fmt, false)} count with the ${poolSelectorLabel(fmt)} selector below`}>
+                                      <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">{poolSelectorLabel(fmt)}</Label>
                                       <div className="text-xs font-semibold text-teal-700 dark:text-teal-400 mt-1 whitespace-nowrap">
-                                        {poolLabel(poolsForDivision(gn))}
+                                        {poolLabelFor(poolsForDivision(gn), fmt)}
                                       </div>
                                     </div>
                                   )}
@@ -5833,6 +5838,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     if (nv === "knockout") {
                                       const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
                                       setSwissPools((m) => ({ ...m, [key]: m[key] || suggestSectionCount(entrants) }));
+                                      // Knockout progresses through rounds by default.
+                                      setLeaguePlayoffs((m) => ({ ...m, [key]: m[key] ?? true }));
                                     }
                                     if (nv === "cross_league") setRoundFormat("cross_league");
                                     else {
@@ -5856,18 +5863,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   return (
                                     <div className="rounded-md border bg-muted/30 p-2 space-y-1.5">
                                       <SegRow
-                                        label="Pools"
+                                        label={fmt === "knockout" ? "Knockout structure" : "Pools"}
                                         value={String(pools)}
                                         color="violet"
-                                        options={poolOptions(pools).map((n) => ({ v: String(n), l: poolLabel(n) }))}
+                                        options={poolOptions(pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
                                         onChange={(v) => setPoolsForDivision(gn, Number(v) || 1)}
                                       />
                                       <p className="text-[11px] text-muted-foreground">
                                         {entrants > 0
-                                          ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per ${pools > 1 ? "pool" : "draw"}. `
+                                          ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per ${pools > 1 ? poolNoun(fmt, false) : "draw"}. `
                                           : ""}
                                         {fmt === "knockout"
-                                          ? "Seeds are spread evenly across pools from the ladder; pool winners meet in this division's final."
+                                          ? "Seeds are spread evenly across sections from the ladder; section winners meet in this division's final."
                                           : fmt === "cross_league"
                                             ? "Each pool plays every other pool."
                                             : pools > 1
@@ -6117,18 +6124,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   </div>
                                 );
                               })()}
-                              <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5 pt-1">
-                                <input
-                                  type="checkbox"
-                                  className="h-3.5 w-3.5 accent-fuchsia-500"
-                                  checked={playoffsForLeague(gn)}
-                                  onChange={(e) => {
-                                    const on = e.target.checked;
-                                    setLeaguePlayoffs((m) => ({ ...m, [key]: on }));
-                                  }}
-                                />
-                                Playoffs / finals for this league
-                              </label>
+                              <div className="pt-1">
+                                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
+                                  <input
+                                    type="checkbox"
+                                    className="h-3.5 w-3.5 accent-fuchsia-500"
+                                    checked={playoffsForLeague(gn)}
+                                    onChange={(e) => {
+                                      const on = e.target.checked;
+                                      setLeaguePlayoffs((m) => ({ ...m, [key]: on }));
+                                    }}
+                                  />
+                                  {fmt === "knockout"
+                                    ? "Continue through knockout stages"
+                                    : "Playoffs / finals for this league"}
+                                </label>
+                                {fmt === "knockout" && (
+                                  <p className="text-[10px] text-muted-foreground pl-6 pt-0.5 leading-relaxed">
+                                    Create subsequent rounds as results are completed, with section winners
+                                    progressing to the division finals. Only the first round is scheduled up front.
+                                  </p>
+                                )}
+                              </div>
                               <div className="pt-1 flex justify-end">
                                 <Button
                                   type="button"

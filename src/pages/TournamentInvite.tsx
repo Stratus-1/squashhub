@@ -9,12 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { CalendarDays, CheckCircle2, Clock, CreditCard, Loader2, LogIn, Trophy, UserPlus, XCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   afterAcceptPath,
   inviteFeeCents,
   inviteLoginPath,
   inviteSignupPath,
   inviteState,
+  inviteVerificationKind,
+  inviteVerificationLabel,
+  isInviteVerificationComplete,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
 
@@ -31,29 +36,40 @@ function formatDate(value?: string | null) {
 }
 
 export default function TournamentInvite() {
-  const { token = "" } = useParams();
+  const { token = "", champId = "" } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [done, setDone] = useState<"accepted" | "declined" | null>(null);
+  const [verify, setVerify] = useState("");
+  const [verifyError, setVerifyError] = useState("");
+  /** Organiser preview: /i/test/:champId. Nothing on this page may mutate. */
+  const isTest = !!champId;
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["tournament-invite", token, user?.id ?? "anon"],
+    queryKey: ["tournament-invite", isTest ? `test:${champId}` : token, user?.id ?? "anon"],
     queryFn: async () => {
+      if (isTest) {
+        const { data, error } = await (supabase as any).rpc("get_tournament_invite_preview", { p_champ_id: champId });
+        if (error) throw error;
+        return (data || { found: false }) as InvitePayload;
+      }
       const { data, error } = await (supabase as any).rpc("get_tournament_invite", { p_token: token });
       if (error) throw error;
       return (data || { found: false }) as InvitePayload;
     },
-    enabled: !!token && !authLoading,
+    enabled: (!!token || !!champId) && !authLoading,
   });
 
   const state = inviteState(data);
   const feeCents = inviteFeeCents(data);
+  const verificationKind = inviteVerificationKind(data);
 
   const respond = useMutation({
     mutationFn: async (accept: boolean) => {
-      const { data: res, error } = await (supabase as any).rpc("respond_tournament_invite", {
+      const { data: res, error } = await (supabase as any).rpc("respond_tournament_invite_public", {
         p_token: token,
         p_accept: accept,
+        p_verify: verify.trim() || null,
       });
       if (error) throw error;
       return { accept, res } as { accept: boolean; res: any };
@@ -75,7 +91,11 @@ export default function TournamentInvite() {
       }
       if (champId) navigate(path);
     },
-    onError: (e: any) => toast.error(e?.message || "Could not update your invitation"),
+    onError: (e: any) => {
+      const msg = e?.message || "Could not update your invitation";
+      if (/verify/i.test(msg)) setVerifyError(msg);
+      toast.error(msg);
+    },
   });
 
   // Land straight back here after signing in.
@@ -107,7 +127,17 @@ export default function TournamentInvite() {
   const shell = (children: React.ReactNode) => (
     <div className="min-h-screen bg-background flex items-start sm:items-center justify-center p-4">
       <SEO title="Tournament invitation | SquashHub" description="Respond to your SquashHub tournament invitation." />
-      <Card className="w-full max-w-md p-5 space-y-4">{children}</Card>
+      <Card className="w-full max-w-md p-5 space-y-4">
+        {isTest ? (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600">Test invitation</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              This is a preview for organisers. No registration will be changed and no payment will be created.
+            </p>
+          </div>
+        ) : null}
+        {children}
+      </Card>
     </div>
   );
 
@@ -232,6 +262,28 @@ export default function TournamentInvite() {
 
 
   const busy = respond.isPending;
+  const verifyLabel = inviteVerificationLabel(verificationKind);
+  const verifyReady = isInviteVerificationComplete(verificationKind, verify);
+
+  function act(accept: boolean) {
+    if (isTest) {
+      toast.info(
+        accept
+          ? feeCents > 0
+            ? "Test only — a real invitee would now go to the entry fee payment page."
+            : "Test only — a real invitee would be entered immediately."
+          : "Test only — a real invitee would be marked as declined.",
+      );
+      return;
+    }
+    if (!verifyReady) {
+      setVerifyError(`Please enter ${verifyLabel.toLowerCase()} to confirm this invitation is yours.`);
+      return;
+    }
+    setVerifyError("");
+    respond.mutate(accept);
+  }
+
   return shell(
     <>
       {header}
@@ -241,14 +293,44 @@ export default function TournamentInvite() {
           Accepting reserves your place — you'll go straight to the entry fee payment page.
         </p>
       )}
+      {!isTest && verificationKind !== "none" && (
+        <div className="space-y-1.5">
+          <Label htmlFor="invite-verify" className="text-xs">
+            {verifyLabel}
+          </Label>
+          <Input
+            id="invite-verify"
+            inputMode={verificationKind === "phone_last4" ? "numeric" : "text"}
+            autoComplete="off"
+            value={verify}
+            onChange={(e) => {
+              setVerify(e.target.value);
+              setVerifyError("");
+            }}
+            placeholder={verificationKind === "phone_last4" ? "e.g. 4821" : "e.g. Pretorius"}
+          />
+          <p className="text-[11px] text-muted-foreground">
+            {verifyError || "A quick check that this invitation is yours — no SquashHub login needed."}
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2 pt-1">
-        <Button variant="outline" disabled={busy} onClick={() => respond.mutate(false)}>
+        <Button variant="outline" disabled={busy} onClick={() => act(false)}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Decline"}
         </Button>
-        <Button disabled={busy} onClick={() => respond.mutate(true)}>
+        <Button disabled={busy} onClick={() => act(true)}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : feeCents > 0 ? "Accept & pay" : "Accept"}
         </Button>
       </div>
+      {!isTest && (
+        <button
+          type="button"
+          className="text-[11px] text-muted-foreground underline w-full text-center"
+          onClick={() => navigate(inviteLoginPath(token))}
+        >
+          Prefer to sign in to your SquashHub account instead?
+        </button>
+      )}
     </>,
   );
 }

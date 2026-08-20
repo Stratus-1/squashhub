@@ -2466,9 +2466,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     };
 
     {
+      // Singles draws are constrained to each division's eligible population
+      // ("Players from"). Doubles pairs are built by hand and are left as-is.
       const perLeagueIds: string[][] = isDoubles
         ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
-        : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
+        : (groups as ClubMember[][]).map((g, gi) => eligibleIdsForDivision(gi + 1, g.map((p) => p.id)));
+
 
       // Leagues on "cross league" WITHOUT their own pools play against the other
       // cross-league leagues (classic league-vs-league). Cross-league leagues WITH

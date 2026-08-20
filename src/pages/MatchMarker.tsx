@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { MarkerSetup, type MarkerConfig } from "@/components/marker/MarkerSetup";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
-import { fromExt } from "@/lib/supabase-ext";
+import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -541,7 +541,6 @@ export default function MatchMarker() {
       const validAMemberId = memberA ? playerAMemberId : null;
       const validBMemberId = memberB ? playerBMemberId : null;
       const winnerMemberId = result.winnerId === "a" ? validAMemberId : validBMemberId;
-      const winnerUserId = result.winnerId === "a" ? memberA?.user_id : memberB?.user_id;
 
       const isForfeit = !!result.forfeit;
       const absentLabel = isForfeit ? (result.forfeit!.absentSide === "a" ? "A" : "B") : null;

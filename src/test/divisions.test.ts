@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_DIVISION_SOURCE,
+  constrainIds,
   constrainSeeds,
+  divisionEligibleIds,
+  findIneligibleAssignments,
+  isEligibleForDivision,
+  planAllLeaguesExpansion,
   describeDivisionSource,
   divisionSource,
   effectivePools,
@@ -150,5 +155,113 @@ describe("validation", () => {
       formatFor: (gn) => (gn === 1 ? "knockout" : "single_round_robin"),
     });
     expect(issues).toEqual([{ gn: 2, message: expect.stringContaining("more than one league") }]);
+  });
+});
+
+describe("eligibility invariant", () => {
+  const ctx = {
+    sources: {
+      "1": { mode: "selected" as const, leagueIds: ["l1"] },
+      "2": { mode: "combined" as const, leagueIds: ["l2", "l3"] },
+      "3": { mode: "all" as const, leagueIds: [] },
+    },
+    allLeagueIds: ["l1", "l2", "l3"],
+    registrationsByLeague: new Map([
+      ["l1", ["a", "b"]],
+      ["l2", ["c"]],
+      ["l3", ["d"]],
+    ]),
+  };
+
+  it("constrains auto seeding to the source league", () => {
+    expect(constrainIds(["a", "c", "z"], divisionEligibleIds(1, ctx))).toEqual(["a"]);
+  });
+
+  it("combined divisions accept every listed source league", () => {
+    expect(constrainIds(["c", "d", "a"], divisionEligibleIds(2, ctx))).toEqual(["c", "d"]);
+  });
+
+  it("all-leagues divisions never restrict", () => {
+    expect(isEligibleForDivision("z", 3, ctx)).toBe(true);
+    expect(isEligibleForDivision("z", 1, ctx)).toBe(false);
+  });
+
+  it("flags a manually added ineligible player after the roster changes", () => {
+    const assignments = new Map([
+      ["a", 1],
+      ["c", 1], // manually dragged in from another league
+      ["d", 2],
+      ["z", 3], // guest in an all-leagues division
+    ]);
+    expect(findIneligibleAssignments(assignments, ctx)).toEqual([{ memberId: "c", gn: 1 }]);
+  });
+
+  it("honours an explicit admin override instead of dropping the entry", () => {
+    const withOverride = { ...ctx, overrides: new Set(["c"]) };
+    expect(findIneligibleAssignments(new Map([["c", 1]]), withOverride)).toEqual([]);
+    expect(constrainIds(["c"], divisionEligibleIds(1, ctx), withOverride.overrides)).toEqual(["c"]);
+  });
+});
+
+describe("all-leagues expansion", () => {
+  const leagues = [
+    { id: "l1", name: "League 1" },
+    { id: "l2", name: "League 2" },
+    { id: "l3", name: "League 3" },
+  ];
+
+  it("creates one division per source league, reusing the all-leagues template", () => {
+    const plan = planAllLeaguesExpansion({ templateGn: 1, divisionCount: 1, sources: {}, leagues });
+    expect(plan.divisionCount).toBe(3);
+    expect(plan.created.map((c) => [c.gn, c.leagueId])).toEqual([
+      [1, "l1"],
+      [2, "l2"],
+      [3, "l3"],
+    ]);
+    expect(plan.created.every((c) => c.templateGn === 1)).toBe(true);
+  });
+
+  it("is idempotent — repeated runs create nothing new", () => {
+    const sources = {
+      "1": { mode: "selected" as const, leagueIds: ["l1"] },
+      "2": { mode: "selected" as const, leagueIds: ["l2"] },
+      "3": { mode: "selected" as const, leagueIds: ["l3"] },
+    };
+    const plan = planAllLeaguesExpansion({ templateGn: 1, divisionCount: 3, sources, leagues });
+    expect(plan.created).toHaveLength(0);
+    expect(plan.skipped).toHaveLength(3);
+    expect(plan.divisionCount).toBe(3);
+  });
+
+  it("preserves manual divisions and only adds the missing leagues", () => {
+    const sources = {
+      "1": { mode: "selected" as const, leagueIds: ["l2"] }, // manual division
+      "2": { mode: "all" as const, leagueIds: [] }, // template
+    };
+    const plan = planAllLeaguesExpansion({ templateGn: 2, divisionCount: 2, sources, leagues });
+    expect(plan.skipped).toEqual([{ leagueId: "l2", gn: 1 }]);
+    expect(plan.created.map((c) => [c.gn, c.leagueId])).toEqual([
+      [2, "l1"],
+      [3, "l3"],
+    ]);
+    expect(plan.divisionCount).toBe(3);
+  });
+
+  it("leaves an explicit combined competition alone", () => {
+    const sources = { "1": { mode: "combined" as const, leagueIds: ["l1", "l2"] } };
+    const plan = planAllLeaguesExpansion({ templateGn: 1, divisionCount: 1, sources, leagues });
+    // a combined draw does not "own" its leagues, so each still gets its own
+    // division, and the combined division itself is untouched
+    expect(plan.created.map((c) => c.gn)).toEqual([2, 3, 4]);
+    expect(divisionSource(sources, 1).mode).toBe("combined");
+  });
+
+  it("generated divisions can be edited independently", () => {
+    const plan = planAllLeaguesExpansion({ templateGn: 1, divisionCount: 1, sources: {}, leagues });
+    const sources: Record<string, any> = {};
+    plan.created.forEach((c) => (sources[String(c.gn)] = { mode: "selected", leagueIds: [c.leagueId] }));
+    // editing division 2 does not touch division 3
+    sources["2"] = { mode: "combined", leagueIds: ["l2", "l3"] };
+    expect(divisionSource(sources, 3)).toEqual({ mode: "selected", leagueIds: ["l3"] });
   });
 });

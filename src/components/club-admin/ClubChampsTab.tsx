@@ -16,15 +16,21 @@ import {
 import { buildLeagueFirstRound, distributeSeedsBalanced, suggestSectionCount } from "@/lib/tournaments/knockout";
 import {
   DEFAULT_DIVISION_SOURCE,
+  constrainIds,
   describeDivisionSource,
+  divisionEligibleIds,
   divisionSource,
   effectivePools,
+  findIneligibleAssignments,
   mergeLegacySectionsIntoPools,
   parseDivisionSources,
+  planAllLeaguesExpansion,
   sectionsFromPools,
   validateDivisions,
   type DivisionSource,
+  type EligibilityContext,
 } from "@/lib/tournaments/divisions";
+
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
@@ -822,6 +828,61 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     else if (fmt === "knockout") { if (!roundFormat) setRoundFormat("single_round_robin"); }
     else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
   };
+
+  /**
+   * "All leagues" → one independent competition division per club league.
+   *
+   * The template division's settings (format, pools, category, scoring) are
+   * cloned onto each generated division; afterwards each division is edited on
+   * its own — they are NOT kept linked. Re-running is idempotent: a league that
+   * already owns a division is left exactly as it is, and manually created
+   * divisions are preserved.
+   */
+  const expandAllLeagues = (templateGn: number) => {
+    const leagues = (availableLeagues as any[]).map((l) => ({ id: l.id as string, name: l.name as string }));
+    if (leagues.length === 0) {
+      toast.info("This club has no leagues to expand into divisions yet");
+      return;
+    }
+    const plan = planAllLeaguesExpansion({
+      templateGn,
+      divisionCount: numGroups || 0,
+      sources: leagueSources,
+      leagues,
+      labels: groupLabels,
+    });
+    if (plan.created.length === 0) {
+      toast.info("Every league already has its own division");
+      return;
+    }
+    const tkey = String(templateGn);
+    const tmplFormat = formatForLeague(templateGn) || "single_round_robin";
+    const tmplPools = swissPools[tkey];
+    const tmplRounds = swissRounds[tkey];
+
+    setNumGroups(plan.divisionCount);
+    setUsePerLeagueFormats(true);
+    plan.created.forEach((item) => {
+      const key = String(item.gn);
+      setSourceForLeague(item.gn, { mode: "selected", leagueIds: [item.leagueId] });
+      setGroupLabels((m) => ({ ...m, [key]: m[key] || item.label }));
+      setLeagueFormats((m) => ({ ...m, [key]: tmplFormat as PerLeagueFormat }));
+      if (tmplPools) setSwissPools((m) => ({ ...m, [key]: m[key] ?? tmplPools }));
+      if (tmplRounds) setSwissRounds((m) => ({ ...m, [key]: m[key] ?? tmplRounds }));
+      setLeagueGenders((m) => ({ ...m, [key]: m[key] ?? genderForLeague(templateGn) }));
+      setLeagueMatchTypes((m) => ({ ...m, [key]: m[key] ?? matchTypeForLeague(templateGn) }));
+      setLeagueScoringModes((m) => ({ ...m, [key]: m[key] ?? m[tkey] ?? (scoringMode === "time_capped_points" ? "time_capped_points" : "standard") }));
+      setLeaguePointsPerGame((m) => ({ ...m, [key]: m[key] ?? m[tkey] ?? (pointsPerGame === 15 ? 15 : 11) }));
+      setLeagueBestOf((m) => ({ ...m, [key]: m[key] ?? m[tkey] ?? (bestOf === 5 ? 5 : 3) }));
+      setLeagueWinConditions((m) => ({ ...m, [key]: m[key] ?? m[tkey] ?? winCondition }));
+    });
+    toast.success(
+      `${plan.created.length} division${plan.created.length === 1 ? "" : "s"} created — one per league${
+        plan.skipped.length > 0 ? `, ${plan.skipped.length} already existed` : ""
+      }`,
+    );
+  };
+
   /** Set one league's gender, materialising the others so nothing shifts. */
   const setLeagueGender = (gn: number, g: GenderCategory) => {
     setLeagueGenders((m) => {
@@ -1178,6 +1239,62 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     (availableLeagues as any[]).forEach((l) => m.set(l.id, l.name));
     return m;
   }, [availableLeagues]);
+
+  /**
+   * Registered players per club league — the real eligible population behind
+   * every division's "Players from" selection.
+   */
+  const { data: leagueRegistrationRows = [] } = useQuery({
+    queryKey: ["division-league-registrations", clubId, (availableLeagues as any[]).map((l) => l.id).join(",")],
+    enabled: (availableLeagues as any[]).length > 0,
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("league_id, club_member_id, is_reserve")
+        .in("league_id", (availableLeagues as any[]).map((l) => l.id));
+      if (error) throw error;
+      return (data || []) as Array<{ league_id: string; club_member_id: string; is_reserve: boolean | null }>;
+    },
+  });
+
+  const registrationsByLeague = useMemo(() => {
+    const m = new Map<string, string[]>();
+    leagueRegistrationRows.forEach((r) => {
+      if (!r.club_member_id) return;
+      if (!inviteIncludeReserves && r.is_reserve) return;
+      const list = m.get(r.league_id) || [];
+      list.push(r.club_member_id);
+      m.set(r.league_id, list);
+    });
+    return m;
+  }, [leagueRegistrationRows, inviteIncludeReserves]);
+
+  /**
+   * Players the admin has deliberately kept in a division they do not qualify
+   * for. Entries are never dropped silently — this is the explicit override.
+   */
+  const [eligibilityOverrides, setEligibilityOverrides] = useState<Set<string>>(new Set());
+
+  const eligibilityCtx: EligibilityContext = useMemo(
+    () => ({
+      sources: leagueSources,
+      allLeagueIds: (availableLeagues as any[]).map((l) => l.id as string),
+      registrationsByLeague,
+      overrides: eligibilityOverrides,
+    }),
+    [leagueSources, availableLeagues, registrationsByLeague, eligibilityOverrides],
+  );
+
+  /**
+   * The source selection is an invariant of a division: only players from the
+   * chosen league(s) (or explicitly overridden ones) may be seeded into it.
+   */
+  const eligibleIdsForDivision = (gn: number, ids: string[]): string[] => {
+    const src = divisionSource(leagueSources, gn);
+    if (src.mode === "all" || src.leagueIds.length === 0) return ids;
+    return constrainIds(ids, divisionEligibleIds(gn, eligibilityCtx), eligibilityOverrides);
+  };
+
+
 
   /**
    * Pull the players of a division's source league(s) into that division.
@@ -2404,9 +2521,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     };
 
     {
+      // Singles draws are constrained to each division's eligible population
+      // ("Players from"). Doubles pairs are built by hand and are left as-is.
       const perLeagueIds: string[][] = isDoubles
         ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
-        : (groups as ClubMember[][]).map((g) => g.map((p) => p.id));
+        : (groups as ClubMember[][]).map((g, gi) => eligibleIdsForDivision(gi + 1, g.map((p) => p.id)));
+
 
       // Leagues on "cross league" WITHOUT their own pools play against the other
       // cross-league leagues (classic league-vs-league). Cross-league leagues WITH
@@ -3147,7 +3267,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the
@@ -5584,9 +5704,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           All leagues
                                         </label>
                                         <p className="text-[10px] text-muted-foreground leading-snug">
-                                          “All leagues” means anyone in the club’s leagues may enter this division — it does not
-                                          merge other divisions into this draw.
+                                          “All leagues” does not mix everyone into one draw. Use the button below to give
+                                          each league its own competition, with its own winner.
                                         </p>
+                                        {(src.mode === "all" || src.leagueIds.length === 0) && (
+                                          <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            className="w-full h-7 text-[11px]"
+                                            onClick={() => expandAllLeagues(gn)}
+                                          >
+                                            Create one competition per league
+                                          </Button>
+                                        )}
+
                                         <Separator />
                                         <div className="max-h-52 overflow-auto space-y-1">
                                           {(availableLeagues as any[]).length === 0 && (
@@ -6067,6 +6199,72 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               );
             })()}
+
+            {/* Players sitting in a division they don't qualify for. Nothing is
+                dropped silently — the organiser removes them or keeps them. */}
+            {(() => {
+              if (isDoubles) return null;
+              const bad = findIneligibleAssignments(
+                new Map(Array.from(groupAssignments.entries()).map(([id, gi]) => [id, gi + 1])),
+                eligibilityCtx,
+              );
+              if (bad.length === 0) return null;
+              const nameOf = (id: string) =>
+                (allSelectablePlayers.find((m: any) => m.id === id) as any)?.name || "Player";
+              return (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                  <p className="text-[11px] font-semibold text-destructive">
+                    {bad.length} player{bad.length === 1 ? "" : "s"} are not in the league(s) their division draws from.
+                    They will not be seeded into the draw until you remove them or keep them anyway.
+                  </p>
+                  <div className="space-y-1">
+                    {bad.map(({ memberId, gn }) => (
+                      <div key={`${memberId}-${gn}`} className="flex items-center gap-2 text-[11px]">
+                        <span className="flex-1 truncate">
+                          <span className="font-medium">{nameOf(memberId)}</span>{" "}
+                          <span className="text-muted-foreground">
+                            in {groupLabels[String(gn)] || `League ${gn}`}
+                          </span>
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[11px]"
+                          onClick={() =>
+                            setEligibilityOverrides((prev) => new Set(prev).add(memberId))
+                          }
+                        >
+                          Keep anyway
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[11px]"
+                          onClick={() => {
+                            setSelectedPlayerIds((prev) => {
+                              const next = new Set(prev);
+                              next.delete(memberId);
+                              return next;
+                            });
+                            setGroupAssignments((prev) => {
+                              const next = new Map(prev);
+                              next.delete(memberId);
+                              return next;
+                            });
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+
 
             <div className="rounded-lg border border-dashed p-3 bg-muted/20 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">Capacity is checked later.</span>{" "}

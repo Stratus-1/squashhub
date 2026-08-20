@@ -1291,13 +1291,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return filterTreeBySeason(full, sourceSeason);
   }, [availableLeagues, leagueResolution, sourceSeason]);
 
-  const toggleSourceGroup = (leagueIds: string[]) => {
-    const next = new Set(sourceLeagueIds);
-    const allOn = leagueIds.every((id) => next.has(id));
-    if (allOn) leagueIds.forEach((id) => next.delete(id));
-    else leagueIds.forEach((id) => next.add(id));
-    applyLeaguePrefill(next);
-  };
+
+
 
   // Re-fetch & merge players whenever the league selection changes
   const applyLeaguePrefill = async (leagueIds: Set<string>) => {

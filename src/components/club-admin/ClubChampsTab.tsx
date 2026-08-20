@@ -4118,17 +4118,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
       const sendApp = methods.includes("app");
       const sendEmail = methods.includes("email");
-      const descHasDetails = /— Tournament details —/.test(description);
-      const detailLines = descHasDetails ? [] : buildInviteDetailLines({
-        gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
-        startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
-        registrationOpensAt, registrationClosesAt, entryFeeRand,
-        pointsPerGame, bestOf,
-        registrationRequired, registrationMode: (registrationMode || "open") as any,
-      });
-      const msg = `You have been invited to ${champName || "a tournament"}.` +
-        (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
-        (description.trim() ? `\n\n${description.trim()}` : "");
+      const msg = buildInviteBody();
+
 
 
       const notifRows = rows.map((r: any) => ({

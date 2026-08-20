@@ -1,3 +1,4 @@
+import AppVersionBadge from "@/components/AppVersionBadge";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
@@ -313,6 +314,9 @@ export default function ClubAdmin() {
           </div>
         </div>
         <QuickSetupWizard clubId={club.id} open={wizardOpen} onOpenChange={setWizardOpen} />
+        <div className="pt-3 mt-2 border-t border-border/50 flex justify-end">
+          <AppVersionBadge />
+        </div>
         <BackToDashboard />
       </div>
     </div>

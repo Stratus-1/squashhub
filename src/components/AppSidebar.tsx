@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { useProfile } from "@/hooks/use-data";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import AppVersionBadge from "@/components/AppVersionBadge";
 
 type Item = { title: string; url: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -285,6 +286,11 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        {!collapsed && (
+          <div className="px-2 pt-2">
+            <AppVersionBadge className="text-sidebar-foreground/50" />
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

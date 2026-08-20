@@ -100,3 +100,30 @@ describe("league tree", () => {
     expect(levelFromName("Baobabs")).toBeNull();
   });
 });
+
+describe("season-aware hierarchy (Nelspruit shape)", () => {
+  const rows = [
+    { id: "1", name: "Apex Eagles", level: 1, seasonYear: 2026 },
+    { id: "2", name: "Baobabs", level: 1, seasonYear: 2026 },
+    { id: "3", name: "Canopy Kings", level: 1, seasonYear: 2026 },
+    { id: "4", name: "1st L Reserves", level: 1, seasonYear: 2026, isReserve: true },
+    { id: "5", name: "The Leopards", level: 2, seasonYear: 2026 },
+    { id: "6", name: "2nd Reserves", level: 2, seasonYear: 2026, isReserve: true },
+    { id: "7", name: "Cobras", level: 3, seasonYear: 2026 },
+    { id: "8", name: "Old Timers", level: 1, seasonYear: 2025 },
+  ];
+
+  it("groups teams under league levels, never flat", () => {
+    const tree = buildLeagueTree(rows as any);
+    const y2026 = tree.filter((g) => g.seasonYear === 2026);
+    expect(y2026.map((g) => g.label)).toEqual(["1st League", "2nd League", "3rd League"]);
+    expect(y2026[0].children.map((c) => c.id)).toEqual(["1", "2", "3", "4"]);
+    expect(y2026[0].children[3].isReserve).toBe(true);
+  });
+
+  it("keeps seasons apart", () => {
+    const tree = buildLeagueTree(rows as any);
+    expect(tree.filter((g) => g.seasonYear === 2025)).toHaveLength(1);
+    expect(filterTreeBySeason(tree, 2026).every((g) => g.seasonYear === 2026)).toBe(true);
+  });
+});

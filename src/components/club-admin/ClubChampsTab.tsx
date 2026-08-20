@@ -40,6 +40,9 @@ import {
   type DivisionSource,
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
+import { buildLeagueTree } from "@/lib/tournaments/league-tree";
+import { LeagueSourceTree } from "./tournament/LeagueSourceTree";
+
 
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
@@ -1225,6 +1228,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     ungrouped.sort((a, b) => a.label.localeCompare(b.label));
     return [...groupedArr, ...ungrouped];
   }, [availableLeagues, leagueTierMap]);
+
+  /**
+   * Hierarchical "Players from" tree: league level → teams / reserves.
+   * Children carry the canonical club league ids, so every downstream consumer
+   * (player loading, invites, eligibility, seeding, draws) is unchanged.
+   */
+  const leagueTree = useMemo(
+    () =>
+      buildLeagueTree(
+        (availableLeagues as any[]).map((l) => ({
+          id: l.id as string,
+          name: l.name as string,
+          association_id: l.association_id as string | null,
+          assocName: l.league_associations?.name || "League",
+        })),
+        leagueTierMap,
+      ),
+    [availableLeagues, leagueTierMap],
+  );
+
+
 
   const toggleSourceGroup = (leagueIds: string[]) => {
     const next = new Set(sourceLeagueIds);
@@ -5934,7 +5958,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           <ChevronDown className="ml-1 h-3 w-3" />
                                         </Button>
                                       </PopoverTrigger>
-                                      <PopoverContent align="start" className="w-72 p-2 space-y-1.5">
+                                      <PopoverContent align="start" className="w-80 p-2 space-y-1.5">
                                         <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
                                           <input
                                             type="checkbox"
@@ -5942,10 +5966,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                             checked={src.mode === "all" || src.leagueIds.length === 0}
                                             onChange={() => setSrc({ ...DEFAULT_DIVISION_SOURCE })}
                                           />
-                                          All leagues
+                                          All leagues — select every league group
                                         </label>
                                         <p className="text-[10px] text-muted-foreground leading-snug">
-                                          “All leagues” does not mix everyone into one draw. Use the button below to give
+                                          “All leagues” never merges everyone into one draw. Use the button below to give
                                           each league its own competition, with its own winner.
                                         </p>
                                         {(src.mode === "all" || src.leagueIds.length === 0) && (
@@ -5956,27 +5980,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                             className="w-full h-7 text-[11px]"
                                             onClick={() => expandAllLeagues(gn)}
                                           >
-                                            Create one competition per league
+                                            Create one competition per league (recommended)
                                           </Button>
                                         )}
 
                                         <Separator />
-                                        <div className="max-h-52 overflow-auto space-y-1">
-                                          {(availableLeagues as any[]).length === 0 && (
-                                            <p className="text-[11px] text-muted-foreground">No club leagues yet.</p>
-                                          )}
-                                          {(availableLeagues as any[]).map((l) => (
-                                            <label key={l.id} className="flex items-center gap-2 text-xs cursor-pointer">
-                                              <input
-                                                type="checkbox"
-                                                className="h-3.5 w-3.5 accent-violet-500"
-                                                checked={src.leagueIds.includes(l.id)}
-                                                onChange={() => toggle(l.id)}
-                                              />
-                                              <span className="truncate">{l.name}</span>
-                                            </label>
-                                          ))}
-                                        </div>
+                                        <LeagueSourceTree
+                                          groups={leagueTree}
+                                          selected={src.leagueIds}
+                                          onChange={(ids) =>
+                                            setSrc({
+                                              mode:
+                                                ids.length === 0
+                                                  ? "all"
+                                                  : src.mode === "all"
+                                                    ? "selected"
+                                                    : src.mode,
+                                              leagueIds: ids,
+                                            })
+                                          }
+                                        />
                                         {src.leagueIds.length > 1 && (
                                           <>
                                             <Separator />
@@ -5992,13 +6015,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                               <span>
                                                 Combined competition
                                                 <span className="block text-[10px] font-normal text-muted-foreground">
-                                                  Mix these leagues into one draw with one winner.
+                                                  Only tick this to deliberately mix the selected teams into one draw
+                                                  with one winner.
                                                 </span>
                                               </span>
                                             </label>
                                           </>
                                         )}
                                       </PopoverContent>
+
                                     </Popover>
                                     <Button
                                       type="button"

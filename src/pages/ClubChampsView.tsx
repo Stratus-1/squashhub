@@ -1383,7 +1383,33 @@ export default function ClubChampsView() {
         })()}
 
 
+        {/* Draw already published, but my own entry fee is still outstanding. */}
+        {groupNumbers.length > 0 && myMemberId && (() => {
+          const myReg: any = registrations.find(
+            (r: any) => r.club_member_id === myMemberId || r.partner_member_id === myMemberId,
+          );
+          if (!myReg || !["pending_payment", "pending_eft", "invited"].includes(String(myReg.status))) return null;
+          return (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="text-lg">Your entry</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div id="tournament-register-card">
+                  <TournamentRegisterCard
+                    champ={champ}
+                    clubId={champ.club_id}
+                    memberId={myMemberId}
+                    paymentGateway={clubInfo?.payment_gateway || null}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         {groupNumbers.length === 0 && (
+
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
               <CardTitle className="text-lg">Registration pending</CardTitle>

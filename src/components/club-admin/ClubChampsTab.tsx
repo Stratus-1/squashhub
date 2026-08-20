@@ -4575,6 +4575,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPaymentRequired(true);
     setInviteMethods(new Set(["app"]));
     setInviteSource("manual");
+    setInviteSourceTouched(false);
+    setInviteLeaguesTouched(false);
     setEntrySource("self");
     setApprovalGate("none");
     setPaymentTiming("on_entry");

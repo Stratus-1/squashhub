@@ -4022,12 +4022,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // an admin expanded the audience from a shortlist to "all members") get a
       // registration row and therefore receive the invite. We only insert
       // missing rows — existing rows (paid / cancelled / etc.) are left intact.
-      const shouldBackfillOpenAudience = editingChampId === champId && registrationRequired && effectiveRegistrationMode === "open";
-      const audienceMemberIds = shouldBackfillOpenAudience
-        ? members.filter((m) => memberMatchesTournamentGender(m.gender, gender)).map((m) => m.id)
-        : await promoteVisitorIds(Array.from(selectedPlayerIds));
+      const shouldBackfillOpenAudience = !only && editingChampId === champId && registrationRequired && effectiveRegistrationMode === "open";
+      const audienceMemberIds = only
+        ? []
+        : shouldBackfillOpenAudience
+          ? members.filter((m) => memberMatchesTournamentGender(m.gender, gender)).map((m) => m.id)
+          : await promoteVisitorIds(Array.from(selectedPlayerIds));
 
-      if (editingChampId === champId && audienceMemberIds.length > 0) {
+      if (!only && editingChampId === champId && audienceMemberIds.length > 0) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
         const newRegs = audienceMemberIds.map((memberId) => ({
           champ_id: champId,
@@ -4053,22 +4055,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Skip anyone already paid, waived, registered or cancelled — they don't
       // need another invite. Also skip rows without a member id.
       const SKIP_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
-      let rows = (regs || []).filter((r: any) =>
-        r.club_member_id && !SKIP_STATUSES.has(String(r.status || "").toLowerCase())
-      );
-      if (rows.length === 0) {
-        const all = (regs || []).filter((r: any) =>
-          r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled"
+      let rows: any[];
+      if (only) {
+        // Selective reminder: the organiser explicitly picked these recipients,
+        // so status filtering is deliberately skipped.
+        rows = (regs || []).filter((r: any) => r.club_member_id && only.has(r.id));
+        if (rows.length === 0) {
+          toast.info("None of the selected invitees could be found.");
+          return;
+        }
+      } else {
+        rows = (regs || []).filter((r: any) =>
+          r.club_member_id && !SKIP_STATUSES.has(String(r.status || "").toLowerCase())
         );
-        if (all.length === 0) {
-          toast.info("No invitees to notify.");
-          return;
+        if (rows.length === 0) {
+          const all = (regs || []).filter((r: any) =>
+            r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled"
+          );
+          if (all.length === 0) {
+            toast.info("No invitees to notify.");
+            return;
+          }
+          if (!confirm(`Everyone is already registered. Re-send invite to all ${all.length} invited member${all.length === 1 ? "" : "s"} anyway?`)) {
+            return;
+          }
+          rows = all;
         }
-        if (!confirm(`Everyone is already registered. Re-send invite to all ${all.length} invited member${all.length === 1 ? "" : "s"} anyway?`)) {
-          return;
-        }
-        rows = all;
       }
+
 
       // Build a tenant-aware absolute URL so the recipient lands on the correct
       // club host (e.g. https://nsc.squashhub.co.za/club-champs/...) — without

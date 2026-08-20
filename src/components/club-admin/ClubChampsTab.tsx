@@ -8173,7 +8173,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 Selected members will receive the tournament invite. They register/pay first, then choose their own partners.
               </p>
             )}
+            {editingChampId && (entrantCounts.registered + entrantCounts.accepted + entrantCounts.pending_invite) > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {entrantCounts.registered} registered · {entrantCounts.accepted} accepted (fee due) ·{" "}
+                {entrantCounts.pending_invite + entrantCounts.payment_pending} awaiting response ·{" "}
+                {entrantCounts.declined} declined. Only registered entrants are pre-selected here.
+              </p>
+            )}
+            {acceptedNeedingDivision.length > 0 && (
+              <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
+                <span className="font-semibold">Accepted — needs division assignment ({acceptedNeedingDivision.length}):</span>{" "}
+                {acceptedNeedingDivision.map((p) => p.name).join(", ")}. They accepted the invitation but play in none of
+                the source leagues — place them into a division manually.
+              </div>
+            )}
           </CardHeader>
+
           <CardContent>
             {allSelectablePlayers.length === 0 ? (
               <p className="text-muted-foreground py-4">No matching players found. Check member gender settings.</p>

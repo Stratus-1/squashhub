@@ -4686,6 +4686,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         ))}
       </div>
 
+      {/* Step-level blocker — only after the admin tries to continue, and only
+          for steps without a dedicated inline marker (Structure has its own). */}
+      {showStepIssues && step !== "structure" && (
+        <div
+          ref={stepIssuesRef}
+          className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+        >
+          Still needed on this step: {missingForStep().join(" · ")}
+        </div>
+      )}
+
+
+
       {/* ── STEP: CATEGORY ── */}
       {step === "category" && (
         <Card>

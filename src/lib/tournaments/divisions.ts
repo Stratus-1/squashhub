@@ -33,13 +33,112 @@ export const DEFAULT_DIVISION_SOURCE: DivisionSource = { mode: "all", leagueIds:
 
 type RawMap = Record<string, unknown> | null | undefined;
 
-/** Parse the persisted `league_sources` / `league_source_modes` jsonb pair. */
-export function parseDivisionSources(sources: RawMap, modes: RawMap): Record<string, DivisionSource> {
+export interface LeagueRef {
+  id: string;
+  name: string;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A stable league identifier (as opposed to a legacy display name). */
+export function isLeagueId(value: string): boolean {
+  return UUID_RE.test(String(value || "").trim());
+}
+
+export interface LeagueRefResolution {
+  /** Stable league ids, de-duplicated, in the original order. */
+  leagueIds: string[];
+  /** Names that matched no league at all. */
+  unknown: string[];
+  /** Names that matched more than one league — never guessed. */
+  ambiguous: string[];
+}
+
+/**
+ * Compatibility layer for divisions saved before league sources were stored by
+ * id. Anything that already looks like an id is kept untouched; a legacy
+ * display name is resolved ONLY when exactly one club league carries that name.
+ * Duplicate names are reported as ambiguous and deliberately left unmapped —
+ * we never silently attach a division to the wrong league.
+ */
+export function resolveLeagueRefs(raw: string[], leagues: LeagueRef[]): LeagueRefResolution {
+  const byId = new Set(leagues.map((l) => l.id));
+  const byName = new Map<string, string[]>();
+  leagues.forEach((l) => {
+    const key = String(l.name || "").trim().toLowerCase();
+    if (!key) return;
+    byName.set(key, [...(byName.get(key) || []), l.id]);
+  });
+
+  const leagueIds: string[] = [];
+  const unknown: string[] = [];
+  const ambiguous: string[] = [];
+  const seen = new Set<string>();
+  raw.forEach((ref) => {
+    const value = String(ref || "").trim();
+    if (!value) return;
+    if (isLeagueId(value) || byId.has(value)) {
+      if (!seen.has(value)) { seen.add(value); leagueIds.push(value); }
+      return;
+    }
+    const matches = byName.get(value.toLowerCase()) || [];
+    if (matches.length === 1) {
+      if (!seen.has(matches[0])) { seen.add(matches[0]); leagueIds.push(matches[0]); }
+    } else if (matches.length > 1) {
+      ambiguous.push(value);
+    } else {
+      unknown.push(value);
+    }
+  });
+  return { leagueIds, unknown, ambiguous };
+}
+
+export interface DivisionSourceResolution {
+  sources: Record<string, DivisionSource>;
+  /** Division key → refs that could not be mapped to a stable league id. */
+  unresolved: Record<string, string[]>;
+  changed: boolean;
+}
+
+/**
+ * Re-point every division's source onto stable league ids once the club's
+ * league list is known. A division whose refs cannot be resolved falls back to
+ * "all leagues" (unrestricted) so existing entrants are never dropped.
+ */
+export function resolveDivisionSources(
+  sources: Record<string, DivisionSource>,
+  leagues: LeagueRef[],
+): DivisionSourceResolution {
+  const out: Record<string, DivisionSource> = {};
+  const unresolved: Record<string, string[]> = {};
+  let changed = false;
+  Object.entries(sources || {}).forEach(([key, src]) => {
+    const res = resolveLeagueRefs(src.leagueIds || [], leagues);
+    const leftover = [...res.unknown, ...res.ambiguous];
+    if (leftover.length > 0) unresolved[key] = leftover;
+    const mode: DivisionSourceMode = res.leagueIds.length === 0 ? "all" : src.mode;
+    if (res.leagueIds.join("|") !== (src.leagueIds || []).join("|") || mode !== src.mode) changed = true;
+    out[key] = { mode, leagueIds: res.leagueIds };
+  });
+  return { sources: out, unresolved, changed };
+}
+
+/**
+ * Parse the persisted `league_sources` / `league_source_modes` jsonb pair.
+ * When the club's leagues are supplied, legacy name-based refs are resolved to
+ * stable ids (uniquely matching names only).
+ */
+export function parseDivisionSources(
+  sources: RawMap,
+  modes: RawMap,
+  leagues?: LeagueRef[],
+): Record<string, DivisionSource> {
   const out: Record<string, DivisionSource> = {};
   const keys = new Set<string>([...Object.keys(sources || {}), ...Object.keys(modes || {})]);
   keys.forEach((k) => {
     const rawIds = (sources || {})[k];
-    const leagueIds = Array.isArray(rawIds) ? rawIds.filter((v): v is string => typeof v === "string") : [];
+    let leagueIds = Array.isArray(rawIds) ? rawIds.filter((v): v is string => typeof v === "string") : [];
+    if (leagues && leagues.length > 0) leagueIds = resolveLeagueRefs(leagueIds, leagues).leagueIds;
     const rawMode = (modes || {})[k];
     let mode: DivisionSourceMode =
       rawMode === "all" || rawMode === "selected" || rawMode === "combined" ? rawMode : "selected";
@@ -48,6 +147,7 @@ export function parseDivisionSources(sources: RawMap, modes: RawMap): Record<str
   });
   return out;
 }
+
 
 export function divisionSource(map: Record<string, DivisionSource>, gn: number): DivisionSource {
   return map[String(gn)] ?? DEFAULT_DIVISION_SOURCE;

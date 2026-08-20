@@ -5167,11 +5167,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       .order("order_index", { ascending: true })
       .order("created_at", { ascending: true });
 
-    // Also load admin-invited registrations so invite-mode tournaments
-    // (where entries haven't been locked yet) still show their invitees.
-    const { data: registrations } = await fromExt("club_champs_registrations")
-      .select("club_member_id, partner_member_id, status")
+    // Also load registrations so invite-mode tournaments (where entries
+    // haven't been locked yet) still show their field. Only entrants who have
+    // actually accepted/registered become players — pending invitees must not
+    // be pre-selected into the draw.
+    const { data: allRegistrations } = await fromExt("club_champs_registrations")
+      .select("club_member_id, partner_member_id, status, confirmed_at, paid_at, fee_paid_cents")
       .eq("champ_id", champ.id);
+    const champPaymentRequired =
+      !!(champ as any).payment_required && Number((champ as any).entry_fee_cents || 0) > 0;
+    const registrations = filterParticipatingEntrants(allRegistrations as any[], {
+      paymentRequired: champPaymentRequired,
+    });
 
     const hasEntries = entries && entries.length > 0;
 
@@ -5197,7 +5204,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         entries.forEach((e: any) => assignments.set(e.club_member_id, e.group_number - 1));
         setGroupAssignments(assignments);
       }
-    } else if (registrations && registrations.length > 0) {
+    } else if (registrations.length > 0) {
       if (champ.match_type === "doubles") {
         const paired = registrations.filter((r: any) => r.partner_member_id);
         const pairs: DoublePair[] = paired.map((r: any) => ({
@@ -5206,14 +5213,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           player2Id: r.partner_member_id,
         }));
         setDoublesPairs(pairs);
-        // Invited members still waiting for a partner — keep them visible
-        // so the admin can re-invite or pair them.
+        // Accepted entrants still waiting for a partner — keep them visible
+        // so the admin can pair them.
         const unpaired = registrations.filter((r: any) => !r.partner_member_id).map((r: any) => r.club_member_id);
         setSelectedPlayerIds(new Set(unpaired));
       } else {
         setSelectedPlayerIds(new Set(registrations.map((r: any) => r.club_member_id)));
       }
     }
+
 
     const savedCourtIds = (champ as any).court_ids as number[] | null;
     // Drop any court ids that no longer exist (e.g. external courts that were

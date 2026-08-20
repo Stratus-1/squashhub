@@ -6152,8 +6152,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     if (nv === "knockout") {
                                       const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
                                       setSwissPools((m) => ({ ...m, [key]: m[key] || suggestSectionCount(entrants) }));
-                                      // Knockout progresses through rounds by default.
-                                      setLeaguePlayoffs((m) => ({ ...m, [key]: m[key] ?? true }));
+                                      // Newly configured knockout division: progression ON by default.
+                                      // (A division already on knockout keeps the organiser's choice.)
+                                      if (fmt !== "knockout") setLeaguePlayoffs((m) => ({ ...m, [key]: true }));
                                     }
                                     if (nv === "cross_league") setRoundFormat("cross_league");
                                     else {

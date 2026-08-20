@@ -522,6 +522,10 @@ export default function Bookings() {
   const hasGobookCreds = !!gobookCredInfo;
   const gobookCredsInvalid =
     !!gobookCredInfo && gobookCredInfo.last_verification_status === "invalid";
+  // GoBook's own login captcha — the member's credentials are fine, so this
+  // gets its own (non-destructive) banner instead of "your login is invalid".
+  const gobookCaptchaBlocked =
+    !!gobookCredInfo && gobookCredInfo.last_verification_status === "captcha_blocked";
 
 
 

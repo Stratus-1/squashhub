@@ -5215,13 +5215,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             {/* Match rules are now decided per league in the builder below —
                 format (Standard / Bells), category, singles/doubles, par 11 / 15,
                 best-of and win condition are all independently configurable. */}
-            <div className="rounded-lg border border-border p-3 bg-muted/40 shadow-sm">
-              <Label className="text-sm font-semibold">Match rules</Label>
+            <div
+              ref={stepIssuesRef}
+              className={`rounded-lg border p-3 shadow-sm ${
+                showStepIssues ? "border-destructive/50 bg-destructive/5" : "border-border bg-muted/40"
+              }`}
+            >
+              <Label className="text-sm font-semibold">
+                Match rules {showStepIssues && <span className="text-destructive">*</span>}
+              </Label>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Format, category, singles or doubles, par 11 / par 15, best-of and win condition are set on each
                 league card in the builder below.
               </p>
+              {showStepIssues && (
+                <p className="text-[11px] text-destructive mt-1">
+                  Still needed: {missingForStep().join(" · ")} — set these on the league card(s) below.
+                </p>
+              )}
             </div>
+
 
 
             {/* ─── Tournament Structure Builder ─────────────────────────── */}

@@ -8741,6 +8741,8 @@ export type Database = {
           league_points_per_game: Json | null
           league_scoring_modes: Json | null
           league_sections: Json
+          league_source_modes: Json
+          league_sources: Json
           league_win_conditions: Json
           match_duration_minutes: number
           match_type: string
@@ -8809,6 +8811,8 @@ export type Database = {
           league_points_per_game?: Json | null
           league_scoring_modes?: Json | null
           league_sections?: Json
+          league_source_modes?: Json
+          league_sources?: Json
           league_win_conditions?: Json
           match_duration_minutes?: number
           match_type?: string
@@ -8877,6 +8881,8 @@ export type Database = {
           league_points_per_game?: Json | null
           league_scoring_modes?: Json | null
           league_sections?: Json
+          league_source_modes?: Json
+          league_sources?: Json
           league_win_conditions?: Json
           match_duration_minutes?: number
           match_type?: string

@@ -76,8 +76,9 @@ export function LeagueSourceTree({ groups, selected, onChange }: Props) {
                 </label>
                 <Badge variant="secondary" className="h-4 px-1.5 text-[9px] font-normal shrink-0">
                   <Users className="h-2.5 w-2.5 mr-0.5" />
-                  {g.children.length}
+                  {g.children.length} team{g.children.length === 1 ? "" : "s"}
                 </Badge>
+
               </div>
               {open && (
                 <div className="pl-7 pr-2 pb-1 space-y-0.5">

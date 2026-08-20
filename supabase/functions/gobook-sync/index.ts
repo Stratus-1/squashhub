@@ -126,10 +126,16 @@ async function gobookLogin(email: string, password: string): Promise<Jar> {
   // GoBookSession (or .ASPXAUTH) cookie. 200 means the form was re-rendered
   // (credentials rejected). An empty/cleared session cookie also means failure.
   if (postRes.status === 200 || !sessionVal) {
+    // GoBook's login form now carries a Google reCAPTCHA. When the re-rendered
+    // page complains about it, the stored credentials are fine — an automated
+    // login simply cannot pass the challenge.
+    const body = postRes.status === 200 ? await postRes.text().catch(() => "") : "";
+    if (/recaptcha/i.test(body)) throw new Error("GOBOOK_CAPTCHA_REQUIRED");
     throw new Error("login_rejected");
   }
   return jar;
 }
+
 
 function dateKey(yyyyMmDd: string): string {
   return yyyyMmDd.replaceAll("-", "").replaceAll("/", "");

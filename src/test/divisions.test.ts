@@ -13,6 +13,9 @@ import {
   describeDivisionSource,
   divisionSource,
   effectivePools,
+  explainIneligibleAssignments,
+  resolveDivisionSources,
+  resolveLeagueRefs,
   mergeLegacySectionsIntoPools,
   parseDivisionSources,
   resolveDivisionCandidates,
@@ -309,5 +312,90 @@ describe("single pool selector", () => {
     // reload: pool map wins, legacy map matches it
     expect(saved["1"]).toBe(4);
     expect(effectivePools({ gn: 1, pools: mergeLegacySectionsIntoPools({}, saved, 1), legacySections: saved })).toBe(4);
+  });
+});
+
+describe("canonical league id mapping", () => {
+  const clubLeagues = [
+    { id: "11111111-1111-1111-1111-111111111111", name: "League 1" },
+    { id: "22222222-2222-2222-2222-222222222222", name: "League 2" },
+    { id: "33333333-3333-3333-3333-333333333333", name: "Reserves" },
+    { id: "44444444-4444-4444-4444-444444444444", name: "Reserves" },
+  ];
+  const L1 = clubLeagues[0].id;
+  const L2 = clubLeagues[1].id;
+
+  it("keeps ids as-is and resolves a uniquely named legacy ref", () => {
+    const res = resolveLeagueRefs([L2, "League 1"], clubLeagues);
+    expect(res.leagueIds).toEqual([L2, L1]);
+    expect(res.unknown).toEqual([]);
+    expect(res.ambiguous).toEqual([]);
+  });
+
+  it("never guesses between duplicate display names", () => {
+    const res = resolveLeagueRefs(["Reserves"], clubLeagues);
+    expect(res.leagueIds).toEqual([]);
+    expect(res.ambiguous).toEqual(["Reserves"]);
+  });
+
+  it("reports unknown names instead of dropping them silently", () => {
+    expect(resolveLeagueRefs(["Old League 9"], clubLeagues).unknown).toEqual(["Old League 9"]);
+  });
+
+  it("parses legacy name-based sources into stable ids", () => {
+    const parsed = parseDivisionSources({ "1": ["League 1"] }, { "1": "selected" }, clubLeagues);
+    expect(parsed["1"]).toEqual({ mode: "selected", leagueIds: [L1] });
+  });
+
+  it("falls back to all leagues (never loses entrants) when nothing resolves", () => {
+    const res = resolveDivisionSources({ "1": { mode: "selected", leagueIds: ["Reserves"] } }, clubLeagues);
+    expect(res.sources["1"]).toEqual({ mode: "all", leagueIds: [] });
+    expect(res.unresolved["1"]).toEqual(["Reserves"]);
+    expect(res.changed).toBe(true);
+  });
+
+  it("is a no-op once sources already use ids", () => {
+    const sources = { "1": { mode: "selected" as const, leagueIds: [L1] } };
+    expect(resolveDivisionSources(sources, clubLeagues).changed).toBe(false);
+  });
+
+  const ctx = {
+    sources: {
+      "1": { mode: "selected" as const, leagueIds: [L1] },
+      "2": { mode: "combined" as const, leagueIds: [L1, L2] },
+    },
+    allLeagueIds: clubLeagues.map((l) => l.id),
+    registrationsByLeague: new Map([
+      [L1, ["m1", "m2"]],
+      [L2, ["m3"]],
+    ]),
+  };
+
+  it("accepts a member of the exact source league", () => {
+    expect(isEligibleForDivision("m1", 1, ctx)).toBe(true);
+    expect(findIneligibleAssignments(new Map([["m1", 1], ["m2", 1]]), ctx)).toEqual([]);
+  });
+
+  it("rejects a member of a genuinely different league", () => {
+    expect(isEligibleForDivision("m3", 1, ctx)).toBe(false);
+  });
+
+  it("works for a deliberate combined multi-league division", () => {
+    expect(findIneligibleAssignments(new Map([["m1", 2], ["m3", 2]]), ctx)).toEqual([]);
+  });
+
+  it("explains the mismatch with real membership, not the division label", () => {
+    const [issue] = explainIneligibleAssignments(new Map([["m3", 1]]), ctx);
+    expect(issue).toEqual({ memberId: "m3", gn: 1, memberLeagueIds: [L2], sourceLeagueIds: [L1] });
+  });
+
+  it("does not warn about multiple leagues for a single-league division", () => {
+    const issues = validateDivisions({
+      divisionCount: 1,
+      sources: { "1": { mode: "selected", leagueIds: [L1] } },
+      pools: { "1": 1 },
+      formatFor: () => "knockout",
+    });
+    expect(issues).toHaveLength(0);
   });
 });

@@ -4343,7 +4343,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [selectedInviteeRegIds, setSelectedInviteeRegIds] = useState<Set<string>>(new Set());
 
   const { data: inviteeRows = [], isLoading: inviteesLoading } = useQuery({
-    queryKey: ["champ-invitees", editingChampId, inviteePickerOpen],
+    queryKey: ["champ-invitees", editingChampId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
         .select("id, club_member_id, status, invited_by_admin")
@@ -4351,7 +4351,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!editingChampId && inviteePickerOpen,
+    enabled: !!editingChampId,
   });
 
   const memberNameById = useMemo(() => {

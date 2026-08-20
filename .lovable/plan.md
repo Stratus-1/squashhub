@@ -1,71 +1,80 @@
-# Quick Setup & Manage Features — Capability System for Club Admin
+# League / team data model — findings and safe path forward
 
-## What the audit found (verified in code/DB)
+## Part A — How it works today (verified)
 
-**Admin surface** — `src/pages/ClubAdmin.tsx` hardcodes two arrays: `SETUP_TABS` (Club, Settings, Courts, Fees, Banking, Access, Ladder, Ranking Pts, Bar, Permissions, Subscription, WhatsApp, Internet) and `OPERATIONS_TABS` (Members, Users, Visitors, Finance, Tournaments, Leagues Setup/Creation, League Awards, Comms). Tiles are filtered **only** by permission slug (`useMyPermissions`), never by whether the club uses the feature. The "X/Y complete" counter is computed inline from `useSetupStatus` over 8 keys, mixing core items (Club, Courts) with optional ones (Access, Banking) — which is why it reads as ambiguous.
+### 1. What is persisted when an admin creates a league
+The `leagues` table has **no level column**. Columns are: `id`, `club_id`, `association_id`, `name`, `code`, `captain_member_id`, `nsa_team_id`, `nsa_team_code`, `reserves_per_team`, `logo_url`, `allow_cross_gender_guests`, `affects_ranking_points`, timestamps.
 
-**Feature flags already exist, but scattered and inconsistent:**
-- `clubs` columns: `honesty_bar_enabled`, `whatsapp_enabled`, `ranking_points_enabled`, `lights_integration_enabled`, `shelly_integration_enabled`, `mixed_ladder_enabled`, `uses_gobook`, `external_booking_provider/url/label`, `door_geofence_enabled`, `door_auto_unlock_enabled`, `dynamic_court_reflow_enabled`, `face_enrolment_required`, `fill_up_leagues_enabled`, `fill_top_down_enabled`, `participation_active`, `show_delegates_on_landing`.
-- `club_secrets` holds Wi-Fi capability state (`wifi_enabled`, `wifi_ssid`, `wifi_charge_enabled`, `wifi_monthly_fee`, `wifi_visitors_allowed`) and all access-control config (`access_control_type`, `access_provider`, Shelly/Fluss keys).
-- No flags at all for Bookings, Leagues, Tournaments, Finance, Visitors, Ladder. Sidebar leagues visibility (`use-sidebar-flags.ts`) is *derived from data* (`league_associations` rows or active `member_association_affiliations`), not from a decision.
-- `app_settings` is a global platform key/value table — not per-tenant; `organisation_settings` is federation-level. Neither is the right home for club capabilities.
+There is **no canonical numeric/enum level (1/2/3)** and no "First League" enum. A row in `leagues` is in practice a **TEAM** ("Boomslangs"), not a league level.
 
-**Leakage:** enabling/disabling today only affects a couple of places. `honesty_bar_enabled` gates the sidebar item + one dashboard tile, but `/honesty-bar`, `/bookings`, `/ladder`, `/league-games`, `/tournaments` in `src/App.tsx` are ungated routes, and `BottomNav.tsx` has its own logic. So hiding a tile leaves the feature reachable by URL.
+### 2. Stable id and where the level lives
+The stable id is `leagues.id` (uuid) — e.g. Nelspruit `Boomslangs = 2705e33c-…`, `Apex Eagles = 53f19fb3-…`, `1st L Reserves = 051de72b-…`. Every team also carries a stable club-scoped `code` (`NIL002` … `NIL029`).
 
-## Proposed model
+The "1st / 2nd / 3rd League" classification is **not stored on the team row at all**. It is *derived at read time* from fixtures:
+- `league_rounds.name` holds the level text, e.g. `"1st League round 1"`, `"2nd League round 2"` (8 rounds exist for Nelspruit, all 2026, all under `association_id = 64eac759-…`, the tenant association).
+- `platform_league_fixtures` rows for those rounds carry `home_team_code` / `away_team_code` (`NIL019`, `NIL022`, …) and `association_id = 3b0ca049-…`, the **platform** association (`league_associations.platform_association_id`).
+- Code strips the trailing "round N" from the round name and votes a tier per team code.
 
-### Core (always visible, never disableable)
-Club identity (`ClubInfoTab`), Settings, Members, Users, Permissions, Subscription, Communications basics. These get the explicit **"Core setup: X/Y complete"** counter.
+So the level is a **string parsed from round names**, joined to teams via `code`, not a stored attribute.
 
-### Optional capabilities (single canonical list)
-`bookings`, `access_control`, `wifi`, `finance`, `bar`, `membership_fees`, `payments` (banking/gateway), `tournaments`, `leagues`, `ladder`, `ranking_points`, `visitors`, `whatsapp`, `lights`, `events`.
+### 3. How teams link to a parent league
+They don't — there is no parent-league table or FK. A team's only structural parents are `club_id` and `association_id`. Team ↔ level is the fixture-derived inference above.
 
-### Dependency matrix (derived from real code paths)
-| Enable | Auto-enables / requires | Optional link |
-|---|---|---|
-| bookings | courts (CourtsTab) + booking settings on `clubs` (slot minutes, peak windows, caps) | access_control (door on booking), lights (`light_sessions`), external provider (`uses_gobook`) |
-| paid bookings / light fees | finance + membership_fees + payments | — |
-| bar | finance (journals via `bar_tab_entry_journal`, `bar_visitor_sale_journal`), payments for scan-to-pay | visitors (visitor sales) |
-| membership_fees | finance; payments for online settlement | whatsapp/comms for reminders |
-| wifi | payments + membership_fees only when `wifi_charge_enabled` (`bill_wifi_monthly`) | router monitoring (`club_router_configs`) |
-| leagues | members + courts (fixtures/venues); ladder only if seeding from ladder | ranking_points, league awards, comms |
-| tournaments | members, courts; finance + payments when entry fees | visitors (external entrants), ranking_points |
-| ladder | members | ranking_points, challenges |
-| access_control | — (self-contained via `club_secrets`) | bookings |
-| whatsapp | comms; finance for metered billing (`club_whatsapp_invoices`) | — |
+### 4. Reserves
+Reserves are ordinary `leagues` rows named "1st L Reserves", "2nd Reserves", "3rd L Reserves", "4th L Reserves" (codes NIL007/016/028/029). They play no fixtures, so they never get a fixture-derived tier; the level is read out of their own name. Player membership is `member_league_registrations` with `is_reserve = true` (Nelspruit: 18/18/18/8 reserve registrations respectively).
 
-Uncertain / to confirm during build: whether Leagues should stay data-derived (existing affiliations) as an *implicit* enable; whether `ranking_points_enabled` should be a child toggle of ladder or standalone; whether Visitors is truly optional (bar visitor sales and tournaments both write `club_visitors`).
+### 5. Can the hierarchy be derived for Nelspruit today?
+**Yes — reliably, but only by inference, not by stored data.** All four levels have 2026 rounds with fixtures covering the team codes, and the four reserves squads name their own level. `src/components/club-admin/LeaguesTab.tsx` already renders exactly this tree correctly (fixture tier → name ordinal → reserves-anchor → "Other").
 
-### Tile treatment
-- **Always:** Club, Settings, Members, Users, Permissions, Subscription, Comms.
-- **Hidden unless enabled:** Courts, Bar, Access, Internet/Wi-Fi, WhatsApp, Ladder, Ranking Pts, Leagues, League Awards, Tournaments, Visitors, Finance, Fees, Banking.
-- **Merge/rename:** Fees + Banking + Finance → one **Money** group (Fees, Payments, Books); Ladder + Ranking Pts → **Ladder & Ranking**; Leagues Setup/Creation + League Awards → **Leagues**; Internet → **Member Wi-Fi**; Access → **Door Access**; Bar → **Bar / POS**.
+### 6. Why the tournament selector still shows a flat list
+**A query bug, not missing data.** In `src/components/club-admin/ClubChampsTab.tsx` (~line 1168) the tier query fetches rounds with:
 
-## Implementation plan
+```
+.in("association_id", platformIds)          // 3b0ca049-… (platform)
+```
 
-**1. Capability store (reuse, don't duplicate).** New table `public.club_capabilities` (`club_id`, `capability` text, `enabled` bool, `enabled_at`, `enabled_by`, `disabled_at`) with GRANTs + RLS (club admins read/write own club; `authenticated` read for their club so member UI can gate). Existing boolean columns stay the source for their own sub-settings; the capability row is the *master switch* and a DB trigger keeps legacy columns (`honesty_bar_enabled`, `whatsapp_enabled`, `ranking_points_enabled`, `club_secrets.wifi_enabled`) in sync so nothing existing breaks.
+but Nelspruit's `league_rounds` rows are stored under the **tenant** association `64eac759-…`. Verified: `league_rounds` grouped by `association_id` contains only `64eac759-…` (8 rows) and one unrelated id — zero rounds under any platform id. So the query returns 0 rounds → `leagueTierMap` is empty → `buildLeagueTree` finds no tier for any row → every team becomes its own orphan group → the UI looks flat ("First League Reserves", "Apex Eagles", "Baobabs", …).
 
-**2. Backfill migration (backwards compatibility).** For every existing club, enable a capability when there is evidence of use: courts rows → bookings; `honesty_bar_enabled` or `bar_items` → bar; `club_secrets.access_control_type <> 'none'` → access_control; `wifi_enabled` → wifi; `member_fee_categories` → membership_fees; bank fields or gateway → payments; any `club_journal_entries` → finance; `league_associations`/affiliations → leagues; `tournaments` rows → tournaments; any `ladder_position` → ladder; `whatsapp_enabled` → whatsapp; `club_visitors` → visitors. No tenant loses a feature they already use.
+`LeaguesTab.tsx` gets it right because it queries rounds by the **tenant** `assocId` and only uses the platform id for the fixtures query. A secondary contributor: `ClubChampsTab` also restricts rounds to the current calendar year, which will silently flatten the tree every January and for clubs whose season rounds sit in another year.
 
-**3. Shared hook + registry.** `src/lib/capabilities.ts` (capability metadata, plain-language labels, dependency graph, defaults) and `src/hooks/use-club-capabilities.ts` (`useCapabilities()`, `useHasCapability(slug)`, `useSetCapability()`), following the `use-club-permissions.ts` pattern.
+The hierarchy component (`LeagueSourceTree`, `buildLeagueTree`) is implemented and wired — it is simply being fed an empty tier map.
 
-**4. Quick Setup wizard.** `src/components/club-admin/setup/QuickSetupWizard.tsx` — plain questions ("Do members book courts through the app?", "Do you charge membership fees?", "Do you run leagues?", "Do you have a bar?", "Do you control door access?", "Do you offer member Wi-Fi?"). Answers write capabilities and auto-enable dependencies with an explicit "this also turns on Courts" note. Shown on first entry to `/club-admin` when no capability rows exist; skippable.
+### 7–9. Assessment
+- The tree can be made correct **immediately** with no schema change, by fixing the round query and reusing the same fallback ladder LeaguesTab uses.
+- The tournament module already consumes **canonical league uuids** end-to-end (sources/selection/eligibility/seeding/draws use `leagues.id`); only the *grouping label* is string-derived. No downstream consumer depends on "First League" strings.
+- A stored canonical level is still worth adding, because name/fixture inference breaks for new clubs with no fixtures and for renamed rounds.
 
-**5. Manage Features.** Permanent tile/route `/club-admin?tab=features` → `FeaturesTab.tsx` listing every capability with toggle, dependency warnings, and per-module status ("Not set up", "Needs info", "Ready"). Reachable any time — onboarding never has to be rerun.
+---
 
-**6. Gating everywhere (not just tiles).**
-- `ClubAdmin.tsx`: tiles filtered by `permission && capabilityEnabled`; grouped Core / Money / Competition / Facilities.
-- `use-sidebar-flags.ts` extended to read capabilities; `AppSidebar.tsx`, `BottomNav.tsx`, `Dashboard.tsx`, `DashboardDesktop.tsx` tiles gated off the same hook.
-- Routes: a `<CapabilityRoute capability="bar">` wrapper in `src/App.tsx` for `/honesty-bar`, `/bookings`, `/ladder`, `/league-games`, `/tournaments`, `/challenges`, `/availability` — redirect to `/` instead of rendering.
-- Permission slugs whose capability is off are dropped from `useMyPermissions()` effective set, so downstream checks fail closed.
+## Part B — What should change (not implemented yet)
 
-**7. Server-side enforcement (security).** UI gating is not enough. Add a `public.club_has_capability(_club_id, _capability)` SECURITY DEFINER function and use it in RLS `WITH CHECK` for write paths of optional modules (`bookings`, `bar_tab_entries`, `bar_visitor_sales`, `challenges`, `club_wifi_subscriptions`) so a disabled feature can't be driven via the API. Reads of historical data stay allowed. Also short-circuit background jobs: `bill_wifi_monthly`, WhatsApp send/billing, `router-poll`, fee-reminder senders check the capability first.
+### Stage 1 — Fix the selector (no schema change, no data change)
+In `ClubChampsTab.tsx`:
+- Query `league_rounds` by the **tenant** `association_id` (the ids on `availableLeagues`), keep the platform id only for the `platform_league_fixtures` join key.
+- Drop the current-year filter (or widen it to "latest season that has rounds").
+- Reuse LeaguesTab's fallback chain so reserves and un-fixtured teams still land under their level: fixture tier → ordinal in own name → nearest reserves anchor by code order → ungrouped.
+- Best: extract that resolution into one shared helper (e.g. `src/lib/leagues/level-resolution.ts`) used by both LeaguesTab and the tournament tree, so the two surfaces can never disagree again.
 
-**8. Safe disable semantics.** Disabling only writes `enabled=false` + `disabled_at`. No deletes, no cascade. Historical rows (journals, bookings, bar sales, ladder history) remain and stay readable in Finance/reports. UI distinguishes three states: **Off** (not used), **On — needs setup** (enabled, required fields missing), **On — ready**. Recurring charges tied to a disabled capability stop at the next cycle.
+This alone gives Nelspruit: 1st League → its teams + 1st L Reserves, 2nd League → …, etc.
 
-**9. Progress rework.** Replace the single `X/Y complete` with: `Core setup: X/Y complete` (Club, Settings, Members, Comms sender, Permissions) plus a per-capability status chip on each optional tile. `use-setup-status.ts` is refactored to return `{ core: {...}, modules: {...} }` instead of one flat map.
+### Stage 2 — Add a canonical level, additive and non-destructive
+- Migration: `ALTER TABLE public.leagues ADD COLUMN level int NULL, ADD COLUMN level_source text NULL;` (`'fixtures' | 'name' | 'manual'`). Nullable, no default, no constraint changes.
+- Nothing else is touched: ids, codes, `association_id`, fixtures, matches, results, ladders and registrations are untouched, so no historical data moves.
+- Reads keep the existing inference as fallback whenever `level IS NULL`, so behaviour is identical for any club that isn't backfilled.
+- Optional later: a `reserves` boolean instead of the `/reserves?/i` name test — also additive.
 
-**10. Recommended defaults for a small squash club.** On: bookings (+courts), ladder, members/users, comms. Off: access_control, wifi, bar, whatsapp, tournaments, leagues, ranking_points, finance, payments, visitors — each one click away in Manage Features.
+### Stage 3 — Backfill rules (conservative)
+Backfill `leagues.level` only where the evidence is unambiguous:
+1. **Fixtures agree** — every fixture-derived tier vote for the team's code resolves to a single level → set `level`, `level_source='fixtures'`.
+2. **Own name carries a single ordinal** and there is no conflicting fixture evidence → set `level`, `level_source='name'` (covers the four reserves squads).
+3. **Anything else** — no fixtures, conflicting votes, no ordinal, or two levels claiming the same team → **leave NULL**. Never guess, never overwrite a non-null `level`.
 
-## Scope note
-No code changes yet. On approval I'd sequence it as: migration + backfill → capability hook/registry → Manage Features tab → Quick Setup wizard → gating sweep (admin, sidebar, bottom nav, dashboard, routes) → RLS/background-job enforcement → progress rework.
+Surface the leftovers in the admin Leagues tab as a small "needs a league level" prompt with a manual picker writing `level_source='manual'`. Run the backfill as a reversible one-shot (level is additive, so a rollback is just `UPDATE … SET level = NULL WHERE level_source <> 'manual'`).
+
+### Stage 4 — Tournament module on stored ids
+No change of contract needed: sources stay arrays of `leagues.id`. The tree parent becomes `COALESCE(leagues.level, derived level)` and the parent node itself remains non-selectable (ticking it selects its children), so "First League" never becomes a persisted string anywhere. Teams stay child filters; combined draws remain an explicit organiser choice.
+
+## Technical notes
+- Files involved: `src/components/club-admin/ClubChampsTab.tsx` (tier query ~1152–1250), `src/components/club-admin/LeaguesTab.tsx` (654–781, reference implementation), `src/lib/tournaments/league-tree.ts`, `src/components/club-admin/tournament/LeagueSourceTree.tsx`.
+- Tables read: `leagues`, `league_rounds`, `platform_league_fixtures`, `league_associations`, `member_league_registrations`.
+- Key gotcha to encode in tests: `league_rounds.association_id` is the **tenant** association, `platform_league_fixtures.association_id` is the **platform** association. Mixing them is the current bug.

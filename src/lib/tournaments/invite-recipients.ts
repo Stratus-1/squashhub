@@ -19,9 +19,14 @@ export type InviteSendMode = "all" | "selected";
 /** Statuses that don't need another invitation on a send-all. */
 export const SKIP_INVITE_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
 
-export type ResolveResult =
-  | { ok: true; rows: InviteRegistrationRow[] }
-  | { ok: false; error: string };
+export type ResolveResult = {
+  ok: boolean;
+  rows: InviteRegistrationRow[];
+  error: string;
+};
+
+const fail = (error: string): ResolveResult => ({ ok: false, rows: [], error });
+const pass = (rows: InviteRegistrationRow[]): ResolveResult => ({ ok: true, rows, error: "" });
 
 export function resolveInviteRecipients(input: {
   mode: InviteSendMode;
@@ -35,7 +40,7 @@ export function resolveInviteRecipients(input: {
   if (input.mode === "selected") {
     const selected = Array.from(new Set((input.selectedIds || []).filter((id) => typeof id === "string" && id.trim())));
     if (selected.length === 0) {
-      return { ok: false, error: "No members were selected — nothing was sent." };
+      return fail("No members were selected — nothing was sent.");
     }
     const byId = new Map(registrations.map((r) => [r.id, r]));
     const rows = selected.map((id) => byId.get(id)).filter(Boolean) as InviteRegistrationRow[];
@@ -48,18 +53,18 @@ export function resolveInviteRecipients(input: {
           "Some selected members are no longer valid for this tournament. Nothing was sent — reopen the list and try again.",
       };
     }
-    return { ok: true, rows };
+    return pass(rows);
   }
 
   const pending = registrations.filter((r) => !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()));
-  if (pending.length > 0) return { ok: true, rows: pending };
+  if (pending.length > 0) return pass(pending);
 
   const everyone = registrations.filter((r) => String(r.status || "").toLowerCase() !== "cancelled");
-  if (everyone.length === 0) return { ok: false, error: "No invitees to notify." };
+  if (everyone.length === 0) return fail("No invitees to notify.");
   if (!input.allowResendAll) {
-    return { ok: false, error: "Everyone is already registered." };
+    return fail("Everyone is already registered.");
   }
-  return { ok: true, rows: everyone };
+  return pass(everyone);
 }
 
 /** Human confirmation summary shown before a send. */

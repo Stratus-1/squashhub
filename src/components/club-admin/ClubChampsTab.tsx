@@ -4119,21 +4119,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // WhatsApp channel — members reply YES/NO and the whatsapp-inbound
       // webhook writes the entry back into club_champs_registrations.
       if (methods.includes("whatsapp")) {
-        try {
-          await sendWhatsApp({
-            clubId,
-            recipients: rows.map((r: any) => ({ member_id: r.club_member_id })),
-            kind: "champ_invite",
-            category: "utility",
-            body: `${msg}\n\nReply YES to enter or NO to decline.\n${inviteUrl}`,
-            interaction: {
-              kind: "champ_entry",
-              targetId: champId,
-              prompt: `Entry for ${champName || "tournament"}`,
-            },
-          });
-        } catch (waErr: any) {
-          toast.warning(`WhatsApp invites failed: ${waErr?.message || "unknown error"}`);
+        // Each recipient gets their own canonical invitation link, so the
+        // WhatsApp message carries exactly the same URL as email / in-app.
+        for (const r of rows as any[]) {
+          try {
+            await sendWhatsApp({
+              clubId,
+              recipients: [{ member_id: r.club_member_id }],
+              kind: "champ_invite",
+              category: "utility",
+              body: `${msg}\n\nReply YES to enter or NO to decline.\n${urlForRegistration(r.id)}`,
+              interaction: {
+                kind: "champ_entry",
+                targetId: champId,
+                prompt: `Entry for ${champName || "tournament"}`,
+              },
+            });
+          } catch (waErr: any) {
+            toast.warning(`WhatsApp invites failed: ${waErr?.message || "unknown error"}`);
+            break;
+          }
         }
       }
 

@@ -74,8 +74,13 @@ export function inviteState(payload: InvitePayload | null | undefined): InviteSt
   // Accepted but not yet paid — always route to payment, even after close.
   if (payload.confirmed_at && PENDING_PAYMENT_STATUSES.has(status)) return "payment_pending";
   if (payload.registration_closed) return "closed";
-  if (!payload.is_invitee) return "needs_login";
+  if (!payload.is_invitee) {
+    // The invited membership has never been claimed by a login — the visitor
+    // has to create an account (or claim their membership) first.
+    return payload.member_has_account === false ? "needs_signup" : "needs_login";
+  }
   return "actionable";
+
 }
 
 export function inviteFeeCents(payload: InvitePayload | null | undefined): number {

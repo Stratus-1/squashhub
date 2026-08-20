@@ -50,7 +50,7 @@ export interface CapacityInput {
   /** Admin asked for leagues to run side by side (courts split between them). */
   parallelLeagues: boolean;
   /** Cross-league play forces one shared timeline — leagues cannot be split. */
-  crossLeague: boolean;
+  crossLeague?: boolean;
   /** Pause held before the play-off stage; it eats wall-clock time on every court. */
   playoffBreakMinutes?: number;
 }

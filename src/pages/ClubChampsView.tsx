@@ -101,6 +101,25 @@ export default function ClubChampsView() {
 
   const isDoubles = champ?.match_type === "doubles";
 
+  // Arriving from an invitation accept (`?pay=1`): jump straight to the entry-fee card.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("pay") !== "1") return;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const el = document.getElementById("tournament-register-card");
+      tries += 1;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.clearInterval(timer);
+      } else if (tries > 20) {
+        window.clearInterval(timer);
+      }
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [champId]);
+
+
   // Only badge a match LIVE while a marker is actually present (fresh heartbeat).
   const { freshMatchIds } = useChampMarkerLocks(
     (matches as any[]).filter((m: any) => m.status === "in_progress").map((m: any) => m.id),
@@ -120,7 +139,7 @@ export default function ClubChampsView() {
     queryKey: ["club-champ-registrations", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("id, status, partner_confirmed, club_member_id, partner_member_id, member:club_member_id(id, name, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, profiles:user_id(name))")
+        .select("id, status, partner_confirmed, club_member_id, partner_member_id, confirmed_at, member:club_member_id(id, name, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, profiles:user_id(name))")
         .eq("champ_id", champId!)
         .neq("status", "cancelled");
       if (error) throw error;
@@ -1364,7 +1383,33 @@ export default function ClubChampsView() {
         })()}
 
 
+        {/* Draw already published, but my own entry fee is still outstanding. */}
+        {groupNumbers.length > 0 && myMemberId && (() => {
+          const myReg: any = registrations.find(
+            (r: any) => r.club_member_id === myMemberId || r.partner_member_id === myMemberId,
+          );
+          if (!myReg || !["pending_payment", "pending_eft", "invited"].includes(String(myReg.status))) return null;
+          return (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="text-lg">Your entry</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div id="tournament-register-card">
+                  <TournamentRegisterCard
+                    champ={champ}
+                    clubId={champ.club_id}
+                    memberId={myMemberId}
+                    paymentGateway={clubInfo?.payment_gateway || null}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         {groupNumbers.length === 0 && (
+
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
               <CardTitle className="text-lg">Registration pending</CardTitle>
@@ -1436,16 +1481,21 @@ export default function ClubChampsView() {
                 const registered = visible
                   .filter((r: any) => r.status === "paid" || r.status === "waived")
                   .sort(byLeaguePos);
-                const invited = visible
-                  .filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft")
-                  .sort(byLeaguePos);
+                const pendingPayment = visible
+                  .filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft");
+                // Accepted the invitation but the entry fee is still outstanding.
+                const accepted = pendingPayment.filter((r: any) => !!r.confirmed_at).sort(byLeaguePos);
+                const invited = pendingPayment.filter((r: any) => !r.confirmed_at).sort(byLeaguePos);
 
 
-                const renderRow = (r: any, kind: "registered" | "invited") => {
+
+
+                const renderRow = (r: any, kind: "registered" | "accepted" | "invited") => {
                   const name = getPlayerName(r.member);
                   const partnerName = r.partner ? getPlayerName(r.partner) : null;
                   const isMe = r.club_member_id === myMemberId || r.partner_member_id === myMemberId;
-                  const myInvite = isMe && kind === "invited";
+                  const myInvite = isMe && kind !== "registered";
+
                   const e = entryFor(r.club_member_id);
                   const rank = playerRankByMember.get(r.club_member_id);
                   const posLabel = e ? `L${e.group_number}·#${rank ?? ((e.order_index ?? 0) + 1)}` : null;
@@ -1468,12 +1518,14 @@ export default function ClubChampsView() {
                         {name}
                         {partnerName && <span className="text-muted-foreground"> & {partnerName}</span>}
                         {isMe && <Badge variant="secondary" className="text-[9px] ml-1.5">You</Badge>}
-                        {myInvite && <span className="text-[10px] text-primary ml-1.5">· click to register</span>}
+                        {myInvite && <span className="text-[10px] text-primary ml-1.5">· click to {kind === "accepted" ? "pay" : "register"}</span>}
                       </span>
-                      <Badge variant={kind === "registered" ? "default" : "outline"} className="text-[10px]">
+                      <Badge variant={kind === "registered" ? "default" : kind === "accepted" ? "secondary" : "outline"} className="text-[10px]">
                         {kind === "registered"
                           ? (r.status === "waived" ? "Entered" : "Registered")
-                          : r.status === "pending_eft" ? "EFT pending" : "Invited"}
+                          : kind === "accepted"
+                            ? (r.status === "pending_eft" ? "Accepted · EFT pending" : "Accepted · fee due")
+                            : r.status === "pending_eft" ? "EFT pending" : "Invited"}
                       </Badge>
                     </li>
                   );
@@ -1492,14 +1544,24 @@ export default function ClubChampsView() {
                       )}
                     </div>
 
+                    {accepted.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                          Accepted — Entry Fee Outstanding ({accepted.length})
+                        </p>
+                        <ul className="space-y-1.5">{accepted.map((r) => renderRow(r, "accepted"))}</ul>
+                      </div>
+                    )}
+
                     {invited.length > 0 && (
                       <div>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                          Invited — Awaiting Payment ({invited.length})
+                          Invited — Awaiting Reply ({invited.length})
                         </p>
                         <ul className="space-y-1.5">{invited.map((r) => renderRow(r, "invited"))}</ul>
                       </div>
                     )}
+
                   </div>
                 );
               })()}

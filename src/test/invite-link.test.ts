@@ -4,6 +4,7 @@ import {
   buildInviteUrl,
   inviteFeeCents,
   inviteLoginPath,
+  inviteSignupPath,
   inviteState,
   inviteePath,
   type InvitePayload,
@@ -70,5 +71,23 @@ describe("fees and routing", () => {
     expect(afterAcceptPath("c1", "pending_eft")).toBe("/club-champs/c1?pay=1");
     expect(afterAcceptPath("c1", "pending_payment")).toBe("/club-champs/c1?pay=1");
     expect(afterAcceptPath("c1", "paid")).toBe("/club-champs/c1");
+  });
+});
+
+describe("unclaimed memberships", () => {
+  it("asks the invitee to create an account when the membership has no login", () => {
+    expect(
+      inviteState({ found: true, status: "invited", is_invitee: false, member_has_account: false }),
+    ).toBe("needs_signup");
+  });
+
+  it("asks for sign-in when the membership already has a login", () => {
+    expect(
+      inviteState({ found: true, status: "invited", is_invitee: false, member_has_account: true }),
+    ).toBe("needs_login");
+  });
+
+  it("keeps the invite context in the signup round-trip", () => {
+    expect(inviteSignupPath("tok")).toBe("/auth?intent=claim&redirectTo=%2Fi%2Ftok");
   });
 });

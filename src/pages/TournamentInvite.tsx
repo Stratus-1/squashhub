@@ -8,14 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { CalendarDays, CheckCircle2, Clock, CreditCard, Loader2, LogIn, Trophy, XCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, CreditCard, Loader2, LogIn, Trophy, UserPlus, XCircle } from "lucide-react";
 import {
   afterAcceptPath,
   inviteFeeCents,
   inviteLoginPath,
+  inviteSignupPath,
   inviteState,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
+
 
 function money(cents: number) {
   return `R${(cents / 100).toFixed(2)}`;
@@ -194,6 +196,25 @@ export default function TournamentInvite() {
     );
   }
 
+  if (state === "needs_signup") {
+    return shell(
+      <>
+        {header}
+        {detailList}
+        <p className="text-sm text-muted-foreground">
+          You don't have a SquashHub login yet. Create one with this invitation — we'll link it to your club
+          membership automatically and bring you straight back here to confirm your entry.
+        </p>
+        <Button className="w-full" onClick={() => navigate(inviteSignupPath(token))}>
+          <UserPlus className="w-4 h-4 mr-2" /> Create your account
+        </Button>
+        <Button variant="outline" className="w-full" onClick={() => navigate(inviteLoginPath(token))}>
+          <LogIn className="w-4 h-4 mr-2" /> I already have an account
+        </Button>
+      </>,
+    );
+  }
+
   if (state === "needs_login") {
     return shell(
       <>
@@ -208,6 +229,7 @@ export default function TournamentInvite() {
       </>,
     );
   }
+
 
   const busy = respond.isPending;
   return shell(

@@ -8,6 +8,12 @@ import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, typ
 import { audienceLabel, resolveInviteAudience, type InviteAudienceMode } from "@/lib/tournaments/invite-audience";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
+  classifyEntrant,
+  countEntrantsByCategory,
+  ENTRANT_CATEGORY_LABEL,
+  filterParticipatingEntrants,
+} from "@/lib/tournaments/entrant-status";
+import {
   defaultForfeitRule,
   describeForfeitRule,
   forfeitOptionsForScoring,

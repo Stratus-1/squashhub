@@ -7141,7 +7141,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         onChange={(ids) => applyLeaguePrefill(new Set(ids))}
                       />
                     </div>
-                  </div>
 
                     <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
                       <Checkbox

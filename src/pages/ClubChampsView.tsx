@@ -1478,14 +1478,17 @@ export default function ClubChampsView() {
                   if (oa !== ob) return oa - ob;
                   return getPlayerName(a.member).localeCompare(getPlayerName(b.member));
                 };
-                const registered = visible
-                  .filter((r: any) => r.status === "paid" || r.status === "waived")
-                  .sort(byLeaguePos);
-                const pendingPayment = visible
-                  .filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft");
+                // Shared entrant classification — the Players list, the draw and
+                // the organiser tools must never disagree about who is in.
+                const feeRequired =
+                  Number((champ as any)?.entry_fee_cents || 0) > 0 && !!(champ as any)?.payment_required;
+                const byCategory = (c: EntrantCategory) =>
+                  visible.filter((r: any) => classifyEntrant(r, { paymentRequired: feeRequired }) === c).sort(byLeaguePos);
+                const registered = byCategory("registered");
                 // Accepted the invitation but the entry fee is still outstanding.
-                const accepted = pendingPayment.filter((r: any) => !!r.confirmed_at).sort(byLeaguePos);
-                const invited = pendingPayment.filter((r: any) => !r.confirmed_at).sort(byLeaguePos);
+                const accepted = byCategory("accepted");
+                const invited = [...byCategory("payment_pending"), ...byCategory("pending_invite")].sort(byLeaguePos);
+
 
 
 

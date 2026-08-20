@@ -4178,7 +4178,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
       }
 
-      toast.success(`Sent invites to ${rows.length} member${rows.length === 1 ? "" : "s"}.`);
+      toast.success(
+        only
+          ? `Reminder sent to ${rows.length} selected member${rows.length === 1 ? "" : "s"}.`
+          : `Sent invites to ${rows.length} member${rows.length === 1 ? "" : "s"}.`,
+      );
     } catch (e: any) {
       toast.error(e?.message || "Failed to send invites");
     } finally {
@@ -4186,6 +4190,76 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setInvitesSendingFor((cur) => (cur === champId ? null : cur));
     }
   }
+
+  // Preview-only: sends the organiser a clearly-labelled TEST invitation using
+  // the currently selected delivery methods. It writes NO registration,
+  // entrant, invitation-token or payment records — only a notification row
+  // addressed to the organiser themselves.
+  const [testInviteSending, setTestInviteSending] = useState(false);
+  async function sendTestInvite(champId: string) {
+    if (testInviteSending) return;
+    const meId = myMember?.id;
+    if (!meId) {
+      toast.error("Could not identify your member profile — test invite not sent.");
+      return;
+    }
+    setTestInviteSending(true);
+    try {
+      const { data: clubRow } = await fromExt("clubs")
+        .select("subdomain")
+        .eq("id", clubId)
+        .maybeSingle();
+      const sub = (clubRow as any)?.subdomain as string | undefined;
+      const path = `/club-champs/${champId}`;
+      const previewUrl = sub ? `https://${sub}.squashhub.co.za${path}` : path;
+
+      const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
+      const sendApp = methods.includes("app");
+      const sendEmail = methods.includes("email");
+      const msg = `*** TEST INVITE — preview only, no entry has been recorded ***\n\n${buildInviteBody()}`;
+
+      const { error: insErr } = await fromExt("notifications").insert([{
+        club_member_id: meId,
+        title: "TEST — Tournament invitation preview",
+        message: msg,
+        type: "tournament_invite",
+        url: previewUrl,
+        data: {
+          champ_id: champId,
+          test: true,
+          send_email: sendEmail,
+          app_silent: !sendApp,
+          description: description.trim() || null,
+        },
+        read: false,
+      }]);
+      if (insErr) throw insErr;
+
+      if (methods.includes("whatsapp")) {
+        try {
+          await sendWhatsApp({
+            clubId,
+            recipients: [{ member_id: meId }],
+            kind: "champ_invite",
+            category: "utility",
+            body: `${msg}\n\n${previewUrl}`,
+            // No interaction payload — a test must never create an entry.
+          });
+        } catch (waErr: any) {
+          toast.warning(`WhatsApp test invite failed: ${waErr?.message || "unknown error"}`);
+        }
+      }
+
+      toast.success(
+        `Test invite sent to you via ${methods.join(", ")}. Nothing was recorded against the tournament.`,
+      );
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send test invite");
+    } finally {
+      setTestInviteSending(false);
+    }
+  }
+
 
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);

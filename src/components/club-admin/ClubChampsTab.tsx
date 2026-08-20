@@ -6120,18 +6120,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   </div>
                                 );
                               })()}
-                              <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5 pt-1">
-                                <input
-                                  type="checkbox"
-                                  className="h-3.5 w-3.5 accent-fuchsia-500"
-                                  checked={playoffsForLeague(gn)}
-                                  onChange={(e) => {
-                                    const on = e.target.checked;
-                                    setLeaguePlayoffs((m) => ({ ...m, [key]: on }));
-                                  }}
-                                />
-                                Playoffs / finals for this league
-                              </label>
+                              <div className="pt-1">
+                                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
+                                  <input
+                                    type="checkbox"
+                                    className="h-3.5 w-3.5 accent-fuchsia-500"
+                                    checked={playoffsForLeague(gn)}
+                                    onChange={(e) => {
+                                      const on = e.target.checked;
+                                      setLeaguePlayoffs((m) => ({ ...m, [key]: on }));
+                                    }}
+                                  />
+                                  {fmt === "knockout"
+                                    ? "Continue through knockout stages"
+                                    : "Playoffs / finals for this league"}
+                                </label>
+                                {fmt === "knockout" && (
+                                  <p className="text-[10px] text-muted-foreground pl-6 pt-0.5 leading-relaxed">
+                                    Create subsequent rounds as results are completed, with section winners
+                                    progressing to the division finals. Only the first round is scheduled up front.
+                                  </p>
+                                )}
+                              </div>
                               <div className="pt-1 flex justify-end">
                                 <Button
                                   type="button"

@@ -6038,6 +6038,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                         )}
 
                                         <Separator />
+                                        {availableSeasons.length > 0 && (
+                                          <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                              <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                                Season
+                                              </Label>
+                                              <select
+                                                className="h-6 rounded border border-border/60 bg-background px-1 text-[11px]"
+                                                value={sourceSeason ?? ""}
+                                                onChange={(e) => {
+                                                  setSeasonTouched(true);
+                                                  setSourceSeason(e.target.value ? Number(e.target.value) : null);
+                                                }}
+                                              >
+                                                {availableSeasons.map((s) => (
+                                                  <option key={s} value={s}>
+                                                    {s}
+                                                  </option>
+                                                ))}
+                                                <option value="">All seasons</option>
+                                              </select>
+                                            </div>
+                                            {seasonIsFallback && (
+                                              <p className="text-[10px] text-amber-600 dark:text-amber-500 leading-snug">
+                                                No {tournamentYear} league structure yet — showing {sourceSeason}. Create
+                                                the {tournamentYear} leagues on the Leagues page to draw from them; nothing
+                                                is copied or reassigned automatically.
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+
                                         <LeagueSourceTree
                                           groups={leagueTree}
                                           selected={src.leagueIds}

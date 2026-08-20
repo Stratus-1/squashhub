@@ -54,6 +54,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "access_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "access_events_club_member_id_fkey"
             columns: ["club_member_id"]
             isOneToOne: false
@@ -105,6 +112,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_provisioning_log_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -168,10 +182,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "association_affiliated_clubs_association_tenant_id_fkey"
+            columns: ["association_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "association_affiliated_clubs_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "association_affiliated_clubs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -225,6 +253,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -329,6 +364,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bar_items_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       bar_stock_purchases: {
@@ -393,6 +435,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bar_stock_purchases_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bar_stock_purchases_purchased_by_fkey"
             columns: ["purchased_by"]
             isOneToOne: false
@@ -454,6 +503,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tab_entries_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -531,6 +587,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_visitor_sales_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -966,6 +1029,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "club_association_payable_batches_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "club_association_payable_batches_payable_fee_id_fkey"
             columns: ["payable_fee_id"]
             isOneToOne: false
@@ -1064,6 +1134,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_billing_audit_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       club_billing_profiles: {
@@ -1129,6 +1206,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_billing_profiles_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       club_capabilities: {
@@ -1171,6 +1255,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_capabilities_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1583,6 +1674,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_data_bundles_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       club_email_campaign_recipients: {
@@ -1700,6 +1798,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "club_email_campaigns_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "club_email_campaigns_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -1745,6 +1850,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_email_templates_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1986,6 +2098,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       club_fees_payable: {
@@ -2042,6 +2161,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_fees_payable_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       club_journal_entries: {
@@ -2093,6 +2219,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_journal_entries_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -2412,6 +2545,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "club_members_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "club_members_enable_league_association_id_fkey"
             columns: ["enable_league_association_id"]
             isOneToOne: false
@@ -2437,6 +2577,13 @@ export type Database = {
             columns: ["home_club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_members_home_club_id_fkey"
+            columns: ["home_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -2498,6 +2645,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_permission_roles_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       club_router_alert_settings: {
@@ -2540,6 +2694,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: true
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_router_alert_settings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -2588,6 +2749,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_router_alerts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -2649,6 +2817,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_router_configs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       club_router_polls: {
@@ -2707,6 +2882,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_router_polls_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -2888,6 +3070,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_secrets_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       club_subscription_baselines: {
@@ -2942,6 +3131,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_subscription_baselines_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3001,6 +3197,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "club_subscriptions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "club_subscriptions_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
@@ -3037,6 +3240,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_visitor_home_clubs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3084,6 +3294,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_visitors_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3154,6 +3371,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_whatsapp_invoices_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       club_wifi_subscriptions: {
@@ -3205,6 +3429,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_wifi_subscriptions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -3668,6 +3899,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -4161,6 +4399,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ladder_adjustment_log_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ladder_adjustment_log_club_member_id_fkey"
             columns: ["club_member_id"]
             isOneToOne: false
@@ -4318,6 +4563,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "league_associations_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "league_associations_platform_association_id_fkey"
             columns: ["platform_association_id"]
             isOneToOne: false
@@ -4329,6 +4581,13 @@ export type Database = {
             columns: ["tenant_association_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_associations_tenant_association_id_fkey"
+            columns: ["tenant_association_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -4380,6 +4639,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_fixture_lineups_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -4448,6 +4714,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_fixture_penalties_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -4729,6 +5002,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "league_rounds_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       league_rules: {
@@ -4853,6 +5133,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "league_rules_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "league_rules_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: true
@@ -4937,6 +5224,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "league_week_lineups_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "league_week_lineups_club_member_id_fkey"
             columns: ["club_member_id"]
             isOneToOne: false
@@ -4994,6 +5288,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "league_week_player_status_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "league_week_player_status_club_member_id_fkey"
             columns: ["club_member_id"]
             isOneToOne: false
@@ -5033,6 +5334,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_week_unavailability_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -5139,6 +5447,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "leagues_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ledger_audit_log: {
@@ -5181,6 +5496,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_audit_log_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -5237,6 +5559,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "light_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -5561,6 +5890,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "member_account_delegations_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "member_account_delegations_delegate_member_id_fkey"
             columns: ["delegate_member_id"]
             isOneToOne: false
@@ -5766,6 +6102,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_fee_categories_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -6108,6 +6451,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "national_body_fees_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -6490,6 +6840,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisations_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -7443,6 +7800,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "platform_subscription_invoices_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "platform_subscription_invoices_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
@@ -7603,6 +7967,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "qr_short_codes_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ranking_points_ledger: {
@@ -7651,6 +8022,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_points_ledger_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -7733,6 +8111,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_points_pending_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -8082,6 +8467,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "stitch_onboarding_drafts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       stitch_payment_sessions: {
@@ -8154,6 +8546,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stitch_payment_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -8269,6 +8668,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_variance_flags_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -8721,6 +9127,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tournament_venues_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tournament_venues_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
@@ -8956,6 +9369,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "club_champs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "club_champs_source_league_id_fkey"
             columns: ["source_league_id"]
             isOneToOne: false
@@ -9106,6 +9526,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "whatsapp_interactions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "whatsapp_interactions_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
@@ -9181,6 +9608,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_send_log_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -9289,6 +9723,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "yoco_payment_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -9321,10 +9762,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "club_members_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "league_associations_tenant_association_id_fkey"
             columns: ["association_tenant_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_associations_tenant_association_id_fkey"
+            columns: ["association_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
           {
@@ -9367,6 +9822,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: true
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_secrets_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]
@@ -9471,6 +9933,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "club_champs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "club_champs_source_league_id_fkey"
             columns: ["source_league_id"]
             isOneToOne: false
@@ -9489,6 +9958,85 @@ export type Database = {
             columns: ["owner_org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubs_public: {
+        Row: {
+          address: string | null
+          chairman_member_id: string | null
+          club_captain_member_id: string | null
+          created_at: string | null
+          currency_code: string | null
+          currency_symbol: string | null
+          email: string | null
+          id: string | null
+          logo_url: string | null
+          name: string | null
+          nsa_club_id: string | null
+          phone: string | null
+          secretary_member_id: string | null
+          show_delegates_on_landing: boolean | null
+          subdomain: string | null
+          tenant_type: string | null
+        }
+        Insert: {
+          address?: string | null
+          chairman_member_id?: string | null
+          club_captain_member_id?: string | null
+          created_at?: string | null
+          currency_code?: string | null
+          currency_symbol?: string | null
+          email?: string | null
+          id?: string | null
+          logo_url?: string | null
+          name?: string | null
+          nsa_club_id?: string | null
+          phone?: string | null
+          secretary_member_id?: string | null
+          show_delegates_on_landing?: boolean | null
+          subdomain?: string | null
+          tenant_type?: string | null
+        }
+        Update: {
+          address?: string | null
+          chairman_member_id?: string | null
+          club_captain_member_id?: string | null
+          created_at?: string | null
+          currency_code?: string | null
+          currency_symbol?: string | null
+          email?: string | null
+          id?: string | null
+          logo_url?: string | null
+          name?: string | null
+          nsa_club_id?: string | null
+          phone?: string | null
+          secretary_member_id?: string | null
+          show_delegates_on_landing?: boolean | null
+          subdomain?: string | null
+          tenant_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubs_chairman_member_id_fkey"
+            columns: ["chairman_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubs_club_captain_member_id_fkey"
+            columns: ["club_captain_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubs_secretary_member_id_fkey"
+            columns: ["secretary_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]
@@ -9516,6 +10064,13 @@ export type Database = {
             columns: ["primary_club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_members_club_id_fkey"
+            columns: ["primary_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
             referencedColumns: ["id"]
           },
         ]

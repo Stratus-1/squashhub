@@ -10205,6 +10205,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_marker_match_result: {
+        Args: {
+          _club_id: string
+          _confirmed: boolean
+          _duration_s: number
+          _game_scores: string
+          _match_id: string
+          _notes: string
+          _player_a_member_id: string
+          _player_b_member_id: string
+          _score: string
+          _tournament_match_id?: string
+          _winner_member_id: string
+        }
+        Returns: string
+      }
       search_league_players_by_name: {
         Args: { _club_subdomain?: string; _query: string }
         Returns: {

@@ -916,3 +916,24 @@ No data changes — DB inspection found no malformed/child rows in `club_champs`
 **Fix:** New non-mutating preview route `/i/test/:champId` backed by organiser-only `get_tournament_invite_preview(champ_id)`. The Invite actions menu now has "Send test invite to myself", delivered to the organiser's own in-app/email channel, clearly marked TEST, with Accept/Decline that only simulate. No registration, count, seeding or payment is touched.
 
 Regression tests: `src/test/invite-link.test.ts` (public actionable state, verification rules, test-link shape).
+
+## 2026-08-20 — Tournament invitation blast + public accept constraint failure
+- **A) Mass invitations on a selective send.** `notify_champ_registration_event` fired a
+  "Tournament invitation" notification (with email) on every INSERT where
+  `invited_by_admin = true`. `saveEntriesDraft` materialises the whole roster with that
+  flag, and it runs when the organiser merely *opens* the "Send to selected members"
+  picker or sends a test invite — so the entire roster was emailed. Its fall-through
+  group-allocation block additionally flipped everyone to `paid`, producing hundreds of
+  "Tournament entry confirmed" emails.
+  Fixes: trigger no longer sends invitations on INSERT (sending is an explicit organiser
+  action); `saveEntriesDraft(..., { inviteRosterOnly: true })` for picker/test paths;
+  new `public.send_champ_invite_notifications` RPC enforces the exact recipient set
+  server-side, validates every id belongs to the tournament, refuses empty sets and
+  writes an `audit_events` row with requested vs sent counts; client resolution moved to
+  `src/lib/tournaments/invite-recipients.ts` (fail-closed, explicit `mode: all|selected`)
+  with a named confirmation summary before sending.
+- **B) Public accept failed on `club_champs_registrations_confirmation_source_check`.**
+  The constraint allowed only `rsvp|payment|admin`; `respond_tournament_invite_public`
+  writes `invite_link`. Constraint widened to include `invite_link` (NULL still allowed
+  for declines). Acceptance stays single-transaction and idempotent, so the confirmation
+  notification can no longer be emitted for a registration that failed to commit.

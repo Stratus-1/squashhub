@@ -3082,14 +3082,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           fmt === "cross_league"
             ? Number(groupDurations["1"]) || matchDuration || 0
             : Number(groupDurations[key]) || matchDuration || 0,
-        pools: Math.max(1, Number(swissPools[key]) || 1),
+        // Knockout carries its section count in `pools` — the capacity engine
+        // treats both as "independent sub-draws of this league".
+        pools: fmt === "knockout"
+          ? Math.max(1, Number(leagueSections[key]) || 1)
+          : Math.max(1, Number(swissPools[key]) || 1),
         rounds: Number(swissRounds[key]) || 0,
         entities: roster || Math.max(0, Number(expectedPlayers[key]) || 0),
         playoffs: playoffsForLeague(gn),
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numGroups, groups, groupLabels, groupDurations, matchDuration, swissPools, swissRounds, expectedPlayers, leaguePlayoffs, leagueFormats, usePerLeagueFormats, roundFormat]);
+  }, [numGroups, groups, groupLabels, groupDurations, matchDuration, swissPools, swissRounds, expectedPlayers, leaguePlayoffs, leagueFormats, leagueSections, usePerLeagueFormats, roundFormat]);
 
 
   // Create/update champ
@@ -5775,7 +5779,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   {/* Format palette */}
                   <div className="border-t lg:border-t-0 lg:border-l border-border bg-muted/30 p-3 space-y-2">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Format palette</div>
-                    {(["single_round_robin", "swiss", "cross_league"] as PerLeagueFormat[]).map((fmt) => {
+                    {(["single_round_robin", "knockout", "swiss", "cross_league"] as PerLeagueFormat[]).map((fmt) => {
                       const meta = FORMAT_META[fmt];
                       return (
                         <button

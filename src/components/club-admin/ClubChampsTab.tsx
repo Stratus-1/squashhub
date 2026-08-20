@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
+import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode } from "@/lib/tournaments/invite-recipients";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
   defaultForfeitRule,
@@ -4541,7 +4542,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const selectedTeamIds = structureLeagueIds.size > 0
         ? new Set(structureLeagueIds)
         : new Set(sourceLeagueIds);
-      await saveEntriesDraft(champId, selectedTeamIds);
+      await saveEntriesDraft(champId, selectedTeamIds, { inviteRosterOnly: true });
 
       const { data: previewRegistration, error: registrationError } = await fromExt("club_champs_registrations")
         .select("id")
@@ -4708,7 +4709,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const selectedTeamIds = structureLeagueIds.size > 0
         ? new Set(structureLeagueIds)
         : new Set(sourceLeagueIds);
-      await saveEntriesDraft(editingChampId, selectedTeamIds);
+      await saveEntriesDraft(editingChampId, selectedTeamIds, { inviteRosterOnly: true });
       await refetchInvitees();
     } catch (error: any) {
       toast.error(error?.message || "Could not load the selected league members");
@@ -7821,7 +7822,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-72">
                       <DropdownMenuItem
-                        onSelect={() => sendChampInvites(editingChampId, { confirm: true })}
+                        onSelect={() => sendChampInvites(editingChampId, { confirm: true, mode: "all" })}
                       >
                         <Send className="w-4 h-4 mr-2" />
                         <span>
@@ -7960,7 +7961,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         if (!editingChampId) return;
                         const ids = Array.from(selectedInviteeRegIds);
                         setInviteePickerOpen(false);
-                        await sendChampInvites(editingChampId, { confirm: true, registrationIds: ids });
+                        await sendChampInvites(editingChampId, { confirm: true, registrationIds: ids, mode: "selected" });
                       }}
                     >
                       {invitesSendingFor === editingChampId

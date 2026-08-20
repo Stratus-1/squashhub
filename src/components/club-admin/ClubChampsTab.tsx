@@ -6200,6 +6200,72 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               );
             })()}
 
+            {/* Players sitting in a division they don't qualify for. Nothing is
+                dropped silently — the organiser removes them or keeps them. */}
+            {(() => {
+              if (isDoubles) return null;
+              const bad = findIneligibleAssignments(
+                new Map(Array.from(groupAssignments.entries()).map(([id, gi]) => [id, gi + 1])),
+                eligibilityCtx,
+              );
+              if (bad.length === 0) return null;
+              const nameOf = (id: string) =>
+                (allSelectablePlayers.find((m: any) => m.id === id) as any)?.name || "Player";
+              return (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                  <p className="text-[11px] font-semibold text-destructive">
+                    {bad.length} player{bad.length === 1 ? "" : "s"} are not in the league(s) their division draws from.
+                    They will not be seeded into the draw until you remove them or keep them anyway.
+                  </p>
+                  <div className="space-y-1">
+                    {bad.map(({ memberId, gn }) => (
+                      <div key={`${memberId}-${gn}`} className="flex items-center gap-2 text-[11px]">
+                        <span className="flex-1 truncate">
+                          <span className="font-medium">{nameOf(memberId)}</span>{" "}
+                          <span className="text-muted-foreground">
+                            in {groupLabels[String(gn)] || `League ${gn}`}
+                          </span>
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[11px]"
+                          onClick={() =>
+                            setEligibilityOverrides((prev) => new Set(prev).add(memberId))
+                          }
+                        >
+                          Keep anyway
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[11px]"
+                          onClick={() => {
+                            setSelectedPlayerIds((prev) => {
+                              const next = new Set(prev);
+                              next.delete(memberId);
+                              return next;
+                            });
+                            setGroupAssignments((prev) => {
+                              const next = new Map(prev);
+                              next.delete(memberId);
+                              return next;
+                            });
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+
+
             <div className="rounded-lg border border-dashed p-3 bg-muted/20 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">Capacity is checked later.</span>{" "}
               This structure is sized against real court time on the <strong>Dates, Times &amp; Courts</strong> step,

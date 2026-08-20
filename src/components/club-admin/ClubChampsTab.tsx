@@ -13,6 +13,7 @@ import {
   type ForfeitRule,
   type ForfeitRuleMap,
 } from "@/lib/tournaments/forfeit";
+import { buildLeagueFirstRound, distributeSeedsBalanced, suggestSectionCount } from "@/lib/tournaments/knockout";
 import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
@@ -836,6 +837,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       return out;
     };
     setLeagueFormats(shift);
+    setLeagueSections(shift);
     setSwissPools(shift);
     setSwissRounds(shift);
     setGroupLabels(shift);
@@ -3971,6 +3973,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setSwissRounds({});
     setExpectedPlayers({});
     setLeagueFormats({});
+    setLeagueSections({});
     setLeagueGenders({});
     setLeagueMatchTypes({});
     setUsePerLeagueFormats(false);
@@ -4062,6 +4065,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setRoundFormat((champ.round_format as any) || "");
     const lf = ((champ as any).league_formats as Record<string, PerLeagueFormat> | null) || null;
     setLeagueFormats(lf || {});
+    setLeagueSections(((champ as any).league_sections as Record<string, number>) || {});
     setUsePerLeagueFormats(!!lf && Object.keys(lf).length > 0);
     setExpectedPlayers(((champ as any).expected_players as Record<string, number>) || {});
     setByeHandling((champ.bye_handling as any) || "");

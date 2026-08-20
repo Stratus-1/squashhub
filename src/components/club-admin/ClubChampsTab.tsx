@@ -7449,6 +7449,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Uses the delivery methods selected above ({Array.from(inviteMethods.size ? inviteMethods : new Set(["app"])).join(", ")}).
                   </p>
+                  {allInviteCount === 0 && selectedPlayerIds.size > 0 && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-1">
+                      {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} are seeded from the selected league teams but not written to the invite list yet — hit <span className="font-medium">Save progress</span> to add them.
+                    </p>
+                  )}
+
                 </div>
               )}
 

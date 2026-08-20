@@ -828,6 +828,61 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     else if (fmt === "knockout") { if (!roundFormat) setRoundFormat("single_round_robin"); }
     else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
   };
+
+  /**
+   * "All leagues" → one independent competition division per club league.
+   *
+   * The template division's settings (format, pools, category, scoring) are
+   * cloned onto each generated division; afterwards each division is edited on
+   * its own — they are NOT kept linked. Re-running is idempotent: a league that
+   * already owns a division is left exactly as it is, and manually created
+   * divisions are preserved.
+   */
+  const expandAllLeagues = (templateGn: number) => {
+    const leagues = (availableLeagues as any[]).map((l) => ({ id: l.id as string, name: l.name as string }));
+    if (leagues.length === 0) {
+      toast.info("This club has no leagues to expand into divisions yet");
+      return;
+    }
+    const plan = planAllLeaguesExpansion({
+      templateGn,
+      divisionCount: numGroups || 0,
+      sources: leagueSources,
+      leagues,
+      labels: groupLabels,
+    });
+    if (plan.created.length === 0) {
+      toast.info("Every league already has its own division");
+      return;
+    }
+    const tkey = String(templateGn);
+    const tmplFormat = formatForLeague(templateGn) || "single_round_robin";
+    const tmplPools = swissPools[tkey];
+    const tmplRounds = swissRounds[tkey];
+
+    setNumGroups(plan.divisionCount);
+    setUsePerLeagueFormats(true);
+    plan.created.forEach((item) => {
+      const key = String(item.gn);
+      setSourceForLeague(item.gn, { mode: "selected", leagueIds: [item.leagueId] });
+      setGroupLabels((m) => ({ ...m, [key]: m[key] || item.label }));
+      setLeagueFormats((m) => ({ ...m, [key]: tmplFormat as PerLeagueFormat }));
+      if (tmplPools) setSwissPools((m) => ({ ...m, [key]: m[key] ?? tmplPools }));
+      if (tmplRounds) setSwissRounds((m) => ({ ...m, [key]: m[key] ?? tmplRounds }));
+      setLeagueGenders((m) => ({ ...m, [key]: m[key] ?? genderForLeague(templateGn) }));
+      setLeagueMatchTypes((m) => ({ ...m, [key]: m[key] ?? matchTypeForLeague(templateGn) }));
+      setLeagueScoringModes((m) => ({ ...m, [key]: m[key] ?? m[tkey] ?? (scoringMode === "time_capped_points" ? "time_capped_points" : "standard") }));
+      setLeaguePointsPerGame((m) => ({ ...m, [key]: m[key] ?? m[tkey] ?? (pointsPerGame === 15 ? 15 : 11) }));
+      setLeagueBestOf((m) => ({ ...m, [key]: m[key] ?? m[tkey] ?? (bestOf === 5 ? 5 : 3) }));
+      setLeagueWinConditions((m) => ({ ...m, [key]: m[key] ?? m[tkey] ?? winCondition }));
+    });
+    toast.success(
+      `${plan.created.length} division${plan.created.length === 1 ? "" : "s"} created — one per league${
+        plan.skipped.length > 0 ? `, ${plan.skipped.length} already existed` : ""
+      }`,
+    );
+  };
+
   /** Set one league's gender, materialising the others so nothing shifts. */
   const setLeagueGender = (gn: number, g: GenderCategory) => {
     setLeagueGenders((m) => {

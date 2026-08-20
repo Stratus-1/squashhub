@@ -7513,9 +7513,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         <Eye className="w-4 h-4 mr-2" />
                         <span>
                           Send test invite to myself
-                          <span className="block text-[11px] text-muted-foreground">Preview only — records nothing</span>
+                          <span className="block text-[11px] text-muted-foreground">
+                            Preview only — records nothing. Works even if you aren’t in any team.
+                          </span>
                         </span>
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={!sampleInvitee}
+                        onSelect={() => {
+                          if (!sampleInvitee) return;
+                          sendTestInvite(editingChampId, {
+                            asMemberId: sampleInvitee.memberId,
+                            asName: sampleInvitee.name,
+                          });
+                        }}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        <span>
+                          {sampleInvitee
+                            ? `Send test as an invited player (${sampleInvitee.name})`
+                            : "Send test as an invited player"}
+                          <span className="block text-[11px] text-muted-foreground">
+                            {sampleInvitee
+                              ? "Delivered to you — exactly what the first player on the list sees"
+                              : "No invitees yet — select league teams or save progress first"}
+                          </span>
+                        </span>
+                      </DropdownMenuItem>
+
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <p className="text-[11px] text-muted-foreground mt-1">

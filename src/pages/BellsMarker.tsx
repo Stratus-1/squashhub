@@ -538,21 +538,21 @@ export default function BellsMarker() {
           const aUser = (memberMap.get(match.player_a_member_id) as any)?.user_id || null;
           const bUser = (memberMap.get(match.player_b_member_id) as any)?.user_id || null;
           const clubIdResolved = (memberMap.values().next().value as any)?.club_id || null;
-          await supabase.from("matches").insert({
-            player_a: aUser,
-            player_b: bUser,
-            player_a_member_id: match.player_a_member_id,
-            player_b_member_id: match.player_b_member_id,
-            winner_id: winnerMemberId === match.player_a_member_id ? aUser : winnerMemberId === match.player_b_member_id ? bUser : null,
-            winner_member_id: winnerMemberId,
-            score: scoreStr,
-            duration_s: capMinutes * 60 - remaining,
-            submitted_by: auth.user?.id || null,
-            submitted_by_member_id: null,
-            confirmed: true,
-            notes: `Bells doubles tournament: ${champ?.name || ""} (League ${match.group_number}). ${pairAName} vs ${pairBName}. Final ${scoreStr}.`,
-            club_id: clubIdResolved,
-          } as any);
+          // Same authorised, idempotent save path as the Live Match Marker.
+          const { error: mirrorError } = await rpcExt("save_marker_match_result", {
+            _match_id: crypto.randomUUID(),
+            _club_id: clubIdResolved,
+            _player_a_member_id: match.player_a_member_id,
+            _player_b_member_id: match.player_b_member_id,
+            _winner_member_id: winnerMemberId,
+            _score: scoreStr,
+            _game_scores: null,
+            _duration_s: capMinutes * 60 - remaining,
+            _confirmed: true,
+            _notes: `Bells doubles tournament: ${champ?.name || ""} (League ${match.group_number}). ${pairAName} vs ${pairBName}. Final ${scoreStr}.`,
+            _tournament_match_id: match.id,
+          });
+          if (mirrorError) throw mirrorError;
         } catch (e) {
           console.warn("Could not mirror to matches table:", e);
         }

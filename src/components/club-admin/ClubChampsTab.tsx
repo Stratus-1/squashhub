@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteUrl } from "@/lib/tournaments/invite-link";
+import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
   defaultForfeitRule,
   describeForfeitRule,
@@ -1621,7 +1622,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (!clubId) return editingChampId;
     if (!champName.trim() && !editingChampId) return editingChampId;
     const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
-    const payload: Record<string, any> = {
+    const rawPayload: Record<string, any> = {
       name: champName || defaultName,
       gender,
       match_type: matchType,
@@ -1684,6 +1685,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
       playoff_date: playoffDate || null,
     };
+    // A draft can legitimately have unanswered choices ("" in the wizard state).
+    // Those columns are CHECK-constrained, so send them only once chosen.
+    const payload = sanitizeDraftPayload(rawPayload);
     // Fields that live only on the tournaments table (not on the legacy view).
     const extras = {
       event_type: eventType,
@@ -1711,11 +1715,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       ),
     };
     const saveExtras = async (id: string) => {
-      const { error } = await fromExt("tournaments").update(extras).eq("id", id);
+      const { error } = await fromExt("tournaments").update(sanitizeExtrasPayload(extras)).eq("id", id);
       if (error) console.warn("Tournament extras save failed:", error.message);
       // "Who may enter" is a governance field — keep the single copy in sync.
       const { error: govErr } = await fromExt("tournament_governance")
-        .upsert({ tournament_id: id, eligibility_scope: eligibilityScope }, { onConflict: "tournament_id" } as any);
+        .upsert(sanitizeDraftPayload({ tournament_id: id, eligibility_scope: eligibilityScope }), { onConflict: "tournament_id" } as any);
       if (govErr) console.warn("Eligibility save failed:", govErr.message);
     };
     try {

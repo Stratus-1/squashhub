@@ -4351,7 +4351,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // entrant, invitation-token or payment records — only a notification row
   // addressed to the organiser themselves.
   const [testInviteSending, setTestInviteSending] = useState(false);
-  async function sendTestInvite(champId: string) {
+  async function sendTestInvite(
+    champId: string,
+    opts?: { asMemberId?: string; asName?: string },
+  ) {
     if (testInviteSending) return;
     const meId = myMember?.id;
     if (!meId) {
@@ -4371,7 +4374,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
       const sendApp = methods.includes("app");
       const sendEmail = methods.includes("email");
-      const msg = `*** TEST INVITE — preview only, no entry has been recorded ***\n\n${buildInviteBody()}`;
+      const asLine = opts?.asName
+        ? `Previewing the invitation exactly as ${opts.asName} would receive it.\n`
+        : "";
+      const msg = `*** TEST INVITE — preview only, no entry has been recorded ***\n${asLine}\n${buildInviteBody()}`;
+
 
       const { error: insErr } = await fromExt("notifications").insert([{
         club_member_id: meId,

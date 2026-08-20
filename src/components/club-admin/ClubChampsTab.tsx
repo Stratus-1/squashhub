@@ -1320,6 +1320,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   );
 
   /**
+   * Compatibility: divisions saved before league sources were stored by id (or
+   * saved against leagues that have since been renamed/removed) are re-pointed
+   * onto stable league ids as soon as the club's league list is known. Refs
+   * that cannot be resolved uniquely are never guessed — the division simply
+   * falls back to "all leagues" so no entrant is lost.
+   */
+  useEffect(() => {
+    const leagues = (availableLeagues as any[]).map((l) => ({ id: l.id as string, name: l.name as string }));
+    if (leagues.length === 0 || Object.keys(leagueSources).length === 0) return;
+    const res = resolveDivisionSources(leagueSources, leagues);
+    if (res.changed) setLeagueSources(res.sources);
+  }, [availableLeagues, leagueSources]);
+
+  /**
    * The source selection is an invariant of a division: only players from the
    * chosen league(s) (or explicitly overridden ones) may be seeded into it.
    */
@@ -6455,7 +6469,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 dropped silently — the organiser removes them or keeps them. */}
             {(() => {
               if (isDoubles) return null;
-              const bad = findIneligibleAssignments(
+              const bad = explainIneligibleAssignments(
                 new Map(Array.from(groupAssignments.entries()).map(([id, gi]) => [id, gi + 1])),
                 eligibilityCtx,
               );
@@ -6469,12 +6483,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     They will not be seeded into the draw until you remove them or keep them anyway.
                   </p>
                   <div className="space-y-1">
-                    {bad.map(({ memberId, gn }) => (
+                    {bad.map(({ memberId, gn, memberLeagueIds, sourceLeagueIds }) => {
+                      const listNames = (ids: string[]) =>
+                        ids.map((id) => leagueNameById.get(id) || "Unknown league").join(", ");
+                      return (
                       <div key={`${memberId}-${gn}`} className="flex items-center gap-2 text-[11px]">
-                        <span className="flex-1 truncate">
+                        <span className="flex-1 min-w-0">
                           <span className="font-medium">{nameOf(memberId)}</span>{" "}
                           <span className="text-muted-foreground">
-                            in {groupLabels[String(gn)] || `League ${gn}`}
+                            — assigned to division “{groupLabels[String(gn)] || `League ${gn}`}”, which draws from{" "}
+                            {sourceLeagueIds.length > 0 ? listNames(sourceLeagueIds) : "no league"}.{" "}
+                            {memberLeagueIds.length > 0
+                              ? `This player is registered in ${listNames(memberLeagueIds)}.`
+                              : "This player is not registered in any club league."}
                           </span>
                         </span>
                         <Button

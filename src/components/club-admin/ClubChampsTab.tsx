@@ -1890,34 +1890,36 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // matches are (re)generated. Requires the parent champ row to exist.
   const saveEntriesDraft = async (
     champIdOverride?: string,
-    structureLeagueIdsOverride?: Set<string>,
+    _legacyStructureLeagueIds?: Set<string>,
     opts?: { inviteRosterOnly?: boolean },
   ) => {
     const champIdToUse = champIdOverride || editingChampId;
     if (!champIdToUse) return;
     try {
-      const effectiveStructureLeagueIds = structureLeagueIdsOverride || structureLeagueIds;
-      // Invite-list tournaments: the selected players (typically pre-filled
-      // from the chosen league teams) become `invited` registration rows as
-      // soon as progress is saved — that list is what "Invite actions" counts
-      // and sends to. Nobody is entered until they accept.
+      // The invite roster comes from the INVITATION AUDIENCE only — never from
+      // the Structure / draw source. A member who plays no league is still
+      // invited when the audience is "All club members".
       const inviteSeedIds = new Set(selectedPlayerIds);
-      // Query the selected Structure teams at save time instead of trusting an
-      // earlier async prefill. This guarantees Save Progress has the canonical
-      // roster even if the organiser saves immediately after opening a draft.
-      if (effectiveStructureLeagueIds.size > 0) {
-        const { data: structureRegs, error: structureRegsErr } = await fromExt("member_league_registrations")
+      let audienceIds = resolvedAudience.memberIds;
+      if (inviteAudience === "leagues" && audienceLeagueIds.size > 0) {
+        // Re-read at save time so the roster is canonical even if the cached
+        // registration query is stale.
+        const { data: audienceRegs, error: audienceRegsErr } = await fromExt("member_league_registrations")
           .select("club_member_id, is_reserve")
-          .in("league_id", Array.from(effectiveStructureLeagueIds));
-        if (structureRegsErr) throw structureRegsErr;
-        (structureRegs || []).forEach((r: any) => {
+          .in("league_id", Array.from(audienceLeagueIds));
+        if (audienceRegsErr) throw audienceRegsErr;
+        const fresh = new Set(audienceIds);
+        (audienceRegs || []).forEach((r: any) => {
           if (!r.club_member_id || inviteExcludedMemberIds.has(r.club_member_id)) return;
           if (!inviteIncludeReserves && r.is_reserve) return;
-          inviteSeedIds.add(r.club_member_id);
+          fresh.add(r.club_member_id);
         });
+        audienceIds = Array.from(fresh);
       }
-      const seedsFromLeagues = effectiveStructureLeagueIds.size > 0 && inviteSeedIds.size > 0;
-      if (registrationUsesInviteList || seedsFromLeagues) {
+      audienceIds.forEach((id) => inviteSeedIds.add(id));
+      const seedsFromAudience = audienceIds.length > 0;
+      if (registrationUsesInviteList || seedsFromAudience) {
+
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
         const ids = await promoteVisitorIds(Array.from(inviteSeedIds));
         const regRows = ids.map((memberId) => ({

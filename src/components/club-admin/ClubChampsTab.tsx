@@ -3693,6 +3693,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
+            invite_audience: inviteAudience,
+            invite_audience_league_ids: Array.from(audienceLeagueIds),
+            invite_audience_member_ids: Array.from(audienceMemberIds),
+            invite_audience_include_individuals: audienceIncludeIndividuals,
             entry_source: entrySource,
             approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
@@ -3761,6 +3765,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
+            invite_audience: inviteAudience,
+            invite_audience_league_ids: Array.from(audienceLeagueIds),
+            invite_audience_member_ids: Array.from(audienceMemberIds),
+            invite_audience_include_individuals: audienceIncludeIndividuals,
             entry_source: entrySource,
             approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
@@ -5056,6 +5064,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPaymentTiming((((champ as any).payment_timing as any) || "on_entry"));
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
     setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
+    setInviteAudience((((champ as any).invite_audience as InviteAudienceMode) || "all_club"));
+    setAudienceLeagueIds(new Set(((champ as any).invite_audience_league_ids as string[]) || []));
+    setAudienceMemberIds(new Set(((champ as any).invite_audience_member_ids as string[]) || []));
+    setAudienceIncludeIndividuals(!!(champ as any).invite_audience_include_individuals);
     setHandicapMode(((champ as any).handicap_mode as any) || "none");
     setHandicapDivider(Math.max(1, Number((champ as any).handicap_divider) || 1));
     setHandicapMultiplier(Math.max(1, Number((champ as any).handicap_multiplier) || 1));

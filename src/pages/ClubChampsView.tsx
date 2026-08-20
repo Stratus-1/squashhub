@@ -101,6 +101,25 @@ export default function ClubChampsView() {
 
   const isDoubles = champ?.match_type === "doubles";
 
+  // Arriving from an invitation accept (`?pay=1`): jump straight to the entry-fee card.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("pay") !== "1") return;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const el = document.getElementById("tournament-register-card");
+      tries += 1;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.clearInterval(timer);
+      } else if (tries > 20) {
+        window.clearInterval(timer);
+      }
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [champId]);
+
+
   // Only badge a match LIVE while a marker is actually present (fresh heartbeat).
   const { freshMatchIds } = useChampMarkerLocks(
     (matches as any[]).filter((m: any) => m.status === "in_progress").map((m: any) => m.id),

@@ -190,15 +190,25 @@ export function buildLeagueTree(
       g.children.push(childOf(l));
       return;
     }
-    orphans.push({
-      key: `solo::${l.id}`,
-      label: l.name,
-      assocName: assoc,
-      tierNumber: 9999,
-      seasonYear: season,
-      children: [childOf(l)],
-    });
+    // Never flatten the selector: everything we cannot place confidently is
+    // collected in ONE small "Needs league assignment" group per association.
+    const key = `unassigned::${l.association_id || assoc}::${season ?? "no-season"}`;
+    let g = orphanGroups.get(key);
+    if (!g) {
+      g = {
+        key,
+        label: "Needs league assignment",
+        assocName: assoc,
+        tierNumber: 9999,
+        seasonYear: season,
+        needsAssignment: true,
+        children: [],
+      };
+      orphanGroups.set(key, g);
+    }
+    g.children.push(childOf(l));
   });
+
 
   const sorted = Array.from(groups.values()).sort(
     (a, b) =>

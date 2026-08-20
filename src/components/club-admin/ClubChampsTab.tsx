@@ -524,6 +524,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const widePool = playerPoolClubIds.length > 1;
 
   const { data: clubMembers = [] } = useClubMembers(clubId);
+  const { data: myMember } = useMyClubMember();
+
   const { data: pooledMembers = [] } = useQuery({
     queryKey: ["tournament-member-pool", playerPoolClubIds],
     queryFn: async () => {

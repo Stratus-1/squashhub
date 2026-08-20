@@ -7063,57 +7063,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
             </WizardSection>
             )}
-            <WizardSection
-              title={"Registration window"}
-              summary={registrationRequired ? "Registration window" : "No registration required"}
-              complete={true}
-              defaultOpen={true}
-            >
-            {/* No-show / forfeit handling lives on each league card in the Structure
-                step, because the consequence depends on that league's scoring format.
-                The legacy tournament-wide points fields are kept for compatibility only
-                (they seed per-league defaults) and are deliberately not editable here. */}
-            <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs space-y-1">
-              <span className="font-medium text-foreground">Forfeit / no-show rule:</span>{" "}
-              <span className="text-muted-foreground">
-                set per league on the <span className="font-medium text-foreground">Structure</span> step — a
-                standard best-of league takes a walkover or a no-result, a Bells league can award points.
-              </span>
-              {numGroups > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => (
-                    <span
-                      key={gn}
-                      className="inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium"
-                    >
-                      {groupLabels[String(gn)] || `League ${gn}`}: {describeForfeitRule(forfeitRuleForLeague(gn), forfeitPointsForLeague(gn))}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Registration window, tournament dates and per-league forfeit rules
+                are owned by the Dates & Courts and Structure steps — no duplicate
+                read-only summary here. */}
 
-
-            {/* Tournament dates are set on the Courts step (one step earlier).
-                Shown here as a read-only summary so the admin doesn't have to
-                jump back to confirm them. */}
-            <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs">
-              <span className="font-medium text-foreground">Tournament dates:</span>{" "}
-              {startDate && endDate
-                ? <span>{startDate} → {endDate}</span>
-                : <span className="text-muted-foreground italic">Set these on the Dates & Courts step.</span>}
-            </div>
-
-            {/* Registration window is set on the "Dates & Courts" step so every
-                date lives in one place. */}
-            {registrationWindowApplies && (
-              <p className="text-xs text-muted-foreground">
-                Registration opens/closes on the <span className="font-medium text-foreground">Dates &amp; Courts</span> step.
-              </p>
-            )}
-
-
-            </WizardSection>
             <WizardSection
               title={"Invites & messaging"}
               summary={`${Array.from(inviteMethods).join(", ") || "no channel"} · ${description ? "custom message" : "default message"}`}

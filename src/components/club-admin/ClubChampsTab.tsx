@@ -814,7 +814,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
     }
     if (fmt === "knockout") {
-      setLeagueSections((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
+      // One draw by default — the organiser splits it into pools if they want.
+      setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
     }
     setUsePerLeagueFormats(true);
     if (fmt === "cross_league") setRoundFormat("cross_league");

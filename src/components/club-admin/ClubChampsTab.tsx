@@ -4475,8 +4475,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteePickerPreparing(true);
     try {
       // The picker needs real registration ids for selective sends. Materialise
-      // the canonical Structure roster first, then refresh its own query.
-      await saveEntriesDraft(editingChampId, new Set(structureLeagueIds));
+      // the canonical Structure roster first, then refresh its own query. Older
+      // drafts stored the same stable team ids only in `source_league_ids`, so
+      // retain that as a compatibility fallback rather than materialising an
+      // empty audience.
+      const selectedTeamIds = structureLeagueIds.size > 0
+        ? new Set(structureLeagueIds)
+        : new Set(sourceLeagueIds);
+      await saveEntriesDraft(editingChampId, selectedTeamIds);
       await refetchInvitees();
     } catch (error: any) {
       toast.error(error?.message || "Could not load the selected league members");

@@ -611,15 +611,28 @@ Deno.serve(async (req) => {
         try {
           jar = await gobookLogin(row.gobook_username, password);
         } catch (e) {
+          const msg = (e as Error).message;
+          const captcha = msg === "GOBOOK_CAPTCHA_REQUIRED";
           await adminClient
             .from("member_gobook_credentials")
             .update({
-              last_verification_status: "invalid",
+              // Don't mark the member's credentials invalid when the block is
+              // GoBook's captcha — nothing is wrong with their login details.
+              last_verification_status: captcha ? "captcha_blocked" : "invalid",
               last_verified_at: new Date().toISOString(),
             })
             .eq("club_member_id", clubMemberId);
-          return json({ error: (e as Error).message }, 400);
+          return json(
+            {
+              error: captcha
+                ? "GoBook now requires a reCAPTCHA challenge on its login page, so SquashHub can no longer sign in on your behalf. Your GoBook username and password are fine — this needs GoBook to whitelist SquashHub or provide an API."
+                : msg,
+              code: captcha ? "captcha_required" : "login_rejected",
+            },
+            400,
+          );
         }
+
         await adminClient
           .from("member_gobook_credentials")
           .update({

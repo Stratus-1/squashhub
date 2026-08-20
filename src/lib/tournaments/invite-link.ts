@@ -104,5 +104,3 @@ export function inviteLoginPath(token: string): string {
 export function inviteSignupPath(token: string): string {
   return `/auth?intent=claim&redirectTo=${encodeURIComponent(inviteePath(token))}`;
 }
-
-}

@@ -254,7 +254,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { data: leagues } = useQuery({
     queryKey: ["leagues", clubId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("leagues").select("id, name").eq("club_id", clubId!).order("name");
+      const { data, error } = await supabase.from("leagues").select("id, name").eq("club_id", clubId!).is("archived_at", null).order("name");
       if (error) throw error;
       return (data || []) as { id: string; name: string }[];
     },

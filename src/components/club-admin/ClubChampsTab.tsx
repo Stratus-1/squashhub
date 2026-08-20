@@ -1152,6 +1152,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           "id, name, code, association_id, season_year, level, is_reserve, league_associations:association_id(name, scope)",
         )
         .eq("club_id", clubId)
+        // Archived seasons never appear as a tournament source.
+        .is("archived_at", null)
         .order("name");
       if (error) throw error;
       return (data || []) as any[];

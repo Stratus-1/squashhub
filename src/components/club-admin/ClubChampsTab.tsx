@@ -22,9 +22,12 @@ import {
   divisionSource,
   effectivePools,
   findIneligibleAssignments,
+  formatUsesPools,
   mergeLegacySectionsIntoPools,
   parseDivisionSources,
   planAllLeaguesExpansion,
+  poolLabel,
+  poolOptions,
   sectionsFromPools,
   validateDivisions,
   type DivisionSource,
@@ -677,9 +680,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // and the pool count is written back here so the draw engine, the schedule
   // and any existing tournament keep working unchanged.
   const [leagueSections, setLeagueSections] = useState<Record<string, number>>({});
-  /** Pools in a division — falls back to the legacy section count. */
+  /**
+   * THE pool count for a division — the single organiser-facing value.
+   * Reads the pool map first and falls back to the legacy section count so
+   * existing tournaments keep their shape. Everything (capacity, seeding,
+   * draw generation, scheduling and persistence) goes through this.
+   */
   const sectionsForLeague = (gn: number) =>
     effectivePools({ gn, pools: swissPools, legacySections: leagueSections });
+  const poolsForDivision = sectionsForLeague;
+  /** The only writer of the pool count. */
+  const setPoolsForDivision = (gn: number, next: number) => {
+    const key = String(gn);
+    const pools = Math.max(1, Math.floor(Number(next) || 1));
+    setSwissPools((m) => ({ ...m, [key]: pools }));
+    // Keep the legacy section map aligned so nothing reads a stale value.
+    setLeagueSections((m) => (m[key] === undefined ? m : { ...m, [key]: pools }));
+    const n = Number(expectedPlayers[key]) || 0;
+    if (formatForLeague(gn) === "swiss" && n >= 2) {
+      const perPool = Math.max(2, Math.ceil(n / pools));
+      setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+    }
+  };
   // Which club league(s) feed each competition division ("Players from").
   const [leagueSources, setLeagueSources] = useState<Record<string, DivisionSource>>({});
   const sourceForLeague = (gn: number) => divisionSource(leagueSources, gn);
@@ -1497,12 +1519,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       .sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
   }, [members]);
 
+  /**
+   * A draft only needs identity: a club (from the admin session) and a name.
+   * Dates, courts, structure, players and fees belong to step validation and
+   * to Generate — never to saving progress.
+   */
+  const canSaveDraft = () => !!clubId && !!champName.trim();
+
   // Autosave the current wizard settings to club_champs as a draft.
   // Only touches the settings row — never matches/entries/registrations.
-  // No-ops until we have the minimum required fields (name + dates).
   const saveDraft = async () => {
     if (!clubId) return editingChampId;
-    if (!startDate || !endDate) return editingChampId;
+    if (!champName.trim() && !editingChampId) return editingChampId;
     const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
     const payload: Record<string, any> = {
       name: champName || defaultName,
@@ -1510,8 +1538,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       match_type: matchType,
       num_groups: numGroups,
       enable_playoffs: enablePlayoffs,
-      start_date: startDate,
-      end_date: endDate,
+      // Drafts may have no dates yet — persist null rather than "".
+      start_date: startDate || null,
+      end_date: endDate || null,
       play_days: Array.from(playDays),
       start_time: startTime,
       end_time: endTime,
@@ -1759,18 +1788,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       toast.error("No club selected");
       return;
     }
-    // Dates live on step 2 — if they aren't picked yet, the wizard state is
-    // already kept in-component, so just acknowledge and let the user move on.
-    if (!startDate || !endDate) {
-      toast.success("Progress kept — pick dates on the next step to save to the server");
+    // A draft needs a name only — dates, courts and structure come later.
+    if (!canSaveDraft() && !editingChampId) {
+      toast.error("Give the tournament a name first, then save progress");
       return;
     }
     try {
       const savedChampId = await saveDraft();
-      await saveEntriesDraft(savedChampId || undefined);
-      toast.success("Progress saved");
-    } catch {
-      toast.error("Could not save progress");
+      if (!savedChampId) {
+        toast.error("Could not save progress — the draft was not created");
+        return;
+      }
+      await saveEntriesDraft(savedChampId);
+      toast.success(startDate && endDate ? "Progress saved" : "Draft saved — add dates when you're ready");
+    } catch (e: any) {
+      toast.error(e?.message ? `Could not save progress: ${e.message}` : "Could not save progress");
     }
   };
 
@@ -2391,7 +2423,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       return f === "double_round_robin" ? "double" : "single";
     };
     // Pools per league (shared by Swiss, round robin and cross league).
-    const poolsForLeague = (gn: number) => Math.max(1, Number(swissPools[String(gn)]) || 1);
+    // Single source of truth for pools (legacy sections included).
+    const poolsForLeague = (gn: number) => effectivePools({ gn, pools: swissPools, legacySections: leagueSections });
     const splitIntoPools = (ids: string[], pools: number): string[][] => {
       if (pools <= 1) return [ids];
       const size = Math.ceil(ids.length / pools);
@@ -2472,7 +2505,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // Swiss for a single league — reserves placeholder matches based on
     // pools × rounds × ceil(pool/2) so scheduling books the right slot count.
     const buildSwissLeague = (gi: number, ids: string[]) => {
-      const pools = Math.max(1, Number(swissPools[String(gi + 1)]) || 1);
+      const pools = poolsForLeague(gi + 1);
       const rounds = Math.max(1, Number(swissRounds[String(gi + 1)]) || 1);
       const size = Math.ceil(ids.length / pools);
       for (let p = 0; p < pools; p++) {
@@ -3267,7 +3300,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the
@@ -3291,9 +3324,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             : Number(groupDurations[key]) || matchDuration || 0,
         // Pools are the division's independent sub-draws; knockout divisions
         // fall back to their legacy section count.
-        pools: fmt === "knockout"
-          ? effectivePools({ gn, pools: swissPools, legacySections: leagueSections })
-          : Math.max(1, Number(swissPools[key]) || 1),
+        pools: poolsForDivision(gn),
         rounds: Number(swissRounds[key]) || 0,
         entities: roster || Math.max(0, Number(expectedPlayers[key]) || 0),
         playoffs: playoffsForLeague(gn),
@@ -3306,6 +3337,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Create/update champ
   const createChamp = useMutation({
     mutationFn: async () => {
+      // A draft can be saved without dates, but it can never be generated
+      // without them — fixtures, courts and invites all need a calendar.
+      if (!startDate || !endDate) {
+        throw new Error("Add a start and end date on the Dates, Times & Courts step before generating.");
+      }
       const draftChampId = await saveDraft();
       if (!schedulePreview && !awaitingPlayerPairs) throw new Error("No schedule generated");
 
@@ -4713,11 +4749,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             <Card key={c.id} className={isCompleted ? "opacity-75" : ""}>
               <CardContent className="flex items-center justify-between py-4">
                 <div>
-                  <p className="font-medium">{c.name}</p>
+                  <p className="font-medium flex items-center gap-2">
+                    {c.name}
+                    {(!c.start_date || !c.end_date) && (
+                      <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                        Draft
+                      </span>
+                    )}
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     {GENDER_LABELS[c.gender as GenderCategory] || c.gender} · {c.match_type === "doubles" ? "Doubles" : "Singles"} · {c.num_groups} groups · {c.status}
                   </p>
-                  <p className="text-xs text-muted-foreground">{c.start_date} to {c.end_date}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {c.start_date && c.end_date ? `${c.start_date} to ${c.end_date}` : "Dates not set yet"}
+                  </p>
                 </div>
                 <div className="flex gap-1">
                   <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
@@ -5560,7 +5605,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   )}
                                   {collapsed && (
                                     <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
-                                      {Math.max(1, Number(swissPools[key]) || 1)} pool{Math.max(1, Number(swissPools[key]) || 1) === 1 ? "" : "s"}
+                                      {formatUsesPools(fmt) ? poolLabel(poolsForDivision(gn)) : "Single draw"}
                                       {expectedPlayers[key] ? ` · ${expectedPlayers[key]} ${isDoubles ? "pairs" : "players"}` : ""}
                                     </span>
                                   )}
@@ -5573,25 +5618,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     onChange={(e) => setGroupLabels((m) => ({ ...m, [key]: e.target.value }))}
                                     className="h-8 text-sm font-semibold flex-1 min-w-0"
                                   />
-                                  <div className="w-14 shrink-0">
-                                    <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Pools</Label>
-                                    <Input
-                                      type="number"
-                                      min={1}
-                                      value={swissPools[key] ?? 1}
-                                      title={fmt === "cross_league" ? "Each pool plays every other pool" : "1 = one draw · 2+ = split into pools"}
-                                      onChange={(e) => {
-                                        const pools = Math.max(1, Number(e.target.value) || 1);
-                                        setSwissPools((m) => ({ ...m, [key]: pools }));
-                                        const n = Number(expectedPlayers[key]) || 0;
-                                        if (isSwiss && n >= 2) {
-                                          const perPool = Math.max(2, Math.ceil(n / pools));
-                                          setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
-                                        }
-                                      }}
-                                      className="h-8 text-xs mt-0.5 px-1.5"
-                                    />
-                                  </div>
+                                  {/* Read-only summary — the pool count is set
+                                      by the single Pools selector below. */}
+                                  {formatUsesPools(fmt) && (
+                                    <div className="shrink-0 pb-1.5" title="Set the pool count with the Pools selector below">
+                                      <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Pools</Label>
+                                      <div className="text-xs font-semibold text-teal-700 dark:text-teal-400 mt-1 whitespace-nowrap">
+                                        {poolLabel(poolsForDivision(gn))}
+                                      </div>
+                                    </div>
+                                  )}
                                   {fmt === "swiss" && (
                                     <div className="w-16 shrink-0">
                                       <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Rounds</Label>
@@ -5635,7 +5671,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                         });
                                         // Auto-derive Swiss rounds (treat pool as round-robin: rounds = perPool - 1)
                                         if (isSwiss && Number.isFinite(n) && n >= 2) {
-                                          const pools = Math.max(1, Number(swissPools[key]) || 1);
+                                          const pools = poolsForDivision(gn);
                                           const perPool = Math.max(2, Math.ceil(n / pools));
                                           setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
                                         }
@@ -5809,9 +5845,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     }
                                   }}
                                 />
-                                {fmt === "knockout" && (() => {
+                                {/* THE pool selector for this division — the
+                                    only editable pool control, shared by every
+                                    format that uses pools. */}
+                                {formatUsesPools(fmt) && (() => {
                                   const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
-                                  const pools = sectionsForLeague(gn);
+                                  const pools = poolsForDivision(gn);
                                   const suggested = suggestSectionCount(entrants);
                                   const perPool = pools > 0 ? Math.ceil(entrants / pools) : 0;
                                   return (
@@ -5820,18 +5859,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                         label="Pools"
                                         value={String(pools)}
                                         color="violet"
-                                        options={[1, 2, 4, 8].map((n) => ({ v: String(n), l: n === 1 ? "1 draw" : `${n} pools` }))}
-                                        onChange={(v) => setSwissPools((m) => ({ ...m, [key]: Number(v) || 1 }))}
+                                        options={poolOptions(pools).map((n) => ({ v: String(n), l: poolLabel(n) }))}
+                                        onChange={(v) => setPoolsForDivision(gn, Number(v) || 1)}
                                       />
                                       <p className="text-[11px] text-muted-foreground">
                                         {entrants > 0
-                                          ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per pool. Seeds are spread evenly across pools from the ladder; pool winners meet in this division's final.`
-                                          : "Seeds are spread evenly across pools from the ladder; pool winners meet in this division's final."}
-                                        {entrants > 0 && pools !== suggested ? ` Suggested: ${suggested}.` : ""}
+                                          ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per ${pools > 1 ? "pool" : "draw"}. `
+                                          : ""}
+                                        {fmt === "knockout"
+                                          ? "Seeds are spread evenly across pools from the ladder; pool winners meet in this division's final."
+                                          : fmt === "cross_league"
+                                            ? "Each pool plays every other pool."
+                                            : pools > 1
+                                              ? "Players are split into pools; each pool plays its own draw."
+                                              : "One draw — everyone in this division plays in the same group."}
+                                        {fmt === "knockout" && entrants > 0 && pools !== suggested ? ` Suggested: ${suggested}.` : ""}
                                       </p>
-                                      <p className="text-[11px] text-muted-foreground">
-                                        Only the first round is scheduled up front — later rounds are created as each round finishes.
-                                      </p>
+                                      {fmt === "knockout" && (
+                                        <p className="text-[11px] text-muted-foreground">
+                                          Only the first round is scheduled up front — later rounds are created as each round finishes.
+                                        </p>
+                                      )}
                                     </div>
                                   );
                                 })()}
@@ -6117,7 +6165,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         const n = Number(expectedPlayers[key]) || 0;
                         if (n < 2) continue;
                         const fmt: PerLeagueFormat = (leagueFormats[key] ?? (roundFormat as PerLeagueFormat)) || "single_round_robin";
-                        const pools = Math.max(1, Number(swissPools[key]) || 1);
+                        const pools = poolsForDivision(gn);
                         const perPool = Math.max(1, Math.ceil(n / pools));
                         if (fmt === "swiss") {
                           const pp = Math.max(2, perPool);
@@ -7259,8 +7307,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <div className="space-y-4">
                 {(() => {
                   const isSwissPools = true; // pools apply to any format now
-                  const poolsFor = (gi: number) =>
-                    Math.max(1, Number(swissPools[String(gi + 1)]) || 1);
+                  const poolsFor = (gi: number) => poolsForDivision(gi + 1);
 
                   // Block distribution: pool A = first chunk, pool B = next chunk, etc.
                   // Admins arrange strength manually by dragging within the pool.

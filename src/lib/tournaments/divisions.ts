@@ -297,6 +297,37 @@ export function sectionsFromPools(
   return out;
 }
 
+/* --------------------------------------------------- pool selector model */
+
+/**
+ * Formats that split a division into pools. Every one of these reads the SAME
+ * pool count (`swiss_pools[gn]`, with the legacy `league_sections` fallback);
+ * there is exactly one organiser-facing pool control per division.
+ */
+export const POOL_FORMATS = new Set([
+  "single_round_robin",
+  "double_round_robin",
+  "swiss",
+  "cross_league",
+  "knockout",
+]);
+
+export function formatUsesPools(format: string | null | undefined): boolean {
+  return POOL_FORMATS.has(String(format || ""));
+}
+
+/** Label for a pool count — 1 is a single draw, 2+ are pools. */
+export function poolLabel(n: number): string {
+  return n <= 1 ? "1 draw" : `${n} pools`;
+}
+
+/** Choices for the single pool selector, always including the current value. */
+export function poolOptions(current: number, base: number[] = [1, 2, 4, 8]): number[] {
+  const n = Math.max(1, Math.floor(current) || 1);
+  const set = new Set<number>([...base, n]);
+  return Array.from(set).sort((a, b) => a - b);
+}
+
 /* ---------------------------------------------------------- validation */
 
 export interface DivisionIssue {

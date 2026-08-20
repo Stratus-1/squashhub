@@ -47,6 +47,8 @@ export interface LeagueTreeGroup {
   tierNumber: number;
   /** Season this group belongs to (null when the club has no season data). */
   seasonYear?: number | null;
+  /** True for the small catch-all group of rows with no confident level. */
+  needsAssignment?: boolean;
   children: LeagueTreeChild[];
 }
 
@@ -95,7 +97,7 @@ export function buildLeagueTree(
   tierByLeagueId?: Map<string, string> | null,
 ): LeagueTreeGroup[] {
   const groups = new Map<string, LeagueTreeGroup>();
-  const orphans: LeagueTreeGroup[] = [];
+  const orphanGroups = new Map<string, LeagueTreeGroup>();
 
   const ensure = (
     key: string,
@@ -190,15 +192,25 @@ export function buildLeagueTree(
       g.children.push(childOf(l));
       return;
     }
-    orphans.push({
-      key: `solo::${l.id}`,
-      label: l.name,
-      assocName: assoc,
-      tierNumber: 9999,
-      seasonYear: season,
-      children: [childOf(l)],
-    });
+    // Never flatten the selector: everything we cannot place confidently is
+    // collected in ONE small "Needs league assignment" group per association.
+    const key = `unassigned::${l.association_id || assoc}::${season ?? "no-season"}`;
+    let g = orphanGroups.get(key);
+    if (!g) {
+      g = {
+        key,
+        label: "Needs league assignment",
+        assocName: assoc,
+        tierNumber: 9999,
+        seasonYear: season,
+        needsAssignment: true,
+        children: [],
+      };
+      orphanGroups.set(key, g);
+    }
+    g.children.push(childOf(l));
   });
+
 
   const sorted = Array.from(groups.values()).sort(
     (a, b) =>
@@ -212,7 +224,14 @@ export function buildLeagueTree(
       (a, b) => Number(a.isReserve) - Number(b.isReserve) || a.name.localeCompare(b.name),
     ),
   );
-  orphans.sort((a, b) => a.label.localeCompare(b.label));
+  const orphans = Array.from(orphanGroups.values()).sort(
+    (a, b) => a.assocName.localeCompare(b.assocName) || (b.seasonYear ?? 0) - (a.seasonYear ?? 0),
+  );
+  orphans.forEach((g) =>
+    g.children.sort(
+      (a, b) => Number(a.isReserve) - Number(b.isReserve) || a.name.localeCompare(b.name),
+    ),
+  );
   return [...sorted, ...orphans];
 }
 

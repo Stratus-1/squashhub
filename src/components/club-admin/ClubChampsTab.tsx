@@ -40,7 +40,7 @@ import {
   type DivisionSource,
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
-import { buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
+import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
   resolveLeagueSeasonLevels,
   seasonsPresent,
@@ -1291,25 +1291,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return filterTreeBySeason(full, sourceSeason);
   }, [availableLeagues, leagueResolution, sourceSeason]);
 
-  /** Flat "pick which leagues to seed from" list — same season-scoped groups. */
-  const leagueGroups = useMemo(
-    () =>
-      leagueTree.map((g) => ({
-        key: g.key,
-        label: g.seasonYear != null ? `${g.assocName} — ${g.label} (${g.seasonYear})` : `${g.assocName} — ${g.label}`,
-        leagueIds: g.children.map((c) => c.id),
-      })),
-    [leagueTree],
-  );
 
 
-  const toggleSourceGroup = (leagueIds: string[]) => {
-    const next = new Set(sourceLeagueIds);
-    const allOn = leagueIds.every((id) => next.has(id));
-    if (allOn) leagueIds.forEach((id) => next.delete(id));
-    else leagueIds.forEach((id) => next.add(id));
-    applyLeaguePrefill(next);
-  };
 
   // Re-fetch & merge players whenever the league selection changes
   const applyLeaguePrefill = async (leagueIds: Set<string>) => {
@@ -4519,6 +4502,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPairGroupAssignments(new Map());
     setPairOrder([]);
     setSourceLeagueIds(new Set());
+    // A brand-new tournament must never inherit the previous one's selector
+    // state: season pick and eligibility overrides are cleared too.
+    setSourceSeason(null);
+    setSeasonTouched(false);
+    setEligibilityOverrides(new Set());
     setRegistrationMode("");
     setPartnerMode("");
     setRegistrationOpensAt("");
@@ -6070,9 +6058,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           </div>
                                         )}
 
+                                        {/* With "All leagues" ticked the hierarchy stays
+                                            visible and every team reads as selected; the
+                                            moment a child is unticked the source becomes an
+                                            explicit id list. */}
                                         <LeagueSourceTree
                                           groups={leagueTree}
-                                          selected={src.leagueIds}
+                                          selected={
+                                            src.mode === "all" || src.leagueIds.length === 0
+                                              ? allTreeLeagueIds(leagueTree)
+                                              : src.leagueIds
+                                          }
                                           onChange={(ids) =>
                                             setSrc({
                                               mode:
@@ -7132,25 +7128,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {inviteSource === "leagues" && (
                   <div className="space-y-2 pt-1">
                     <Label className="text-xs text-muted-foreground">Pick which leagues to seed from</Label>
-                    {leagueGroups.length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic">No leagues found for this club.</p>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto rounded border border-border/50 bg-background/60 p-2">
-                        {leagueGroups.map((g) => {
-                          const allOn = g.leagueIds.every((id) => sourceLeagueIds.has(id));
-                          const someOn = !allOn && g.leagueIds.some((id) => sourceLeagueIds.has(id));
-                          return (
-                            <label key={g.key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1.5 py-1">
-                              <Checkbox
-                                checked={allOn ? true : someOn ? "indeterminate" : false}
-                                onCheckedChange={() => toggleSourceGroup(g.leagueIds)}
-                              />
-                              <span className="truncate">{g.label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
+                    {/* Same hierarchical tree as the Structure step: season →
+                        league level → teams / reserves, on canonical ids. */}
+                    <div className="rounded border border-border/50 bg-background/60 p-2">
+                      <LeagueSourceTree
+                        groups={leagueTree}
+                        selected={Array.from(sourceLeagueIds)}
+                        onChange={(ids) => applyLeaguePrefill(new Set(ids))}
+                      />
+                    </div>
+
                     <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
                       <Checkbox
                         checked={inviteIncludeReserves}

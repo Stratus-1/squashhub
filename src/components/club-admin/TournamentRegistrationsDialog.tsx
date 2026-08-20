@@ -10,6 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, X, Check, UserPlus, Lock, Unlock, MessageCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { openWhatsApp, normalisePhoneForWhatsApp } from "@/lib/whatsapp";
+import {
+  classifyEntrant,
+  ENTRANT_CATEGORY_LABEL,
+  ENTRANT_CATEGORY_VARIANT,
+  isParticipatingEntrant,
+} from "@/lib/tournaments/entrant-status";
 
 interface Props {
   open: boolean;
@@ -17,22 +23,6 @@ interface Props {
   champ: any; // club_champs row
   clubId: string;
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  pending_payment: "Awaiting card",
-  pending_eft: "Awaiting EFT",
-  paid: "Paid",
-  waived: "Waived",
-  cancelled: "Cancelled",
-};
-
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  pending_payment: "outline",
-  pending_eft: "outline",
-  paid: "default",
-  waived: "secondary",
-  cancelled: "destructive",
-};
 
 export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubId }: Props) {
   const qc = useQueryClient();
@@ -179,6 +169,8 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const cancelledCount = registrations.length - activeRegistrations.length;
   const visibleRegistrations = showCancelled ? registrations : activeRegistrations;
 
+  const feeRequired = entryFee > 0 && !!champ?.payment_required;
+  const participatingCount = activeRegistrations.filter((r: any) => isParticipatingEntrant(r, { paymentRequired: feeRequired })).length;
   const paidCount = activeRegistrations.filter((r: any) => r.status === "paid" || r.status === "waived").length;
   const pendingCount = activeRegistrations.filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft").length;
 
@@ -191,7 +183,8 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
         <div className="space-y-3">
           <div className="flex items-center gap-3 text-xs flex-wrap">
-            <Badge variant="default">Paid {paidCount}</Badge>
+            <Badge variant="default">Registered {participatingCount}</Badge>
+            <Badge variant="secondary">Paid {paidCount}</Badge>
             <Badge variant="outline">Pending {pendingCount}</Badge>
             <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
               Active {activeRegistrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
@@ -281,9 +274,14 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                       </div>
 
                     </div>
-                    <Badge variant={STATUS_VARIANT[r.status] || "outline"} className="text-[10px]">
-                      {STATUS_LABEL[r.status] || r.status}
-                    </Badge>
+                    {(() => {
+                      const category = classifyEntrant(r, { paymentRequired: feeRequired });
+                      return (
+                        <Badge variant={ENTRANT_CATEGORY_VARIANT[category]} className="text-[10px]">
+                          {ENTRANT_CATEGORY_LABEL[category]}
+                        </Badge>
+                      );
+                    })()}
                     <div className="flex gap-1">
                       {r.invited_by_admin && normalisePhoneForWhatsApp(r.member?.phone) && (
                         <Button

@@ -8,6 +8,12 @@ import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, typ
 import { audienceLabel, resolveInviteAudience, type InviteAudienceMode } from "@/lib/tournaments/invite-audience";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
+  classifyEntrant,
+  countEntrantsByCategory,
+  ENTRANT_CATEGORY_LABEL,
+  filterParticipatingEntrants,
+} from "@/lib/tournaments/entrant-status";
+import {
   defaultForfeitRule,
   describeForfeitRule,
   forfeitOptionsForScoring,
@@ -4724,7 +4730,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     queryKey: ["champ-invitees", editingChampId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("id, club_member_id, status, invited_by_admin")
+        .select("id, club_member_id, status, invited_by_admin, confirmed_at, paid_at, fee_paid_cents")
         .eq("champ_id", editingChampId!);
       if (error) throw error;
       return (data || []) as any[];
@@ -4770,18 +4776,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         name: memberNameById.get(r.club_member_id) || "Unknown member",
         status: String(r.status || "").toLowerCase(),
         invited: !!r.invited_by_admin,
+        category: classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }),
       }))
       .filter((r) => !q || r.name.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [inviteeRows, inviteeSearch, memberNameById]);
+  }, [inviteeRows, inviteeSearch, memberNameById, paymentRequired, entryFeeAmount]);
 
-  function inviteeStatusLabel(r: { status: string; invited: boolean }) {
-    if (r.status === "cancelled") return "Declined / cancelled";
-    if (["paid", "registered", "active", "waived"].includes(r.status)) return "Entered";
-    if (r.status === "pending_payment") return r.invited ? "Invited — awaiting payment" : "Awaiting payment";
-    if (r.status === "pending_eft") return "Awaiting EFT proof";
-    return r.invited ? "Invited — no response" : "Not yet invited";
+  function inviteeStatusLabel(r: { status: string; invited: boolean; category?: any }) {
+    const category =
+      r.category ??
+      classifyEntrant({ status: r.status }, { paymentRequired: paymentRequired && entryFeeAmount > 0 });
+    if (category === "pending_invite" && !r.invited) return "Not yet invited";
+    return ENTRANT_CATEGORY_LABEL[category as keyof typeof ENTRANT_CATEGORY_LABEL];
   }
+
   const SKIP_INVITE_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
   const allInviteCount = useMemo(
     () =>
@@ -4801,6 +4809,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
   const effectiveAllInviteCount = allInviteCount || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
+
+  /** Live acceptance picture for this tournament (drives the Players step). */
+  const entrantCounts = useMemo(
+    () => countEntrantsByCategory(inviteeRows as any[], { paymentRequired: paymentRequired && entryFeeAmount > 0 }),
+    [inviteeRows, paymentRequired, entryFeeAmount],
+  );
+
+  /** Accepted entrants who belong to no source league — need a division by hand. */
+  const acceptedNeedingDivision = useMemo(() => {
+    const inAnyLeague = new Set<string>();
+    registrationsByLeague.forEach((ids) => ids.forEach((id) => inAnyLeague.add(id)));
+    return filterParticipatingEntrants(inviteeRows as any[], {
+      paymentRequired: paymentRequired && entryFeeAmount > 0,
+    })
+      .filter((r: any) => r.club_member_id && !inAnyLeague.has(r.club_member_id))
+      .map((r: any) => ({
+        memberId: r.club_member_id as string,
+        name: memberNameById.get(r.club_member_id) || "Unknown member",
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [inviteeRows, registrationsByLeague, memberNameById, paymentRequired, entryFeeAmount]);
+
 
   // First real invitee on the list — used for "send a test as an invited player"
   // so an organiser who isn't part of any team can still preview the exact
@@ -5167,11 +5197,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       .order("order_index", { ascending: true })
       .order("created_at", { ascending: true });
 
-    // Also load admin-invited registrations so invite-mode tournaments
-    // (where entries haven't been locked yet) still show their invitees.
-    const { data: registrations } = await fromExt("club_champs_registrations")
-      .select("club_member_id, partner_member_id, status")
+    // Also load registrations so invite-mode tournaments (where entries
+    // haven't been locked yet) still show their field. Only entrants who have
+    // actually accepted/registered become players — pending invitees must not
+    // be pre-selected into the draw.
+    const { data: allRegistrations } = await fromExt("club_champs_registrations")
+      .select("club_member_id, partner_member_id, status, confirmed_at, paid_at, fee_paid_cents")
       .eq("champ_id", champ.id);
+    const champPaymentRequired =
+      !!(champ as any).payment_required && Number((champ as any).entry_fee_cents || 0) > 0;
+    const registrations = filterParticipatingEntrants(allRegistrations as any[], {
+      paymentRequired: champPaymentRequired,
+    });
 
     const hasEntries = entries && entries.length > 0;
 
@@ -5197,7 +5234,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         entries.forEach((e: any) => assignments.set(e.club_member_id, e.group_number - 1));
         setGroupAssignments(assignments);
       }
-    } else if (registrations && registrations.length > 0) {
+    } else if (registrations.length > 0) {
       if (champ.match_type === "doubles") {
         const paired = registrations.filter((r: any) => r.partner_member_id);
         const pairs: DoublePair[] = paired.map((r: any) => ({
@@ -5206,14 +5243,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           player2Id: r.partner_member_id,
         }));
         setDoublesPairs(pairs);
-        // Invited members still waiting for a partner — keep them visible
-        // so the admin can re-invite or pair them.
+        // Accepted entrants still waiting for a partner — keep them visible
+        // so the admin can pair them.
         const unpaired = registrations.filter((r: any) => !r.partner_member_id).map((r: any) => r.club_member_id);
         setSelectedPlayerIds(new Set(unpaired));
       } else {
         setSelectedPlayerIds(new Set(registrations.map((r: any) => r.club_member_id)));
       }
     }
+
 
     const savedCourtIds = (champ as any).court_ids as number[] | null;
     // Drop any court ids that no longer exist (e.g. external courts that were
@@ -8135,7 +8173,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 Selected members will receive the tournament invite. They register/pay first, then choose their own partners.
               </p>
             )}
+            {editingChampId && (entrantCounts.registered + entrantCounts.accepted + entrantCounts.pending_invite) > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {entrantCounts.registered} registered · {entrantCounts.accepted} accepted (fee due) ·{" "}
+                {entrantCounts.pending_invite + entrantCounts.payment_pending} awaiting response ·{" "}
+                {entrantCounts.declined} declined. Only registered entrants are pre-selected here.
+              </p>
+            )}
+            {acceptedNeedingDivision.length > 0 && (
+              <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
+                <span className="font-semibold">Accepted — needs division assignment ({acceptedNeedingDivision.length}):</span>{" "}
+                {acceptedNeedingDivision.map((p) => p.name).join(", ")}. They accepted the invitation but play in none of
+                the source leagues — place them into a division manually.
+              </div>
+            )}
           </CardHeader>
+
           <CardContent>
             {allSelectablePlayers.length === 0 ? (
               <p className="text-muted-foreground py-4">No matching players found. Check member gender settings.</p>

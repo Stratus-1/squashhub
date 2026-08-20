@@ -1411,22 +1411,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [sourceLeagueIds, leagueNameById, registrationsByLeague, inviteExcludedMemberIds]);
 
-  /**
-   * Saving must not depend on the Structure → Invite synchronising effect having
-   * completed first. Existing drafts can have canonical division team ids while
-   * the older top-level invite selector is still empty, so derive the roster
-   * directly from those teams as the authoritative fallback.
-   */
-  const structureSeedPlayerIds = useMemo(() => {
-    const ids = new Set<string>();
-    structureLeagueIds.forEach((leagueId) => {
-      (registrationsByLeague.get(leagueId) || []).forEach((memberId) => {
-        if (!inviteExcludedMemberIds.has(memberId)) ids.add(memberId);
-      });
-    });
-    return ids;
-  }, [structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
-
 
   /**
    * Players the admin has deliberately kept in a division they do not qualify
@@ -1825,7 +1809,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // soon as progress is saved — that list is what "Invite actions" counts
       // and sends to. Nobody is entered until they accept.
       const inviteSeedIds = new Set(selectedPlayerIds);
-      structureSeedPlayerIds.forEach((memberId) => inviteSeedIds.add(memberId));
+      // Query the selected Structure teams at save time instead of trusting an
+      // earlier async prefill. This guarantees Save Progress has the canonical
+      // roster even if the organiser saves immediately after opening a draft.
+      if (structureLeagueIds.size > 0) {
+        const { data: structureRegs, error: structureRegsErr } = await fromExt("member_league_registrations")
+          .select("club_member_id, is_reserve")
+          .in("league_id", Array.from(structureLeagueIds));
+        if (structureRegsErr) throw structureRegsErr;
+        (structureRegs || []).forEach((r: any) => {
+          if (!r.club_member_id || inviteExcludedMemberIds.has(r.club_member_id)) return;
+          if (!inviteIncludeReserves && r.is_reserve) return;
+          inviteSeedIds.add(r.club_member_id);
+        });
+      }
       const seedsFromLeagues = structureLeagueIds.size > 0 && inviteSeedIds.size > 0;
       if (registrationUsesInviteList || seedsFromLeagues) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);

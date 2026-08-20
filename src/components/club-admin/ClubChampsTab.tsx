@@ -5842,10 +5842,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         // Knockout / cross league were previously dropped by this
                         // fallback, which made knockout divisions render as round
                         // robin (wrong pool wording and wrong bottom control).
+                        const rf = roundFormat as string;
                         const fmt: PerLeagueFormat = (leagueFormats[key]
-                          ?? (roundFormat === "swiss" || roundFormat === "double_round_robin"
-                              || roundFormat === "single_round_robin" || roundFormat === "knockout"
-                              || roundFormat === "cross_league"
+                          ?? (rf === "swiss" || rf === "double_round_robin"
+                              || rf === "single_round_robin" || rf === "knockout"
+                              || rf === "cross_league"
                               ? (roundFormat as PerLeagueFormat)
                               : "single_round_robin"));
                         const meta = FORMAT_META[fmt];

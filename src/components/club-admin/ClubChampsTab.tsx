@@ -307,9 +307,18 @@ function buildInviteDetailLines(opts: {
   bestOf?: number;
   registrationRequired?: boolean;
   registrationMode?: "" | "open" | "invite";
+  /** Tournament name — shown as the first detail line when provided. */
+  tournamentName?: string;
+  /**
+   * Effective draw format of every competition division. Drives the
+   * "Draw format" line so a knockout tournament never claims to be a
+   * round-robin. Falls back to `roundFormat` when omitted.
+   */
+  divisionFormats?: string[];
 }): string[] {
   const lines: string[] = [];
   const isDoubles = opts.matchType === "doubles";
+  if (opts.tournamentName?.trim()) lines.push(`Tournament: ${opts.tournamentName.trim()}`);
   lines.push(`Category: ${GENDER_LABELS[opts.gender]} ${isDoubles ? "Doubles" : "Singles"}`);
 
   try {
@@ -323,19 +332,33 @@ function buildInviteDetailLines(opts: {
     lines.push(`Game length: Par ${opts.pointsPerGame} (win by 2), best of ${opts.bestOf}`);
   }
 
+  const FORMAT_LABELS: Record<string, string> = {
+    single_round_robin: "Single round-robin (each plays once)",
+    double_round_robin: "Double round-robin (home & away)",
+    swiss: "Swiss rounds (paired on results)",
+    cross_league: "Cross-league (leagues play each other)",
+    knockout: "Knockout (single elimination)",
+  };
+  const formats = Array.from(
+    new Set((opts.divisionFormats?.length ? opts.divisionFormats : [opts.roundFormat]).filter(Boolean))
+  );
+  const effective = formats.length ? formats : ["single_round_robin"];
   lines.push(
-    `Round format: ${opts.roundFormat === "double_round_robin"
-      ? "Double round-robin (home & away)"
-      : "Single round-robin (each plays once)"}`
+    `Draw format: ${effective.map((f) => FORMAT_LABELS[f] || f).join(" · ")}`
   );
 
-  const byeLabel =
-    opts.byeHandling === "walkover_win"
-      ? "Walkover win — full points"
-      : opts.byeHandling === "neutral"
-      ? "Neutral — excluded from averages"
-      : "No match — bye not recorded";
-  lines.push(`Bye handling: ${byeLabel}`);
+  // Byes only mean something where every entrant is scheduled against the
+  // field — a knockout-only draw has no bye scoring rule to report.
+  if (effective.some((f) => f !== "knockout")) {
+    const byeLabel =
+      opts.byeHandling === "walkover_win"
+        ? "Walkover win — full points"
+        : opts.byeHandling === "neutral"
+        ? "Neutral — excluded from averages"
+        : "No match — bye not recorded";
+    lines.push(`Bye handling: ${byeLabel}`);
+  }
+
 
   if (isDoubles) {
     lines.push(

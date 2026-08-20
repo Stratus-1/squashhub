@@ -23,6 +23,12 @@ export interface LeagueTreeInput {
   name: string;
   association_id?: string | null;
   assocName?: string | null;
+  /** Canonical level (1 = 1st League) when known — stored or resolved. */
+  level?: number | null;
+  /** Competition year this row belongs to, when known. */
+  seasonYear?: number | null;
+  /** Reserves squad flag when known (falls back to the name test). */
+  isReserve?: boolean | null;
 }
 
 export interface LeagueTreeChild {
@@ -39,8 +45,11 @@ export interface LeagueTreeGroup {
   assocName: string;
   /** Numeric tier used for ordering (999 when unknown). */
   tierNumber: number;
+  /** Season this group belongs to (null when the club has no season data). */
+  seasonYear?: number | null;
   children: LeagueTreeChild[];
 }
+
 
 const RESERVE_RE = /\breserves?\b/i;
 

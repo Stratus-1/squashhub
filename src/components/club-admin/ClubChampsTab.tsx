@@ -5122,12 +5122,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
       case "registration": {
         if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
-        if (invitesApply && inviteMethods.size === 0) m.push("At least one invite delivery method");
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
           m.push("At least one accepted payment method");
         }
         break;
       }
+      case "invites": {
+        if (invitesApply && inviteMethods.size === 0) m.push("At least one invite delivery method");
+        break;
+      }
+
       case "players": {
         if (selfPairInviteSelection) {
           if (selectedPlayerIds.size < 2) m.push("Select at least 2 players");

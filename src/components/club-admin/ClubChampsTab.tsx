@@ -770,6 +770,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     double_round_robin: { label: "Round robin (double)", short: "Double RR", desc: "Play each opponent twice — home & away." },
     swiss: { label: "Swiss pairing", short: "Swiss", desc: "Fixed rounds; admin re-pairs each round by score." },
     cross_league: { label: "Cross league", short: "Cross league", desc: "This league plays against the other leagues instead of within itself." },
+    knockout: { label: "Knockout", short: "Knockout", desc: "Straight elimination. Split into sections; seeds spread evenly and section winners meet in the league final." },
   };
   const addLeagueOfFormat = (fmt: PerLeagueFormat) => {
     const gn = (numGroups || 0) + 1;
@@ -791,8 +792,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setSwissPools((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
       setSwissRounds((m) => ({ ...m, [String(gn)]: m[String(gn)] || 5 }));
     }
+    if (fmt === "knockout") {
+      setLeagueSections((m) => ({ ...m, [String(gn)]: m[String(gn)] || 1 }));
+    }
     setUsePerLeagueFormats(true);
     if (fmt === "cross_league") setRoundFormat("cross_league");
+    else if (fmt === "knockout") { if (!roundFormat) setRoundFormat("single_round_robin"); }
     else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
   };
   /** Set one league's gender, materialising the others so nothing shifts. */
@@ -2116,6 +2121,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       isBye?: boolean;
       byeEntityId?: string;
       date?: string; time?: string; courtId?: number;
+      /** Knockout draws only — section + round label carried through to the DB. */
+      koSection?: number;
+      koStageLabel?: string;
     };
 
     // Build the universal slot list from sessions (used by non-Bells scheduling).
@@ -2282,6 +2290,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
     };
 
+    // Knockout league — only the FIRST round of every section is materialised
+    // now. Later rounds are generated in the live tournament view once their
+    // feeder round is complete (phased generation).
+    const buildKnockoutLeague = (gi: number, ids: string[]) => {
+      const gn = gi + 1;
+      const sections = Math.min(sectionsForLeague(gn), Math.max(1, ids.length));
+      const seeds = ids.map((id, i) => ({ memberId: id, seed: i + 1 }));
+      const assignments = distributeSeedsBalanced(seeds, sections);
+      const rows = buildLeagueFirstRound({ champId: "preview", groupNumber: gn, assignments });
+      for (const r of rows) {
+        allMatches.push({
+          groupNum: gn,
+          roundNum: r.round_number,
+          entityA: r.player_a_member_id ?? r.bye_member_id ?? "",
+          entityB: r.player_b_member_id ?? r.bye_member_id ?? "",
+          leg: null,
+          isBye: r.is_bye,
+          byeEntityId: r.is_bye ? r.bye_member_id ?? undefined : undefined,
+          koSection: r.section_number,
+          koStageLabel: r.stage_label,
+        });
+      }
+    };
+
     {
       const perLeagueIds: string[][] = isDoubles
         ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
@@ -2295,6 +2327,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         const f = formatForLeague(gi + 1);
         if (f === "swiss") {
           buildSwissLeague(gi, ids);
+        } else if (f === "knockout") {
+          buildKnockoutLeague(gi, ids);
         } else if (f === "cross_league") {
           if (poolsForLeague(gi + 1) > 1) ingestCrossPools(gi, ids);
           else crossAcross.push({ ids, gn: gi + 1 });
@@ -3340,6 +3374,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             scheduled_time: isBye ? null : m.time,
             court_id: isBye ? null : m.courtId,
             leg: m.leg ?? null,
+            section_number: m.koSection ?? null,
+            stage: m.koSection ? "ko" : null,
+            stage_label: m.koStageLabel ?? null,
             is_bye: isBye,
             bye_member_id: isBye ? resolvedPairDbId(pairA?.player1Id || m.entityA) : null,
             status: isBye
@@ -3357,6 +3394,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           scheduled_time: isBye ? null : m.time,
           court_id: isBye ? null : m.courtId,
           leg: m.leg ?? null,
+          section_number: m.koSection ?? null,
+          stage: m.koSection ? "ko" : null,
+          stage_label: m.koStageLabel ?? null,
           is_bye: isBye,
           bye_member_id: isBye ? toDbId(m.entityA) : null,
           status: isBye

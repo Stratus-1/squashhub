@@ -9,7 +9,7 @@
 > §4 using the `Symptom → Finding → Fix → Guard` format. Never delete old entries; mark them
 > `SUPERSEDED` if a later fix replaces them.
 
-Last updated: **18 August 2026**
+Last updated: **20 August 2026**
 
 ---
 

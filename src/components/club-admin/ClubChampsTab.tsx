@@ -7259,6 +7259,88 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               )}
 
+              {/* Selective invite reminders */}
+              <Dialog open={inviteePickerOpen} onOpenChange={setInviteePickerOpen}>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Send invite to selected members</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <Input
+                      placeholder="Search invitees…"
+                      value={inviteeSearch}
+                      onChange={(e) => setInviteeSearch(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{selectedInviteeRegIds.size} selected of {inviteeList.length} shown</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="underline"
+                          onClick={() => setSelectedInviteeRegIds(new Set(inviteeList.map((r) => r.id)))}
+                        >
+                          Select all shown
+                        </button>
+                        <button
+                          type="button"
+                          className="underline"
+                          onClick={() => setSelectedInviteeRegIds(new Set())}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto rounded-md border divide-y">
+                      {inviteesLoading && (
+                        <p className="p-3 text-sm text-muted-foreground">Loading invitees…</p>
+                      )}
+                      {!inviteesLoading && inviteeList.length === 0 && (
+                        <p className="p-3 text-sm text-muted-foreground">No invitees found for this tournament.</p>
+                      )}
+                      {inviteeList.map((r) => {
+                        const checked = selectedInviteeRegIds.has(r.id);
+                        return (
+                          <label key={r.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-muted/40">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                setSelectedInviteeRegIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (v) next.add(r.id); else next.delete(r.id);
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span className="flex-1 min-w-0 truncate">{r.name}</span>
+                            <span className="text-[11px] text-muted-foreground shrink-0">{inviteeStatusLabel(r)}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setInviteePickerOpen(false)}>Cancel</Button>
+                    <Button
+                      type="button"
+                      disabled={selectedInviteeRegIds.size === 0 || invitesSendingFor === editingChampId}
+                      onClick={async () => {
+                        if (!editingChampId) return;
+                        const ids = Array.from(selectedInviteeRegIds);
+                        setInviteePickerOpen(false);
+                        await sendChampInvites(editingChampId, { confirm: true, registrationIds: ids });
+                      }}
+                    >
+                      {invitesSendingFor === editingChampId
+                        ? "Sending…"
+                        : `Send to ${selectedInviteeRegIds.size} member${selectedInviteeRegIds.size === 1 ? "" : "s"}`}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+
+
 
               <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2 mt-2">
                 <div className="min-w-0">

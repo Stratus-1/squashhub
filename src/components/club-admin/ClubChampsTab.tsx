@@ -1801,10 +1801,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Persist current player / pair selections + group assignments as a draft
   // to club_champs_entries. Safe because entries get wiped & rewritten when
   // matches are (re)generated. Requires the parent champ row to exist.
-  const saveEntriesDraft = async (champIdOverride?: string) => {
+  const saveEntriesDraft = async (champIdOverride?: string, structureLeagueIdsOverride?: Set<string>) => {
     const champIdToUse = champIdOverride || editingChampId;
     if (!champIdToUse) return;
     try {
+      const effectiveStructureLeagueIds = structureLeagueIdsOverride || structureLeagueIds;
       // Invite-list tournaments: the selected players (typically pre-filled
       // from the chosen league teams) become `invited` registration rows as
       // soon as progress is saved — that list is what "Invite actions" counts
@@ -1813,10 +1814,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Query the selected Structure teams at save time instead of trusting an
       // earlier async prefill. This guarantees Save Progress has the canonical
       // roster even if the organiser saves immediately after opening a draft.
-      if (structureLeagueIds.size > 0) {
+      if (effectiveStructureLeagueIds.size > 0) {
         const { data: structureRegs, error: structureRegsErr } = await fromExt("member_league_registrations")
           .select("club_member_id, is_reserve")
-          .in("league_id", Array.from(structureLeagueIds));
+          .in("league_id", Array.from(effectiveStructureLeagueIds));
         if (structureRegsErr) throw structureRegsErr;
         (structureRegs || []).forEach((r: any) => {
           if (!r.club_member_id || inviteExcludedMemberIds.has(r.club_member_id)) return;
@@ -1824,7 +1825,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           inviteSeedIds.add(r.club_member_id);
         });
       }
-      const seedsFromLeagues = structureLeagueIds.size > 0 && inviteSeedIds.size > 0;
+      const seedsFromLeagues = effectiveStructureLeagueIds.size > 0 && inviteSeedIds.size > 0;
       if (registrationUsesInviteList || seedsFromLeagues) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
         const ids = await promoteVisitorIds(Array.from(inviteSeedIds));
@@ -4441,7 +4442,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     try {
       // The picker needs real registration ids for selective sends. Materialise
       // the canonical Structure roster first, then refresh its own query.
-      await saveEntriesDraft(editingChampId);
+      await saveEntriesDraft(editingChampId, new Set(structureLeagueIds));
       await refetchInvitees();
     } catch (error: any) {
       toast.error(error?.message || "Could not load the selected league members");

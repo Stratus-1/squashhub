@@ -4055,7 +4055,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         .maybeSingle();
       const sub = (clubRow as any)?.subdomain as string | undefined;
       const path = `/club-champs/${champId}`;
-      const inviteUrl = sub ? `https://${sub}.squashhub.co.za${path}` : path;
+      const fallbackUrl = sub ? `https://${sub}.squashhub.co.za${path}` : path;
+
+      // Mint (idempotently) a recipient-specific invitation token per invitee.
+      // The same canonical /i/<token> URL is used by in-app, email and WhatsApp.
+      const tokenByRegistration = new Map<string, string>();
+      try {
+        const { data: tokenRows, error: tokenErr } = await (supabase as any).rpc(
+          "ensure_tournament_invite_tokens",
+          { p_champ_id: champId },
+        );
+        if (tokenErr) throw tokenErr;
+        for (const t of (tokenRows || []) as any[]) {
+          if (t?.registration_id && t?.invite_token) tokenByRegistration.set(t.registration_id, t.invite_token);
+        }
+      } catch (tokErr: any) {
+        console.warn("Could not mint invitation tokens:", tokErr?.message || tokErr);
+      }
+      const urlForRegistration = (registrationId: string) => {
+        const token = tokenByRegistration.get(registrationId);
+        return token ? buildInviteUrl(token, sub) : fallbackUrl;
+      };
 
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
       const sendApp = methods.includes("app");

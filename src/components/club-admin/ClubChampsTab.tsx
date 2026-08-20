@@ -1036,6 +1036,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   type DaySchedule = { date: string; start_time: string; end_time: string; court_ids: number[] | null };
   const [customizeDailySchedule, setCustomizeDailySchedule] = useState(false);
   const [daySchedules, setDaySchedules] = useState<DaySchedule[]>([]);
+
+  /**
+   * Keep the per-day windows in sync with the play days + date range.
+   *
+   * Ticking Mon/Wed/Fri must reserve EVERY Mon, Wed and Fri inside the
+   * tournament window — not just the weekday that happened to be ticked when
+   * the list was first generated. Rows for weekdays that are no longer ticked
+   * (or dates outside the window) are dropped; manually edited rows and extra
+   * windows on a still-valid date are preserved untouched.
+   */
+  useEffect(() => {
+    if (!customizeDailySchedule) return;
+    if (!startDate || !endDate || playDays.size === 0) return;
+    let wanted: Date[];
+    try {
+      wanted = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) })
+        .filter((d) => playDays.has(getDay(d)));
+    } catch {
+      return;
+    }
+    const wantedISO = wanted.map((d) => format(d, "yyyy-MM-dd"));
+    const wantedSet = new Set(wantedISO);
+    setDaySchedules((prev) => {
+      const kept = prev.filter((r) => !r.date || wantedSet.has(r.date));
+      const have = new Set(kept.map((r) => r.date));
+      const added = wantedISO
+        .filter((iso) => !have.has(iso))
+        .map((iso) => ({ date: iso, start_time: startTime, end_time: endTime, court_ids: null }));
+      if (added.length === 0 && kept.length === prev.length) return prev;
+      return [...kept, ...added].sort((a, b) => (a.date || "").localeCompare(b.date || "") || a.start_time.localeCompare(b.start_time));
+    });
+  }, [customizeDailySchedule, startDate, endDate, playDays, startTime, endTime]);
+
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);
 

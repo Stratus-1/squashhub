@@ -7455,20 +7455,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         />
       )}
 
-      {/* Inline validation hint — lists missing required fields for the current step. */}
-      {step !== "preview" && (() => {
-        const missing = step === "review" ? [] : missingForStep();
-        if (missing.length === 0) return null;
-        return (
-          <div className="rounded-md border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
-            <p className="font-semibold mb-1">Complete these before continuing:</p>
-            <ul className="list-disc pl-5 space-y-0.5">
-              {missing.map((r) => <li key={r}>{r}</li>)}
-            </ul>
-          </div>
-        );
-      })()}
-
       {/* Navigation */}
       {step !== "preview" && (
         <div className="flex justify-between items-center gap-2">
@@ -7485,15 +7471,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </Button>
           ) : (
             <Button
-              onClick={() => goToStep(activeSteps[stepIdx + 1])}
-              disabled={!canProceed()}
-              title={canProceed() ? undefined : `Complete: ${missingForStep().join(", ")}`}
+              onClick={handleNext}
+              // Basics has only two visible choices — keep the button disabled
+              // there. Every later step stays clickable so Next can scroll the
+              // admin to whatever is still missing on that step.
+              disabled={step === "category" && !canProceed()}
             >
               Next <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           )}
         </div>
       )}
+
 
 
 

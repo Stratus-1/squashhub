@@ -492,6 +492,18 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
                 {ORDINALS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
               </SelectContent>
             </Select>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Season (year)</Label>
+              <Input
+                type="number"
+                value={seasonYear}
+                onChange={(e) => setSeasonYear(parseInt(e.target.value, 10) || new Date().getFullYear())}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                A new season creates a fresh set of teams. Previous years keep their own teams, fixtures and results.
+              </p>
+            </div>
+
             {existingLeagueNames.length > 0 && (
               <Card className="p-2.5 border-warning/40 bg-warning/10 text-xs space-y-1">
                 <p className="font-medium text-foreground">Existing league rows for this number:</p>

@@ -10176,10 +10176,12 @@ export type Database = {
       }
       auto_complete_past_tournaments: { Args: never; Returns: number }
       bill_wifi_monthly: { Args: never; Returns: Json }
-      can_manage_tournament: {
-        Args: { _tournament_id: string; _user_id: string }
-        Returns: boolean
-      }
+      can_manage_tournament:
+        | { Args: { _tournament_id: string }; Returns: boolean }
+        | {
+            Args: { _tournament_id: string; _user_id: string }
+            Returns: boolean
+          }
       can_mark_bells_match: {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean

@@ -4284,35 +4284,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
 
-      // Build a tenant-aware absolute URL so the recipient lands on the correct
-      // club host (e.g. https://nsc.squashhub.co.za/club-champs/...) — without
-      // this the link goes to the root domain where RLS hides the tournament.
+      // Build recipient-specific, tenant-aware invitation URLs. Never fall
+      // back to the generic tournament page: that page cannot identify the
+      // invitee and therefore cannot offer Accept / Decline.
       const { data: clubRow } = await fromExt("clubs")
         .select("subdomain")
         .eq("id", clubId)
         .maybeSingle();
       const sub = (clubRow as any)?.subdomain as string | undefined;
-      const path = `/club-champs/${champId}`;
-      const fallbackUrl = sub ? `https://${sub}.squashhub.co.za${path}` : path;
 
       // Mint (idempotently) a recipient-specific invitation token per invitee.
       // The same canonical /i/<token> URL is used by in-app, email and WhatsApp.
       const tokenByRegistration = new Map<string, string>();
-      try {
-        const { data: tokenRows, error: tokenErr } = await (supabase as any).rpc(
-          "ensure_tournament_invite_tokens",
-          { p_champ_id: champId },
-        );
-        if (tokenErr) throw tokenErr;
-        for (const t of (tokenRows || []) as any[]) {
-          if (t?.registration_id && t?.invite_token) tokenByRegistration.set(t.registration_id, t.invite_token);
-        }
-      } catch (tokErr: any) {
-        console.warn("Could not mint invitation tokens:", tokErr?.message || tokErr);
+      const { data: tokenRows, error: tokenErr } = await (supabase as any).rpc(
+        "ensure_tournament_invite_tokens",
+        { p_champ_id: champId },
+      );
+      if (tokenErr) throw tokenErr;
+      for (const t of (tokenRows || []) as any[]) {
+        if (t?.registration_id && t?.invite_token) tokenByRegistration.set(t.registration_id, t.invite_token);
       }
       const urlForRegistration = (registrationId: string) => {
         const token = tokenByRegistration.get(registrationId);
-        return token ? buildInviteUrl(token, sub) : fallbackUrl;
+        if (!token) throw new Error("Could not create a secure invitation link for one or more players. No invitations were sent.");
+        return buildInviteUrl(token, sub);
       };
 
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
@@ -4382,9 +4377,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
   }
 
-  // Preview-only: sends a clearly-labelled TEST invitation to an explicitly
-  // entered email address. It writes no tournament registration, entrant,
-  // invitation-token, member notification or payment records.
+  // Sends a clearly-labelled TEST invitation to an explicitly entered email
+  // address, using a real invitee's secure /i/<token> journey. It may
+  // materialise the selected roster and mint the token, but it does not mark
+  // the invitation as sent or create a payment/response.
   const [testInviteSending, setTestInviteSending] = useState(false);
   const [testInviteDialogOpen, setTestInviteDialogOpen] = useState(false);
   const [testInviteEmail, setTestInviteEmail] = useState("");
@@ -4411,13 +4407,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
     setTestInviteSending(true);
     try {
+      const previewMember = opts?.asMemberId
+        ? { memberId: opts.asMemberId, name: opts.asName || memberNameById.get(opts.asMemberId) || "invited player" }
+        : sampleInvitee;
+      if (!previewMember) {
+        throw new Error("Select league teams and save the tournament before sending a test invitation.");
+      }
+
+      const selectedTeamIds = structureLeagueIds.size > 0
+        ? new Set(structureLeagueIds)
+        : new Set(sourceLeagueIds);
+      await saveEntriesDraft(champId, selectedTeamIds);
+
+      const { data: previewRegistration, error: registrationError } = await fromExt("club_champs_registrations")
+        .select("id")
+        .eq("champ_id", champId)
+        .eq("club_member_id", previewMember.memberId)
+        .maybeSingle();
+      if (registrationError) throw registrationError;
+      if (!(previewRegistration as any)?.id) {
+        throw new Error(`Could not prepare an invitation for ${previewMember.name}.`);
+      }
+
       const { data: clubRow } = await fromExt("clubs")
         .select("subdomain")
         .eq("id", clubId)
         .maybeSingle();
       const sub = (clubRow as any)?.subdomain as string | undefined;
-      const path = `/club-champs/${champId}`;
-      const previewUrl = sub ? `https://${sub}.squashhub.co.za${path}` : path;
+
+      const { data: tokenRows, error: tokenError } = await (supabase as any).rpc(
+        "ensure_tournament_invite_tokens",
+        { p_champ_id: champId },
+      );
+      if (tokenError) throw tokenError;
+      const previewToken = ((tokenRows || []) as any[]).find(
+        (row) => row?.registration_id === (previewRegistration as any).id,
+      )?.invite_token;
+      if (!previewToken) throw new Error(`Could not create a secure invitation link for ${previewMember.name}.`);
+      const previewUrl = buildInviteUrl(previewToken, sub);
 
       const { error: sendError } = await supabase.functions.invoke("send-transactional-email", {
         body: {
@@ -4428,17 +4455,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             tournamentName: champName || "Tournament",
             invitationBody: buildInviteBody(),
             invitationUrl: previewUrl,
-            previewForName: opts?.asName || null,
+            previewForName: previewMember.name,
           },
         },
       });
       if (sendError) throw sendError;
 
-      toast.success(
-        opts?.asName
-          ? `Test invite for ${opts.asName} sent to ${parsedEmail.data}. Nothing was recorded against the tournament.`
-          : `Test invite sent to ${parsedEmail.data}. Nothing was recorded against the tournament.`,
-      );
+      toast.success(`Test invite for ${previewMember.name} sent to ${parsedEmail.data}. The secure link is the same one that player will receive.`);
       setTestInviteDialogOpen(false);
       setTestInviteEmail("");
       setTestInvitePreviewAs(null);
@@ -7618,7 +7641,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         <span>
                           Send test to email address
                           <span className="block text-[11px] text-muted-foreground">
-                            Enter any recipient email — no club membership required
+                            Send the first invitee's secure journey to any email
                           </span>
                         </span>
                       </DropdownMenuItem>
@@ -7747,6 +7770,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         Previewing the invitation as {testInvitePreviewAs.name} would receive it.
                       </p>
                     )}
+                    {!testInvitePreviewAs && sampleInvitee && (
+                      <p className="text-xs text-muted-foreground">
+                        Previewing the secure invitation journey for {sampleInvitee.name}.
+                      </p>
+                    )}
                     <Label htmlFor="test-invite-email">Recipient email address</Label>
                     <Input
                       id="test-invite-email"
@@ -7761,7 +7789,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       }}
                     />
                     {testInviteEmailError && <p className="text-xs text-destructive">{testInviteEmailError}</p>}
-                    <p className="text-xs text-muted-foreground">Email only. This test records no tournament entry or invitation response.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Email only. The link identifies the invited player, but the test does not mark it as sent or record a response.
+                    </p>
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setTestInviteDialogOpen(false)}>Cancel</Button>

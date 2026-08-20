@@ -5,6 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
+import { audienceLabel, resolveInviteAudience, type InviteAudienceMode } from "@/lib/tournaments/invite-audience";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
   defaultForfeitRule,
@@ -1800,6 +1801,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       registration_required: registrationRequired,
       invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
       invite_source: inviteSource,
+      invite_audience: inviteAudience,
+      invite_audience_league_ids: Array.from(audienceLeagueIds),
+      invite_audience_member_ids: Array.from(audienceMemberIds),
+      invite_audience_include_individuals: audienceIncludeIndividuals,
       entry_source: entrySource,
       approval_gate: approvalGate,
       invite_include_reserves: inviteIncludeReserves,
@@ -1891,7 +1896,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const saveEntriesDraft = async (
     champIdOverride?: string,
     _legacyStructureLeagueIds?: Set<string>,
-    opts?: { inviteRosterOnly?: boolean },
+    opts?: { inviteRosterOnly?: boolean; materializeAudience?: boolean },
   ) => {
     const champIdToUse = champIdOverride || editingChampId;
     if (!champIdToUse) return;
@@ -1920,7 +1925,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // audience are not materialised as rows on save — the roster is created
       // when the organiser actually sends invitations.
       const seedsFromAudience =
-        audienceIds.length > 0 && (registrationUsesInviteList || inviteAudience !== "all_club");
+        audienceIds.length > 0 &&
+        (registrationUsesInviteList || opts?.materializeAudience || inviteAudience !== "all_club");
       if (seedsFromAudience) audienceIds.forEach((id) => inviteSeedIds.add(id));
       if (registrationUsesInviteList || seedsFromAudience) {
 
@@ -4567,10 +4573,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         throw new Error("Select league teams and save the tournament before sending a test invitation.");
       }
 
-      const selectedTeamIds = structureLeagueIds.size > 0
-        ? new Set(structureLeagueIds)
-        : new Set(sourceLeagueIds);
-      await saveEntriesDraft(champId, selectedTeamIds, { inviteRosterOnly: true });
+      await saveEntriesDraft(champId, undefined, { inviteRosterOnly: true, materializeAudience: true });
 
       const { data: previewRegistration, error: registrationError } = await fromExt("club_champs_registrations")
         .select("id")
@@ -4734,10 +4737,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // drafts stored the same stable team ids only in `source_league_ids`, so
       // retain that as a compatibility fallback rather than materialising an
       // empty audience.
-      const selectedTeamIds = structureLeagueIds.size > 0
-        ? new Set(structureLeagueIds)
-        : new Set(sourceLeagueIds);
-      await saveEntriesDraft(editingChampId, selectedTeamIds, { inviteRosterOnly: true });
+      await saveEntriesDraft(editingChampId, undefined, { inviteRosterOnly: true, materializeAudience: true });
       await refetchInvitees();
     } catch (error: any) {
       toast.error(error?.message || "Could not load the selected league members");

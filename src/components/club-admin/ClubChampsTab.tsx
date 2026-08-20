@@ -4100,7 +4100,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         title: "Tournament invitation",
         message: msg,
         type: "tournament_invite",
-        url: inviteUrl,
+        url: urlForRegistration(r.id),
         data: {
           champ_id: champId,
           send_email: sendEmail,

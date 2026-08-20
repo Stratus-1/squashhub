@@ -166,6 +166,14 @@ async function gobookLogin(email: string, password: string): Promise<Jar> {
   // empty/cleared session cookie also means failure.
   const sessionVal = jar.get("GoBookSession") || jar.get(".ASPXAUTH") || "";
   if (postRes.status === 200 || !sessionVal) {
+    // GoBook added a Google reCAPTCHA to its login form. When that is the
+    // reason for the rejection the credentials are almost certainly fine —
+    // a server-to-server login simply cannot solve the challenge. Say so
+    // plainly instead of blaming the member's password.
+    const body = postRes.status === 200 ? await postRes.text().catch(() => "") : "";
+    if (/recaptcha/i.test(body)) {
+      throw new Error("GOBOOK_CAPTCHA_REQUIRED");
+    }
     // Echo back the exact username we sent so the user can spot browser
     // autofill mistakes (e.g. SquashHub email instead of their GoBook email).
     throw new Error(
@@ -174,6 +182,7 @@ async function gobookLogin(email: string, password: string): Promise<Jar> {
   }
   return jar;
 }
+
 
 function dateToGoBookKeyDate(yyyyMmDd: string): string {
   // "2026/05/28" -> "20260528"

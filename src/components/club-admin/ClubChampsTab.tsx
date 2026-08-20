@@ -1172,6 +1172,63 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   const hasLeagueSelection = sourceLeagueIds.size > 0;
 
+  /** Club league id → display name, for the "Players from" chips. */
+  const leagueNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    (availableLeagues as any[]).forEach((l) => m.set(l.id, l.name));
+    return m;
+  }, [availableLeagues]);
+
+  /**
+   * Pull the players of a division's source league(s) into that division.
+   * Registrations are the real source of truth — no free-text matching.
+   */
+  const applyDivisionPrefill = async (gn: number) => {
+    const src = sourceForLeague(gn);
+    const allIds = (availableLeagues as any[]).map((l) => l.id as string);
+    const leagueIds = src.mode === "all" || src.leagueIds.length === 0 ? allIds : src.leagueIds;
+    if (leagueIds.length === 0) {
+      toast.info("This club has no leagues to draw players from yet");
+      return;
+    }
+    const { data: regs, error } = await fromExt("member_league_registrations")
+      .select("club_member_id, is_reserve")
+      .in("league_id", leagueIds);
+    if (error) {
+      toast.error("Failed to load league players");
+      return;
+    }
+    const ids = (regs || [])
+      .filter((r: any) => inviteIncludeReserves || !r.is_reserve)
+      .map((r: any) => r.club_member_id)
+      .filter((id: string) => !!id && !inviteExcludedMemberIds.has(id));
+    const unique = Array.from(new Set<string>(ids)).filter((id) =>
+      memberFitsLeague((members || []).find((m: any) => m.id === id), gn),
+    );
+    if (unique.length === 0) {
+      toast.info("No registered players found in the selected league(s)");
+      return;
+    }
+    setSelectedPlayerIds((prev) => {
+      const next = new Set(prev);
+      unique.forEach((id) => next.add(id));
+      return next;
+    });
+    setGroupAssignments((prev) => {
+      const next = new Map(prev);
+      unique.forEach((id) => next.set(id, gn));
+      return next;
+    });
+    setSourceLeagueIds((prev) => {
+      const next = new Set(prev);
+      leagueIds.forEach((id) => next.add(id));
+      return next;
+    });
+    toast.success(
+      `${unique.length} player${unique.length === 1 ? "" : "s"} added to ${groupLabels[String(gn)] || `League ${gn}`}`,
+    );
+  };
+
   // Fetch registered visitors
   const { data: allVisitors = [] } = useQuery({
     queryKey: ["club-visitors-tournament", clubId],

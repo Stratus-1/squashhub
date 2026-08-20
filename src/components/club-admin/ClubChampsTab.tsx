@@ -4382,8 +4382,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (r.status === "pending_eft") return "Awaiting EFT proof";
     return r.invited ? "Invited — no response" : "Not yet invited";
   }
-
-
+  const SKIP_INVITE_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
+  const allInviteCount = useMemo(
+    () =>
+      (inviteeRows as any[]).filter(
+        (r: any) => r.club_member_id && !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()),
+      ).length,
+    [inviteeRows],
+  );
+  const selectedInviteCount = selectedInviteeRegIds.size;
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
   const [registrationsChamp, setRegistrationsChamp] = useState<any | null>(null);

@@ -4670,7 +4670,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       inheritedB[String(i)] = (Number(lbo?.[String(i)]) === 5 ? 5 : Number(lbo?.[String(i)]) === 3 ? 3 : (Number((champ as any).best_of) === 5 ? 5 : 3));
       inheritedW[String(i)] = (lwc?.[String(i)] === "sudden_death" ? "sudden_death" : (lwc?.[String(i)] === "win_by_2" ? "win_by_2" : ((champ as any).win_condition || "win_by_2")));
       inheritedPA[String(i)] = lpa?.[String(i)] === true;
-      inheritedPO[String(i)] = lpo?.[String(i)] ?? !!(champ as any).enable_playoffs;
+      // Back-compat: a knockout division saved before the progression flag existed
+      // is treated as "continue through knockout stages" (that was always the intent).
+      {
+        const fmtI = (lf?.[String(i)] as PerLeagueFormat | undefined) ?? ((champ.round_format as any) as PerLeagueFormat | undefined);
+        inheritedPO[String(i)] = lpo?.[String(i)] ?? (fmtI === "knockout" ? true : !!(champ as any).enable_playoffs);
+      }
       inheritedBH[String(i)] = (lbh?.[String(i)] as any) ?? (((champ as any).bye_handling as any) || "no_match");
       // Forfeit rule: stored per league, otherwise derived from the league's format.
       // Legacy tournaments (which only had tournament-wide no-show points) map onto

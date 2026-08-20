@@ -704,10 +704,18 @@ export default function MatchMarker() {
           });
         } catch { /* non-critical */ }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving match:", err);
-      toast.error("Could not save match result");
+      setSaveError(err?.message || "Could not save match result");
+      toast.error("Could not save match result — the score is safe, tap Retry.");
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const retrySave = () => {
+    const pending = pendingResultRef.current;
+    if (pending) handleMatchComplete(pending);
   };
 
   return (

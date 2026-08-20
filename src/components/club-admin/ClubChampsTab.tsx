@@ -4343,7 +4343,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [selectedInviteeRegIds, setSelectedInviteeRegIds] = useState<Set<string>>(new Set());
 
   const { data: inviteeRows = [], isLoading: inviteesLoading } = useQuery({
-    queryKey: ["champ-invitees", editingChampId, inviteePickerOpen],
+    queryKey: ["champ-invitees", editingChampId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
         .select("id, club_member_id, status, invited_by_admin")
@@ -4351,7 +4351,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!editingChampId && inviteePickerOpen,
+    enabled: !!editingChampId,
   });
 
   const memberNameById = useMemo(() => {
@@ -4382,8 +4382,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (r.status === "pending_eft") return "Awaiting EFT proof";
     return r.invited ? "Invited — no response" : "Not yet invited";
   }
-
-
+  const SKIP_INVITE_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
+  const allInviteCount = useMemo(
+    () =>
+      (inviteeRows as any[]).filter(
+        (r: any) => r.club_member_id && !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()),
+      ).length,
+    [inviteeRows],
+  );
+  const selectedInviteCount = selectedInviteeRegIds.size;
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
   const [registrationsChamp, setRegistrationsChamp] = useState<any | null>(null);
@@ -7332,7 +7339,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       >
                         <Send className="w-4 h-4 mr-2" />
                         <span>
-                          Send to all invited players
+                          Send to all invited players ({allInviteCount})
                           <span className="block text-[11px] text-muted-foreground">Bulk send / re-send — asks for confirmation</span>
                         </span>
                       </DropdownMenuItem>
@@ -7345,7 +7352,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       >
                         <Users className="w-4 h-4 mr-2" />
                         <span>
-                          Send to selected members
+                          Send to selected members{selectedInviteCount > 0 ? ` (${selectedInviteCount})` : ""}
                           <span className="block text-[11px] text-muted-foreground">Pick individual invitees and remind them</span>
                         </span>
                       </DropdownMenuItem>

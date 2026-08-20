@@ -3469,7 +3469,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
 
         const { error: updateErr } = await fromExt("club_champs")
-          .update({
+          .update(sanitizeDraftPayload({
             name: champName || defaultName,
             gender,
             match_type: matchType,
@@ -3529,14 +3529,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             schedule_mode: scheduleMode,
             playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
             playoff_date: playoffDate || null,
-          })
+          }))
           .eq("id", existingChampId);
         if (updateErr) throw updateErr;
         champId = existingChampId;
         if (!editingChampId) setEditingChampId(existingChampId);
       } else {
         const { data: champ, error: champErr } = await fromExt("club_champs")
-          .insert({
+          .insert(sanitizeDraftPayload({
             club_id: clubId,
             name: champName || defaultName,
             gender,
@@ -3597,7 +3597,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             schedule_mode: scheduleMode,
             playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
             playoff_date: playoffDate || null,
-          })
+          }))
           .select()
           .single();
         if (champErr) throw champErr;

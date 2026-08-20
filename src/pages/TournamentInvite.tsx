@@ -8,14 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { CalendarDays, CheckCircle2, Clock, CreditCard, Loader2, LogIn, Trophy, XCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, CreditCard, Loader2, LogIn, Trophy, UserPlus, XCircle } from "lucide-react";
 import {
   afterAcceptPath,
   inviteFeeCents,
   inviteLoginPath,
+  inviteSignupPath,
   inviteState,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
+
 
 function money(cents: number) {
   return `R${(cents / 100).toFixed(2)}`;

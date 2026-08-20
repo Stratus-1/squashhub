@@ -727,6 +727,17 @@ export default function MatchMarker() {
       />
 
       <div className="px-4 mt-3 mb-6 max-w-lg mx-auto">
+        {saveError && (
+          <div className="mb-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 space-y-2">
+            <p className="text-sm font-semibold">The result has not been saved yet.</p>
+            <p className="text-xs text-muted-foreground break-words">
+              Your score is kept on this device — nothing is lost. {saveError}
+            </p>
+            <Button size="sm" onClick={retrySave} disabled={saving}>
+              {saving ? "Saving…" : "Retry save"}
+            </Button>
+          </div>
+        )}
         {!config && tournamentLoadState === "loading" ? (
           <div className="py-12 text-center text-sm text-muted-foreground">Loading saved tournament score…</div>
         ) : !config && tournamentLoadState === "error" ? (

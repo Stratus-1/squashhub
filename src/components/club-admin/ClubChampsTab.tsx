@@ -7247,6 +7247,61 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 are owned by the Dates & Courts and Structure steps — no duplicate
                 read-only summary here. */}
 
+
+
+
+
+
+
+            <WizardSection
+              title={"Partner selection"}
+              summary={isDoubles ? (partnerMode === "admin" ? "Admin pairs players" : partnerMode === "players" ? "Players choose partners" : "Not set") : "Singles — no partners needed"}
+              complete={!isDoubles || !!partnerMode}
+              defaultOpen={true}
+            >
+            {/* Partner mode — doubles only */}
+            {isDoubles && (
+              <div className="space-y-2">
+                <Label className="text-sm">Partner selection</Label>
+                <Select
+                  value={partnerMode}
+                  onValueChange={(v) => setPartnerMode(v as any)}
+                  onOpenChange={(open) => {
+                    if (!open) return;
+                    const y = window.scrollY;
+                    requestAnimationFrame(() => window.scrollTo({ top: y }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
+                  <SelectContent position="popper" sideOffset={4} onCloseAutoFocus={(e) => e.preventDefault()}>
+                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
+                    <SelectItem value="admin">Admin pairs all players</SelectItem>
+                    <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Only applies to doubles. Switch to Singles in Step 1 to hide this option.
+                </p>
+              </div>
+            )}
+            {!isDoubles && (
+              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                <strong className="text-foreground">Partner selection</strong> appears here for doubles tournaments. This tournament is set to <em>Singles</em> — go back to Step 1 (Category) and pick <em>Doubles</em> to enable partner pairing options.
+              </div>
+            )}
+
+
+            </WizardSection>
+          </CardContent>
+        </Card>
+      )}
+
+      {step === "invites" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Invites &amp; messaging</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <WizardSection
               title={"Invites & messaging"}
               summary={`${Array.from(inviteMethods).join(", ") || "no channel"} · ${description ? "custom message" : "default message"}`}
@@ -7728,51 +7783,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </div>
 
             </div>
-            </WizardSection>
-
-
-
-
-
-
-            <WizardSection
-              title={"Partner selection"}
-              summary={isDoubles ? (partnerMode === "admin" ? "Admin pairs players" : partnerMode === "players" ? "Players choose partners" : "Not set") : "Singles — no partners needed"}
-              complete={!isDoubles || !!partnerMode}
-              defaultOpen={true}
-            >
-            {/* Partner mode — doubles only */}
-            {isDoubles && (
-              <div className="space-y-2">
-                <Label className="text-sm">Partner selection</Label>
-                <Select
-                  value={partnerMode}
-                  onValueChange={(v) => setPartnerMode(v as any)}
-                  onOpenChange={(open) => {
-                    if (!open) return;
-                    const y = window.scrollY;
-                    requestAnimationFrame(() => window.scrollTo({ top: y }));
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent position="popper" sideOffset={4} onCloseAutoFocus={(e) => e.preventDefault()}>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="admin">Admin pairs all players</SelectItem>
-                    <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Only applies to doubles. Switch to Singles in Step 1 to hide this option.
-                </p>
-              </div>
-            )}
-            {!isDoubles && (
-              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                <strong className="text-foreground">Partner selection</strong> appears here for doubles tournaments. This tournament is set to <em>Singles</em> — go back to Step 1 (Category) and pick <em>Doubles</em> to enable partner pairing options.
-              </div>
-            )}
-
-
             </WizardSection>
           </CardContent>
         </Card>

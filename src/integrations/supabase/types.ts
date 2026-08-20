@@ -4456,6 +4456,8 @@ export type Database = {
           home_total_games: number
           home_total_points: number
           id: string
+          lineup_confirmed_at: string | null
+          lineup_confirmed_by: string | null
           match_format: Json | null
           status: string
           submitted_at: string | null
@@ -4477,6 +4479,8 @@ export type Database = {
           home_total_games?: number
           home_total_points?: number
           id?: string
+          lineup_confirmed_at?: string | null
+          lineup_confirmed_by?: string | null
           match_format?: Json | null
           status?: string
           submitted_at?: string | null
@@ -4498,6 +4502,8 @@ export type Database = {
           home_total_games?: number
           home_total_points?: number
           id?: string
+          lineup_confirmed_at?: string | null
+          lineup_confirmed_by?: string | null
           match_format?: Json | null
           status?: string
           submitted_at?: string | null
@@ -4560,6 +4566,8 @@ export type Database = {
           home_player_name: string | null
           id: string
           is_forfeit: boolean
+          lineup_set_at: string | null
+          lineup_set_by: string | null
           position: number
           updated_at: string
           winner: string | null
@@ -4578,6 +4586,8 @@ export type Database = {
           home_player_name?: string | null
           id?: string
           is_forfeit?: boolean
+          lineup_set_at?: string | null
+          lineup_set_by?: string | null
           position: number
           updated_at?: string
           winner?: string | null
@@ -4596,6 +4606,8 @@ export type Database = {
           home_player_name?: string | null
           id?: string
           is_forfeit?: boolean
+          lineup_set_at?: string | null
+          lineup_set_by?: string | null
           position?: number
           updated_at?: string
           winner?: string | null

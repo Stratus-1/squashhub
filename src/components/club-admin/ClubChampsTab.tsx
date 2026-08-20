@@ -859,6 +859,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     };
     setLeagueFormats(shift);
     setLeagueSections(shift);
+    setLeagueSources(shift);
     setSwissPools(shift);
     setSwissRounds(shift);
     setGroupLabels(shift);

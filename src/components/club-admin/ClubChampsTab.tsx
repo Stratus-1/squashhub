@@ -1229,6 +1229,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return [...groupedArr, ...ungrouped];
   }, [availableLeagues, leagueTierMap]);
 
+  /**
+   * Hierarchical "Players from" tree: league level → teams / reserves.
+   * Children carry the canonical club league ids, so every downstream consumer
+   * (player loading, invites, eligibility, seeding, draws) is unchanged.
+   */
+  const leagueTree = useMemo(
+    () =>
+      buildLeagueTree(
+        (availableLeagues as any[]).map((l) => ({
+          id: l.id as string,
+          name: l.name as string,
+          association_id: l.association_id as string | null,
+          assocName: l.league_associations?.name || "League",
+        })),
+        leagueTierMap,
+      ),
+    [availableLeagues, leagueTierMap],
+  );
+
+
+
   const toggleSourceGroup = (leagueIds: string[]) => {
     const next = new Set(sourceLeagueIds);
     const allOn = leagueIds.every((id) => next.has(id));

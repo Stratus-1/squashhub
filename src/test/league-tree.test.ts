@@ -42,11 +42,16 @@ describe("league tree", () => {
     expect(first.children[first.children.length - 1].id).toBe("r1");
   });
 
-  it("keeps unplaceable leagues visible as their own group", () => {
+  it("collects unplaceable leagues in one 'Needs league assignment' group", () => {
     const tree = buildLeagueTree(leagues, tiers);
     expect(allTreeLeagueIds(tree).sort()).toEqual(["a", "b", "c", "r1", "x"]);
-    expect(tree.find((g) => g.label === "Wanderers")!.children).toHaveLength(1);
+    const needs = tree.find((g) => g.needsAssignment)!;
+    expect(needs.label).toBe("Needs league assignment");
+    expect(needs.children.map((c) => c.id)).toEqual(["x"]);
+    // never a per-team flat group
+    expect(tree.some((g) => g.label === "Wanderers")).toBe(false);
   });
+
 
   it("creates a level group when no fixtures exist at all", () => {
     const tree = buildLeagueTree([{ id: "r3", name: "3rd L Reserves", assocName: "NIL" }], new Map());

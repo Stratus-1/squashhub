@@ -651,15 +651,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // has no entry here, the tournament-wide `roundFormat` applies. Only used
   // when `usePerLeagueFormats` is enabled — hidden while roundFormat is
   // `cross_league` (which is inherently tournament-wide).
-  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss" | "cross_league";
+  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss" | "cross_league" | "knockout";
   const [leagueFormats, setLeagueFormats] = useState<Record<string, PerLeagueFormat>>({});
   const [usePerLeagueFormats, setUsePerLeagueFormats] = useState(false);
+  // Knockout: how many independent sections (sub-draws) each league runs.
+  // Keyed by group_number as text. Only meaningful for knockout leagues.
+  const [leagueSections, setLeagueSections] = useState<Record<string, number>>({});
+  const sectionsForLeague = (gn: number) => Math.max(1, Number(leagueSections[String(gn)]) || 1);
   // Planning-only per-league expected player counts (keyed by group_number).
   // Purely for the capacity readout in the wizard — not enforced anywhere.
   const [expectedPlayers, setExpectedPlayers] = useState<Record<string, number>>({});
   // Effective format for a given league number (1-based). A per-league
   // override wins; otherwise the tournament default applies.
-  const formatForLeague = (gn: number): "single_round_robin" | "double_round_robin" | "cross_league" | "swiss" | "" => {
+  const formatForLeague = (gn: number): PerLeagueFormat | "" => {
     if (usePerLeagueFormats && leagueFormats[String(gn)]) return leagueFormats[String(gn)];
     if (roundFormat === "cross_league") return "cross_league";
     return roundFormat;

@@ -99,3 +99,10 @@ export function afterAcceptPath(champId: string, responseStatus: string | null |
 export function inviteLoginPath(token: string): string {
   return `/auth?redirectTo=${encodeURIComponent(inviteePath(token))}`;
 }
+
+/** Sign-up / claim-membership round-trip that preserves the invitation context. */
+export function inviteSignupPath(token: string): string {
+  return `/auth?intent=claim&redirectTo=${encodeURIComponent(inviteePath(token))}`;
+}
+
+}

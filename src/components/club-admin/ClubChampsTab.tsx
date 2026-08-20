@@ -4448,6 +4448,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   const canProceed = () => missingForStep().length === 0;
 
+  // Validation is only *shown* once the admin tries to move on (except Basics,
+  // whose Next stays disabled because its two fields are right there).
+  const [attemptedSteps, setAttemptedSteps] = useState<Record<string, boolean>>({});
+  const stepIssuesRef = useRef<HTMLDivElement | null>(null);
+  const showStepIssues = !!attemptedSteps[step] && missingForStep().length > 0;
+
+  const handleNext = () => {
+    const missing = missingForStep();
+    if (missing.length > 0) {
+      setAttemptedSteps((p) => ({ ...p, [step]: true }));
+      requestAnimationFrame(() => {
+        stepIssuesRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      toast({
+        title: "A few things still needed",
+        description: missing.join(" · "),
+        variant: "destructive",
+      });
+      return;
+    }
+    goToStep(activeSteps[stepIdx + 1]);
+  };
+
+
+
 
   // ── LIST VIEW ──
   if (!showWizard) {

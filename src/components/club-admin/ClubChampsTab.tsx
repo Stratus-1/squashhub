@@ -5704,9 +5704,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           All leagues
                                         </label>
                                         <p className="text-[10px] text-muted-foreground leading-snug">
-                                          “All leagues” means anyone in the club’s leagues may enter this division — it does not
-                                          merge other divisions into this draw.
+                                          “All leagues” does not mix everyone into one draw. Use the button below to give
+                                          each league its own competition, with its own winner.
                                         </p>
+                                        {(src.mode === "all" || src.leagueIds.length === 0) && (
+                                          <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            className="w-full h-7 text-[11px]"
+                                            onClick={() => expandAllLeagues(gn)}
+                                          >
+                                            Create one competition per league
+                                          </Button>
+                                        )}
+
                                         <Separator />
                                         <div className="max-h-52 overflow-auto space-y-1">
                                           {(availableLeagues as any[]).length === 0 && (

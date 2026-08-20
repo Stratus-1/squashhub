@@ -505,7 +505,6 @@ export default function BellsMarker() {
       // Winner + score string come from the format strategy
       const winnerMemberId = BellsFormat.resolveWinnerMemberId(match, pointsA, pointsB);
       const scoreStr = BellsFormat.formatScore(pointsA, pointsB);
-      const { data: auth } = await supabase.auth.getUser();
 
       const { error } = await rpcExt("save_bells_match_result", {
         _match_id: match.id,

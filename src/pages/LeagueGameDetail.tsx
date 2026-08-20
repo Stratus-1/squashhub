@@ -19,6 +19,8 @@ import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScor
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { clearMarkerStateForSession, getMarkerSessionKeys, hasMarkerStateForSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
+import { shouldKeepSavedRow, resolveLineupPositions, applyPrefillSlot, lineupDiffers } from "@/lib/league/lineup";
+
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SelectLineupWizard, type LineupPick } from "@/components/league-games/SelectLineupWizard";
@@ -273,6 +275,11 @@ export default function LeagueGameDetail() {
 
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
+  /** Timestamp of the last successful lineup persist (drives the saved badge). */
+  const [lineupSavedAt, setLineupSavedAt] = useState<string | null>(null);
+  /** Lineup as last read from / written to the server — used for stale detection. */
+  const positionsAtLoadRef = useRef<PositionEntry[] | null>(null);
+
   const [selectWizardOpen, setSelectWizardOpen] = useState(false);
   const [wizardStartEmpty, setWizardStartEmpty] = useState(false);
   const autoOpenWizardRef = useRef(false);
@@ -671,11 +678,13 @@ export default function LeagueGameDetail() {
         // "Mark game" arrow mid-match (CSI006/PCC008 bug).
         const rowWinner = (m.winner as string | null) || null;
         const completedFromServer = rowWinner === "home" || rowWinner === "away" || !!m.is_forfeit;
-        const hasPlay = scores.length > 0 || !!m.is_forfeit || !!currentGame;
         const hasSavedFixtureState = existingResultFetched && !!existingResult;
-        if (!hasPlay && !hasSavedFixtureState) {
+        // A saved player row is ALWAYS authoritative — blanking it here is what
+        // let the default (original) lineup overwrite a captain's reserves.
+        if (!shouldKeepSavedRow(m as any, hasSavedFixtureState)) {
           return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null, currentGame: null };
         }
+
         return {
           homeCode: m.home_player_code || "", homeName: m.home_player_name || "",
           awayCode: m.away_player_code || "", awayName: m.away_player_name || "",
@@ -686,11 +695,13 @@ export default function LeagueGameDetail() {
         };
       });
 
+      positionsAtLoadRef.current = loaded.map((p) => ({ ...p }));
       setPositions((prev) => {
         // Don't clobber the position the user is actively marking/editing locally —
         // realtime refresh would otherwise overwrite in-progress scores.
         return loaded.map((p, i) => (i === activeMarker || i === manualEntry ? (prev[i] ?? p) : p));
       });
+
       const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
       if (existingResultFetched && !hasOriginalSnapshot(savedSnapshot ?? null) && !hasOriginalSnapshot(originalLineupSnapshot)) {
         setOriginalLineupSnapshot(buildOriginalSnapshot(loaded));
@@ -852,72 +863,41 @@ export default function LeagueGameDetail() {
           return { code, name: m?.name || "" };
         };
 
-        // Track members already placed in this team to prevent the same player
-        // appearing in two positions (e.g. due to a stale fixture override row).
-        const usedMembers = new Set<string>();
-
-        const fillSlot = (target: Array<{ code: string; name: string }>, pos: number, memberId: string) => {
-          if (pos < 1 || pos > MAX_POSITIONS) return;
-          if (target[pos - 1].code || target[pos - 1].name) return;
-          if (usedMembers.has(memberId)) return;
-          target[pos - 1] = buildSlot(memberId);
-          usedMembers.add(memberId);
-        };
-
-        // Priority 1: Fill-Up Leagues week lineup → goes into BOTH (originals and prefill)
-        weekLineups
-          .filter((l: any) => matchingLeagues.includes(l.league_id))
-          .forEach((l: any) => {
-            fillSlot(slots, l.position, l.club_member_id);
-            fillSlot(origSlots, l.position, l.club_member_id);
-          });
-
-        // Priority 2: explicit per-fixture lineup → ONLY into prefill (not originals)
-        (fixtureLineups || [])
-          .filter((l: any) => matchingLeagues.includes(l.league_id))
-          .forEach((l: any) => fillSlot(slots, l.position, l.club_member_id));
-
-        // Priority 3: registrations by player_rank for any unfilled positions → BOTH
-        // Cap the fallback to the highest position already established by the captain's
-        // week lineup or per-fixture override (or DEFAULT_POSITIONS). This prevents
-        // unused registered players from being appended as phantom extra positions
-        // beyond what was actually played.
         const teamRegs = (regs || [])
           .filter((r: any) => matchingLeagues.includes(r.league_id))
           .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99));
         const teamRule = ruleByCode[String(code || "").toUpperCase()];
         const fallbackSize = teamRule?.team_size ?? DEFAULT_POSITIONS;
         // In flexible team-size mode (e.g. NIL), grow the scorecard to include
-        // all registered players (capped at MAX_POSITIONS) so a 5th, 6th, etc.
-        // player on the roster appears on the scorecard automatically.
+        // all registered players (capped at MAX_POSITIONS).
         const flexibleCap = teamRule?.team_size_mode === "flexible"
           ? Math.min(MAX_POSITIONS, Math.max(fallbackSize, teamRegs.length))
           : Math.max(fallbackSize, fixtureWideSize);
+        const weekEntries = weekLineups
+          .filter((l: any) => matchingLeagues.includes(l.league_id))
+          .map((l: any) => ({ position: l.position, memberId: l.club_member_id }));
+        const fixtureEntries = (fixtureLineups || [])
+          .filter((l: any) => matchingLeagues.includes(l.league_id))
+          .map((l: any) => ({ position: l.position, memberId: l.club_member_id }));
         const maxExplicitPos = Math.min(MAX_POSITIONS, Math.max(
           flexibleCap,
-          ...weekLineups
-            .filter((l: any) => matchingLeagues.includes(l.league_id))
-            .map((l: any) => l.position || 0),
-          ...(fixtureLineups || [])
-            .filter((l: any) => matchingLeagues.includes(l.league_id))
-            .map((l: any) => l.position || 0),
+          ...weekEntries.map((e) => e.position || 0),
+          ...fixtureEntries.map((e) => e.position || 0),
         ));
-        let regIdx = 0;
-        for (let i = 0; i < maxExplicitPos; i++) {
-          if (slots[i].code || slots[i].name) continue;
-          while (regIdx < teamRegs.length) {
-            const r = teamRegs[regIdx++];
-            if (usedMembers.has(r.club_member_id)) continue;
-            const m = memberMap.get(r.club_member_id) as any;
-            const code = (r.league_association_number || r.ssa_number || m?.club_member_number || "").toString().toUpperCase();
-            const name = m?.name || "";
-            if (!code && !name) continue;
-            slots[i] = { code, name };
-            usedMembers.add(r.club_member_id);
-            if (!origSlots[i].code && !origSlots[i].name) origSlots[i] = { code, name };
-            break;
-          }
+
+        // Precedence: per-fixture override → week lineup → registrations.
+        const { lineup: lineupIds, originals: originalIds } = resolveLineupPositions({
+          fixtureOverrides: fixtureEntries,
+          weekLineup: weekEntries,
+          registrations: teamRegs.map((r: any) => r.club_member_id),
+          maxPositions: MAX_POSITIONS,
+          fallbackCount: maxExplicitPos,
+        });
+        for (let i = 0; i < MAX_POSITIONS; i++) {
+          if (lineupIds[i]) slots[i] = buildSlot(lineupIds[i]!);
+          if (originalIds[i]) origSlots[i] = buildSlot(originalIds[i]!);
         }
+
         result[code] = slots;
         originals[code] = origSlots;
       }
@@ -966,23 +946,22 @@ export default function LeagueGameDetail() {
 
     setPositions((prev) => {
       const next = prev.map((p, i) => {
-        const home = homeSlots[i] || { code: "", name: "" };
-        const away = awaySlots[i] || { code: "", name: "" };
         const slotHasPlay = (Array.isArray(p.scores) && p.scores.length > 0) || !!p.isForfeit;
-        if (slotHasPlay) return p;
-        // Preserve any side that already has a saved player (code OR name) — the
-        // captain may have manually replaced a player with a reserve/visitor that
-        // has no NSF code. Only fill empty sides from the captain's lineup.
-        const homeAlreadySet = !!(p.homeCode || p.homeName);
-        const awayAlreadySet = !!(p.awayCode || p.awayName);
-        return {
-          ...p,
-          homeCode: !homeAlreadySet && homeHasAny ? (home.code || "") : p.homeCode,
-          homeName: !homeAlreadySet && homeHasAny ? (home.name || "") : p.homeName,
-          awayCode: !awayAlreadySet && awayHasAny ? (away.code || "") : p.awayCode,
-          awayName: !awayAlreadySet && awayHasAny ? (away.name || "") : p.awayName,
-        };
+        // Prefill only fills genuinely empty sides — a saved reserve (with or
+        // without an NSF code) is never overwritten by the default lineup.
+        const home = applyPrefillSlot(
+          { code: p.homeCode, name: p.homeName },
+          homeSlots[i],
+          { slotHasPlay, sourceHasAny: homeHasAny },
+        );
+        const away = applyPrefillSlot(
+          { code: p.awayCode, name: p.awayName },
+          awaySlots[i],
+          { slotHasPlay, sourceHasAny: awayHasAny },
+        );
+        return { ...p, homeCode: home.code, homeName: home.name, awayCode: away.code, awayName: away.name };
       });
+
       if (
         !hasOriginalSnapshot(originalLineupSnapshot) ||
         next.length > Math.max(originalLineupSnapshot?.home.length ?? 0, originalLineupSnapshot?.away.length ?? 0)
@@ -1267,36 +1246,77 @@ export default function LeagueGameDetail() {
     return next;
   }, []);
 
+  /**
+   * Persist the captain-confirmed players for every position.
+   *
+   * Runs for ANY lineup edit (not only after "Complete Setup") — previously a
+   * reserve swap made before setup was saved existed only in local state and
+   * was silently replaced by the default lineup on the next page load.
+   * NEVER writes scores/winner: another captain may be marking live.
+   */
+  const persistLineupPlayers = useCallback(async (rows: PositionEntry[], opts?: { silent?: boolean }) => {
+    if (!fixtureId || !user) return false;
+    try {
+      // Stale-write detection: what does the server hold right now?
+      const { data: serverRows } = await supabase
+        .from("league_match_results" as any)
+        .select("position, home_player_code, home_player_name, away_player_code, away_player_name")
+        .eq("fixture_id", fixtureId);
+      const changedElsewhere = lineupDiffers(
+        positionsAtLoadRef.current ?? [],
+        (serverRows || []) as any[],
+      );
+
+      const stamp = new Date().toISOString();
+      const setBy = activeMember?.id || user.id;
+      for (let i = 0; i < rows.length; i++) {
+        const p = rows[i];
+        if (!p.homeCode && !p.awayCode && !p.homeName && !p.awayName) continue;
+        const { error } = await supabase.from("league_match_results" as any).upsert({
+          fixture_id: fixtureId, position: i + 1,
+          home_player_code: p.homeCode.toUpperCase(),
+          away_player_code: p.awayCode.toUpperCase(),
+          home_player_name: p.homeName,
+          away_player_name: p.awayName,
+          lineup_set_by: setBy,
+          lineup_set_at: stamp,
+        } as any, { onConflict: "fixture_id,position" });
+        if (error) throw error;
+      }
+      // Fixture-level confirmation stamp — update only, so we never create or
+      // overwrite the result row's status/scores.
+      await supabase
+        .from("league_fixture_results" as any)
+        .update({ lineup_confirmed_by: setBy, lineup_confirmed_at: stamp } as any)
+        .eq("fixture_id", fixtureId);
+
+      setLineupSavedAt(stamp);
+      positionsAtLoadRef.current = rows.map((p) => ({ ...p }));
+      queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+      if (changedElsewhere && !opts?.silent) {
+        toast.warning("Someone else had changed this lineup — your version is now saved.");
+      }
+      return true;
+    } catch (e: any) {
+      console.error("Lineup persist failed", e);
+      if (!opts?.silent) toast.error(e?.message || "Could not save the lineup — please retry");
+      return false;
+    }
+  }, [fixtureId, user, activeMember?.id, queryClient]);
+
   const handleSwap = useCallback(async (c: SwapCandidate) => {
     if (!swapTarget) return;
     const { idx, side } = swapTarget;
     const updatedPositionsForSave = buildSwappedPositions(positions, idx, side, c);
 
     setPositions(updatedPositionsForSave);
-
     setSwapTarget(null);
-    toast.success(`Player swapped — remember to save setup`);
 
-    // If setup already saved, persist the player change immediately.
-    // CRITICAL: never include game_scores / winner / games-won here — another
-    // captain may already be marking and those fields would clobber live scores.
-    if (setupDone && fixtureId && user) {
-      try {
-        for (let i = 0; i < updatedPositionsForSave.length; i++) {
-          const p = updatedPositionsForSave[i];
-          if (!p.homeCode && !p.awayCode && !p.homeName && !p.awayName) continue;
-          await supabase.from("league_match_results" as any).upsert({
-            fixture_id: fixtureId, position: i + 1,
-            home_player_code: p.homeCode.toUpperCase(),
-            away_player_code: p.awayCode.toUpperCase(),
-            home_player_name: p.homeName,
-            away_player_name: p.awayName,
-          } as any, { onConflict: "fixture_id,position" });
-        }
-        queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
-      } catch (e) { console.error("Swap persist failed", e); }
-    }
-  }, [swapTarget, setupDone, fixtureId, user, positions, queryClient, buildSwappedPositions]);
+    const ok = await persistLineupPlayers(updatedPositionsForSave);
+    if (ok) toast.success("Player swapped and lineup saved");
+    else toast.success("Player swapped — save the setup to keep this change");
+  }, [swapTarget, positions, buildSwappedPositions, persistLineupPlayers]);
+
 
   const handleClearSlot = useCallback((idx: number, side: "home" | "away") => {
     // Capture the player BEFORE clearing so we can park them in the
@@ -3203,6 +3223,13 @@ export default function LeagueGameDetail() {
               Complete Setup
             </Button>
             <p className="text-[10px] text-muted-foreground text-center">Lineup remains editable until results are submitted.</p>
+            {lineupSavedAt && (
+              <p className="text-[10px] text-center text-emerald-700 dark:text-emerald-400 font-medium">
+                <Check className="w-3 h-3 inline mr-1" />
+                Lineup saved {format(new Date(lineupSavedAt), "HH:mm")} — reserves will still be here when the match starts.
+              </p>
+            )}
+
           </div>
         )}
 

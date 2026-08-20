@@ -838,3 +838,13 @@ Fix: single source of truth `src/lib/tournaments/lifecycle.ts`
 admin-only ("Needs dates"), cancelled ones show a Cancelled badge under Past, and
 dashboard cards show dates. Regression tests: `src/test/tournament-lifecycle.test.ts`.
 No data changes — DB inspection found no malformed/child rows in `club_champs`.
+
+## League fixture lineup: reserves reverted to original players (fixed)
+**Symptom:** Captains swapped reserves into a fixture lineup; later that evening the original players were back.
+**Root causes (both in `src/pages/LeagueGameDetail.tsx`):**
+1. On load, saved `league_match_results` rows were blanked whenever the sibling `league_fixture_results` row was missing/not-yet-fetched; the blanked slots were then re-filled from the default week lineup/registrations.
+2. Prefill applied the weekly (default) lineup BEFORE per-fixture override rows, and its fill helper never overwrote a filled slot — so per-fixture overrides could never win.
+3. Reserve swaps were only persisted when `setupDone` was true; swaps made before "Complete Setup" lived in local state only.
+**Fix:** new pure helpers in `src/lib/league/lineup.ts` (`shouldKeepSavedRow`, `resolveLineupPositions`, `applyPrefillSlot`, `lineupDiffers`); saved player rows are always authoritative; precedence is fixture override → week lineup → registrations; new `persistLineupPlayers()` saves every lineup edit immediately (players only, never scores) with stale-write detection and a "Lineup saved" badge.
+**DB:** additive audit columns `league_match_results.lineup_set_by/lineup_set_at`, `league_fixture_results.lineup_confirmed_by/lineup_confirmed_at`. No RLS changes.
+**Tests:** `src/test/league-lineup.test.ts` (12) incl. reserve → reopen → match start round-trip and multi-reserve positions.

@@ -3169,10 +3169,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           fmt === "cross_league"
             ? Number(groupDurations["1"]) || matchDuration || 0
             : Number(groupDurations[key]) || matchDuration || 0,
-        // Knockout carries its section count in `pools` — the capacity engine
-        // treats both as "independent sub-draws of this league".
+        // Pools are the division's independent sub-draws; knockout divisions
+        // fall back to their legacy section count.
         pools: fmt === "knockout"
-          ? Math.max(1, Number(leagueSections[key]) || 1)
+          ? effectivePools({ gn, pools: swissPools, legacySections: leagueSections })
           : Math.max(1, Number(swissPools[key]) || 1),
         rounds: Number(swissRounds[key]) || 0,
         entities: roster || Math.max(0, Number(expectedPlayers[key]) || 0),

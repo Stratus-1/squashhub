@@ -4380,12 +4380,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
       // Fail-closed recipient resolution. A selective send resolves ONLY the
       // exact ids the organiser ticked; it never widens to the roster.
-      let resolved = resolveInviteRecipients({
+      const first: ResolveResult = resolveInviteRecipients({
         mode,
         registrations: (regs || []) as any[],
         selectedIds: opts?.registrationIds,
       });
-      if (!resolved.ok && mode === "all" && resolved.error === "Everyone is already registered.") {
+      let resolved: ResolveResult = first;
+      if (!first.ok && mode === "all" && first.error === "Everyone is already registered.") {
         const everyone = ((regs || []) as any[]).filter(
           (r) => r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled",
         );

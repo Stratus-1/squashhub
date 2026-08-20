@@ -16,6 +16,7 @@ const buildId =
 export default defineConfig(() => ({
   define: {
     __GB_BUILD_ID__: JSON.stringify(buildId),
+    __GB_BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
   server: {
     host: "::",

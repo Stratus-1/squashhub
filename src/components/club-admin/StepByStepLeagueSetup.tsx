@@ -263,7 +263,19 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         } else {
           const code = `${codePrefix}${String(nextCode++).padStart(3, "0")}`;
           const { data, error } = await fromExt("leagues")
-            .insert({ club_id: clubId, association_id: associationId, name: teamName, code, reserves_per_team: reserves })
+            .insert({
+              club_id: clubId,
+              association_id: associationId,
+              name: teamName,
+              code,
+              reserves_per_team: reserves,
+              // Canonical structure: season + level, independent of the display name.
+              level: parseInt(leagueNumber, 10) || null,
+              season_year: seasonYear,
+              is_reserve: false,
+              level_source: "manual",
+              season_source: "manual",
+            })
             .select("id")
             .single();
           if (error) throw error;
@@ -283,13 +295,25 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         else {
           const code = `${codePrefix}${String(nextCode++).padStart(3, "0")}`;
           const { data, error } = await fromExt("leagues")
-            .insert({ club_id: clubId, association_id: associationId, name: reservesNameFinal, code })
+            .insert({
+              club_id: clubId,
+              association_id: associationId,
+              name: reservesNameFinal,
+              code,
+              // Reserves inherit the same season + level as their teams.
+              level: parseInt(leagueNumber, 10) || null,
+              season_year: seasonYear,
+              is_reserve: true,
+              level_source: "manual",
+              season_source: "manual",
+            })
             .select("id")
             .single();
           if (error) throw error;
           reservesLeagueId = data.id;
         }
       }
+
 
       // Persist the "players per match" rule for every league row in this batch
       // (regular teams + reserves). Upsert by league_id so re-running setup updates.

@@ -4314,9 +4314,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // Shared helper: send invite notifications (and flag rows as invited) for a champ.
   // Used by the post-create prompt and the "Invite actions" menu.
-  // opts.registrationIds restricts the send to specific invitees (selective reminders).
-  async function sendChampInvites(champId: string, opts?: { confirm?: boolean; registrationIds?: string[] }) {
-    const only = opts?.registrationIds && opts.registrationIds.length > 0 ? new Set(opts.registrationIds) : null;
+  // `mode` is explicit: "selected" NEVER widens to the full roster, for any reason.
+  async function sendChampInvites(
+    champId: string,
+    opts?: { confirm?: boolean; registrationIds?: string[]; mode?: InviteSendMode },
+  ) {
+    const mode: InviteSendMode = opts?.mode || (opts?.registrationIds ? "selected" : "all");
+    const only = mode === "selected";
+    if (only && (!opts?.registrationIds || opts.registrationIds.length === 0)) {
+      toast.error("No members were selected — nothing was sent.");
+      return;
+    }
     if (sendingInvitesRef.current.has(champId)) {
       toast.info("Invites are already being sent — please wait.");
       return;
@@ -4331,11 +4339,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       if (!only && editingChampId === champId && structureLeagueIds.size > 0) {
         await saveEntriesDraft(champId);
       }
-      if (opts?.confirm && !confirm(
-        only
-          ? `Send the invitation to ${only.size} selected member${only.size === 1 ? "" : "s"} now?`
-          : "Send invite notification/email to all invited members now?",
-      )) return;
+
 
 
       // If the wizard is currently open editing this tournament in invite mode,

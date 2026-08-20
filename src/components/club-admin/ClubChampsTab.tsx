@@ -4361,18 +4361,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // Returns a list of friendly reasons why the current step can't advance.
   // Empty array means the user can click Next.
+  // Every entry must belong to a field that is *edited on that step* — match
+  // rules (scoring / round format / par / best-of) live on Structure, so they
+  // are validated there, not on Basics.
   const missingForStep = (): string[] => {
     const m: string[] = [];
     switch (step) {
       case "category": {
         if (!gender) m.push("Gender category");
         if (!matchType) m.push("Match type (Singles or Doubles)");
-        if (!scoringMode) m.push("Scoring format");
-        if (scoringMode === "standard") {
-          if (!pointsPerGame) m.push("Game length (Par 11 or 15)");
-          if (!bestOf) m.push("Best of (3 or 5)");
-        }
-        if (!roundFormat) m.push("Round format");
         break;
       }
       case "courts": {
@@ -4399,8 +4396,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
       case "structure": {
         if (!(numGroups >= 1)) m.push("At least one league");
+        if (!scoringMode) m.push("Scoring format");
+        if (scoringMode === "standard") {
+          if (!pointsPerGame) m.push("Game length (Par 11 or 15)");
+          if (!bestOf) m.push("Best of (3 or 5)");
+        }
+        if (!roundFormat) m.push("Round format");
         break;
       }
+
       case "registration": {
         if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
         if (invitesApply && inviteMethods.size === 0) m.push("At least one invite delivery method");
@@ -4443,6 +4447,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   };
 
   const canProceed = () => missingForStep().length === 0;
+
+  // Validation is only *shown* once the admin tries to move on (except Basics,
+  // whose Next stays disabled because its two fields are right there).
+  const [attemptedSteps, setAttemptedSteps] = useState<Record<string, boolean>>({});
+  const stepIssuesRef = useRef<HTMLDivElement | null>(null);
+  const showStepIssues = !!attemptedSteps[step] && missingForStep().length > 0;
+
+  const handleNext = () => {
+    const missing = missingForStep();
+    if (missing.length > 0) {
+      setAttemptedSteps((p) => ({ ...p, [step]: true }));
+      requestAnimationFrame(() => {
+        stepIssuesRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      toast.error("A few things still needed", { description: missing.join(" · ") });
+
+      return;
+    }
+    goToStep(activeSteps[stepIdx + 1]);
+  };
+
+
 
 
   // ── LIST VIEW ──
@@ -4659,6 +4685,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           </button>
         ))}
       </div>
+
+      {/* Step-level blocker — only after the admin tries to continue, and only
+          for steps without a dedicated inline marker (Structure has its own). */}
+      {showStepIssues && step !== "structure" && (
+        <div
+          ref={stepIssuesRef}
+          className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+        >
+          Still needed on this step: {missingForStep().join(" · ")}
+        </div>
+      )}
+
+
 
       {/* ── STEP: CATEGORY ── */}
       {step === "category" && (
@@ -5176,13 +5215,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             {/* Match rules are now decided per league in the builder below —
                 format (Standard / Bells), category, singles/doubles, par 11 / 15,
                 best-of and win condition are all independently configurable. */}
-            <div className="rounded-lg border border-border p-3 bg-muted/40 shadow-sm">
-              <Label className="text-sm font-semibold">Match rules</Label>
+            <div
+              ref={stepIssuesRef}
+              className={`rounded-lg border p-3 shadow-sm ${
+                showStepIssues ? "border-destructive/50 bg-destructive/5" : "border-border bg-muted/40"
+              }`}
+            >
+              <Label className="text-sm font-semibold">
+                Match rules {showStepIssues && <span className="text-destructive">*</span>}
+              </Label>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Format, category, singles or doubles, par 11 / par 15, best-of and win condition are set on each
                 league card in the builder below.
               </p>
+              {showStepIssues && (
+                <p className="text-[11px] text-destructive mt-1">
+                  Still needed: {missingForStep().join(" · ")} — set these on the league card(s) below.
+                </p>
+              )}
             </div>
+
 
 
             {/* ─── Tournament Structure Builder ─────────────────────────── */}
@@ -7429,20 +7481,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         />
       )}
 
-      {/* Inline validation hint — lists missing required fields for the current step. */}
-      {step !== "preview" && (() => {
-        const missing = step === "review" ? [] : missingForStep();
-        if (missing.length === 0) return null;
-        return (
-          <div className="rounded-md border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
-            <p className="font-semibold mb-1">Complete these before continuing:</p>
-            <ul className="list-disc pl-5 space-y-0.5">
-              {missing.map((r) => <li key={r}>{r}</li>)}
-            </ul>
-          </div>
-        );
-      })()}
-
       {/* Navigation */}
       {step !== "preview" && (
         <div className="flex justify-between items-center gap-2">
@@ -7459,15 +7497,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </Button>
           ) : (
             <Button
-              onClick={() => goToStep(activeSteps[stepIdx + 1])}
-              disabled={!canProceed()}
-              title={canProceed() ? undefined : `Complete: ${missingForStep().join(", ")}`}
+              onClick={handleNext}
+              // Basics has only two visible choices — keep the button disabled
+              // there. Every later step stays clickable so Next can scroll the
+              // admin to whatever is still missing on that step.
+              disabled={step === "category" && !canProceed()}
             >
               Next <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           )}
         </div>
       )}
+
 
 
 

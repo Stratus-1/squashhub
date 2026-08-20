@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteUrl } from "@/lib/tournaments/invite-link";
+import { sanitizeDraftPayload } from "@/lib/tournaments/draft-payload";
 import {
   defaultForfeitRule,
   describeForfeitRule,

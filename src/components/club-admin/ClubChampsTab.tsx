@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
+import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
   defaultForfeitRule,
@@ -1867,7 +1868,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Persist current player / pair selections + group assignments as a draft
   // to club_champs_entries. Safe because entries get wiped & rewritten when
   // matches are (re)generated. Requires the parent champ row to exist.
-  const saveEntriesDraft = async (champIdOverride?: string, structureLeagueIdsOverride?: Set<string>) => {
+  const saveEntriesDraft = async (
+    champIdOverride?: string,
+    structureLeagueIdsOverride?: Set<string>,
+    opts?: { inviteRosterOnly?: boolean },
+  ) => {
     const champIdToUse = champIdOverride || editingChampId;
     if (!champIdToUse) return;
     try {
@@ -1927,6 +1932,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // Self-pair doubles has no pairs yet — the invite list is all there is.
         if (selfPairInviteSelection) return;
       }
+      // Callers that only need registration rows to exist (invite picker, test
+      // invite) must never fall through to group allocation — that marks the
+      // whole roster as entered and fires "entry confirmed" notifications.
+      if (opts?.inviteRosterOnly) return;
+
 
 
       let allocatedMemberIds: string[] = [];
@@ -4305,9 +4315,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // Shared helper: send invite notifications (and flag rows as invited) for a champ.
   // Used by the post-create prompt and the "Invite actions" menu.
-  // opts.registrationIds restricts the send to specific invitees (selective reminders).
-  async function sendChampInvites(champId: string, opts?: { confirm?: boolean; registrationIds?: string[] }) {
-    const only = opts?.registrationIds && opts.registrationIds.length > 0 ? new Set(opts.registrationIds) : null;
+  // `mode` is explicit: "selected" NEVER widens to the full roster, for any reason.
+  async function sendChampInvites(
+    champId: string,
+    opts?: { confirm?: boolean; registrationIds?: string[]; mode?: InviteSendMode },
+  ) {
+    const mode: InviteSendMode = opts?.mode || (opts?.registrationIds ? "selected" : "all");
+    const only = mode === "selected";
+    if (only && (!opts?.registrationIds || opts.registrationIds.length === 0)) {
+      toast.error("No members were selected — nothing was sent.");
+      return;
+    }
     if (sendingInvitesRef.current.has(champId)) {
       toast.info("Invites are already being sent — please wait.");
       return;
@@ -4322,11 +4340,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       if (!only && editingChampId === champId && structureLeagueIds.size > 0) {
         await saveEntriesDraft(champId);
       }
-      if (opts?.confirm && !confirm(
-        only
-          ? `Send the invitation to ${only.size} selected member${only.size === 1 ? "" : "s"} now?`
-          : "Send invite notification/email to all invited members now?",
-      )) return;
+
 
 
       // If the wizard is currently open editing this tournament in invite mode,
@@ -4364,37 +4378,36 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         .eq("champ_id", champId);
       if (regErr) throw regErr;
 
-      // Only notify members who haven't already registered/paid/cancelled.
-      // Skip anyone already paid, waived, registered or cancelled — they don't
-      // need another invite. Also skip rows without a member id.
-      const SKIP_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
-      let rows: any[];
-      if (only) {
-        // Selective reminder: the organiser explicitly picked these recipients,
-        // so status filtering is deliberately skipped.
-        rows = (regs || []).filter((r: any) => r.club_member_id && only.has(r.id));
-        if (rows.length === 0) {
-          toast.info("None of the selected invitees could be found.");
-          return;
-        }
-      } else {
-        rows = (regs || []).filter((r: any) =>
-          r.club_member_id && !SKIP_STATUSES.has(String(r.status || "").toLowerCase())
+      // Fail-closed recipient resolution. A selective send resolves ONLY the
+      // exact ids the organiser ticked; it never widens to the roster.
+      const first: ResolveResult = resolveInviteRecipients({
+        mode,
+        registrations: (regs || []) as any[],
+        selectedIds: opts?.registrationIds,
+      });
+      let resolved: ResolveResult = first;
+      if (!first.ok && mode === "all" && first.error === "Everyone is already registered.") {
+        const everyone = ((regs || []) as any[]).filter(
+          (r) => r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled",
         );
-        if (rows.length === 0) {
-          const all = (regs || []).filter((r: any) =>
-            r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled"
-          );
-          if (all.length === 0) {
-            toast.info("No invitees to notify.");
-            return;
-          }
-          if (!confirm(`Everyone is already registered. Re-send invite to all ${all.length} invited member${all.length === 1 ? "" : "s"} anyway?`)) {
-            return;
-          }
-          rows = all;
-        }
+        if (!confirm(`Everyone is already registered. Re-send invite to all ${everyone.length} invited member${everyone.length === 1 ? "" : "s"} anyway?`)) return;
+        resolved = resolveInviteRecipients({
+          mode,
+          registrations: (regs || []) as any[],
+          allowResendAll: true,
+        });
       }
+      if (!resolved.ok) {
+        toast.error(resolved.error);
+        return;
+      }
+      const rows = resolved.rows as any[];
+
+      if (opts?.confirm) {
+        const names = rows.map((r) => memberNameById.get(r.club_member_id) || "Unknown member");
+        if (!confirm(inviteConfirmSummary(mode, names))) return;
+      }
+
 
 
       // Build recipient-specific, tenant-aware invitation URLs. Never fall
@@ -4430,26 +4443,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-      const notifRows = rows.map((r: any) => ({
-        club_member_id: r.club_member_id,
-        title: "Tournament invitation",
-        message: msg,
-        type: "tournament_invite",
-        url: urlForRegistration(r.id),
-        data: {
-          champ_id: champId,
-          send_email: sendEmail,
-          app_silent: !sendApp,
-          description: description.trim() || null,
-        },
-        read: false,
-      }));
-      const { error: insErr } = await fromExt("notifications").insert(notifRows);
-      if (insErr) throw insErr;
-      // Flag rows as invited so the badge appears + re-sends remain idempotent
-      await fromExt("club_champs_registrations")
-        .update({ invited_by_admin: true })
-        .in("id", rows.map((r: any) => r.id));
+      // Server-enforced dispatch: the RPC only notifies the exact registration
+      // ids supplied, verifies they belong to this tournament, records an audit
+      // row with requested vs sent counts, and refuses an empty set.
+      const recipients = rows.map((r: any) => ({ registration_id: r.id, url: urlForRegistration(r.id) }));
+      const { data: sendRes, error: sendErr } = await (supabase as any).rpc("send_champ_invite_notifications", {
+        p_champ_id: champId,
+        p_recipients: recipients,
+        p_title: "Tournament invitation",
+        p_message: msg,
+        p_send_email: sendEmail,
+        p_app_silent: !sendApp,
+        p_description: description.trim() || null,
+        p_mode: mode,
+      });
+      if (sendErr) throw sendErr;
+      const sentCount = Number((sendRes as any)?.sent ?? rows.length);
+      if (sentCount !== rows.length) {
+        toast.warning(`Intended ${rows.length} recipient${rows.length === 1 ? "" : "s"}, delivered ${sentCount}.`);
+      }
+
 
       // WhatsApp channel — members reply YES/NO and the whatsapp-inbound
       // webhook writes the entry back into club_champs_registrations.
@@ -4530,7 +4543,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const selectedTeamIds = structureLeagueIds.size > 0
         ? new Set(structureLeagueIds)
         : new Set(sourceLeagueIds);
-      await saveEntriesDraft(champId, selectedTeamIds);
+      await saveEntriesDraft(champId, selectedTeamIds, { inviteRosterOnly: true });
 
       const { data: previewRegistration, error: registrationError } = await fromExt("club_champs_registrations")
         .select("id")
@@ -4697,7 +4710,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const selectedTeamIds = structureLeagueIds.size > 0
         ? new Set(structureLeagueIds)
         : new Set(sourceLeagueIds);
-      await saveEntriesDraft(editingChampId, selectedTeamIds);
+      await saveEntriesDraft(editingChampId, selectedTeamIds, { inviteRosterOnly: true });
       await refetchInvitees();
     } catch (error: any) {
       toast.error(error?.message || "Could not load the selected league members");
@@ -7810,7 +7823,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-72">
                       <DropdownMenuItem
-                        onSelect={() => sendChampInvites(editingChampId, { confirm: true })}
+                        onSelect={() => sendChampInvites(editingChampId, { confirm: true, mode: "all" })}
                       >
                         <Send className="w-4 h-4 mr-2" />
                         <span>
@@ -7949,7 +7962,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         if (!editingChampId) return;
                         const ids = Array.from(selectedInviteeRegIds);
                         setInviteePickerOpen(false);
-                        await sendChampInvites(editingChampId, { confirm: true, registrationIds: ids });
+                        await sendChampInvites(editingChampId, { confirm: true, registrationIds: ids, mode: "selected" });
                       }}
                     >
                       {invitesSendingFor === editingChampId

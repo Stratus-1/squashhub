@@ -10918,6 +10918,19 @@ export type Database = {
         }
         Returns: number
       }
+      send_champ_invite_notifications: {
+        Args: {
+          p_app_silent?: boolean
+          p_champ_id: string
+          p_description?: string
+          p_message: string
+          p_mode?: string
+          p_recipients: Json
+          p_send_email?: boolean
+          p_title: string
+        }
+        Returns: Json
+      }
       set_club_subscription_baseline: {
         Args: {
           _actor_name?: string

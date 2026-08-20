@@ -4377,37 +4377,35 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         .eq("champ_id", champId);
       if (regErr) throw regErr;
 
-      // Only notify members who haven't already registered/paid/cancelled.
-      // Skip anyone already paid, waived, registered or cancelled — they don't
-      // need another invite. Also skip rows without a member id.
-      const SKIP_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
-      let rows: any[];
-      if (only) {
-        // Selective reminder: the organiser explicitly picked these recipients,
-        // so status filtering is deliberately skipped.
-        rows = (regs || []).filter((r: any) => r.club_member_id && only.has(r.id));
-        if (rows.length === 0) {
-          toast.info("None of the selected invitees could be found.");
-          return;
-        }
-      } else {
-        rows = (regs || []).filter((r: any) =>
-          r.club_member_id && !SKIP_STATUSES.has(String(r.status || "").toLowerCase())
+      // Fail-closed recipient resolution. A selective send resolves ONLY the
+      // exact ids the organiser ticked; it never widens to the roster.
+      let resolved = resolveInviteRecipients({
+        mode,
+        registrations: (regs || []) as any[],
+        selectedIds: opts?.registrationIds,
+      });
+      if (!resolved.ok && mode === "all" && resolved.error === "Everyone is already registered.") {
+        const everyone = ((regs || []) as any[]).filter(
+          (r) => r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled",
         );
-        if (rows.length === 0) {
-          const all = (regs || []).filter((r: any) =>
-            r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled"
-          );
-          if (all.length === 0) {
-            toast.info("No invitees to notify.");
-            return;
-          }
-          if (!confirm(`Everyone is already registered. Re-send invite to all ${all.length} invited member${all.length === 1 ? "" : "s"} anyway?`)) {
-            return;
-          }
-          rows = all;
-        }
+        if (!confirm(`Everyone is already registered. Re-send invite to all ${everyone.length} invited member${everyone.length === 1 ? "" : "s"} anyway?`)) return;
+        resolved = resolveInviteRecipients({
+          mode,
+          registrations: (regs || []) as any[],
+          allowResendAll: true,
+        });
       }
+      if (!resolved.ok) {
+        toast.error(resolved.error);
+        return;
+      }
+      const rows = resolved.rows as any[];
+
+      if (opts?.confirm) {
+        const names = rows.map((r) => memberNameById.get(r.club_member_id) || "Unknown member");
+        if (!confirm(inviteConfirmSummary(mode, names))) return;
+      }
+
 
 
       // Build recipient-specific, tenant-aware invitation URLs. Never fall

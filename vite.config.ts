@@ -126,21 +126,24 @@ export default defineConfig(() => ({
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
-        // Split heavy vendor libs out of the main chunk so no single asset
-        // approaches the service-worker precache size limit.
+        // Only split *leaf* libraries (no React context/singleton sharing) out
+        // of the main chunk. Splitting react/radix/supabase created circular
+        // chunk init ordering and a blank white screen in production.
         manualChunks(id: string) {
           if (!id.includes("node_modules")) return;
-          if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id))
-            return "vendor-react";
-          if (id.includes("@supabase")) return "vendor-supabase";
           if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
-          if (id.includes("@radix-ui")) return "vendor-radix";
-          if (id.includes("date-fns")) return "vendor-date";
-          if (id.includes("jspdf") || id.includes("xlsx") || id.includes("html2canvas"))
+          if (
+            id.includes("jspdf") ||
+            id.includes("xlsx") ||
+            id.includes("html2canvas") ||
+            id.includes("qrcode") ||
+            id.includes("canvg")
+          )
             return "vendor-docs";
-          return "vendor";
+          return undefined;
         },
       },
+
     },
   },
 }));

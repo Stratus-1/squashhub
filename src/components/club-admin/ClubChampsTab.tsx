@@ -1931,6 +1931,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // Self-pair doubles has no pairs yet — the invite list is all there is.
         if (selfPairInviteSelection) return;
       }
+      // Callers that only need registration rows to exist (invite picker, test
+      // invite) must never fall through to group allocation — that marks the
+      // whole roster as entered and fires "entry confirmed" notifications.
+      if (opts?.inviteRosterOnly) return;
+
 
 
       let allocatedMemberIds: string[] = [];

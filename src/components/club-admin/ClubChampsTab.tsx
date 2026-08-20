@@ -590,7 +590,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points, league_sources, league_source_modes")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -4008,6 +4008,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setExpectedPlayers({});
     setLeagueFormats({});
     setLeagueSections({});
+    setLeagueSources({});
     setLeagueGenders({});
     setLeagueMatchTypes({});
     setUsePerLeagueFormats(false);
@@ -4081,7 +4082,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
     setMatchDuration(champ.match_duration_minutes || 0);
     setScoringMode(((champ as any).scoring_mode as any) || "");
-    setSwissPools(((champ as any).swiss_pools as Record<string, number>) || {});
+    // Legacy knockout "sections" surface as pools so the organiser sees one concept.
+    setSwissPools(mergeLegacySectionsIntoPools(
+      ((champ as any).swiss_pools as Record<string, number>) || {},
+      ((champ as any).league_sections as Record<string, number>) || {},
+      Number(champ.num_groups) || 0,
+    ));
     setSwissRounds(((champ as any).swiss_rounds as Record<string, number>) || {});
     setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
@@ -4099,7 +4105,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setRoundFormat((champ.round_format as any) || "");
     const lf = ((champ as any).league_formats as Record<string, PerLeagueFormat> | null) || null;
     setLeagueFormats(lf || {});
-    setLeagueSections(((champ as any).league_sections as Record<string, number>) || {});
+    const legacySections = ((champ as any).league_sections as Record<string, number>) || {};
+    setLeagueSections(legacySections);
     setUsePerLeagueFormats(!!lf && Object.keys(lf).length > 0);
     setExpectedPlayers(((champ as any).expected_players as Record<string, number>) || {});
     setByeHandling((champ.bye_handling as any) || "");
@@ -4139,6 +4146,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setMaxEntrants(ex.max_entrants ? String(ex.max_entrants) : "");
     setMaxPerLeague(ex.max_per_league ? String(ex.max_per_league) : "");
     setSeedingSource(ex.seeding_source || "ladder");
+    setLeagueSources(parseDivisionSources(ex.league_sources as any, ex.league_source_modes as any));
     // Per-league category. Older tournaments have none — every league simply
     // inherits the tournament-level gender / match type.
     const lg = (ex.league_genders as Record<string, GenderCategory> | null) || null;

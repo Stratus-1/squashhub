@@ -24,22 +24,6 @@ interface Props {
   clubId: string;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  pending_payment: "Awaiting card",
-  pending_eft: "Awaiting EFT",
-  paid: "Paid",
-  waived: "Waived",
-  cancelled: "Cancelled",
-};
-
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  pending_payment: "outline",
-  pending_eft: "outline",
-  paid: "default",
-  waived: "secondary",
-  cancelled: "destructive",
-};
-
 export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubId }: Props) {
   const qc = useQueryClient();
   const { data: members = [] } = useClubMembers(clubId);

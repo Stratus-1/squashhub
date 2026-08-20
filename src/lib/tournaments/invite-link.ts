@@ -44,6 +44,8 @@ export type InvitePayload = {
   tournament_status?: string | null;
   is_invitee?: boolean;
   requires_login?: boolean;
+  /** False when the invited membership has never been claimed by an account. */
+  member_has_account?: boolean;
 };
 
 export type InviteState =
@@ -54,7 +56,9 @@ export type InviteState =
   | "payment_pending"
   | "closed"
   | "needs_login"
+  | "needs_signup"
   | "actionable";
+
 
 const PAID_STATUSES = new Set(["paid", "waived", "registered", "active"]);
 const PENDING_PAYMENT_STATUSES = new Set(["pending_payment", "pending_eft", "payment_pending"]);

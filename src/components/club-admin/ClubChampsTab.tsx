@@ -1186,6 +1186,62 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [availableLeagues]);
 
   /**
+   * Registered players per club league — the real eligible population behind
+   * every division's "Players from" selection.
+   */
+  const { data: leagueRegistrationRows = [] } = useQuery({
+    queryKey: ["division-league-registrations", clubId, (availableLeagues as any[]).map((l) => l.id).join(",")],
+    enabled: (availableLeagues as any[]).length > 0,
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("league_id, club_member_id, is_reserve")
+        .in("league_id", (availableLeagues as any[]).map((l) => l.id));
+      if (error) throw error;
+      return (data || []) as Array<{ league_id: string; club_member_id: string; is_reserve: boolean | null }>;
+    },
+  });
+
+  const registrationsByLeague = useMemo(() => {
+    const m = new Map<string, string[]>();
+    leagueRegistrationRows.forEach((r) => {
+      if (!r.club_member_id) return;
+      if (!inviteIncludeReserves && r.is_reserve) return;
+      const list = m.get(r.league_id) || [];
+      list.push(r.club_member_id);
+      m.set(r.league_id, list);
+    });
+    return m;
+  }, [leagueRegistrationRows, inviteIncludeReserves]);
+
+  /**
+   * Players the admin has deliberately kept in a division they do not qualify
+   * for. Entries are never dropped silently — this is the explicit override.
+   */
+  const [eligibilityOverrides, setEligibilityOverrides] = useState<Set<string>>(new Set());
+
+  const eligibilityCtx: EligibilityContext = useMemo(
+    () => ({
+      sources: leagueSources,
+      allLeagueIds: (availableLeagues as any[]).map((l) => l.id as string),
+      registrationsByLeague,
+      overrides: eligibilityOverrides,
+    }),
+    [leagueSources, availableLeagues, registrationsByLeague, eligibilityOverrides],
+  );
+
+  /**
+   * The source selection is an invariant of a division: only players from the
+   * chosen league(s) (or explicitly overridden ones) may be seeded into it.
+   */
+  const eligibleIdsForDivision = (gn: number, ids: string[]): string[] => {
+    const src = divisionSource(leagueSources, gn);
+    if (src.mode === "all" || src.leagueIds.length === 0) return ids;
+    return constrainIds(ids, divisionEligibleIds(gn, eligibilityCtx), eligibilityOverrides);
+  };
+
+
+
+  /**
    * Pull the players of a division's source league(s) into that division.
    * Registrations are the real source of truth — no free-text matching.
    */

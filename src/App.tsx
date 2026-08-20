@@ -516,7 +516,9 @@ function AppRoutes() {
         </Route>
         <Route path="/booking-response" element={<BookingResponse />} />
         {/* Public, recipient-specific tournament invitation link (email / in-app / WhatsApp) */}
+        <Route path="/i/test/:champId" element={<TournamentInvite />} />
         <Route path="/i/:token" element={<TournamentInvite />} />
+        <Route path="/c/:subdomain/i/test/:champId" element={<TournamentInvite />} />
         <Route path="/c/:subdomain/i/:token" element={<TournamentInvite />} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />

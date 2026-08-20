@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
-import { buildInviteUrl } from "@/lib/tournaments/invite-link";
+import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
   defaultForfeitRule,
@@ -4585,6 +4585,85 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
   }
 
+  /**
+   * "Send test invite to myself" — delivers the real invitation layout to the
+   * organiser through the currently selected channels, using a NON-MUTATING
+   * test link (/i/test/<champId>). It never creates a registration, never
+   * changes invitation counts and never creates a payment obligation.
+   */
+  async function sendTestInviteToMyself(champId: string) {
+    if (testInviteSending) return;
+    setTestInviteSending(true);
+    try {
+      const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
+      const wantsEmail = methods.includes("email");
+      const wantsApp = methods.includes("app");
+
+      const myEmail = String((myMember as any)?.email || "").trim();
+      if (!wantsApp && wantsEmail && !myEmail) {
+        throw new Error("No email address on your club profile — add one in your profile, or enable the in-app channel, to receive the test invitation.");
+      }
+      if (!wantsApp && !wantsEmail) {
+        throw new Error("Select the in-app or email delivery channel above to receive a test invitation.");
+      }
+
+      const { data: clubRow } = await fromExt("clubs").select("subdomain").eq("id", clubId).maybeSingle();
+      const testUrl = buildInviteTestUrl(champId, (clubRow as any)?.subdomain);
+      const body = `TEST INVITATION — this is a preview. No entry, payment or invitation count is affected.\n\n${buildInviteBody()}`;
+
+      let delivered: string[] = [];
+
+      if (wantsApp && (myMember as any)?.id) {
+        const { error } = await fromExt("notifications").insert([{
+          club_member_id: (myMember as any).id,
+          title: "TEST — Tournament invitation",
+          message: body,
+          type: "tournament_invite_test",
+          url: testUrl,
+          data: { champ_id: champId, test: true, send_email: false, app_silent: false },
+          read: false,
+        }]);
+        if (error) throw error;
+        delivered.push("in-app");
+      } else if (wantsApp) {
+        toast.warning("No club member profile found for your login — the in-app test could not be delivered.");
+      }
+
+      if (wantsEmail) {
+        if (!myEmail) {
+          toast.warning("No email address on your club profile — the email test was skipped.");
+        } else {
+          const { error } = await supabase.functions.invoke("send-transactional-email", {
+            body: {
+              templateName: "tournament-invite-preview",
+              recipientEmail: myEmail,
+              idempotencyKey: `tournament-invite-selftest-${champId}-${Date.now()}`,
+              templateData: {
+                tournamentName: `TEST — ${champName || "Tournament"}`,
+                invitationBody: body,
+                invitationUrl: testUrl,
+                previewForName: "you (test invitation)",
+              },
+            },
+          });
+          if (error) throw error;
+          delivered.push(myEmail);
+        }
+      }
+
+      if (methods.includes("whatsapp")) {
+        toast.info("WhatsApp test invitations aren't wired up yet — the in-app/email test uses the same link.");
+      }
+
+      if (delivered.length === 0) throw new Error("No deliverable channel available for a test invitation.");
+      toast.success(`Test invitation sent to ${delivered.join(" and ")}. Nothing was registered or charged.`);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send the test invitation");
+    } finally {
+      setTestInviteSending(false);
+    }
+  }
+
   // ---- "Send to selected members" picker -------------------------------
   const [inviteePickerOpen, setInviteePickerOpen] = useState(false);
   const [inviteeSearch, setInviteeSearch] = useState("");
@@ -7749,6 +7828,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => void sendTestInviteToMyself(editingChampId)}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        <span>
+                          Send test invite to myself
+                          <span className="block text-[11px] text-muted-foreground">
+                            Marked TEST — nothing is registered, counted or charged
+                          </span>
+                        </span>
+                      </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => openTestInviteDialog()}>
                         <Eye className="w-4 h-4 mr-2" />
                         <span>

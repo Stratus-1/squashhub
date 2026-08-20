@@ -7132,25 +7132,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {inviteSource === "leagues" && (
                   <div className="space-y-2 pt-1">
                     <Label className="text-xs text-muted-foreground">Pick which leagues to seed from</Label>
-                    {leagueGroups.length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic">No leagues found for this club.</p>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto rounded border border-border/50 bg-background/60 p-2">
-                        {leagueGroups.map((g) => {
-                          const allOn = g.leagueIds.every((id) => sourceLeagueIds.has(id));
-                          const someOn = !allOn && g.leagueIds.some((id) => sourceLeagueIds.has(id));
-                          return (
-                            <label key={g.key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1.5 py-1">
-                              <Checkbox
-                                checked={allOn ? true : someOn ? "indeterminate" : false}
-                                onCheckedChange={() => toggleSourceGroup(g.leagueIds)}
-                              />
-                              <span className="truncate">{g.label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
+                    {/* Same hierarchical tree as the Structure step: season →
+                        league level → teams / reserves, on canonical ids. */}
+                    <div className="rounded border border-border/50 bg-background/60 p-2">
+                      <LeagueSourceTree
+                        groups={leagueTree}
+                        selected={Array.from(sourceLeagueIds)}
+                        onChange={(ids) => applyLeaguePrefill(new Set(ids))}
+                      />
+                    </div>
+                  </div>
+
                     <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
                       <Checkbox
                         checked={inviteIncludeReserves}

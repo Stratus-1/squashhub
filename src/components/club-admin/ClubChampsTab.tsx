@@ -7740,7 +7740,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> above.
+                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> below.
               </p>
             </div>
 

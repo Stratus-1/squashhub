@@ -6333,6 +6333,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 playoffBreakMinutes={playoffBreakMinutes}
               />
             </WizardSection>
+            )}
+
 
 
             <WizardSection

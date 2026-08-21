@@ -6063,17 +6063,64 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </label>
               </div>
               {schedulingMode === "self" && (
-                <div className="pt-1">
-                  <Label className="text-sm">Games must be played by</Label>
-                  <Input
-                    type="date"
-                    value={roundPlayBy}
-                    min={startDate || undefined}
-                    onChange={(e) => setRoundPlayBy(e.target.value)}
-                    className="max-w-xs"
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Shown to players on their fixtures. Courts and capacity planning are skipped for this tournament.
+                <div className="pt-1 space-y-2">
+                  <Label className="text-sm">Play-by deadlines per round</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Players arrange their own court and time — you only set the date each round must be
+                    finished by. These lines appear in the invitation and on every fixture.
+                  </p>
+                  <div className="space-y-2">
+                    {roundDeadlines.map((d, i) => (
+                      <div key={i} className="flex flex-wrap items-center gap-2">
+                        <Input
+                          value={d.label}
+                          placeholder={defaultRoundLabel(i)}
+                          onChange={(e) =>
+                            setRoundDeadlines((prev) =>
+                              prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
+                            )
+                          }
+                          className="w-40"
+                        />
+                        <span className="text-xs text-muted-foreground">must be played by</span>
+                        <Input
+                          type="date"
+                          value={d.date}
+                          min={startDate || undefined}
+                          onChange={(e) =>
+                            setRoundDeadlines((prev) =>
+                              prev.map((x, j) => (j === i ? { ...x, date: e.target.value } : x)),
+                            )
+                          }
+                          className="w-44"
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setRoundDeadlines((prev) => prev.filter((_, j) => j !== i))}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setRoundDeadlines((prev) => [
+                        ...prev,
+                        { label: defaultRoundLabel(prev.length), date: "" },
+                      ])
+                    }
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add round deadline
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    Add one per round (Round 1, Round 2, Semi-finals, Final…). Nothing is scheduled and no
+                    courts are booked for this tournament.
                   </p>
                 </div>
               )}

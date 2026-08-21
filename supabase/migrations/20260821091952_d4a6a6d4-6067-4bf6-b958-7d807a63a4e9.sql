@@ -1,0 +1,1 @@
+ALTER VIEW public.club_champs SET (security_invoker = true);

@@ -164,6 +164,7 @@ async function resolveClubMail(userId: string, explicitClubId?: string | null): 
       return null;
     }
     return {
+      clubId,
       smtpHost: String(secrets.smtp_host).trim(),
       smtpPort: Number(secrets.smtp_port) || 587,
       smtpUser: String(secrets.smtp_user).trim(),

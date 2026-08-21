@@ -68,6 +68,21 @@ export default function TournamentInvite() {
   const state = inviteState(data);
   const feeCents = inviteFeeCents(data);
   const verificationKind = inviteVerificationKind(data);
+  const divisions = useMemo(() => inviteDivisions(data), [data]);
+  const mustChooseDivision = requiresDivisionChoice(data);
+  const [chosenDivisions, setChosenDivisions] = useState<number[]>([]);
+  const [divisionError, setDivisionError] = useState("");
+
+  // Pre-tick what the invitee already chose (or the only division on offer).
+  useEffect(() => {
+    if (!data?.found) return;
+    setChosenDivisions(defaultDivisionSelection(data));
+  }, [data]);
+
+  const toggleDivision = (gn: number) => {
+    setDivisionError("");
+    setChosenDivisions((prev) => (prev.includes(gn) ? prev.filter((n) => n !== gn) : [...prev, gn].sort((a, b) => a - b)));
+  };
 
   const respond = useMutation({
     mutationFn: async (accept: boolean) => {
@@ -75,10 +90,12 @@ export default function TournamentInvite() {
         p_token: token,
         p_accept: accept,
         p_verify: verify.trim() || null,
+        p_divisions: accept && chosenDivisions.length > 0 ? chosenDivisions : null,
       });
       if (error) throw error;
       return { accept, res } as { accept: boolean; res: any };
     },
+
     onSuccess: async ({ accept, res }) => {
       await refetch();
       if (!accept) {

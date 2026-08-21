@@ -9014,6 +9014,32 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           ))}
                                         </SelectContent>
                                       </Select>
+                                      <ExtraDivisionsPicker
+                                        playerId={p.id}
+                                        primary={groupAssignments.get(p.id) ?? 0}
+                                        extras={extraDivisions.get(p.id) ?? new Set<number>()}
+                                        divisionLabels={Array.from({ length: numGroups }, (_, i) =>
+                                          groupLabels[String(i + 1)]?.trim()
+                                            ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)])
+                                                ? groupLabels[String(i + 1)]
+                                                : `League ${groupLabels[String(i + 1)]}`)
+                                            : `League ${i + 1}`
+                                        )}
+                                        onToggle={(division, checked) => {
+                                          setExtraDivisions((prev) => {
+                                            const next = new Map(prev);
+                                            const set = new Set(next.get(p.id) ?? []);
+                                            if (checked) set.add(division);
+                                            else set.delete(division);
+                                            if (set.size === 0) next.delete(p.id);
+                                            else next.set(p.id, set);
+                                            return next;
+                                          });
+                                          // An admin placing a player by hand overrides the
+                                          // division's source-league eligibility check.
+                                          if (checked) setEligibilityOverrides((prev) => new Set(prev).add(p.id));
+                                        }}
+                                      />
                                     </SortableRow>
                                   </div>
                                 );

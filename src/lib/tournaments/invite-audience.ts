@@ -21,20 +21,32 @@ export interface AudienceMemberRow {
   id: string;
   status?: string | null;
   role?: string | null;
+  /** Placeholder/visitor-slot rows kept out of billing are never real people. */
+  billing_exempt?: boolean | null;
+  is_placeholder?: boolean | null;
 }
 
-/** A member may be invited when they are an active, non-visitor member. */
+/**
+ * A member may be invited only when they are a real, active, non-visitor
+ * member of the club. Visitors (role='visitor'), resigned/suspended members
+ * and placeholder/billing-exempt slot rows are never invited.
+ */
 export function isInvitableMember(m: AudienceMemberRow | undefined | null): boolean {
   if (!m || !m.id) return false;
   const status = String(m.status ?? "active").toLowerCase();
   if (status && status !== "active") return false;
-  return String(m.role ?? "member").toLowerCase() !== "visitor";
+  const role = String(m.role ?? "member").toLowerCase();
+  if (role === "visitor") return false;
+  if (m.billing_exempt === true || m.is_placeholder === true) return false;
+  return true;
 }
 
 export interface ResolvedAudience {
   memberIds: string[];
   /** Plain-English description of who was resolved and why. */
   summary: string;
+  /** Why people were left out — shown so the organiser can verify the count. */
+  excluded: { visitors: number; inactive: number; placeholders: number };
 }
 
 export function resolveInviteAudience(input: {
@@ -50,25 +62,47 @@ export function resolveInviteAudience(input: {
   excludedIds?: Iterable<string>;
 }): ResolvedAudience {
   const invitable = new Map<string, AudienceMemberRow>();
+  const excludedCounts = { visitors: 0, inactive: 0, placeholders: 0 };
   (input.members || []).forEach((m) => {
-    if (isInvitableMember(m)) invitable.set(m.id, m);
+    if (!m || !m.id) return;
+    if (isInvitableMember(m)) {
+      invitable.set(m.id, m);
+      return;
+    }
+    const status = String(m.status ?? "active").toLowerCase();
+    const role = String(m.role ?? "member").toLowerCase();
+    if (role === "visitor") excludedCounts.visitors += 1;
+    else if (status !== "active") excludedCounts.inactive += 1;
+    else excludedCounts.placeholders += 1;
   });
   const excluded = new Set(Array.from(input.excludedIds || []));
   const keep = (ids: Iterable<string>) =>
     Array.from(new Set(Array.from(ids))).filter((id) => invitable.has(id) && !excluded.has(id));
 
+  const suffix = (() => {
+    const bits: string[] = [];
+    if (excludedCounts.visitors) bits.push(`${excludedCounts.visitors} visitor${excludedCounts.visitors === 1 ? "" : "s"}`);
+    if (excludedCounts.inactive) bits.push(`${excludedCounts.inactive} inactive`);
+    if (excludedCounts.placeholders) bits.push(`${excludedCounts.placeholders} placeholder`);
+    return bits.length ? ` Excluded: ${bits.join(", ")}.` : "";
+  })();
+
   if (input.mode === "all_club") {
     const ids = keep(invitable.keys());
     return {
       memberIds: ids,
-      summary: `All ${ids.length} active club member${ids.length === 1 ? "" : "s"} — league membership is not required.`,
+      excluded: excludedCounts,
+      summary:
+        `All ${ids.length} active club member${ids.length === 1 ? "" : "s"} — league membership is not required.` + suffix,
     };
   }
+
 
   if (input.mode === "individuals") {
     const ids = keep(input.individualIds || []);
     return {
       memberIds: ids,
+      excluded: excludedCounts,
       summary: `${ids.length} individually selected member${ids.length === 1 ? "" : "s"}.`,
     };
   }
@@ -83,10 +117,12 @@ export function resolveInviteAudience(input: {
   const extraCount = ids.filter((id) => !fromLeagues.has(id)).length;
   return {
     memberIds: ids,
+    excluded: excludedCounts,
     summary:
       `${ids.length} member${ids.length === 1 ? "" : "s"} from ${leagueIds.length} selected league team${leagueIds.length === 1 ? "" : "s"}` +
       (extraCount > 0 ? ` plus ${extraCount} individually added.` : "."),
   };
+
 }
 
 /**

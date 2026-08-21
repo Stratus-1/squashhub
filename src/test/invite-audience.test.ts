@@ -86,3 +86,30 @@ describe("acceptance never rejects non-league members", () => {
     expect(res.assigned).toEqual([]);
   });
 });
+
+describe("invite audience excludes non-members", () => {
+  const base = [
+    { id: "a", status: "active", role: "member" },
+    { id: "b", status: "active", role: "captain" },
+    { id: "v", status: "active", role: "visitor" },
+    { id: "r", status: "resigned", role: "member" },
+    { id: "p", status: "active", role: "member", billing_exempt: true },
+  ];
+
+  it("all_club invites only real active members", () => {
+    const res = resolveInviteAudience({ mode: "all_club", members: base as any });
+    expect(res.memberIds.sort()).toEqual(["a", "b"]);
+    expect(res.excluded).toEqual({ visitors: 1, inactive: 1, placeholders: 1 });
+    expect(res.summary).toContain("1 visitor");
+  });
+
+  it("league mode never pulls a visitor in through registrations", () => {
+    const res = resolveInviteAudience({
+      mode: "leagues",
+      members: base as any,
+      leagueIds: ["L1"],
+      registrationsByLeague: new Map([["L1", ["a", "v", "p"]]]),
+    });
+    expect(res.memberIds).toEqual(["a"]);
+  });
+});

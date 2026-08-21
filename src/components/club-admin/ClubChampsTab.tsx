@@ -575,6 +575,23 @@ function SegRow({
   );
 }
 
+/**
+ * Pulls the human-readable reason out of an edge-function error so club email
+ * (SMTP) failures are never reported as a generic "non-2xx" message.
+ */
+async function edgeErrorMessage(error: any, data: any, fallback: string): Promise<string> {
+  const fromData = (data as any)?.error;
+  if (typeof fromData === "string" && fromData.trim()) return fromData;
+  try {
+    const ctx = (error as any)?.context;
+    if (ctx && typeof ctx.json === "function") {
+      const body = await ctx.json();
+      if (body?.error) return String(body.error);
+    }
+  } catch { /* body already consumed or not JSON */ }
+  return error?.message || fallback;
+}
+
 export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -4772,15 +4789,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           recipientName: previewMember.name,
         },
       });
-      if (sendError) throw sendError;
-
-      const smtpError = (sendData as any)?.smtpError as string | undefined;
-      toast.success(`Test invite for ${previewMember.name} sent to ${parsedEmail.data}. The secure link is the same one that player will receive.`);
-      if (smtpError) {
-        toast.warning(
-          "Your club's own email (SMTP) login was rejected, so this was sent from the SquashHub sender instead. Update the club email settings to send from your club address.",
-        );
+      if (sendError || (sendData as any)?.ok === false) {
+        throw new Error(await edgeErrorMessage(sendError, sendData, "The test invite could not be sent."));
       }
+
+      toast.success(`Test invite for ${previewMember.name} sent to ${parsedEmail.data} from ${(sendData as any)?.sender || "your club address"}. The secure link is the same one that player will receive.`);
       setTestInviteDialogOpen(false);
       setTestInviteEmail("");
       setTestInvitePreviewAs(null);
@@ -4839,7 +4852,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (!myEmail) {
           toast.warning("No email address on your club profile — the email test was skipped.");
         } else {
-          const { error } = await supabase.functions.invoke("email-notifications", {
+          const { data: selfSend, error } = await supabase.functions.invoke("email-notifications", {
             body: {
               action: "club-send",
               clubId,
@@ -4851,7 +4864,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               recipientName: String((myMember as any)?.name || "").trim() || undefined,
             },
           });
-          if (error) throw error;
+          if (error || (selfSend as any)?.ok === false) {
+            throw new Error(await edgeErrorMessage(error, selfSend, "The test email could not be sent."));
+          }
 
           delivered.push(myEmail);
         }

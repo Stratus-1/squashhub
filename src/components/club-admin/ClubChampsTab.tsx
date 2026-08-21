@@ -2565,8 +2565,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       (a, b) => (orderIdx.get(a.id) ?? 1e9) - (orderIdx.get(b.id) ?? 1e9)
     );
     sorted.forEach((p) => {
-      const gi = groupAssignments.get(p.id) ?? 0;
-      if (gi < numGroups) g[gi].push(p);
+      // No assignment = unassigned (plays in none of the source leagues).
+      // They stay out of the draw until the organiser places them.
+      const gi = groupAssignments.get(p.id);
+      if (gi !== undefined && gi < numGroups) g[gi].push(p);
     });
     return g;
   }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, pairGroupAssignments, playerOrder, pairOrder]);

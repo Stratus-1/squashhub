@@ -109,7 +109,7 @@ export function partitionAcceptedEntrants(input: {
 }
 
 export function audienceLabel(mode: InviteAudienceMode): string {
-  if (mode === "all_club") return "All club members";
+  if (mode === "all_club") return "Invite all members of the club (open invitation)";
   if (mode === "leagues") return "Selected leagues / league teams";
   return "Selected individual members";
 }

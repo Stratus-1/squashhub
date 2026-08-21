@@ -520,3 +520,75 @@ export function validateDivisions(args: {
   }
   return issues;
 }
+
+export interface AllocationResult {
+  /** member id → division index (0-based, matching the wizard's group index). */
+  assignments: Map<string, number>;
+  /**
+   * Accepted entrants who belong to none of the divisions' source leagues.
+   * They are deliberately NOT placed — the organiser must assign them.
+   */
+  unassigned: string[];
+}
+
+/**
+ * Allocate accepted entrants to the division that matches the club league they
+ * actually play in ("primarily players from"), instead of a blind snake draft.
+ *
+ * Rules:
+ *  - An existing (manual) assignment always wins and is never overwritten.
+ *  - A player registered in a league named by exactly one division goes there.
+ *  - If several divisions could take them, the lowest division index wins.
+ *  - Divisions on "all leagues" act as a catch-all: they accept anyone, but a
+ *    restricted division that names the player's real league is preferred.
+ *  - A player matching no division at all is returned as `unassigned`.
+ */
+export function allocateEntrantsToDivisions(args: {
+  entrantIds: string[];
+  numDivisions: number;
+  sources: Record<string, DivisionSource>;
+  registrationsByLeague: Map<string, string[]>;
+  /** Existing manual placements to preserve (member id → 0-based index). */
+  existing?: Map<string, number>;
+  /** Ids the admin explicitly kept in a division despite not qualifying. */
+  overrides?: Set<string>;
+}): AllocationResult {
+  const { entrantIds, numDivisions, sources, registrationsByLeague } = args;
+  const assignments = new Map<string, number>();
+  const unassigned: string[] = [];
+  if (numDivisions < 1) return { assignments, unassigned: [...entrantIds] };
+
+  // Pre-compute each division's eligible population + whether it is a catch-all.
+  const divisions = Array.from({ length: numDivisions }, (_, i) => {
+    const src = divisionSource(sources, i + 1);
+    const catchAll = src.mode === "all" || src.leagueIds.length === 0;
+    const eligible = new Set<string>();
+    if (!catchAll) {
+      src.leagueIds.forEach((lid) =>
+        (registrationsByLeague.get(lid) || []).forEach((mid) => eligible.add(mid)),
+      );
+    }
+    return { catchAll, eligible };
+  });
+
+  for (const id of entrantIds) {
+    if (!id) continue;
+    const existing = args.existing?.get(id);
+    if (existing !== undefined && existing >= 0 && existing < numDivisions) {
+      assignments.set(id, existing);
+      continue;
+    }
+    let target = divisions.findIndex((d) => !d.catchAll && d.eligible.has(id));
+    if (target < 0 && args.overrides?.has(id)) target = -1;
+    if (target < 0) {
+      const catchAllIdx = divisions.findIndex((d) => d.catchAll);
+      // Only fall back to a catch-all division when the player has no league at
+      // all AND at least one division accepts everyone.
+      if (catchAllIdx >= 0) target = catchAllIdx;
+    }
+    if (target < 0) unassigned.push(id);
+    else assignments.set(id, target);
+  }
+
+  return { assignments, unassigned };
+}

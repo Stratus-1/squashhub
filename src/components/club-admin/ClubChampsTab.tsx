@@ -27,6 +27,7 @@ import {
 import { buildLeagueFirstRound, distributeSeedsBalanced, suggestSectionCount } from "@/lib/tournaments/knockout";
 import {
   DEFAULT_DIVISION_SOURCE,
+  allocateEntrantsToDivisions,
   constrainIds,
   describeDivisionSource,
   divisionEligibleIds,
@@ -1078,6 +1079,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [customizeDailySchedule, startDate, endDate, playDays, startTime, endTime]);
 
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
+  /** Accepted entrants who match no division's source league — organiser must place them. */
+  const [unassignedEntrantIds, setUnassignedEntrantIds] = useState<string[]>([]);
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);
 
   // Doubles-specific state
@@ -2372,10 +2375,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   /**
    * Keep league allocations seeded automatically.
    *
-   * The Allocate step no longer asks how many leagues there are (Structure owns
-   * that), so entrants must be distributed the moment the roster or the league
-   * count changes. Existing manual placements are preserved; only new or
-   * out-of-range entrants are (re)seeded with a snake draft.
+   * Singles entrants are allocated to the division whose "primarily players
+   * from" source names the club league they actually play in — NOT by a blind
+   * snake draft, which used to drop a League 2 player into League 1. Manual
+   * placements are always preserved, and anyone who plays in none of the source
+   * leagues stays unassigned until the organiser places them.
    */
   useEffect(() => {
     if (!showWizard) return;
@@ -2403,21 +2407,41 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
 
     const ids = selectedPlayers.map((p: any) => p.id);
-    if (ids.length === 0) return;
-    const stale = ids.some((id) => {
-      const g = groupAssignments.get(id);
-      return g === undefined || g >= n;
-    }) || groupAssignments.size !== ids.length;
-    if (!stale) return;
-    setGroupAssignments((prev) => {
-      const next = new Map<string, number>();
-      ids.forEach((id, i) => {
-        const existing = prev.get(id);
-        next.set(id, existing !== undefined && existing < n ? existing : snake(i));
-      });
-      return next;
+    if (ids.length === 0) {
+      setUnassignedEntrantIds((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+
+    const { assignments, unassigned } = allocateEntrantsToDivisions({
+      entrantIds: ids,
+      numDivisions: n,
+      sources: leagueSources,
+      registrationsByLeague,
+      existing: groupAssignments,
+      overrides: eligibilityOverrides,
     });
-  }, [showWizard, numGroups, isDoubles, doublesPairs, selectedPlayers, groupAssignments, pairGroupAssignments]);
+
+    setUnassignedEntrantIds((prev) =>
+      prev.length === unassigned.length && prev.every((id, i) => id === unassigned[i]) ? prev : unassigned,
+    );
+
+    const sameAsBefore =
+      assignments.size === groupAssignments.size &&
+      Array.from(assignments.entries()).every(([id, gi]) => groupAssignments.get(id) === gi);
+    if (sameAsBefore) return;
+    setGroupAssignments(assignments);
+  }, [
+    showWizard,
+    numGroups,
+    isDoubles,
+    doublesPairs,
+    selectedPlayers,
+    groupAssignments,
+    pairGroupAssignments,
+    leagueSources,
+    registrationsByLeague,
+    eligibilityOverrides,
+  ]);
 
   // Number of "entities" (players for singles, pairs for doubles)
   const entityCount = isDoubles ? doublesPairs.length : selectedPlayerIds.size;
@@ -2541,8 +2565,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       (a, b) => (orderIdx.get(a.id) ?? 1e9) - (orderIdx.get(b.id) ?? 1e9)
     );
     sorted.forEach((p) => {
-      const gi = groupAssignments.get(p.id) ?? 0;
-      if (gi < numGroups) g[gi].push(p);
+      // No assignment = unassigned (plays in none of the source leagues).
+      // They stay out of the draw until the organiser places them.
+      const gi = groupAssignments.get(p.id);
+      if (gi !== undefined && gi < numGroups) g[gi].push(p);
     });
     return g;
   }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, pairGroupAssignments, playerOrder, pairOrder]);
@@ -6506,8 +6532,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 return (
                                   <div className="flex flex-wrap items-center gap-2">
                                     <Label className="text-[9px] uppercase tracking-wider text-muted-foreground w-full sm:w-auto">
-                                      Players from
+                                      Primarily players from
                                     </Label>
+                                    <p className="w-full text-[10px] text-muted-foreground leading-snug order-last">
+                                      This decides which league these players are allocated to and seeded in — it does not
+                                      limit who is invited.
+                                    </p>
                                     <Popover>
                                       <PopoverTrigger asChild>
                                         <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]">
@@ -8552,6 +8582,55 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     })
                   );
                 })()}
+
+                {/* Accepted entrants who play in none of the divisions' source
+                    leagues (typically open-invite acceptors). They are kept out
+                    of the draw until the organiser places them explicitly. */}
+                {!isDoubles && unassignedEntrantIds.length > 0 && (
+                  <div className="border border-amber-500/40 bg-amber-500/5 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className="text-sm font-medium">Unassigned — needs a league</span>
+                      <span className="text-muted-foreground text-xs">({unassignedEntrantIds.length} players)</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      These players accepted the invitation but do not play in any of the leagues chosen under
+                      “Primarily players from” in Structure. Pick a league for each of them.
+                    </p>
+                    <div className="space-y-1">
+                      {unassignedEntrantIds.map((id) => {
+                        const p: any = (selectedPlayers as any[]).find((x) => x.id === id);
+                        if (!p) return null;
+                        return (
+                          <div key={id} className="flex items-center gap-2 rounded border bg-background/60 px-2 py-1.5">
+                            <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
+                            {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
+                            <Select
+                              value=""
+                              onValueChange={(v) => {
+                                setGroupAssignments((prev) => new Map(prev).set(id, Number(v)));
+                                setEligibilityOverrides((prev) => new Set(prev).add(id));
+                                setUnassignedEntrantIds((prev) => prev.filter((x) => x !== id));
+                              }}
+                            >
+                              <SelectTrigger className="w-32 h-7 text-xs">
+                                <SelectValue placeholder="Assign…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: numGroups }, (_, i) => (
+                                  <SelectItem key={i} value={String(i)}>
+                                    {groupLabels[String(i + 1)]?.trim()
+                                      ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`)
+                                      : `League ${i + 1}`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </DndContext>
           </CardContent>

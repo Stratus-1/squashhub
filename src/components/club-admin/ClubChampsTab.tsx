@@ -722,7 +722,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // 'club'  — the club books courts and publishes a fixed schedule.
   // 'self'  — players arrange their own games and must play by a deadline.
   const [schedulingMode, setSchedulingMode] = useState<"club" | "self">("club");
-  const [roundPlayBy, setRoundPlayBy] = useState<string>("");
+  const [roundDeadlines, setRoundDeadlines] = useState<RoundDeadline[]>([]);
 
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);

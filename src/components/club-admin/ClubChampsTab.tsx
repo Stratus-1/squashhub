@@ -4672,7 +4672,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             invitationBody: buildInviteBody(),
             invitationUrl: previewUrl,
             previewForName: previewMember.name,
+            recipientName: previewMember.name,
           },
+
         },
       });
       if (sendError) throw sendError;

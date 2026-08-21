@@ -120,6 +120,7 @@ async function sendViaPlatform(args: {
 }
 
 interface ClubMail {
+  clubId: string;
   smtpHost: string;
   smtpPort: number;
   smtpUser: string;

@@ -9884,6 +9884,10 @@ export type Database = {
           handicap_multiplier: number | null
           id: string | null
           include_visitors: boolean | null
+          invite_audience: string | null
+          invite_audience_include_individuals: boolean | null
+          invite_audience_league_ids: string[] | null
+          invite_audience_member_ids: string[] | null
           invite_excluded_member_ids: string[] | null
           invite_include_reserves: boolean | null
           invite_methods: string[] | null

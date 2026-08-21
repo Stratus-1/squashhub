@@ -24,6 +24,14 @@ export function buildInviteUrl(token: string, subdomain?: string | null): string
   return `https://${ROOT_HOST}${path}`;
 }
 
+export type InviteDivision = {
+  group_number: number;
+  label: string;
+  gender?: string | null;
+  format?: string | null;
+  match_type?: string | null;
+};
+
 export type InvitePayload = {
   found: boolean;
   champ_id?: string;
@@ -34,6 +42,12 @@ export type InvitePayload = {
   entry_fee_cents?: number | null;
   payment_required?: boolean | null;
   division_label?: string | null;
+  /** Divisions this invitee may enter — a player may pick more than one. */
+  divisions?: InviteDivision[] | null;
+  /** Divisions already chosen by this invitee. */
+  selected_divisions?: number[] | null;
+  /** 'club' = courts booked by the club, 'self' = players arrange their own games. */
+  scheduling_mode?: string | null;
   invitee_name?: string | null;
   club_name?: string | null;
   status?: string | null;
@@ -53,6 +67,39 @@ export type InvitePayload = {
   /** False when the invited membership has never been claimed by an account. */
   member_has_account?: boolean;
 };
+
+/** Normalised division list from an invite payload. */
+export function inviteDivisions(payload: InvitePayload | null | undefined): InviteDivision[] {
+  const raw = Array.isArray(payload?.divisions) ? payload!.divisions! : [];
+  return raw
+    .map((d) => ({
+      group_number: Number((d as any)?.group_number),
+      label: String((d as any)?.label || "").trim() || `League ${(d as any)?.group_number}`,
+      gender: (d as any)?.gender ?? null,
+      format: (d as any)?.format ?? null,
+      match_type: (d as any)?.match_type ?? null,
+    }))
+    .filter((d) => Number.isFinite(d.group_number) && d.group_number > 0);
+}
+
+/** The invitee must pick when the tournament runs more than one division. */
+export function requiresDivisionChoice(payload: InvitePayload | null | undefined): boolean {
+  return inviteDivisions(payload).length > 1;
+}
+
+/**
+ * What to pre-tick: whatever the invitee already chose, otherwise the single
+ * division when there is only one to enter.
+ */
+export function defaultDivisionSelection(payload: InvitePayload | null | undefined): number[] {
+  const divisions = inviteDivisions(payload);
+  const chosen = (payload?.selected_divisions || [])
+    .map((n) => Number(n))
+    .filter((n) => divisions.some((d) => d.group_number === n));
+  if (chosen.length > 0) return chosen;
+  return divisions.length === 1 ? [divisions[0].group_number] : [];
+}
+
 
 export type InviteState =
   | "not_found"

@@ -6126,6 +6126,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               )}
             </div>
 
+            {schedulingMode === "club" ? (
+            <>
             <WizardSection
               title={"Dates & times"}
               summary={`${startDate || "start?"} → ${endDate || "end?"} · ${startTime}–${endTime} · ${playDays.size} play day${playDays.size === 1 ? "" : "s"}`}

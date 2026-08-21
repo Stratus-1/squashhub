@@ -156,36 +156,42 @@ export async function pulseShellyBle(params: BlePulseParams): Promise<void> {
       },
     };
     const exchange = async (encoded: Uint8Array): Promise<Uint8Array> => {
-      const lenBuf = new Uint8Array(4);
-      new DataView(lenBuf.buffer).setUint32(0, encoded.byteLength, false);
-      await txCtl.writeValue(lenBuf);
+      const run = async () => {
+        await withBleTimeout(
+          () => txCtl.writeValue(encodeFrameLength(encoded.byteLength)),
+          BLE_OP_TIMEOUT_MS,
+          "sending frame length",
+        );
+        // Give the device a moment to latch the length register.
+        await delay(BLE_SETTLE_MS);
 
-      const CHUNK = 20;
-      for (let i = 0; i < encoded.byteLength; i += CHUNK) {
-        await dataChar.writeValue(encoded.slice(i, i + CHUNK));
-      }
+        for (const chunk of chunkPayload(encoded)) {
+          await withBleTimeout(
+            () => (dataChar.writeValueWithoutResponse
+              ? dataChar.writeValueWithoutResponse(chunk)
+              : dataChar.writeValue(chunk)),
+            BLE_OP_TIMEOUT_MS,
+            "sending command",
+          );
+          await delay(5);
+        }
+        await delay(BLE_SETTLE_MS);
 
-      const responseLengthValue = await rxCtl.readValue();
-      if (responseLengthValue.byteLength < 4) throw new Error("Shelly returned an invalid response length.");
-      const responseLength = responseLengthValue.getUint32(0, false);
-      if (responseLength < 1 || responseLength > 64 * 1024) {
-        throw new Error(`Shelly returned an invalid response length (${responseLength}).`);
-      }
+        const responseLength = await pollResponseLength(async () => {
+          const value = await withBleTimeout(() => rxCtl.readValue(), BLE_OP_TIMEOUT_MS, "reading reply length");
+          return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+        });
 
-      const response = new Uint8Array(responseLength);
-      let offset = 0;
-      while (offset < responseLength) {
-        const chunk = await dataChar.readValue();
-        const bytes = new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-        if (!bytes.byteLength) throw new Error("Shelly returned an incomplete Bluetooth response.");
-        const remaining = responseLength - offset;
-        response.set(bytes.subarray(0, remaining), offset);
-        offset += Math.min(bytes.byteLength, remaining);
-      }
-      return response;
+        return readResponseBody(responseLength, async () => {
+          const chunk = await withBleTimeout(() => dataChar.readValue(), BLE_OP_TIMEOUT_MS, "reading reply");
+          return new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+        });
+      };
+      return withBleTimeout(run, BLE_EXCHANGE_TIMEOUT_MS, "waiting for the Shelly to answer");
     };
 
     await executeShellyRpc(rpc, params.password, exchange);
+
   } finally {
     try { server.disconnect(); } catch { /* ignore */ }
   }

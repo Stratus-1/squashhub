@@ -8928,7 +8928,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       )}
                                       <Select
                                         value={String(pairGroupAssignments.get(pair.id) ?? 0)}
-                                        onValueChange={(v) => {
+                                        onValueChange={async (v) => {
+                                          if (v === "__withdrawn") {
+                                            if (confirm("Withdraw this pair from the tournament?")) {
+                                              await withdraw(pair.id, true);
+                                            }
+                                            return;
+                                          }
                                           const newMap = new Map(pairGroupAssignments);
                                           newMap.set(pair.id, Number(v));
                                           setPairGroupAssignments(newMap);
@@ -8936,6 +8942,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       >
                                         <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
+                                          <SelectItem value="__withdrawn" className="text-destructive">Withdraw pair / not playing</SelectItem>
                                           {Array.from({ length: numGroups }, (_, i) => (
                                             <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
                                           ))}

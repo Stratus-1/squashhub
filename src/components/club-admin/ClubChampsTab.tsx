@@ -6657,6 +6657,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 type="button"
                                 variant="ghost"
                                 size="icon"
+                                className="h-7 w-7 text-muted-foreground"
+                                onClick={() => duplicateLeagueAt(gn)}
+                                title="Duplicate this division (same rules, new class)"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+
+                                type="button"
+                                variant="ghost"
+                                size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
                                 onClick={() => removeLeagueAt(gn)}
                                 title="Remove league"

@@ -9377,8 +9377,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <p><strong>Type:</strong> {GENDER_LABELS[gender]} {isDoubles ? "Doubles" : "Singles"}</p>
           <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {awaitingPlayerPairs ? `${registrationUsesInviteList ? selectedPlayerIds.size : registrationRequired ? "Open" : "No"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
               <p><strong>Period:</strong> {startDate} to {endDate}</p>
-              <p><strong>Days:</strong> {Array.from(playDays).sort().map((d) => DAY_NAMES[d]).join(", ")}</p>
-              <p><strong>Time:</strong> {startTime} – {endTime}{scoringMode === "time_capped_points" ? "" : ` (${matchDuration} min per match)`}</p>
+              {schedulingMode === "self" ? (
+                <p><strong>Scheduling:</strong> Players arrange their own games — no fixed days or times</p>
+              ) : (
+                <>
+                  <p><strong>Days:</strong> {Array.from(playDays).sort().map((d) => DAY_NAMES[d]).join(", ")}</p>
+                  <p><strong>Time:</strong> {startTime} – {endTime}{scoringMode === "time_capped_points" ? "" : ` (${matchDuration} min per match)`}</p>
+                </>
+              )}
               <p><strong>Courts:</strong> {Array.from(selectedCourtIds).map((id) => getCourtName(id)).join(", ")}</p>
               <p><strong>Format:</strong> {roundFormat === "double_round_robin" ? "Double round-robin (home & away)" : roundFormat === "cross_league" ? "League vs League (cross-league only)" : "Single round-robin"}{roundFormat === "double_round_robin" ? ` · Bye: ${byeHandling.replace(/_/g, " ")}` : ""}</p>
               <p><strong>Playoffs:</strong> {enablePlayoffs ? "Yes — position-based knockout after group stage" : "No"}</p>

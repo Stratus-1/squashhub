@@ -5434,7 +5434,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         });
         setPairGroupAssignments(assignments);
       } else {
-        const ids = Array.from(new Set(entries.map((e: any) => e.club_member_id as string)));
+        const ids: string[] = Array.from(new Set<string>(entries.map((e: any) => String(e.club_member_id))));
         // Registered-but-not-yet-entered acceptances must still show up.
         choicesByMember.forEach((_v, id) => {
           if (!ids.includes(id)) ids.push(id);

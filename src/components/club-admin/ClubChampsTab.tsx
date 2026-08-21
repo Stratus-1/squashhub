@@ -6398,6 +6398,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               )}
             </div>
             </WizardSection>
+            </>
+            ) : (
+              /* Self-scheduled: no fixture times, no play days, no courts — just the
+                 window the tournament runs in. Everything else is the players' call. */
+              <div className="rounded-lg border p-3 space-y-3">
+                <Label className="text-sm font-medium">Tournament window</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm">Tournament starts</Label>
+                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Tournament ends</Label>
+                    <Input
+                      type="date"
+                      value={endDate || lastDeadline(roundDeadlines) || ""}
+                      min={startDate || undefined}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {roundDeadlineSummary(roundDeadlines)} — no daily times, play days or courts are set for a
+                  self-scheduled tournament.
+                </p>
+              </div>
+            )}
 
             {/* Capacity validation — lives here because it needs BOTH the structure
                 (leagues, formats, pools, match length) and the schedule (dates,

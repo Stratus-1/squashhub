@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { triggerShellyDoor } from "@/lib/shelly-door";
 import { isBleFallbackAvailable, pulseShellyBleAuto } from "@/lib/shelly-ble-auto";
+import { isInBlockedIframe, describeBleError } from "@/lib/shelly-ble";
 
 const ACCESS_METHODS = [
   { value: "none", label: "No Access Control", icon: Lock, description: "Courts are open — no electronic access system" },
@@ -805,7 +806,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                           });
                           toast.success("BLE pulse sent — door should have clicked");
                         } catch (err: any) {
-                          toast.error(err?.message || "BLE test failed");
+                          toast.error(describeBleError(err));
                         }
                       }}
                     >

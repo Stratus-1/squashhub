@@ -1034,4 +1034,25 @@ in the DLQ. Admins had no way to see this.
   00:00 SAST 2026-08-22.
 
 **Note.** Personal Gmail SMTP tops out near 100 mails/hour in bursts; the outbox paces
-to ~40/hour. Clubs doing large mailings should move to a proper relay.
+  to ~40/hour. Clubs doing large mailings should move to a proper relay.
+
+## 2026-08-21 — Tournament player withdrawal from allocation UI
+
+**Problem.** Admins could allocate a player to multiple divisions using the
+ExtraDivisionsPicker, but there was no way to remove a player from *all*
+divisions / the tournament from the Players allocation step.
+
+**Fix.** Added a **"Withdrawn / not playing"** option to the primary division
+dropdown on the Players allocation step for singles, doubles pairs, and unassigned
+players. Selecting it:
+
+- removes the player/pair from local selection and group/extra-division maps;
+- deletes any `club_champs_entries` rows for the player(s) using a
+  `club_member_id` / `partner_member_id` OR filter;
+- updates the corresponding `club_champs_registrations` row to `cancelled` and
+  clears `confirmed_at`, `confirmation_source`, `partner_member_id` and
+  `partner_confirmed`;
+- invalidates `champ-invitees` and `champ-registrations` queries so the
+  Registrations tab reflects the change immediately.
+
+**Files.** `src/components/club-admin/ClubChampsTab.tsx`.

@@ -1002,7 +1002,40 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     });
     setMatchType(mt);
   };
+  /**
+   * Clone a division: every setting (format, pools, category, scoring, source)
+   * is copied onto a new division at the end of the list, so organisers with
+   * many classes (League 1-4, Ladies, Junior Boys, Junior Girls…) configure
+   * the rules once and then just rename + retarget the copies.
+   */
+  const duplicateLeagueAt = (gn: number) => {
+    const from = String(gn);
+    const to = String((numGroups || 0) + 1);
+    const copy = <T,>(setter: (fn: (m: Record<string, T>) => Record<string, T>) => void) =>
+      setter((m) => (m[from] === undefined ? m : { ...m, [to]: m[from] }));
+    setNumGroups((n) => (n || 0) + 1);
+    setUsePerLeagueFormats(true);
+    copy(setLeagueFormats as any);
+    copy(setLeagueSections as any);
+    copy(setLeagueSources as any);
+    copy(setSwissPools as any);
+    copy(setSwissRounds as any);
+    copy(setGroupDurations as any);
+    copy(setGroupBreakMinutes as any);
+    copy(setExpectedPlayers as any);
+    copy(setLeagueGenders as any);
+    copy(setLeagueMatchTypes as any);
+    copy(setLeagueScoringModes as any);
+    copy(setLeaguePointsPerGame as any);
+    copy(setLeagueBestOf as any);
+    copy(setLeagueWinConditions as any);
+    copy(setLeaguePlayoffs as any);
+    setGroupLabels((m) => ({ ...m, [to]: `${getGroupLabel({ group_labels: m }, gn)} (copy)` }));
+    toast.success("Division duplicated — rename it and pick who plays in it");
+  };
+
   const removeLeagueAt = (gn: number) => {
+
     const shift = <T,>(map: Record<string, T>): Record<string, T> => {
       const out: Record<string, T> = {};
       for (const [k, v] of Object.entries(map)) {

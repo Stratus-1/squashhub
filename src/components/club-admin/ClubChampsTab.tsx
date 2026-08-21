@@ -4833,7 +4833,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     });
     return ids.size;
   }, [structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
-  const effectiveAllInviteCount = allInviteCount || structureInviteCount;
+  // Fall back to the chosen INVITATION AUDIENCE (not the Structure/draw source)
+  // so an open "all club members" invite never shows a league-only count.
+  const effectiveAllInviteCount = allInviteCount || resolvedAudience.memberIds.length || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
 
   /** Live acceptance picture for this tournament (drives the Players step). */
@@ -7936,6 +7938,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               )}
               {editingChampId && (
                 <div className="pt-2">
+                  {invitesApply && (
+                    <div className="mb-2 rounded-md border border-border/60 bg-muted/30 p-2 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium">Invitation audience</span>
+                        <span className="text-[11px] text-muted-foreground">{audienceLabel(inviteAudience)}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-xs">
+                        {(["all_club", "leagues", "individuals"] as InviteAudienceMode[]).map((mode) => (
+                          <label key={mode} className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="invite-audience-actions"
+                              checked={inviteAudience === mode}
+                              onChange={() => setInviteAudience(mode)}
+                            />
+                            {mode === "all_club" ? "All club members" : mode === "leagues" ? "Selected league teams" : "Selected individuals"}
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">{resolvedAudience.summary}</p>
+                    </div>
+                  )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -7971,24 +7995,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => void sendTestInviteToMyself(editingChampId)}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        <span>
-                          Send test invite to myself
-                          <span className="block text-[11px] text-muted-foreground">
-                            Marked TEST — nothing is registered, counted or charged
-                          </span>
-                        </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => openTestInviteDialog()}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        <span>
-                          Send test to email address
-                          <span className="block text-[11px] text-muted-foreground">
-                            Send the first invitee's secure journey to any email
-                          </span>
-                        </span>
-                      </DropdownMenuItem>
+
                       <DropdownMenuItem
                         disabled={!sampleInvitee}
                         onSelect={() => {

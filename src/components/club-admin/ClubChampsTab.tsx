@@ -7917,10 +7917,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </p>
               )}
 
-              {/* The one and only bulk trigger */}
-              <div className="pt-2 border-t border-border/50 space-y-1.5">
+              {/* The one and only bulk trigger + test invite */}
+              <div className="pt-2 border-t border-border/50 space-y-3">
                 {editingChampId ? (
-                  <>
+                  <div className="space-y-1.5">
                     <Button
                       type="button"
                       size="sm"
@@ -7943,11 +7943,37 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         {lastInviteSend.mode === "selected" ? " (selected members)" : ""}.
                       </p>
                     )}
-                  </>
+                  </div>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">
                     <strong className="text-foreground">Send invites now</strong> becomes available once the tournament is saved — use <strong>Save progress</strong> first.
                   </p>
+                )}
+
+                {editingChampId && (
+                  <div className="rounded-md border border-dashed border-border/60 p-3 space-y-1.5">
+                    <div className="text-xs font-medium">Test invite</div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={!sampleInvitee || testInviteSending}
+                      onClick={() => {
+                        if (!sampleInvitee) return;
+                        openTestInviteDialog(sampleInvitee);
+                      }}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      {testInviteSending
+                        ? "Sending test…"
+                        : sampleInvitee
+                          ? `Send test as an invited player (${sampleInvitee.name})`
+                          : "Send test as an invited player"}
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground">
+                      Test only — goes to an email address you type. It does not create entries and does not notify any member.
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

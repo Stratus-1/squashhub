@@ -56,24 +56,38 @@ Deno.serve(async (req) => {
     let resolvedCourtId = court_id;
 
     if (!authorized) {
-      // must have a confirmed booking ±10 minutes around now on a court in this club
-      const nowIso = new Date().toISOString();
+      // Must hold an active booking within ±10 minutes of now on a court in
+      // this club. Bookings are stored as local `date` + `start_time`/`end_time`
+      // (time without time zone), so compare in club-local wall-clock terms.
+      const now = new Date();
+      const from = localDateAndTime(new Date(now.getTime() - GRACE_MS));
+      const to = localDateAndTime(new Date(now.getTime() + GRACE_MS));
+
       let q = admin
         .from("bookings")
-        .select("id, court_id, courts!inner(club_id, fluss_device_id)")
+        .select("id, court_id, date, start_time, end_time, courts!inner(club_id, fluss_device_id)")
         .eq("user_id", userId)
-        .lte("starts_at", new Date(Date.now() + 10 * 60_000).toISOString())
-        .gte("ends_at", new Date(Date.now() - 10 * 60_000).toISOString())
-        .eq("status", "confirmed");
+        .in("date", Array.from(new Set([from.date, to.date])))
+        .eq("status", "active");
       if (booking_id) q = q.eq("id", booking_id);
       if (court_id) q = q.eq("court_id", court_id);
-      const { data: bookings } = await q;
-      const match = (bookings as any[])?.find((b) => b.courts?.club_id === club_id);
+      const { data: bookings, error: bookingsErr } = await q;
+      if (bookingsErr) {
+        console.error("fluss-trigger booking lookup failed", bookingsErr);
+        return json({ error: "Could not verify your booking" }, 500);
+      }
+
+      // Window check: booking starts before now+grace and ends after now-grace.
+      const match = (bookings as any[])?.find((b) => {
+        if (b.courts?.club_id !== club_id) return false;
+        const start = `${b.date}T${hhmm(b.start_time)}`;
+        const end = `${b.date}T${hhmm(b.end_time)}`;
+        return start <= `${to.date}T${to.time}` && end >= `${from.date}T${from.time}`;
+      });
       if (!match) return json({ error: "No active booking for this court" }, 403);
       authorized = true;
       resolvedCourtId = match.court_id;
       if (!device_id) device_id = match.courts?.fluss_device_id ?? undefined;
-      void nowIso;
     }
 
     // Load Fluss creds + fallback device

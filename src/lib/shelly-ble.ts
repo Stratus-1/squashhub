@@ -8,7 +8,7 @@
  * still gets attributed to the member once connectivity returns.
  *
  * Shelly Gen2/Gen3 devices expose an RPC-over-BLE characteristic:
- *   Service         5f6d4f53-5f52-5043-5f52-4f4f4653435f  ("ShellyRPC")
+ *   Service         5f6d4f53-5f52-5043-5f53-56435f49445f  ("_mOS_RPC_SVC_ID_")
  *   Data (write)    5f6d4f53-5f52-5043-5f64-6174615f5f5f
  *   Data (notify)   5f6d4f53-5f52-5043-5f64-6174615f5f5f  (same char)
  *   Tx-CTL          5f6d4f53-5f52-5043-5f74-785f63746c5f

@@ -68,13 +68,13 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
     if (error) throw error;
     return { ok: true, via: "cloud", message: "Door pulsed via Shelly Cloud" };
   } catch (cloudErr: any) {
-    if (!isNetworkError(cloudErr)) {
-      // Not a network problem — surface the real reason from the function body.
-      const msg = await extractFunctionError(cloudErr, "Failed to open door");
-      throw new Error(msg);
-    }
+    const cloudMessage = isNetworkError(cloudErr)
+      ? "Shelly Cloud is unreachable"
+      : await extractFunctionError(cloudErr, "Failed to open door");
 
-    // 2) Fallback: BLE (only if admin enabled it and a MAC is configured).
+    // 2) Fallback: BLE whenever the Cloud path cannot confirm actuation (not
+    // only when this phone is offline). This covers an offline Shelly Cloud
+    // connection and commands acknowledged by Cloud but not executed.
     const ble = opts.ble;
     if (!ble?.enabled || !ble.mac) {
       // Queue an "attempted while offline" event so it shows in the audit trail.
@@ -85,17 +85,15 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
           kind: "access_event",
           user_id: userId,
           created_at: new Date().toISOString(),
-          payload: makeAccessEvent(opts, "shelly_cloud_offline", { error: String(cloudErr?.message || cloudErr) }),
+          payload: makeAccessEvent(opts, "shelly_cloud_failed", { error: cloudMessage }),
         });
       }
-      throw new Error(
-        "You're offline and Bluetooth fallback isn't configured. Ask your admin to enable BLE fallback in Access settings.",
-      );
+      throw new Error(cloudMessage);
     }
 
     if (!isBleFallbackAvailable()) {
       throw new Error(
-        "You're offline. This device can't use Bluetooth fallback — install the SquashHub app (iOS/Android) or open in Chrome on Android/desktop to trigger the door locally.",
+        `${cloudMessage} Bluetooth fallback isn't available on this device — use the installed SquashHub app or Chrome/Edge on a Bluetooth-capable device.`,
       );
     }
 
@@ -123,7 +121,11 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
         payload: makeAccessEvent(
           opts,
           bleErr ? "shelly_ble_fallback_failed" : "shelly_ble_fallback",
-          { ble_mac: ble.mac, error: bleErr ? String(bleErr?.message || bleErr) : null },
+          {
+            ble_mac: ble.mac,
+            cloud_error: cloudMessage,
+            error: bleErr ? String(bleErr?.message || bleErr) : null,
+          },
         ),
       });
     }
@@ -132,7 +134,7 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
     return {
       ok: true,
       via: "ble_fallback",
-      message: "Door pulsed via Bluetooth (offline). Event will sync when you're back online.",
+      message: "Shelly Cloud could not confirm the relay, so the door was pulsed via Bluetooth.",
     };
   }
 }

@@ -88,6 +88,16 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-21 · Shelly Cloud acknowledged door command without confirming relay output
+- **Symptom:** A member tapped Open Door and the app reported success, but the physical relay did nothing.
+- **Finding:** Shelly Cloud's switch endpoint returns HTTP 200 when it accepts a command; its response only
+  identified the device and did not prove that the selected output switched. The frontend also limited BLE
+  fallback to phone-network errors, so an online Cloud command that failed to actuate never tried Bluetooth.
+- **Fix:** Read the Gen2/Gen3 switch state after the Cloud pulse and require `output=true` before recording
+  success. Any Cloud path that cannot confirm actuation now proceeds to the configured BLE fallback.
+- **Guard:** Never treat Cloud command acknowledgement as physical relay success; persist success only after
+  output verification, and keep BLE as the fallback for all unconfirmed Cloud actuations.
+
 ### 2026-08-21 · Shelly Bluetooth fallback connected but did not actuate relay
 - **Symptom:** BLE-only door/light tests could find or connect to a Shelly yet produce no physical relay action.
 - **Finding:** Both browser and native clients used a malformed TX control characteristic UUID, silently skipped

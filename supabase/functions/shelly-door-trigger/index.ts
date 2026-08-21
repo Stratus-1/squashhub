@@ -21,29 +21,47 @@ function normalizeShellyServer(value?: string | null) {
  * A pulse request can return 200 with an empty body even when the relay is
  * offline, which used to surface as a false "Door opening…" toast.
  */
+type ShellyDeviceState = {
+  online: boolean | null;
+  output: boolean | null;
+  raw: string;
+  httpStatus: number;
+};
+
 async function getDeviceStatus(params: {
   server?: string | null;
   authKey: string;
   deviceId: string;
-}): Promise<{ online: boolean | null; raw: string; httpStatus: number }> {
+  channel: number;
+}): Promise<ShellyDeviceState> {
   const server = normalizeShellyServer(params.server);
   try {
-    const res = await fetch(`${server}/device/status`, {
+    const res = await fetch(
+      `${server}/v2/devices/api/get?auth_key=${encodeURIComponent(params.authKey)}`,
+      {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ auth_key: params.authKey, id: params.deviceId }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ids: [params.deviceId],
+        select: ["status"],
+        pick: { status: [`switch:${params.channel}`] },
+      }),
     });
     const raw = (await res.text()).slice(0, 800);
     let online: boolean | null = null;
+    let output: boolean | null = null;
     try {
       const parsed = JSON.parse(raw);
-      if (parsed?.isok === true) online = !!parsed?.data?.online;
+      const state = Array.isArray(parsed) ? parsed[0] : null;
+      if (state && (state.online === 0 || state.online === 1)) online = state.online === 1;
+      const switchStatus = state?.status?.[`switch:${params.channel}`];
+      if (typeof switchStatus?.output === "boolean") output = switchStatus.output;
     } catch {
       /* non-JSON — leave unknown */
     }
-    return { online, raw, httpStatus: res.status };
+    return { online, output, raw, httpStatus: res.status };
   } catch (e: any) {
-    return { online: null, raw: String(e?.message || e), httpStatus: 0 };
+    return { online: null, output: null, raw: String(e?.message || e), httpStatus: 0 };
   }
 }
 
@@ -162,33 +180,50 @@ Deno.serve(async (req) => {
       .eq("user_id", userId)
       .maybeSingle();
 
-    // Confirm the relay is actually reachable before claiming success.
-    const status = await getDeviceStatus({
+    const channel = Number(secrets.shelly_door_channel ?? 0);
+    const pulseMs = Number(secrets.shelly_door_pulse_ms ?? 3000);
+
+    // Send first, then verify. Shelly Cloud limits this API to one request per
+    // second, so a separate status preflight would collide with the command.
+    const raw = await pulseShellyRelay({
       server: secrets.shelly_server_url,
       authKey: secrets.shelly_auth_key,
       deviceId,
+      channel,
+      pulseMs,
     });
-    if (status.online === false) {
+
+    // Shelly Cloud's control endpoint only acknowledges delivery. Read the
+    // relay state after the one-request-per-second Cloud limit so we do not
+    // report success when the command was accepted but never actuated.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    const verification = await getDeviceStatus({
+      server: secrets.shelly_server_url,
+      authKey: secrets.shelly_auth_key,
+      deviceId,
+      channel,
+    });
+    if (verification.online === false || verification.output !== true) {
       await admin.from("access_events").insert({
         club_id,
         club_member_id: member?.id ?? null,
         door_name,
         event_type: "shelly_pulse_failed",
         occurred_at: new Date().toISOString(),
-        raw: { device_id: deviceId, reason: "device_offline", status: status.raw },
+        raw: {
+          device_id: deviceId,
+          channel,
+          reason: verification.online === false ? "device_offline" : "relay_output_not_confirmed",
+          command_response: raw?.slice?.(0, 500) ?? null,
+          verification: verification.raw,
+        },
       });
       throw new Error(
-        "Door controller is offline (Shelly cloud can't reach it) — check the relay's power and Wi-Fi.",
+        verification.online === false
+          ? "Door controller went offline before the relay could switch."
+          : "Shelly Cloud accepted the request but the relay output did not switch on. Check the configured channel and the Shelly output mode.",
       );
     }
-
-    const raw = await pulseShellyRelay({
-      server: secrets.shelly_server_url,
-      authKey: secrets.shelly_auth_key,
-      deviceId,
-      channel: Number(secrets.shelly_door_channel ?? 0),
-      pulseMs: Number(secrets.shelly_door_pulse_ms ?? 3000),
-    });
 
     await admin.from("access_events").insert({
       club_id,
@@ -198,14 +233,15 @@ Deno.serve(async (req) => {
       occurred_at: new Date().toISOString(),
       raw: {
         device_id: deviceId,
-        channel: Number(secrets.shelly_door_channel ?? 0),
-        pulse_ms: Number(secrets.shelly_door_pulse_ms ?? 3000),
-        online: status.online,
+        channel,
+        pulse_ms: pulseMs,
+        online: verification.online,
+        output_confirmed: verification.output,
         response: raw?.slice?.(0, 500) ?? null,
       },
     });
 
-    return new Response(JSON.stringify({ ok: true, online: status.online }), {
+    return new Response(JSON.stringify({ ok: true, online: verification.online, output_confirmed: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

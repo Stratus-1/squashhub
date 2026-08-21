@@ -1079,6 +1079,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [customizeDailySchedule, startDate, endDate, playDays, startTime, endTime]);
 
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
+  /** Accepted entrants who match no division's source league — organiser must place them. */
+  const [unassignedEntrantIds, setUnassignedEntrantIds] = useState<string[]>([]);
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);
 
   // Doubles-specific state

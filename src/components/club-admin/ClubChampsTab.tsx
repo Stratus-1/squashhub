@@ -4748,6 +4748,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 invitationBody: body,
                 invitationUrl: testUrl,
                 previewForName: "you (test invitation)",
+                recipientName: String((myMember as any)?.name || "").trim() || undefined,
               },
             },
           });

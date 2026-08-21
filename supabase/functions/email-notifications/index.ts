@@ -443,12 +443,18 @@ Deno.serve(async (req) => {
       }
     } else {
       const safeTitle = escapeHtml(title);
-      const safeBody = escapeHtml(body).replace(/\r\n|\r|\n/g, "<br />");
+      const recipientName = String((profile as any)?.name || payloadName || "").trim();
+      const greetingName = recipientName.split(/\s+/).length > 0 ? recipientName : "";
+      const greetingHtml = greetingName
+        ? `<p style="margin:0 0 12px 0; color:#334155">Dear ${escapeHtml(greetingName)},</p>`
+        : "";
+      const safeBody = renderBodyHtml(body);
       const safeLink = escapeHtml(link);
 
       html = `
         <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
           <h2 style="margin:0 0 8px 0">${safeTitle}</h2>
+          ${greetingHtml}
           <div style="margin:0 0 14px 0; color:#334155">${safeBody}</div>
           <p style="margin:0 0 18px 0">
             <a href="${safeLink}" style="display:inline-block; padding:10px 14px; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
@@ -461,8 +467,9 @@ Deno.serve(async (req) => {
         </div>
       `.trim();
 
-      text = `${title}\n\n${body}\n\nOpen: ${link}\n`;
+      text = `${title}\n\n${greetingName ? `Dear ${greetingName},\n\n` : ""}${body}\n\nOpen: ${link}\n`;
     }
+
 
     const explicitClubId = String(payload?.clubId || (data as any)?.club_id || "") || null;
     const clubMail = await resolveClubMail(targetUserId, explicitClubId);

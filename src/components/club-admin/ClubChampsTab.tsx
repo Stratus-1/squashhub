@@ -7995,24 +7995,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => void sendTestInviteToMyself(editingChampId)}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        <span>
-                          Send test invite to myself
-                          <span className="block text-[11px] text-muted-foreground">
-                            Marked TEST — nothing is registered, counted or charged
-                          </span>
-                        </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => openTestInviteDialog()}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        <span>
-                          Send test to email address
-                          <span className="block text-[11px] text-muted-foreground">
-                            Send the first invitee's secure journey to any email
-                          </span>
-                        </span>
-                      </DropdownMenuItem>
+
                       <DropdownMenuItem
                         disabled={!sampleInvitee}
                         onSelect={() => {

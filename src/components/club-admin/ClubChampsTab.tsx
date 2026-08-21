@@ -3972,7 +3972,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           player_a_member_id: toDbId(m.entityA),
           player_b_member_id: toDbId(m.entityB),
           scheduled_date: isBye ? null : m.date,
-...
+          scheduled_time: isBye ? null : m.time,
+          court_id: isBye ? null : m.courtId,
+          leg: m.leg ?? null,
+          section_number: m.koSection ?? null,
+          stage: m.koSection ? "ko" : null,
+          stage_label: m.koStageLabel ?? null,
+          is_bye: isBye,
+          bye_member_id: isBye ? toDbId(m.entityA) : null,
           status: isBye
             ? (byeForLeague(m.groupNum) === "walkover_win" ? "completed" : "scheduled")
             : "scheduled",

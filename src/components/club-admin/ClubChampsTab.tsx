@@ -102,6 +102,16 @@ import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesD
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 import { CapacityCheck } from "@/components/club-admin/tournament/CapacityCheck";
+import {
+  type RoundDeadline,
+  parseRoundDeadlines,
+  serializeRoundDeadlines,
+  deadlineForRound,
+  defaultRoundLabel,
+  lastDeadline,
+  roundDeadlineLines,
+  roundDeadlineSummary,
+} from "@/lib/tournaments/round-deadlines";
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
 import { z } from "zod";
 
@@ -327,6 +337,9 @@ function buildInviteDetailLines(opts: {
    * round-robin. Falls back to `roundFormat` when omitted.
    */
   divisionFormats?: string[];
+  /** Self-scheduled tournaments: per-round "must be played by" deadlines. */
+  selfScheduled?: boolean;
+  roundDeadlines?: { label: string; date: string }[];
 }): string[] {
   const lines: string[] = [];
   const isDoubles = opts.matchType === "doubles";
@@ -380,6 +393,16 @@ function buildInviteDetailLines(opts: {
     );
   }
 
+  // Self-scheduled: players book their own court, so report deadlines instead
+  // of fixture times.
+  if (opts.selfScheduled) {
+    const deadlines = roundDeadlineLines(opts.roundDeadlines || []);
+    if (deadlines.length) {
+      lines.push("Scheduling: Players arrange their own games (no courts booked)");
+      for (const d of deadlines) lines.push(d);
+    }
+  }
+
   const start = formatInviteDate(opts.startDate);
   const end = formatInviteDate(opts.endDate);
   if (start && end) {
@@ -389,7 +412,7 @@ function buildInviteDetailLines(opts: {
   }
 
   // Play times — either per-day windows or a single global window.
-  const ds = (opts.customizeDailySchedule && opts.daySchedules && opts.daySchedules.length > 0)
+  const ds = (!opts.selfScheduled && opts.customizeDailySchedule && opts.daySchedules && opts.daySchedules.length > 0)
     ? opts.daySchedules.filter((d) => d.date && d.start_time && d.end_time)
     : [];
   if (ds.length > 0) {
@@ -411,7 +434,7 @@ function buildInviteDetailLines(opts: {
         lines.push(`  ${dLabel}: ${byDate.get(d)!.join(", ")}`);
       }
     }
-  } else if (opts.startTime && opts.endTime) {
+  } else if (opts.startTime && opts.endTime && !opts.selfScheduled) {
     lines.push(`Play time: ${opts.startTime.slice(0, 5)}–${opts.endTime.slice(0, 5)}`);
   }
 
@@ -722,7 +745,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // 'club'  — the club books courts and publishes a fixed schedule.
   // 'self'  — players arrange their own games and must play by a deadline.
   const [schedulingMode, setSchedulingMode] = useState<"club" | "self">("club");
-  const [roundPlayBy, setRoundPlayBy] = useState<string>("");
+  const [roundDeadlines, setRoundDeadlines] = useState<RoundDeadline[]>([]);
 
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
@@ -1869,7 +1892,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       court_ids: Array.from(selectedCourtIds),
       schedule_mode: scheduleMode,
       scheduling_mode: schedulingMode,
-      round_play_by: roundPlayBy || null,
+      round_play_by: serializeRoundDeadlines(roundDeadlines),
 
       playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
       playoff_date: playoffDate || null,
@@ -3787,7 +3810,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             court_ids: Array.from(selectedCourtIds),
             schedule_mode: scheduleMode,
             scheduling_mode: schedulingMode,
-            round_play_by: roundPlayBy || null,
+            round_play_by: serializeRoundDeadlines(roundDeadlines),
 
             playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
             playoff_date: playoffDate || null,
@@ -3862,7 +3885,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             court_ids: Array.from(selectedCourtIds),
             schedule_mode: scheduleMode,
             scheduling_mode: schedulingMode,
-            round_play_by: roundPlayBy || null,
+            round_play_by: serializeRoundDeadlines(roundDeadlines),
 
             playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
             playoff_date: playoffDate || null,
@@ -4018,7 +4041,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             : "scheduled",
           // Self-scheduled: no fixed slot or court, just a deadline.
           ...(schedulingMode === "self"
-            ? { scheduled_time: null, court_id: null, play_by: roundPlayBy || endDate || null }
+            ? {
+                scheduled_date: null,
+                scheduled_time: null,
+                court_id: null,
+                play_by: deadlineForRound(roundDeadlines, m.roundNum) || endDate || null,
+              }
             : {}),
         };
       });
@@ -4438,6 +4466,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       pointsPerGame, bestOf,
       registrationRequired, registrationMode: (registrationMode || "open") as any,
       tournamentName: champName, divisionFormats: inviteDivisionFormats(),
+      selfScheduled: schedulingMode === "self", roundDeadlines,
     });
     return `You have been invited to ${champName || "a tournament"}.` +
       (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
@@ -5066,7 +5095,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setEndDate("");
     setPlayDays(new Set());
     setSchedulingMode("club");
-    setRoundPlayBy("");
+    setRoundDeadlines([]);
 
     setStartTime("18:00");
     setEndTime("20:00");
@@ -5180,7 +5209,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setAvoidBackToBack((champ as any).avoid_back_to_back !== false);
     setScheduleMode(((champ as any).schedule_mode as "spread" | "fill") || "spread");
     setSchedulingMode(((champ as any).scheduling_mode as any) === "self" ? "self" : "club");
-    setRoundPlayBy(((champ as any).round_play_by as string) || "");
+    setRoundDeadlines(parseRoundDeadlines((champ as any).round_play_by));
 
     setPlayoffBreakMinutes(Number((champ as any).playoff_break_minutes) || 0);
     setPlayoffDate(((champ as any).playoff_date as string) || "");
@@ -5528,11 +5557,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
           m.push("End date must be on or after the start date");
         }
-        if (!startTime) m.push("Start time");
-        if (!endTime) m.push("End time");
-        if (selectedCourtIds.size === 0) m.push("At least one court");
-        if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
-          m.push("At least one play day");
+        // Self-scheduled tournaments have no fixture times, play days or courts —
+        // only per-round play-by deadlines.
+        if (schedulingMode === "self") {
+          if (!serializeRoundDeadlines(roundDeadlines)) m.push("At least one round play-by deadline");
+        } else {
+          if (!startTime) m.push("Start time");
+          if (!endTime) m.push("End time");
+          if (selectedCourtIds.size === 0) m.push("At least one court");
+          if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
+            m.push("At least one play day");
+          }
         }
         // Registration window lives on this step now (all dates in one place).
         if (registrationWindowApplies) {
@@ -5585,10 +5620,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
       case "schedule": {
         if (!startDate || !endDate) m.push("Tournament dates");
-        if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
-          m.push("At least one play day");
+        if (schedulingMode !== "self") {
+          if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
+            m.push("At least one play day");
+          }
+          if (selectedCourtIds.size === 0) m.push("At least one court");
         }
-        if (selectedCourtIds.size === 0) m.push("At least one court");
         if (!matchDuration) m.push("Match duration");
         if (!awaitingPlayerPairs && schedulePreview && schedulePreview.totalSlots < schedulePreview.totalMatches) {
           m.push("Schedule has fewer slots than matches — add more days, courts, or hours");
@@ -6058,22 +6095,71 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </label>
               </div>
               {schedulingMode === "self" && (
-                <div className="pt-1">
-                  <Label className="text-sm">Games must be played by</Label>
-                  <Input
-                    type="date"
-                    value={roundPlayBy}
-                    min={startDate || undefined}
-                    onChange={(e) => setRoundPlayBy(e.target.value)}
-                    className="max-w-xs"
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Shown to players on their fixtures. Courts and capacity planning are skipped for this tournament.
+                <div className="pt-1 space-y-2">
+                  <Label className="text-sm">Play-by deadlines per round</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Players arrange their own court and time — you only set the date each round must be
+                    finished by. These lines appear in the invitation and on every fixture.
+                  </p>
+                  <div className="space-y-2">
+                    {roundDeadlines.map((d, i) => (
+                      <div key={i} className="flex flex-wrap items-center gap-2">
+                        <Input
+                          value={d.label}
+                          placeholder={defaultRoundLabel(i)}
+                          onChange={(e) =>
+                            setRoundDeadlines((prev) =>
+                              prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
+                            )
+                          }
+                          className="w-40"
+                        />
+                        <span className="text-xs text-muted-foreground">must be played by</span>
+                        <Input
+                          type="date"
+                          value={d.date}
+                          min={startDate || undefined}
+                          onChange={(e) =>
+                            setRoundDeadlines((prev) =>
+                              prev.map((x, j) => (j === i ? { ...x, date: e.target.value } : x)),
+                            )
+                          }
+                          className="w-44"
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setRoundDeadlines((prev) => prev.filter((_, j) => j !== i))}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setRoundDeadlines((prev) => [
+                        ...prev,
+                        { label: defaultRoundLabel(prev.length), date: "" },
+                      ])
+                    }
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add round deadline
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    Add one per round (Round 1, Round 2, Semi-finals, Final…). Nothing is scheduled and no
+                    courts are booked for this tournament.
                   </p>
                 </div>
               )}
             </div>
 
+            {schedulingMode === "club" ? (
+            <>
             <WizardSection
               title={"Dates & times"}
               summary={`${startDate || "start?"} → ${endDate || "end?"} · ${startTime}–${endTime} · ${playDays.size} play day${playDays.size === 1 ? "" : "s"}`}
@@ -6344,6 +6430,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               )}
             </div>
             </WizardSection>
+            </>
+            ) : (
+              /* Self-scheduled: no fixture times, no play days, no courts — just the
+                 window the tournament runs in. Everything else is the players' call. */
+              <div className="rounded-lg border p-3 space-y-3">
+                <Label className="text-sm font-medium">Tournament window</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm">Tournament starts</Label>
+                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Tournament ends</Label>
+                    <Input
+                      type="date"
+                      value={endDate || lastDeadline(roundDeadlines) || ""}
+                      min={startDate || undefined}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {roundDeadlineSummary(roundDeadlines)} — no daily times, play days or courts are set for a
+                  self-scheduled tournament.
+                </p>
+              </div>
+            )}
 
             {/* Capacity validation — lives here because it needs BOTH the structure
                 (leagues, formats, pools, match length) and the schedule (dates,
@@ -7845,6 +7958,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         pointsPerGame, bestOf,
                         registrationRequired, registrationMode: (registrationMode || "open") as any,
                         tournamentName: champName, divisionFormats: inviteDivisionFormats(),
+                        selfScheduled: schedulingMode === "self", roundDeadlines,
                       });
                       const bullets = lines.map((l) => `• ${l}`).join("\n");
                       // Strip any previously inserted auto-block (between markers) then prepend fresh.
@@ -9308,6 +9422,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         registrationRequired={registrationRequired}
         registrationMode={registrationMode}
         divisionFormats={inviteDivisionFormats()}
+        selfScheduled={schedulingMode === "self"}
+        roundDeadlines={roundDeadlines}
       />
 
       <ShadowRankPromptDialog
@@ -9502,6 +9618,8 @@ function InvitePreviewDialog({
   registrationRequired,
   registrationMode,
   divisionFormats,
+  selfScheduled,
+  roundDeadlines,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -9528,6 +9646,8 @@ function InvitePreviewDialog({
   registrationRequired?: boolean;
   registrationMode?: "" | "open" | "invite";
   divisionFormats?: string[];
+  selfScheduled?: boolean;
+  roundDeadlines?: { label: string; date: string }[];
 }) {
   const descHasDetails = /— Tournament details —/.test(description || "");
   const detailLines = descHasDetails ? [] : buildInviteDetailLines({
@@ -9537,6 +9657,7 @@ function InvitePreviewDialog({
     pointsPerGame, bestOf,
     registrationRequired, registrationMode,
     tournamentName, divisionFormats,
+    selfScheduled, roundDeadlines,
   });
 
   const appBody =

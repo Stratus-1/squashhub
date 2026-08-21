@@ -5986,6 +5986,53 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
+            {/* Who arranges the games: the club (fixed schedule on booked
+                courts) or the players themselves (play-by deadline). */}
+            <div className="rounded-lg border p-3 space-y-2">
+              <Label className="text-sm font-medium">How are games arranged?</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${schedulingMode === "club" ? "border-primary bg-primary/5" : ""}`}>
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    checked={schedulingMode === "club"}
+                    onChange={() => setSchedulingMode("club")}
+                  />
+                  <span>
+                    <span className="text-sm font-medium block">Club schedules &amp; books courts</span>
+                    <span className="text-[11px] text-muted-foreground">Fixed fixture times, courts reserved automatically.</span>
+                  </span>
+                </label>
+                <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${schedulingMode === "self" ? "border-primary bg-primary/5" : ""}`}>
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    checked={schedulingMode === "self"}
+                    onChange={() => setSchedulingMode("self")}
+                  />
+                  <span>
+                    <span className="text-sm font-medium block">Players arrange their own games</span>
+                    <span className="text-[11px] text-muted-foreground">No court bookings — players just have to play by a deadline.</span>
+                  </span>
+                </label>
+              </div>
+              {schedulingMode === "self" && (
+                <div className="pt-1">
+                  <Label className="text-sm">Games must be played by</Label>
+                  <Input
+                    type="date"
+                    value={roundPlayBy}
+                    min={startDate || undefined}
+                    onChange={(e) => setRoundPlayBy(e.target.value)}
+                    className="max-w-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Shown to players on their fixtures. Courts and capacity planning are skipped for this tournament.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <WizardSection
               title={"Dates & times"}
               summary={`${startDate || "start?"} → ${endDate || "end?"} · ${startTime}–${endTime} · ${playDays.size} play day${playDays.size === 1 ? "" : "s"}`}

@@ -4567,12 +4567,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           fee_paid_cents: 0,
         }));
         if (newRegs.length > 0) {
-          await fromExt("club_champs_registrations").upsert(newRegs, {
+          const { error: upsertErr } = await fromExt("club_champs_registrations").upsert(newRegs, {
             onConflict: "champ_id,club_member_id",
             ignoreDuplicates: true,
           } as any);
+          if (upsertErr) throw upsertErr;
         }
+        // Re-invite: somebody who previously declined (cancelled) is picked
+        // again on purpose, so reopen their row instead of silently skipping
+        // them — otherwise the send resolves to nobody.
+        const { error: reopenErr } = await fromExt("club_champs_registrations")
+          .update({ status: fee > 0 && paymentRequired ? "pending_payment" : "invited" })
+          .eq("champ_id", champId)
+          .in("club_member_id", audienceMemberIds)
+          .eq("status", "cancelled");
+        if (reopenErr) throw reopenErr;
       }
+
 
       const { data: allRegs, error: regErr } = await fromExt("club_champs_registrations")
         .select("id, club_member_id, status, invited_by_admin")

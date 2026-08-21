@@ -742,8 +742,8 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       If the internet or Shelly Cloud is unreachable, the SquashHub app pulses the relay
                       directly over Bluetooth from the member's phone and queues the access event to sync
-                      once you're back online. Enable BLE on the Shelly device (<em>Settings → Bluetooth</em>)
-                      and set a BLE control password.
+                      once you're back online. Enable BLE on the Shelly device (<em>Settings → Bluetooth</em>).
+                      A control password is optional.
                     </p>
                   </div>
                 </div>

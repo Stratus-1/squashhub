@@ -4871,8 +4871,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           if (error || (selfSend as any)?.ok === false) {
             throw new Error(await edgeErrorMessage(error, selfSend, "The test email could not be sent."));
           }
-
+          if ((selfSend as any)?.fallbackUsed) {
+            toast.warning((selfSend as any)?.warning || "Your club's own email settings did not work, so the email was sent from the SquashHub address instead.");
+          }
           delivered.push(myEmail);
+
         }
       }
 

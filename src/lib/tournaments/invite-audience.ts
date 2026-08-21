@@ -102,6 +102,7 @@ export function resolveInviteAudience(input: {
     const ids = keep(input.individualIds || []);
     return {
       memberIds: ids,
+      excluded: excludedCounts,
       summary: `${ids.length} individually selected member${ids.length === 1 ? "" : "s"}.`,
     };
   }
@@ -116,10 +117,12 @@ export function resolveInviteAudience(input: {
   const extraCount = ids.filter((id) => !fromLeagues.has(id)).length;
   return {
     memberIds: ids,
+    excluded: excludedCounts,
     summary:
       `${ids.length} member${ids.length === 1 ? "" : "s"} from ${leagueIds.length} selected league team${leagueIds.length === 1 ? "" : "s"}` +
       (extraCount > 0 ? ` plus ${extraCount} individually added.` : "."),
   };
+
 }
 
 /**

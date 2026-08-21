@@ -397,6 +397,74 @@ async function handleTestEmail(payload: Record<string, unknown>, authHeader: str
   }
 }
 
+/**
+ * Club-branded ad-hoc send (client-triggered, club admin only).
+ * Uses the CLUB's own SMTP sender when configured so tenant emails come from
+ * the club's address; falls back to the platform sender only when the club has
+ * not configured SMTP (or its SMTP send fails).
+ */
+async function handleClubSend(body: any, authHeader: string) {
+  const json = (payload: unknown, status = 200) =>
+    new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+  const userClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "",
+    { global: { headers: { Authorization: authHeader } } },
+  );
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) return json({ error: "Unauthorized" }, 401);
+
+  const clubId = String(body?.clubId || "").trim();
+  const to = String(body?.to || "").trim();
+  const subject = String(body?.subject || "").trim();
+  const messageBody = String(body?.body || "");
+  const link = String(body?.url || "").trim();
+  const ctaLabel = String(body?.ctaLabel || "Open invitation").trim();
+  const recipientName = String(body?.recipientName || "").trim();
+
+  if (!clubId || !to || !to.includes("@") || !subject) {
+    return json({ error: "clubId, to and subject are required" }, 400);
+  }
+
+  const { data: isAdmin } = await supabaseAdmin.rpc("is_club_admin", { _user_id: user.id, _club_id: clubId });
+  if (!isAdmin) return json({ error: "Not a club admin" }, 403);
+
+  const greetingHtml = recipientName
+    ? `<p style="margin:0 0 12px 0; color:#334155">Dear ${escapeHtml(recipientName)},</p>`
+    : "";
+  const ctaHtml = link
+    ? `<p style="margin:0 0 18px 0"><a href="${escapeHtml(link)}" style="display:inline-block; padding:10px 14px; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">${escapeHtml(ctaLabel)}</a></p>`
+    : "";
+  const html = `
+    <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
+      <h2 style="margin:0 0 8px 0">${escapeHtml(subject)}</h2>
+      ${greetingHtml}
+      <div style="margin:0 0 14px 0; color:#334155">${renderBodyHtml(messageBody)}</div>
+      ${ctaHtml}
+    </div>
+  `.trim();
+  const text = `${subject}\n\n${recipientName ? `Dear ${recipientName},\n\n` : ""}${messageBody}${link ? `\n\nOpen: ${link}\n` : "\n"}`;
+
+  const clubMail = await resolveClubMail(user.id, clubId);
+  let result: { ok: boolean; skipped?: boolean; reason?: string };
+  let sender = "platform";
+  if (clubMail) {
+    result = await sendViaClubSmtp(clubMail, { to, subject, html, text });
+    sender = clubMail.senderEmail;
+    if (!result.ok) {
+      console.warn("[email-notifications] club SMTP failed, falling back to platform sender", result.reason);
+      result = await sendViaResend({ to, subject, html, text });
+      sender = "platform";
+    }
+  } else {
+    result = await sendViaResend({ to, subject, html, text });
+  }
+
+  if (!result.ok) return json(result, result.skipped ? 200 : 500);
+  return json({ ok: true, sender });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsHeaders });
 
@@ -407,12 +475,16 @@ Deno.serve(async (req) => {
   if (!action && req.method === "POST") {
     try {
       const body = await req.clone().json();
+      const authHeader = req.headers.get("authorization") ?? "";
       if (body?.action === "test") {
-        const authHeader = req.headers.get("authorization") ?? "";
         return handleTestEmail(body, authHeader);
+      }
+      if (body?.action === "club-send") {
+        return handleClubSend(body, authHeader);
       }
     } catch { /* not JSON or no action, fall through */ }
   }
+
 
   if (action !== "send") {
     return new Response(JSON.stringify({ error: "Unknown action" }), {

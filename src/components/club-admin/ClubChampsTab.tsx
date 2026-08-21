@@ -4757,22 +4757,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       if (!previewToken) throw new Error(`Could not create a secure invitation link for ${previewMember.name}.`);
       const previewUrl = buildInviteUrl(previewToken, sub);
 
-      const { error: sendError } = await supabase.functions.invoke("send-transactional-email", {
+      // Tenant-branded: send through the CLUB's own email settings when the
+      // club has SMTP configured; the backend falls back to the platform
+      // sender only when the club has none.
+      const { error: sendError } = await supabase.functions.invoke("email-notifications", {
         body: {
-          templateName: "tournament-invite-preview",
-          recipientEmail: parsedEmail.data,
-          idempotencyKey: `tournament-invite-test-${champId}-${Date.now()}`,
-          templateData: {
-            tournamentName: champName || "Tournament",
-            invitationBody: buildInviteBody(),
-            invitationUrl: previewUrl,
-            previewForName: previewMember.name,
-            recipientName: previewMember.name,
-          },
-
+          action: "club-send",
+          clubId,
+          to: parsedEmail.data,
+          subject: `${champName || "Tournament"} — invitation (test)`,
+          body: buildInviteBody(),
+          url: previewUrl,
+          ctaLabel: "Open invitation",
+          recipientName: previewMember.name,
         },
       });
       if (sendError) throw sendError;
+
 
       toast.success(`Test invite for ${previewMember.name} sent to ${parsedEmail.data}. The secure link is the same one that player will receive.`);
       setTestInviteDialogOpen(false);
@@ -4833,21 +4834,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (!myEmail) {
           toast.warning("No email address on your club profile — the email test was skipped.");
         } else {
-          const { error } = await supabase.functions.invoke("send-transactional-email", {
+          const { error } = await supabase.functions.invoke("email-notifications", {
             body: {
-              templateName: "tournament-invite-preview",
-              recipientEmail: myEmail,
-              idempotencyKey: `tournament-invite-selftest-${champId}-${Date.now()}`,
-              templateData: {
-                tournamentName: `TEST — ${champName || "Tournament"}`,
-                invitationBody: body,
-                invitationUrl: testUrl,
-                previewForName: "you (test invitation)",
-                recipientName: String((myMember as any)?.name || "").trim() || undefined,
-              },
+              action: "club-send",
+              clubId,
+              to: myEmail,
+              subject: `TEST — ${champName || "Tournament"} invitation`,
+              body,
+              url: testUrl,
+              ctaLabel: "Open test invitation",
+              recipientName: String((myMember as any)?.name || "").trim() || undefined,
             },
           });
           if (error) throw error;
+
           delivered.push(myEmail);
         }
       }

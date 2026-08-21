@@ -8824,7 +8824,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               value={groupLabels[String(gi + 1)] ?? ""}
                               placeholder={String(gi + 1)}
                               onChange={(e) => setGroupLabels((p) => ({ ...p, [String(gi + 1)]: e.target.value }))}
-                              className="h-7 w-20 text-sm"
+                              className="h-7 w-full sm:w-44 min-w-[9rem] text-sm"
                             />
                             <span className="text-muted-foreground text-xs">({g.length} pairs)</span>
                             {isSwissPools && pools > 1 && (
@@ -8892,7 +8892,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               value={groupLabels[String(gi + 1)] ?? ""}
                               placeholder={String(gi + 1)}
                               onChange={(e) => setGroupLabels((p) => ({ ...p, [String(gi + 1)]: e.target.value }))}
-                              className="h-7 w-20 text-sm"
+                              className="h-7 w-full sm:w-44 min-w-[9rem] text-sm"
                             />
                             <span className="text-muted-foreground text-xs">({g.length} players)</span>
                             {isSwissPools && pools > 1 && (

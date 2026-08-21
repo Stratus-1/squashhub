@@ -782,6 +782,12 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                       This device can't use Bluetooth fallback — members need the SquashHub app (iOS or Android) or Chrome on Android/desktop for the fallback to work. iPhone browsers don't support Web Bluetooth.
                     </p>
                   )}
+                  {isBleFallbackAvailable() && isInBlockedIframe() && (
+                    <p className="text-[11px] text-amber-600 md:col-span-2">
+                      You're inside the preview frame — browsers block Bluetooth here. Open SquashHub in its own tab (or the installed app) before testing BLE.
+                    </p>
+                  )}
+
                   <div className="md:col-span-2">
                     <Button
                       type="button"

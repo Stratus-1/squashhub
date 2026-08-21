@@ -4760,7 +4760,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Tenant-branded: send through the CLUB's own email settings when the
       // club has SMTP configured; the backend falls back to the platform
       // sender only when the club has none.
-      const { error: sendError } = await supabase.functions.invoke("email-notifications", {
+      const { data: sendData, error: sendError } = await supabase.functions.invoke("email-notifications", {
         body: {
           action: "club-send",
           clubId,
@@ -4774,8 +4774,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       });
       if (sendError) throw sendError;
 
-
+      const smtpError = (sendData as any)?.smtpError as string | undefined;
       toast.success(`Test invite for ${previewMember.name} sent to ${parsedEmail.data}. The secure link is the same one that player will receive.`);
+      if (smtpError) {
+        toast.warning(
+          "Your club's own email (SMTP) login was rejected, so this was sent from the SquashHub sender instead. Update the club email settings to send from your club address.",
+        );
+      }
       setTestInviteDialogOpen(false);
       setTestInviteEmail("");
       setTestInvitePreviewAs(null);

@@ -72,6 +72,53 @@ async function sendViaResend(args: { to: string; subject: string; html: string; 
   return { ok: true };
 }
 
+/**
+ * Platform fallback: send through the Lovable Emails queue (verified sender
+ * domain). Used when a club has no SMTP configured, or its SMTP send fails.
+ * RESEND_API_KEY is not configured on this project, so Resend alone silently
+ * dropped these emails.
+ */
+async function sendViaPlatform(args: {
+  to: string;
+  subject: string;
+  text: string;
+  url?: string;
+  ctaLabel?: string;
+  recipientName?: string;
+  clubName?: string;
+  idempotencyKey?: string;
+}) {
+  try {
+    const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({
+        templateName: "club-notification",
+        recipientEmail: args.to,
+        idempotencyKey: args.idempotencyKey || crypto.randomUUID(),
+        templateData: {
+          title: args.subject,
+          messageBody: args.text,
+          url: args.url || "",
+          ctaLabel: args.ctaLabel || "Open in SquashHub",
+          recipientName: args.recipientName || "",
+          clubName: args.clubName || "",
+        },
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { ok: false, skipped: false, reason: body || `Platform email error ${res.status}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, skipped: false, reason: (e as Error).message };
+  }
+}
+
 interface ClubMail {
   smtpHost: string;
   smtpPort: number;
@@ -447,22 +494,33 @@ async function handleClubSend(body: any, authHeader: string) {
   const text = `${subject}\n\n${recipientName ? `Dear ${recipientName},\n\n` : ""}${messageBody}${link ? `\n\nOpen: ${link}\n` : "\n"}`;
 
   const clubMail = await resolveClubMail(user.id, clubId);
+  const platformArgs = {
+    to,
+    subject,
+    text: messageBody,
+    url: link,
+    ctaLabel,
+    recipientName,
+    clubName: clubMail?.clubName || "",
+  };
   let result: { ok: boolean; skipped?: boolean; reason?: string };
   let sender = "platform";
+  let smtpError: string | null = null;
   if (clubMail) {
     result = await sendViaClubSmtp(clubMail, { to, subject, html, text });
     sender = clubMail.senderEmail;
     if (!result.ok) {
-      console.warn("[email-notifications] club SMTP failed, falling back to platform sender", result.reason);
-      result = await sendViaResend({ to, subject, html, text });
+      smtpError = result.reason || "Club SMTP send failed";
+      console.warn("[email-notifications] club SMTP failed, falling back to platform sender", smtpError);
+      result = await sendViaPlatform(platformArgs);
       sender = "platform";
     }
   } else {
-    result = await sendViaResend({ to, subject, html, text });
+    result = await sendViaPlatform(platformArgs);
   }
 
-  if (!result.ok) return json(result, result.skipped ? 200 : 500);
-  return json({ ok: true, sender });
+  if (!result.ok) return json({ ...result, smtpError }, 500);
+  return json({ ok: true, sender, smtpError });
 }
 
 Deno.serve(async (req) => {
@@ -615,14 +673,23 @@ Deno.serve(async (req) => {
     const explicitClubId = String(payload?.clubId || (data as any)?.club_id || "") || null;
     const clubMail = await resolveClubMail(targetUserId, explicitClubId);
     let result: { ok: boolean; skipped?: boolean; reason?: string };
+    const platformArgs = {
+      to: email,
+      subject,
+      text: body,
+      url: link,
+      ctaLabel: type === "tournament_invite" || type === "tournament_partner_invite" ? "Accept / Register" : "Open in SquashHub",
+      recipientName: String((profile as any)?.name || payloadName || "").trim(),
+      clubName: clubMail?.clubName || "",
+    };
     if (clubMail) {
       result = await sendViaClubSmtp(clubMail, { to: email, subject, html, text });
       if (!result.ok) {
-        console.warn("[email-notifications] club SMTP failed, falling back to Resend", result.reason);
-        result = await sendViaResend({ to: email, subject, html, text });
+        console.warn("[email-notifications] club SMTP failed, falling back to platform sender", result.reason);
+        result = await sendViaPlatform(platformArgs);
       }
     } else {
-      result = await sendViaResend({ to: email, subject, html, text });
+      result = await sendViaPlatform(platformArgs);
     }
 
     if (!result.ok) {

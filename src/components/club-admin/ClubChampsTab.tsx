@@ -5126,6 +5126,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
     setAvoidBackToBack((champ as any).avoid_back_to_back !== false);
     setScheduleMode(((champ as any).schedule_mode as "spread" | "fill") || "spread");
+    setSchedulingMode(((champ as any).scheduling_mode as any) === "self" ? "self" : "club");
+    setRoundPlayBy(((champ as any).round_play_by as string) || "");
+
     setPlayoffBreakMinutes(Number((champ as any).playoff_break_minutes) || 0);
     setPlayoffDate(((champ as any).playoff_date as string) || "");
     setRoundFormat((champ.round_format as any) || "");

@@ -1157,6 +1157,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [customizeDailySchedule, startDate, endDate, playDays, startTime, endTime]);
 
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
+  /**
+   * A player may enter SEVERAL divisions (e.g. "1st League" + "Masters Mixed").
+   * `groupAssignments` only holds their primary division; every ADDITIONAL
+   * division they accepted lives here as 0-based group indices, so the
+   * allocation page shows them in each division they signed up for.
+   */
+  const [extraDivisions, setExtraDivisions] = useState<Map<string, Set<number>>>(new Map());
   /** Accepted entrants who match no division's source league — organiser must place them. */
   const [unassignedEntrantIds, setUnassignedEntrantIds] = useState<string[]>([]);
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);

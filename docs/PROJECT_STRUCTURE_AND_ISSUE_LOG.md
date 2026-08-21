@@ -968,3 +968,29 @@ Regression tests: `src/test/invite-link.test.ts` (public actionable state, verif
   writes `invite_link`. Constraint widened to include `invite_link` (NULL still allowed
   for declines). Acceptance stays single-transaction and idempotent, so the confirmation
   notification can no longer be emitted for a registration that failed to commit.
+
+## 2026-08-21 — Shelly BLE fallback transport hardening (preventive)
+- **Context.** The Bluetooth-only fallback (used when the club router/cloud is down) was
+  confirmed working at Gordon's Bay after the service-UUID fix. These changes are
+  preventive: they remove the timing and framing assumptions that made the exchange fail
+  intermittently rather than deterministically.
+- **New:** `src/lib/shelly-ble-transport.ts` — transport-agnostic helpers shared by the
+  Web Bluetooth path (`shelly-ble.ts`) and the Capacitor/native path
+  (`shelly-ble-native.ts`), so both behave identically.
+- **Fixes applied to both paths:**
+  - Rx-CTL is now **polled** (25 × 60 ms) instead of read once. A zero length means
+    "reply not built yet", but the old code treated it as an invalid-length failure and
+    aborted an unlock that would have succeeded.
+  - **Settle delays** (30 ms after each control-register write, 5 ms between payload
+    chunks) so the device latches the frame length before the payload arrives.
+  - **Timeouts**: 6 s per GATT read/write, 15 s per full RPC exchange, with readable
+    messages ("Bluetooth timed out (reading reply)…"). Previously a device drifting out
+    of range mid-exchange hung the unlock UI forever.
+  - **Empty reads tolerated** (bounded to 10) while assembling the reply body instead of
+    failing on the first empty chunk.
+  - Web path prefers `writeValueWithoutResponse` for payload chunks (falls back to the
+    deprecated `writeValue`) — matches the native path and avoids per-chunk ACK stalls.
+- **Unchanged:** discovery filters, RPC auth/digest logic, `Switch.Set` + `toggle_after`
+  semantics, offline outbox attribution. No behaviour change on the cloud path.
+- **Tests:** `src/lib/__tests__/shelly-ble-transport.test.ts` (9 tests — framing,
+  chunking, poll-until-ready, empty-read tolerance, timeout messages).

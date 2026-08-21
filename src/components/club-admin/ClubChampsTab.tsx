@@ -1869,7 +1869,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       court_ids: Array.from(selectedCourtIds),
       schedule_mode: scheduleMode,
       scheduling_mode: schedulingMode,
-      round_play_by: roundPlayBy || null,
+      round_play_by: serializeRoundDeadlines(roundDeadlines),
 
       playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
       playoff_date: playoffDate || null,
@@ -3787,7 +3787,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             court_ids: Array.from(selectedCourtIds),
             schedule_mode: scheduleMode,
             scheduling_mode: schedulingMode,
-            round_play_by: roundPlayBy || null,
+            round_play_by: serializeRoundDeadlines(roundDeadlines),
 
             playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
             playoff_date: playoffDate || null,
@@ -3862,7 +3862,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             court_ids: Array.from(selectedCourtIds),
             schedule_mode: scheduleMode,
             scheduling_mode: schedulingMode,
-            round_play_by: roundPlayBy || null,
+            round_play_by: serializeRoundDeadlines(roundDeadlines),
 
             playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
             playoff_date: playoffDate || null,
@@ -4018,7 +4018,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             : "scheduled",
           // Self-scheduled: no fixed slot or court, just a deadline.
           ...(schedulingMode === "self"
-            ? { scheduled_time: null, court_id: null, play_by: roundPlayBy || endDate || null }
+            ? {
+                scheduled_date: null,
+                scheduled_time: null,
+                court_id: null,
+                play_by: deadlineForRound(roundDeadlines, m.roundNum) || endDate || null,
+              }
             : {}),
         };
       });
@@ -5180,7 +5185,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setAvoidBackToBack((champ as any).avoid_back_to_back !== false);
     setScheduleMode(((champ as any).schedule_mode as "spread" | "fill") || "spread");
     setSchedulingMode(((champ as any).scheduling_mode as any) === "self" ? "self" : "club");
-    setRoundPlayBy(((champ as any).round_play_by as string) || "");
+    setRoundDeadlines(parseRoundDeadlines((champ as any).round_play_by));
 
     setPlayoffBreakMinutes(Number((champ as any).playoff_break_minutes) || 0);
     setPlayoffDate(((champ as any).playoff_date as string) || "");

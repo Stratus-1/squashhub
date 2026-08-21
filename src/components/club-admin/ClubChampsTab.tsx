@@ -2657,9 +2657,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // They stay out of the draw until the organiser places them.
       const gi = groupAssignments.get(p.id);
       if (gi !== undefined && gi < numGroups) g[gi].push(p);
+      // Every additional division the player entered.
+      extraDivisions.get(p.id)?.forEach((extra) => {
+        if (extra === gi || extra >= numGroups) return;
+        g[extra].push(p);
+      });
     });
     return g;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, pairGroupAssignments, playerOrder, pairOrder]);
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder]);
 
   // Schedule preview
   const schedulePreview = useMemo(() => {

@@ -587,6 +587,11 @@ Deno.serve(async (req) => {
       const safeBody = renderBodyHtml(body);
       const safeLink = escapeHtml(link);
 
+      const ctaLabel =
+        type === "tournament_invite" || type === "tournament_partner_invite"
+          ? "Accept / Register"
+          : "Open in SquashHub";
+
       html = `
         <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
           <h2 style="margin:0 0 8px 0">${safeTitle}</h2>
@@ -594,7 +599,7 @@ Deno.serve(async (req) => {
           <div style="margin:0 0 14px 0; color:#334155">${safeBody}</div>
           <p style="margin:0 0 18px 0">
             <a href="${safeLink}" style="display:inline-block; padding:10px 14px; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
-              Open in SquashHub
+              ${escapeHtml(ctaLabel)}
             </a>
           </p>
           <p style="margin:0; font-size:12px; color:#64748b">
@@ -603,7 +608,7 @@ Deno.serve(async (req) => {
         </div>
       `.trim();
 
-      text = `${title}\n\n${greetingName ? `Dear ${greetingName},\n\n` : ""}${body}\n\nOpen: ${link}\n`;
+      text = `${title}\n\n${greetingName ? `Dear ${greetingName},\n\n` : ""}${body}\n\n${ctaLabel}: ${link}\n`;
     }
 
 

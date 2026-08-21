@@ -4768,7 +4768,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           subject: `${champName || "Tournament"} — invitation (test)`,
           body: buildInviteBody(),
           url: previewUrl,
-          ctaLabel: "Open invitation",
+          ctaLabel: "Accept / Register",
           recipientName: previewMember.name,
         },
       });
@@ -4842,7 +4842,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               subject: `TEST — ${champName || "Tournament"} invitation`,
               body,
               url: testUrl,
-              ctaLabel: "Open test invitation",
+              ctaLabel: "Accept / Register",
               recipientName: String((myMember as any)?.name || "").trim() || undefined,
             },
           });
@@ -9724,7 +9724,7 @@ function InvitePreviewDialog({
                 )}
                 <p>Tap the button below to register or decline.</p>
                 <span className="inline-block text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground">
-                  Open invitation
+                  Accept / Register
                 </span>
               </div>
               {!methods.has("email") && (

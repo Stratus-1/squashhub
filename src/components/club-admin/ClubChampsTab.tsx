@@ -4410,7 +4410,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // before confirmation/counting so an older draft with an empty legacy
       // invite selector can still send immediately and never expands to every
       // club member by mistake.
-      if (!only && editingChampId === champId && structureLeagueIds.size > 0) {
+      // Only materialise the Structure-derived roster when the organiser has NOT
+      // chosen an explicit invitation audience — otherwise the audience alone
+      // decides who gets a row and who is mailed.
+      const hasExplicitAudience = editingChampId === champId && resolvedAudience.memberIds.length > 0;
+      if (!only && editingChampId === champId && structureLeagueIds.size > 0 && !hasExplicitAudience) {
         await saveEntriesDraft(champId);
       }
 
@@ -4860,9 +4864,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     });
     return ids.size;
   }, [structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
-  // Fall back to the chosen INVITATION AUDIENCE (not the Structure/draw source)
-  // so an open "all club members" invite never shows a league-only count.
-  const effectiveAllInviteCount = allInviteCount || resolvedAudience.memberIds.length || structureInviteCount;
+  // The chosen INVITATION AUDIENCE is authoritative for the bulk-send count —
+  // existing registration rows (from earlier, wider sends) must never inflate it.
+  const effectiveAllInviteCount =
+    resolvedAudience.memberIds.length || allInviteCount || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
 
   /** Live acceptance picture for this tournament (drives the Players step). */
@@ -7943,9 +7948,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         {lastInviteSend.mode === "selected" ? " (selected members)" : ""}.
                       </p>
                     )}
-                    {allInviteCount === 0 && effectiveAllInviteCount > 0 && (
+                    {allInviteCount > effectiveAllInviteCount && (
                       <p className="text-[11px] text-amber-600 dark:text-amber-500">
-                        {effectiveAllInviteCount} player{effectiveAllInviteCount === 1 ? "" : "s"} are ready from the invitation audience. They will be added to the invite list when you save or send.
+                        This tournament has {allInviteCount} invite rows from earlier, wider sends. Only the {effectiveAllInviteCount} member{effectiveAllInviteCount === 1 ? "" : "s"} in the current audience will be mailed.
                       </p>
                     )}
                   </div>

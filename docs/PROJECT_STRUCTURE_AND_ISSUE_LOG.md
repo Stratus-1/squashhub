@@ -9,7 +9,7 @@
 > §4 using the `Symptom → Finding → Fix → Guard` format. Never delete old entries; mark them
 > `SUPERSEDED` if a later fix replaces them.
 
-Last updated: **20 August 2026**
+Last updated: **21 August 2026**
 
 ---
 
@@ -87,6 +87,16 @@ using validated callback parameters. Never create or require one whitelist entry
 ## 4. Issue log
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
+
+### 2026-08-21 · Shelly Bluetooth fallback connected but did not actuate relay
+- **Symptom:** BLE-only door/light tests could find or connect to a Shelly yet produce no physical relay action.
+- **Finding:** Both browser and native clients used a malformed TX control characteristic UUID, silently skipped
+  the required frame-length handshake, sent plaintext-password auth instead of Shelly's digest challenge flow,
+  and never read the RPC response. A completed GATT write was therefore incorrectly treated as success.
+- **Fix:** Corrected the Shelly TX/RX control UUIDs, made both clients perform the full framed request/response
+  exchange, added SHA-256 challenge authentication, and now surface device RPC errors to the caller.
+- **Guard:** BLE relay actions succeed only after a valid Shelly RPC response; missing framing characteristics,
+  authentication failures, invalid channels, and incomplete responses must fail visibly rather than silently.
 
 ### 2026-08-20 · Tournament selected-member invite failed on registration status constraint
 - **Symptom:** Opening “Send invite to selected members” showed zero invitees and raised

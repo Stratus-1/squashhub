@@ -11,17 +11,22 @@
  *   Service         5f6d4f53-5f52-5043-5f52-4f4f4653435f  ("ShellyRPC")
  *   Data (write)    5f6d4f53-5f52-5043-5f64-6174615f5f5f
  *   Data (notify)   5f6d4f53-5f52-5043-5f64-6174615f5f5f  (same char)
- *   Tx-CTL          5f6d4f53-5f52-5043-5f74-78637472736c
- *   Rx-CTL          5f6d4f53-5f52-5043-5f72-78637472736c
+ *   Tx-CTL          5f6d4f53-5f52-5043-5f74-785f63746c5f
+ *   Rx-CTL          5f6d4f53-5f52-5043-5f72-785f63746c5f
  *
- * We only need to fire-and-forget a `Switch.Set` RPC with a `toggle_after` so
- * the relay auto-releases (door strike / lights kill-switch). We do NOT wait
- * for a full notify roundtrip — the goal is a best-effort local pulse.
+ * A `Switch.Set` RPC uses `toggle_after` so the relay auto-releases (door
+ * strike / lights kill-switch). The response is required: a completed GATT
+ * write is not proof that the relay accepted the command.
  */
 
-const SHELLY_RPC_SERVICE = "5f6d4f53-5f52-5043-5f52-4f4f4653435f";
-const SHELLY_RPC_DATA = "5f6d4f53-5f52-5043-5f64-6174615f5f5f";
-const SHELLY_RPC_TXCTL = "5f6d4f53-5f52-5043-5f74-78637472736c";
+import {
+  executeShellyRpc,
+  SHELLY_RPC_DATA,
+  SHELLY_RPC_RXCTL,
+  SHELLY_RPC_SERVICE,
+  SHELLY_RPC_TXCTL,
+  type ShellyRpcRequest,
+} from "./shelly-ble-rpc";
 
 export type BlePulseParams = {
   /** Advertised MAC (or last 6 hex) — used as a name filter. */
@@ -137,9 +142,10 @@ export async function pulseShellyBle(params: BlePulseParams): Promise<void> {
   try {
     const service = await server.getPrimaryService(SHELLY_RPC_SERVICE);
     const dataChar = await service.getCharacteristic(SHELLY_RPC_DATA);
-    const txCtl = await service.getCharacteristic(SHELLY_RPC_TXCTL).catch(() => null);
+    const txCtl = await service.getCharacteristic(SHELLY_RPC_TXCTL);
+    const rxCtl = await service.getCharacteristic(SHELLY_RPC_RXCTL);
 
-    const rpc: Record<string, unknown> = {
+    const rpc: ShellyRpcRequest = {
       id: 1,
       src: "squashhub",
       method: "Switch.Set",
@@ -149,24 +155,37 @@ export async function pulseShellyBle(params: BlePulseParams): Promise<void> {
         toggle_after: Math.max(1, Math.round((params.pulseMs ?? 3000) / 1000)),
       },
     };
-    if (params.password) {
-      rpc.auth = { password: params.password };
-    }
-
-    const encoded = new TextEncoder().encode(JSON.stringify(rpc));
-
-    if (txCtl) {
-      // Announce frame length on the TX-CTL characteristic (Shelly RPC framing).
+    const exchange = async (encoded: Uint8Array): Promise<Uint8Array> => {
       const lenBuf = new Uint8Array(4);
       new DataView(lenBuf.buffer).setUint32(0, encoded.byteLength, false);
       await txCtl.writeValue(lenBuf);
-    }
 
-    // Chunk into MTU-friendly writes (default MTU is ~20 bytes).
-    const CHUNK = 20;
-    for (let i = 0; i < encoded.byteLength; i += CHUNK) {
-      await dataChar.writeValue(encoded.slice(i, i + CHUNK));
-    }
+      const CHUNK = 20;
+      for (let i = 0; i < encoded.byteLength; i += CHUNK) {
+        await dataChar.writeValue(encoded.slice(i, i + CHUNK));
+      }
+
+      const responseLengthValue = await rxCtl.readValue();
+      if (responseLengthValue.byteLength < 4) throw new Error("Shelly returned an invalid response length.");
+      const responseLength = responseLengthValue.getUint32(0, false);
+      if (responseLength < 1 || responseLength > 64 * 1024) {
+        throw new Error(`Shelly returned an invalid response length (${responseLength}).`);
+      }
+
+      const response = new Uint8Array(responseLength);
+      let offset = 0;
+      while (offset < responseLength) {
+        const chunk = await dataChar.readValue();
+        const bytes = new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+        if (!bytes.byteLength) throw new Error("Shelly returned an incomplete Bluetooth response.");
+        const remaining = responseLength - offset;
+        response.set(bytes.subarray(0, remaining), offset);
+        offset += Math.min(bytes.byteLength, remaining);
+      }
+      return response;
+    };
+
+    await executeShellyRpc(rpc, params.password, exchange);
   } finally {
     try { server.disconnect(); } catch { /* ignore */ }
   }

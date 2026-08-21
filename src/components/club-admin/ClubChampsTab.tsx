@@ -4833,7 +4833,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     });
     return ids.size;
   }, [structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
-  const effectiveAllInviteCount = allInviteCount || structureInviteCount;
+  // Fall back to the chosen INVITATION AUDIENCE (not the Structure/draw source)
+  // so an open "all club members" invite never shows a league-only count.
+  const effectiveAllInviteCount = allInviteCount || resolvedAudience.memberIds.length || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
 
   /** Live acceptance picture for this tournament (drives the Players step). */

@@ -7943,6 +7943,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         {lastInviteSend.mode === "selected" ? " (selected members)" : ""}.
                       </p>
                     )}
+                    {allInviteCount === 0 && effectiveAllInviteCount > 0 && (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-500">
+                        {effectiveAllInviteCount} player{effectiveAllInviteCount === 1 ? "" : "s"} are ready from the invitation audience. They will be added to the invite list when you save or send.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">

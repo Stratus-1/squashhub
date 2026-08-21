@@ -2224,6 +2224,80 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
   };
 
+  const withdraw = async (id: string, isPair = false) => {
+    const cid = editingChampId;
+    if (isPair) {
+      const pair = doublesPairs.find((p) => p.id === id);
+      if (!pair) {
+        toast.error("Pair not found");
+        return;
+      }
+    } else if (!selectedPlayerIds.has(id)) {
+      toast.error("Player not in roster");
+      return;
+    }
+    try {
+      const pair = isPair ? doublesPairs.find((p) => p.id === id) : undefined;
+      const rawIds = pair ? [pair.player1Id, pair.player2Id] : [id];
+      const resolvedIds = rawIds.length > 0 ? await promoteVisitorIds(rawIds) : [];
+      if (cid && resolvedIds.length > 0) {
+        for (const resolvedId of resolvedIds) {
+          await fromExt("club_champs_entries")
+            .delete()
+            .eq("champ_id", cid)
+            .or(`club_member_id.eq.${resolvedId},partner_member_id.eq.${resolvedId}`);
+        }
+        await fromExt("club_champs_registrations")
+          .update({
+            status: "cancelled",
+            confirmed_at: null,
+            confirmation_source: null,
+            partner_member_id: null,
+            partner_confirmed: false,
+          })
+          .eq("champ_id", cid)
+          .in("club_member_id", resolvedIds);
+        qc.invalidateQueries({ queryKey: ["champ-invitees", cid] });
+        qc.invalidateQueries({ queryKey: ["champ-registrations", cid] });
+      }
+      if (isPair) {
+        setDoublesPairs((prev) => prev.filter((p) => p.id !== id));
+        setPairGroupAssignments((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        setPairOrder((prev) => prev.filter((x) => x !== id));
+      } else {
+        setSelectedPlayerIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        setGroupAssignments((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        setExtraDivisions((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        setPlayerOrder((prev) => prev.filter((x) => x !== id));
+        setUnassignedEntrantIds((prev) => prev.filter((x) => x !== id));
+        setEligibilityOverrides((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+      toast.success("Withdrawn from tournament");
+    } catch (e: unknown) {
+      toast.error("Could not withdraw: " + (e instanceof Error ? e.message : String(e)));
+    }
+  };
+
   const handleManualSave = async () => {
     if (!clubId) {
       toast.error("No club selected");
@@ -8928,7 +9002,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       )}
                                       <Select
                                         value={String(pairGroupAssignments.get(pair.id) ?? 0)}
-                                        onValueChange={(v) => {
+                                        onValueChange={async (v) => {
+                                          if (v === "__withdrawn") {
+                                            if (confirm("Withdraw this pair from the tournament?")) {
+                                              await withdraw(pair.id, true);
+                                            }
+                                            return;
+                                          }
                                           const newMap = new Map(pairGroupAssignments);
                                           newMap.set(pair.id, Number(v));
                                           setPairGroupAssignments(newMap);
@@ -8936,6 +9016,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       >
                                         <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
+                                          <SelectItem value="__withdrawn" className="text-destructive">Withdraw pair / not playing</SelectItem>
                                           {Array.from({ length: numGroups }, (_, i) => (
                                             <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
                                           ))}
@@ -9001,7 +9082,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       )}
                                       <Select
                                         value={String(groupAssignments.get(p.id) ?? 0)}
-                                        onValueChange={(v) => {
+                                        onValueChange={async (v) => {
+                                          if (v === "__withdrawn") {
+                                            if (confirm("Withdraw this player from the tournament?")) {
+                                              await withdraw(p.id);
+                                            }
+                                            return;
+                                          }
                                           const newMap = new Map(groupAssignments);
                                           newMap.set(p.id, Number(v));
                                           setGroupAssignments(newMap);
@@ -9009,6 +9096,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                       >
                                         <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
+                                          <SelectItem value="__withdrawn" className="text-destructive">Withdrawn / not playing</SelectItem>
                                           {Array.from({ length: numGroups }, (_, i) => (
                                             <SelectItem key={i} value={String(i)}>{groupLabels[String(i + 1)]?.trim() ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`) : `League ${i + 1}`}</SelectItem>
                                           ))}
@@ -9075,7 +9163,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
                             <Select
                               value=""
-                              onValueChange={(v) => {
+                              onValueChange={async (v) => {
+                                if (v === "__withdrawn") {
+                                  if (confirm("Withdraw this player from the tournament?")) {
+                                    await withdraw(id);
+                                  }
+                                  return;
+                                }
                                 setGroupAssignments((prev) => new Map(prev).set(id, Number(v)));
                                 setEligibilityOverrides((prev) => new Set(prev).add(id));
                                 setUnassignedEntrantIds((prev) => prev.filter((x) => x !== id));
@@ -9085,6 +9179,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 <SelectValue placeholder="Assign…" />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="__withdrawn" className="text-destructive">Withdrawn / not playing</SelectItem>
                                 {Array.from({ length: numGroups }, (_, i) => (
                                   <SelectItem key={i} value={String(i)}>
                                     {groupLabels[String(i + 1)]?.trim()

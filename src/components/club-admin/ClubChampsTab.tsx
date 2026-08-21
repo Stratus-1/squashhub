@@ -27,6 +27,7 @@ import {
 import { buildLeagueFirstRound, distributeSeedsBalanced, suggestSectionCount } from "@/lib/tournaments/knockout";
 import {
   DEFAULT_DIVISION_SOURCE,
+  allocateEntrantsToDivisions,
   constrainIds,
   describeDivisionSource,
   divisionEligibleIds,

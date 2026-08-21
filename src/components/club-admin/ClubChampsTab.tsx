@@ -8088,17 +8088,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     <Button type="button" variant="outline" onClick={() => setInviteePickerOpen(false)}>Cancel</Button>
                     <Button
                       type="button"
-                      disabled={selectedInviteeRegIds.size === 0 || invitesSendingFor === editingChampId}
-                      onClick={async () => {
-                        if (!editingChampId) return;
-                        const ids = Array.from(selectedInviteeRegIds);
+                      disabled={selectedInviteeRegIds.size === 0}
+                      onClick={() => {
+                        const memberIds = inviteeList
+                          .filter((r) => selectedInviteeRegIds.has(r.id))
+                          .map((r) => r.memberId)
+                          .filter(Boolean) as string[];
+                        setAudienceMemberIds(new Set(memberIds));
+                        setInviteAudience("individuals");
                         setInviteePickerOpen(false);
-                        await sendChampInvites(editingChampId, { confirm: true, registrationIds: ids, mode: "selected" });
+                        toast.success(`${memberIds.length} member${memberIds.length === 1 ? "" : "s"} staged — nothing sent yet.`);
                       }}
                     >
-                      {invitesSendingFor === editingChampId
-                        ? "Sending…"
-                        : `Send to ${selectedInviteeRegIds.size} member${selectedInviteeRegIds.size === 1 ? "" : "s"}`}
+                      Save selection ({selectedInviteeRegIds.size})
                     </Button>
                   </DialogFooter>
                 </DialogContent>

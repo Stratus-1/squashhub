@@ -197,12 +197,23 @@ Deno.serve(async (req) => {
     // relay state after the one-request-per-second Cloud limit so we do not
     // report success when the command was accepted but never actuated.
     await new Promise((resolve) => setTimeout(resolve, 1100));
-    const verification = await getDeviceStatus({
+    let verification = await getDeviceStatus({
       server: secrets.shelly_server_url,
       authKey: secrets.shelly_auth_key,
       deviceId,
       channel,
     });
+    // Shelly Cloud's cached status can lag by a second or two; re-check once
+    // before declaring a failure so a transient lag isn't reported as offline.
+    if (verification.online === false || verification.output !== true) {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      verification = await getDeviceStatus({
+        server: secrets.shelly_server_url,
+        authKey: secrets.shelly_auth_key,
+        deviceId,
+        channel,
+      });
+    }
     if (verification.online === false || verification.output !== true) {
       await admin.from("access_events").insert({
         club_id,

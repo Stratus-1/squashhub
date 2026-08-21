@@ -714,21 +714,20 @@ Deno.serve(async (req) => {
       recipientName: String((profile as any)?.name || payloadName || "").trim(),
       clubName: clubMail?.clubName || "",
     };
+    let fallbackWarning: string | null = null;
     if (clubMail) {
       result = await sendViaClubSmtp(clubMail, { to: email, subject, html, text });
       if (!result.ok) {
-        // Club settings are authoritative — report the failure instead of
-        // quietly re-sending from the platform address.
-        const message = describeSmtpError(result.reason || "", clubMail);
-        console.error("[email-notifications] club SMTP send failed", message);
-        return new Response(JSON.stringify({ ok: false, error: message, smtpError: result.reason || null }), {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // Try the club's own settings first, then fall back to the platform
+        // sender so the message still goes out — always logged/reported.
+        fallbackWarning = describeSmtpError(result.reason || "", clubMail);
+        console.error("[email-notifications] club SMTP failed, using platform sender", fallbackWarning);
+        result = await sendViaPlatform(platformArgs);
       }
     } else {
       result = await sendViaPlatform(platformArgs);
     }
+
 
     if (!result.ok) {
       return new Response(JSON.stringify({ ...result, error: result.reason || "Email could not be sent" }), {

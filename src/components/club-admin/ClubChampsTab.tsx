@@ -5549,6 +5549,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setSelectedPlayerIds(new Set());
       setPlayerOrder([]);
       setGroupAssignments(new Map());
+      setExtraDivisions(new Map());
       setDoublesPairs([]);
       setPairOrder([]);
       setPairGroupAssignments(new Map());

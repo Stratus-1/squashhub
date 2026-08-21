@@ -183,27 +183,8 @@ Deno.serve(async (req) => {
     const channel = Number(secrets.shelly_door_channel ?? 0);
     const pulseMs = Number(secrets.shelly_door_pulse_ms ?? 3000);
 
-    // Confirm the relay is actually reachable before sending the pulse.
-    const status = await getDeviceStatus({
-      server: secrets.shelly_server_url,
-      authKey: secrets.shelly_auth_key,
-      deviceId,
-      channel,
-    });
-    if (status.online === false) {
-      await admin.from("access_events").insert({
-        club_id,
-        club_member_id: member?.id ?? null,
-        door_name,
-        event_type: "shelly_pulse_failed",
-        occurred_at: new Date().toISOString(),
-        raw: { device_id: deviceId, reason: "device_offline", status: status.raw },
-      });
-      throw new Error(
-        "Door controller is offline (Shelly cloud can't reach it) — check the relay's power and Wi-Fi.",
-      );
-    }
-
+    // Send first, then verify. Shelly Cloud limits this API to one request per
+    // second, so a separate status preflight would collide with the command.
     const raw = await pulseShellyRelay({
       server: secrets.shelly_server_url,
       authKey: secrets.shelly_auth_key,

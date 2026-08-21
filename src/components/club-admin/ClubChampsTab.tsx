@@ -1030,7 +1030,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     copy(setLeagueBestOf as any);
     copy(setLeagueWinConditions as any);
     copy(setLeaguePlayoffs as any);
-    setGroupLabels((m) => ({ ...m, [to]: `${getGroupLabel({ group_labels: m }, gn)} (copy)` }));
+    setGroupLabels((m) => ({ ...m, [to]: `${(m[from] || `League ${gn}`).trim()} (copy)` }));
     toast.success("Division duplicated — rename it and pick who plays in it");
   };
 

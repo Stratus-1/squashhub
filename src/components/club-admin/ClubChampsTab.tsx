@@ -7250,7 +7250,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         </button>
                       );
                     })}
-                    <p className="text-[10px] text-muted-foreground italic pt-1">Tip: add up to 6 leagues in one tournament.</p>
+                    <p className="text-[10px] text-muted-foreground italic pt-1">Tip: there is no limit — add a division per class (League 1-4, Ladies, Junior Boys, Junior Girls…). Use the copy icon on a division to clone its rules.</p>
                   </div>
                 </div>
 

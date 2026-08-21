@@ -4410,7 +4410,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // before confirmation/counting so an older draft with an empty legacy
       // invite selector can still send immediately and never expands to every
       // club member by mistake.
-      if (!only && editingChampId === champId && structureLeagueIds.size > 0) {
+      // Only materialise the Structure-derived roster when the organiser has NOT
+      // chosen an explicit invitation audience — otherwise the audience alone
+      // decides who gets a row and who is mailed.
+      const hasExplicitAudience = editingChampId === champId && resolvedAudience.memberIds.length > 0;
+      if (!only && editingChampId === champId && structureLeagueIds.size > 0 && !hasExplicitAudience) {
         await saveEntriesDraft(champId);
       }
 

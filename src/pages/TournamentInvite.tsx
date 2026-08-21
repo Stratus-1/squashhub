@@ -239,14 +239,21 @@ export default function TournamentInvite() {
   }
 
   if (state === "closed") {
+    const closedOn = formatDate(data?.registration_closes_at);
     return shell(
       <>
         {header}
         {detailList}
-        <p className="text-sm text-muted-foreground">Entries for this tournament have closed.</p>
+        <p className="text-sm text-muted-foreground">
+          {closedOn
+            ? `Entries closed on ${closedOn}, so this invitation can no longer be answered.`
+            : "Entries for this tournament have closed."}{" "}
+          Contact the organiser if you still want to play — they can reopen entries.
+        </p>
       </>,
     );
   }
+
 
   if (state === "needs_signup") {
     return shell(

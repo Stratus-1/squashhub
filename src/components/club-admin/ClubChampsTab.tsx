@@ -7894,15 +7894,49 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     className="max-w-xs h-8 text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
-                    You'll get a reminder near this time. Automated send-out isn't wired up yet — use “Invite actions” when ready.
+                    You'll get a reminder near this time. Automated send-out isn't wired up yet — use <strong>Send invites now</strong> below when ready.
                   </p>
                 </div>
               )}
               {inviteTiming === "manual" && (
                 <p className="text-xs text-muted-foreground">
-                  Tournament is saved without notifying anyone. Open the edit dialog and click “Invite actions” when you're ready.
+                  Saving never notifies anyone. Nothing goes out until you click <strong>Send invites now</strong>.
                 </p>
               )}
+
+              {/* The one and only bulk trigger */}
+              <div className="pt-2 border-t border-border/50 space-y-1.5">
+                {editingChampId ? (
+                  <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={invitesSendingFor === editingChampId || effectiveAllInviteCount === 0}
+                      onClick={() => sendChampInvites(editingChampId, { confirm: true, mode: "all" })}
+                    >
+                      <Send className="w-4 h-4 mr-1" />
+                      {invitesSendingFor === editingChampId
+                        ? "Sending…"
+                        : `Send invites now (${effectiveAllInviteCount})`}
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground">
+                      Goes to the invitation audience above ({audienceLabel(inviteAudience)}) via{" "}
+                      {Array.from(inviteMethods.size ? inviteMethods : new Set(["app"])).join(", ")}. {resolvedAudience.summary}
+                    </p>
+                    {lastInviteSend && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Last sent: {new Date(lastInviteSend.at).toLocaleString()} — {lastInviteSend.count} recipient
+                        {lastInviteSend.count === 1 ? "" : "s"}
+                        {lastInviteSend.mode === "selected" ? " (selected members)" : ""}.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    <strong className="text-foreground">Send invites now</strong> becomes available once the tournament is saved — use <strong>Save progress</strong> first.
+                  </p>
+                )}
+              </div>
             </div>
             )}
 

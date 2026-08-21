@@ -5095,7 +5095,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setEndDate("");
     setPlayDays(new Set());
     setSchedulingMode("club");
-    setRoundPlayBy("");
+    setRoundDeadlines([]);
 
     setStartTime("18:00");
     setEndTime("20:00");

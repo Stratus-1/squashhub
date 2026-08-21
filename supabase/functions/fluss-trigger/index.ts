@@ -17,6 +17,33 @@ const corsHeaders = {
 
 const FLUSS_API_BASE = "https://api.fluss.io/v1"; // public Fluss REST base
 
+// Bookings are stored as local date + wall-clock times, so all comparisons use
+// club-local time (same convention as the court-lights function).
+const BOOKING_TIMEZONE = Deno.env.get("COURT_LIGHTS_TIMEZONE") || "Africa/Johannesburg";
+const GRACE_MS = 10 * 60_000;
+
+function localDateAndTime(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BOOKING_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const value = (type: string) => parts.find((p) => p.type === type)?.value || "";
+  return {
+    date: `${value("year")}-${value("month")}-${value("day")}`,
+    time: `${value("hour")}:${value("minute")}`,
+  };
+}
+
+/** Normalise a Postgres time value ("18:00:00") to "HH:MM". */
+function hhmm(t: string | null | undefined) {
+  return String(t ?? "").slice(0, 5);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 

@@ -40,6 +40,44 @@ export function isWebBluetoothAvailable() {
 }
 
 /**
+ * Web Bluetooth is blocked inside cross-origin iframes unless the parent sets
+ * `allow="bluetooth"`. The Lovable preview iframe does not, so requestDevice
+ * either throws SecurityError or shows an empty chooser. Detect it so we can
+ * tell the admin to open the app in its own tab instead of chasing hardware.
+ */
+export function isInBlockedIframe() {
+  if (typeof window === "undefined") return false;
+  try {
+    if (window.self === window.top) return false;
+  } catch {
+    return true; // cross-origin access threw → we're framed
+  }
+  const fp: any = (document as any).featurePolicy || (document as any).permissionsPolicy;
+  try {
+    if (fp?.allowsFeature) return !fp.allowsFeature("bluetooth");
+  } catch { /* ignore */ }
+  return true;
+}
+
+export function describeBleError(err: any): string {
+  const name = err?.name || "";
+  const msg = String(err?.message || err || "");
+  if (name === "NotFoundError" && /cancelled|chooser/i.test(msg)) {
+    return "No device was picked. If the chooser was empty: the Shelly must be powered, within ~5 m, and have Bluetooth enabled in the Shelly app (Settings → Bluetooth). Note a Shelly only advertises BLE when it is not already connected to another phone.";
+  }
+  if (name === "NotFoundError") {
+    return "No Shelly found over Bluetooth. Enable Bluetooth on the Shelly (Shelly app → Settings → Bluetooth), stand within ~5 m, and make sure no other phone is connected to it.";
+  }
+  if (name === "SecurityError") {
+    return "Bluetooth is blocked here. Open SquashHub in its own browser tab (not inside the preview frame) over HTTPS, or use the installed app.";
+  }
+  if (name === "NotAllowedError") {
+    return "Bluetooth permission was denied for this site. Allow Bluetooth in the browser/OS settings and try again.";
+  }
+  return msg || "Bluetooth pulse failed";
+}
+
+/**
  * Best-effort direct BLE pulse.
  *
  * Throws with a friendly message if the browser doesn't support Web
@@ -53,6 +91,11 @@ export async function pulseShellyBle(params: BlePulseParams): Promise<void> {
       "This device can't use Bluetooth fallback (Web Bluetooth not supported). Try Chrome on Android or the SquashHub app.",
     );
   }
+  if (isInBlockedIframe()) {
+    throw new Error(
+      "Bluetooth can't be used inside the preview frame. Open SquashHub in its own browser tab (or the installed app) and test again.",
+    );
+  }
 
   const bluetooth = (navigator as any).bluetooth as {
     requestDevice: (opts: any) => Promise<any>;
@@ -60,10 +103,29 @@ export async function pulseShellyBle(params: BlePulseParams): Promise<void> {
 
   // Shelly BLE ads name themselves like "ShellyPlus1-<macTail>".
   const tail = params.mac.replace(/[^0-9a-f]/gi, "").slice(-6).toUpperCase();
-  const device = await bluetooth.requestDevice({
-    filters: [{ namePrefix: `Shelly` }],
-    optionalServices: [SHELLY_RPC_SERVICE],
-  });
+  let device: any;
+  try {
+    device = await bluetooth.requestDevice({
+      filters: [{ namePrefix: "Shelly" }, { namePrefix: "shelly" }],
+      optionalServices: [SHELLY_RPC_SERVICE],
+    });
+  } catch (err: any) {
+    if (err?.name === "NotFoundError") {
+      // Chooser was empty or cancelled — retry showing every nearby device so
+      // the admin can pick a Shelly that advertises under a custom name.
+      try {
+        device = await bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [SHELLY_RPC_SERVICE],
+        });
+      } catch (err2: any) {
+        throw new Error(describeBleError(err2));
+      }
+    } else {
+      throw new Error(describeBleError(err));
+    }
+  }
+
 
   // Best-effort name check — user may pick another Shelly by mistake.
   if (tail && device.name && !device.name.toUpperCase().includes(tail)) {

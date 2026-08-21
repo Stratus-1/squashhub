@@ -7796,7 +7796,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   Anyone who accepts but has no league mapping is still accepted and lands in <strong>Needs division assignment</strong> for you to place.
                 </p>
               </div>
-            )}
+
 
 
             {/* Invite methods — always shown so admins control delivery channel */}

@@ -3887,7 +3887,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               order_index: orderIndex,
           }))
         );
-        const { error: entryErr } = await fromExt("club_champs_entries").upsert(entries, { onConflict: "champ_id,club_member_id" });
+        // A player may hold an entry in several divisions — the entry key is
+        // (tournament, player, division), never just (tournament, player).
+        const { error: entryErr } = await fromExt("club_champs_entries").upsert(entries, { onConflict: "champ_id,club_member_id,group_number" });
+
         if (entryErr) throw entryErr;
         const keepIds = entries.map((e) => e.club_member_id);
         if (keepIds.length > 0) await fromExt("club_champs_entries").delete().eq("champ_id", champId).not("club_member_id", "in", `(${keepIds.join(",")})`);

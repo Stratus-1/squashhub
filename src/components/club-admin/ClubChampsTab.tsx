@@ -2373,10 +2373,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   /**
    * Keep league allocations seeded automatically.
    *
-   * The Allocate step no longer asks how many leagues there are (Structure owns
-   * that), so entrants must be distributed the moment the roster or the league
-   * count changes. Existing manual placements are preserved; only new or
-   * out-of-range entrants are (re)seeded with a snake draft.
+   * Singles entrants are allocated to the division whose "primarily players
+   * from" source names the club league they actually play in — NOT by a blind
+   * snake draft, which used to drop a League 2 player into League 1. Manual
+   * placements are always preserved, and anyone who plays in none of the source
+   * leagues stays unassigned until the organiser places them.
    */
   useEffect(() => {
     if (!showWizard) return;
@@ -2404,21 +2405,41 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
 
     const ids = selectedPlayers.map((p: any) => p.id);
-    if (ids.length === 0) return;
-    const stale = ids.some((id) => {
-      const g = groupAssignments.get(id);
-      return g === undefined || g >= n;
-    }) || groupAssignments.size !== ids.length;
-    if (!stale) return;
-    setGroupAssignments((prev) => {
-      const next = new Map<string, number>();
-      ids.forEach((id, i) => {
-        const existing = prev.get(id);
-        next.set(id, existing !== undefined && existing < n ? existing : snake(i));
-      });
-      return next;
+    if (ids.length === 0) {
+      setUnassignedEntrantIds((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+
+    const { assignments, unassigned } = allocateEntrantsToDivisions({
+      entrantIds: ids,
+      numDivisions: n,
+      sources: leagueSources,
+      registrationsByLeague,
+      existing: groupAssignments,
+      overrides: eligibilityOverrides,
     });
-  }, [showWizard, numGroups, isDoubles, doublesPairs, selectedPlayers, groupAssignments, pairGroupAssignments]);
+
+    setUnassignedEntrantIds((prev) =>
+      prev.length === unassigned.length && prev.every((id, i) => id === unassigned[i]) ? prev : unassigned,
+    );
+
+    const sameAsBefore =
+      assignments.size === groupAssignments.size &&
+      Array.from(assignments.entries()).every(([id, gi]) => groupAssignments.get(id) === gi);
+    if (sameAsBefore) return;
+    setGroupAssignments(assignments);
+  }, [
+    showWizard,
+    numGroups,
+    isDoubles,
+    doublesPairs,
+    selectedPlayers,
+    groupAssignments,
+    pairGroupAssignments,
+    leagueSources,
+    registrationsByLeague,
+    eligibilityOverrides,
+  ]);
 
   // Number of "entities" (players for singles, pairs for doubles)
   const entityCount = isDoubles ? doublesPairs.length : selectedPlayerIds.size;

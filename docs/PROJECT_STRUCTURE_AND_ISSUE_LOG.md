@@ -994,3 +994,18 @@ Regression tests: `src/test/invite-link.test.ts` (public actionable state, verif
   semantics, offline outbox attribution. No behaviour change on the cloud path.
 - **Tests:** `src/lib/__tests__/shelly-ble-transport.test.ts` (9 tests — framing,
   chunking, poll-until-ready, empty-read tolerance, timeout messages).
+
+## 2026-08-21 — Stale PWA accepted tournament invitations without divisions
+- **Evidence:** Stiaan Swanepoel's recording shows the old single-action registration
+  dialog while an "Update now" prompt is visible. That cached client called the current
+  acceptance RPC without `p_divisions`, so the registration became confirmed/paid with
+  `division_choices = {}` and no player-allocation entry.
+- **Hardening:** A database trigger now rejects every confirmed registration for a
+  multi-division tournament unless it contains at least one currently valid division.
+  This protects public links, signed-in flows, direct writes, and outdated installed
+  app versions. The internal trigger function is not executable by public or signed-in
+  clients.
+- **Data repair:** Reopened only the three incomplete Nelspruit Club Champs 2026 invites
+  found by the audit: Stiaan Swanepoel, Dillan van Heerden, and Johan van Wyk. Their
+  incomplete confirmation/payment markers were cleared; correctly registered entrants
+  were not changed.

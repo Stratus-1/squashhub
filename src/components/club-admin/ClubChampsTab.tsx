@@ -2293,8 +2293,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         });
       }
       toast.success("Withdrawn from tournament");
-    } catch (e: any) {
-      toast.error("Could not withdraw: " + e.message);
+    } catch (e: unknown) {
+      toast.error("Could not withdraw: " + (e instanceof Error ? e.message : String(e)));
     }
   };
 

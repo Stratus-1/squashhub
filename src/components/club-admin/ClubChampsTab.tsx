@@ -4601,6 +4601,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // address, using a real invitee's secure /i/<token> journey. It may
   // materialise the selected roster and mint the token, but it does not mark
   // the invitation as sent or create a payment/response.
+  // Last bulk send for this tournament (session-local) so the organiser can see
+  // that the trigger actually fired and how many people it reached.
+  const [lastInviteSend, setLastInviteSend] = useState<{ at: string; count: number; mode: InviteSendMode } | null>(null);
   const [testInviteSending, setTestInviteSending] = useState(false);
   const [testInviteDialogOpen, setTestInviteDialogOpen] = useState(false);
   const [testInviteEmail, setTestInviteEmail] = useState("");

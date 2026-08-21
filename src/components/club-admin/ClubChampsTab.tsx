@@ -8021,11 +8021,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               )}
 
-              {/* Selective invite reminders */}
+              {/* Individual invitee picker — staging only, never sends */}
               <Dialog open={inviteePickerOpen} onOpenChange={setInviteePickerOpen}>
                 <DialogContent className="max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Send invite to selected members</DialogTitle>
+                    <DialogTitle>Choose individual invitees</DialogTitle>
+                    <DialogDescription>
+                      Picking members only builds the audience. Nothing is sent until you click “Send invites now”.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3">
                     <Input

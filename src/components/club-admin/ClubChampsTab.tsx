@@ -412,7 +412,7 @@ function buildInviteDetailLines(opts: {
   }
 
   // Play times — either per-day windows or a single global window.
-  const ds = (opts.customizeDailySchedule && opts.daySchedules && opts.daySchedules.length > 0)
+  const ds = (!opts.selfScheduled && opts.customizeDailySchedule && opts.daySchedules && opts.daySchedules.length > 0)
     ? opts.daySchedules.filter((d) => d.date && d.start_time && d.end_time)
     : [];
   if (ds.length > 0) {
@@ -434,7 +434,7 @@ function buildInviteDetailLines(opts: {
         lines.push(`  ${dLabel}: ${byDate.get(d)!.join(", ")}`);
       }
     }
-  } else if (opts.startTime && opts.endTime) {
+  } else if (opts.startTime && opts.endTime && !opts.selfScheduled) {
     lines.push(`Play time: ${opts.startTime.slice(0, 5)}–${opts.endTime.slice(0, 5)}`);
   }
 
@@ -5556,11 +5556,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
           m.push("End date must be on or after the start date");
         }
-        if (!startTime) m.push("Start time");
-        if (!endTime) m.push("End time");
-        if (selectedCourtIds.size === 0) m.push("At least one court");
-        if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
-          m.push("At least one play day");
+        // Self-scheduled tournaments have no fixture times, play days or courts —
+        // only per-round play-by deadlines.
+        if (schedulingMode === "self") {
+          if (!serializeRoundDeadlines(roundDeadlines)) m.push("At least one round play-by deadline");
+        } else {
+          if (!startTime) m.push("Start time");
+          if (!endTime) m.push("End time");
+          if (selectedCourtIds.size === 0) m.push("At least one court");
+          if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
+            m.push("At least one play day");
+          }
         }
         // Registration window lives on this step now (all dates in one place).
         if (registrationWindowApplies) {
@@ -5613,10 +5619,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
       case "schedule": {
         if (!startDate || !endDate) m.push("Tournament dates");
-        if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
-          m.push("At least one play day");
+        if (schedulingMode !== "self") {
+          if (!(playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0))) {
+            m.push("At least one play day");
+          }
+          if (selectedCourtIds.size === 0) m.push("At least one court");
         }
-        if (selectedCourtIds.size === 0) m.push("At least one court");
         if (!matchDuration) m.push("Match duration");
         if (!awaitingPlayerPairs && schedulePreview && schedulePreview.totalSlots < schedulePreview.totalMatches) {
           m.push("Schedule has fewer slots than matches — add more days, courts, or hours");

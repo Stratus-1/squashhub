@@ -1009,3 +1009,29 @@ Regression tests: `src/test/invite-link.test.ts` (public actionable state, verif
   found by the audit: Stiaan Swanepoel, Dillan van Heerden, and Johan van Wyk. Their
   incomplete confirmation/payment markers were cleared; correctly registered entrants
   were not changed.
+
+## 2026-08-21 — Club email pacing, delivery log & Nelspruit invite re-send
+
+**Problem.** A bulk tournament-invite send from Nelspruit fired hundreds of parallel
+SMTP requests through `deliver_email_for_notification` -> `email-notifications`.
+Gmail responded `421-4.3.0 Temporary System Problem`: 208 sent, 153 failed, 53 expired
+in the DLQ. Admins had no way to see this.
+
+**Fixes.**
+- `public.email_outbox` — per-club paced queue (status/scheduled_for/attempts/last_error)
+  with club-admin RLS; `email_outbox_state` holds a single-flight lease.
+- `claim_email_outbox_batch()` / `release_email_outbox_lease()` — service-role only,
+  bounded batch, `FOR UPDATE SKIP LOCKED`.
+- `deliver_email_for_notification` now detects a burst for a club and enqueues into the
+  outbox (90s spacing) instead of firing another immediate request.
+- `supabase/functions/process-email-outbox` — cron every minute, max 5 per run, 4s gap,
+  3 attempts then `failed`.
+- `email_send_log` gained `club_id` (+ backfill) and `context`; `email-notifications`
+  now stamps `club_id` on every club-SMTP log row.
+- New admin tab **Email Log** (`src/components/club-admin/EmailLogTab.tsx`): stats,
+  time/type/status filters, queue view with send-now/cancel, bulk re-queue of failures.
+- Data repair: 139 failed/DLQ Club Champs 2026 invites re-queued, 90s apart, starting
+  00:00 SAST 2026-08-22.
+
+**Note.** Personal Gmail SMTP tops out near 100 mails/hour in bursts; the outbox paces
+to ~40/hour. Clubs doing large mailings should move to a proper relay.

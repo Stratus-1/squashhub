@@ -3916,8 +3916,112 @@ export type Database = {
           },
         ]
       }
+      email_outbox: {
+        Row: {
+          attempts: number
+          body: string
+          club_id: string
+          club_member_id: string | null
+          created_at: string
+          created_by: string | null
+          cta_label: string | null
+          id: string
+          kind: string
+          last_error: string | null
+          recipient_email: string
+          recipient_name: string | null
+          ref_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          attempts?: number
+          body?: string
+          club_id: string
+          club_member_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string | null
+          id?: string
+          kind?: string
+          last_error?: string | null
+          recipient_email: string
+          recipient_name?: string | null
+          ref_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          club_id?: string
+          club_member_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string | null
+          id?: string
+          kind?: string
+          last_error?: string | null
+          recipient_email?: string
+          recipient_name?: string | null
+          ref_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_outbox_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_outbox_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_outbox_state: {
+        Row: {
+          id: boolean
+          lease_until: string | null
+          paused: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          lease_until?: string | null
+          paused?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          lease_until?: string | null
+          paused?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
+          club_id: string | null
+          context: Json | null
           created_at: string
           error_message: string | null
           id: string
@@ -3928,6 +4032,8 @@ export type Database = {
           template_name: string
         }
         Insert: {
+          club_id?: string | null
+          context?: Json | null
           created_at?: string
           error_message?: string | null
           id?: string
@@ -3938,6 +4044,8 @@ export type Database = {
           template_name: string
         }
         Update: {
+          club_id?: string | null
+          context?: Json | null
           created_at?: string
           error_message?: string | null
           id?: string
@@ -10264,6 +10372,36 @@ export type Database = {
           total_income: number
         }[]
       }
+      claim_email_outbox_batch: {
+        Args: { p_lease_seconds?: number; p_limit?: number }
+        Returns: {
+          attempts: number
+          body: string
+          club_id: string
+          club_member_id: string | null
+          created_at: string
+          created_by: string | null
+          cta_label: string | null
+          id: string
+          kind: string
+          last_error: string | null
+          recipient_email: string
+          recipient_name: string | null
+          ref_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+          url: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "email_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_member_by_league_number: {
         Args: {
           _club_id?: string
@@ -10814,6 +10952,7 @@ export type Database = {
         }
         Returns: Json
       }
+      release_email_outbox_lease: { Args: never; Returns: undefined }
       request_account_delegation: {
         Args: {
           _delegate_cell: string

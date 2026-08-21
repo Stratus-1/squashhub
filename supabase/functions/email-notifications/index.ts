@@ -120,6 +120,7 @@ async function sendViaPlatform(args: {
 }
 
 interface ClubMail {
+  clubId: string;
   smtpHost: string;
   smtpPort: number;
   smtpUser: string;
@@ -163,6 +164,7 @@ async function resolveClubMail(userId: string, explicitClubId?: string | null): 
       return null;
     }
     return {
+      clubId,
       smtpHost: String(secrets.smtp_host).trim(),
       smtpPort: Number(secrets.smtp_port) || 587,
       smtpUser: String(secrets.smtp_user).trim(),
@@ -217,7 +219,7 @@ async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; subject: strin
     const serverResponse = String(info?.response || "").trim();
     if (rejected.length > 0 || (accepted.length === 0 && Array.isArray(info?.accepted))) {
       const reason = `Recipient rejected by ${cfg.smtpHost}: ${rejected.join(", ") || args.to}. ${serverResponse}`.trim();
-      await logEmailAttempt({ to: args.to, template: "club-smtp", status: "failed", error: reason });
+      await logEmailAttempt({ to: args.to, template: "club-smtp", status: "failed", error: reason, clubId: cfg.clubId });
       return { ok: false as const, skipped: false, reason };
     }
     await logEmailAttempt({
@@ -227,11 +229,12 @@ async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; subject: strin
       error: null,
       messageId: String(info?.messageId || "") || undefined,
       detail: serverResponse ? `${cfg.senderEmail} via ${cfg.smtpHost}: ${serverResponse}` : undefined,
+      clubId: cfg.clubId,
     });
     return { ok: true as const };
   } catch (err) {
     const reason = (err as Error).message || String(err);
-    await logEmailAttempt({ to: args.to, template: "club-smtp", status: "failed", error: `${cfg.senderEmail} via ${cfg.smtpHost}: ${reason}` });
+    await logEmailAttempt({ to: args.to, template: "club-smtp", status: "failed", error: `${cfg.senderEmail} via ${cfg.smtpHost}: ${reason}`, clubId: cfg.clubId });
     return { ok: false as const, skipped: false, reason };
   }
 }
@@ -248,6 +251,7 @@ async function logEmailAttempt(args: {
   error?: string | null;
   messageId?: string;
   detail?: string;
+  clubId?: string | null;
 }) {
   try {
     await supabaseAdmin.from("email_send_log").insert({
@@ -256,6 +260,7 @@ async function logEmailAttempt(args: {
       recipient_email: args.to,
       status: args.status,
       error_message: args.error || args.detail || null,
+      club_id: args.clubId || null,
     });
   } catch (e) {
     console.warn("[email-notifications] failed to log send attempt", e);

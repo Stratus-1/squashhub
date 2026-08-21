@@ -30,6 +30,7 @@ import { SubscriptionTab } from "@/components/club-admin/SubscriptionTab";
 import { WhatsAppBillingCard } from "@/components/club-admin/WhatsAppBillingCard";
 import { RouterTab } from "@/components/club-admin/RouterTab";
 import { LeagueAwardsTab } from "@/components/club-admin/LeagueAwardsTab";
+import { EmailLogTab } from "@/components/club-admin/EmailLogTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
@@ -72,6 +73,7 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
+  { value: "emails", label: "Email Log", icon: Mail, permission: "communications", color: "sky", noStatus: true },
 ];
 
 const COLOR_STYLES: Record<string, string> = {
@@ -192,6 +194,7 @@ export default function ClubAdmin() {
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
       case "awards": return <LeagueAwardsTab clubId={club.id} />;
       case "comms": return <CommunicationsTab clubId={club.id} />;
+      case "emails": return <EmailLogTab clubId={club.id} />;
       case "subscription": return <SubscriptionTab clubId={club.id} />;
       case "whatsapp": return <div className="mt-4"><WhatsAppBillingCard clubId={club.id} /></div>;
       case "router": return <RouterTab clubId={club.id} />;

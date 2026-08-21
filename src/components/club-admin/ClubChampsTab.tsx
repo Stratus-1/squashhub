@@ -7983,13 +7983,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
             {/* Tournament description / invite body */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label className="text-sm">Tournament details (shown in invites)</Label>
-                <div className="flex gap-2">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 min-w-0 space-y-2">
+                  <Label className="text-sm">Tournament details (shown in invites)</Label>
+                  <Textarea
+                    rows={10}
+                    placeholder={`Click "Fill from settings" to insert the tournament details (category, format, dates, registration window, fee) into this box, then add anything extra like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-row md:flex-col gap-2 md:w-44 shrink-0">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="flex-1 md:flex-none"
                     onClick={() => {
                       const lines = buildInviteDetailLines({
                         gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
@@ -8014,51 +8023,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="flex-1 md:flex-none"
                     onClick={() => setShowInvitePreview(true)}
                   >
                     <Eye className="w-4 h-4 mr-1" /> Preview invite
                   </Button>
                 </div>
               </div>
-              <Textarea
-                rows={8}
-                placeholder={`Click "Fill from settings" to insert the tournament details (category, format, dates, registration window, fee) into this box, then add anything extra like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
               <p className="text-xs text-muted-foreground">
                 This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> above.
               </p>
-              {editingChampId && (
-                <div className="pt-2 rounded-md border border-dashed border-border/60 p-3 space-y-1.5">
-                  <div className="text-xs font-medium">Test invite</div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={!sampleInvitee || testInviteSending}
-                    onClick={() => {
-                      if (!sampleInvitee) return;
-                      openTestInviteDialog(sampleInvitee);
-                    }}
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    {testInviteSending
-                      ? "Sending test…"
-                      : sampleInvitee
-                        ? `Send test as an invited player (${sampleInvitee.name})`
-                        : "Send test as an invited player"}
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    Test only — goes to an email address you type. It does not create entries and does not notify any member.
-                  </p>
-                  {allInviteCount === 0 && effectiveAllInviteCount > 0 && (
-                    <p className="text-[11px] text-amber-600 dark:text-amber-500">
-                      {effectiveAllInviteCount} player{effectiveAllInviteCount === 1 ? "" : "s"} are ready from the invitation audience. They will be added to the invite list when you save or send.
-                    </p>
-                  )}
-                </div>
-              )}
 
               {/* Individual invitee picker — staging only, never sends */}
               <Dialog open={inviteePickerOpen} onOpenChange={setInviteePickerOpen}>

@@ -719,6 +719,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
+  // 'club'  — the club books courts and publishes a fixed schedule.
+  // 'self'  — players arrange their own games and must play by a deadline.
+  const [schedulingMode, setSchedulingMode] = useState<"club" | "self">("club");
+  const [roundPlayBy, setRoundPlayBy] = useState<string>("");
+
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
   // When on, Bells scheduler will not place a player in a back-to-back match:
@@ -1830,6 +1835,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       day_schedules: customizeDailySchedule ? daySchedules : [],
       court_ids: Array.from(selectedCourtIds),
       schedule_mode: scheduleMode,
+      scheduling_mode: schedulingMode,
+      round_play_by: roundPlayBy || null,
+
       playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
       playoff_date: playoffDate || null,
     };
@@ -3745,6 +3753,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
             schedule_mode: scheduleMode,
+            scheduling_mode: schedulingMode,
+            round_play_by: roundPlayBy || null,
+
             playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
             playoff_date: playoffDate || null,
           }))
@@ -3817,6 +3828,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
             schedule_mode: scheduleMode,
+            scheduling_mode: schedulingMode,
+            round_play_by: roundPlayBy || null,
+
             playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
             playoff_date: playoffDate || null,
           }))
@@ -3887,7 +3901,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               order_index: orderIndex,
           }))
         );
-        const { error: entryErr } = await fromExt("club_champs_entries").upsert(entries, { onConflict: "champ_id,club_member_id" });
+        // A player may hold an entry in several divisions — the entry key is
+        // (tournament, player, division), never just (tournament, player).
+        const { error: entryErr } = await fromExt("club_champs_entries").upsert(entries, { onConflict: "champ_id,club_member_id,group_number" });
+
         if (entryErr) throw entryErr;
         const keepIds = entries.map((e) => e.club_member_id);
         if (keepIds.length > 0) await fromExt("club_champs_entries").delete().eq("champ_id", champId).not("club_member_id", "in", `(${keepIds.join(",")})`);
@@ -3908,7 +3925,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             order_index: orderIndex,
           }))
         );
-        const { error: entryErr } = await fromExt("club_champs_entries").upsert(entries, { onConflict: "champ_id,club_member_id" });
+        const { error: entryErr } = await fromExt("club_champs_entries").upsert(entries, { onConflict: "champ_id,club_member_id,group_number" });
         if (entryErr) throw entryErr;
         const keepIds = entries.map((e) => e.club_member_id);
         if (keepIds.length > 0) await fromExt("club_champs_entries").delete().eq("champ_id", champId).not("club_member_id", "in", `(${keepIds.join(",")})`);
@@ -3966,10 +3983,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           status: isBye
             ? (byeForLeague(m.groupNum) === "walkover_win" ? "completed" : "scheduled")
             : "scheduled",
+          // Self-scheduled: no fixed slot or court, just a deadline.
+          ...(schedulingMode === "self"
+            ? { scheduled_time: null, court_id: null, play_by: roundPlayBy || endDate || null }
+            : {}),
         };
       });
       if (matches.length > 0) {
         const { error: matchErr } = await fromExt("club_champs_matches").insert(matches);
+
         if (matchErr) throw matchErr;
       }
 
@@ -4137,7 +4159,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         external_id: `champ:${champId}:block:${s.date}:${s.courtId}`,
       }));
 
-      if (bookings.length > 0) {
+      // Self-scheduled tournaments never reserve courts — players book their
+      // own game like any normal court booking.
+      if (schedulingMode === "club" && bookings.length > 0) {
+
         // Clear prior per-match bookings for this tournament so re-saves don't
         // leave stale rows alongside the consolidated blocks.
         await fromExt("bookings")
@@ -5007,6 +5032,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setStartDate("");
     setEndDate("");
     setPlayDays(new Set());
+    setSchedulingMode("club");
+    setRoundPlayBy("");
+
     setStartTime("18:00");
     setEndTime("20:00");
     setMatchDuration(0);
@@ -5118,6 +5146,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
     setAvoidBackToBack((champ as any).avoid_back_to_back !== false);
     setScheduleMode(((champ as any).schedule_mode as "spread" | "fill") || "spread");
+    setSchedulingMode(((champ as any).scheduling_mode as any) === "self" ? "self" : "club");
+    setRoundPlayBy(((champ as any).round_play_by as string) || "");
+
     setPlayoffBreakMinutes(Number((champ as any).playoff_break_minutes) || 0);
     setPlayoffDate(((champ as any).playoff_date as string) || "");
     setRoundFormat((champ.round_format as any) || "");
@@ -5963,6 +5994,53 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
+            {/* Who arranges the games: the club (fixed schedule on booked
+                courts) or the players themselves (play-by deadline). */}
+            <div className="rounded-lg border p-3 space-y-2">
+              <Label className="text-sm font-medium">How are games arranged?</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${schedulingMode === "club" ? "border-primary bg-primary/5" : ""}`}>
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    checked={schedulingMode === "club"}
+                    onChange={() => setSchedulingMode("club")}
+                  />
+                  <span>
+                    <span className="text-sm font-medium block">Club schedules &amp; books courts</span>
+                    <span className="text-[11px] text-muted-foreground">Fixed fixture times, courts reserved automatically.</span>
+                  </span>
+                </label>
+                <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${schedulingMode === "self" ? "border-primary bg-primary/5" : ""}`}>
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    checked={schedulingMode === "self"}
+                    onChange={() => setSchedulingMode("self")}
+                  />
+                  <span>
+                    <span className="text-sm font-medium block">Players arrange their own games</span>
+                    <span className="text-[11px] text-muted-foreground">No court bookings — players just have to play by a deadline.</span>
+                  </span>
+                </label>
+              </div>
+              {schedulingMode === "self" && (
+                <div className="pt-1">
+                  <Label className="text-sm">Games must be played by</Label>
+                  <Input
+                    type="date"
+                    value={roundPlayBy}
+                    min={startDate || undefined}
+                    onChange={(e) => setRoundPlayBy(e.target.value)}
+                    className="max-w-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Shown to players on their fixtures. Courts and capacity planning are skipped for this tournament.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <WizardSection
               title={"Dates & times"}
               summary={`${startDate || "start?"} → ${endDate || "end?"} · ${startTime}–${endTime} · ${playDays.size} play day${playDays.size === 1 ? "" : "s"}`}
@@ -6237,7 +6315,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             {/* Capacity validation — lives here because it needs BOTH the structure
                 (leagues, formats, pools, match length) and the schedule (dates,
                 windows, courts). Advisory only: it never blocks setup. */}
+            {schedulingMode === "club" && (
             <WizardSection
+
               title={"Capacity check"}
               summary={"Does the plan fit in the court time you have?"}
               complete={true}
@@ -6261,6 +6341,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 playoffBreakMinutes={playoffBreakMinutes}
               />
             </WizardSection>
+            )}
+
 
 
             <WizardSection

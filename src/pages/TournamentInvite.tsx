@@ -11,8 +11,11 @@ import { toast } from "sonner";
 import { CalendarDays, CheckCircle2, Clock, CreditCard, Loader2, LogIn, Trophy, UserPlus, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   afterAcceptPath,
+  defaultDivisionSelection,
+  inviteDivisions,
   inviteFeeCents,
   inviteLoginPath,
   inviteSignupPath,
@@ -20,8 +23,10 @@ import {
   inviteVerificationKind,
   inviteVerificationLabel,
   isInviteVerificationComplete,
+  requiresDivisionChoice,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
+
 
 
 function money(cents: number) {
@@ -63,6 +68,21 @@ export default function TournamentInvite() {
   const state = inviteState(data);
   const feeCents = inviteFeeCents(data);
   const verificationKind = inviteVerificationKind(data);
+  const divisions = useMemo(() => inviteDivisions(data), [data]);
+  const mustChooseDivision = requiresDivisionChoice(data);
+  const [chosenDivisions, setChosenDivisions] = useState<number[]>([]);
+  const [divisionError, setDivisionError] = useState("");
+
+  // Pre-tick what the invitee already chose (or the only division on offer).
+  useEffect(() => {
+    if (!data?.found) return;
+    setChosenDivisions(defaultDivisionSelection(data));
+  }, [data]);
+
+  const toggleDivision = (gn: number) => {
+    setDivisionError("");
+    setChosenDivisions((prev) => (prev.includes(gn) ? prev.filter((n) => n !== gn) : [...prev, gn].sort((a, b) => a - b)));
+  };
 
   const respond = useMutation({
     mutationFn: async (accept: boolean) => {
@@ -70,10 +90,12 @@ export default function TournamentInvite() {
         p_token: token,
         p_accept: accept,
         p_verify: verify.trim() || null,
+        p_divisions: accept && chosenDivisions.length > 0 ? chosenDivisions : null,
       });
       if (error) throw error;
       return { accept, res } as { accept: boolean; res: any };
     },
+
     onSuccess: async ({ accept, res }) => {
       await refetch();
       if (!accept) {
@@ -276,6 +298,10 @@ export default function TournamentInvite() {
       );
       return;
     }
+    if (accept && mustChooseDivision && chosenDivisions.length === 0) {
+      setDivisionError("Please tick at least one division you want to play in.");
+      return;
+    }
     if (!verifyReady) {
       setVerifyError(`Please enter ${verifyLabel.toLowerCase()} to confirm this invitation is yours.`);
       return;
@@ -288,11 +314,38 @@ export default function TournamentInvite() {
     <>
       {header}
       {detailList}
+      {divisions.length > 1 && (
+        <div className="space-y-1.5">
+          <Label className="text-xs">Which do you want to play in?</Label>
+          <p className="text-[11px] text-muted-foreground">
+            You may enter more than one — tick every division you want to play.
+          </p>
+          <div className="space-y-1">
+            {divisions.map((d) => (
+              <label
+                key={d.group_number}
+                className="flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer"
+              >
+                <Checkbox
+                  checked={chosenDivisions.includes(d.group_number)}
+                  onCheckedChange={() => toggleDivision(d.group_number)}
+                />
+                <span className="flex-1">{d.label}</span>
+                {d.match_type === "doubles" && (
+                  <Badge variant="outline" className="text-[9px] h-4 px-1">Doubles</Badge>
+                )}
+              </label>
+            ))}
+          </div>
+          {divisionError && <p className="text-[11px] text-destructive">{divisionError}</p>}
+        </div>
+      )}
       {feeCents > 0 && (
         <p className="text-xs text-muted-foreground">
           Accepting reserves your place — you'll go straight to the entry fee payment page.
         </p>
       )}
+
       {!isTest && verificationKind !== "none" && (
         <div className="space-y-1.5">
           <Label htmlFor="invite-verify" className="text-xs">

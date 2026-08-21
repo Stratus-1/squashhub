@@ -526,17 +526,25 @@ async function handleClubSend(body: any, authHeader: string) {
     recipientName,
     clubName: clubMail?.clubName || "",
   };
-  // The club's own email settings are authoritative: when SMTP is configured we
-  // NEVER silently fall back to the platform sender — the admin is told exactly
-  // why the email did not go out so they can fix the credentials.
+  // The club's own email settings are tried FIRST. If they fail we still get the
+  // message out via the platform sender, but we always report that the fallback
+  // was used and why the club's own settings did not work.
   if (clubMail) {
     const result = await sendViaClubSmtp(clubMail, { to, subject, html, text });
-    if (!result.ok) {
-      const message = describeSmtpError(result.reason || "", clubMail);
-      console.error("[email-notifications] club SMTP send failed", message);
-      return json({ ok: false, error: message, smtpError: result.reason || null, sender: clubMail.senderEmail }, 502);
+    if (result.ok) return json({ ok: true, sender: clubMail.senderEmail });
+
+    const message = describeSmtpError(result.reason || "", clubMail);
+    console.error("[email-notifications] club SMTP send failed, falling back to platform", message);
+    const fb = await sendViaPlatform(platformArgs);
+    if (!fb.ok) {
+      return json({ ok: false, error: `${message} The SquashHub fallback sender also failed: ${fb.reason || "unknown error"}.`, smtpError: result.reason || null }, 502);
     }
-    return json({ ok: true, sender: clubMail.senderEmail });
+    return json({
+      ok: true,
+      sender: "platform",
+      fallbackUsed: true,
+      warning: `${message} The email was sent from the SquashHub address instead.`,
+    });
   }
 
   const result = await sendViaPlatform(platformArgs);
@@ -545,6 +553,7 @@ async function handleClubSend(body: any, authHeader: string) {
   }
   return json({ ok: true, sender: "platform" });
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsHeaders });

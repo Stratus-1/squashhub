@@ -298,6 +298,10 @@ export default function TournamentInvite() {
       );
       return;
     }
+    if (accept && mustChooseDivision && chosenDivisions.length === 0) {
+      setDivisionError("Please tick at least one division you want to play in.");
+      return;
+    }
     if (!verifyReady) {
       setVerifyError(`Please enter ${verifyLabel.toLowerCase()} to confirm this invitation is yours.`);
       return;
@@ -310,11 +314,38 @@ export default function TournamentInvite() {
     <>
       {header}
       {detailList}
+      {divisions.length > 1 && (
+        <div className="space-y-1.5">
+          <Label className="text-xs">Which do you want to play in?</Label>
+          <p className="text-[11px] text-muted-foreground">
+            You may enter more than one — tick every division you want to play.
+          </p>
+          <div className="space-y-1">
+            {divisions.map((d) => (
+              <label
+                key={d.group_number}
+                className="flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer"
+              >
+                <Checkbox
+                  checked={chosenDivisions.includes(d.group_number)}
+                  onCheckedChange={() => toggleDivision(d.group_number)}
+                />
+                <span className="flex-1">{d.label}</span>
+                {d.match_type === "doubles" && (
+                  <Badge variant="outline" className="text-[9px] h-4 px-1">Doubles</Badge>
+                )}
+              </label>
+            ))}
+          </div>
+          {divisionError && <p className="text-[11px] text-destructive">{divisionError}</p>}
+        </div>
+      )}
       {feeCents > 0 && (
         <p className="text-xs text-muted-foreground">
           Accepting reserves your place — you'll go straight to the entry fee payment page.
         </p>
       )}
+
       {!isTest && verificationKind !== "none" && (
         <div className="space-y-1.5">
           <Label htmlFor="invite-verify" className="text-xs">

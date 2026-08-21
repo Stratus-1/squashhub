@@ -190,6 +190,70 @@ function stripHtml(html: string) {
     .trim();
 }
 
+/**
+ * Render a plain-text notification body as email-safe HTML.
+ * Lines starting with a bullet marker (•, -, *) become real <ul><li> items so
+ * clients that ignore white-space rules (Outlook) still show a readable list.
+ * Separator lines like "— Tournament details —" become small captions.
+ */
+function renderBodyHtml(body: string): string {
+  const lines = String(body || "").replace(/\r\n|\r/g, "\n").split("\n");
+  const out: string[] = [];
+  let bullets: string[] = [];
+  let paragraph: string[] = [];
+
+  const flushBullets = () => {
+    if (!bullets.length) return;
+    out.push(
+      `<ul style="margin:0 0 14px 0; padding-left:20px; color:#334155">${bullets
+        .map((b) => `<li style="margin:0 0 6px 0; line-height:1.5">${escapeHtml(b)}</li>`)
+        .join("")}</ul>`,
+    );
+    bullets = [];
+  };
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    out.push(
+      `<p style="margin:0 0 14px 0; color:#334155; line-height:1.5">${paragraph
+        .map((l) => escapeHtml(l))
+        .join("<br />")}</p>`,
+    );
+    paragraph = [];
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      flushBullets();
+      flushParagraph();
+      continue;
+    }
+    const bulletMatch = line.match(/^[•\-\*]\s+(.*)$/);
+    const captionMatch = line.match(/^—\s*(.+?)\s*—$/);
+    if (bulletMatch) {
+      flushParagraph();
+      bullets.push(bulletMatch[1]);
+      continue;
+    }
+    if (captionMatch) {
+      flushBullets();
+      flushParagraph();
+      out.push(
+        `<p style="margin:0 0 8px 0; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#64748b">${escapeHtml(captionMatch[1])}</p>`,
+      );
+      continue;
+    }
+    flushBullets();
+    paragraph.push(line);
+  }
+  flushBullets();
+  flushParagraph();
+
+  return out.join("\n") || `<p style="margin:0; color:#334155">${escapeHtml(String(body || ""))}</p>`;
+}
+
+
+
 function renderTemplate(template: string, vars: Record<string, string>) {
   return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => {
     const v = vars[key];

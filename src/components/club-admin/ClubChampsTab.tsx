@@ -7690,6 +7690,61 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               complete={inviteMethods.size > 0}
               defaultOpen={true}
             >
+            {/* Tournament description / invite body */}
+            <div className="space-y-2">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 min-w-0 space-y-2">
+                  <Label className="text-sm">Tournament details (shown in invites)</Label>
+                  <Textarea
+                    rows={10}
+                    placeholder={`Click "Fill from settings" to insert the tournament details (category, format, dates, registration window, fee) into this box, then add anything extra like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-row md:flex-col gap-2 md:w-44 shrink-0">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 md:flex-none"
+                    onClick={() => {
+                      const lines = buildInviteDetailLines({
+                        gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+                        startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
+                        registrationOpensAt, registrationClosesAt, entryFeeRand,
+                        pointsPerGame, bestOf,
+                        registrationRequired, registrationMode: (registrationMode || "open") as any,
+                        tournamentName: champName, divisionFormats: inviteDivisionFormats(),
+                      });
+                      const bullets = lines.map((l) => `• ${l}`).join("\n");
+                      // Strip any previously inserted auto-block (between markers) then prepend fresh.
+                      const stripped = description
+                        .replace(/^[\s\S]*?— Tournament details —\n([\s\S]*?)\n— End details —\n?/m, "")
+                        .trimStart();
+                      const block = `— Tournament details —\n${bullets}\n— End details —`;
+                      setDescription(stripped ? `${block}\n\n${stripped}` : block);
+                    }}
+                  >
+                    Fill from settings
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 md:flex-none"
+                    onClick={() => setShowInvitePreview(true)}
+                  >
+                    <Eye className="w-4 h-4 mr-1" /> Preview invite
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> below.
+              </p>
+            </div>
+
+            <div className="space-y-2">
             {/* INVITATION AUDIENCE — independent of the Structure/draw source and of entry method */}
             <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
 
@@ -7991,58 +8046,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-            {/* Tournament description / invite body */}
-            <div className="space-y-2">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="flex-1 min-w-0 space-y-2">
-                  <Label className="text-sm">Tournament details (shown in invites)</Label>
-                  <Textarea
-                    rows={10}
-                    placeholder={`Click "Fill from settings" to insert the tournament details (category, format, dates, registration window, fee) into this box, then add anything extra like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-row md:flex-col gap-2 md:w-44 shrink-0">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 md:flex-none"
-                    onClick={() => {
-                      const lines = buildInviteDetailLines({
-                        gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
-                        startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
-                        registrationOpensAt, registrationClosesAt, entryFeeRand,
-                        pointsPerGame, bestOf,
-                        registrationRequired, registrationMode: (registrationMode || "open") as any,
-                        tournamentName: champName, divisionFormats: inviteDivisionFormats(),
-                      });
-                      const bullets = lines.map((l) => `• ${l}`).join("\n");
-                      // Strip any previously inserted auto-block (between markers) then prepend fresh.
-                      const stripped = description
-                        .replace(/^[\s\S]*?— Tournament details —\n([\s\S]*?)\n— End details —\n?/m, "")
-                        .trimStart();
-                      const block = `— Tournament details —\n${bullets}\n— End details —`;
-                      setDescription(stripped ? `${block}\n\n${stripped}` : block);
-                    }}
-                  >
-                    Fill from settings
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 md:flex-none"
-                    onClick={() => setShowInvitePreview(true)}
-                  >
-                    <Eye className="w-4 h-4 mr-1" /> Preview invite
-                  </Button>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> above.
-              </p>
 
               {/* Individual invitee picker — staging only, never sends */}
               <Dialog open={inviteePickerOpen} onOpenChange={setInviteePickerOpen}>

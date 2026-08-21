@@ -9422,6 +9422,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         registrationRequired={registrationRequired}
         registrationMode={registrationMode}
         divisionFormats={inviteDivisionFormats()}
+        selfScheduled={schedulingMode === "self"}
+        roundDeadlines={roundDeadlines}
       />
 
       <ShadowRankPromptDialog

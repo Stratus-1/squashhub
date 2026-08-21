@@ -3948,6 +3948,7 @@ export type Database = {
           auth_email_ttl_minutes: number
           batch_size: number
           id: number
+          max_emails_per_hour: number
           retry_after_until: string | null
           send_delay_ms: number
           transactional_email_ttl_minutes: number
@@ -3957,6 +3958,7 @@ export type Database = {
           auth_email_ttl_minutes?: number
           batch_size?: number
           id?: number
+          max_emails_per_hour?: number
           retry_after_until?: string | null
           send_delay_ms?: number
           transactional_email_ttl_minutes?: number
@@ -3966,6 +3968,7 @@ export type Database = {
           auth_email_ttl_minutes?: number
           batch_size?: number
           id?: number
+          max_emails_per_hour?: number
           retry_after_until?: string | null
           send_delay_ms?: number
           transactional_email_ttl_minutes?: number

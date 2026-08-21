@@ -6532,8 +6532,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 return (
                                   <div className="flex flex-wrap items-center gap-2">
                                     <Label className="text-[9px] uppercase tracking-wider text-muted-foreground w-full sm:w-auto">
-                                      Players from
+                                      Primarily players from
                                     </Label>
+                                    <p className="w-full text-[10px] text-muted-foreground leading-snug order-last">
+                                      This decides which league these players are allocated to and seeded in — it does not
+                                      limit who is invited.
+                                    </p>
                                     <Popover>
                                       <PopoverTrigger asChild>
                                         <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]">

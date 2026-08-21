@@ -7988,121 +7988,36 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 onChange={(e) => setDescription(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — use the “Invite actions” button below.
+                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> above.
               </p>
-              {!editingChampId && (
-                <div className="pt-2 rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Invite actions</span> (send to all, send to selected members,
-                   send a test to an email address) become available as soon as the tournament is saved — use{" "}
-                  <span className="font-medium text-foreground">Save progress</span> first.
-                </div>
-              )}
               {editingChampId && (
-                <div className="pt-2">
-                  {invitesApply && (
-                    <div className="mb-2 rounded-md border border-border/60 bg-muted/30 p-2 space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium">Invitation audience</span>
-                        <span className="text-[11px] text-muted-foreground">{audienceLabel(inviteAudience)}</span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-3 text-xs">
-                        {(["all_club", "leagues", "individuals"] as InviteAudienceMode[]).map((mode) => (
-                          <label key={mode} className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="invite-audience-actions"
-                              checked={inviteAudience === mode}
-                              onChange={() => setInviteAudience(mode)}
-                            />
-                            {mode === "all_club" ? "All club members" : mode === "leagues" ? "Selected league teams" : "Selected individuals"}
-                          </label>
-                        ))}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">{resolvedAudience.summary}</p>
-                    </div>
-                  )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={invitesSendingFor === editingChampId || testInviteSending}
-                      >
-                        {invitesSendingFor === editingChampId
-                          ? "Sending…"
-                          : testInviteSending
-                            ? "Sending test…"
-                            : "Invite actions"}
-                        <ChevronDown className="w-4 h-4 ml-1" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-80">
-                      <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">
-                        Invitation audience — who the bulk send reaches
-                      </DropdownMenuLabel>
-                      <DropdownMenuRadioGroup
-                        value={inviteAudience}
-                        onValueChange={(v) => setInviteAudience(v as InviteAudienceMode)}
-                      >
-                        <DropdownMenuRadioItem value="all_club">All club members</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="leagues">Selected league teams</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="individuals">Selected individual members</DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onSelect={() => sendChampInvites(editingChampId, { confirm: true, mode: "all" })}
-                      >
-                        <Send className="w-4 h-4 mr-2" />
-                        <span>
-                          Send to the invitation audience ({effectiveAllInviteCount})
-                          <span className="block text-[11px] text-muted-foreground">
-                            {resolvedAudience.summary}
-                          </span>
-                        </span>
-                      </DropdownMenuItem>
-
-                      <DropdownMenuItem
-                        onSelect={() => void openInviteePicker()}
-                      >
-                        <Users className="w-4 h-4 mr-2" />
-                        <span>
-                          Send to selected members{selectedInviteCount > 0 ? ` (${selectedInviteCount})` : ""}
-                          <span className="block text-[11px] text-muted-foreground">Pick individual invitees and remind them</span>
-                        </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-
-                      <DropdownMenuItem
-                        disabled={!sampleInvitee}
-                        onSelect={() => {
-                          if (!sampleInvitee) return;
-                          openTestInviteDialog(sampleInvitee);
-                        }}
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        <span>
-                          {sampleInvitee
-                            ? `Send test as an invited player (${sampleInvitee.name})`
-                            : "Send test as an invited player"}
-                          <span className="block text-[11px] text-muted-foreground">
-                            {sampleInvitee
-                              ? "Enter an email — preview what the first player sees"
-                              : "No invitees yet — select league teams or save progress first"}
-                          </span>
-                        </span>
-                      </DropdownMenuItem>
-
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Uses the delivery methods selected above ({Array.from(inviteMethods.size ? inviteMethods : new Set(["app"])).join(", ")}).
+                <div className="pt-2 rounded-md border border-dashed border-border/60 p-3 space-y-1.5">
+                  <div className="text-xs font-medium">Test invite</div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!sampleInvitee || testInviteSending}
+                    onClick={() => {
+                      if (!sampleInvitee) return;
+                      openTestInviteDialog(sampleInvitee);
+                    }}
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    {testInviteSending
+                      ? "Sending test…"
+                      : sampleInvitee
+                        ? `Send test as an invited player (${sampleInvitee.name})`
+                        : "Send test as an invited player"}
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    Test only — goes to an email address you type. It does not create entries and does not notify any member.
                   </p>
                   {allInviteCount === 0 && effectiveAllInviteCount > 0 && (
-                    <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-1">
-                      {effectiveAllInviteCount} player{effectiveAllInviteCount === 1 ? "" : "s"} are ready from the selected league teams. They will be added to the invite list when you save or send.
+                    <p className="text-[11px] text-amber-600 dark:text-amber-500">
+                      {effectiveAllInviteCount} player{effectiveAllInviteCount === 1 ? "" : "s"} are ready from the invitation audience. They will be added to the invite list when you save or send.
                     </p>
                   )}
-
                 </div>
               )}
 

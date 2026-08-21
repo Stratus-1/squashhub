@@ -4583,6 +4583,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
       }
 
+      setLastInviteSend({ at: new Date().toISOString(), count: rows.length, mode });
       toast.success(
         only
           ? `Reminder sent to ${rows.length} selected member${rows.length === 1 ? "" : "s"}.`

@@ -1,0 +1,1 @@
+UPDATE public.tournament_governance SET registration_closes_at = timestamptz '2026-08-26 21:59:00+00' WHERE tournament_id = '8c405b3f-1b90-4a22-9d8a-54856ec21c33';

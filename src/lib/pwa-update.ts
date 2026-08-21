@@ -63,3 +63,48 @@ export function dismissPendingUpdate(): void {
   // Keep applyFn so the user can still update later from the same session
   // (the banner itself is what gets hidden).
 }
+
+/**
+ * Manual "check for updates" — used by the version badge.
+ * Asks the browser to re-fetch the service worker; if a newer build is already
+ * waiting it activates it, otherwise it force-reloads bypassing the HTTP cache.
+ * Returns true when an update was applied.
+ */
+export async function checkForUpdateNow(): Promise<boolean> {
+  if (applyFn) {
+    await applyPendingUpdate();
+    return true;
+  }
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.update().catch(() => {})));
+      // Give workbox a moment to report a waiting worker.
+      await new Promise((r) => setTimeout(r, 1200));
+      if (applyFn) {
+        await applyPendingUpdate();
+        return true;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
+/** Last resort: drop app caches and reload from the network. */
+export async function hardRefresh(): Promise<void> {
+  try {
+    if ("caches" in window) {
+      const names = await caches.keys();
+      await Promise.all(
+        names
+          .filter((n) => /precache|runtime|html-pages|workbox/i.test(n))
+          .map((n) => caches.delete(n)),
+      );
+    }
+  } catch {
+    // ignore
+  }
+  window.location.reload();
+}

@@ -49,20 +49,30 @@ export function registerServiceWorker(): void {
       const updateSW = registerSW({
         immediate: true,
         onRegisteredSW(_swUrl, registration) {
-          // Poll every 60s for a new SW, but skip while live scoring is in
-          // progress so nothing can disturb a match mid-rally.
-          if (registration) {
-            setInterval(() => {
-              import("./scoring-lock")
-                .then(({ isScoringActive }) => {
-                  if (isScoringActive()) return;
-                  registration.update().catch(() => {});
-                })
-                .catch(() => {
-                  registration.update().catch(() => {});
-                });
-            }, 60_000);
-          }
+          if (!registration) return;
+
+          const check = () => {
+            import("./scoring-lock")
+              .then(({ isScoringActive }) => {
+                if (isScoringActive()) return;
+                registration.update().catch(() => {});
+              })
+              .catch(() => {
+                registration.update().catch(() => {});
+              });
+          };
+
+          // A waiting worker may already exist from a previous session
+          // (desktop shells often stay open for days) — surface it now.
+          if (registration.waiting) setUpdateHandler(updateSW);
+
+          // Check straight away, then on every poll / focus / tab return.
+          check();
+          setInterval(check, 60_000);
+          window.addEventListener("focus", check);
+          document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") check();
+          });
         },
 
         onNeedRefresh() {
@@ -78,3 +88,4 @@ export function registerServiceWorker(): void {
       // virtual module unavailable in dev — fine.
     });
 }
+

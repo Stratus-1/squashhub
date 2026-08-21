@@ -1240,7 +1240,9 @@ export default function ClubChampsView() {
             {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"} Tournament · {champ.start_date} to {champ.end_date}
           </p>
           <p className="text-sm text-muted-foreground">
-            {(champ.play_days as number[])?.map((d: number) => DAY_NAMES[d]).join(", ")} · {champ.start_time?.slice(0, 5)} – {champ.end_time?.slice(0, 5)}
+            {String((champ as any).scheduling_mode || "") === "self"
+              ? "Players arrange their own games — no fixed court times"
+              : `${(champ.play_days as number[])?.map((d: number) => DAY_NAMES[d]).join(", ")} · ${champ.start_time?.slice(0, 5)} – ${champ.end_time?.slice(0, 5)}`}
           </p>
         </div>
 

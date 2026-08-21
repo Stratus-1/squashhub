@@ -8582,6 +8582,55 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     })
                   );
                 })()}
+
+                {/* Accepted entrants who play in none of the divisions' source
+                    leagues (typically open-invite acceptors). They are kept out
+                    of the draw until the organiser places them explicitly. */}
+                {!isDoubles && unassignedEntrantIds.length > 0 && (
+                  <div className="border border-amber-500/40 bg-amber-500/5 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className="text-sm font-medium">Unassigned — needs a league</span>
+                      <span className="text-muted-foreground text-xs">({unassignedEntrantIds.length} players)</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      These players accepted the invitation but do not play in any of the leagues chosen under
+                      “Primarily players from” in Structure. Pick a league for each of them.
+                    </p>
+                    <div className="space-y-1">
+                      {unassignedEntrantIds.map((id) => {
+                        const p: any = (selectedPlayers as any[]).find((x) => x.id === id);
+                        if (!p) return null;
+                        return (
+                          <div key={id} className="flex items-center gap-2 rounded border bg-background/60 px-2 py-1.5">
+                            <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
+                            {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
+                            <Select
+                              value=""
+                              onValueChange={(v) => {
+                                setGroupAssignments((prev) => new Map(prev).set(id, Number(v)));
+                                setEligibilityOverrides((prev) => new Set(prev).add(id));
+                                setUnassignedEntrantIds((prev) => prev.filter((x) => x !== id));
+                              }}
+                            >
+                              <SelectTrigger className="w-32 h-7 text-xs">
+                                <SelectValue placeholder="Assign…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: numGroups }, (_, i) => (
+                                  <SelectItem key={i} value={String(i)}>
+                                    {groupLabels[String(i + 1)]?.trim()
+                                      ? (/league|div|pool|grp|group/i.test(groupLabels[String(i + 1)]) ? groupLabels[String(i + 1)] : `League ${groupLabels[String(i + 1)]}`)
+                                      : `League ${i + 1}`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </DndContext>
           </CardContent>

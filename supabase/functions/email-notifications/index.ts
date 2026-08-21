@@ -216,6 +216,29 @@ async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; subject: strin
   }
 }
 
+/**
+ * Plain-English explanation of an SMTP failure so admins are never left
+ * guessing why a club email did not go out.
+ */
+function describeSmtpError(reason: string, cfg: ClubMail): string {
+  const r = String(reason || "").trim();
+  const low = r.toLowerCase();
+  const where = `${cfg.senderEmail} via ${cfg.smtpHost}:${cfg.smtpPort}`;
+  let hint = "";
+  if (low.includes("535") || low.includes("username and password not accepted") || low.includes("authentication failed") || low.includes("invalid login")) {
+    hint = "The mailbox username or password was rejected. For Gmail/Google Workspace you must use a 16-character App Password (not the normal account password) with 2-step verification enabled.";
+  } else if (low.includes("534") || low.includes("application-specific password")) {
+    hint = "Google requires an App Password for this mailbox.";
+  } else if (low.includes("timeout") || low.includes("etimedout") || low.includes("econnrefused") || low.includes("enotfound")) {
+    hint = "The mail server could not be reached — check the SMTP host and port in the club email settings.";
+  } else if (low.includes("certificate") || low.includes("tls") || low.includes("ssl")) {
+    hint = "The secure connection failed — try port 587 (STARTTLS) or 465 (SSL).";
+  } else if (low.includes("550") || low.includes("relay") || low.includes("not allowed to send")) {
+    hint = "The server refused to send from this address — the sender address must match the mailbox you authenticate with.";
+  }
+  return `Club email (SMTP) send failed for ${where}. ${hint} Server said: ${r || "no detail returned"}`.trim();
+}
+
 function escapeHtml(s: string) {
   return s
     .replace(/&/g, "&amp;")
@@ -503,24 +526,24 @@ async function handleClubSend(body: any, authHeader: string) {
     recipientName,
     clubName: clubMail?.clubName || "",
   };
-  let result: { ok: boolean; skipped?: boolean; reason?: string };
-  let sender = "platform";
-  let smtpError: string | null = null;
+  // The club's own email settings are authoritative: when SMTP is configured we
+  // NEVER silently fall back to the platform sender — the admin is told exactly
+  // why the email did not go out so they can fix the credentials.
   if (clubMail) {
-    result = await sendViaClubSmtp(clubMail, { to, subject, html, text });
-    sender = clubMail.senderEmail;
+    const result = await sendViaClubSmtp(clubMail, { to, subject, html, text });
     if (!result.ok) {
-      smtpError = result.reason || "Club SMTP send failed";
-      console.warn("[email-notifications] club SMTP failed, falling back to platform sender", smtpError);
-      result = await sendViaPlatform(platformArgs);
-      sender = "platform";
+      const message = describeSmtpError(result.reason || "", clubMail);
+      console.error("[email-notifications] club SMTP send failed", message);
+      return json({ ok: false, error: message, smtpError: result.reason || null, sender: clubMail.senderEmail }, 502);
     }
-  } else {
-    result = await sendViaPlatform(platformArgs);
+    return json({ ok: true, sender: clubMail.senderEmail });
   }
 
-  if (!result.ok) return json({ ...result, smtpError }, 500);
-  return json({ ok: true, sender, smtpError });
+  const result = await sendViaPlatform(platformArgs);
+  if (!result.ok) {
+    return json({ ok: false, error: `Email could not be sent: ${result.reason || "unknown error"}. This club has no email (SMTP) settings configured, so the SquashHub sender was used.` }, 502);
+  }
+  return json({ ok: true, sender: "platform" });
 }
 
 Deno.serve(async (req) => {
@@ -685,16 +708,22 @@ Deno.serve(async (req) => {
     if (clubMail) {
       result = await sendViaClubSmtp(clubMail, { to: email, subject, html, text });
       if (!result.ok) {
-        console.warn("[email-notifications] club SMTP failed, falling back to platform sender", result.reason);
-        result = await sendViaPlatform(platformArgs);
+        // Club settings are authoritative — report the failure instead of
+        // quietly re-sending from the platform address.
+        const message = describeSmtpError(result.reason || "", clubMail);
+        console.error("[email-notifications] club SMTP send failed", message);
+        return new Response(JSON.stringify({ ok: false, error: message, smtpError: result.reason || null }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     } else {
       result = await sendViaPlatform(platformArgs);
     }
 
     if (!result.ok) {
-      return new Response(JSON.stringify(result), {
-        status: result.skipped ? 200 : 500,
+      return new Response(JSON.stringify({ ...result, error: result.reason || "Email could not be sent" }), {
+        status: result.skipped ? 200 : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

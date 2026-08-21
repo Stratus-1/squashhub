@@ -102,6 +102,16 @@ import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesD
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 import { CapacityCheck } from "@/components/club-admin/tournament/CapacityCheck";
+import {
+  type RoundDeadline,
+  parseRoundDeadlines,
+  serializeRoundDeadlines,
+  deadlineForRound,
+  defaultRoundLabel,
+  lastDeadline,
+  roundDeadlineLines,
+  roundDeadlineSummary,
+} from "@/lib/tournaments/round-deadlines";
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
 import { z } from "zod";
 
@@ -327,6 +337,9 @@ function buildInviteDetailLines(opts: {
    * round-robin. Falls back to `roundFormat` when omitted.
    */
   divisionFormats?: string[];
+  /** Self-scheduled tournaments: per-round "must be played by" deadlines. */
+  selfScheduled?: boolean;
+  roundDeadlines?: { label: string; date: string }[];
 }): string[] {
   const lines: string[] = [];
   const isDoubles = opts.matchType === "doubles";
@@ -378,6 +391,16 @@ function buildInviteDetailLines(opts: {
         ? "Players choose their own partner"
         : "Admin pairs all players"}`
     );
+  }
+
+  // Self-scheduled: players book their own court, so report deadlines instead
+  // of fixture times.
+  if (opts.selfScheduled) {
+    const deadlines = roundDeadlineLines(opts.roundDeadlines || []);
+    if (deadlines.length) {
+      lines.push("Scheduling: Players arrange their own games (no courts booked)");
+      for (const d of deadlines) lines.push(d);
+    }
   }
 
   const start = formatInviteDate(opts.startDate);
@@ -7926,6 +7949,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         pointsPerGame, bestOf,
                         registrationRequired, registrationMode: (registrationMode || "open") as any,
                         tournamentName: champName, divisionFormats: inviteDivisionFormats(),
+                        selfScheduled: schedulingMode === "self", roundDeadlines,
                       });
                       const bullets = lines.map((l) => `• ${l}`).join("\n");
                       // Strip any previously inserted auto-block (between markers) then prepend fresh.

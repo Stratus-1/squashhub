@@ -2224,6 +2224,80 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
   };
 
+  const withdraw = async (id: string, isPair = false) => {
+    const cid = editingChampId;
+    if (isPair) {
+      const pair = doublesPairs.find((p) => p.id === id);
+      if (!pair) {
+        toast.error("Pair not found");
+        return;
+      }
+    } else if (!selectedPlayerIds.has(id)) {
+      toast.error("Player not in roster");
+      return;
+    }
+    try {
+      const pair = isPair ? doublesPairs.find((p) => p.id === id) : undefined;
+      const rawIds = pair ? [pair.player1Id, pair.player2Id] : [id];
+      const resolvedIds = rawIds.length > 0 ? await promoteVisitorIds(rawIds) : [];
+      if (cid && resolvedIds.length > 0) {
+        for (const resolvedId of resolvedIds) {
+          await fromExt("club_champs_entries")
+            .delete()
+            .eq("champ_id", cid)
+            .or(`club_member_id.eq.${resolvedId},partner_member_id.eq.${resolvedId}`);
+        }
+        await fromExt("club_champs_registrations")
+          .update({
+            status: "cancelled",
+            confirmed_at: null,
+            confirmation_source: null,
+            partner_member_id: null,
+            partner_confirmed: false,
+          })
+          .eq("champ_id", cid)
+          .in("club_member_id", resolvedIds);
+        qc.invalidateQueries({ queryKey: ["champ-invitees", cid] });
+        qc.invalidateQueries({ queryKey: ["champ-registrations", cid] });
+      }
+      if (isPair) {
+        setDoublesPairs((prev) => prev.filter((p) => p.id !== id));
+        setPairGroupAssignments((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        setPairOrder((prev) => prev.filter((x) => x !== id));
+      } else {
+        setSelectedPlayerIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        setGroupAssignments((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        setExtraDivisions((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        setPlayerOrder((prev) => prev.filter((x) => x !== id));
+        setUnassignedEntrantIds((prev) => prev.filter((x) => x !== id));
+        setEligibilityOverrides((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+      toast.success("Withdrawn from tournament");
+    } catch (e: any) {
+      toast.error("Could not withdraw: " + e.message);
+    }
+  };
+
   const handleManualSave = async () => {
     if (!clubId) {
       toast.error("No club selected");

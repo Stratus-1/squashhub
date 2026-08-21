@@ -4834,21 +4834,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (!myEmail) {
           toast.warning("No email address on your club profile — the email test was skipped.");
         } else {
-          const { error } = await supabase.functions.invoke("send-transactional-email", {
+          const { error } = await supabase.functions.invoke("email-notifications", {
             body: {
-              templateName: "tournament-invite-preview",
-              recipientEmail: myEmail,
-              idempotencyKey: `tournament-invite-selftest-${champId}-${Date.now()}`,
-              templateData: {
-                tournamentName: `TEST — ${champName || "Tournament"}`,
-                invitationBody: body,
-                invitationUrl: testUrl,
-                previewForName: "you (test invitation)",
-                recipientName: String((myMember as any)?.name || "").trim() || undefined,
-              },
+              action: "club-send",
+              clubId,
+              to: myEmail,
+              subject: `TEST — ${champName || "Tournament"} invitation`,
+              body,
+              url: testUrl,
+              ctaLabel: "Open test invitation",
+              recipientName: String((myMember as any)?.name || "").trim() || undefined,
             },
           });
           if (error) throw error;
+
           delivered.push(myEmail);
         }
       }

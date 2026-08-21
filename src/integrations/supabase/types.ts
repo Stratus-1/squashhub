@@ -10141,7 +10141,11 @@ export type Database = {
         }[]
       }
       accept_tournament_invite: {
-        Args: { p_accept: boolean; p_registration_id: string }
+        Args: {
+          p_accept: boolean
+          p_divisions?: number[]
+          p_registration_id: string
+        }
         Returns: Json
       }
       admin_bill_member_fee: {
@@ -10189,6 +10193,10 @@ export type Database = {
           _summary?: string
         }
         Returns: string
+      }
+      apply_registration_division_choices: {
+        Args: { p_registration_id: string }
+        Returns: undefined
       }
       approve_ranking_points_pending: {
         Args: { _note?: string; _pending_id: string }
@@ -10854,7 +10862,12 @@ export type Database = {
         Returns: Json
       }
       respond_tournament_invite_public: {
-        Args: { p_accept: boolean; p_token: string; p_verify?: string }
+        Args: {
+          p_accept: boolean
+          p_divisions?: number[]
+          p_token: string
+          p_verify?: string
+        }
         Returns: Json
       }
       save_bells_match_result: {
@@ -11030,6 +11043,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      tournament_division_options: {
+        Args: { p_champ_id: string; p_member_id?: string }
+        Returns: Json
       }
       tournament_eligibility_summary: {
         Args: { _tournament_id: string }

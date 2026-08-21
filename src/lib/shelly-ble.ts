@@ -190,14 +190,15 @@ export async function pulseShellyBle(params: BlePulseParams): Promise<void> {
         await delay(BLE_SETTLE_MS);
 
         const responseLength = await pollResponseLength(async () => {
-          const value = await withBleTimeout(() => rxCtl.readValue(), BLE_OP_TIMEOUT_MS, "reading reply length");
+          const value = await withBleTimeout<DataView>(() => rxCtl.readValue(), BLE_OP_TIMEOUT_MS, "reading reply length");
           return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
         });
 
         return readResponseBody(responseLength, async () => {
-          const chunk = await withBleTimeout(() => dataChar.readValue(), BLE_OP_TIMEOUT_MS, "reading reply");
+          const chunk = await withBleTimeout<DataView>(() => dataChar.readValue(), BLE_OP_TIMEOUT_MS, "reading reply");
           return new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
         });
+
       };
       return withBleTimeout(run, BLE_EXCHANGE_TIMEOUT_MS, "waiting for the Shelly to answer");
     };

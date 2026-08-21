@@ -497,6 +497,75 @@ function DroppableLeague({ id, children, className }: { id: string; children: Re
 }
 
 /**
+ * Admin control to enter ONE player into SEVERAL competition divisions.
+ *
+ * The division dropdown next to it only MOVES a player (it sets their primary
+ * division). This picker adds/removes the ADDITIONAL divisions a player takes
+ * part in — the same thing a member can do by ticking several divisions on
+ * their invite link, but done by hand when they phone the club.
+ */
+function ExtraDivisionsPicker({
+  playerId,
+  primary,
+  extras,
+  divisionLabels,
+  onToggle,
+}: {
+  playerId: string;
+  primary: number;
+  extras: Set<number>;
+  divisionLabels: string[];
+  onToggle: (division: number, checked: boolean) => void;
+}) {
+  const total = extras.size + 1;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant={extras.size > 0 ? "secondary" : "outline"}
+          size="sm"
+          className="h-7 px-2 text-[11px] shrink-0"
+          title="Enter this player in more than one division"
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          {total > 1 ? `${total} divisions` : "Divisions"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-60 p-2">
+        <p className="text-[11px] text-muted-foreground px-1 pb-2">
+          Tick every division this player enters. Their main division stays ticked.
+        </p>
+        <div className="max-h-64 overflow-y-auto space-y-1">
+          {divisionLabels.map((label, i) => {
+            const isPrimary = i === primary;
+            const checked = isPrimary || extras.has(i);
+            return (
+              <label
+                key={i}
+                className={cn(
+                  "flex items-center gap-2 rounded px-1.5 py-1 text-xs",
+                  isPrimary ? "opacity-70" : "cursor-pointer hover:bg-muted"
+                )}
+              >
+                <Checkbox
+                  id={`${playerId}-div-${i}`}
+                  checked={checked}
+                  disabled={isPrimary}
+                  onCheckedChange={(v) => onToggle(i, v === true)}
+                />
+                <span className="flex-1">{label}</span>
+                {isPrimary && <span className="text-[10px] text-muted-foreground">main</span>}
+              </label>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
  * Compact segmented button row — visual replacement for the small dropdowns
  * inside a league card (draw format, category, scoring, par, best-of).
  */

@@ -3,7 +3,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const MAX_RETRIES = 5
 const DEFAULT_BATCH_SIZE = 10
-const DEFAULT_SEND_DELAY_MS = 200
+const DEFAULT_SEND_DELAY_MS = 1000
+const DEFAULT_MAX_EMAILS_PER_HOUR = 90
 const DEFAULT_AUTH_TTL_MINUTES = 15
 const DEFAULT_TRANSACTIONAL_TTL_MINUTES = 60
 
@@ -116,7 +117,7 @@ Deno.serve(async (req) => {
   // 1. Check rate-limit cooldown and read queue config
   const { data: state } = await supabase
     .from('email_send_state')
-    .select('retry_after_until, batch_size, send_delay_ms, auth_email_ttl_minutes, transactional_email_ttl_minutes')
+    .select('retry_after_until, batch_size, send_delay_ms, max_emails_per_hour, auth_email_ttl_minutes, transactional_email_ttl_minutes')
     .single()
 
   if (state?.retry_after_until && new Date(state.retry_after_until) > new Date()) {
@@ -128,20 +129,50 @@ Deno.serve(async (req) => {
 
   const batchSize = state?.batch_size ?? DEFAULT_BATCH_SIZE
   const sendDelayMs = state?.send_delay_ms ?? DEFAULT_SEND_DELAY_MS
+  const maxPerHour = Number(state?.max_emails_per_hour ?? DEFAULT_MAX_EMAILS_PER_HOUR)
   const ttlMinutes: Record<string, number> = {
     auth_emails: state?.auth_email_ttl_minutes ?? DEFAULT_AUTH_TTL_MINUTES,
     transactional_emails: state?.transactional_email_ttl_minutes ?? DEFAULT_TRANSACTIONAL_TTL_MINUTES,
+  }
+
+  // Hourly throughput budget. Applies to bulk/app (transactional) email only —
+  // auth emails (password resets, verification) are never throttled.
+  let hourlyRemaining = Number.POSITIVE_INFINITY
+  if (Number.isFinite(maxPerHour) && maxPerHour > 0) {
+    const windowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { count, error: countError } = await supabase
+      .from('email_send_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'sent')
+      .gte('created_at', windowStart)
+
+    if (countError) {
+      console.error('Failed to read hourly send count', { error: countError })
+    } else {
+      hourlyRemaining = Math.max(0, maxPerHour - (count ?? 0))
+    }
   }
 
   let totalProcessed = 0
 
   // 2. Process auth_emails first (priority), then transactional_emails
   for (const queue of ['auth_emails', 'transactional_emails']) {
+    const throttled = queue === 'transactional_emails'
+    if (throttled && hourlyRemaining <= 0) {
+      console.warn('Hourly email cap reached — deferring transactional queue', { max_per_hour: maxPerHour })
+      continue
+    }
+
+    const effectiveBatchSize = throttled
+      ? Math.max(1, Math.min(batchSize, hourlyRemaining))
+      : batchSize
+
     const { data: messages, error: readError } = await supabase.rpc('read_email_batch', {
       queue_name: queue,
-      batch_size: batchSize,
+      batch_size: effectiveBatchSize,
       vt: 30,
     })
+
 
     if (readError) {
       console.error('Failed to read email batch', { queue, error: readError })
@@ -190,6 +221,12 @@ Deno.serve(async (req) => {
     }
 
     for (let i = 0; i < messages.length; i++) {
+      if (throttled && hourlyRemaining <= 0) {
+        console.warn('Hourly email cap reached mid-batch — remaining messages deferred', {
+          max_per_hour: maxPerHour,
+        })
+        break
+      }
       const msg = messages[i]
       const payload = msg.message
       const failedAttempts =
@@ -329,6 +366,7 @@ Deno.serve(async (req) => {
           console.error('Failed to delete sent message from queue', { queue, msg_id: msg.msg_id, error: delError })
         }
         totalProcessed++
+        if (throttled) hourlyRemaining -= 1
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error)
         console.error('Email send failed', {

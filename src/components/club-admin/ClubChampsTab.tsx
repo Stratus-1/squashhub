@@ -3753,6 +3753,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
             schedule_mode: scheduleMode,
+            scheduling_mode: schedulingMode,
+            round_play_by: roundPlayBy || null,
+
             playoff_break_minutes: Math.max(0, Math.round(Number(playoffBreakMinutes) || 0)),
             playoff_date: playoffDate || null,
           }))

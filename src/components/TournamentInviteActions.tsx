@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { cn } from "@/lib/utils";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
+import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";
+
 import { ArrowRight, CalendarClock, CheckCircle, CreditCard, Loader2, Trophy, XCircle } from "lucide-react";
 import { toast } from "sonner";
 

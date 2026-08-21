@@ -4422,11 +4422,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // an admin expanded the audience from a shortlist to "all members") get a
       // registration row and therefore receive the invite. We only insert
       // missing rows — existing rows (paid / cancelled / etc.) are left intact.
-      const shouldBackfillOpenAudience = !only && editingChampId === champId && structureLeagueIds.size === 0 && registrationRequired && effectiveRegistrationMode === "open";
+      // The organiser's INVITATION AUDIENCE is authoritative for a bulk send.
+      // When the wizard is open on this tournament we materialise exactly that
+      // audience (never the whole roster) and, further down, we also restrict
+      // the recipient list to it so nobody outside the audience is mailed.
+      const audienceSet =
+        !only && editingChampId === champId ? new Set(resolvedAudience.memberIds) : null;
       const audienceMemberIds = only
         ? []
-        : shouldBackfillOpenAudience
-          ? members.filter((m) => memberMatchesTournamentGender(m.gender, gender)).map((m) => m.id)
+        : audienceSet
+          ? Array.from(audienceSet).filter((id) => {
+              const m = members.find((x) => x.id === id);
+              return !m || memberMatchesTournamentGender(m.gender, gender);
+            })
           : await promoteVisitorIds(Array.from(selectedPlayerIds));
 
       if (!only && editingChampId === champId && audienceMemberIds.length > 0) {
@@ -4446,10 +4454,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         }
       }
 
-      const { data: regs, error: regErr } = await fromExt("club_champs_registrations")
+      const { data: allRegs, error: regErr } = await fromExt("club_champs_registrations")
         .select("id, club_member_id, status, invited_by_admin")
         .eq("champ_id", champId);
       if (regErr) throw regErr;
+
+      // Fail-closed audience filter: a bulk send only ever reaches registration
+      // rows whose member is inside the chosen invitation audience.
+      const allowedIds = audienceMemberIds.length > 0 ? new Set(audienceMemberIds) : null;
+      const regs =
+        !only && allowedIds
+          ? ((allRegs || []) as any[]).filter((r) => allowedIds.has(r.club_member_id))
+          : ((allRegs || []) as any[]);
+      if (!only && allowedIds && regs.length === 0) {
+        toast.error("Nobody in the selected invitation audience — nothing was sent.");
+        return;
+      }
 
       // Fail-closed recipient resolution. A selective send resolves ONLY the
       // exact ids the organiser ticked; it never widens to the roster.

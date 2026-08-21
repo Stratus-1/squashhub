@@ -106,7 +106,7 @@ const TournamentInvitePreview = ({
               </Text>
             )
           })}
-          {invitationUrl ? <Button href={invitationUrl} style={button}>View tournament</Button> : null}
+          {invitationUrl ? <Button href={invitationUrl} style={button}>Accept / Register</Button> : null}
           <Text style={footer}>No tournament entry or invitation status was changed by this test.</Text>
         </Container>
       </Body>

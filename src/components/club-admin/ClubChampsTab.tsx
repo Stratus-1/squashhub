@@ -6307,7 +6307,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             {/* Capacity validation — lives here because it needs BOTH the structure
                 (leagues, formats, pools, match length) and the schedule (dates,
                 windows, courts). Advisory only: it never blocks setup. */}
+            {schedulingMode === "club" && (
             <WizardSection
+
               title={"Capacity check"}
               summary={"Does the plan fit in the court time you have?"}
               complete={true}

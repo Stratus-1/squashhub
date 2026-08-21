@@ -88,6 +88,17 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-21 · Shelly Bluetooth fallback could not discover its RPC service
+- **Symptom:** BLE-only door tests reported no device found, or failed immediately after selecting the nearby
+  Shelly 1 Mini Gen3, while the relay was powered and Bluetooth was enabled.
+- **Finding:** The shared BLE client used a corrupted Shelly RPC service UUID. Native discovery filtered the
+  real relay out entirely, while Web Bluetooth could show it by name but could not resolve the requested GATT
+  service after connection.
+- **Fix:** Replaced the service identifier with Shelly's documented Gen2/Gen3 RPC service UUID
+  `5f6d4f53-5f52-5043-5f53-56435f49445f`; the existing data and control characteristic UUIDs remain valid.
+- **Guard:** Keep Shelly GATT identifiers aligned with the official RPC-over-BLE specification and use the
+  shared constants for both browser and native discovery/communication paths.
+
 ### 2026-08-21 · Shelly Cloud acknowledged door command without confirming relay output
 - **Symptom:** A member tapped Open Door and the app reported success, but the physical relay did nothing.
 - **Finding:** Shelly Cloud's switch endpoint returns HTTP 200 when it accepts a command; its response only

@@ -7744,6 +7744,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
                 {(inviteAudience === "individuals" || (inviteAudience === "leagues" && audienceIncludeIndividuals)) && (
                   <div className="space-y-1.5 pt-1">
+                    {editingChampId && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => void openInviteePicker()}
+                      >
+                        <Users className="w-3.5 h-3.5 mr-1" />
+                        Pick from the tournament roster
+                      </Button>
+                    )}
                     <Input
                       value={audienceSearch}
                       onChange={(e) => setAudienceSearch(e.target.value)}

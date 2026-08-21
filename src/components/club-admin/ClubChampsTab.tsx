@@ -1157,6 +1157,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [customizeDailySchedule, startDate, endDate, playDays, startTime, endTime]);
 
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
+  /**
+   * A player may enter SEVERAL divisions (e.g. "1st League" + "Masters Mixed").
+   * `groupAssignments` only holds their primary division; every ADDITIONAL
+   * division they accepted lives here as 0-based group indices, so the
+   * allocation page shows them in each division they signed up for.
+   */
+  const [extraDivisions, setExtraDivisions] = useState<Map<string, Set<number>>>(new Map());
   /** Accepted entrants who match no division's source league — organiser must place them. */
   const [unassignedEntrantIds, setUnassignedEntrantIds] = useState<string[]>([]);
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);
@@ -2650,9 +2657,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // They stay out of the draw until the organiser places them.
       const gi = groupAssignments.get(p.id);
       if (gi !== undefined && gi < numGroups) g[gi].push(p);
+      // Every additional division the player entered.
+      extraDivisions.get(p.id)?.forEach((extra) => {
+        if (extra === gi || extra >= numGroups) return;
+        g[extra].push(p);
+      });
     });
     return g;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, pairGroupAssignments, playerOrder, pairOrder]);
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder]);
 
   // Schedule preview
   const schedulePreview = useMemo(() => {
@@ -5153,6 +5165,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setSelectedCourtIds(new Set());
     setSelectedPlayerIds(new Set());
     setGroupAssignments(new Map());
+    setExtraDivisions(new Map());
     setPlayerOrder([]);
     setDoublesPairs([]);
     setPairGroupAssignments(new Map());
@@ -5382,12 +5395,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // actually accepted/registered become players — pending invitees must not
     // be pre-selected into the draw.
     const { data: allRegistrations } = await fromExt("club_champs_registrations")
-      .select("club_member_id, partner_member_id, status, confirmed_at, paid_at, fee_paid_cents")
+      .select("club_member_id, partner_member_id, status, confirmed_at, paid_at, fee_paid_cents, division_choices")
       .eq("champ_id", champ.id);
     const champPaymentRequired =
       !!(champ as any).payment_required && Number((champ as any).entry_fee_cents || 0) > 0;
     const registrations = filterParticipatingEntrants(allRegistrations as any[], {
       paymentRequired: champPaymentRequired,
+    });
+
+    /**
+     * What each entrant actually accepted: division_choices are stored 1-based
+     * per division. A player who ticked several divisions must appear in every
+     * one of them on the allocation page.
+     */
+    const choicesByMember = new Map<string, number[]>();
+    registrations.forEach((r: any) => {
+      const chosen = Array.isArray(r.division_choices)
+        ? Array.from(new Set(r.division_choices.map((n: any) => Number(n) - 1).filter((n: number) => n >= 0)))
+        : [];
+      if (chosen.length > 0) choicesByMember.set(r.club_member_id, chosen as number[]);
     });
 
     const hasEntries = entries && entries.length > 0;
@@ -5408,11 +5434,40 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         });
         setPairGroupAssignments(assignments);
       } else {
-        setSelectedPlayerIds(new Set(entries.map((e: any) => e.club_member_id)));
-        setPlayerOrder(entries.map((e: any) => e.club_member_id));
+        const ids: string[] = Array.from(new Set<string>(entries.map((e: any) => String(e.club_member_id))));
+        // Registered-but-not-yet-entered acceptances must still show up.
+        choicesByMember.forEach((_v, id) => {
+          if (!ids.includes(id)) ids.push(id);
+        });
+        setSelectedPlayerIds(new Set(ids));
+        setPlayerOrder(ids);
         const assignments = new Map<string, number>();
-        entries.forEach((e: any) => assignments.set(e.club_member_id, e.group_number - 1));
+        const extras = new Map<string, Set<number>>();
+        entries.forEach((e: any) => {
+          const gi = e.group_number - 1;
+          if (!assignments.has(e.club_member_id)) assignments.set(e.club_member_id, gi);
+          else {
+            const set = extras.get(e.club_member_id) || new Set<number>();
+            set.add(gi);
+            extras.set(e.club_member_id, set);
+          }
+        });
+        // The player's own acceptance wins: every division they ticked is kept.
+        choicesByMember.forEach((chosen, id) => {
+          const primary = assignments.get(id);
+          if (primary === undefined) {
+            assignments.set(id, chosen[0]);
+            if (chosen.length > 1) extras.set(id, new Set(chosen.slice(1)));
+            return;
+          }
+          const set = extras.get(id) || new Set<number>();
+          chosen.forEach((gi) => {
+            if (gi !== primary) set.add(gi);
+          });
+          if (set.size > 0) extras.set(id, set);
+        });
         setGroupAssignments(assignments);
+        setExtraDivisions(extras);
       }
     } else if (registrations.length > 0) {
       if (champ.match_type === "doubles") {
@@ -5429,6 +5484,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         setSelectedPlayerIds(new Set(unpaired));
       } else {
         setSelectedPlayerIds(new Set(registrations.map((r: any) => r.club_member_id)));
+        const assignments = new Map<string, number>();
+        const extras = new Map<string, Set<number>>();
+        choicesByMember.forEach((chosen, id) => {
+          assignments.set(id, chosen[0]);
+          if (chosen.length > 1) extras.set(id, new Set(chosen.slice(1)));
+        });
+        if (assignments.size > 0) setGroupAssignments(assignments);
+        setExtraDivisions(extras);
       }
     }
 
@@ -5486,6 +5549,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       setSelectedPlayerIds(new Set());
       setPlayerOrder([]);
       setGroupAssignments(new Map());
+      setExtraDivisions(new Map());
       setDoublesPairs([]);
       setPairOrder([]);
       setPairGroupAssignments(new Map());

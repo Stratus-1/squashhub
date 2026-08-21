@@ -1347,6 +1347,7 @@ export type Database = {
           partner_b_member_id: string | null
           placeholder_a: string | null
           placeholder_b: string | null
+          play_by: string | null
           player_a_member_id: string | null
           player_b_member_id: string | null
           pool_number: number | null
@@ -1384,6 +1385,7 @@ export type Database = {
           partner_b_member_id?: string | null
           placeholder_a?: string | null
           placeholder_b?: string | null
+          play_by?: string | null
           player_a_member_id?: string | null
           player_b_member_id?: string | null
           pool_number?: number | null
@@ -1421,6 +1423,7 @@ export type Database = {
           partner_b_member_id?: string | null
           placeholder_a?: string | null
           placeholder_b?: string | null
+          play_by?: string | null
           player_a_member_id?: string | null
           player_b_member_id?: string | null
           pool_number?: number | null
@@ -1512,6 +1515,7 @@ export type Database = {
           confirmed_by: string | null
           created_at: string
           declined_at: string | null
+          division_choices: number[]
           fee_paid_cents: number
           fee_payment_id: string | null
           id: string
@@ -1539,6 +1543,7 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           declined_at?: string | null
+          division_choices?: number[]
           fee_paid_cents?: number
           fee_payment_id?: string | null
           id?: string
@@ -1566,6 +1571,7 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           declined_at?: string | null
+          division_choices?: number[]
           fee_paid_cents?: number
           fee_payment_id?: string | null
           id?: string
@@ -9215,7 +9221,9 @@ export type Database = {
           play_days: number[]
           playoff_break_minutes: number
           playoff_date: string | null
+          round_play_by: Json
           schedule_mode: string
+          scheduling_mode: string
           seeding_source: string
           source_league_id: string | null
           source_league_ids: string[]
@@ -9289,7 +9297,9 @@ export type Database = {
           play_days?: number[]
           playoff_break_minutes?: number
           playoff_date?: string | null
+          round_play_by?: Json
           schedule_mode?: string
+          scheduling_mode?: string
           seeding_source?: string
           source_league_id?: string | null
           source_league_ids?: string[]
@@ -9363,7 +9373,9 @@ export type Database = {
           play_days?: number[]
           playoff_break_minutes?: number
           playoff_date?: string | null
+          round_play_by?: Json
           schedule_mode?: string
+          scheduling_mode?: string
           seeding_source?: string
           source_league_id?: string | null
           source_league_ids?: string[]
@@ -9923,6 +9935,7 @@ export type Database = {
           registration_opens_at: string | null
           registration_required: boolean | null
           round_format: string | null
+          round_play_by: Json | null
           sanction_notes: string | null
           sanction_reference: string | null
           sanction_status: string | null
@@ -9930,6 +9943,7 @@ export type Database = {
           sanctioned_by: string | null
           sanctioning_org_id: string | null
           schedule_mode: string | null
+          scheduling_mode: string | null
           scoring_mode: string | null
           source_league_id: string | null
           source_league_ids: string[] | null
@@ -10870,6 +10884,7 @@ export type Database = {
           partner_b_member_id: string | null
           placeholder_a: string | null
           placeholder_b: string | null
+          play_by: string | null
           player_a_member_id: string | null
           player_b_member_id: string | null
           pool_number: number | null
@@ -10992,6 +11007,7 @@ export type Database = {
           partner_b_member_id: string | null
           placeholder_a: string | null
           placeholder_b: string | null
+          play_by: string | null
           player_a_member_id: string | null
           player_b_member_id: string | null
           pool_number: number | null

@@ -7917,10 +7917,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </p>
               )}
 
-              {/* The one and only bulk trigger */}
-              <div className="pt-2 border-t border-border/50 space-y-1.5">
+              {/* The one and only bulk trigger + test invite */}
+              <div className="pt-2 border-t border-border/50 space-y-3">
                 {editingChampId ? (
-                  <>
+                  <div className="space-y-1.5">
                     <Button
                       type="button"
                       size="sm"
@@ -7943,11 +7943,42 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         {lastInviteSend.mode === "selected" ? " (selected members)" : ""}.
                       </p>
                     )}
-                  </>
+                    {allInviteCount === 0 && effectiveAllInviteCount > 0 && (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-500">
+                        {effectiveAllInviteCount} player{effectiveAllInviteCount === 1 ? "" : "s"} are ready from the invitation audience. They will be added to the invite list when you save or send.
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">
                     <strong className="text-foreground">Send invites now</strong> becomes available once the tournament is saved — use <strong>Save progress</strong> first.
                   </p>
+                )}
+
+                {editingChampId && (
+                  <div className="rounded-md border border-dashed border-border/60 p-3 space-y-1.5">
+                    <div className="text-xs font-medium">Test invite</div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={!sampleInvitee || testInviteSending}
+                      onClick={() => {
+                        if (!sampleInvitee) return;
+                        openTestInviteDialog(sampleInvitee);
+                      }}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      {testInviteSending
+                        ? "Sending test…"
+                        : sampleInvitee
+                          ? `Send test as an invited player (${sampleInvitee.name})`
+                          : "Send test as an invited player"}
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground">
+                      Test only — goes to an email address you type. It does not create entries and does not notify any member.
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -7957,13 +7988,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
             {/* Tournament description / invite body */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label className="text-sm">Tournament details (shown in invites)</Label>
-                <div className="flex gap-2">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 min-w-0 space-y-2">
+                  <Label className="text-sm">Tournament details (shown in invites)</Label>
+                  <Textarea
+                    rows={10}
+                    placeholder={`Click "Fill from settings" to insert the tournament details (category, format, dates, registration window, fee) into this box, then add anything extra like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-row md:flex-col gap-2 md:w-44 shrink-0">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="flex-1 md:flex-none"
                     onClick={() => {
                       const lines = buildInviteDetailLines({
                         gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
@@ -7988,51 +8028,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="flex-1 md:flex-none"
                     onClick={() => setShowInvitePreview(true)}
                   >
                     <Eye className="w-4 h-4 mr-1" /> Preview invite
                   </Button>
                 </div>
               </div>
-              <Textarea
-                rows={8}
-                placeholder={`Click "Fill from settings" to insert the tournament details (category, format, dates, registration window, fee) into this box, then add anything extra like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
               <p className="text-xs text-muted-foreground">
                 This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> above.
               </p>
-              {editingChampId && (
-                <div className="pt-2 rounded-md border border-dashed border-border/60 p-3 space-y-1.5">
-                  <div className="text-xs font-medium">Test invite</div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={!sampleInvitee || testInviteSending}
-                    onClick={() => {
-                      if (!sampleInvitee) return;
-                      openTestInviteDialog(sampleInvitee);
-                    }}
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    {testInviteSending
-                      ? "Sending test…"
-                      : sampleInvitee
-                        ? `Send test as an invited player (${sampleInvitee.name})`
-                        : "Send test as an invited player"}
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    Test only — goes to an email address you type. It does not create entries and does not notify any member.
-                  </p>
-                  {allInviteCount === 0 && effectiveAllInviteCount > 0 && (
-                    <p className="text-[11px] text-amber-600 dark:text-amber-500">
-                      {effectiveAllInviteCount} player{effectiveAllInviteCount === 1 ? "" : "s"} are ready from the invitation audience. They will be added to the invite list when you save or send.
-                    </p>
-                  )}
-                </div>
-              )}
 
               {/* Individual invitee picker — staging only, never sends */}
               <Dialog open={inviteePickerOpen} onOpenChange={setInviteePickerOpen}>
@@ -9406,7 +9411,7 @@ function InvitePreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Invite preview</DialogTitle>
           <p className="text-xs text-muted-foreground">
@@ -9414,64 +9419,66 @@ function InvitePreviewDialog({
           </p>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* In-app notification preview */}
-          <div className="rounded-lg border bg-card p-3 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <Trophy className="w-3.5 h-3.5" /> In-app notification
-            </div>
-            <div className="rounded-md border bg-background p-3">
-              <p className="text-sm font-semibold">Tournament invitation</p>
-              <p className="text-sm whitespace-pre-wrap text-muted-foreground mt-1">{appBody}</p>
-              <div className="flex gap-2 mt-3">
-                <span className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground">Register</span>
-                <span className="text-xs px-2 py-1 rounded border">Decline</span>
+        <div className="overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* In-app notification preview */}
+            <div className="rounded-lg border bg-card p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <Trophy className="w-3.5 h-3.5" /> In-app notification
               </div>
-            </div>
-            {!methods.has("app") && (
-              <p className="text-[11px] text-muted-foreground italic">
-                Not sent in-app — email only is selected.
-              </p>
-            )}
-          </div>
-
-          {/* Email preview */}
-          <div className="rounded-lg border bg-card p-3 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <CalendarIcon className="w-3.5 h-3.5" /> Email invitation
-            </div>
-            <div className="rounded-md border bg-background p-3 text-sm space-y-2">
-              <p className="text-xs text-muted-foreground">Subject</p>
-              <p className="font-semibold">You're invited: {tournamentName}</p>
-              <Separator />
-              <p>Hi there,</p>
-              <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
-              {detailLines.length > 0 && (
-                <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
-                  {detailLines.map((l, i) => <li key={i}>{l}</li>)}
-                </ul>
-              )}
-
-
-              {description?.trim() && (
-                <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">
-                  {description.trim()}
+              <div className="rounded-md border bg-background p-3">
+                <p className="text-sm font-semibold">Tournament invitation</p>
+                <p className="text-sm whitespace-pre-wrap text-muted-foreground mt-1">{appBody}</p>
+                <div className="flex gap-2 mt-3">
+                  <span className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground">Register</span>
+                  <span className="text-xs px-2 py-1 rounded border">Decline</span>
                 </div>
+              </div>
+              {!methods.has("app") && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Not sent in-app — email only is selected.
+                </p>
               )}
-              <p>Tap the button below to register or decline.</p>
-              <span className="inline-block text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground">
-                Open invitation
-              </span>
             </div>
-            {!methods.has("email") && (
-              <p className="text-[11px] text-muted-foreground italic">
-                Not sent by email — in-app only is selected.
-              </p>
-            )}
+
+            {/* Email preview */}
+            <div className="rounded-lg border bg-card p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <CalendarIcon className="w-3.5 h-3.5" /> Email invitation
+              </div>
+              <div className="rounded-md border bg-background p-3 text-sm space-y-2">
+                <p className="text-xs text-muted-foreground">Subject</p>
+                <p className="font-semibold">You're invited: {tournamentName}</p>
+                <Separator />
+                <p>Hi there,</p>
+                <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
+                {detailLines.length > 0 && (
+                  <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
+                    {detailLines.map((l, i) => <li key={i}>{l}</li>)}
+                  </ul>
+                )}
+
+
+                {description?.trim() && (
+                  <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">
+                    {description.trim()}
+                  </div>
+                )}
+                <p>Tap the button below to register or decline.</p>
+                <span className="inline-block text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground">
+                  Open invitation
+                </span>
+              </div>
+              {!methods.has("email") && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Not sent by email — in-app only is selected.
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>

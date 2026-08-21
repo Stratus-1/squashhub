@@ -767,15 +767,17 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                     </p>
                   </div>
                   <div className="space-y-1 md:col-span-2">
-                    <Label>BLE Control Password (shared)</Label>
+                    <Label>BLE Control Password (optional)</Label>
                     <Input
                       type="password"
                       value={form.shelly_ble_control_password}
                       onChange={e => setForm(p => ({ ...p, shelly_ble_control_password: e.target.value }))}
-                      placeholder="Set the same password on every Shelly device"
+                      placeholder="Leave blank if no Shelly password is set"
                     />
                     <p className="text-[10px] text-muted-foreground">
-                      Prevents anyone in Bluetooth range from toggling the relay from another app.
+                      Only needed if you enabled authentication on the Shelly device
+                      (<em>Shelly app → Settings → Authentication</em>). Use the same password on every device.
+                      Leave blank otherwise — Bluetooth fallback works without it.
                     </p>
                   </div>
                   {!isBleFallbackAvailable() && (

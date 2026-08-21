@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -6,6 +6,8 @@ import { useClubMembers } from "@/hooks/use-club";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
@@ -50,6 +52,45 @@ export function TournamentInviteRegisterDialog({
   const [partnerId, setPartnerId] = useState("");
   const [partnerOpen, setPartnerOpen] = useState(false);
   const [showEft, setShowEft] = useState(false);
+  const [chosenDivisions, setChosenDivisions] = useState<number[]>([]);
+  const [divisionError, setDivisionError] = useState("");
+
+  // Divisions this member may enter — the invitee ticks the ones they want.
+  const { data: divisionOptions = [] } = useQuery({
+    queryKey: ["champ-division-options", champ?.id, memberId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("tournament_division_options", {
+        p_champ_id: champ.id,
+        p_member_id: memberId,
+      });
+      if (error) throw error;
+      return (Array.isArray(data) ? data : [])
+        .map((d: any) => ({
+          group_number: Number(d?.group_number),
+          label: String(d?.label || "").trim() || `League ${d?.group_number}`,
+          match_type: d?.match_type ?? null,
+        }))
+        .filter((d: any) => Number.isFinite(d.group_number) && d.group_number > 0);
+    },
+    enabled: open && !!champ?.id && !!memberId,
+  });
+
+  const mustChooseDivision = divisionOptions.length > 1;
+
+  useEffect(() => {
+    const existing = (registration?.division_choices || []).map((n: any) => Number(n))
+      .filter((n: number) => divisionOptions.some((d: any) => d.group_number === n));
+    if (existing.length > 0) setChosenDivisions(existing);
+    else if (divisionOptions.length === 1) setChosenDivisions([divisionOptions[0].group_number]);
+  }, [divisionOptions, registration?.division_choices]);
+
+  const toggleDivision = (gn: number) => {
+    setDivisionError("");
+    setChosenDivisions((prev) =>
+      prev.includes(gn) ? prev.filter((n) => n !== gn) : [...prev, gn].sort((a, b) => a - b),
+    );
+  };
+
 
   const entryFeeCents = Number(champ?.entry_fee_cents || 0);
   const paymentRequired = !!champ?.payment_required && entryFeeCents > 0;
@@ -114,6 +155,7 @@ export function TournamentInviteRegisterDialog({
       const { data, error } = await (supabase as any).rpc("accept_tournament_invite", {
         p_registration_id: registration.id,
         p_accept: true,
+        p_divisions: chosenDivisions.length > 0 ? chosenDivisions : null,
       });
       if (error) throw error;
       await onAccepted?.();
@@ -225,9 +267,42 @@ export function TournamentInviteRegisterDialog({
             )}
           </div>
 
+          {/* Division choice — tick every division you want to play in */}
+          {divisionOptions.length > 1 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Which do you want to play in?</Label>
+              <p className="text-[11px] text-muted-foreground">
+                You may enter more than one — tick every division you want to play.
+              </p>
+              <div className="space-y-1">
+                {divisionOptions.map((d: any) => (
+                  <label key={d.group_number} className="flex items-center gap-2 rounded-md border p-2 text-xs cursor-pointer">
+                    <Checkbox
+                      checked={chosenDivisions.includes(d.group_number)}
+                      disabled={accepted}
+                      onCheckedChange={() => toggleDivision(d.group_number)}
+                    />
+                    <span className="flex-1">{d.label}</span>
+                    {d.match_type === "doubles" && (
+                      <Badge variant="outline" className="text-[9px] h-4 px-1">Doubles</Badge>
+                    )}
+                  </label>
+                ))}
+              </div>
+              {divisionError && <p className="text-[11px] text-destructive">{divisionError}</p>}
+            </div>
+          )}
+
           {/* Step 1 — accept / register */}
           {!accepted ? (
-            <Button className="w-full h-9 text-xs" disabled={accept.isPending} onClick={() => accept.mutate()}>
+            <Button className="w-full h-9 text-xs" disabled={accept.isPending} onClick={() => {
+              if (mustChooseDivision && chosenDivisions.length === 0) {
+                setDivisionError("Please tick at least one division you want to play in.");
+                return;
+              }
+              setDivisionError("");
+              accept.mutate();
+            }}>
               {accept.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <CheckCircle className="w-3 h-3 mr-1" />}
               {paymentRequired ? `Register to accept · ${money(entryFeeCents)}` : "Accept and confirm I can play"}
             </Button>

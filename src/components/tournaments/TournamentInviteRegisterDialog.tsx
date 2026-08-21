@@ -50,6 +50,45 @@ export function TournamentInviteRegisterDialog({
   const [partnerId, setPartnerId] = useState("");
   const [partnerOpen, setPartnerOpen] = useState(false);
   const [showEft, setShowEft] = useState(false);
+  const [chosenDivisions, setChosenDivisions] = useState<number[]>([]);
+  const [divisionError, setDivisionError] = useState("");
+
+  // Divisions this member may enter — the invitee ticks the ones they want.
+  const { data: divisionOptions = [] } = useQuery({
+    queryKey: ["champ-division-options", champ?.id, memberId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("tournament_division_options", {
+        p_champ_id: champ.id,
+        p_member_id: memberId,
+      });
+      if (error) throw error;
+      return (Array.isArray(data) ? data : [])
+        .map((d: any) => ({
+          group_number: Number(d?.group_number),
+          label: String(d?.label || "").trim() || `League ${d?.group_number}`,
+          match_type: d?.match_type ?? null,
+        }))
+        .filter((d: any) => Number.isFinite(d.group_number) && d.group_number > 0);
+    },
+    enabled: open && !!champ?.id && !!memberId,
+  });
+
+  const mustChooseDivision = divisionOptions.length > 1;
+
+  useEffect(() => {
+    const existing = (registration?.division_choices || []).map((n: any) => Number(n))
+      .filter((n: number) => divisionOptions.some((d: any) => d.group_number === n));
+    if (existing.length > 0) setChosenDivisions(existing);
+    else if (divisionOptions.length === 1) setChosenDivisions([divisionOptions[0].group_number]);
+  }, [divisionOptions, registration?.division_choices]);
+
+  const toggleDivision = (gn: number) => {
+    setDivisionError("");
+    setChosenDivisions((prev) =>
+      prev.includes(gn) ? prev.filter((n) => n !== gn) : [...prev, gn].sort((a, b) => a - b),
+    );
+  };
+
 
   const entryFeeCents = Number(champ?.entry_fee_cents || 0);
   const paymentRequired = !!champ?.payment_required && entryFeeCents > 0;

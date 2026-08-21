@@ -7685,9 +7685,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               complete={inviteMethods.size > 0}
               defaultOpen={true}
             >
-            {/* INVITATION AUDIENCE — independent of the Structure/draw source */}
-            {invitesApply && (
-              <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+            {/* INVITATION AUDIENCE — independent of the Structure/draw source and of entry method */}
+            <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+
+
                 <Label className="text-sm">Invite audience — who gets invited (choosing here never sends)</Label>
                 <p className="text-[11px] text-muted-foreground">
                   Who gets invited. This is separate from the Structure step — the league/team selection there only decides how accepted entrants are grouped and seeded.
@@ -7795,7 +7796,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   Anyone who accepts but has no league mapping is still accepted and lands in <strong>Needs division assignment</strong> for you to place.
                 </p>
               </div>
-            )}
+
 
 
             {/* Invite methods — always shown so admins control delivery channel */}

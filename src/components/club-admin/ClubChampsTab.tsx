@@ -6641,7 +6641,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               : "single_round_robin"));
                         const meta = FORMAT_META[fmt];
                         const isSwiss = fmt === "swiss";
-                        const collapsed = !!collapsedLeagues[key];
+                        const collapsed = collapsedLeagues[key] ?? true;
                         return (
                           <div key={gn} className="relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm">
                             <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
@@ -6761,7 +6761,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-muted-foreground"
-                                onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !m[key] }))}
+                                onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !(m[key] ?? true) }))}
                                 title={collapsed ? "Expand league" : "Collapse league"}
                               >
                                 <ChevronDown className={cn("h-4 w-4 transition-transform", !collapsed && "rotate-180")} />

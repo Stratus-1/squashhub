@@ -4154,7 +4154,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         external_id: `champ:${champId}:block:${s.date}:${s.courtId}`,
       }));
 
-      if (bookings.length > 0) {
+      // Self-scheduled tournaments never reserve courts — players book their
+      // own game like any normal court booking.
+      if (schedulingMode === "club" && bookings.length > 0) {
+
         // Clear prior per-match bookings for this tournament so re-saves don't
         // leave stale rows alongside the consolidated blocks.
         await fromExt("bookings")

@@ -7975,16 +7975,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         <ChevronDown className="w-4 h-4 ml-1" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-72">
+                    <DropdownMenuContent align="start" className="w-80">
+                      <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">
+                        Invitation audience — who the bulk send reaches
+                      </DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={inviteAudience}
+                        onValueChange={(v) => setInviteAudience(v as InviteAudienceMode)}
+                      >
+                        <DropdownMenuRadioItem value="all_club">All club members</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="leagues">Selected league teams</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="individuals">Selected individual members</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onSelect={() => sendChampInvites(editingChampId, { confirm: true, mode: "all" })}
                       >
                         <Send className="w-4 h-4 mr-2" />
                         <span>
-                          Send to all invited players ({effectiveAllInviteCount})
-                          <span className="block text-[11px] text-muted-foreground">Bulk send / re-send — asks for confirmation</span>
+                          Send to the invitation audience ({effectiveAllInviteCount})
+                          <span className="block text-[11px] text-muted-foreground">
+                            {resolvedAudience.summary}
+                          </span>
                         </span>
                       </DropdownMenuItem>
+
                       <DropdownMenuItem
                         onSelect={() => void openInviteePicker()}
                       >

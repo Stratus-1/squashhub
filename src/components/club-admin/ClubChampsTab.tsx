@@ -6717,9 +6717,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           All leagues — select every league group
                                         </label>
                                         <p className="text-[10px] text-muted-foreground leading-snug">
-                                          “All leagues” never merges everyone into one draw. Use the button below to give
-                                          each league its own competition, with its own winner.
+                                          Selecting leagues is optional — leave this on “All leagues” if you don’t want to
+                                          restrict seeding. “All leagues” never merges everyone into one draw. Use the
+                                          button below to give each league its own competition, with its own winner.
                                         </p>
+
                                         {(src.mode === "all" || src.leagueIds.length === 0) && (
                                           <Button
                                             type="button"

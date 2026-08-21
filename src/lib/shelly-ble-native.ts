@@ -10,13 +10,21 @@
 
 import { BleClient, numbersToDataView } from "@capacitor-community/bluetooth-le";
 import type { BlePulseParams } from "./shelly-ble";
-
-const SHELLY_RPC_SERVICE = "5f6d4f53-5f52-5043-5f52-4f4f4653435f";
-const SHELLY_RPC_DATA = "5f6d4f53-5f52-5043-5f64-6174615f5f5f";
-const SHELLY_RPC_TXCTL = "5f6d4f53-5f52-5043-5f74-78637472736c";
+import {
+  executeShellyRpc,
+  SHELLY_RPC_DATA,
+  SHELLY_RPC_RXCTL,
+  SHELLY_RPC_SERVICE,
+  SHELLY_RPC_TXCTL,
+  type ShellyRpcRequest,
+} from "./shelly-ble-rpc";
 
 function bytesToDv(bytes: Uint8Array): DataView {
   return numbersToDataView(Array.from(bytes));
+}
+
+function dataViewToBytes(value: DataView): Uint8Array {
+  return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
 }
 
 export async function pulseShellyBleNative(params: BlePulseParams): Promise<void> {
@@ -38,7 +46,7 @@ export async function pulseShellyBleNative(params: BlePulseParams): Promise<void
 
   await BleClient.connect(device.deviceId);
   try {
-    const rpc: Record<string, unknown> = {
+    const rpc: ShellyRpcRequest = {
       id: 1,
       src: "squashhub",
       method: "Switch.Set",
@@ -48,31 +56,47 @@ export async function pulseShellyBleNative(params: BlePulseParams): Promise<void
         toggle_after: Math.max(1, Math.round((params.pulseMs ?? 3000) / 1000)),
       },
     };
-    if (params.password) rpc.auth = { password: params.password };
-
-    const encoded = new TextEncoder().encode(JSON.stringify(rpc));
-
-    // Announce frame length on the TX-CTL characteristic (Shelly RPC framing).
-    try {
+    const exchange = async (encoded: Uint8Array): Promise<Uint8Array> => {
       const lenBuf = new Uint8Array(4);
       new DataView(lenBuf.buffer).setUint32(0, encoded.byteLength, false);
       await BleClient.write(device.deviceId, SHELLY_RPC_SERVICE, SHELLY_RPC_TXCTL, bytesToDv(lenBuf));
-    } catch (e) {
-      // Some Gen3 firmwares don't expose TX-CTL; continue with raw writes.
-      console.warn("[shelly-ble-native] TX-CTL write failed, continuing", e);
-    }
 
-    // Chunk into MTU-friendly writes (default BLE MTU is ~20 bytes).
-    const CHUNK = 20;
-    for (let i = 0; i < encoded.byteLength; i += CHUNK) {
-      const slice = encoded.slice(i, i + CHUNK);
-      await BleClient.writeWithoutResponse(
+      const CHUNK = 20;
+      for (let i = 0; i < encoded.byteLength; i += CHUNK) {
+        await BleClient.writeWithoutResponse(
+          device.deviceId,
+          SHELLY_RPC_SERVICE,
+          SHELLY_RPC_DATA,
+          bytesToDv(encoded.slice(i, i + CHUNK)),
+        );
+      }
+
+      const responseLengthValue = await BleClient.read(
         device.deviceId,
         SHELLY_RPC_SERVICE,
-        SHELLY_RPC_DATA,
-        bytesToDv(slice),
+        SHELLY_RPC_RXCTL,
       );
-    }
+      const responseLengthBytes = dataViewToBytes(responseLengthValue);
+      if (responseLengthBytes.byteLength < 4) throw new Error("Shelly returned an invalid response length.");
+      const responseLength = responseLengthValue.getUint32(0, false);
+      if (responseLength < 1 || responseLength > 64 * 1024) {
+        throw new Error(`Shelly returned an invalid response length (${responseLength}).`);
+      }
+
+      const response = new Uint8Array(responseLength);
+      let offset = 0;
+      while (offset < responseLength) {
+        const value = await BleClient.read(device.deviceId, SHELLY_RPC_SERVICE, SHELLY_RPC_DATA);
+        const bytes = dataViewToBytes(value);
+        if (!bytes.byteLength) throw new Error("Shelly returned an incomplete Bluetooth response.");
+        const remaining = responseLength - offset;
+        response.set(bytes.subarray(0, remaining), offset);
+        offset += Math.min(bytes.byteLength, remaining);
+      }
+      return response;
+    };
+
+    await executeShellyRpc(rpc, params.password, exchange);
   } finally {
     try { await BleClient.disconnect(device.deviceId); } catch { /* ignore */ }
   }

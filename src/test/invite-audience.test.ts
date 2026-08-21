@@ -64,7 +64,7 @@ describe("invitation audience is independent of Structure", () => {
   });
 
   it("labels each audience mode", () => {
-    expect(audienceLabel("all_club")).toMatch(/All club members/);
+    expect(audienceLabel("all_club")).toMatch(/all members of the club/i);
     expect(audienceLabel("leagues")).toMatch(/leagues/);
     expect(audienceLabel("individuals")).toMatch(/individual/);
   });

@@ -1,0 +1,1 @@
+UPDATE public.club_champs_registrations SET status='invited' WHERE id='226c1619-a5a2-4197-b7bd-f89bc9dcbb4e';

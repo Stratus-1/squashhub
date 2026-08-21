@@ -221,6 +221,12 @@ Deno.serve(async (req) => {
     }
 
     for (let i = 0; i < messages.length; i++) {
+      if (throttled && hourlyRemaining <= 0) {
+        console.warn('Hourly email cap reached mid-batch — remaining messages deferred', {
+          max_per_hour: maxPerHour,
+        })
+        break
+      }
       const msg = messages[i]
       const payload = msg.message
       const failedAttempts =

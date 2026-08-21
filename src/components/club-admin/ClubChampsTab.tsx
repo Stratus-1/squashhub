@@ -4466,6 +4466,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       pointsPerGame, bestOf,
       registrationRequired, registrationMode: (registrationMode || "open") as any,
       tournamentName: champName, divisionFormats: inviteDivisionFormats(),
+      selfScheduled: schedulingMode === "self", roundDeadlines,
     });
     return `You have been invited to ${champName || "a tournament"}.` +
       (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
@@ -9615,6 +9616,8 @@ function InvitePreviewDialog({
   registrationRequired,
   registrationMode,
   divisionFormats,
+  selfScheduled,
+  roundDeadlines,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -9641,6 +9644,8 @@ function InvitePreviewDialog({
   registrationRequired?: boolean;
   registrationMode?: "" | "open" | "invite";
   divisionFormats?: string[];
+  selfScheduled?: boolean;
+  roundDeadlines?: { label: string; date: string }[];
 }) {
   const descHasDetails = /— Tournament details —/.test(description || "");
   const detailLines = descHasDetails ? [] : buildInviteDetailLines({
@@ -9650,6 +9655,7 @@ function InvitePreviewDialog({
     pointsPerGame, bestOf,
     registrationRequired, registrationMode,
     tournamentName, divisionFormats,
+    selfScheduled, roundDeadlines,
   });
 
   const appBody =

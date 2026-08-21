@@ -9024,13 +9024,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <div className="font-medium">
                     {startDate ? format(parseISO(startDate), "dd MMM yyyy") : "—"}
                     {endDate && endDate !== startDate ? ` → ${format(parseISO(endDate), "dd MMM yyyy")}` : ""}
-                    {" · "}
-                    {startTime || "—"}–{endTime || "—"}
+                    {schedulingMode === "self" ? "" : ` · ${startTime || "—"}–${endTime || "—"}`}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Play days: {playDays.size > 0
-                      ? Array.from(playDays).sort().map((i) => DAY_NAMES[i]).join(", ")
-                      : "—"}
+                    {schedulingMode === "self" ? (
+                      "Players arrange their own games — no fixed days or times"
+                    ) : (
+                      <>
+                        Play days: {playDays.size > 0
+                          ? Array.from(playDays).sort().map((i) => DAY_NAMES[i]).join(", ")
+                          : "—"}
+                      </>
+                    )}
                     {" · Courts: "}
                     {selectedCourtIds.size > 0
                       ? courts.filter((c) => selectedCourtIds.has(c.id)).map((c) => c.name).join(", ")

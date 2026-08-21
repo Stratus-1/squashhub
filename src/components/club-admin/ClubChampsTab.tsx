@@ -9411,7 +9411,7 @@ function InvitePreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Invite preview</DialogTitle>
           <p className="text-xs text-muted-foreground">
@@ -9419,64 +9419,66 @@ function InvitePreviewDialog({
           </p>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* In-app notification preview */}
-          <div className="rounded-lg border bg-card p-3 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <Trophy className="w-3.5 h-3.5" /> In-app notification
-            </div>
-            <div className="rounded-md border bg-background p-3">
-              <p className="text-sm font-semibold">Tournament invitation</p>
-              <p className="text-sm whitespace-pre-wrap text-muted-foreground mt-1">{appBody}</p>
-              <div className="flex gap-2 mt-3">
-                <span className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground">Register</span>
-                <span className="text-xs px-2 py-1 rounded border">Decline</span>
+        <div className="overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* In-app notification preview */}
+            <div className="rounded-lg border bg-card p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <Trophy className="w-3.5 h-3.5" /> In-app notification
               </div>
-            </div>
-            {!methods.has("app") && (
-              <p className="text-[11px] text-muted-foreground italic">
-                Not sent in-app — email only is selected.
-              </p>
-            )}
-          </div>
-
-          {/* Email preview */}
-          <div className="rounded-lg border bg-card p-3 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <CalendarIcon className="w-3.5 h-3.5" /> Email invitation
-            </div>
-            <div className="rounded-md border bg-background p-3 text-sm space-y-2">
-              <p className="text-xs text-muted-foreground">Subject</p>
-              <p className="font-semibold">You're invited: {tournamentName}</p>
-              <Separator />
-              <p>Hi there,</p>
-              <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
-              {detailLines.length > 0 && (
-                <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
-                  {detailLines.map((l, i) => <li key={i}>{l}</li>)}
-                </ul>
-              )}
-
-
-              {description?.trim() && (
-                <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">
-                  {description.trim()}
+              <div className="rounded-md border bg-background p-3">
+                <p className="text-sm font-semibold">Tournament invitation</p>
+                <p className="text-sm whitespace-pre-wrap text-muted-foreground mt-1">{appBody}</p>
+                <div className="flex gap-2 mt-3">
+                  <span className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground">Register</span>
+                  <span className="text-xs px-2 py-1 rounded border">Decline</span>
                 </div>
+              </div>
+              {!methods.has("app") && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Not sent in-app — email only is selected.
+                </p>
               )}
-              <p>Tap the button below to register or decline.</p>
-              <span className="inline-block text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground">
-                Open invitation
-              </span>
             </div>
-            {!methods.has("email") && (
-              <p className="text-[11px] text-muted-foreground italic">
-                Not sent by email — in-app only is selected.
-              </p>
-            )}
+
+            {/* Email preview */}
+            <div className="rounded-lg border bg-card p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <CalendarIcon className="w-3.5 h-3.5" /> Email invitation
+              </div>
+              <div className="rounded-md border bg-background p-3 text-sm space-y-2">
+                <p className="text-xs text-muted-foreground">Subject</p>
+                <p className="font-semibold">You're invited: {tournamentName}</p>
+                <Separator />
+                <p>Hi there,</p>
+                <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
+                {detailLines.length > 0 && (
+                  <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
+                    {detailLines.map((l, i) => <li key={i}>{l}</li>)}
+                  </ul>
+                )}
+
+
+                {description?.trim() && (
+                  <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">
+                    {description.trim()}
+                  </div>
+                )}
+                <p>Tap the button below to register or decline.</p>
+                <span className="inline-block text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground">
+                  Open invitation
+                </span>
+              </div>
+              {!methods.has("email") && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Not sent by email — in-app only is selected.
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>

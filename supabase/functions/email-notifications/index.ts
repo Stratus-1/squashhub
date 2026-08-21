@@ -203,18 +203,65 @@ async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; subject: strin
       requireTLS: cfg.smtpPort === 587,
       auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
     });
-    await transporter.sendMail({
+    const info: any = await transporter.sendMail({
       from: `${cfg.senderName} <${cfg.senderEmail}>`,
       to: args.to,
       subject: args.subject,
       text: fullText,
       html: fullHtml,
     });
+    // Gmail (and most relays) can accept the session but reject the individual
+    // recipient. Never report success unless the recipient was accepted.
+    const accepted: string[] = Array.isArray(info?.accepted) ? info.accepted.map(String) : [];
+    const rejected: string[] = Array.isArray(info?.rejected) ? info.rejected.map(String) : [];
+    const serverResponse = String(info?.response || "").trim();
+    if (rejected.length > 0 || (accepted.length === 0 && Array.isArray(info?.accepted))) {
+      const reason = `Recipient rejected by ${cfg.smtpHost}: ${rejected.join(", ") || args.to}. ${serverResponse}`.trim();
+      await logEmailAttempt({ to: args.to, template: "club-smtp", status: "failed", error: reason });
+      return { ok: false as const, skipped: false, reason };
+    }
+    await logEmailAttempt({
+      to: args.to,
+      template: "club-smtp",
+      status: "sent",
+      error: null,
+      messageId: String(info?.messageId || "") || undefined,
+      detail: serverResponse ? `${cfg.senderEmail} via ${cfg.smtpHost}: ${serverResponse}` : undefined,
+    });
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, skipped: false, reason: (err as Error).message || String(err) };
+    const reason = (err as Error).message || String(err);
+    await logEmailAttempt({ to: args.to, template: "club-smtp", status: "failed", error: `${cfg.senderEmail} via ${cfg.smtpHost}: ${reason}` });
+    return { ok: false as const, skipped: false, reason };
   }
 }
+
+/**
+ * Append-only audit of club-SMTP delivery attempts. The platform sender already
+ * writes to email_send_log; club SMTP sends were previously invisible, so an
+ * admin could not tell whether a member's invitation actually left the building.
+ */
+async function logEmailAttempt(args: {
+  to: string;
+  template: string;
+  status: "sent" | "failed";
+  error?: string | null;
+  messageId?: string;
+  detail?: string;
+}) {
+  try {
+    await supabaseAdmin.from("email_send_log").insert({
+      message_id: args.messageId || crypto.randomUUID(),
+      template_name: args.template,
+      recipient_email: args.to,
+      status: args.status,
+      error_message: args.error || args.detail || null,
+    });
+  } catch (e) {
+    console.warn("[email-notifications] failed to log send attempt", e);
+  }
+}
+
 
 /**
  * Plain-English explanation of an SMTP failure so admins are never left

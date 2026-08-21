@@ -9089,7 +9089,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
                             <Select
                               value=""
-                              onValueChange={(v) => {
+                              onValueChange={async (v) => {
+                                if (v === "__withdrawn") {
+                                  if (confirm("Withdraw this player from the tournament?")) {
+                                    await withdraw(id);
+                                  }
+                                  return;
+                                }
                                 setGroupAssignments((prev) => new Map(prev).set(id, Number(v)));
                                 setEligibilityOverrides((prev) => new Set(prev).add(id));
                                 setUnassignedEntrantIds((prev) => prev.filter((x) => x !== id));
@@ -9099,6 +9105,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 <SelectValue placeholder="Assign…" />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="__withdrawn" className="text-destructive">Withdrawn / not playing</SelectItem>
                                 {Array.from({ length: numGroups }, (_, i) => (
                                   <SelectItem key={i} value={String(i)}>
                                     {groupLabels[String(i + 1)]?.trim()

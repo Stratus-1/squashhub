@@ -719,6 +719,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
+  // 'club'  — the club books courts and publishes a fixed schedule.
+  // 'self'  — players arrange their own games and must play by a deadline.
+  const [schedulingMode, setSchedulingMode] = useState<"club" | "self">("club");
+  const [roundPlayBy, setRoundPlayBy] = useState<string>("");
+
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
   // When on, Bells scheduler will not place a player in a back-to-back match:

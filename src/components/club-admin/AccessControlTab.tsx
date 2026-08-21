@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { triggerShellyDoor } from "@/lib/shelly-door";
 import { isBleFallbackAvailable, pulseShellyBleAuto } from "@/lib/shelly-ble-auto";
+import { isInBlockedIframe, describeBleError } from "@/lib/shelly-ble";
 
 const ACCESS_METHODS = [
   { value: "none", label: "No Access Control", icon: Lock, description: "Courts are open — no electronic access system" },
@@ -782,6 +783,12 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                       This device can't use Bluetooth fallback — members need the SquashHub app (iOS or Android) or Chrome on Android/desktop for the fallback to work. iPhone browsers don't support Web Bluetooth.
                     </p>
                   )}
+                  {isBleFallbackAvailable() && isInBlockedIframe() && (
+                    <p className="text-[11px] text-amber-600 md:col-span-2">
+                      You're inside the preview frame — browsers block Bluetooth here. Open SquashHub in its own tab (or the installed app) before testing BLE.
+                    </p>
+                  )}
+
                   <div className="md:col-span-2">
                     <Button
                       type="button"
@@ -799,7 +806,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
                           });
                           toast.success("BLE pulse sent — door should have clicked");
                         } catch (err: any) {
-                          toast.error(err?.message || "BLE test failed");
+                          toast.error(describeBleError(err));
                         }
                       }}
                     >

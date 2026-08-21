@@ -4672,7 +4672,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             invitationBody: buildInviteBody(),
             invitationUrl: previewUrl,
             previewForName: previewMember.name,
+            recipientName: previewMember.name,
           },
+
         },
       });
       if (sendError) throw sendError;
@@ -4746,6 +4748,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 invitationBody: body,
                 invitationUrl: testUrl,
                 previewForName: "you (test invitation)",
+                recipientName: String((myMember as any)?.name || "").trim() || undefined,
               },
             },
           });

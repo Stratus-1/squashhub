@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { cn } from "@/lib/utils";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
+import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";
+
 import { ArrowRight, CalendarClock, CheckCircle, CreditCard, Loader2, Trophy, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -288,13 +290,24 @@ export function TournamentInviteActions({ notification, champId, registrationId,
 
   const detailRows = useMemo(() => {
     if (!champ) return [];
+    const selfScheduled = String(champ.scheduling_mode || "") === "self";
+    const deadlines = selfScheduled ? parseRoundDeadlines(champ.round_play_by) : [];
+    const scheduleRows = selfScheduled
+      ? [
+          "Players arrange their own games — no fixed court times",
+          ...deadlines.map((d) => `${d.label} to be played by ${d.date}`),
+        ]
+      : [
+          `${(champ.play_days as number[] | undefined)?.map((d) => DAY_NAMES[d]).join(", ") || "Tournament days"} · ${String(champ.start_time || "").slice(0, 5)} – ${String(champ.end_time || "").slice(0, 5)}`,
+        ];
     return [
       `${GENDER_LABELS[champ.gender] || champ.gender} ${champ.match_type === "doubles" ? "Doubles" : "Singles"}`,
       `${champ.start_date} to ${champ.end_date}`,
-      `${(champ.play_days as number[] | undefined)?.map((d) => DAY_NAMES[d]).join(", ") || "Tournament days"} · ${String(champ.start_time || "").slice(0, 5)} – ${String(champ.end_time || "").slice(0, 5)}`,
+      ...scheduleRows,
       paymentRequired ? `${formatMoney(entryFeeCents)} entry fee${acceptsEft ? " · EFT accepted" : ""}` : "No entry fee",
     ].filter(Boolean);
   }, [acceptsEft, champ, entryFeeCents, paymentRequired]);
+
 
   if (champLoading || regLoading) {
     return <Card className={cn("p-3 flex items-center justify-center", className)}><Loader2 className="w-4 h-4 animate-spin text-primary" /></Card>;

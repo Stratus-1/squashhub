@@ -107,3 +107,34 @@ export function flattenPools<T>(ordered: T[], pools: number, opts?: PoolAssignOp
   if (n <= 1) return [...ordered];
   return distributeIntoPools(ordered, n, opts).flat();
 }
+
+export interface PoolBlockRow<T> {
+  item: T;
+  /** 1-based seed within the DIVISION (position in the seeded order). */
+  seed: number;
+}
+
+export interface PoolBlock<T> {
+  /** 0-based pool index. */
+  pool: number;
+  /** A, B, C … */
+  letter: string;
+  rows: PoolBlockRow<T>[];
+}
+
+/**
+ * Pools as separate, renderable blocks — never one interleaved list.
+ * Each row keeps its division seed number so the organiser can still read
+ * "Pool A: 1, 4, 5, 8, 9" at a glance.
+ */
+export function poolBlocks<T>(ordered: T[], pools: number, opts?: PoolAssignOptions): PoolBlock<T>[] {
+  const n = Math.max(1, Math.floor(pools) || 1);
+  const idx = poolIndexes(ordered.length, n, opts);
+  const out: PoolBlock<T>[] = Array.from({ length: n }, (_, p) => ({
+    pool: p,
+    letter: poolLetter(p),
+    rows: [],
+  }));
+  ordered.forEach((item, i) => out[idx[i]].rows.push({ item, seed: i + 1 }));
+  return out;
+}

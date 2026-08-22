@@ -237,7 +237,8 @@ export function buildSectionFirstRound(opts: {
       winner_member_id: bye ? present?.memberId ?? null : null,
     });
   }
-  return rows;
+  return assertNoSelfMatches(rows);
+
 }
 
 /** Whole first phase for a league: every section's opening round. */

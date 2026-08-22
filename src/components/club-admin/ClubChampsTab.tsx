@@ -6395,7 +6395,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   </span>
                 </label>
               </div>
-              {schedulingMode === "self" && (
+              {simplifiedKnockoutSchedule && (
+                <div className="pt-1">
+                  <SelfScheduledRounds
+                    deadlines={roundDeadlines}
+                    onChange={setRoundDeadlines}
+                    progress={knockoutProgress}
+                    totalRounds={knockoutRoundCount(
+                      Math.max(0, ...(groups as any[][]).map((g) => (g?.length ?? 0))),
+                    )}
+                    minDate={startDate || undefined}
+                  />
+                </div>
+              )}
+              {schedulingMode === "self" && !simplifiedKnockoutSchedule && (
                 <div className="pt-1 space-y-2">
                   <Label className="text-sm">Play-by deadlines per round</Label>
                   <p className="text-[11px] text-muted-foreground">

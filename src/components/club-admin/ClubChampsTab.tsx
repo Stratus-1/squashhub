@@ -9211,7 +9211,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         return (
                           <div key={id} className="flex items-center gap-2 rounded border bg-background/60 px-2 py-1.5">
                             <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
-                            {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
+                            {p.ladder_position ? (
+                              <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40">No ladder rank</Badge>
+                            )}
                             <Select
                               value=""
                               onValueChange={async (v) => {

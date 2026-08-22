@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -6,12 +7,14 @@ import { useMyClub } from "@/hooks/use-club";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, ChevronRight, Calendar } from "lucide-react";
+import { Trophy, ChevronRight, Calendar, CalendarClock } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
+import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import { canSelfScheduleMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 
@@ -22,6 +25,7 @@ export function MyChampionships() {
   const { data: clubData } = useMyClub();
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
+  const [scheduling, setScheduling] = useState<{ match: any; opponent: string } | null>(null);
 
   // Get all active champs for the club
   const { data: allChamps = [] } = useQuery({
@@ -150,7 +154,14 @@ export function MyChampionships() {
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => b ? `${getName(a)} & ${getName(b)}` : getName(a);
 
-  const upcomingMatches = myMatches.filter((m: any) => m.status === "scheduled" && m.scheduled_date && !isPast(new Date(m.scheduled_date + "T23:59:59")));
+  // Self-scheduled tournaments create matches with no court/date/time — those
+  // are "upcoming" too, and the players themselves arrange them.
+  const upcomingMatches = myMatches.filter(
+    (m: any) =>
+      m.status === "scheduled" &&
+      !m.is_bye &&
+      (!m.scheduled_date || !isPast(new Date(m.scheduled_date + "T23:59:59"))),
+  );
   const completedMatches = myMatches.filter((m: any) => m.status === "completed");
 
   return (
@@ -229,6 +240,45 @@ export function MyChampionships() {
                   const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
                   const today = matchDate && isToday(matchDate);
 
+                  const unscheduled = isUnscheduled(m);
+                  const perm = canSelfScheduleMatch(m, memberId);
+
+                  if (unscheduled) {
+                    return (
+                      <div
+                        key={m.id}
+                        className="rounded p-1.5 bg-amber-500/5 border border-amber-500/30"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center gap-2 text-[12px]">
+                          <CalendarClock className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span className="font-medium truncate">vs {opponent}</span>
+                          {m.stage_label && (
+                            <Badge variant="outline" className="text-[9px] shrink-0">{m.stage_label}</Badge>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Upcoming match — not yet scheduled
+                          {m.play_by && <> · play by {format(new Date(m.play_by), "EEE dd MMM")}</>}
+                        </p>
+                        {perm.allowed ? (
+                          <Button
+                            size="sm"
+                            className="h-6 text-[11px] mt-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setScheduling({ match: m, opponent });
+                            }}
+                          >
+                            Choose court & time
+                          </Button>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{perm.reason}</p>
+                        )}
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={m.id} className={cn(
                       "flex items-center gap-2 text-[12px] p-1.5 rounded",
@@ -242,6 +292,19 @@ export function MyChampionships() {
                       <span className="font-medium truncate">vs {opponent}</span>
                       {m.court && <Badge variant="outline" className="text-[9px] ml-auto shrink-0">{m.court.name}</Badge>}
                       {today && <Badge className="text-[9px] shrink-0">Today</Badge>}
+                      {perm.allowed && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[10px] px-1.5 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setScheduling({ match: m, opponent });
+                          }}
+                        >
+                          Reschedule
+                        </Button>
+                      )}
                     </div>
                   );
                 })}
@@ -268,6 +331,14 @@ export function MyChampionships() {
           </Card>
         );
       })}
+
+      <ScheduleMatchDialog
+        open={!!scheduling}
+        onOpenChange={(v) => !v && setScheduling(null)}
+        clubId={clubId}
+        match={scheduling?.match || null}
+        opponentName={scheduling?.opponent}
+      />
     </div>
   );
 }

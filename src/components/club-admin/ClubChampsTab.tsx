@@ -2883,7 +2883,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // Schedule preview
   const schedulePreview = useMemo(() => {
-    if (!startDate || !endDate || playDays.size === 0 || selectedCourtIds.size === 0) return null;
+    // Self-scheduled tournaments have no play days, courts or time slots — the
+    // draw is still built, it just comes out unscheduled (players book later).
+    if (!startDate || !endDate) return null;
+    if (schedulingMode !== "self" && (playDays.size === 0 || selectedCourtIds.size === 0)) return null;
 
     const courtIds = Array.from(selectedCourtIds);
 
@@ -3206,6 +3209,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
     }
 
+    // Players arrange their own court/date/time: stop here. The draw exists,
+    // but no slot, court or booking is allocated — every playable match is
+    // created unscheduled and carries only its round play-by deadline.
+    if (schedulingMode === "self") {
+      const playable = allMatches.filter((m) => !m.isBye);
+      return {
+        allMatches,
+        totalSlots: playable.length,
+        totalMatches: playable.length,
+        allDates: [] as string[],
+        timeSlots: [] as string[],
+        playoffPlaceholders: [] as any[],
+      };
+    }
 
 
     // Spread mode uses per-session entity caps (below) as its main balancer,
@@ -3915,7 +3932,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the

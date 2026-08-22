@@ -8947,20 +8947,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   const isSwissPools = true; // pools apply to any format now
                   const poolsFor = (gi: number) => poolsForDivision(gi + 1);
 
-                  // Block distribution: pool A = first chunk, pool B = next chunk, etc.
-                  // Admins arrange strength manually by dragging within the pool.
-                  const poolIdx = (i: number, pools: number, total: number) => {
-                    if (pools <= 1) return 0;
-                    const size = Math.ceil(total / pools);
-                    return Math.min(pools - 1, Math.floor(i / size));
-                  };
-                  const poolSize = (p: number, pools: number, total: number) => {
-                    if (pools <= 1) return total;
-                    const size = Math.ceil(total / pools);
-                    if (p < pools - 1) return size;
-                    return Math.max(0, total - size * (pools - 1));
-                  };
-                  const poolLetter = (p: number) => String.fromCharCode(65 + p);
+                  // Seeded serpentine distribution: pool A = seeds 1,4,5,8…,
+                  // pool B = 2,3,6,7… so pools are balanced by strength.
+                  // A division the organiser hand-arranged keeps their order
+                  // (contiguous blocks) until they hit "Rebalance pools by seed".
+                  const poolIdx = (i: number, pools: number, total: number, manual: boolean) =>
+                    manual ? blockPoolIndex(i, pools, total) : snakePoolIndex(i, pools);
+                  const poolSize = (p: number, pools: number, total: number, manual: boolean) =>
+                    poolCounts(total, pools, { manual })[p] ?? 0;
+
                   const poolTint = [
                     "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30",
                     "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30",

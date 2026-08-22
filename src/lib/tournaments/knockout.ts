@@ -381,7 +381,8 @@ export function buildNextRound(opts: {
       play_by: opts.playBy ?? null,
     });
   }
-  return out;
+  return assertNoSelfMatches(out);
+
 }
 
 /**

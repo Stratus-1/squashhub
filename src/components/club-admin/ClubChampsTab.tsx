@@ -2709,6 +2709,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // Add any IDs not in current (new selections)
     for (const p of selectedPlayers) if (!next.includes(p.id)) next.push(p.id);
     setPlayerOrder(next);
+    // Only a deliberate drag inside this division switches it off ladder order.
+    setManualSeedGroups((prev) => (prev.has(groupIndex) ? prev : new Set(prev).add(groupIndex)));
   };
 
   const handlePairDragEnd = (groupIndex: number) => (e: DragEndEvent) => {

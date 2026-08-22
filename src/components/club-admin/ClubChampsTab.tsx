@@ -50,6 +50,7 @@ import {
   type DivisionSource,
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
+import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
   resolveLeagueSeasonLevels,
@@ -1236,6 +1237,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   /** Accepted entrants who match no division's source league — organiser must place them. */
   const [unassignedEntrantIds, setUnassignedEntrantIds] = useState<string[]>([]);
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);
+  /**
+   * Divisions the organiser deliberately reordered by drag-and-drop. Every
+   * other division stays in club-ladder order, so drag order never silently
+   * becomes the seed order.
+   */
+  const [manualSeedGroups, setManualSeedGroups] = useState<Set<number>>(new Set());
 
   // Doubles-specific state
   const [doublesPairs, setDoublesPairs] = useState<DoublePair[]>([]);
@@ -2702,6 +2709,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // Add any IDs not in current (new selections)
     for (const p of selectedPlayers) if (!next.includes(p.id)) next.push(p.id);
     setPlayerOrder(next);
+    // Only a deliberate drag inside this division switches it off ladder order.
+    setManualSeedGroups((prev) => (prev.has(groupIndex) ? prev : new Set(prev).add(groupIndex)));
   };
 
   const handlePairDragEnd = (groupIndex: number) => (e: DragEndEvent) => {
@@ -2791,23 +2800,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       return g;
     }
     const g: ClubMember[][] = Array.from({ length: numGroups }, () => []);
-    const orderIdx = new Map(playerOrder.map((id, i) => [id, i]));
-    const sorted = [...selectedPlayers].sort(
-      (a, b) => (orderIdx.get(a.id) ?? 1e9) - (orderIdx.get(b.id) ?? 1e9)
-    );
-    sorted.forEach((p) => {
+    selectedPlayers.forEach((p) => {
       // No assignment = unassigned (plays in none of the source leagues).
       // They stay out of the draw until the organiser places them.
       const gi = groupAssignments.get(p.id);
       if (gi !== undefined && gi < numGroups) g[gi].push(p);
-      // Every additional division the player entered.
+      // Every additional division the player entered — the same person may
+      // legitimately hold a row in several divisions and keeps their rank.
       extraDivisions.get(p.id)?.forEach((extra) => {
         if (extra === gi || extra >= numGroups) return;
         g[extra].push(p);
       });
     });
-    return g;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder]);
+    // Seed order per division: club ladder ascending, unranked last, unless
+    // the organiser deliberately reordered that division by hand.
+    return g.map((list, gi) =>
+      sortDivisionEntrants(list as any, {
+        manual: manualSeedGroups.has(gi),
+        manualOrder: playerOrder,
+      }) as ClubMember[],
+    );
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups]);
 
   // Schedule preview
   const schedulePreview = useMemo(() => {
@@ -9050,7 +9063,41 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 {pools} pools · block distribution
                               </Badge>
                             )}
+                            {manualSeedGroups.has(gi) ? (
+                              <>
+                                <Badge variant="outline" className="text-[10px]">Manual seed order</Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-[10px]"
+                                  onClick={() =>
+                                    setManualSeedGroups((prev) => {
+                                      const n = new Set(prev);
+                                      n.delete(gi);
+                                      return n;
+                                    })
+                                  }
+                                >
+                                  Reset to ladder order
+                                </Button>
+                              </>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">Seeded by club ladder</Badge>
+                            )}
+                            {g.some((p) => isUnranked(p as any)) && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                {g.filter((p) => isUnranked(p as any)).length} unranked
+                              </Badge>
+                            )}
                           </div>
+                          {g.length > 0 && (
+                            <p className="text-[10px] text-muted-foreground mb-2 leading-snug">
+                              Seed preview:{" "}
+                              {seedPreview(g as any)
+                                .map((s) => `${s.seed}. ${s.name}${s.ladderPosition ? ` (#${s.ladderPosition})` : " (unranked)"}`)
+                                .join("  ·  ")}
+                            </p>
+                          )}
                           <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                             <div className="space-y-1">
                               {g.length === 0 && (
@@ -9074,7 +9121,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           {GENDER_LABELS[genderForLeague((groupAssignments.get(p.id) ?? 0) + 1)]}?
                                         </Badge>
                                       )}
-                                      {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
+                                      {p.ladder_position ? (
+                                        <Badge variant="secondary" className="text-[10px]" title="Club ladder position — the seeding rank">#{p.ladder_position}</Badge>
+                                      ) : (
+                                        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40" title="No club ladder position — seeded after every ranked entrant">No ladder rank</Badge>
+                                      )}
                                       {isSwissPools && pools > 1 && (
                                         <Badge variant="outline" className={`text-[10px] ${poolTint[pl % poolTint.length]}`}>
                                           {poolLetter(pl)}
@@ -9160,7 +9211,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         return (
                           <div key={id} className="flex items-center gap-2 rounded border bg-background/60 px-2 py-1.5">
                             <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
-                            {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
+                            {p.ladder_position ? (
+                              <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40">No ladder rank</Badge>
+                            )}
                             <Select
                               value=""
                               onValueChange={async (v) => {

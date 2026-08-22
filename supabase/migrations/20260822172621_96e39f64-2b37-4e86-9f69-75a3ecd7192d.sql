@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.email_send_log_inherit_club() FROM PUBLIC, anon, authenticated;

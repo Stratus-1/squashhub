@@ -61,6 +61,7 @@ Deno.serve(async (req) => {
   let idempotencyKey: string
   let messageId: string
   let templateData: Record<string, any> = {}
+  let clubId: string | null = null
   try {
     const body = await req.json()
     templateName = body.templateName || body.template_name
@@ -70,6 +71,7 @@ Deno.serve(async (req) => {
     if (body.templateData && typeof body.templateData === 'object') {
       templateData = body.templateData
     }
+    clubId = body.clubId || body.club_id || templateData.clubId || templateData.club_id || null
   } catch {
     return new Response(
       JSON.stringify({ error: 'Invalid JSON in request body' }),
@@ -151,6 +153,7 @@ Deno.serve(async (req) => {
     // Log the suppressed attempt
     await supabase.from('email_send_log').insert({
       message_id: messageId,
+      club_id: clubId,
       template_name: templateName,
       recipient_email: effectiveRecipient,
       status: 'suppressed',
@@ -187,6 +190,7 @@ Deno.serve(async (req) => {
     })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
+      club_id: clubId,
       template_name: templateName,
       recipient_email: effectiveRecipient,
       status: 'failed',
@@ -220,7 +224,8 @@ Deno.serve(async (req) => {
       })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
-        template_name: templateName,
+        club_id: clubId,
+      template_name: templateName,
         recipient_email: effectiveRecipient,
         status: 'failed',
         error_message: 'Failed to create unsubscribe token',
@@ -249,7 +254,8 @@ Deno.serve(async (req) => {
       })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
-        template_name: templateName,
+        club_id: clubId,
+      template_name: templateName,
         recipient_email: effectiveRecipient,
         status: 'failed',
         error_message: 'Failed to confirm unsubscribe token storage',
@@ -271,6 +277,7 @@ Deno.serve(async (req) => {
     })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
+      club_id: clubId,
       template_name: templateName,
       recipient_email: effectiveRecipient,
       status: 'suppressed',
@@ -349,6 +356,7 @@ Deno.serve(async (req) => {
 
     await supabase.from('email_send_log').insert({
       message_id: messageId,
+      club_id: clubId,
       template_name: templateName,
       recipient_email: effectiveRecipient,
       status: 'failed',

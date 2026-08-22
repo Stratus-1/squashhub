@@ -114,6 +114,15 @@ import {
   roundDeadlineLines,
   roundDeadlineSummary,
 } from "@/lib/tournaments/round-deadlines";
+import { SelfScheduledRounds } from "@/components/club-admin/tournament/SelfScheduledRounds";
+import {
+  isSelfScheduledKnockout,
+  roundProgress as computeRoundProgress,
+  knockoutRoundCount,
+  currentRoundNumber,
+  roundIsClubScheduled,
+  type RoundMatchRow,
+} from "@/lib/tournaments/self-scheduled-rounds";
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
 import { z } from "zod";
 

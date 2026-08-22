@@ -9056,32 +9056,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               </Badge>
                             )}
                           </div>
-                          <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-                            <div className="space-y-1">
-                              {g.length === 0 && (
-                                <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
+                          {/* Each pool is its own block — pools are never
+                              interleaved into one mixed list. */}
+                          {g.length === 0 && (
+                            <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
+                          )}
+                          {poolBlocks(g, pools, { manual: manualSeedGroups.has(gi) }).map((block) => (
+                            <div key={block.pool} className={pools > 1 ? "mb-2" : ""}>
+                              {isSwissPools && pools > 1 && (
+                                <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[block.pool % poolTint.length]}`}>
+                                  Pool {block.letter} <span className="opacity-70 normal-case">({block.rows.length} pairs)</span>
+                                </div>
                               )}
-                              {g.map((pair, i) => {
-                                const manualPools = manualSeedGroups.has(gi);
-                                const p = poolIdx(i, pools, g.length, manualPools);
-                                const prevP = i > 0 ? poolIdx(i - 1, pools, g.length, manualPools) : -1;
-                                const showHeader = isSwissPools && pools > 1 && manualPools && p !== prevP;
-                                return (
-                                  <div key={pair.id}>
-                                    {showHeader && (
-                                      <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[p % poolTint.length]}`}>
-                                        Pool {poolLetter(p)} <span className="opacity-70 normal-case">({poolSize(p, pools, g.length, manualPools)} {isDoubles ? "pairs" : "players"})</span>
-
-                                      </div>
-                                    )}
-                                    <SortableRow id={pair.id}>
+                              <SortableContext items={block.rows.map((r) => r.item.id)} strategy={verticalListSortingStrategy}>
+                                <div className="space-y-1">
+                                  {block.rows.map(({ item: pair, seed }) => (
+                                    <SortableRow key={pair.id} id={pair.id}>
+                                      {pools > 1 && (
+                                        <span className="text-[10px] text-muted-foreground w-5 shrink-0 tabular-nums">{seed}.</span>
+                                      )}
                                       <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                                       <span className="flex-1 text-sm font-medium">{getPairLabel(pair)}</span>
-                                      {isSwissPools && pools > 1 && (
-                                        <Badge variant="outline" className={`text-[10px] ${poolTint[p % poolTint.length]}`}>
-                                          {poolLetter(p)}
-                                        </Badge>
-                                      )}
                                       <Select
                                         value={String(pairGroupAssignments.get(pair.id) ?? 0)}
                                         onValueChange={async (v) => {
@@ -9105,11 +9100,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                         </SelectContent>
                                       </Select>
                                     </SortableRow>
-                                  </div>
-                                );
-                              })}
+                                  ))}
+                                </div>
+                              </SortableContext>
                             </div>
-                          </SortableContext>
+                          ))}
                         </DroppableLeague>
                       );
                     })

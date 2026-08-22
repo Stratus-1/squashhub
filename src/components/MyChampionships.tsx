@@ -150,7 +150,14 @@ export function MyChampionships() {
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => b ? `${getName(a)} & ${getName(b)}` : getName(a);
 
-  const upcomingMatches = myMatches.filter((m: any) => m.status === "scheduled" && m.scheduled_date && !isPast(new Date(m.scheduled_date + "T23:59:59")));
+  // Self-scheduled tournaments create matches with no court/date/time — those
+  // are "upcoming" too, and the players themselves arrange them.
+  const upcomingMatches = myMatches.filter(
+    (m: any) =>
+      m.status === "scheduled" &&
+      !m.is_bye &&
+      (!m.scheduled_date || !isPast(new Date(m.scheduled_date + "T23:59:59"))),
+  );
   const completedMatches = myMatches.filter((m: any) => m.status === "completed");
 
   return (

@@ -51,7 +51,7 @@ import {
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
 import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
-import { blockPoolIndex, poolCounts, poolLetter, snakePoolIndex } from "@/lib/tournaments/pools";
+import { blockPoolIndex, distributeIntoPools, poolCounts, poolLetter, snakePoolIndex } from "@/lib/tournaments/pools";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
   resolveLeagueSeasonLevels,
@@ -2982,16 +2982,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // Pools per league (shared by Swiss, round robin and cross league).
     // Single source of truth for pools (legacy sections included).
     const poolsForLeague = (gn: number) => effectivePools({ gn, pools: swissPools, legacySections: leagueSections });
-    const splitIntoPools = (ids: string[], pools: number): string[][] => {
+    // Seeded serpentine split (A: 1,4,5,8… / B: 2,3,6,7…) so generated pools
+    // match what the organiser sees on the allocation step. A hand-arranged
+    // division keeps its contiguous blocks.
+    const splitIntoPools = (ids: string[], pools: number, manual = false): string[][] => {
       if (pools <= 1) return [ids];
-      const size = Math.ceil(ids.length / pools);
-      const out: string[][] = [];
-      for (let p = 0; p < pools; p++) out.push(ids.slice(p * size, Math.min(ids.length, (p + 1) * size)));
-      return out.filter((g) => g.length > 0);
+      return distributeIntoPools(ids, pools, { manual }).filter((g) => g.length > 0);
     };
     const ingestRounds = (gi: number, ids: string[]) => {
       // Round robin inside each pool of the league (1 pool = classic RR).
-      const pools = splitIntoPools(ids, poolsForLeague(gi + 1));
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi));
       for (const poolIds of pools) {
         if (poolIds.length < 2) continue;
         const { rounds, byesPerRound } = generateRoundRobinRounds(poolIds, rrFmtForLeague(gi));
@@ -3053,7 +3053,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // Cross-pool inside one league: split the league into N pools, then every
     // pool plays every other pool.
     const ingestCrossPools = (gi: number, ids: string[]) => {
-      const pools = splitIntoPools(ids, poolsForLeague(gi + 1));
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi));
       if (pools.length < 2) return;
       ingestCrossGroups(pools, pools.map(() => gi + 1), formatForLeague(gi + 1) === "double_round_robin");
     };
@@ -3064,9 +3064,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const buildSwissLeague = (gi: number, ids: string[]) => {
       const pools = poolsForLeague(gi + 1);
       const rounds = Math.max(1, Number(swissRounds[String(gi + 1)]) || 1);
-      const size = Math.ceil(ids.length / pools);
+      const poolGroups = distributeIntoPools(ids, pools, { manual: manualSeedGroups.has(gi) });
       for (let p = 0; p < pools; p++) {
-        const poolIds = ids.slice(p * size, Math.min(ids.length, (p + 1) * size));
+        const poolIds = poolGroups[p] || [];
         if (poolIds.length < 2) continue;
         const { rounds: rrRounds, byesPerRound } = generateRoundRobinRounds(poolIds, "single");
         for (let r = 0; r < rounds; r++) {

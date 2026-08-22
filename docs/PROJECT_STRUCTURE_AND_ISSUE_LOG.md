@@ -1074,3 +1074,9 @@ players. Selecting it:
 - Drag handlers (`handlePlayerDragEnd`/`handlePairDragEnd`) now operate on the flattened pool-block (visual) order, so a move within/between pool blocks stores exactly what the organiser sees, marks the division manual and never silently rebalances. `Rebalance pools by seed` still restores the seeded blocks.
 - Draw-prep (`splitIntoPools` → `distributeIntoPools`) uses the same membership shown in the blocks (asserted by test).
 **Tests:** `src/test/pool-distribution.test.ts` now 14 tests incl. the Nelspruit 9/2 case, 4/8 pools, manual blocks and block↔draw-prep parity.
+
+## Knockout section sizing (bracket-optimised)
+- `src/lib/tournaments/knockout-sections.ts` — `knockoutSectionSizes(total, sections)`: greedy, strongest section first; each section takes the power of two closest to the running average (ties → larger) within `[2, remaining - 2*(sectionsLeft-1)]`; last section takes the remainder; sizes returned largest-first. 14/2 → 8+6, 22/3 → 8+8+6, 30/4 → 8+8+8+6, 12/2 → 8+4. Fewer entrants than 2× sections falls back to the balanced split.
+- `pools.ts` gained `PoolAssignOptions.knockout`. Only when set do `poolSizes`/`poolIndexes`/`poolBlocks` use bracket sizes; the serpentine deal then respects those capacities (top seeds still land in different sections). Round robin / Swiss / cross league are byte-identical to before.
+- `ClubChampsTab.tsx` passes `poolOptsFor(gi)` (`{ manual, knockout: formatForLeague === "knockout" }`) everywhere pools are rendered/dragged; the allocation UI shows `Pool A (8) · Pool B (6)` plus the round-1 bye count. Manual arrangements are untouched until "Rebalance pools by seed".
+- Tests: `src/test/knockout-sections.test.ts` (10) + existing `pool-distribution.test.ts` unchanged and passing.

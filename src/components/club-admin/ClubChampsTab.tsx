@@ -52,6 +52,7 @@ import {
 } from "@/lib/tournaments/divisions";
 import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
 import { distributeIntoPools, flattenPools, poolBlocks, poolCounts, poolLetter } from "@/lib/tournaments/pools";
+import { describeSectionSizes, totalByes } from "@/lib/tournaments/knockout-sections";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
   resolveLeagueSeasonLevels,
@@ -873,6 +874,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const sectionsForLeague = (gn: number) =>
     effectivePools({ gn, pools: swissPools, legacySections: leagueSections });
   const poolsForDivision = sectionsForLeague;
+  // Knockout divisions size their pools for the bracket (8 + 6) instead of
+  // equal headcount (7 + 7). Every other format keeps balanced pools.
+  const isKnockoutDivision = (gn: number) => formatForLeague(gn) === "knockout";
+  const poolOptsFor = (gi: number) => ({
+    manual: manualSeedGroups.has(gi),
+    knockout: isKnockoutDivision(gi + 1),
+  });
   /** The only writer of the pool count. */
   const setPoolsForDivision = (gn: number, next: number) => {
     const key = String(gn);
@@ -2737,9 +2745,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // drag happens in that VISUAL order, not in the raw seed order. Flattening
     // the pool blocks first means the order we store back reproduces exactly
     // the pools the organiser was looking at — nothing silently rebalances.
-    const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), {
-      manual: manualSeedGroups.has(groupIndex),
-    });
+    const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), poolOptsFor(groupIndex));
     const oldIdx = visualIds.indexOf(String(active.id));
     const newIdx = visualIds.indexOf(String(over.id));
     if (oldIdx < 0 || newIdx < 0) return;
@@ -2768,9 +2774,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (!over || active.id === over.id) return;
     const groupIds = (groups as DoublePair[][])[groupIndex].map((p) => p.id);
     // Same pool-block visual order as singles — see handlePlayerDragEnd.
-    const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), {
-      manual: manualSeedGroups.has(groupIndex),
-    });
+    const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), poolOptsFor(groupIndex));
     const oldIdx = visualIds.indexOf(String(active.id));
     const newIdx = visualIds.indexOf(String(over.id));
     if (oldIdx < 0 || newIdx < 0) return;
@@ -3039,9 +3043,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // Seeded serpentine split (A: 1,4,5,8… / B: 2,3,6,7…) so generated pools
     // match what the organiser sees on the allocation step. A hand-arranged
     // division keeps its contiguous blocks.
-    const splitIntoPools = (ids: string[], pools: number, manual = false): string[][] => {
+    const splitIntoPools = (ids: string[], pools: number, manual = false, knockout = false): string[][] => {
       if (pools <= 1) return [ids];
-      return distributeIntoPools(ids, pools, { manual }).filter((g) => g.length > 0);
+      return distributeIntoPools(ids, pools, { manual, knockout }).filter((g) => g.length > 0);
     };
     const ingestRounds = (gi: number, ids: string[]) => {
       // Round robin inside each pool of the league (1 pool = classic RR).
@@ -9048,7 +9052,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <span className="text-muted-foreground text-xs">({g.length} pairs)</span>
                             {isSwissPools && pools > 1 && (
                               <Badge variant="outline" className="text-[10px]">
-                                {pools} pools · seed-balanced (serpentine)
+                                {pools} pools · {isKnockoutDivision(gi + 1) ? "bracket-sized" : "seed-balanced (serpentine)"}
                               </Badge>
                             )}
                           </div>
@@ -9057,7 +9061,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                           {g.length === 0 && (
                             <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
                           )}
-                          {poolBlocks(g, pools, { manual: manualSeedGroups.has(gi) }).map((block) => (
+                          {poolBlocks(g, pools, poolOptsFor(gi)).map((block) => (
                             <div key={block.pool} className={pools > 1 ? "mb-2" : ""}>
                               {isSwissPools && pools > 1 && (
                                 <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[block.pool % poolTint.length]}`}>
@@ -9152,10 +9156,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                           </div>
                           {isSwissPools && pools > 1 && g.length > 0 && (
                             <p className="text-[10px] text-muted-foreground mb-1 leading-snug">
-                              {poolCounts(g.length, pools, { manual: manualSeedGroups.has(gi) })
+                              {poolCounts(g.length, pools, poolOptsFor(gi))
                                 .map((c, p) => `Pool ${poolLetter(p)} (${c})`)
                                 .join("  ·  ")}
-                              {!manualSeedGroups.has(gi) && " — seeds dealt A→B→B→A so pool strength stays level"}
+                              {!manualSeedGroups.has(gi) &&
+                                (isKnockoutDivision(gi + 1)
+                                  ? ` — sized for the bracket (${describeSectionSizes(poolCounts(g.length, pools, poolOptsFor(gi)))}), ${totalByes(poolCounts(g.length, pools, poolOptsFor(gi)))} bye(s) in round 1`
+                                  : " — seeds dealt A→B→B→A so pool strength stays level")}
                             </p>
                           )}
                           {g.length > 0 && (
@@ -9173,7 +9180,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                           {g.length === 0 && (
                             <p className="text-[11px] text-muted-foreground italic py-2">Drop players here</p>
                           )}
-                          {poolBlocks(g, pools, { manual: manualSeedGroups.has(gi) }).map((block) => (
+                          {poolBlocks(g, pools, poolOptsFor(gi)).map((block) => (
                             <div key={block.pool} className={pools > 1 ? "mb-2" : ""} data-pool={block.letter}>
                               {isSwissPools && pools > 1 && (
                                 <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[block.pool % poolTint.length]}`}>

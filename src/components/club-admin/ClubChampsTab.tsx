@@ -3209,6 +3209,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
     }
 
+    // Players arrange their own court/date/time: stop here. The draw exists,
+    // but no slot, court or booking is allocated — every playable match is
+    // created unscheduled and carries only its round play-by deadline.
+    if (schedulingMode === "self") {
+      const playable = allMatches.filter((m) => !m.isBye);
+      return {
+        allMatches,
+        totalSlots: playable.length,
+        totalMatches: playable.length,
+        allDates: [] as string[],
+        timeSlots: [] as string[],
+        playoffPlaceholders: [] as any[],
+      };
+    }
 
 
     // Spread mode uses per-session entity caps (below) as its main balancer,

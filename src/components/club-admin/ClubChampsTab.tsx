@@ -1237,6 +1237,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   /** Accepted entrants who match no division's source league — organiser must place them. */
   const [unassignedEntrantIds, setUnassignedEntrantIds] = useState<string[]>([]);
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);
+  /**
+   * Divisions the organiser deliberately reordered by drag-and-drop. Every
+   * other division stays in club-ladder order, so drag order never silently
+   * becomes the seed order.
+   */
+  const [manualSeedGroups, setManualSeedGroups] = useState<Set<number>>(new Set());
 
   // Doubles-specific state
   const [doublesPairs, setDoublesPairs] = useState<DoublePair[]>([]);

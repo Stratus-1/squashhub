@@ -145,25 +145,65 @@ export function EmailLogTab({ clubId }: { clubId: string }) {
     if (failedRows.length === 0) return;
     setBusy(true);
     try {
+      // Never invent content: a resend must carry the ORIGINAL subject/body/link.
+      // Recover it from the last outbox row we hold for that recipient.
+      const emails = Array.from(new Set(failedRows.map((l) => l.recipient_email)));
+      const { data: originals, error: originalsError } = await supabase
+        .from("email_outbox")
+        .select("recipient_email,recipient_name,subject,body,url,cta_label,kind,club_member_id,ref_id,created_at")
+        .eq("club_id", clubId)
+        .in("recipient_email", emails)
+        .order("created_at", { ascending: false })
+        .limit(2000);
+      if (originalsError) throw originalsError;
+
+      const latest = new Map<string, NonNullable<typeof originals>[number]>();
+      for (const o of originals || []) {
+        if (!latest.has(o.recipient_email)) latest.set(o.recipient_email, o);
+      }
+
       const base = Date.now() + 60_000;
-      const rows = failedRows.map((l, i) => ({
-        club_id: clubId,
-        recipient_email: l.recipient_email,
-        subject: "SquashHub notification (resend)",
-        body: "This message could not be delivered earlier and is being re-sent.",
-        kind: l.template_name || "admin",
-        scheduled_for: new Date(base + i * 90_000).toISOString(),
-      }));
-      const { error } = await supabase.from("email_outbox").insert(rows);
-      if (error) throw error;
-      toast.success(`${rows.length} email(s) queued — sending about 40 per hour.`);
-      qc.invalidateQueries({ queryKey: ["email-outbox", clubId] });
+      const rows: Record<string, unknown>[] = [];
+      const skipped: string[] = [];
+      for (const l of failedRows) {
+        const original = latest.get(l.recipient_email);
+        if (!original) {
+          skipped.push(l.recipient_email);
+          continue;
+        }
+        rows.push({
+          club_id: clubId,
+          club_member_id: original.club_member_id,
+          recipient_email: l.recipient_email,
+          recipient_name: original.recipient_name,
+          subject: original.subject,
+          body: original.body,
+          url: original.url,
+          cta_label: original.cta_label,
+          ref_id: original.ref_id,
+          kind: original.kind || l.template_name || "admin",
+          scheduled_for: new Date(base + rows.length * 90_000).toISOString(),
+        });
+      }
+
+      if (rows.length > 0) {
+        const { error } = await supabase.from("email_outbox").insert(rows as never);
+        if (error) throw error;
+        toast.success(`${rows.length} email(s) queued — sending about 40 per hour.`);
+        qc.invalidateQueries({ queryKey: ["email-outbox", clubId] });
+      }
+      if (skipped.length > 0) {
+        toast.warning(
+          `${skipped.length} email(s) skipped — the original message content is no longer available. Resend those from the screen that created them (e.g. tournament invitations).`,
+        );
+      }
     } catch (e: any) {
       toast.error(e.message || "Could not queue the resend");
     } finally {
       setBusy(false);
     }
   };
+
 
   const retryOutbox = async (row: OutboxRow) => {
     const { error } = await supabase

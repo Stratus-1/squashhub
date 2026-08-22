@@ -9055,7 +9055,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <span className="text-muted-foreground text-xs">({g.length} players)</span>
                             {isSwissPools && pools > 1 && (
                               <Badge variant="outline" className="text-[10px]">
-                                {pools} pools · block distribution
+                                {pools} pools · {manualSeedGroups.has(gi) ? "manual arrangement" : "seed-balanced (serpentine)"}
                               </Badge>
                             )}
                             {manualSeedGroups.has(gi) ? (
@@ -9073,7 +9073,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     })
                                   }
                                 >
-                                  Reset to ladder order
+                                  {pools > 1 ? "Rebalance pools by seed" : "Reset to ladder order"}
                                 </Button>
                               </>
                             ) : (
@@ -9085,14 +9085,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               </Badge>
                             )}
                           </div>
+                          {isSwissPools && pools > 1 && g.length > 0 && (
+                            <p className="text-[10px] text-muted-foreground mb-1 leading-snug">
+                              {poolCounts(g.length, pools, { manual: manualSeedGroups.has(gi) })
+                                .map((c, p) => `Pool ${poolLetter(p)} (${c})`)
+                                .join("  ·  ")}
+                              {!manualSeedGroups.has(gi) && " — seeds dealt A→B→B→A so pool strength stays level"}
+                            </p>
+                          )}
                           {g.length > 0 && (
                             <p className="text-[10px] text-muted-foreground mb-2 leading-snug">
                               Seed preview:{" "}
                               {seedPreview(g as any)
-                                .map((s) => `${s.seed}. ${s.name}${s.ladderPosition ? ` (#${s.ladderPosition})` : " (unranked)"}`)
+                                .map((s, i) => {
+                                  const pl = pools > 1 ? ` ${poolLetter(poolIdx(i, pools, g.length, manualSeedGroups.has(gi)))}` : "";
+                                  return `${s.seed}.${pl} ${s.name}${s.ladderPosition ? ` (#${s.ladderPosition})` : " (unranked)"}`;
+                                })
                                 .join("  ·  ")}
                             </p>
                           )}
+
                           <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                             <div className="space-y-1">
                               {g.length === 0 && (

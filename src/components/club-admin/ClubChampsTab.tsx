@@ -9121,7 +9121,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           {GENDER_LABELS[genderForLeague((groupAssignments.get(p.id) ?? 0) + 1)]}?
                                         </Badge>
                                       )}
-                                      {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
+                                      {p.ladder_position ? (
+                                        <Badge variant="secondary" className="text-[10px]" title="Club ladder position — the seeding rank">#{p.ladder_position}</Badge>
+                                      ) : (
+                                        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40" title="No club ladder position — seeded after every ranked entrant">No ladder rank</Badge>
+                                      )}
                                       {isSwissPools && pools > 1 && (
                                         <Badge variant="outline" className={`text-[10px] ${poolTint[pl % poolTint.length]}`}>
                                           {poolLetter(pl)}

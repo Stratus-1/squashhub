@@ -9251,11 +9251,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                         }}
                                       />
                                     </SortableRow>
-                                  </div>
-                                );
-                              })}
+                                  ))}
+                                </div>
+                              </SortableContext>
                             </div>
-                          </SortableContext>
+                          ))}
                         </DroppableLeague>
                       );
                     })

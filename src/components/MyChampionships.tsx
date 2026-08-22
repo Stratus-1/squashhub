@@ -25,6 +25,7 @@ export function MyChampionships() {
   const { data: clubData } = useMyClub();
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
+  const [scheduling, setScheduling] = useState<{ match: any; opponent: string } | null>(null);
 
   // Get all active champs for the club
   const { data: allChamps = [] } = useQuery({

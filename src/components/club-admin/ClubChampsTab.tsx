@@ -24,7 +24,7 @@ import {
   type ForfeitRule,
   type ForfeitRuleMap,
 } from "@/lib/tournaments/forfeit";
-import { buildLeagueFirstRound, distributeSeedsBalanced, suggestSectionCount } from "@/lib/tournaments/knockout";
+import { buildLeagueFirstRound, suggestSectionCount } from "@/lib/tournaments/knockout";
 import {
   DEFAULT_DIVISION_SOURCE,
   allocateEntrantsToDivisions,

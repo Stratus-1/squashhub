@@ -51,7 +51,7 @@ import {
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
 import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
-import { blockPoolIndex, distributeIntoPools, poolCounts, poolLetter, snakePoolIndex } from "@/lib/tournaments/pools";
+import { blockPoolIndex, distributeIntoPools, flattenPools, poolCounts, poolLetter, snakePoolIndex } from "@/lib/tournaments/pools";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
   resolveLeagueSeasonLevels,
@@ -2733,10 +2733,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const groupIds = (groups as ClubMember[][])[groupIndex].map((p) => p.id);
-    const oldIdx = groupIds.indexOf(String(active.id));
-    const newIdx = groupIds.indexOf(String(over.id));
+    // Rows are rendered grouped per pool (pool A's rows, then pool B's …), so a
+    // drag happens in that VISUAL order, not in the raw seed order. Flattening
+    // the pool blocks first means the order we store back reproduces exactly
+    // the pools the organiser was looking at — nothing silently rebalances.
+    const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), {
+      manual: manualSeedGroups.has(groupIndex),
+    });
+    const oldIdx = visualIds.indexOf(String(active.id));
+    const newIdx = visualIds.indexOf(String(over.id));
     if (oldIdx < 0 || newIdx < 0) return;
-    const reorderedGroupIds = arrayMove(groupIds, oldIdx, newIdx);
+    const reorderedGroupIds = arrayMove(visualIds, oldIdx, newIdx);
     // Rebuild full order: keep existing order for everyone else, swap in this group's new order
     const current = playerOrder.length > 0 ? playerOrder : selectedPlayers.map((p) => p.id);
     const groupSet = new Set(groupIds);
@@ -2760,10 +2767,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const groupIds = (groups as DoublePair[][])[groupIndex].map((p) => p.id);
-    const oldIdx = groupIds.indexOf(String(active.id));
-    const newIdx = groupIds.indexOf(String(over.id));
+    // Same pool-block visual order as singles — see handlePlayerDragEnd.
+    const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), {
+      manual: manualSeedGroups.has(groupIndex),
+    });
+    const oldIdx = visualIds.indexOf(String(active.id));
+    const newIdx = visualIds.indexOf(String(over.id));
     if (oldIdx < 0 || newIdx < 0) return;
-    const reorderedGroupIds = arrayMove(groupIds, oldIdx, newIdx);
+    const reorderedGroupIds = arrayMove(visualIds, oldIdx, newIdx);
     const current = pairOrder.length > 0 ? pairOrder : doublesPairs.map((p) => p.id);
     const groupSet = new Set(groupIds);
     const next: string[] = [];
@@ -2774,6 +2785,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
     for (const p of doublesPairs) if (!next.includes(p.id)) next.push(p.id);
     setPairOrder(next);
+    setManualSeedGroups((prev) => (prev.has(groupIndex) ? prev : new Set(prev).add(groupIndex)));
   };
 
   // Unified drag handler spanning ALL leagues — supports reordering within a

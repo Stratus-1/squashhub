@@ -151,13 +151,45 @@ export function roundLabel(playersInRound: number): string {
   }
 }
 
+/**
+ * Drop repeat entrants. A player may legitimately play in SEVERAL divisions,
+ * but may only occupy ONE slot inside a single division/section draw —
+ * otherwise the bracket pairs them with themselves.
+ */
+export function dedupeSeeds(seeds: KnockoutSeed[]): KnockoutSeed[] {
+  const seen = new Set<string>();
+  const out: KnockoutSeed[] = [];
+  for (const s of [...seeds].sort((a, b) => a.seed - b.seed)) {
+    const key = String(s.memberId || "");
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(s);
+  }
+  return out;
+}
+
+/**
+ * Hard invariant: a playable match must have two DIFFERENT entrants. A bye is
+ * only ever a one-sided row (`is_bye`), never a fixture against yourself.
+ */
+export function assertNoSelfMatches(rows: KnockoutMatchRow[]): KnockoutMatchRow[] {
+  for (const r of rows) {
+    if (r.is_bye) continue;
+    if (r.player_a_member_id && r.player_a_member_id === r.player_b_member_id) {
+      throw new Error(
+        `Invalid draw: a player was paired against themselves (division ${r.group_number}, section ${r.section_number}, round ${r.round_number}). Check for duplicate entries in this division.`,
+      );
+    }
+  }
+  return rows;
+}
+
 function slotSeeds(seeds: KnockoutSeed[]): (KnockoutSeed | null)[] {
-  const size = bracketSizeFor(seeds.length);
+  const unique = dedupeSeeds(seeds);
+  const size = bracketSizeFor(unique.length);
   const bySeed = new Map<number, KnockoutSeed>();
   // Re-rank locally 1..n so section seeding is independent of global seed numbers.
-  [...seeds]
-    .sort((a, b) => a.seed - b.seed)
-    .forEach((s, i) => bySeed.set(i + 1, s));
+  unique.forEach((s, i) => bySeed.set(i + 1, s));
   return seedSlotOrder(size).map((n) => bySeed.get(n) ?? null);
 }
 
@@ -172,9 +204,11 @@ export function buildSectionFirstRound(opts: {
   seeds: KnockoutSeed[];
   sectionLabel?: string;
 }): KnockoutMatchRow[] {
-  const { champId, groupNumber, section, seeds } = opts;
+  const { champId, groupNumber, section } = opts;
+  const seeds = dedupeSeeds(opts.seeds);
   if (seeds.length < 2) return [];
   const slots = slotSeeds(seeds);
+
   const label = roundLabel(slots.length);
   const rows: KnockoutMatchRow[] = [];
   for (let i = 0; i < slots.length; i += 2) {
@@ -203,7 +237,8 @@ export function buildSectionFirstRound(opts: {
       winner_member_id: bye ? present?.memberId ?? null : null,
     });
   }
-  return rows;
+  return assertNoSelfMatches(rows);
+
 }
 
 /** Whole first phase for a league: every section's opening round. */
@@ -346,7 +381,8 @@ export function buildNextRound(opts: {
       play_by: opts.playBy ?? null,
     });
   }
-  return out;
+  return assertNoSelfMatches(out);
+
 }
 
 /**

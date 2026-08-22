@@ -24,7 +24,7 @@ import {
   type ForfeitRule,
   type ForfeitRuleMap,
 } from "@/lib/tournaments/forfeit";
-import { buildLeagueFirstRound, distributeSeedsBalanced, suggestSectionCount } from "@/lib/tournaments/knockout";
+import { buildLeagueFirstRound, suggestSectionCount } from "@/lib/tournaments/knockout";
 import {
   DEFAULT_DIVISION_SOURCE,
   allocateEntrantsToDivisions,
@@ -3152,16 +3152,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // feeder round is complete (phased generation).
     const buildKnockoutLeague = (gi: number, ids: string[]) => {
       const gn = gi + 1;
-      const sections = Math.min(sectionsForLeague(gn), Math.max(1, ids.length));
-      const seeds = ids.map((id, i) => ({ memberId: id, seed: i + 1 }));
-      const assignments = distributeSeedsBalanced(seeds, sections);
+      // A player may enter several divisions, but only ONE slot per division —
+      // duplicates used to end up paired against themselves.
+      const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+      const sections = Math.min(sectionsForLeague(gn), Math.max(1, uniqueIds.length));
+      // Same sectioning the organiser sees on the allocation step: knockout
+      // sections are sized for the BRACKET (powers of two first), not equal
+      // headcount, so 8 entrants in one section produce 4 matches and no byes.
+      const sectionIds = distributeIntoPools(uniqueIds, sections, {
+        manual: manualSeedGroups.has(gi),
+        knockout: true,
+      }).filter((s) => s.length > 0);
+      const assignments = sectionIds.map((sIds, si) => ({
+        section: si + 1,
+        seeds: sIds.map((id, i) => ({ memberId: id, seed: i + 1 })),
+      }));
       const rows = buildLeagueFirstRound({ champId: "preview", groupNumber: gn, assignments });
       for (const r of rows) {
         allMatches.push({
           groupNum: gn,
           roundNum: r.round_number,
           entityA: r.player_a_member_id ?? r.bye_member_id ?? "",
-          entityB: r.player_b_member_id ?? r.bye_member_id ?? "",
+          // A real bye is one-sided: never a playable self-fixture.
+          entityB: r.is_bye ? "" : r.player_b_member_id ?? "",
           leg: null,
           isBye: r.is_bye,
           byeEntityId: r.is_bye ? r.bye_member_id ?? undefined : undefined,
@@ -3170,6 +3183,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         });
       }
     };
+
 
     {
       // Singles draws are constrained to each division's eligible population
@@ -4266,7 +4280,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             round_number: m.roundNum,
             player_a_member_id: resolvedPairDbId(pairA?.player1Id || m.entityA),
             partner_a_member_id: pairA?.player2Id ? resolvedPairDbId(pairA.player2Id) : null,
-            player_b_member_id: resolvedPairDbId(pairB?.player1Id || m.entityB),
+            player_b_member_id: m.entityB ? resolvedPairDbId(pairB?.player1Id || m.entityB) : null,
             partner_b_member_id: pairB?.player2Id ? resolvedPairDbId(pairB.player2Id) : null,
             scheduled_date: isBye ? null : m.date,
             scheduled_time: isBye ? null : m.time,
@@ -4277,17 +4291,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             stage_label: m.koStageLabel ?? null,
             is_bye: isBye,
             bye_member_id: isBye ? resolvedPairDbId(pairA?.player1Id || m.entityA) : null,
+            ...(isBye && m.koSection && !m.entityB
+              ? { winner_member_id: resolvedPairDbId(pairA?.player1Id || m.entityA) }
+              : {}),
             status: isBye
-              ? (byeForLeague(m.groupNum) === "walkover_win" ? "completed" : "scheduled")
+              ? (m.koSection && !m.entityB) || byeForLeague(m.groupNum) === "walkover_win"
+                ? "completed"
+                : "scheduled"
               : "scheduled",
+
           };
         }
+        // Knockout byes are one-sided and auto-advance the entrant; other
+        // formats keep their existing bye representation.
+        const isKoBye = isBye && !!m.koSection && !m.entityB;
         return {
           champ_id: champId,
           group_number: m.groupNum,
           round_number: m.roundNum,
           player_a_member_id: toDbId(m.entityA),
-          player_b_member_id: toDbId(m.entityB),
+          player_b_member_id: m.entityB ? toDbId(m.entityB) : null,
           scheduled_date: isBye ? null : m.date,
           scheduled_time: isBye ? null : m.time,
           court_id: isBye ? null : m.courtId,
@@ -4297,9 +4320,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           stage_label: m.koStageLabel ?? null,
           is_bye: isBye,
           bye_member_id: isBye ? toDbId(m.entityA) : null,
-          status: isBye
-            ? (byeForLeague(m.groupNum) === "walkover_win" ? "completed" : "scheduled")
-            : "scheduled",
+          ...(isKoBye ? { winner_member_id: toDbId(m.entityA) } : {}),
+          status: isKoBye
+            ? "completed"
+            : isBye
+              ? (byeForLeague(m.groupNum) === "walkover_win" ? "completed" : "scheduled")
+              : "scheduled",
+
           // Self-scheduled: no fixed slot or court, just a deadline.
           ...(schedulingMode === "self"
             ? {
@@ -4311,7 +4338,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             : {}),
         };
       });
+      // Hard invariant: never persist a playable fixture of a player against
+      // themselves — fail loudly instead of saving a corrupt draw.
+      const selfFixture = matches.find(
+        (r: any) => !r.is_bye && r.player_a_member_id && r.player_a_member_id === r.player_b_member_id,
+      );
+      if (selfFixture) {
+        throw new Error(
+          `Draw generation aborted: a player was paired against themselves in division ${(selfFixture as any).group_number}. Check for duplicate entries in that division.`,
+        );
+      }
       if (matches.length > 0) {
+
         const { error: matchErr } = await fromExt("club_champs_matches").insert(matches);
 
         if (matchErr) throw matchErr;

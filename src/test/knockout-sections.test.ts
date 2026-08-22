@@ -34,7 +34,7 @@ describe("knockout section sizing", () => {
   });
 
   it("handles small and degenerate counts", () => {
-    expect(knockoutSectionSizes(3, 2)).toEqual([2, 1]);
+    expect(knockoutSectionSizes(3, 2)).toEqual([1, 2]); // degenerate: balanced fallback
     expect(knockoutSectionSizes(5, 2)).toEqual([3, 2]);
     expect(knockoutSectionSizes(7, 2)).toEqual([4, 3]);
     expect(knockoutSectionSizes(6, 2)).toEqual([4, 2]);

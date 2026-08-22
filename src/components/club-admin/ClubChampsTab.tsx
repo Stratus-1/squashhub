@@ -6472,7 +6472,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               )}
             </div>
 
-            {schedulingMode === "club" ? (
+            {/* Full club-scheduling controls. Also shown when a self-scheduled
+                knockout's current stage (semi/final) has been flipped to
+                club-scheduled courts and times. */}
+            {schedulingMode === "club" || currentRoundClubScheduled ? (
             <>
             <WizardSection
               title={"Dates & times"}

@@ -4338,7 +4338,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             : {}),
         };
       });
+      // Hard invariant: never persist a playable fixture of a player against
+      // themselves — fail loudly instead of saving a corrupt draw.
+      const selfFixture = matches.find(
+        (r: any) => !r.is_bye && r.player_a_member_id && r.player_a_member_id === r.player_b_member_id,
+      );
+      if (selfFixture) {
+        throw new Error(
+          `Draw generation aborted: a player was paired against themselves in division ${(selfFixture as any).group_number}. Check for duplicate entries in that division.`,
+        );
+      }
       if (matches.length > 0) {
+
         const { error: matchErr } = await fromExt("club_champs_matches").insert(matches);
 
         if (matchErr) throw matchErr;

@@ -331,6 +331,14 @@ export function MyChampionships() {
           </Card>
         );
       })}
+
+      <ScheduleMatchDialog
+        open={!!scheduling}
+        onOpenChange={(v) => !v && setScheduling(null)}
+        clubId={clubId}
+        match={scheduling?.match || null}
+        opponentName={scheduling?.opponent}
+      />
     </div>
   );
 }

@@ -2798,23 +2798,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       return g;
     }
     const g: ClubMember[][] = Array.from({ length: numGroups }, () => []);
-    const orderIdx = new Map(playerOrder.map((id, i) => [id, i]));
-    const sorted = [...selectedPlayers].sort(
-      (a, b) => (orderIdx.get(a.id) ?? 1e9) - (orderIdx.get(b.id) ?? 1e9)
-    );
-    sorted.forEach((p) => {
+    selectedPlayers.forEach((p) => {
       // No assignment = unassigned (plays in none of the source leagues).
       // They stay out of the draw until the organiser places them.
       const gi = groupAssignments.get(p.id);
       if (gi !== undefined && gi < numGroups) g[gi].push(p);
-      // Every additional division the player entered.
+      // Every additional division the player entered — the same person may
+      // legitimately hold a row in several divisions and keeps their rank.
       extraDivisions.get(p.id)?.forEach((extra) => {
         if (extra === gi || extra >= numGroups) return;
         g[extra].push(p);
       });
     });
-    return g;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder]);
+    // Seed order per division: club ladder ascending, unranked last, unless
+    // the organiser deliberately reordered that division by hand.
+    return g.map((list, gi) =>
+      sortDivisionEntrants(list as any, {
+        manual: manualSeedGroups.has(gi),
+        manualOrder: playerOrder,
+      }) as ClubMember[],
+    );
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups]);
 
   // Schedule preview
   const schedulePreview = useMemo(() => {

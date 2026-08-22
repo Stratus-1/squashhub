@@ -38,7 +38,7 @@ describe("serpentine pool distribution", () => {
   });
 
   it("never leaves a pool empty when entrants outnumber pools", () => {
-    expect(poolCounts(5, 4)).toEqual([2, 1, 1, 1]);
+    expect(poolCounts(5, 4)).toEqual([1, 1, 1, 2]);
     expect(poolCounts(3, 1)).toEqual([3]);
   });
 

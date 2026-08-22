@@ -9063,7 +9063,41 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 {pools} pools · block distribution
                               </Badge>
                             )}
+                            {manualSeedGroups.has(gi) ? (
+                              <>
+                                <Badge variant="outline" className="text-[10px]">Manual seed order</Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-[10px]"
+                                  onClick={() =>
+                                    setManualSeedGroups((prev) => {
+                                      const n = new Set(prev);
+                                      n.delete(gi);
+                                      return n;
+                                    })
+                                  }
+                                >
+                                  Reset to ladder order
+                                </Button>
+                              </>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">Seeded by club ladder</Badge>
+                            )}
+                            {g.some((p) => isUnranked(p as any)) && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                {g.filter((p) => isUnranked(p as any)).length} unranked
+                              </Badge>
+                            )}
                           </div>
+                          {g.length > 0 && (
+                            <p className="text-[10px] text-muted-foreground mb-2 leading-snug">
+                              Seed preview:{" "}
+                              {seedPreview(g as any)
+                                .map((s) => `${s.seed}. ${s.name}${s.ladderPosition ? ` (#${s.ladderPosition})` : " (unranked)"}`)
+                                .join("  ·  ")}
+                            </p>
+                          )}
                           <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                             <div className="space-y-1">
                               {g.length === 0 && (

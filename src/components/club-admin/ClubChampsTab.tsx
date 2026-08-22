@@ -6769,8 +6769,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  {roundDeadlineSummary(roundDeadlines)} — no daily times, play days or courts are set for a
-                  self-scheduled tournament.
+                  {simplifiedKnockoutSchedule
+                    ? "Only the current round's play-by date is set — later rounds unlock as the draw progresses. No daily times, play days or courts are used."
+                    : `${roundDeadlineSummary(roundDeadlines)} — no daily times, play days or courts are set for a self-scheduled tournament.`}
                 </p>
               </div>
             )}

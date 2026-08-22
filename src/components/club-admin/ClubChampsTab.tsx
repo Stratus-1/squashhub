@@ -2883,7 +2883,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // Schedule preview
   const schedulePreview = useMemo(() => {
-    if (!startDate || !endDate || playDays.size === 0 || selectedCourtIds.size === 0) return null;
+    // Self-scheduled tournaments have no play days, courts or time slots — the
+    // draw is still built, it just comes out unscheduled (players book later).
+    if (!startDate || !endDate) return null;
+    if (schedulingMode !== "self" && (playDays.size === 0 || selectedCourtIds.size === 0)) return null;
 
     const courtIds = Array.from(selectedCourtIds);
 

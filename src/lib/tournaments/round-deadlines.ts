@@ -10,7 +10,19 @@
  *  - [{ label, date }, ...]              → canonical
  *  - { "1": "2026-09-15", ... }          → keyed by round number
  */
-export type RoundDeadline = { label: string; date: string };
+export type RoundDeadline = {
+  label: string;
+  date: string;
+  /**
+   * Optional per-round overrides used by self-scheduled knockouts:
+   *  - `notes`: organiser instructions shown to players for this round.
+   *  - `mode` : "club" flips this single round back to club-scheduled
+   *             courts/times (typically the semi-final or final).
+   * Both ride inside the existing `club_champs.round_play_by` jsonb.
+   */
+  notes?: string;
+  mode?: "self" | "club";
+};
 
 const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v);
 

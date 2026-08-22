@@ -9691,6 +9691,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 )}
               </div>
             )}
+            </>
+            )}
           </CardContent>
         </Card>
       )}

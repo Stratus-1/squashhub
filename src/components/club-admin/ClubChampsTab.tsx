@@ -51,6 +51,7 @@ import {
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
 import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
+import { blockPoolIndex, distributeIntoPools, poolCounts, poolLetter, snakePoolIndex } from "@/lib/tournaments/pools";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
   resolveLeagueSeasonLevels,
@@ -2981,16 +2982,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // Pools per league (shared by Swiss, round robin and cross league).
     // Single source of truth for pools (legacy sections included).
     const poolsForLeague = (gn: number) => effectivePools({ gn, pools: swissPools, legacySections: leagueSections });
-    const splitIntoPools = (ids: string[], pools: number): string[][] => {
+    // Seeded serpentine split (A: 1,4,5,8… / B: 2,3,6,7…) so generated pools
+    // match what the organiser sees on the allocation step. A hand-arranged
+    // division keeps its contiguous blocks.
+    const splitIntoPools = (ids: string[], pools: number, manual = false): string[][] => {
       if (pools <= 1) return [ids];
-      const size = Math.ceil(ids.length / pools);
-      const out: string[][] = [];
-      for (let p = 0; p < pools; p++) out.push(ids.slice(p * size, Math.min(ids.length, (p + 1) * size)));
-      return out.filter((g) => g.length > 0);
+      return distributeIntoPools(ids, pools, { manual }).filter((g) => g.length > 0);
     };
     const ingestRounds = (gi: number, ids: string[]) => {
       // Round robin inside each pool of the league (1 pool = classic RR).
-      const pools = splitIntoPools(ids, poolsForLeague(gi + 1));
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi));
       for (const poolIds of pools) {
         if (poolIds.length < 2) continue;
         const { rounds, byesPerRound } = generateRoundRobinRounds(poolIds, rrFmtForLeague(gi));
@@ -3052,7 +3053,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // Cross-pool inside one league: split the league into N pools, then every
     // pool plays every other pool.
     const ingestCrossPools = (gi: number, ids: string[]) => {
-      const pools = splitIntoPools(ids, poolsForLeague(gi + 1));
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi));
       if (pools.length < 2) return;
       ingestCrossGroups(pools, pools.map(() => gi + 1), formatForLeague(gi + 1) === "double_round_robin");
     };
@@ -3063,9 +3064,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const buildSwissLeague = (gi: number, ids: string[]) => {
       const pools = poolsForLeague(gi + 1);
       const rounds = Math.max(1, Number(swissRounds[String(gi + 1)]) || 1);
-      const size = Math.ceil(ids.length / pools);
+      const poolGroups = distributeIntoPools(ids, pools, { manual: manualSeedGroups.has(gi) });
       for (let p = 0; p < pools; p++) {
-        const poolIds = ids.slice(p * size, Math.min(ids.length, (p + 1) * size));
+        const poolIds = poolGroups[p] || [];
         if (poolIds.length < 2) continue;
         const { rounds: rrRounds, byesPerRound } = generateRoundRobinRounds(poolIds, "single");
         for (let r = 0; r < rounds; r++) {
@@ -8947,20 +8948,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   const isSwissPools = true; // pools apply to any format now
                   const poolsFor = (gi: number) => poolsForDivision(gi + 1);
 
-                  // Block distribution: pool A = first chunk, pool B = next chunk, etc.
-                  // Admins arrange strength manually by dragging within the pool.
-                  const poolIdx = (i: number, pools: number, total: number) => {
-                    if (pools <= 1) return 0;
-                    const size = Math.ceil(total / pools);
-                    return Math.min(pools - 1, Math.floor(i / size));
-                  };
-                  const poolSize = (p: number, pools: number, total: number) => {
-                    if (pools <= 1) return total;
-                    const size = Math.ceil(total / pools);
-                    if (p < pools - 1) return size;
-                    return Math.max(0, total - size * (pools - 1));
-                  };
-                  const poolLetter = (p: number) => String.fromCharCode(65 + p);
+                  // Seeded serpentine distribution: pool A = seeds 1,4,5,8…,
+                  // pool B = 2,3,6,7… so pools are balanced by strength.
+                  // A division the organiser hand-arranged keeps their order
+                  // (contiguous blocks) until they hit "Rebalance pools by seed".
+                  const poolIdx = (i: number, pools: number, total: number, manual: boolean) =>
+                    manual ? blockPoolIndex(i, pools, total) : snakePoolIndex(i, pools);
+                  const poolSize = (p: number, pools: number, total: number, manual: boolean) =>
+                    poolCounts(total, pools, { manual })[p] ?? 0;
+
                   const poolTint = [
                     "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30",
                     "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30",
@@ -8985,7 +8981,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <span className="text-muted-foreground text-xs">({g.length} pairs)</span>
                             {isSwissPools && pools > 1 && (
                               <Badge variant="outline" className="text-[10px]">
-                                {pools} pools · block distribution
+                                {pools} pools · seed-balanced (serpentine)
                               </Badge>
                             )}
                           </div>
@@ -8995,14 +8991,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
                               )}
                               {g.map((pair, i) => {
-                                const p = poolIdx(i, pools, g.length);
-                                const prevP = i > 0 ? poolIdx(i - 1, pools, g.length) : -1;
-                                const showHeader = isSwissPools && pools > 1 && p !== prevP;
+                                const manualPools = manualSeedGroups.has(gi);
+                                const p = poolIdx(i, pools, g.length, manualPools);
+                                const prevP = i > 0 ? poolIdx(i - 1, pools, g.length, manualPools) : -1;
+                                const showHeader = isSwissPools && pools > 1 && manualPools && p !== prevP;
                                 return (
                                   <div key={pair.id}>
                                     {showHeader && (
                                       <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[p % poolTint.length]}`}>
-                                        Pool {poolLetter(p)} <span className="opacity-70 normal-case">({poolSize(p, pools, g.length)} {isDoubles ? "pairs" : "players"})</span>
+                                        Pool {poolLetter(p)} <span className="opacity-70 normal-case">({poolSize(p, pools, g.length, manualPools)} {isDoubles ? "pairs" : "players"})</span>
+
                                       </div>
                                     )}
                                     <SortableRow id={pair.id}>
@@ -9060,7 +9058,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <span className="text-muted-foreground text-xs">({g.length} players)</span>
                             {isSwissPools && pools > 1 && (
                               <Badge variant="outline" className="text-[10px]">
-                                {pools} pools · block distribution
+                                {pools} pools · {manualSeedGroups.has(gi) ? "manual arrangement" : "seed-balanced (serpentine)"}
                               </Badge>
                             )}
                             {manualSeedGroups.has(gi) ? (
@@ -9078,7 +9076,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                     })
                                   }
                                 >
-                                  Reset to ladder order
+                                  {pools > 1 ? "Rebalance pools by seed" : "Reset to ladder order"}
                                 </Button>
                               </>
                             ) : (
@@ -9090,30 +9088,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               </Badge>
                             )}
                           </div>
+                          {isSwissPools && pools > 1 && g.length > 0 && (
+                            <p className="text-[10px] text-muted-foreground mb-1 leading-snug">
+                              {poolCounts(g.length, pools, { manual: manualSeedGroups.has(gi) })
+                                .map((c, p) => `Pool ${poolLetter(p)} (${c})`)
+                                .join("  ·  ")}
+                              {!manualSeedGroups.has(gi) && " — seeds dealt A→B→B→A so pool strength stays level"}
+                            </p>
+                          )}
                           {g.length > 0 && (
                             <p className="text-[10px] text-muted-foreground mb-2 leading-snug">
                               Seed preview:{" "}
                               {seedPreview(g as any)
-                                .map((s) => `${s.seed}. ${s.name}${s.ladderPosition ? ` (#${s.ladderPosition})` : " (unranked)"}`)
+                                .map((s, i) => {
+                                  const pl = pools > 1 ? ` ${poolLetter(poolIdx(i, pools, g.length, manualSeedGroups.has(gi)))}` : "";
+                                  return `${s.seed}.${pl} ${s.name}${s.ladderPosition ? ` (#${s.ladderPosition})` : " (unranked)"}`;
+                                })
                                 .join("  ·  ")}
                             </p>
                           )}
+
                           <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                             <div className="space-y-1">
                               {g.length === 0 && (
                                 <p className="text-[11px] text-muted-foreground italic py-2">Drop players here</p>
                               )}
                               {g.map((p, i) => {
-                                const pl = poolIdx(i, pools, g.length);
-                                const prevPl = i > 0 ? poolIdx(i - 1, pools, g.length) : -1;
-                                const showHeader = isSwissPools && pools > 1 && pl !== prevPl;
+                                const manualPools = manualSeedGroups.has(gi);
+                                const pl = poolIdx(i, pools, g.length, manualPools);
+                                const prevPl = i > 0 ? poolIdx(i - 1, pools, g.length, manualPools) : -1;
+                                const showHeader = isSwissPools && pools > 1 && manualPools && pl !== prevPl;
                                 return (
                                   <div key={p.id}>
                                     {showHeader && (
                                       <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[pl % poolTint.length]}`}>
-                                        Pool {poolLetter(pl)} <span className="opacity-70 normal-case">({poolSize(pl, pools, g.length)} players)</span>
+                                        Pool {poolLetter(pl)} <span className="opacity-70 normal-case">({poolSize(pl, pools, g.length, manualPools)} players)</span>
                                       </div>
                                     )}
+
                                     <SortableRow id={p.id}>
                                       <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
                                       {!memberFitsLeague(p, (groupAssignments.get(p.id) ?? 0) + 1) && (

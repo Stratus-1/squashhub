@@ -317,6 +317,7 @@ Deno.serve(async (req) => {
   // Log pending BEFORE enqueue so we have a record even if enqueue crashes
   await supabase.from('email_send_log').insert({
     message_id: messageId,
+    club_id: clubId,
     template_name: templateName,
     recipient_email: effectiveRecipient,
     status: 'pending',

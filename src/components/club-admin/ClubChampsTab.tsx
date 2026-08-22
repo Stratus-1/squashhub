@@ -9099,16 +9099,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 <p className="text-[11px] text-muted-foreground italic py-2">Drop players here</p>
                               )}
                               {g.map((p, i) => {
-                                const pl = poolIdx(i, pools, g.length);
-                                const prevPl = i > 0 ? poolIdx(i - 1, pools, g.length) : -1;
-                                const showHeader = isSwissPools && pools > 1 && pl !== prevPl;
+                                const manualPools = manualSeedGroups.has(gi);
+                                const pl = poolIdx(i, pools, g.length, manualPools);
+                                const prevPl = i > 0 ? poolIdx(i - 1, pools, g.length, manualPools) : -1;
+                                const showHeader = isSwissPools && pools > 1 && manualPools && pl !== prevPl;
                                 return (
                                   <div key={p.id}>
                                     {showHeader && (
                                       <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[pl % poolTint.length]}`}>
-                                        Pool {poolLetter(pl)} <span className="opacity-70 normal-case">({poolSize(pl, pools, g.length)} players)</span>
+                                        Pool {poolLetter(pl)} <span className="opacity-70 normal-case">({poolSize(pl, pools, g.length, manualPools)} players)</span>
                                       </div>
                                     )}
+
                                     <SortableRow id={p.id}>
                                       <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
                                       {!memberFitsLeague(p, (groupAssignments.get(p.id) ?? 0) + 1) && (

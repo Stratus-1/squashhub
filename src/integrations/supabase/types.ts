@@ -9120,6 +9120,38 @@ export type Database = {
           },
         ]
       }
+      tournament_invite_platform_sends: {
+        Row: {
+          champ_id: string
+          id: string
+          recipient_email: string
+          registration_id: string
+          sent_at: string
+        }
+        Insert: {
+          champ_id: string
+          id?: string
+          recipient_email: string
+          registration_id: string
+          sent_at?: string
+        }
+        Update: {
+          champ_id?: string
+          id?: string
+          recipient_email?: string
+          registration_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_invite_platform_sends_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: true
+            referencedRelation: "club_champs_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_rules: {
         Row: {
           affects_ranking_points: boolean
@@ -11116,6 +11148,18 @@ export type Database = {
           p_title: string
         }
         Returns: Json
+      }
+      send_tournament_invites_via_platform: {
+        Args: {
+          p_champ_id: string
+          p_club_host: string
+          p_club_name: string
+          p_functions_url: string
+          p_key: string
+          p_limit: number
+          p_tournament_name: string
+        }
+        Returns: number
       }
       set_club_subscription_baseline: {
         Args: {

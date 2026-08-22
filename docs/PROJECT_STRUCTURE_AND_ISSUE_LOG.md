@@ -1056,3 +1056,12 @@ players. Selecting it:
   Registrations tab reflects the change immediately.
 
 **Files.** `src/components/club-admin/ClubChampsTab.tsx`.
+
+## 2026-08-22 — Self-scheduled knockout: single-round scheduling step
+**Problem:** Knockout tournaments with `scheduling_mode = "self"` still rendered the full club-scheduling UI (courts, per-day windows, fill/spread, pool breaks, playoff timing, capacity check) even though players arrange their own games and later rounds do not exist yet.
+**Fix:**
+- New `src/lib/tournaments/self-scheduled-rounds.ts` — `isSelfScheduledKnockout` (self + ALL divisions knockout), `roundProgress`/`currentRoundNumber`/`nextRoundReady` from `club_champs_matches`, stage naming, non-destructive `patchRound`/`ensureRound`, `roundIsClubScheduled`.
+- `RoundDeadline` extended with optional `notes` and `mode` ("club" flips a single stage back to club-scheduled) — stored inside the existing `club_champs.round_play_by` jsonb, no DB change.
+- New `src/components/club-admin/tournament/SelfScheduledRounds.tsx` — current round only (name, play-by date, notes), completed rounds read-only, semi/final club-schedule switch, later rounds locked.
+- `ClubChampsTab.tsx`: Dates/Times/Courts step swaps the multi-round deadline list for the single-round panel; Schedule Configuration step hides fill/spread, playoff timing, slot/bell and slot preview in this mode. Ticking the finals club-schedule switch restores the full controls; switching back to "Club schedules" restores all saved values (nothing is cleared).
+**Tests:** `src/lib/tournaments/__tests__/self-scheduled-rounds.test.ts` (11), `src/test/self-scheduled-rounds-panel.test.tsx` (2). Full suite green.

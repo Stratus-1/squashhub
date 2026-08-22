@@ -24,6 +24,8 @@
  * serpentine allocation only returns via an explicit rebalance action.
  */
 
+import { MIN_SECTION, knockoutSectionSizes } from "./knockout-sections";
+
 /** Pool index (0-based) for the i-th seed in a serpentine deal. */
 export function snakePoolIndex(i: number, pools: number): number {
   if (pools <= 1) return 0;
@@ -38,8 +40,14 @@ export function snakePoolIndex(i: number, pools: number): number {
  * plain ordered list (pool A's rows, then pool B's rows, …) without the pool
  * sizes changing. Differs by at most one entrant between pools.
  */
-export function poolSizes(total: number, pools: number): number[] {
+export function poolSizes(total: number, pools: number, opts?: PoolAssignOptions): number[] {
   const n = Math.max(1, Math.floor(pools) || 1);
+  // Knockout divisions optimise for the BRACKET (8 + 6), not equal headcount
+  // (7 + 7) — see ./knockout-sections. Every other format keeps the balanced
+  // serpentine sizes.
+  if (opts?.knockout && n > 1 && total >= n * MIN_SECTION) {
+    return knockoutSectionSizes(total, n);
+  }
   const sizes = new Array(n).fill(0);
   for (let i = 0; i < total; i++) sizes[snakePoolIndex(i, n)] += 1;
   return sizes;
@@ -50,9 +58,9 @@ export function poolSizes(total: number, pools: number): number[] {
  * Blocks follow `poolSizes`, so a manual list reads top-to-bottom as
  * pool A, then pool B, … with balanced sizes.
  */
-export function blockPoolIndex(i: number, pools: number, total: number): number {
+export function blockPoolIndex(i: number, pools: number, total: number, opts?: PoolAssignOptions): number {
   if (pools <= 1) return 0;
-  const sizes = poolSizes(total, pools);
+  const sizes = poolSizes(total, pools, opts);
   let acc = 0;
   for (let p = 0; p < sizes.length; p++) {
     acc += sizes[p];
@@ -64,14 +72,42 @@ export function blockPoolIndex(i: number, pools: number, total: number): number 
 export interface PoolAssignOptions {
   /** The organiser hand-arranged this division — keep their order, block-split. */
   manual?: boolean;
+  /**
+   * Knockout draw: size the pools for the bracket (powers of two first, e.g.
+   * 14 -> 8 + 6) instead of equal headcount. Ignored by every other format.
+   */
+  knockout?: boolean;
 }
 
 /** Pool index per row, aligned with the given (already ordered) list. */
 export function poolIndexes(total: number, pools: number, opts?: PoolAssignOptions): number[] {
   const n = Math.max(1, Math.floor(pools) || 1);
-  return Array.from({ length: total }, (_, i) =>
-    opts?.manual ? blockPoolIndex(i, n, total) : snakePoolIndex(i, n),
-  );
+  if (opts?.manual) {
+    return Array.from({ length: total }, (_, i) => blockPoolIndex(i, n, total, opts));
+  }
+  if (n <= 1) return new Array(total).fill(0);
+  // Serpentine deal, but never beyond a pool's target capacity: for knockout
+  // those capacities are the bracket-optimised sizes, for everything else they
+  // are exactly what a plain snake produces (so behaviour is unchanged).
+  const capacity = poolSizes(total, n, opts);
+  const used = new Array(n).fill(0);
+  const out: number[] = [];
+  for (let i = 0; i < total; i++) {
+    const round = Math.floor(i / n);
+    const forward = round % 2 === 0;
+    let p = snakePoolIndex(i, n);
+    // Walk on in the direction of this leg until a pool still has room.
+    for (let step = 0; step < n; step++) {
+      const cand = forward ? (p + step) % n : (p - step + n * 2) % n;
+      if (used[cand] < capacity[cand]) {
+        p = cand;
+        break;
+      }
+    }
+    used[p] += 1;
+    out.push(p);
+  }
+  return out;
 }
 
 /** Group an ordered entrant list into pools, preserving seed order inside each. */

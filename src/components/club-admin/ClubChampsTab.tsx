@@ -51,7 +51,7 @@ import {
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
 import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
-import { blockPoolIndex, distributeIntoPools, flattenPools, poolCounts, poolLetter, snakePoolIndex } from "@/lib/tournaments/pools";
+import { distributeIntoPools, flattenPools, poolBlocks, poolCounts, poolLetter } from "@/lib/tournaments/pools";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
   resolveLeagueSeasonLevels,
@@ -9023,10 +9023,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   // pool B = 2,3,6,7… so pools are balanced by strength.
                   // A division the organiser hand-arranged keeps their order
                   // (contiguous blocks) until they hit "Rebalance pools by seed".
-                  const poolIdx = (i: number, pools: number, total: number, manual: boolean) =>
-                    manual ? blockPoolIndex(i, pools, total) : snakePoolIndex(i, pools);
-                  const poolSize = (p: number, pools: number, total: number, manual: boolean) =>
-                    poolCounts(total, pools, { manual })[p] ?? 0;
 
                   const poolTint = [
                     "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30",

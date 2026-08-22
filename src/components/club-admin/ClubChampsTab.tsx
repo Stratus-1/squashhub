@@ -114,6 +114,15 @@ import {
   roundDeadlineLines,
   roundDeadlineSummary,
 } from "@/lib/tournaments/round-deadlines";
+import { SelfScheduledRounds } from "@/components/club-admin/tournament/SelfScheduledRounds";
+import {
+  isSelfScheduledKnockout,
+  roundProgress as computeRoundProgress,
+  knockoutRoundCount,
+  currentRoundNumber,
+  roundIsClubScheduled,
+  type RoundMatchRow,
+} from "@/lib/tournaments/self-scheduled-rounds";
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
 import { z } from "zod";
 
@@ -898,6 +907,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    */
   const inviteDivisionFormats = (): string[] =>
     Array.from({ length: Math.max(1, numGroups || 1) }, (_, i) => formatForLeague(i + 1) || "").filter(Boolean);
+
+  /**
+   * Self-scheduled knockout: every division is a knockout AND the players
+   * arrange their own court/date/time. In that mode the whole club-scheduling
+   * apparatus (courts, time slots, fill/spread, pool breaks, capacity,
+   * finals dates) is irrelevant — the organiser only sets the CURRENT round's
+   * play-by deadline. Any other combination keeps the full controls.
+   */
+  const selfScheduledKnockout = isSelfScheduledKnockout(schedulingMode, inviteDivisionFormats());
+
+  /** Round-by-round completion of the tournament being edited (drives "current round"). */
+  const { data: roundMatchRows = [] } = useQuery({
+    queryKey: ["champ-round-progress", editingChampId],
+    queryFn: async (): Promise<RoundMatchRow[]> => {
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("round_number, status")
+        .eq("champ_id", editingChampId as string);
+      if (error) throw error;
+      return (data || []) as RoundMatchRow[];
+    },
+    enabled: !!editingChampId,
+  });
+  const knockoutProgress = useMemo(() => computeRoundProgress(roundMatchRows), [roundMatchRows]);
+  const knockoutCurrentRound = currentRoundNumber(knockoutProgress);
+  /**
+   * Semi/final stages may be flipped back to club-scheduled courts & times.
+   * While that override is on, the full Dates/Times/Courts UI comes back.
+   */
+  const currentRoundClubScheduled = roundIsClubScheduled(roundDeadlines, knockoutCurrentRound);
+  /** Simplified single-round UI is active only while the round stays player-arranged. */
+  const simplifiedKnockoutSchedule = selfScheduledKnockout && !currentRoundClubScheduled;
+
+
 
   // Per-league gender category and match type (keyed by group_number string).
   // A tournament can therefore hold e.g. a Ladies' league, a Men's league and
@@ -6353,7 +6395,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   </span>
                 </label>
               </div>
-              {schedulingMode === "self" && (
+              {simplifiedKnockoutSchedule && (
+                <div className="pt-1">
+                  <SelfScheduledRounds
+                    deadlines={roundDeadlines}
+                    onChange={setRoundDeadlines}
+                    progress={knockoutProgress}
+                    totalRounds={knockoutRoundCount(
+                      Math.max(0, ...(groups as any[][]).map((g) => (g?.length ?? 0))),
+                    )}
+                    minDate={startDate || undefined}
+                  />
+                </div>
+              )}
+              {schedulingMode === "self" && !simplifiedKnockoutSchedule && (
                 <div className="pt-1 space-y-2">
                   <Label className="text-sm">Play-by deadlines per round</Label>
                   <p className="text-[11px] text-muted-foreground">
@@ -6417,7 +6472,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               )}
             </div>
 
-            {schedulingMode === "club" ? (
+            {/* Full club-scheduling controls. Also shown when a self-scheduled
+                knockout's current stage (semi/final) has been flipped to
+                club-scheduled courts and times. */}
+            {schedulingMode === "club" || currentRoundClubScheduled ? (
             <>
             <WizardSection
               title={"Dates & times"}
@@ -6711,8 +6769,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  {roundDeadlineSummary(roundDeadlines)} — no daily times, play days or courts are set for a
-                  self-scheduled tournament.
+                  {simplifiedKnockoutSchedule
+                    ? "Only the current round's play-by date is set — later rounds unlock as the draw progresses. No daily times, play days or courts are used."
+                    : `${roundDeadlineSummary(roundDeadlines)} — no daily times, play days or courts are set for a self-scheduled tournament.`}
                 </p>
               </div>
             )}
@@ -9313,7 +9372,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-
+            {/* Self-scheduled knockout: nothing here applies — there are no
+                slots to fill, no pool break and no finals slot to reserve. */}
+            {simplifiedKnockoutSchedule ? (
+              <div className="rounded-lg border border-dashed p-3 text-sm space-y-1">
+                <p className="font-medium">Players arrange their own games</p>
+                <p className="text-[11px] text-muted-foreground">
+                  No time slots, courts, fill/spread mode or finals timing are needed. Set the current
+                  round's play-by date on the Dates step — later rounds are configured once the current
+                  round is complete.
+                </p>
+              </div>
+            ) : (
+            <>
             <WizardSection
               title={"Generation mode & playoff timing"}
               summary={`${scheduleMode === "fill" ? "Fill up" : "Spread"}${enablePlayoffs ? " · playoffs scheduled" : ""}`}
@@ -9619,6 +9690,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <p className="text-destructive font-medium">⚠️ Not enough slots! Add more days, courts, or extend the time range.</p>
                 )}
               </div>
+            )}
+            </>
             )}
           </CardContent>
         </Card>

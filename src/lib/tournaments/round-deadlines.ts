@@ -10,7 +10,19 @@
  *  - [{ label, date }, ...]              → canonical
  *  - { "1": "2026-09-15", ... }          → keyed by round number
  */
-export type RoundDeadline = { label: string; date: string };
+export type RoundDeadline = {
+  label: string;
+  date: string;
+  /**
+   * Optional per-round overrides used by self-scheduled knockouts:
+   *  - `notes`: organiser instructions shown to players for this round.
+   *  - `mode` : "club" flips this single round back to club-scheduled
+   *             courts/times (typically the semi-final or final).
+   * Both ride inside the existing `club_champs.round_play_by` jsonb.
+   */
+  notes?: string;
+  mode?: "self" | "club";
+};
 
 const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v);
 
@@ -29,7 +41,9 @@ export function parseRoundDeadlines(value: unknown): RoundDeadline[] {
           const date = (entry as any).date;
           if (!isDate(date)) return null;
           const label = String((entry as any).label || "").trim() || defaultRoundLabel(i);
-          return { label, date: date.slice(0, 10) };
+          const notes = String((entry as any).notes || "").trim();
+          const mode = (entry as any).mode === "club" ? "club" : undefined;
+          return { label, date: date.slice(0, 10), ...(notes ? { notes } : {}), ...(mode ? { mode } : {}) };
         }
         return null;
       })
@@ -51,7 +65,12 @@ export function parseRoundDeadlines(value: unknown): RoundDeadline[] {
 export function serializeRoundDeadlines(list: RoundDeadline[]): RoundDeadline[] | null {
   const clean = list
     .filter((d) => isDate(d.date))
-    .map((d, i) => ({ label: d.label.trim() || defaultRoundLabel(i), date: d.date.slice(0, 10) }));
+    .map((d, i) => ({
+      label: d.label.trim() || defaultRoundLabel(i),
+      date: d.date.slice(0, 10),
+      ...(d.notes && d.notes.trim() ? { notes: d.notes.trim() } : {}),
+      ...(d.mode === "club" ? { mode: "club" as const } : {}),
+    }));
   return clean.length ? clean : null;
 }
 

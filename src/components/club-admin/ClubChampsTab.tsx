@@ -8990,14 +8990,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
                               )}
                               {g.map((pair, i) => {
-                                const p = poolIdx(i, pools, g.length);
-                                const prevP = i > 0 ? poolIdx(i - 1, pools, g.length) : -1;
-                                const showHeader = isSwissPools && pools > 1 && p !== prevP;
+                                const manualPools = manualSeedGroups.has(gi);
+                                const p = poolIdx(i, pools, g.length, manualPools);
+                                const prevP = i > 0 ? poolIdx(i - 1, pools, g.length, manualPools) : -1;
+                                const showHeader = isSwissPools && pools > 1 && manualPools && p !== prevP;
                                 return (
                                   <div key={pair.id}>
                                     {showHeader && (
                                       <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[p % poolTint.length]}`}>
-                                        Pool {poolLetter(p)} <span className="opacity-70 normal-case">({poolSize(p, pools, g.length)} {isDoubles ? "pairs" : "players"})</span>
+                                        Pool {poolLetter(p)} <span className="opacity-70 normal-case">({poolSize(p, pools, g.length, manualPools)} {isDoubles ? "pairs" : "players"})</span>
+
                                       </div>
                                     )}
                                     <SortableRow id={pair.id}>

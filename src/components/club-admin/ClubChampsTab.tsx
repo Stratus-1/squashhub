@@ -51,6 +51,7 @@ import {
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
 import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
+import { blockPoolIndex, poolCounts, poolLetter, snakePoolIndex } from "@/lib/tournaments/pools";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
   resolveLeagueSeasonLevels,
@@ -8980,7 +8981,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <span className="text-muted-foreground text-xs">({g.length} pairs)</span>
                             {isSwissPools && pools > 1 && (
                               <Badge variant="outline" className="text-[10px]">
-                                {pools} pools · block distribution
+                                {pools} pools · seed-balanced (serpentine)
                               </Badge>
                             )}
                           </div>

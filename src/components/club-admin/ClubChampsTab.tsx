@@ -9372,7 +9372,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-
+            {/* Self-scheduled knockout: nothing here applies — there are no
+                slots to fill, no pool break and no finals slot to reserve. */}
+            {simplifiedKnockoutSchedule ? (
+              <div className="rounded-lg border border-dashed p-3 text-sm space-y-1">
+                <p className="font-medium">Players arrange their own games</p>
+                <p className="text-[11px] text-muted-foreground">
+                  No time slots, courts, fill/spread mode or finals timing are needed. Set the current
+                  round's play-by date on the Dates step — later rounds are configured once the current
+                  round is complete.
+                </p>
+              </div>
+            ) : (
+            <>
             <WizardSection
               title={"Generation mode & playoff timing"}
               summary={`${scheduleMode === "fill" ? "Fill up" : "Spread"}${enablePlayoffs ? " · playoffs scheduled" : ""}`}

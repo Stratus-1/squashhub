@@ -51,7 +51,7 @@ import {
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
 import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
-import { blockPoolIndex, distributeIntoPools, poolCounts, poolLetter, snakePoolIndex } from "@/lib/tournaments/pools";
+import { distributeIntoPools, flattenPools, poolBlocks, poolCounts, poolLetter } from "@/lib/tournaments/pools";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
   resolveLeagueSeasonLevels,
@@ -2733,10 +2733,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const groupIds = (groups as ClubMember[][])[groupIndex].map((p) => p.id);
-    const oldIdx = groupIds.indexOf(String(active.id));
-    const newIdx = groupIds.indexOf(String(over.id));
+    // Rows are rendered grouped per pool (pool A's rows, then pool B's …), so a
+    // drag happens in that VISUAL order, not in the raw seed order. Flattening
+    // the pool blocks first means the order we store back reproduces exactly
+    // the pools the organiser was looking at — nothing silently rebalances.
+    const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), {
+      manual: manualSeedGroups.has(groupIndex),
+    });
+    const oldIdx = visualIds.indexOf(String(active.id));
+    const newIdx = visualIds.indexOf(String(over.id));
     if (oldIdx < 0 || newIdx < 0) return;
-    const reorderedGroupIds = arrayMove(groupIds, oldIdx, newIdx);
+    const reorderedGroupIds = arrayMove(visualIds, oldIdx, newIdx);
     // Rebuild full order: keep existing order for everyone else, swap in this group's new order
     const current = playerOrder.length > 0 ? playerOrder : selectedPlayers.map((p) => p.id);
     const groupSet = new Set(groupIds);
@@ -2760,10 +2767,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const groupIds = (groups as DoublePair[][])[groupIndex].map((p) => p.id);
-    const oldIdx = groupIds.indexOf(String(active.id));
-    const newIdx = groupIds.indexOf(String(over.id));
+    // Same pool-block visual order as singles — see handlePlayerDragEnd.
+    const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), {
+      manual: manualSeedGroups.has(groupIndex),
+    });
+    const oldIdx = visualIds.indexOf(String(active.id));
+    const newIdx = visualIds.indexOf(String(over.id));
     if (oldIdx < 0 || newIdx < 0) return;
-    const reorderedGroupIds = arrayMove(groupIds, oldIdx, newIdx);
+    const reorderedGroupIds = arrayMove(visualIds, oldIdx, newIdx);
     const current = pairOrder.length > 0 ? pairOrder : doublesPairs.map((p) => p.id);
     const groupSet = new Set(groupIds);
     const next: string[] = [];
@@ -2774,6 +2785,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
     for (const p of doublesPairs) if (!next.includes(p.id)) next.push(p.id);
     setPairOrder(next);
+    setManualSeedGroups((prev) => (prev.has(groupIndex) ? prev : new Set(prev).add(groupIndex)));
   };
 
   // Unified drag handler spanning ALL leagues — supports reordering within a
@@ -9011,10 +9023,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   // pool B = 2,3,6,7… so pools are balanced by strength.
                   // A division the organiser hand-arranged keeps their order
                   // (contiguous blocks) until they hit "Rebalance pools by seed".
-                  const poolIdx = (i: number, pools: number, total: number, manual: boolean) =>
-                    manual ? blockPoolIndex(i, pools, total) : snakePoolIndex(i, pools);
-                  const poolSize = (p: number, pools: number, total: number, manual: boolean) =>
-                    poolCounts(total, pools, { manual })[p] ?? 0;
 
                   const poolTint = [
                     "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30",
@@ -9044,32 +9052,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               </Badge>
                             )}
                           </div>
-                          <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-                            <div className="space-y-1">
-                              {g.length === 0 && (
-                                <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
+                          {/* Each pool is its own block — pools are never
+                              interleaved into one mixed list. */}
+                          {g.length === 0 && (
+                            <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
+                          )}
+                          {poolBlocks(g, pools, { manual: manualSeedGroups.has(gi) }).map((block) => (
+                            <div key={block.pool} className={pools > 1 ? "mb-2" : ""}>
+                              {isSwissPools && pools > 1 && (
+                                <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[block.pool % poolTint.length]}`}>
+                                  Pool {block.letter} <span className="opacity-70 normal-case">({block.rows.length} pairs)</span>
+                                </div>
                               )}
-                              {g.map((pair, i) => {
-                                const manualPools = manualSeedGroups.has(gi);
-                                const p = poolIdx(i, pools, g.length, manualPools);
-                                const prevP = i > 0 ? poolIdx(i - 1, pools, g.length, manualPools) : -1;
-                                const showHeader = isSwissPools && pools > 1 && manualPools && p !== prevP;
-                                return (
-                                  <div key={pair.id}>
-                                    {showHeader && (
-                                      <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[p % poolTint.length]}`}>
-                                        Pool {poolLetter(p)} <span className="opacity-70 normal-case">({poolSize(p, pools, g.length, manualPools)} {isDoubles ? "pairs" : "players"})</span>
-
-                                      </div>
-                                    )}
-                                    <SortableRow id={pair.id}>
+                              <SortableContext items={block.rows.map((r) => r.item.id)} strategy={verticalListSortingStrategy}>
+                                <div className="space-y-1">
+                                  {block.rows.map(({ item: pair, seed }) => (
+                                    <SortableRow key={pair.id} id={pair.id}>
+                                      {pools > 1 && (
+                                        <span className="text-[10px] text-muted-foreground w-5 shrink-0 tabular-nums">{seed}.</span>
+                                      )}
                                       <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                                       <span className="flex-1 text-sm font-medium">{getPairLabel(pair)}</span>
-                                      {isSwissPools && pools > 1 && (
-                                        <Badge variant="outline" className={`text-[10px] ${poolTint[p % poolTint.length]}`}>
-                                          {poolLetter(p)}
-                                        </Badge>
-                                      )}
                                       <Select
                                         value={String(pairGroupAssignments.get(pair.id) ?? 0)}
                                         onValueChange={async (v) => {
@@ -9093,11 +9096,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                         </SelectContent>
                                       </Select>
                                     </SortableRow>
-                                  </div>
-                                );
-                              })}
+                                  ))}
+                                </div>
+                              </SortableContext>
                             </div>
-                          </SortableContext>
+                          ))}
                         </DroppableLeague>
                       );
                     })
@@ -9157,35 +9160,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                           )}
                           {g.length > 0 && (
                             <p className="text-[10px] text-muted-foreground mb-2 leading-snug">
-                              Seed preview:{" "}
+                              Seed order:{" "}
                               {seedPreview(g as any)
-                                .map((s, i) => {
-                                  const pl = pools > 1 ? ` ${poolLetter(poolIdx(i, pools, g.length, manualSeedGroups.has(gi)))}` : "";
-                                  return `${s.seed}.${pl} ${s.name}${s.ladderPosition ? ` (#${s.ladderPosition})` : " (unranked)"}`;
-                                })
+                                .map((s) => `${s.seed}. ${s.name}${s.ladderPosition ? ` (#${s.ladderPosition})` : " (unranked)"}`)
                                 .join("  ·  ")}
                             </p>
                           )}
 
-                          <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-                            <div className="space-y-1">
-                              {g.length === 0 && (
-                                <p className="text-[11px] text-muted-foreground italic py-2">Drop players here</p>
+                          {/* Each pool renders as its own block — pool A's
+                              players, then pool B's — never one interleaved
+                              list with alternating A/B badges. */}
+                          {g.length === 0 && (
+                            <p className="text-[11px] text-muted-foreground italic py-2">Drop players here</p>
+                          )}
+                          {poolBlocks(g, pools, { manual: manualSeedGroups.has(gi) }).map((block) => (
+                            <div key={block.pool} className={pools > 1 ? "mb-2" : ""} data-pool={block.letter}>
+                              {isSwissPools && pools > 1 && (
+                                <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[block.pool % poolTint.length]}`}>
+                                  Pool {block.letter} <span className="opacity-70 normal-case">({block.rows.length} players)</span>
+                                </div>
                               )}
-                              {g.map((p, i) => {
-                                const manualPools = manualSeedGroups.has(gi);
-                                const pl = poolIdx(i, pools, g.length, manualPools);
-                                const prevPl = i > 0 ? poolIdx(i - 1, pools, g.length, manualPools) : -1;
-                                const showHeader = isSwissPools && pools > 1 && manualPools && pl !== prevPl;
-                                return (
-                                  <div key={p.id}>
-                                    {showHeader && (
-                                      <div className={`mt-2 mb-1 px-2 py-1 rounded border text-[10px] font-semibold uppercase tracking-wide ${poolTint[pl % poolTint.length]}`}>
-                                        Pool {poolLetter(pl)} <span className="opacity-70 normal-case">({poolSize(pl, pools, g.length, manualPools)} players)</span>
-                                      </div>
-                                    )}
-
-                                    <SortableRow id={p.id}>
+                              <SortableContext items={block.rows.map((r) => r.item.id)} strategy={verticalListSortingStrategy}>
+                                <div className="space-y-1">
+                                  {block.rows.map(({ item: p, seed }) => (
+                                    <SortableRow key={p.id} id={p.id}>
+                                      {pools > 1 && (
+                                        <span className="text-[10px] text-muted-foreground w-5 shrink-0 tabular-nums" title="Seed within this division">{seed}.</span>
+                                      )}
                                       <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
                                       {!memberFitsLeague(p, (groupAssignments.get(p.id) ?? 0) + 1) && (
                                         <Badge variant="destructive" className="text-[10px]" title="This player does not match the category set for this league">
@@ -9196,11 +9197,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                         <Badge variant="secondary" className="text-[10px]" title="Club ladder position — the seeding rank">#{p.ladder_position}</Badge>
                                       ) : (
                                         <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40" title="No club ladder position — seeded after every ranked entrant">No ladder rank</Badge>
-                                      )}
-                                      {isSwissPools && pools > 1 && (
-                                        <Badge variant="outline" className={`text-[10px] ${poolTint[pl % poolTint.length]}`}>
-                                          {poolLetter(pl)}
-                                        </Badge>
                                       )}
                                       <Select
                                         value={String(groupAssignments.get(p.id) ?? 0)}
@@ -9251,11 +9247,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                         }}
                                       />
                                     </SortableRow>
-                                  </div>
-                                );
-                              })}
+                                  ))}
+                                </div>
+                              </SortableContext>
                             </div>
-                          </SortableContext>
+                          ))}
                         </DroppableLeague>
                       );
                     })

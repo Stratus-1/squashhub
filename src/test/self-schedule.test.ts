@@ -8,6 +8,7 @@ import {
   isSlotFree,
   freeSlotsForCourt,
   unscheduledMatchLabel,
+  canMarkChampMatch,
 } from "@/lib/tournaments/self-schedule";
 import { buildNextRound } from "@/lib/tournaments/knockout";
 
@@ -119,5 +120,73 @@ describe("progression", () => {
       expect(r.court_id ?? null).toBeNull();
       expect(isUnscheduled(r)).toBe(true);
     }
+  });
+});
+
+describe("mark permissions + progression (knockout + self-scheduled)", () => {
+  const base = {
+    id: "m1",
+    status: "scheduled",
+    player_a_member_id: "a",
+    player_b_member_id: "b",
+    scheduled_date: null,
+    scheduled_time: null,
+    court_id: null,
+  };
+
+  it("lets a participant mark an unscheduled match", () => {
+    expect(canMarkChampMatch(base, "a").allowed).toBe(true);
+    expect(canMarkChampMatch(base, "b").allowed).toBe(true);
+  });
+
+  it("blocks non-participants but allows organisers", () => {
+    expect(canMarkChampMatch(base, "z").allowed).toBe(false);
+    expect(canMarkChampMatch(base, "z", { canManage: true }).allowed).toBe(true);
+  });
+
+  it("blocks marking when club policy requires a booking", () => {
+    expect(canMarkChampMatch(base, "a", { requireBooking: true }).allowed).toBe(false);
+    expect(
+      canMarkChampMatch(
+        { ...base, scheduled_date: "2026-09-01", scheduled_time: "18:00", court_id: 3 },
+        "a",
+        { requireBooking: true },
+      ).allowed,
+    ).toBe(true);
+  });
+
+  it("does not allow free re-marking of decided matches", () => {
+    for (const status of ["completed", "forfeited", "walkover", "cancelled"]) {
+      expect(canMarkChampMatch({ ...base, status }, "a").allowed).toBe(false);
+    }
+    expect(canMarkChampMatch({ ...base, winner_member_id: "a" }, "a").allowed).toBe(false);
+    expect(canMarkChampMatch({ ...base, is_bye: true }, "a").allowed).toBe(false);
+  });
+
+  it("creates the next round UNSCHEDULED with only a play-by date", () => {
+    const roundMatches = [
+      { id: "1", round_number: 1, bracket_position: 1, status: "completed", winner_member_id: "a" },
+      { id: "2", round_number: 1, bracket_position: 2, status: "completed", winner_member_id: "d" },
+    ];
+    const rows = buildNextRound({
+      champId: "c1",
+      groupNumber: 1,
+      section: 1,
+      roundMatches: roundMatches as any,
+      playBy: "2026-10-05",
+    });
+    expect(rows).toHaveLength(1);
+    const next = rows[0] as any;
+    expect(next.player_a_member_id).toBe("a");
+    expect(next.player_b_member_id).toBe("d");
+    expect(next.status).toBe("scheduled");
+    expect(next.play_by).toBe("2026-10-05");
+    expect(next.scheduled_date).toBeUndefined();
+    expect(next.scheduled_time).toBeUndefined();
+    expect(next.court_id).toBeUndefined();
+    // and it shows up as an unscheduled upcoming match for its players
+    expect(isUnscheduled(next)).toBe(true);
+    expect(canSelfScheduleMatch(next, "a").allowed).toBe(true);
+    expect(canMarkChampMatch(next, "d").allowed).toBe(true);
   });
 });

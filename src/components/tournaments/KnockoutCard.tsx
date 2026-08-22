@@ -25,6 +25,10 @@ interface KnockoutCardProps {
   renderMatchRow: (m: any) => ReactNode;
   /** League label resolver (group_number → display name). */
   groupLabel: (gn: number) => string;
+  /** Knockout + players arrange their own court/date/time. */
+  selfScheduled?: boolean;
+  /** Deadline for a given round number (self-scheduled knockouts). */
+  playByForRound?: (round: number) => string | null;
 }
 
 /**
@@ -35,7 +39,15 @@ interface KnockoutCardProps {
  * actually got through. Once every section of a league is decided, the
  * section winners meet in a league final.
  */
-export function KnockoutCard({ champId, matches, canManage, renderMatchRow, groupLabel }: KnockoutCardProps) {
+export function KnockoutCard({
+  champId,
+  matches,
+  canManage,
+  renderMatchRow,
+  groupLabel,
+  selfScheduled = false,
+  playByForRound,
+}: KnockoutCardProps) {
   const qc = useQueryClient();
   const koMatches: KnockoutMatchLike[] = useMemo(
     () => (matches || []).filter((m: any) => (m.stage || "") === "ko"),
@@ -69,6 +81,9 @@ export function KnockoutCard({ champId, matches, canManage, renderMatchRow, grou
           section,
           roundMatches: st.latestRoundMatches,
           sectionLabel: multi ? `Section ${sectionLetter(section)}` : undefined,
+          playBy: selfScheduled
+            ? playByForRound?.((Number(st.latestRoundMatches[0]?.round_number) || 1) + 1) ?? null
+            : null,
         });
         if (rows.length === 0) throw new Error("Nothing to generate");
         const { error } = await fromExt("club_champs_matches").insert(rows as any);
@@ -100,7 +115,11 @@ export function KnockoutCard({ champId, matches, canManage, renderMatchRow, grou
       return rows.length;
     },
     onSuccess: (n) => {
-      toast.success(`Created ${n} match${n === 1 ? "" : "es"}. Assign courts and times from the fixture list.`);
+      toast.success(
+        selfScheduled
+          ? `Created ${n} match${n === 1 ? "" : "es"}. Players arrange their own court and time.`
+          : `Created ${n} match${n === 1 ? "" : "es"}. Assign courts and times from the fixture list.`,
+      );
       qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
     },
     onError: (e: any) => toast.error(e.message || "Could not generate the next round"),

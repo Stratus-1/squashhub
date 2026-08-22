@@ -50,6 +50,8 @@ export type KnockoutMatchRow = {
   bye_member_id: string | null;
   status: string;
   winner_member_id: string | null;
+  /** Self-scheduled rounds: "must be played by" date. Court/time stay null. */
+  play_by?: string | null;
 };
 
 /** Minimal shape of a persisted match row we need to read back. */
@@ -307,6 +309,8 @@ export function buildNextRound(opts: {
   section: number;
   roundMatches: KnockoutMatchLike[];
   sectionLabel?: string;
+  /** Deadline for the round being created (self-scheduled knockouts). */
+  playBy?: string | null;
 }): KnockoutMatchRow[] {
   const rows = [...opts.roundMatches].sort(
     (a, b) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0),
@@ -339,6 +343,7 @@ export function buildNextRound(opts: {
       bye_member_id: !b ? a?.winner ?? null : null,
       status: !b ? "completed" : "scheduled",
       winner_member_id: !b ? a?.winner ?? null : null,
+      play_by: opts.playBy ?? null,
     });
   }
   return out;

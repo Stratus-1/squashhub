@@ -8,6 +8,7 @@ import {
   isSlotFree,
   freeSlotsForCourt,
   unscheduledMatchLabel,
+  canMarkChampMatch,
 } from "@/lib/tournaments/self-schedule";
 import { buildNextRound } from "@/lib/tournaments/knockout";
 

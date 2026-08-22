@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
-import { canSelfScheduleMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
+import { canSelfScheduleMatch, canMarkChampMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
+import { getTournamentFormat } from "@/lib/tournament-formats";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 
@@ -32,7 +33,7 @@ export function MyChampionships() {
     queryKey: ["club-champs-active", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs")
-        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode")
+        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode, scheduling_mode, scoring_mode, round_play_by")
         .eq("club_id", clubId!)
         .order("start_date");
       if (error) throw error;
@@ -210,6 +211,9 @@ export function MyChampionships() {
         const champ = allChamps.find((c: any) => c.id === entry.champ_id);
         if (!champ) return null;
         const isDoubles = champ.match_type === "doubles";
+        const selfScheduled = String((champ as any).scheduling_mode || "") === "self";
+        const markerRoute = (matchId: string) =>
+          getTournamentFormat((champ as any).scoring_mode).markerRoute(matchId);
         const partnerName = entry.partner ? getName(entry.partner) : null;
         const champUpcoming = upcomingMatches.filter((m: any) => m.champ_id === champ.id);
         const champCompleted = completedMatches.filter((m: any) => m.champ_id === champ.id);
@@ -242,6 +246,12 @@ export function MyChampionships() {
 
                   const unscheduled = isUnscheduled(m);
                   const perm = canSelfScheduleMatch(m, memberId);
+                  // Self-scheduled matches may be played (and marked) even
+                  // before a court is booked — score capture is never blocked
+                  // just because court/date/time are still null.
+                  const markPerm = selfScheduled
+                    ? canMarkChampMatch(m, memberId)
+                    : { allowed: false as const };
 
                   if (unscheduled) {
                     return (
@@ -261,20 +271,35 @@ export function MyChampionships() {
                           Upcoming match — not yet scheduled
                           {m.play_by && <> · play by {format(new Date(m.play_by), "EEE dd MMM")}</>}
                         </p>
-                        {perm.allowed ? (
-                          <Button
-                            size="sm"
-                            className="h-6 text-[11px] mt-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setScheduling({ match: m, opponent });
-                            }}
-                          >
-                            Choose court & time
-                          </Button>
-                        ) : (
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{perm.reason}</p>
-                        )}
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {perm.allowed ? (
+                            <Button
+                              size="sm"
+                              className="h-6 text-[11px]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setScheduling({ match: m, opponent });
+                              }}
+                            >
+                              Schedule match
+                            </Button>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">{perm.reason}</p>
+                          )}
+                          {markPerm.allowed && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 text-[11px]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(markerRoute(m.id));
+                              }}
+                            >
+                              Set Up & Mark Game
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   }
@@ -303,6 +328,19 @@ export function MyChampionships() {
                           }}
                         >
                           Reschedule
+                        </Button>
+                      )}
+                      {markPerm.allowed && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[10px] px-1.5 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(markerRoute(m.id));
+                          }}
+                        >
+                          Mark
                         </Button>
                       )}
                     </div>

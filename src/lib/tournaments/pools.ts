@@ -32,11 +32,33 @@ export function snakePoolIndex(i: number, pools: number): number {
   return round % 2 === 0 ? pos : pools - 1 - pos;
 }
 
-/** Pool index for the i-th row of a contiguous/block split (manual mode). */
+/**
+ * Balanced pool sizes for `total` entrants — identical to the sizes the
+ * serpentine deal produces, so a seeded layout can be "materialised" into a
+ * plain ordered list (pool A's rows, then pool B's rows, …) without the pool
+ * sizes changing. Differs by at most one entrant between pools.
+ */
+export function poolSizes(total: number, pools: number): number[] {
+  const n = Math.max(1, Math.floor(pools) || 1);
+  const sizes = new Array(n).fill(0);
+  for (let i = 0; i < total; i++) sizes[snakePoolIndex(i, n)] += 1;
+  return sizes;
+}
+
+/**
+ * Pool index for the i-th row of a contiguous/block split (manual mode).
+ * Blocks follow `poolSizes`, so a manual list reads top-to-bottom as
+ * pool A, then pool B, … with balanced sizes.
+ */
 export function blockPoolIndex(i: number, pools: number, total: number): number {
   if (pools <= 1) return 0;
-  const size = Math.ceil(total / pools);
-  return Math.min(pools - 1, Math.floor(i / size));
+  const sizes = poolSizes(total, pools);
+  let acc = 0;
+  for (let p = 0; p < sizes.length; p++) {
+    acc += sizes[p];
+    if (i < acc) return p;
+  }
+  return sizes.length - 1;
 }
 
 export interface PoolAssignOptions {
@@ -72,4 +94,16 @@ export function poolCounts(total: number, pools: number, opts?: PoolAssignOption
 /** A, B, C … */
 export function poolLetter(p: number): string {
   return String.fromCharCode(65 + p);
+}
+
+/**
+ * The ordered list as the organiser SEES it: pool A's entrants, then pool B's,
+ * and so on. Dragging works in this visual space; writing this order back as
+ * the division's manual order reproduces exactly the same pool membership
+ * (block split and serpentine share `poolSizes`).
+ */
+export function flattenPools<T>(ordered: T[], pools: number, opts?: PoolAssignOptions): T[] {
+  const n = Math.max(1, Math.floor(pools) || 1);
+  if (n <= 1) return [...ordered];
+  return distributeIntoPools(ordered, n, opts).flat();
 }

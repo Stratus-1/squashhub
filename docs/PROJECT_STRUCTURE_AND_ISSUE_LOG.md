@@ -1088,3 +1088,11 @@ players. Selecting it:
 - Tests: `src/test/self-schedule.test.ts` (12).
 - Player card actions (self-scheduled knockout only): `Schedule match` → `Set Up & Mark Game` (`getTournamentFormat(scoring_mode).markerRoute(matchId)` → existing marker, which inherits best-of / points-per-game / deuce rule from the tournament) → normal result capture with game scores. `canMarkChampMatch()` in `self-schedule.ts` gates it: participants + organiser only, never a completed/forfeited/walkover re-mark, and unscheduled matches are markable unless a booking is required.
 - Progression: `buildNextRound({ playBy })` stamps the next round's deadline and leaves court/date/time null; `KnockoutCard` passes `selfScheduled`/`playByForRound` from `club_champs.round_play_by`, so the new round appears as an unscheduled self-scheduled match. Tests: 17 in `src/test/self-schedule.test.ts`.
+
+## Knockout draw: "Player vs themselves" self-fixtures (fixed 2026-08-22)
+- **Symptom:** first-round rows like `Thabo Mokoena vs Thabo Mokoena` in knockout sections.
+- **Root cause (two parts):**
+  1. `buildKnockoutLeague` in `ClubChampsTab.tsx` wrote bye rows as `entityA = entityB = bye member`, and the insert mapped both columns to the same member — a bye rendered as a playable self-fixture.
+  2. It also used `distributeSeedsBalanced` (equal headcount) instead of the bracket-optimised knockout pool sizing used by the allocation UI, so sections came out 7/7/8/8 and produced avoidable byes.
+- **Fix:** knockout sections now use `distributeIntoPools(..., { knockout: true })`, entrant IDs are de-duplicated per division, bye rows are one-sided (`player_b_member_id = null`, `is_bye`, winner set, status `completed`), and `assertNoSelfMatches()` in `src/lib/tournaments/knockout.ts` plus a pre-insert guard fail generation loudly instead of saving a corrupt draw.
+- **Tests:** `src/test/knockout-self-match.test.ts` (8/7/6 entrants, duplicate-entry protection, progression).

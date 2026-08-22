@@ -23,6 +23,7 @@ import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { KnockoutCard } from "@/components/tournaments/KnockoutCard";
+import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { UserX, Trophy, Shuffle, RotateCcw } from "lucide-react";
@@ -2367,6 +2368,10 @@ export default function ClubChampsView() {
           canManage={canManage}
           renderMatchRow={renderMatchRow}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
+          selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
+          playByForRound={(round) =>
+            parseRoundDeadlines((champ as any)?.round_play_by)[round - 1]?.date ?? null
+          }
         />
         {playoffCard}
       </>

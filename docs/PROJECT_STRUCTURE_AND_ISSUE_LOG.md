@@ -1080,3 +1080,9 @@ players. Selecting it:
 - `pools.ts` gained `PoolAssignOptions.knockout`. Only when set do `poolSizes`/`poolIndexes`/`poolBlocks` use bracket sizes; the serpentine deal then respects those capacities (top seeds still land in different sections). Round robin / Swiss / cross league are byte-identical to before.
 - `ClubChampsTab.tsx` passes `poolOptsFor(gi)` (`{ manual, knockout: formatForLeague === "knockout" }`) everywhere pools are rendered/dragged; the allocation UI shows `Pool A (8) · Pool B (6)` plus the round-1 bye count. Manual arrangements are untouched until "Rebalance pools by seed".
 - Tests: `src/test/knockout-sections.test.ts` (10) + existing `pool-distribution.test.ts` unchanged and passing.
+
+## Self-scheduled knockout matches (players arrange their own court/time)
+- Wizard: `schedulePreview` no longer requires play days/courts when `schedulingMode === "self"`; it returns the draw with every playable match unscheduled (court/date/time null, `play_by` from the round deadline).
+- DB: `club_champs_matches.booking_id` added; new `public.self_schedule_champ_match(match, court, date, time, duration)` SECURITY DEFINER RPC — participant/organiser only, re-checks court availability, creates/moves the booking, writes court/date/time and notifies both players. `guard_champ_match_participant_scoring_update` honours the `app.self_schedule` session flag so only that RPC may move a match.
+- UI: `src/lib/tournaments/self-schedule.ts` (permissions + slot helpers), `src/components/tournaments/ScheduleMatchDialog.tsx` (real courts + live availability), `MyChampionships.tsx` shows "Upcoming match — not yet scheduled" with Choose court & time / Reschedule.
+- Tests: `src/test/self-schedule.test.ts` (12).

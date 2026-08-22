@@ -239,6 +239,45 @@ export function MyChampionships() {
                   const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
                   const today = matchDate && isToday(matchDate);
 
+                  const unscheduled = isUnscheduled(m);
+                  const perm = canSelfScheduleMatch(m, memberId);
+
+                  if (unscheduled) {
+                    return (
+                      <div
+                        key={m.id}
+                        className="rounded p-1.5 bg-amber-500/5 border border-amber-500/30"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center gap-2 text-[12px]">
+                          <CalendarClock className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span className="font-medium truncate">vs {opponent}</span>
+                          {m.stage_label && (
+                            <Badge variant="outline" className="text-[9px] shrink-0">{m.stage_label}</Badge>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Upcoming match — not yet scheduled
+                          {m.play_by && <> · play by {format(new Date(m.play_by), "EEE dd MMM")}</>}
+                        </p>
+                        {perm.allowed ? (
+                          <Button
+                            size="sm"
+                            className="h-6 text-[11px] mt-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setScheduling({ match: m, opponent });
+                            }}
+                          >
+                            Choose court & time
+                          </Button>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{perm.reason}</p>
+                        )}
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={m.id} className={cn(
                       "flex items-center gap-2 text-[12px] p-1.5 rounded",
@@ -252,6 +291,19 @@ export function MyChampionships() {
                       <span className="font-medium truncate">vs {opponent}</span>
                       {m.court && <Badge variant="outline" className="text-[9px] ml-auto shrink-0">{m.court.name}</Badge>}
                       {today && <Badge className="text-[9px] shrink-0">Today</Badge>}
+                      {perm.allowed && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[10px] px-1.5 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setScheduling({ match: m, opponent });
+                          }}
+                        >
+                          Reschedule
+                        </Button>
+                      )}
                     </div>
                   );
                 })}

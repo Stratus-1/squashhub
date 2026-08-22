@@ -4280,7 +4280,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             round_number: m.roundNum,
             player_a_member_id: resolvedPairDbId(pairA?.player1Id || m.entityA),
             partner_a_member_id: pairA?.player2Id ? resolvedPairDbId(pairA.player2Id) : null,
-            player_b_member_id: resolvedPairDbId(pairB?.player1Id || m.entityB),
+            player_b_member_id: m.entityB ? resolvedPairDbId(pairB?.player1Id || m.entityB) : null,
             partner_b_member_id: pairB?.player2Id ? resolvedPairDbId(pairB.player2Id) : null,
             scheduled_date: isBye ? null : m.date,
             scheduled_time: isBye ? null : m.time,
@@ -4291,9 +4291,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             stage_label: m.koStageLabel ?? null,
             is_bye: isBye,
             bye_member_id: isBye ? resolvedPairDbId(pairA?.player1Id || m.entityA) : null,
+            ...(isBye && m.koSection && !m.entityB
+              ? { winner_member_id: resolvedPairDbId(pairA?.player1Id || m.entityA) }
+              : {}),
             status: isBye
-              ? (byeForLeague(m.groupNum) === "walkover_win" ? "completed" : "scheduled")
+              ? (m.koSection && !m.entityB) || byeForLeague(m.groupNum) === "walkover_win"
+                ? "completed"
+                : "scheduled"
               : "scheduled",
+
           };
         }
         // Knockout byes are one-sided and auto-advance the entrant; other

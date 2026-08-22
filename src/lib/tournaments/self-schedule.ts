@@ -142,3 +142,43 @@ export function unscheduledMatchLabel(m: SelfScheduleMatchLike): string {
     ? `Not yet scheduled — play by ${m.play_by}`
     : "Not yet scheduled";
 }
+
+/* ── marking ───────────────────────────────────────────────────────────── */
+
+export interface MarkPermission {
+  allowed: boolean;
+  reason?: string;
+}
+
+/**
+ * Who may open the game marker for a tournament match.
+ *
+ * Deliberately independent of scheduling: a self-scheduled match with no
+ * court/date/time can still be played and marked (clubs that require a formal
+ * booking pass `requireBooking`). Completed / forfeited / walkover matches are
+ * NOT freely re-markable — those go through the existing correction flow.
+ */
+export function canMarkChampMatch(
+  m: SelfScheduleMatchLike,
+  memberId?: string | null,
+  opts: { canManage?: boolean; requireBooking?: boolean } = {},
+): MarkPermission {
+  if (m.is_bye) return { allowed: false, reason: "This is a bye" };
+  const status = String(m.status || "").toLowerCase();
+  if (status === "completed" || m.winner_member_id) {
+    return { allowed: false, reason: "Result recorded — request a correction to change it" };
+  }
+  if (["forfeited", "walkover", "cancelled"].includes(status)) {
+    return { allowed: false, reason: "This match is already decided" };
+  }
+  if (!m.player_a_member_id || !m.player_b_member_id) {
+    return { allowed: false, reason: "Waiting for both players to be known" };
+  }
+  if (!opts.canManage && !isParticipant(m, memberId)) {
+    return { allowed: false, reason: "Only the players in this match can mark it" };
+  }
+  if (opts.requireBooking && isUnscheduled(m)) {
+    return { allowed: false, reason: "Book a court for this match first" };
+  }
+  return { allowed: true };
+}

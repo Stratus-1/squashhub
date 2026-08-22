@@ -29,10 +29,10 @@ describe("knockout first round — no self-matches", () => {
   });
 
   it("keeps #1 and #2 on opposite halves and pairs high vs low seeds", () => {
-    expect(seedSlotOrder(8)).toEqual([1, 8, 4, 5, 3, 6, 2, 7]);
+    expect(seedSlotOrder(8)).toEqual([1, 8, 4, 5, 2, 7, 3, 6]);
     const rows = build(8);
     expect([rows[0].player_a_member_id, rows[0].player_b_member_id]).toEqual(["p1", "p8"]);
-    expect([rows[3].player_a_member_id, rows[3].player_b_member_id]).toEqual(["p2", "p7"]);
+    expect([rows[2].player_a_member_id, rows[2].player_b_member_id]).toEqual(["p2", "p7"]);
     // top half holds seed 1, bottom half holds seed 2
     const topHalf = rows.slice(0, 2).flatMap((r) => [r.player_a_member_id, r.player_b_member_id]);
     const bottomHalf = rows.slice(2).flatMap((r) => [r.player_a_member_id, r.player_b_member_id]);

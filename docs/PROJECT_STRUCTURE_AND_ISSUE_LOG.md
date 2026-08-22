@@ -1065,3 +1065,12 @@ players. Selecting it:
 - New `src/components/club-admin/tournament/SelfScheduledRounds.tsx` — current round only (name, play-by date, notes), completed rounds read-only, semi/final club-schedule switch, later rounds locked.
 - `ClubChampsTab.tsx`: Dates/Times/Courts step swaps the multi-round deadline list for the single-round panel; Schedule Configuration step hides fill/spread, playoff timing, slot/bell and slot preview in this mode. Ticking the finals club-schedule switch restores the full controls; switching back to "Club schedules" restores all saved values (nothing is cleared).
 **Tests:** `src/lib/tournaments/__tests__/self-scheduled-rounds.test.ts` (11), `src/test/self-scheduled-rounds-panel.test.tsx` (2). Full suite green.
+
+## 2026-08-22 — Allocation UI: pools rendered as separate blocks
+**Problem:** A multi-pool division (e.g. Nelspruit 1st League, 9 players, 2 pools) rendered as ONE seed list with alternating `1. A`, `2. B`, `3. B`, `4. A` badges — organisers could not read pool membership.
+**Fix (rendering/grouping only — serpentine algorithm unchanged):**
+- `src/lib/tournaments/pools.ts`: added `poolBlocks()` (pool-grouped rows carrying their division seed number), `poolSizes()` and `flattenPools()`; `blockPoolIndex` now uses the balanced `poolSizes` so a manual (block) split reproduces exactly the serpentine pool sizes for any pool count.
+- `ClubChampsTab.tsx` allocation step (singles AND doubles): each pool renders as its own titled block `Pool A (5 players)` with its own `SortableContext`; per-row A/B badges removed, seed number kept; ladder `#n` badges, unranked flag, multi-division picker, withdraw and league dropdown unchanged.
+- Drag handlers (`handlePlayerDragEnd`/`handlePairDragEnd`) now operate on the flattened pool-block (visual) order, so a move within/between pool blocks stores exactly what the organiser sees, marks the division manual and never silently rebalances. `Rebalance pools by seed` still restores the seeded blocks.
+- Draw-prep (`splitIntoPools` → `distributeIntoPools`) uses the same membership shown in the blocks (asserted by test).
+**Tests:** `src/test/pool-distribution.test.ts` now 14 tests incl. the Nelspruit 9/2 case, 4/8 pools, manual blocks and block↔draw-prep parity.

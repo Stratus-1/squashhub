@@ -1329,6 +1329,7 @@ export type Database = {
         Row: {
           bell_ends_at: string | null
           bell_paused_seconds: number | null
+          booking_id: string | null
           bracket_position: number | null
           bye_member_id: string | null
           champ_id: string
@@ -1367,6 +1368,7 @@ export type Database = {
         Insert: {
           bell_ends_at?: string | null
           bell_paused_seconds?: number | null
+          booking_id?: string | null
           bracket_position?: number | null
           bye_member_id?: string | null
           champ_id: string
@@ -1405,6 +1407,7 @@ export type Database = {
         Update: {
           bell_ends_at?: string | null
           bell_paused_seconds?: number | null
+          booking_id?: string | null
           bracket_position?: number | null
           bye_member_id?: string | null
           champ_id?: string
@@ -1441,6 +1444,13 @@ export type Database = {
           winner_member_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "club_champs_matches_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "club_champs_matches_champ_id_fkey"
             columns: ["champ_id"]
@@ -11050,6 +11060,7 @@ export type Database = {
         Returns: {
           bell_ends_at: string | null
           bell_paused_seconds: number | null
+          booking_id: string | null
           bracket_position: number | null
           bye_member_id: string | null
           champ_id: string
@@ -11136,6 +11147,16 @@ export type Database = {
         }
         Returns: number
       }
+      self_schedule_champ_match: {
+        Args: {
+          p_court_id: number
+          p_date: string
+          p_duration_minutes?: number
+          p_match_id: string
+          p_time: string
+        }
+        Returns: Json
+      }
       send_champ_invite_notifications: {
         Args: {
           p_app_silent?: boolean
@@ -11185,6 +11206,7 @@ export type Database = {
         Returns: {
           bell_ends_at: string | null
           bell_paused_seconds: number | null
+          booking_id: string | null
           bracket_position: number | null
           bye_member_id: string | null
           champ_id: string

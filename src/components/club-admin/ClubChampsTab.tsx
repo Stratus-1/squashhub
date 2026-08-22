@@ -4296,12 +4296,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               : "scheduled",
           };
         }
+        // Knockout byes are one-sided and auto-advance the entrant; other
+        // formats keep their existing bye representation.
+        const isKoBye = isBye && !!m.koSection && !m.entityB;
         return {
           champ_id: champId,
           group_number: m.groupNum,
           round_number: m.roundNum,
           player_a_member_id: toDbId(m.entityA),
-          player_b_member_id: toDbId(m.entityB),
+          player_b_member_id: m.entityB ? toDbId(m.entityB) : null,
           scheduled_date: isBye ? null : m.date,
           scheduled_time: isBye ? null : m.time,
           court_id: isBye ? null : m.courtId,
@@ -4311,9 +4314,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           stage_label: m.koStageLabel ?? null,
           is_bye: isBye,
           bye_member_id: isBye ? toDbId(m.entityA) : null,
-          status: isBye
-            ? (byeForLeague(m.groupNum) === "walkover_win" ? "completed" : "scheduled")
-            : "scheduled",
+          ...(isKoBye ? { winner_member_id: toDbId(m.entityA) } : {}),
+          status: isKoBye
+            ? "completed"
+            : isBye
+              ? (byeForLeague(m.groupNum) === "walkover_win" ? "completed" : "scheduled")
+              : "scheduled",
+
           // Self-scheduled: no fixed slot or court, just a deadline.
           ...(schedulingMode === "self"
             ? {

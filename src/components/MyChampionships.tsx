@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -6,12 +7,14 @@ import { useMyClub } from "@/hooks/use-club";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, ChevronRight, Calendar } from "lucide-react";
+import { Trophy, ChevronRight, Calendar, CalendarClock } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
+import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import { canSelfScheduleMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 

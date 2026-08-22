@@ -908,6 +908,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const inviteDivisionFormats = (): string[] =>
     Array.from({ length: Math.max(1, numGroups || 1) }, (_, i) => formatForLeague(i + 1) || "").filter(Boolean);
 
+  /**
+   * Self-scheduled knockout: every division is a knockout AND the players
+   * arrange their own court/date/time. In that mode the whole club-scheduling
+   * apparatus (courts, time slots, fill/spread, pool breaks, capacity,
+   * finals dates) is irrelevant — the organiser only sets the CURRENT round's
+   * play-by deadline. Any other combination keeps the full controls.
+   */
+  const selfScheduledKnockout = isSelfScheduledKnockout(schedulingMode, inviteDivisionFormats());
+
+  /** Round-by-round completion of the tournament being edited (drives "current round"). */
+  const { data: roundMatchRows = [] } = useQuery({
+    queryKey: ["champ-round-progress", editingChampId],
+    queryFn: async (): Promise<RoundMatchRow[]> => {
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("round_number, status")
+        .eq("champ_id", editingChampId as string);
+      if (error) throw error;
+      return (data || []) as RoundMatchRow[];
+    },
+    enabled: !!editingChampId,
+  });
+  const knockoutProgress = useMemo(() => computeRoundProgress(roundMatchRows), [roundMatchRows]);
+  const knockoutCurrentRound = currentRoundNumber(knockoutProgress);
+  /**
+   * Semi/final stages may be flipped back to club-scheduled courts & times.
+   * While that override is on, the full Dates/Times/Courts UI comes back.
+   */
+  const currentRoundClubScheduled = roundIsClubScheduled(roundDeadlines, knockoutCurrentRound);
+  /** Simplified single-round UI is active only while the round stays player-arranged. */
+  const simplifiedKnockoutSchedule = selfScheduledKnockout && !currentRoundClubScheduled;
+
+
+
   // Per-league gender category and match type (keyed by group_number string).
   // A tournament can therefore hold e.g. a Ladies' league, a Men's league and
   // a Mixed league side by side. Missing entries fall back to the

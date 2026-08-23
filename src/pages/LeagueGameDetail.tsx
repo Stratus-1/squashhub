@@ -589,6 +589,80 @@ export default function LeagueGameDetail() {
   const teamLogosByCode = teamMeta?.logoByCode;
   const teamRulesByCode = teamMeta?.ruleByCode;
 
+  // ---- Doubles support -------------------------------------------------
+  // A doubles league plays RUBBERS (pairs), not one row per player. The
+  // scorecard must render one row per rubber and show both partner names.
+  const { data: doublesInfo } = useQuery({
+    queryKey: ["league-fixture-doubles", fixture?.home_team_code, fixture?.away_team_code],
+    enabled: !!(fixture?.home_team_code || fixture?.away_team_code),
+    queryFn: async () => {
+      const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
+      if (codes.length === 0) return null;
+      const { data: leagues } = await (supabase as any)
+        .from("leagues").select("id, code, association_id").in("code", codes);
+      if (!leagues?.length) return null;
+      const leagueIds = (leagues as any[]).map((l) => l.id);
+      const codeByLeagueId = new Map<string, string>(
+        (leagues as any[]).map((l) => [l.id, String(l.code || "").toUpperCase()]),
+      );
+
+      // Discipline is owned by the league's association (singles / doubles / hybrid).
+      const assocIds = [...new Set((leagues as any[]).map((l) => l.association_id).filter(Boolean))];
+      let isDoubles = false;
+      if (assocIds.length) {
+        const { data: assocs } = await (supabase as any)
+          .from("league_associations").select("id, discipline").in("id", assocIds);
+        isDoubles = (assocs || []).some((a: any) => a.discipline === "doubles" || a.discipline === "hybrid");
+      }
+
+      const { data: rules } = await (supabase as any)
+        .from("league_rules")
+        .select("league_id, doubles_rubbers")
+        .in("league_id", leagueIds);
+      const rubberCounts = (rules || [])
+        .map((r: any) => Number(r.doubles_rubbers) || 0)
+        .filter((n: number) => n > 0);
+      if (!isDoubles && rubberCounts.length === 0) {
+        return { isDoubles: false, rubbers: 0, pairsByCode: {} as Record<string, Array<{ code: string; name: string }>> };
+      }
+      const rubbers = Math.max(1, ...rubberCounts);
+
+
+      const { data: pairs } = await (supabase as any)
+        .from("league_team_pairs")
+        .select("league_id, pair_label, pair_order, player_one_member_id, player_two_member_id, is_active")
+        .in("league_id", leagueIds)
+        .eq("is_active", true)
+        .order("pair_order", { ascending: true });
+
+      const memberIds = new Set<string>();
+      for (const p of (pairs || []) as any[]) {
+        if (p.player_one_member_id) memberIds.add(p.player_one_member_id);
+        if (p.player_two_member_id) memberIds.add(p.player_two_member_id);
+      }
+      const nameById = new Map<string, string>();
+      if (memberIds.size) {
+        const { data: members } = await supabase
+          .from("club_members").select("id, name").in("id", [...memberIds]);
+        for (const m of (members || []) as any[]) nameById.set(m.id, m.name || "");
+      }
+
+      const pairsByCode: Record<string, Array<{ code: string; name: string }>> = {};
+      for (const p of (pairs || []) as any[]) {
+        const key = codeByLeagueId.get(p.league_id);
+        if (!key) continue;
+        const one = nameById.get(p.player_one_member_id) || "";
+        const two = nameById.get(p.player_two_member_id) || "";
+        const label = [one, two].filter(Boolean).join(" & ") || p.pair_label || "";
+        if (!label) continue;
+        (pairsByCode[key] ||= []).push({ code: "", name: label });
+      }
+      return { isDoubles: true, rubbers, pairsByCode };
+    },
+  });
+  const doublesRubbers = doublesInfo?.isDoubles ? doublesInfo.rubbers : 0;
+
+
   // NSF code -> overlay info from NSA roster
   const nsaRosterMap = useMemo(() => {
     const map = new Map<string, { name: string; won: number; lost: number; played: number; side: "home" | "away" }>();
@@ -659,9 +733,11 @@ export default function LeagueGameDetail() {
       const mode = hasTeamRule
         ? ((homeRule?.team_size_mode ?? awayRule?.team_size_mode) as "fixed" | "flexible")
         : (leagueRules?.team_size_mode ?? "fixed");
-      const baseSize = hasTeamRule
-        ? resolveFixtureBaseSize(homeRule, awayRule, mode)
-        : (leagueRules?.team_size ?? DEFAULT_POSITIONS);
+      const baseSize = doublesRubbers > 0
+        ? doublesRubbers
+        : (hasTeamRule
+          ? resolveFixtureBaseSize(homeRule, awayRule, mode)
+          : (leagueRules?.team_size ?? DEFAULT_POSITIONS));
       const targetCount = Math.min(MAX_POSITIONS, Math.max(1, baseSize, getSavedMaxPosition(existingMatches), positionCount));
       const loaded = Array.from({ length: targetCount }, (_, i) => {
         const pos = i + 1;
@@ -708,7 +784,7 @@ export default function LeagueGameDetail() {
       }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules, fixture, teamRulesByCode]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules, fixture, teamRulesByCode, doublesRubbers]);
 
   useEffect(() => {
     const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
@@ -936,6 +1012,7 @@ export default function LeagueGameDetail() {
   //    additional slots (e.g. a 5th player added after positions 1-2 were
   //    already scored) appear immediately.
   useEffect(() => {
+    if (doublesRubbers > 0) return; // doubles rows are filled from pairs below
     if (!prefillLineup || !fixture) return;
     const lineup = (prefillLineup as any)?.lineup || {};
     const homeSlots = lineup[fixture.home_team_code] || [];
@@ -970,7 +1047,33 @@ export default function LeagueGameDetail() {
       }
       return next;
     });
-  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount]);
+  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount, doublesRubbers]);
+
+  // Doubles prefill — each rubber row shows the team's registered PAIR
+  // ("Player one & Player two") instead of a single player name.
+  useEffect(() => {
+    if (!doublesInfo?.isDoubles || !fixture) return;
+    const byCode = doublesInfo.pairsByCode || {};
+    const homePairs = byCode[String(fixture.home_team_code || "").toUpperCase()] || [];
+    const awayPairs = byCode[String(fixture.away_team_code || "").toUpperCase()] || [];
+    if (homePairs.length === 0 && awayPairs.length === 0) return;
+
+    setPositions((prev) =>
+      prev.map((p, i) => {
+        const slotHasPlay = (Array.isArray(p.scores) && p.scores.length > 0) || !!p.isForfeit;
+        if (slotHasPlay) return p;
+        const home = homePairs[i];
+        const away = awayPairs[i];
+        return {
+          ...p,
+          homeName: p.homeName || home?.name || "",
+          awayName: p.awayName || away?.name || "",
+        };
+      }),
+    );
+  }, [doublesInfo, fixture, positionCount, existingMatches]);
+
+
 
   // (leagueRules fetched above near positionCount declaration)
 
@@ -979,6 +1082,15 @@ export default function LeagueGameDetail() {
   //   - This prevents 5-player NIL scorecards briefly rendering correctly, then
   //     shrinking back to 4 when saved results or rule metadata refresh later.
   useEffect(() => {
+    // Doubles: one row per RUBBER (pair vs pair) — never one row per player.
+    if (doublesRubbers > 0) {
+      const target = Math.min(
+        MAX_POSITIONS,
+        Math.max(doublesRubbers, getSavedMaxPosition(existingMatches)),
+      );
+      setPositionCount((prev) => (prev === target ? prev : target));
+      return;
+    }
     const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
     const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
     // Per-league rule wins over the association-wide fallback (which may be
@@ -1004,7 +1116,8 @@ export default function LeagueGameDetail() {
       Math.max(baseSize, getSavedMaxPosition(existingMatches), getLineupMaxPosition(lineup, [homeCode, awayCode])),
     );
     setPositionCount((prev) => (prev === maxFilled ? prev : maxFilled));
-  }, [fixture, prefillLineup, existingMatches, leagueRules, teamRulesByCode]);
+  }, [fixture, prefillLineup, existingMatches, leagueRules, teamRulesByCode, doublesRubbers]);
+
   useEffect(() => {
     if (leagueRules) {
       const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;

@@ -2413,6 +2413,7 @@ export default function ClubChampsView() {
           champId={champId!}
           matches={matches as any[]}
           canManage={canManage}
+          rounds={champRounds}
           renderMatchRow={renderMatchRow}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}

@@ -5,22 +5,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Swords } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import {
   buildLeagueFinals,
   buildNextRound,
-  knockoutState,
-  roundLabel,
   sectionLetter,
   winnerOf,
   type KnockoutMatchLike,
 } from "@/lib/tournaments/knockout";
+import {
+  generateActionLabel,
+  progressSummary,
+  sectionProgression,
+  type ChampRound,
+} from "@/lib/tournaments/knockout-progression";
+import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
 interface KnockoutCardProps {
   champId: string;
   /** All matches of the tournament (knockout rows are filtered out here). */
   matches: any[];
   canManage: boolean;
+  /** Configured round plan (`club_champs_rounds`). Empty falls back to bracket maths. */
+  rounds?: ChampRound[];
   /** Renders one match row using the page's shared renderer. */
   renderMatchRow: (m: any) => ReactNode;
   /** League label resolver (group_number → display name). */
@@ -31,18 +39,36 @@ interface KnockoutCardProps {
   playByForRound?: (round: number) => string | null;
 }
 
+/** Display name for a member id, harvested from the embedded match relations. */
+function buildNameMap(matches: any[]): Map<string, string> {
+  const map = new Map<string, string>();
+  const put = (id?: string | null, rel?: any) => {
+    if (!id) return;
+    const name = rel?.profiles?.name || rel?.name;
+    if (name && !map.has(id)) map.set(id, name);
+  };
+  for (const m of matches) {
+    put(m.player_a_member_id, m.player_a);
+    put(m.player_b_member_id, m.player_b);
+    put(m.partner_a_member_id, m.partner_a);
+    put(m.partner_b_member_id, m.partner_b);
+  }
+  return map;
+}
+
 /**
- * Knockout draw — phased.
+ * Knockout draw — planned, not guessed.
  *
- * Only the first round of every section exists up front. When a round is
- * finished the admin generates the next one, so the draw always reflects who
- * actually got through. Once every section of a league is decided, the
- * section winners meet in a league final.
+ * The organiser's configured rounds decide what the next stage is; this card
+ * only offers to generate it once every match of the current round is
+ * resolved. Knocked-out players stay listed (struck through) so the draw keeps
+ * its full history instead of quietly dropping people.
  */
 export function KnockoutCard({
   champId,
   matches,
   canManage,
+  rounds = [],
   renderMatchRow,
   groupLabel,
   selfScheduled = false,
@@ -53,8 +79,8 @@ export function KnockoutCard({
     () => (matches || []).filter((m: any) => (m.stage || "") === "ko"),
     [matches],
   );
-
-  const states = useMemo(() => knockoutState(koMatches), [koMatches]);
+  const names = useMemo(() => buildNameMap(matches || []), [matches]);
+  const states = useMemo(() => sectionProgression(koMatches, rounds), [koMatches, rounds]);
 
   const leagues = useMemo(() => {
     const byLeague = new Map<number, typeof states>();
@@ -70,23 +96,28 @@ export function KnockoutCard({
       const { groupNumber, section } = opts;
       const mine = states.filter((s) => s.groupNumber === groupNumber);
 
-      // Next round of one section.
+      // Next configured round of one section.
       if (section !== undefined) {
         const st = mine.find((s) => s.section === section);
-        if (!st || !st.canGenerateNext) throw new Error("This round is not finished yet");
+        if (!st) throw new Error("This section has no draw yet");
+        if (!st.canGenerateNext) throw new Error(st.blockedReason || "This round is not finished yet");
         const multi = mine.filter((s) => s.section > 0).length > 1;
+        const nextNumber = st.nextRound!.round_number;
         const rows = buildNextRound({
           champId,
           groupNumber,
           section,
-          roundMatches: st.latestRoundMatches,
+          roundMatches: st.currentRoundMatches,
           sectionLabel: multi ? `Section ${sectionLetter(section)}` : undefined,
           playBy: selfScheduled
-            ? playByForRound?.((Number(st.latestRoundMatches[0]?.round_number) || 1) + 1) ?? null
+            ? st.nextRound?.play_by ?? playByForRound?.(nextNumber) ?? null
             : null,
         });
         if (rows.length === 0) throw new Error("Nothing to generate");
-        const { error } = await fromExt("club_champs_matches").insert(rows as any);
+        const withRound = st.nextRound?.id
+          ? rows.map((r) => ({ ...r, round_id: st.nextRound!.id }))
+          : rows;
+        const { error } = await fromExt("club_champs_matches").insert(withRound as any);
         if (error) throw error;
         return rows.length;
       }
@@ -94,16 +125,16 @@ export function KnockoutCard({
       // League final between section winners.
       const sections = mine.filter((s) => s.section > 0);
       if (sections.length < 2) throw new Error("This league only has one section");
-      if (!sections.every((s) => s.sectionComplete)) throw new Error("Every section must be decided first");
+      if (!sections.every((s) => s.complete)) throw new Error("Every section must be decided first");
       if (mine.some((s) => s.section === 0)) throw new Error("The league final already exists");
-      const deepest = Math.max(...sections.map((s) => s.latestRound));
+      const deepest = Math.max(...sections.map((s) => s.currentRound));
       const rows = buildLeagueFinals({
         champId,
         groupNumber,
         round: deepest + 1,
         sectionWinners: sections.map((s) => {
-          const m = s.latestRoundMatches[0];
-          const w = s.sectionWinner!;
+          const m = s.currentRoundMatches[0];
+          const w = s.winner!;
           const partner =
             m?.player_a_member_id === w ? m?.partner_a_member_id : m?.player_b_member_id === w ? m?.partner_b_member_id : null;
           return { section: s.section, memberId: w, partnerId: partner ?? null };
@@ -121,6 +152,7 @@ export function KnockoutCard({
           : `Created ${n} match${n === 1 ? "" : "es"}. Assign courts and times from the fixture list.`,
       );
       qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+      qc.invalidateQueries({ queryKey: ["club-champ-rounds", champId] });
     },
     onError: (e: any) => toast.error(e.message || "Could not generate the next round"),
   });
@@ -138,32 +170,57 @@ export function KnockoutCard({
         {leagues.map(([gn, sections]) => {
           const draws = sections.filter((s) => s.section > 0).sort((a, b) => a.section - b.section);
           const finals = sections.find((s) => s.section === 0);
-          const allDecided = draws.length > 1 && draws.every((s) => s.sectionComplete);
-          const champion = finals?.sectionComplete ? finals.sectionWinner : draws.length === 1 ? draws[0].sectionWinner : null;
+          const allDecided = draws.length > 1 && draws.every((s) => s.complete);
+          const champion = finals?.complete ? finals.winner : draws.length === 1 ? draws[0].winner : null;
           return (
             <div key={gn} className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{groupLabel(gn)}</div>
-                {champion && <Badge className="text-[10px]">Winner decided</Badge>}
+                {champion && (
+                  <Badge className="text-[10px]">Winner: {names.get(champion) || "decided"}</Badge>
+                )}
               </div>
 
               {draws.map((s) => {
                 const rows = koMatches
-                  .filter((m) => m.group_number === gn && m.section_number === s.section)
+                  .filter((m: any) => m.group_number === gn && m.section_number === s.section)
                   .sort(
-                    (a, b) =>
+                    (a: any, b: any) =>
                       (a.round_number ?? 0) - (b.round_number ?? 0) ||
                       (a.bracket_position ?? 0) - (b.bracket_position ?? 0),
                   );
+                const alive = s.entrants.filter((e) => !e.eliminated).length;
                 return (
                   <div key={s.section} className="space-y-1.5">
-                    {draws.length > 1 && (
-                      <div className="text-[11px] font-medium text-muted-foreground">
-                        Section {sectionLetter(s.section)}
-                        {s.sectionComplete ? " — decided" : s.roundComplete ? " — round complete" : ""}
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-muted-foreground">
+                      {draws.length > 1 && <span>Section {sectionLetter(s.section)}</span>}
+                      <span>{progressSummary(s)}</span>
+                    </div>
+                    {rows.map((m: any) => renderMatchRow(m))}
+
+                    {s.entrants.length > 0 && (
+                      <div className="rounded-md border bg-muted/30 p-2">
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                          Draw participants · {alive} still in
+                        </div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1">
+                          {s.entrants.map((e) => (
+                            <span
+                              key={e.memberId}
+                              className={cn("text-[11px]", e.eliminated && ELIMINATED_NAME_CLASS)}
+                              title={
+                                e.eliminated
+                                  ? `Knocked out in round ${e.eliminatedInRound}`
+                                  : "Still in this division"
+                              }
+                            >
+                              {names.get(e.memberId) || "Player"}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
-                    {rows.map((m: any) => renderMatchRow(m))}
+
                     {canManage && s.canGenerateNext && (
                       <Button
                         size="sm"
@@ -171,14 +228,11 @@ export function KnockoutCard({
                         disabled={generate.isPending}
                         onClick={() => generate.mutate({ groupNumber: gn, section: s.section })}
                       >
-                        Generate {roundLabel(s.latestRoundMatches.length).toLowerCase()} winners →{" "}
-                        {roundLabel(Math.max(2, s.latestRoundMatches.length))}
+                        {generateActionLabel(s)}
                       </Button>
                     )}
-                    {!s.roundComplete && (
-                      <p className="text-[11px] text-muted-foreground">
-                        {s.latestRoundMatches.filter((m) => !winnerOf(m)).length} match(es) still to play in this round.
-                      </p>
+                    {canManage && !s.canGenerateNext && s.blockedReason && !s.complete && (
+                      <p className="text-[11px] text-muted-foreground">{s.blockedReason}</p>
                     )}
                   </div>
                 );
@@ -188,8 +242,8 @@ export function KnockoutCard({
                 <div className="space-y-1.5">
                   <div className="text-[11px] font-medium text-muted-foreground">League final</div>
                   {koMatches
-                    .filter((m) => m.group_number === gn && m.section_number === 0)
-                    .sort((a, b) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0))
+                    .filter((m: any) => m.group_number === gn && m.section_number === 0)
+                    .sort((a: any, b: any) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0))
                     .map((m: any) => renderMatchRow(m))}
                 </div>
               )}
@@ -204,8 +258,8 @@ export function KnockoutCard({
         })}
         {canManage && (
           <p className="text-[11px] text-muted-foreground">
-            Rounds are created one at a time — new matches start unscheduled, so give them a court and time in the fixture
-            list once they appear.
+            Rounds are created one at a time, following the round plan for this tournament — new matches start
+            unscheduled.
           </p>
         )}
       </CardContent>

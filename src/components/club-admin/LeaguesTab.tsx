@@ -2695,7 +2695,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
             </div>
           </div>
 
-
+          <div className="grid gap-3 md:grid-cols-2 items-start">
           <LeagueFormatCard
             associationId={association.id}
             discipline={discipline}
@@ -2703,9 +2703,9 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
             requireMixedPair={requireMixedPair}
           />
 
-
-
+          <div className="space-y-3">
           <div className="space-y-1">
+
             <Label>Scope</Label>
             <div className="flex gap-2">
               <Button

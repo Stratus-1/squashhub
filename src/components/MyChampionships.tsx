@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canSelfScheduleMatch, canMarkChampMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
+import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };

@@ -5430,6 +5430,7 @@ export type Database = {
           club_id: string
           code: string | null
           created_at: string
+          division: string | null
           id: string
           is_reserve: boolean | null
           level: number | null
@@ -5455,6 +5456,7 @@ export type Database = {
           club_id: string
           code?: string | null
           created_at?: string
+          division?: string | null
           id?: string
           is_reserve?: boolean | null
           level?: number | null
@@ -5480,6 +5482,7 @@ export type Database = {
           club_id?: string
           code?: string | null
           created_at?: string
+          division?: string | null
           id?: string
           is_reserve?: boolean | null
           level?: number | null

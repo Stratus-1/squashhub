@@ -4516,6 +4516,7 @@ export type Database = {
           created_at: string
           debit_order_eligible: boolean
           debit_order_rail: string
+          discipline: string
           due_day: number
           external_club_id: string | null
           external_source: string | null
@@ -4546,6 +4547,7 @@ export type Database = {
           created_at?: string
           debit_order_eligible?: boolean
           debit_order_rail?: string
+          discipline?: string
           due_day?: number
           external_club_id?: string | null
           external_source?: string | null
@@ -4576,6 +4578,7 @@ export type Database = {
           created_at?: string
           debit_order_eligible?: boolean
           debit_order_rail?: string
+          discipline?: string
           due_day?: number
           external_club_id?: string | null
           external_source?: string | null
@@ -10737,6 +10740,10 @@ export type Database = {
         Returns: Json
       }
       release_email_outbox_lease: { Args: never; Returns: undefined }
+      rename_internal_league_association: {
+        Args: { _association_id: string; _discipline?: string; _name: string }
+        Returns: undefined
+      }
       request_account_delegation: {
         Args: {
           _delegate_cell: string

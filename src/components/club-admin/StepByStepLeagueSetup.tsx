@@ -381,7 +381,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           league_id: lid,
           club_id: clubId,
           association_id: associationId,
-          team_size: perTeam,
+          team_size: slotsPerTeam,
           team_size_mode: "fixed" as const,
         }));
         const { error: rulesError } = await fromExt("league_rules").upsert(rulesRows, { onConflict: "league_id" });

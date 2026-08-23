@@ -4638,7 +4638,10 @@ export type Database = {
           fixture_id: string
           id: string
           league_id: string
+          pair_id: string | null
+          partner_member_id: string | null
           position: number
+          rubber_type: string
           updated_at: string
         }
         Insert: {
@@ -4649,7 +4652,10 @@ export type Database = {
           fixture_id: string
           id?: string
           league_id: string
+          pair_id?: string | null
+          partner_member_id?: string | null
           position: number
+          rubber_type?: string
           updated_at?: string
         }
         Update: {
@@ -4660,7 +4666,10 @@ export type Database = {
           fixture_id?: string
           id?: string
           league_id?: string
+          pair_id?: string | null
+          partner_member_id?: string | null
           position?: number
+          rubber_type?: string
           updated_at?: string
         }
         Relationships: [
@@ -4697,6 +4706,13 @@ export type Database = {
             columns: ["league_id"]
             isOneToOne: false
             referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_fixture_lineups_pair_id_fkey"
+            columns: ["pair_id"]
+            isOneToOne: false
+            referencedRelation: "league_team_pairs"
             referencedColumns: ["id"]
           },
         ]
@@ -4869,7 +4885,11 @@ export type Database = {
         Row: {
           away_games_won: number
           away_player_code: string | null
+          away_player_member_id: string | null
           away_player_name: string | null
+          away_player2_code: string | null
+          away_player2_member_id: string | null
+          away_player2_name: string | null
           created_at: string
           current_game: Json | null
           fixture_id: string
@@ -4877,19 +4897,29 @@ export type Database = {
           game_scores: Json | null
           home_games_won: number
           home_player_code: string | null
+          home_player_member_id: string | null
           home_player_name: string | null
+          home_player2_code: string | null
+          home_player2_member_id: string | null
+          home_player2_name: string | null
           id: string
           is_forfeit: boolean
           lineup_set_at: string | null
           lineup_set_by: string | null
+          participants_locked_at: string | null
           position: number
+          rubber_type: string
           updated_at: string
           winner: string | null
         }
         Insert: {
           away_games_won?: number
           away_player_code?: string | null
+          away_player_member_id?: string | null
           away_player_name?: string | null
+          away_player2_code?: string | null
+          away_player2_member_id?: string | null
+          away_player2_name?: string | null
           created_at?: string
           current_game?: Json | null
           fixture_id: string
@@ -4897,19 +4927,29 @@ export type Database = {
           game_scores?: Json | null
           home_games_won?: number
           home_player_code?: string | null
+          home_player_member_id?: string | null
           home_player_name?: string | null
+          home_player2_code?: string | null
+          home_player2_member_id?: string | null
+          home_player2_name?: string | null
           id?: string
           is_forfeit?: boolean
           lineup_set_at?: string | null
           lineup_set_by?: string | null
+          participants_locked_at?: string | null
           position: number
+          rubber_type?: string
           updated_at?: string
           winner?: string | null
         }
         Update: {
           away_games_won?: number
           away_player_code?: string | null
+          away_player_member_id?: string | null
           away_player_name?: string | null
+          away_player2_code?: string | null
+          away_player2_member_id?: string | null
+          away_player2_name?: string | null
           created_at?: string
           current_game?: Json | null
           fixture_id?: string
@@ -4917,12 +4957,18 @@ export type Database = {
           game_scores?: Json | null
           home_games_won?: number
           home_player_code?: string | null
+          home_player_member_id?: string | null
           home_player_name?: string | null
+          home_player2_code?: string | null
+          home_player2_member_id?: string | null
+          home_player2_name?: string | null
           id?: string
           is_forfeit?: boolean
           lineup_set_at?: string | null
           lineup_set_by?: string | null
+          participants_locked_at?: string | null
           position?: number
+          rubber_type?: string
           updated_at?: string
           winner?: string | null
         }
@@ -5039,6 +5085,7 @@ export type Database = {
       }
       league_rules: {
         Row: {
+          allow_dual_participation: boolean
           allow_multi_fixture_per_night: boolean
           allow_multi_team_registration: boolean
           association_id: string | null
@@ -5047,6 +5094,7 @@ export type Database = {
           club_id: string | null
           created_at: string
           cross_gender_subs_allowed: boolean
+          doubles_rubbers: number | null
           enforce_sub_rules: boolean
           fill_up_leagues_enabled: boolean
           forfeit_allowed: boolean
@@ -5061,8 +5109,10 @@ export type Database = {
           notes: string | null
           original_player_bonus_enabled: boolean
           original_player_bonus_value: number
+          pairing_policy: string
           points_per_game: number | null
           share_bonus_on_tie: boolean
+          singles_rubbers: number | null
           sub_direction: string
           team_size: number
           team_size_mode: string
@@ -5074,6 +5124,7 @@ export type Database = {
           win_by: number
         }
         Insert: {
+          allow_dual_participation?: boolean
           allow_multi_fixture_per_night?: boolean
           allow_multi_team_registration?: boolean
           association_id?: string | null
@@ -5082,6 +5133,7 @@ export type Database = {
           club_id?: string | null
           created_at?: string
           cross_gender_subs_allowed?: boolean
+          doubles_rubbers?: number | null
           enforce_sub_rules?: boolean
           fill_up_leagues_enabled?: boolean
           forfeit_allowed?: boolean
@@ -5096,8 +5148,10 @@ export type Database = {
           notes?: string | null
           original_player_bonus_enabled?: boolean
           original_player_bonus_value?: number
+          pairing_policy?: string
           points_per_game?: number | null
           share_bonus_on_tie?: boolean
+          singles_rubbers?: number | null
           sub_direction?: string
           team_size?: number
           team_size_mode?: string
@@ -5109,6 +5163,7 @@ export type Database = {
           win_by?: number
         }
         Update: {
+          allow_dual_participation?: boolean
           allow_multi_fixture_per_night?: boolean
           allow_multi_team_registration?: boolean
           association_id?: string | null
@@ -5117,6 +5172,7 @@ export type Database = {
           club_id?: string | null
           created_at?: string
           cross_gender_subs_allowed?: boolean
+          doubles_rubbers?: number | null
           enforce_sub_rules?: boolean
           fill_up_leagues_enabled?: boolean
           forfeit_allowed?: boolean
@@ -5131,8 +5187,10 @@ export type Database = {
           notes?: string | null
           original_player_bonus_enabled?: boolean
           original_player_bonus_value?: number
+          pairing_policy?: string
           points_per_game?: number | null
           share_bonus_on_tie?: boolean
+          singles_rubbers?: number | null
           sub_direction?: string
           team_size?: number
           team_size_mode?: string
@@ -5237,6 +5295,80 @@ export type Database = {
             columns: ["platform_association_id"]
             isOneToOne: false
             referencedRelation: "platform_league_associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_team_pairs: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          league_id: string
+          pair_label: string | null
+          pair_order: number | null
+          player_one_member_id: string
+          player_two_member_id: string
+          season_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          league_id: string
+          pair_label?: string | null
+          pair_order?: number | null
+          player_one_member_id: string
+          player_two_member_id: string
+          season_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          league_id?: string
+          pair_label?: string | null
+          pair_order?: number | null
+          player_one_member_id?: string
+          player_two_member_id?: string
+          season_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_team_pairs_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_team_pairs_player_one_member_id_fkey"
+            columns: ["player_one_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_team_pairs_player_two_member_id_fkey"
+            columns: ["player_two_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_team_pairs_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
             referencedColumns: ["id"]
           },
         ]

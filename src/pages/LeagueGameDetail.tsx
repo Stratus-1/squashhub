@@ -1002,6 +1002,7 @@ export default function LeagueGameDetail() {
   //    additional slots (e.g. a 5th player added after positions 1-2 were
   //    already scored) appear immediately.
   useEffect(() => {
+    if (doublesRubbers > 0) return; // doubles rows are filled from pairs below
     if (!prefillLineup || !fixture) return;
     const lineup = (prefillLineup as any)?.lineup || {};
     const homeSlots = lineup[fixture.home_team_code] || [];

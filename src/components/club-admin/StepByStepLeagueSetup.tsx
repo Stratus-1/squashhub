@@ -765,10 +765,14 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
               )}
             </div>
 
+            <p className="text-[11px] text-muted-foreground">
+              Teams are created first. Players and pairs are assigned afterwards — empty slots are expected if no eligible players were pre-filled.
+            </p>
 
             <p className="text-[11px] text-muted-foreground -mb-1">
               Optional: name each team (e.g. <em>Warriors</em>, <em>Bulldogs</em>). Leave blank to use {leagueNumber} A, B, C…
             </p>
+
             <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(allocation.teams.length, 3)}, minmax(0, 1fr))` }}>
               {allocation.teams.map((team, i) => {
                 const customName = (teamNames[i] || "").trim();

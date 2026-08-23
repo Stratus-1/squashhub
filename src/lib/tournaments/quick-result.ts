@@ -95,7 +95,14 @@ export function validateQuickResult(games: GameScore[], bestOf: number): QuickRe
     return { valid: false, error: `A best of ${bestOf} match cannot have ${games.length} games`, gamesA, gamesB };
   }
   // The match must stop the moment it is decided — no dead rubbers.
-  const decidedAt = Math.max(gamesA, gamesB) === need ? need + Math.min(gamesA, gamesB) : games.length;
+  let a = 0;
+  let b = 0;
+  let decidedAt = games.length;
+  for (let i = 0; i < games.length; i++) {
+    if (games[i].a > games[i].b) a++;
+    else b++;
+    if (a === need || b === need) { decidedAt = i + 1; break; }
+  }
   if (games.length > decidedAt) {
     return { valid: false, error: "Remove games played after the match was already won", gamesA, gamesB };
   }

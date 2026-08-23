@@ -10918,6 +10918,10 @@ export type Database = {
         }
         Returns: string
       }
+      set_club_subscription_baseline_cycle: {
+        Args: { _club_id: string; _cycle: string }
+        Returns: undefined
+      }
       set_doubles_pairing_locked: {
         Args: { p_champ_id: string; p_locked: boolean }
         Returns: boolean

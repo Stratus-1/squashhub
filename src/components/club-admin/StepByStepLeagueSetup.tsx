@@ -111,7 +111,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const [perTeam, setPerTeam] = useState<number>(4);
   const [reserves, setReserves] = useState<number>(0);
   const [distribution, setDistribution] = useState<Distribution>("snake");
-  const [pairsPerTeam, setPairsPerTeam] = useState<number>(2);
+  const [singlesRubbers, setSinglesRubbers] = useState<number>(0);
+  const [doublesRubbers, setDoublesRubbers] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   // Track member IDs allocated to a saved league this session (so they're excluded from later rounds)
   const [allocatedIds, setAllocatedIds] = useState<Set<string>>(new Set());
@@ -201,11 +202,40 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     setGender(c === "mens" ? "men" : c === "ladies" ? "ladies" : c === "mixed" ? "mixed" : "open");
   }, [inherited.category]);
 
-  // Singles slots per team come from the league format unless it's a legacy
-  // league with no stored rules (then the admin is asked once, here).
-  const singlesPerTeam = questions.askPlayersPerMatch ? perTeam : inherited.singlesRubbers;
-  const effectivePairsPerTeam = questions.askPairsPerTeam ? pairsPerTeam : 0;
-  const slotsPerTeam = singlesPerTeam + effectivePairsPerTeam * 2;
+  /* Step 2 owns match composition. Seed the editable fields from whatever the
+   * league last saved, then let the admin change them here (the single
+   * authoritative place). */
+  useEffect(() => {
+    setSinglesRubbers(inherited.singlesRubbers);
+    setDoublesRubbers(inherited.doublesRubbers);
+  }, [inherited.singlesRubbers, inherited.doublesRubbers]);
+
+  const effectiveSinglesRubbers = questions.askSinglesRubbers
+    ? singlesRubbers
+    : questions.askPlayersPerMatch
+      ? perTeam
+      : inherited.discipline === "doubles"
+        ? 0
+        : inherited.singlesRubbers;
+  const effectiveDoublesRubbers = questions.askDoublesRubbers ? doublesRubbers : 0;
+  const singlesPerTeam = effectiveSinglesRubbers;
+  const effectivePairsPerTeam = effectiveDoublesRubbers;
+
+  const requirements = useMemo(
+    () =>
+      computeTeamRequirements({
+        composition: {
+          singlesRubbers: effectiveSinglesRubbers,
+          doublesRubbers: effectiveDoublesRubbers,
+          allowDualParticipation: inherited.allowDualParticipation,
+        },
+        numTeams,
+        reservesPerTeam: reserves,
+        availablePlayers: eligiblePoolCount,
+      }),
+    [effectiveSinglesRubbers, effectiveDoublesRubbers, inherited.allowDualParticipation, numTeams, reserves, eligiblePoolCount],
+  );
+  const slotsPerTeam = requirements.startingPlayersPerTeam;
 
 
 

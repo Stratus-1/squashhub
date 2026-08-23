@@ -424,6 +424,14 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
               </div>
               <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
                 <AssocFillUpToggle assoc={a} clubDefault={clubDefaultFillUp} />
+                {(() => {
+                  const hasTeams = leagues.some((l: any) => l.association_id === a.id);
+                  return (
+                    <Button size="sm" variant={hasTeams ? "outline" : "default"} onClick={() => setStep("teams")}>
+                      <Users className="w-4 h-4 mr-1" />{hasTeams ? "Edit teams" : "Create teams"}
+                    </Button>
+                  );
+                })()}
                 {a.scope === "internal" && (
                   <Button asChild size="sm" variant="outline">
                     <Link to={`/league-games?tab=rounds&assoc=${a.id}`}>
@@ -431,6 +439,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                     </Link>
                   </Button>
                 )}
+
                 <Button size="sm" variant="outline" onClick={() => setSeasonsAssoc(a)}>
                   <CalendarRange className="w-4 h-4 mr-1" />Seasons
                 </Button>

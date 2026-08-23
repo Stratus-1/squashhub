@@ -2652,44 +2652,49 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Edit League</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label>Name</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} disabled={!isInternalOwned} />
-            {!isInternalOwned && <p className="text-xs text-muted-foreground">Name is managed by the platform for System Leagues.</p>}
-          </div>
-          <div className="space-y-1">
-            <Label>Abbreviation</Label>
-            <Input value={abbreviation} onChange={e => setAbbreviation(e.target.value)} disabled />
-            <p className="text-xs text-muted-foreground">Codes can't be changed — team codes (e.g. {(abbreviation || "ABC").toUpperCase()}002) and historical records depend on them.</p>
-          </div>
-          {isInternalOwned && (
+          <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
-              <Label>Discipline</Label>
-              <div className="flex gap-2">
-                {COMPETITION_DISCIPLINES.map(d => (
-                  <Button key={d} type="button" size="sm" className="flex-1" variant={discipline === d ? "default" : "outline"} onClick={() => setDiscipline(d)}>{DISCIPLINE_LABELS[d]}</Button>
+              <Label>Name</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} disabled={!isInternalOwned} />
+              {!isInternalOwned && <p className="text-xs text-muted-foreground">Name is managed by the platform for System Leagues.</p>}
+            </div>
+            <div className="space-y-1">
+              <Label>Abbreviation</Label>
+              <Input value={abbreviation} onChange={e => setAbbreviation(e.target.value)} disabled />
+              <p className="text-xs text-muted-foreground">Codes can't be changed — team codes (e.g. {(abbreviation || "ABC").toUpperCase()}002) and historical records depend on them.</p>
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {isInternalOwned && (
+              <div className="space-y-1">
+                <Label>Discipline</Label>
+                <div className="flex gap-2">
+                  {COMPETITION_DISCIPLINES.map(d => (
+                    <Button key={d} type="button" size="sm" className="flex-1" variant={discipline === d ? "default" : "outline"} onClick={() => setDiscipline(d)}>{DISCIPLINE_LABELS[d]}</Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="space-y-1">
+              <Label>Category</Label>
+              <div className="flex gap-2 flex-wrap">
+                {COMPETITION_CATEGORIES.map(c => (
+                  <Button key={c} type="button" size="sm" className="flex-1" variant={category === c ? "default" : "outline"} onClick={() => setCategory(c)}>{CATEGORY_LABELS[c]}</Button>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground">Open allows any eligible players regardless of gender — it is not the same as Mixed.</p>
+              {category === "mixed" && (
+                <label className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                  <Checkbox checked={requireMixedPair} onCheckedChange={v => setRequireMixedPair(!!v)} />
+                  Require each pair/team to be mixed-gender
+                </label>
+              )}
             </div>
-          )}
-          <div className="space-y-1">
-            <Label>Category</Label>
-            <div className="flex gap-2 flex-wrap">
-              {COMPETITION_CATEGORIES.map(c => (
-                <Button key={c} type="button" size="sm" className="flex-1" variant={category === c ? "default" : "outline"} onClick={() => setCategory(c)}>{CATEGORY_LABELS[c]}</Button>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">Open allows any eligible players regardless of gender — it is not the same as Mixed.</p>
-            {category === "mixed" && (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
-                <Checkbox checked={requireMixedPair} onCheckedChange={v => setRequireMixedPair(!!v)} />
-                Require each pair/team to be mixed-gender
-              </label>
-            )}
           </div>
+
 
           <LeagueFormatCard
             associationId={association.id}

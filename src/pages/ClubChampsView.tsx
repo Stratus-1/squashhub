@@ -1924,6 +1924,25 @@ export default function ClubChampsView() {
           </Button>
         )}
 
+        {(() => {
+          // "Enter Result" for a match that was played away from the live
+          // marker. Same audience as marking — participants and officials.
+          const perm = canEnterChampResult(m, myMemberId, { canManage });
+          if (!perm.allowed) return null;
+          return (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setResultMatch(m)}
+              title="Capture the score of a match that has already been played"
+            >
+              Enter Result
+            </Button>
+          );
+        })()}
+
         {canManage && completed && !isBye && (
           <Button
             type="button"

@@ -204,6 +204,7 @@ export default function TournamentInvite() {
         <Badge className="bg-emerald-600 hover:bg-emerald-600">
           <CheckCircle2 className="w-3 h-3 mr-1" /> You're entered
         </Badge>
+        {partnerSection}
         {data?.champ_id && (
           <Button className="w-full" onClick={() => navigate(`/club-champs/${data.champ_id}`)}>
             View tournament
@@ -212,6 +213,7 @@ export default function TournamentInvite() {
       </>,
     );
   }
+
 
   if (state === "payment_pending") {
     return shell(

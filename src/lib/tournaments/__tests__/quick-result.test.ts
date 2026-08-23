@@ -157,3 +157,46 @@ describe("canEnterChampResult visibility", () => {
     expect(canEnterChampResult({ ...base, status: "walkover" }, P1).allowed).toBe(false);
   });
 });
+
+describe("who may enter a result on the tournament games list", () => {
+  const m: any = {
+    id: "m1",
+    status: "scheduled",
+    player_a_member_id: "pA",
+    player_b_member_id: "pB",
+  };
+
+  it("player A in this match may enter it", () => {
+    expect(canEnterChampResult(m, "pA").allowed).toBe(true);
+  });
+
+  it("player B in this match may enter it", () => {
+    expect(canEnterChampResult(m, "pB").allowed).toBe(true);
+  });
+
+  it("another player in the same tournament may NOT", () => {
+    const r = canEnterChampResult(m, "someone-else");
+    expect(r.allowed).toBe(false);
+    expect(r.reason).toMatch(/players in this match/i);
+  });
+
+  it("a signed-out / unknown member may NOT", () => {
+    expect(canEnterChampResult(m, null).allowed).toBe(false);
+  });
+
+  it("club admin / super admin may enter any match", () => {
+    expect(canEnterChampResult(m, "someone-else", { canManage: true }).allowed).toBe(true);
+  });
+
+  it("no court booking is required", () => {
+    expect(canEnterChampResult({ ...m, scheduled_date: null, scheduled_time: null, court_id: null }, "pA").allowed).toBe(true);
+  });
+
+  it("doubles partners count as participants", () => {
+    expect(canEnterChampResult({ ...m, partner_a_member_id: "pA2" }, "pA2").allowed).toBe(true);
+  });
+
+  it("a completed match is closed to everyone, admins included", () => {
+    expect(canEnterChampResult({ ...m, status: "completed" }, "pA", { canManage: true }).allowed).toBe(false);
+  });
+});

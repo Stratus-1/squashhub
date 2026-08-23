@@ -599,24 +599,34 @@ export default function LeagueGameDetail() {
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
       if (codes.length === 0) return null;
       const { data: leagues } = await (supabase as any)
-        .from("leagues").select("id, code").in("code", codes);
+        .from("leagues").select("id, code, association_id").in("code", codes);
       if (!leagues?.length) return null;
       const leagueIds = (leagues as any[]).map((l) => l.id);
       const codeByLeagueId = new Map<string, string>(
         (leagues as any[]).map((l) => [l.id, String(l.code || "").toUpperCase()]),
       );
 
+      // Discipline is owned by the league's association (singles / doubles / hybrid).
+      const assocIds = [...new Set((leagues as any[]).map((l) => l.association_id).filter(Boolean))];
+      let isDoubles = false;
+      if (assocIds.length) {
+        const { data: assocs } = await (supabase as any)
+          .from("league_associations").select("id, discipline").in("id", assocIds);
+        isDoubles = (assocs || []).some((a: any) => a.discipline === "doubles" || a.discipline === "hybrid");
+      }
+
       const { data: rules } = await (supabase as any)
         .from("league_rules")
-        .select("league_id, discipline, doubles_rubbers")
+        .select("league_id, doubles_rubbers")
         .in("league_id", leagueIds);
-      const disciplines = (rules || []).map((r: any) => String(r.discipline || "singles"));
-      const isDoubles = disciplines.some((d) => d === "doubles" || d === "hybrid");
-      if (!isDoubles) return { isDoubles: false, rubbers: 0, pairsByCode: {} as Record<string, Array<{ code: string; name: string }>> };
-      const rubbers = Math.max(
-        1,
-        ...(rules || []).map((r: any) => Number(r.doubles_rubbers) || 0),
-      );
+      const rubberCounts = (rules || [])
+        .map((r: any) => Number(r.doubles_rubbers) || 0)
+        .filter((n: number) => n > 0);
+      if (!isDoubles && rubberCounts.length === 0) {
+        return { isDoubles: false, rubbers: 0, pairsByCode: {} as Record<string, Array<{ code: string; name: string }>> };
+      }
+      const rubbers = Math.max(1, ...rubberCounts);
+
 
       const { data: pairs } = await (supabase as any)
         .from("league_team_pairs")

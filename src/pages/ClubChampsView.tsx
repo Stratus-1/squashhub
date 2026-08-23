@@ -1809,6 +1809,9 @@ export default function ClubChampsView() {
     const isBye = !!m.is_bye;
     const winnerIsA = !isBye && completed && m.winner_member_id === m.player_a_member_id;
     const winnerIsB = !isBye && completed && m.winner_member_id === m.player_b_member_id;
+    // Knockout / play-off loser stays listed but is struck through.
+    const koOut = eliminatedSide(m);
+
 
     let gameBadges: { a: number; b: number }[] = [];
     if (!isBye && m.game_scores) {

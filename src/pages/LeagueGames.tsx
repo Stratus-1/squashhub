@@ -76,7 +76,7 @@ export default function LeagueGames() {
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await fromExt("leagues")
-        .select("id, code, name, association_id, nsa_team_code, logo_url")
+        .select("id, code, name, association_id, nsa_team_code, division, logo_url")
         .eq("club_id", clubId!);
       if (error) throw error;
       return (data || []) as Array<{ id: string; code: string | null; name: string; association_id: string | null; nsa_team_code: string | null }>;

@@ -319,7 +319,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const canNext1 = !!associationId;
   const canNext2 = !!gender;
   const canNext3 = !!leagueNumber;
-  const canNext4 = numTeams > 0 && slotsPerTeam > 0 && requirements.sufficient;
+  // Players/pairs are selected AFTER teams are created, so an empty eligible pool
+  // must not block the wizard. We only validate that the composition makes sense.
+  const canNext4 = numTeams > 0 && slotsPerTeam > 0;
+
 
   const handleSubmit = async () => {
     if (!canNext4) return;

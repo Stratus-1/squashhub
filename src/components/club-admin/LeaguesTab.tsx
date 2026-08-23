@@ -405,11 +405,12 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                   <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">Platform</Badge>
                 )}
                 <Badge
-                  variant={a.scope === "internal" ? "outline" : "default"}
-                  className="text-[10px] h-5 flex-shrink-0"
+                  variant={isClubLeagueScope(a.scope) ? "outline" : "default"}
+                  className={`text-[10px] h-5 flex-shrink-0 ${isClubLeagueScope(a.scope) ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}
                 >
-                  {a.scope === "internal" ? "Internal" : "Regional"}
+                  {leagueKindLabel(a.scope)}
                 </Badge>
+
                 {(a as any).discipline && (a as any).discipline !== "singles" && (
                   <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0">{DISCIPLINE_LABELS[(a as any).discipline as CompetitionDiscipline] ?? (a as any).discipline}</Badge>
                 )}

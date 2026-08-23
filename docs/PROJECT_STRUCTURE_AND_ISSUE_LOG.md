@@ -88,6 +88,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-23 · Saved doubles pairs appeared unallocated
+- **Symptom:** Doubles pairs were saved against teams, but Step 2 still showed an individual-player Allocate action and team cards appeared empty.
+- **Finding:** The team cards and allocation dialog read only `member_league_registrations`; authoritative doubles assignments live in `league_team_pairs` and were only visible in the separate Step 1 Pairs dialog.
+- **Fix:** Doubles groups now open Manage pairs instead of the individual allocator, and team cards show their saved pair count and pair names. Hybrid groups expose both player allocation and pair management.
+- **Guard:** Never infer doubles-team allocation from individual registration rows; `league_team_pairs` is the authoritative team-pair source.
+
 ### 2026-08-23 · Billing-frequency selector reverted to Monthly
 - **Symptom:** Selecting 6-monthly or annual appeared not to save, the radio reverted to Monthly, and summary labels disagreed.
 - **Finding:** The UI performed two separate writes. The second baseline RPC called non-existent one-argument admin helpers and its error was swallowed, while separate cached club queries could continue rendering the old value. The invoice scheduler also omitted flat biannual rate settings and did not clamp month-end period dates.

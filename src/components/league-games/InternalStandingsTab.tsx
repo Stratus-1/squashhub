@@ -101,23 +101,35 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     },
   });
 
-  const [seasonYear, setSeasonYear] = useState<string>(String(CURRENT_YEAR));
+  // Season context (Phase 3): the season, not the calendar year, scopes reads.
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+  const { seasons, currentSeason, currentSeasonId } = useLeagueSeasons({
+    associationId,
+    selectedSeasonId,
+  });
+  const seasonYear = String(currentSeason?.season_year ?? CURRENT_YEAR);
+  const seasonId = currentSeasonId;
+  const hasSeasons = seasons.length > 0;
 
   // Fetch all rounds for this tenant association → derive tiers
   const { data: tiers = [] } = useQuery({
-    queryKey: ["internal-standings-tiers", associationId, seasonYear],
+    queryKey: ["internal-standings-tiers", associationId, seasonId, seasonYear],
     enabled: !!associationId,
     staleTime: 60 * 1000,
     queryFn: async () => {
-      const yearStart = `${seasonYear}-01-01`;
-      const yearEnd = `${seasonYear}-12-31`;
-      const { data, error } = await supabase
+      let request = supabase
         .from("league_rounds")
-        .select("id, name, round_number, round_date")
-        .eq("association_id", associationId)
-        .gte("round_date", yearStart)
-        .lte("round_date", yearEnd)
-        .order("round_number", { ascending: true });
+        .select("id, name, round_number, round_date, season_id")
+        .eq("association_id", associationId);
+      if (seasonId) {
+        // Season-scoped: identical set to the legacy year filter for 2026.
+        request = request.eq("season_id", seasonId);
+      } else {
+        request = request
+          .gte("round_date", `${seasonYear}-01-01`)
+          .lte("round_date", `${seasonYear}-12-31`);
+      }
+      const { data, error } = await request.order("round_number", { ascending: true });
       if (error) throw error;
       const grouped = new Map<string, { tier: string; roundIds: string[]; firstNumber: number }>();
       (data || []).forEach((r: any) => {
@@ -133,27 +145,26 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     },
   });
 
-  // Map team_code -> { name, logo_url } (from leagues table for this association)
+  // Map team_code -> { name, logo_url }, scoped to the selected season so a
+  // future season's team cannot relabel historical standings rows.
   const { data: teamInfoByCode } = useQuery({
-    queryKey: ["team-logos-by-code", associationId],
+    queryKey: ["team-logos-by-code", associationId, seasonId],
     enabled: !!associationId,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leagues")
-        .select("code, name, logo_url")
+        .select("code, name, logo_url, season_id")
         .eq("association_id", associationId);
       if (error) throw error;
       const map = new Map<string, { name: string; logo_url: string | null }>();
-      (data || []).forEach((l: any) => {
+      pickSeasonScoped((data || []) as any[], seasonId).forEach((l: any) => {
         if (l.code) map.set(l.code, { name: l.name || l.code, logo_url: l.logo_url || null });
       });
       return map;
     },
   });
-  const teamNameByCode = teamInfoByCode
-    ? new Map(Array.from(teamInfoByCode.entries()).map(([k, v]) => [k, v.name]))
-    : undefined;
+
 
   // Selection: a tier label or "ALL" — persisted in URL
   const [searchParams, setSearchParams] = useSearchParams();

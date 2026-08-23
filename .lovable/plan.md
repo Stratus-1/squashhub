@@ -1,73 +1,115 @@
-# Nelspruit league rename + create/edit league capability
+# League Architecture: Permanent Leagues, Seasons, and Singles / Doubles / Hybrid
 
-## Findings
+Investigation only so far — nothing was changed, and the earlier publish call was interrupted, so nothing was deployed.
 
-### 1. What "Nelspruit Internal League" actually is
-It is a row in `league_associations` (the *league* level), not a team:
+## A. Current state (verified against the live schema and data)
 
-- id `64eac759-…`, name `Nelspruit Internal League`, abbreviation `NIL`, scope `internal`, club Nelspruit, `platform_association_id` -> a mirror row in `platform_league_associations` (also named "Nelspruit Internal League", short code `NIL`).
+Entities as they exist today:
 
-Everything hanging off it is keyed by **UUID**, not by name:
+- `league_associations` — this is what the UI calls a "league" (e.g. `Nelspruit Singles League` / `NIL`, `Nelspruit Doubles` / `NDL`, `Northern Squash Association` / `NSA`). It already has `scope` (internal/region), `discipline` (`singles`/`doubles`, added in the approved NIL work), `platform_association_id` mirror link.
+- `leagues` — despite the name these are **teams / divisions** (`name`, `code`, `season_year`, `level`, `is_reserve`, `captain_member_id`, `archived_at`). 190 rows: 28 have `season_year = 2026`, **162 have `season_year = NULL`**.
+- `league_rounds` — round/week definitions, keyed to `association_id` + `round_number`, with a **unique constraint `(association_id, round_number)`**. No season column. 10 rows.
+- `member_league_registrations` — player-to-team roster, unique `(club_member_id, league_id)`. 1196 rows. Season comes only implicitly from the team row.
+- `platform_league_fixtures` — 1216 rows. Keyed by `association_id` + **text `home_team_code` / `away_team_code`** and `division` text; optional `round_id`.
+- `league_fixture_results` (142) — one aggregate result per fixture; `league_match_results` (658) — the individual rubbers, addressed by `position` + `home_player_code` / `away_player_code` **text**, not member IDs.
+- `league_fixture_lineups` (0 rows, unused so far) and `league_week_lineups` — position → single `club_member_id`.
+- `league_rules` (194) — per-league(-team)/association config: `team_size`, bonus points, sub rules. No doubles concepts.
+- `seasons` table exists but is **empty and unused** (generic name/start/end only).
+- `src/lib/leagues/season-level.ts` derives season/level from stored `season_year`/`level`, falling back to parsing the team **name** and `code` prefix (e.g. `NIL002`).
+- `StepByStepLeagueSetup.tsx` is the current wizard: Association → Gender → League number → "How many?" (teams / players per team) → Preview allocation. Entirely singles-shaped.
 
-| Data | Key | Count for NIL |
-|---|---|---|
-| League teams (`leagues`) | `association_id` | 28 |
-| Rounds (`league_rounds`) | `association_id` | 8 |
-| Player registrations (`member_league_registrations`) | `league_id` | 176 |
-| Platform members (`platform_league_members`) | `association_id` (platform id) | 216 |
-| Platform fixtures (`platform_league_fixtures`) | `association_id` (platform id) | 152 |
-| Rules (`league_rules`), affiliations, fees, permissions | `association_id` / `club_id` | UUID-based |
+## B. Gaps and risks
 
-Fixtures, lineups, results, standings and ladder impact all resolve through team ids -> `association_id`. No table stores the league *name* as a join key.
+1. **No season entity.** Season is an integer on the team row only, and 162 of 190 team rows have it `NULL`. Rounds, fixtures and results have no season at all.
+2. **`league_rounds` unique `(association_id, round_number)`** makes a 2027 "Round 1" impossible alongside 2026 Round 1. This is the single hardest blocker.
+3. **Fixtures and rubbers are keyed by text codes/names**, not IDs. If a 2027 team reuses the `NIL002` code with a new name, historical 2026 fixture displays will resolve to the new name. History must be name-snapshotted.
+4. **`NIL` and team codes are load-bearing** — `season-level.ts`, `Ladder.tsx`, NSA posting and `LeagueGames.tsx` all parse them. Codes must not change.
+5. **Rubbers assume singles**: one player code per side per position. There is no way to record two players per side, so doubles cannot be represented today without faking a pair as a member — explicitly out of scope.
+6. `member_league_registrations` unique `(club_member_id, league_id)` is fine per season team, but there is no roster-level notion of "eligible squad" vs "selected for this fixture".
+7. `discipline` currently allows only `singles`/`doubles`; `hybrid` is not permitted by the check constraint.
 
-### 2. Is renaming safe?
-Yes — renaming is a display-only change, with two caveats to handle in the same change:
+## C. Target hierarchy
 
-- **Keep the abbreviation `NIL`.** The code `NIL` is functionally load-bearing in two places:
-  - team codes are `NIL002`, `NIL007`… (`leagues.code`), and `src/lib/leagues/season-level.ts` + `src/pages/Ladder.tsx` derive league level/reserve boundaries from those code numbers;
-  - `src/pages/LeagueGames.tsx` has a legacy hard-coded fallback `abbreviation === "NIL"` used only while the club row is still loading to decide whether to hide Fill-Up Leagues. Nelspruit's club/association setting already governs this, so the fallback is cosmetic — but changing the abbreviation would still be riskier than changing the name.
-- **Rename the platform mirror too** (`platform_league_associations.name`), otherwise cross-club/federation screens keep showing the old name.
+```text
+Club
+ └── League                (league_associations — PERMANENT: name, code, discipline)
+      └── Season           (league_seasons — NEW: year/label, status, structure config)
+           ├── Season Team (leagues rows, season_id set — name may change per season)
+           │    ├── Roster (member_league_registrations, season-scoped via team)
+           │    └── Pairs  (league_season_pairs — NEW, doubles/hybrid only)
+           ├── Round       (league_rounds, season_id set)
+           └── Fixture     (platform_league_fixtures, season_id + team IDs + snapshot names)
+                └── Rubber (league_match_results, + kind singles|doubles, + explicit player IDs)
+```
 
-No historical games, standings, statistics, teams, rounds, fixtures, permissions, notifications or reporting break. Already-issued fee/journal descriptions that embedded the old name stay as-is (correct: they are historical records).
+Permanent: league identity, code/abbreviation, discipline.
+Season-scoped: teams, names, rosters, pairs, rounds, fixtures, rubbers, standings, rules overrides.
 
-### 3. Why admins can't rename or seem unable to add a league
-- **Rename is blocked by the UI, not by permissions.** In `LeaguesTab.tsx`'s Edit Association dialog, Name and Abbreviation inputs are `disabled` whenever `platform_association_id` is set ("Name is managed by the platform"). NIL is platform-linked, so both fields are locked. Database RLS *does* allow a club admin to update the row (`is_club_admin_or_permitted(..., 'leagues')`).
-- **Creating another league already exists but is easy to miss.** League Setup -> step "League affiliations" -> button "Select your regional league or add your own" -> tab "Create Own" inserts a new `league_associations` row with scope `internal`. The label doesn't read like "create a league", and the button sits next to "Bulk book home fixtures".
-- Nothing was deliberately removed.
+**Discipline** lives permanently on the league (a Doubles League stays a doubles league). Add an optional `discipline_override` on the season only as an escape hatch — the real-world case is a league that adds a doubles rubber to a previously all-singles format, which is better expressed as the season's *format config* (number of singles vs doubles rubbers), not a different discipline.
 
-### 4. Singles vs doubles
-There is no singles/doubles field anywhere on the league model. `league_rules` has `games_format` (best-of-N), `team_size`, etc. — nothing describing discipline. Club championships have doubles support, leagues do not.
+## D. Minimal safe schema changes
 
-## Plan
+New:
+- `league_seasons(id, club_id, association_id, season_year int, label text, status, starts_on, ends_on, format jsonb, is_current bool, archived_at)`; unique `(association_id, season_year)`; RLS mirroring `league_associations` (club members read, club admins write); GRANTs for `authenticated` + `service_role`.
+- `league_season_pairs(id, season_id, team_id, player_a_member_id, player_b_member_id, label, active)` — explicit member IDs, never fake members.
+- Season format config (in `league_seasons.format` or a small `league_season_format` table): `singles_rubbers`, `doubles_rubbers`, `team_size`, `pairing_policy` = `fixed_season` | `per_fixture`.
 
-### A. Rename (data)
-One migration, two `UPDATE`s by id, no id or relationship changes:
-- `league_associations.name` -> `Nelspruit Singles League` (abbreviation stays `NIL`)
-- `platform_league_associations.name` -> `Nelspruit Singles League` (short_code stays `NIL`)
+Altered (all additive, nullable-first):
+- `leagues.season_id`, `league_rounds.season_id`, `platform_league_fixtures.season_id` — all nullable at first, backfilled, then made required for new rows only.
+- `league_rounds`: drop unique `(association_id, round_number)`, replace with unique `(association_id, season_id, round_number)`.
+- `platform_league_fixtures`: add `home_team_id`, `away_team_id` (FK to `leagues`) and `home_team_name_snapshot`, `away_team_name_snapshot`. Keep the existing text codes untouched for NSA compatibility.
+- `league_match_results`: add `rubber_kind` (`singles`|`doubles`, default `singles`) and `home_player_ids uuid[]` / `away_player_ids uuid[]` alongside the existing text codes.
+- `league_associations.discipline` check constraint extended to include `hybrid`.
+- Indexes on every new `season_id` column and on the new team-ID columns.
 
-### B. Allow admins to edit league display details
-In `EditAssociationDialog` (`src/components/club-admin/LeaguesTab.tsx`):
-- Unlock **Name** for club-owned leagues, i.e. when `scope === 'internal'` (the club created it) — keep it locked for genuine platform/regional associations the club merely joined.
-- Keep **Abbreviation** locked with an explicit hint: "Code is used in team codes (e.g. NIL002) and can't be changed."
-- On save of an internal league, also update the linked `platform_league_associations.name` via a small `SECURITY DEFINER` RPC (`rename_internal_league_association`) that authorises with `is_club_admin_or_permitted(auth.uid(), club_id, 'leagues')`, refuses non-internal associations, and never touches `short_code`.
+Nothing is dropped or renamed. Existing columns keep working, so old code paths continue to function during rollout.
 
-### C. Make "Create New League" obvious
-- Relabel the affiliations-step primary button to **"Create New League"** and make the dialog open on the **Create Own** tab by default when the club already has at least one affiliation (joining a regional league stays available on the other tab).
-- Add a one-line helper under the heading: "Each league (e.g. Singles, Doubles) has its own teams, rounds and fixtures."
+## E. Adaptive wizard flow
 
-### D. Smallest safe addition for Singles vs Doubles
-Add a nullable discipline marker at league level only:
-- `ALTER TABLE public.league_associations ADD COLUMN discipline text NOT NULL DEFAULT 'singles' CHECK (discipline IN ('singles','doubles'));`
-- Backfill is implicit (all existing rows become `singles`); NIL is correct as-is.
-- Surface it as a Singles/Doubles radio in the create + edit association dialogs, and as a small badge next to the league name in League Setup and the League Games association switcher.
-- No behaviour change in scoring/fixtures for phase one — it keeps the two leagues visibly and structurally separate, and gives a hook for later doubles-specific lineup rules (2 players per slot) without another migration.
+Create New League: Name, abbreviation/code, discipline (Singles / Doubles / Hybrid), initial season (defaults 2026).
+Open existing league: current-season selector + status badge + **Create New Season** (defaults to next year, editable, with "Copy structure from <prev>" that copies team shells/format but never edits the historical season).
 
-Nelspruit then: Create New League -> "Nelspruit Doubles League", abbreviation e.g. `NDL`, discipline Doubles -> create its teams and rounds under it. Its team codes get their own `NDL…` namespace, so the existing singles code parsing is untouched.
+Season setup wizard, one engine with discipline-driven questions:
 
-### Verification before hand-off
-- Re-query NIL's team/round/registration/fixture counts after the rename and confirm they are unchanged (28 / 8 / 176 / 152).
-- Load League Games for Nelspruit and confirm standings, fixtures and history render identically under the new name.
-- Create a throwaway internal league in preview, confirm it appears with its own teams area, then delete it.
+| Step | Singles | Doubles | Hybrid |
+|---|---|---|---|
+| Structure | teams, players per team | teams, pairs per team | teams, singles rubbers, doubles rubbers, squad size |
+| Teams | create/rename season teams | same | same |
+| Allocation | players → teams | build pairs, pairs → teams | players → squad, then mark singles/doubles availability |
+| Pairing policy | n/a | fixed for season vs per fixture | per component |
+| Rounds | unchanged | unchanged | unchanged |
 
-## Out of scope
-No changes to league ids, team ids, codes, results, ladder positions, or RLS strength.
+Singles behaviour, including the existing "How many?" step and preview allocation, is preserved exactly.
+
+## F. Doubles and hybrid selection model
+
+- A pair is two real member IDs. Pairs never become members.
+- `pairing_policy = fixed_season`: pairs are created up-front and default into every fixture.
+- `pairing_policy = per_fixture`: pairs are chosen at team-selection time.
+- At selection, each fixture rubber records its resolved player IDs into `league_match_results.home_player_ids` / `away_player_ids` and is **locked with the result**, so later pairing changes never rewrite history.
+- Hybrid eligibility: one person, one member row, appearing in the squad once. Selection validation blocks the same member from being in two rubbers of the same fixture unless the season format explicitly permits it.
+- Standings derive from the sum of all rubbers of a fixture regardless of kind — no separate doubles points path.
+
+## G. 2026 backfill plan
+
+1. Snapshot counts: teams 190, rounds 10, registrations 1196, fixtures 1216, fixture results 142, rubbers 658.
+2. For each internal/region association with activity, create one `league_seasons` row for 2026 (`is_current = true`).
+3. Set `leagues.season_id` for the 28 rows already marked 2026, then for the 162 `NULL` rows — these are backfilled to 2026 **only** where the association has 2026 activity; otherwise flagged for admin review rather than guessed.
+4. Backfill `league_rounds.season_id` and `platform_league_fixtures.season_id` from their association's 2026 season.
+5. Resolve `home_team_id`/`away_team_id` from the existing team codes and write name snapshots. Any fixture whose code does not resolve is reported, not silently dropped.
+6. Re-run the same counts and assert identical totals plus zero remaining `season_id IS NULL` rows in scope. Every step is additive, so rollback is `UPDATE ... SET season_id = NULL` / dropping the new columns — no data is rewritten or recreated.
+
+## H. Phased order
+
+1. Phase 0 — extend `discipline` to include `hybrid`; no behaviour change.
+2. Phase 1 — `league_seasons` table + backfill 2026 + validation query (read-only UI shows current season).
+3. Phase 2 — season_id on rounds/fixtures, round unique-constraint swap, team IDs and name snapshots on fixtures.
+4. Phase 3 — Create New Season UI + season selector; wizard refactor to the single engine (singles output byte-identical to today).
+5. Phase 4 — doubles: pairs table, pairing policy, selection UI.
+6. Phase 5 — hybrid: format config, mixed rubbers, standings from all rubbers.
+
+Each phase has its own migration and its own rollback point; tests cover season derivation, round uniqueness per season, historical-name stability after a rename, singles-parity regression, pair locking, and hybrid standings math.
+
+## I. Interaction with the Nelspruit work
+
+No conflict. The rename to "Nelspruit Singles League", the `NDL` doubles league and the `discipline` column already exist in the database and are exactly the permanent-league shape this plan assumes. Safest order is: publish the pending Nelspruit UI work first (it is preview-only right now), then start Phase 0. `NIL` and all team codes stay untouched throughout.

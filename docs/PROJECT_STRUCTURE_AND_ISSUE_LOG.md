@@ -1096,3 +1096,27 @@ players. Selecting it:
   2. It also used `distributeSeedsBalanced` (equal headcount) instead of the bracket-optimised knockout pool sizing used by the allocation UI, so sections came out 7/7/8/8 and produced avoidable byes.
 - **Fix:** knockout sections now use `distributeIntoPools(..., { knockout: true })`, entrant IDs are de-duplicated per division, bye rows are one-sided (`player_b_member_id = null`, `is_bye`, winner set, status `completed`), and `assertNoSelfMatches()` in `src/lib/tournaments/knockout.ts` plus a pre-insert guard fail generation loudly instead of saving a corrupt draw.
 - **Tests:** `src/test/knockout-self-match.test.ts` (8/7/6 entrants, duplicate-entry protection, progression).
+
+## 2026-08-23 — Riverside: player court booking destroyed by draw regeneration
+
+**Symptom.** Willem Pretorius self-scheduled his Riverside knockout match vs Craig
+Nieuwoudt (Court 1, Tue 25 Aug 13:00, booking `1d56fbcf…`, notified 23:52). Two
+minutes later the player card again said the match needed scheduling.
+
+**Root cause (causes 2 + 4).** Re-saving the tournament wizard runs a destructive
+rebuild in `ClubChampsTab.tsx`: it deleted every booking matching
+`champ:<id>:%` — which includes player-created `champ:<id>:match:<matchId>`
+bookings, not just organiser `:block:` court blocks — then deleted and
+re-inserted all `club_champs_matches` rows with new ids. The player's booking row
+and the match's court/date/time were both wiped; nothing in the UI was at fault.
+
+**Data restored.** Booking `1d56fbcf-0182-4a66-9c56-74d537b875b1` recreated with
+its original court/date/time and relinked to the current match row
+`2bcadcfc-8433-4dff-bac2-593783366855`. No other bookings touched.
+
+**Fix.** `src/lib/tournaments/preserve-schedules.ts` + rebuild rework:
+matches with a booking or a result are "protected"; the rebuild reconciles them
+against the new draw by participants (not row id), aborts before deleting
+anything if a protected fixture is gone, carries court/date/time/booking onto the
+new row, only deletes `:block:` bookings, and re-points surviving bookings'
+external ids at the new match ids. Tests: `src/test/preserve-schedules.test.ts`.

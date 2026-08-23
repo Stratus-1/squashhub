@@ -52,6 +52,11 @@ import {
 } from "@/lib/tournaments/divisions";
 import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
 import { distributeIntoPools, flattenPools, poolBlocks, poolCounts, poolLetter } from "@/lib/tournaments/pools";
+import {
+  collectProtectedSchedules,
+  orphanedScheduleMessage,
+  reconcileProtectedSchedules,
+} from "@/lib/tournaments/preserve-schedules";
 import { describeSectionSizes, totalByes } from "@/lib/tournaments/knockout-sections";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {
@@ -4192,22 +4197,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
       if (!schedulePreview) throw new Error("No schedule generated");
 
-      // Destructive rebuild work happens only after the champ draft is saved and
-      // a valid in-memory schedule exists, so a later insert error still leaves
-      // the tournament available to edit/retry instead of losing the wizard.
-      await fromExt("bookings").delete().like("external_id", `champ:${champId}:%`);
+      // Read the current draw BEFORE anything destructive happens. Matches a
+      // player has already booked a court for (self-scheduled knockouts) or
+      // that already carry a result are "protected" — the rebuild below either
+      // carries them across intact or aborts. It never deletes them.
       const { data: oldMatches } = await fromExt("club_champs_matches")
-        .select("scheduled_date, scheduled_time, court_id")
+        .select("id, group_number, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, scheduled_date, scheduled_time, court_id, booking_id, winner_member_id, status, is_bye")
         .eq("champ_id", champId);
-      for (const m of oldMatches || []) {
-        if (!m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
-        await fromExt("bookings").delete()
-          .eq("date", m.scheduled_date)
-          .eq("start_time", m.scheduled_time)
-          .eq("court_id", m.court_id)
-          .eq("source", "club_event");
-      }
-      await fromExt("club_champs_matches").delete().eq("champ_id", champId);
+      const protectedSchedules = collectProtectedSchedules((oldMatches || []) as any[]);
 
       // Create entries. Promote any `visitor-*` IDs to real club_members rows
       // first, otherwise the FK on club_champs_entries.club_member_id fails.
@@ -4348,11 +4345,63 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           `Draw generation aborted: a player was paired against themselves in division ${(selfFixture as any).group_number}. Check for duplicate entries in that division.`,
         );
       }
+      // Protected fixtures must still exist in the new draw. If any would be
+      // lost, abort BEFORE deleting anything — the old draw and the players'
+      // bookings stay exactly as they were.
+      const reconciled = reconcileProtectedSchedules(protectedSchedules, matches as any[]);
+      if (reconciled.orphans.length > 0) {
+        throw new Error(orphanedScheduleMessage(reconciled.orphans));
+      }
+      // Carry each protected court/date/time onto its new row so the rebuild
+      // never blanks a player's confirmed slot, even in self-scheduled mode.
+      for (const { protectedSchedule: p, match } of reconciled.matched) {
+        if (!p.bookingId && !p.scheduledDate) continue;
+        (match as any).court_id = p.courtId;
+        (match as any).scheduled_date = p.scheduledDate;
+        (match as any).scheduled_time = p.scheduledTime;
+        (match as any).booking_id = p.bookingId;
+      }
+
+      // Destructive rebuild happens only now: the draft is saved, the schedule
+      // is valid and every protected fixture has a home in the new draw.
+      // Organiser court blocks (`champ:<id>:block:…`) are replaced; player
+      // bookings (`champ:<id>:match:…`) are deliberately left untouched.
+      await fromExt("bookings").delete().like("external_id", `champ:${champId}:block:%`);
+      const keepBookingIds = new Set(
+        protectedSchedules.map((p) => p.bookingId).filter(Boolean) as string[],
+      );
+      for (const m of (oldMatches || []) as any[]) {
+        if (!m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
+        if (m.booking_id && keepBookingIds.has(m.booking_id)) continue; // player-owned slot
+        await fromExt("bookings").delete()
+          .eq("date", m.scheduled_date)
+          .eq("start_time", m.scheduled_time)
+          .eq("court_id", m.court_id)
+          .eq("source", "club_event")
+          .not("external_id", "like", "%:match:%");
+      }
+      await fromExt("club_champs_matches").delete().eq("champ_id", champId);
+
       if (matches.length > 0) {
 
-        const { error: matchErr } = await fromExt("club_champs_matches").insert(matches);
+        const { data: insertedMatches, error: matchErr } = await fromExt("club_champs_matches")
+          .insert(matches)
+          .select("id, group_number, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, booking_id");
 
         if (matchErr) throw matchErr;
+
+        // Re-point the surviving bookings at the new match ids so the booking
+        // ↔ match link (and its `champ:…:match:<id>` external id) stays valid.
+        const relink = reconcileProtectedSchedules(
+          protectedSchedules.filter((p) => !!p.bookingId),
+          (insertedMatches || []) as any[],
+        );
+        for (const { protectedSchedule: p, match } of relink.matched) {
+          if (!p.bookingId || !match.id) continue;
+          await fromExt("bookings")
+            .update({ external_id: `champ:${champId}:match:${match.id}` })
+            .eq("id", p.bookingId);
+        }
       }
 
       // Play-off placeholders: reserve court slots for the knockout / finals

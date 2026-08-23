@@ -831,6 +831,8 @@ function RoundCard({
   const [reverseFromPrev, setReverseFromPrev] = useState<boolean>(false);
   const [showTeamGrid, setShowTeamGrid] = useState<boolean>(false);
   const [postponeOpen, setPostponeOpen] = useState(false);
+  const [autoRun, setAutoRun] = useState(false);
+
 
   // Prior rounds in the same association (read-only — never mutated).
   const { data: priorFixtures } = useQuery({
@@ -997,6 +999,16 @@ function RoundCard({
         (byeRows.length ? ` · ${byeRows.length} bye(s)` : ""),
     );
   };
+
+  // "Create fixtures" on the collapsed row: expand, then generate straight away
+  // instead of leaving the organiser on an empty table wondering what happened.
+  useEffect(() => {
+    if (!autoRun || !open || fixtures === undefined) return;
+    setAutoRun(false);
+    autoDistribute();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun, open, fixtures]);
+
 
   /**
    * Re-balance courts on the current fixtures using a fairness scorer that
@@ -1451,11 +1463,23 @@ function RoundCard({
             <Badge variant="secondary" className="text-[10px]">
               {fixtureCount} fixture{fixtureCount === 1 ? "" : "s"} · click to {open ? "hide" : "view"}
             </Badge>
-          ) : (
-            <Badge variant="outline" className="text-[10px]">
-              {isAdmin ? "Click to create fixtures" : "No fixtures yet"}
+          ) : isAdmin ? (
+            <Badge
+              variant="outline"
+              className="text-[10px] cursor-pointer hover:bg-primary hover:text-primary-foreground"
+              role="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAutoRun(true);
+                if (!open) onToggle();
+              }}
+            >
+              Create fixtures
             </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px]">No fixtures yet</Badge>
           )}
+
           {(fixtureCount ?? 0) > 0 && (
             <>
               <Button

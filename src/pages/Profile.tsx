@@ -824,7 +824,7 @@ function ViewMode({
         <Card className="border-border/60">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Affiliations</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">System Leagues</p>
               {inactiveAffs.length > 0 && (
                 <button
                   type="button"

@@ -14,10 +14,14 @@ import { useClubBillingStart } from "@/hooks/use-billing-start";
 export function ParticipationFeeStructure({
   memberCount,
   clubId,
+  billingOption,
 }: {
   memberCount?: number | null;
   clubId?: string;
+  /** The club's chosen payment frequency — drives the invoicing copy below. */
+  billingOption?: "monthly" | "biannual_upfront" | "annual_upfront" | null;
 }) {
+
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
   const { startLabel, trialEndLabel } = useClubBillingStart(clubId);
   const { monthlyTiers, biannualTiers, annualTiers, monthlyMin, biannualMin, annualMin, cap, format: fmt } =

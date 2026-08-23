@@ -144,6 +144,45 @@ export function partitionAcceptedEntrants(input: {
   return { assigned, unassigned };
 }
 
+export interface RecipientMemberRow {
+  id: string;
+  role?: string | null;
+  club_member_number?: string | null;
+}
+
+/**
+ * Fail-closed visitor guard for INVITE SENDS.
+ *
+ * Visitors may sit in a tournament's player pool (they can be drawn into a
+ * division), but they must never be mailed/notified unless the organiser
+ * explicitly ticked "include visitors". Promoted visitor rows keep the
+ * `visitor:<id>` member number even if their role is later edited, so both
+ * signals are treated as visitor.
+ */
+export function visitorMemberIds(rows: Array<RecipientMemberRow | null | undefined>): Set<string> {
+  const out = new Set<string>();
+  (rows || []).forEach((r) => {
+    if (!r?.id) return;
+    const role = String(r.role ?? "").toLowerCase();
+    const num = String(r.club_member_number ?? "").toLowerCase();
+    if (role === "visitor" || num.startsWith("visitor:")) out.add(r.id);
+  });
+  return out;
+}
+
+/** Drop visitor registrations from an invite send unless explicitly allowed. */
+export function filterVisitorRecipients<T extends { club_member_id?: string | null }>(
+  registrations: T[],
+  memberRows: Array<RecipientMemberRow | null | undefined>,
+  includeVisitors: boolean,
+): { kept: T[]; removed: number } {
+  if (includeVisitors) return { kept: registrations || [], removed: 0 };
+  const visitors = visitorMemberIds(memberRows);
+  if (visitors.size === 0) return { kept: registrations || [], removed: 0 };
+  const kept = (registrations || []).filter((r) => !(r.club_member_id && visitors.has(r.club_member_id)));
+  return { kept, removed: (registrations || []).length - kept.length };
+}
+
 export function audienceLabel(mode: InviteAudienceMode): string {
   if (mode === "all_club") return "Invite all members of the club (open invitation)";
   if (mode === "leagues") return "Selected leagues / league teams";

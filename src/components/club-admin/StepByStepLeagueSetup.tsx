@@ -727,8 +727,11 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-base flex items-center gap-2"><Shuffle className="w-4 h-4" />Step 5 — Preview Allocation</Label>
-              <Badge variant="outline" className="text-[10px]">{distribution === "snake" ? "Snake" : distribution === "rotation" ? "Rotation" : "Reverse snake"}</Badge>
+              {questions.askDistribution && (
+                <Badge variant="outline" className="text-[10px]">{distribution === "snake" ? "Snake" : distribution === "rotation" ? "Rotation" : "Reverse snake"}</Badge>
+              )}
             </div>
+
 
             <p className="text-[11px] text-muted-foreground -mb-1">
               Optional: name each team (e.g. <em>Warriors</em>, <em>Bulldogs</em>). Leave blank to use {leagueNumber} A, B, C…

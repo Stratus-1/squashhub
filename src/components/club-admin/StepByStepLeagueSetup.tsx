@@ -13,7 +13,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useLeagueAssociations, useLeagues, useClubMembers, type ClubMember } from "@/hooks/use-club";
 import { useAssociationRules } from "@/hooks/use-association-rules";
-import { inheritLeagueConfig, teamSetupQuestions, buildTeamAllocation } from "@/lib/leagues/team-setup";
+import { inheritLeagueConfig, teamSetupQuestions, buildTeamAllocation, computeTeamRequirements } from "@/lib/leagues/team-setup";
 import { CATEGORY_LABELS, DISCIPLINE_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 
 type Gender = "men" | "ladies" | "mixed" | "open";
@@ -106,12 +106,12 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const [leagueNumber, setLeagueNumber] = useState<string>("1st");
   const [seasonYear, setSeasonYear] = useState<number>(new Date().getFullYear());
   const [startPosition, setStartPosition] = useState<number>(1);
-  const [numMembers, setNumMembers] = useState<number>(0);
   const [numTeams, setNumTeams] = useState<number>(1);
   const [perTeam, setPerTeam] = useState<number>(4);
   const [reserves, setReserves] = useState<number>(0);
   const [distribution, setDistribution] = useState<Distribution>("snake");
-  const [pairsPerTeam, setPairsPerTeam] = useState<number>(2);
+  const [singlesRubbers, setSinglesRubbers] = useState<number>(0);
+  const [doublesRubbers, setDoublesRubbers] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   // Track member IDs allocated to a saved league this session (so they're excluded from later rounds)
   const [allocatedIds, setAllocatedIds] = useState<Set<string>>(new Set());
@@ -136,7 +136,6 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         setNumTeams(editContext.numTeams);
         setPerTeam(editContext.perTeam);
         setReserves(editContext.reserves);
-        setNumMembers(editContext.numTeams * editContext.perTeam + editContext.reserves);
         setDistribution("snake");
         setAllocatedIds(new Set());
         setSessionSummary([]);
@@ -149,7 +148,6 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         setGender("men");
         setLeagueNumber("1st");
         setStartPosition(1);
-        setNumMembers(0);
         setNumTeams(1);
         setPerTeam(4);
         setReserves(0);
@@ -201,11 +199,25 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     setGender(c === "mens" ? "men" : c === "ladies" ? "ladies" : c === "mixed" ? "mixed" : "open");
   }, [inherited.category]);
 
-  // Singles slots per team come from the league format unless it's a legacy
-  // league with no stored rules (then the admin is asked once, here).
-  const singlesPerTeam = questions.askPlayersPerMatch ? perTeam : inherited.singlesRubbers;
-  const effectivePairsPerTeam = questions.askPairsPerTeam ? pairsPerTeam : 0;
-  const slotsPerTeam = singlesPerTeam + effectivePairsPerTeam * 2;
+  /* Step 2 owns match composition. Seed the editable fields from whatever the
+   * league last saved, then let the admin change them here (the single
+   * authoritative place). */
+  useEffect(() => {
+    setSinglesRubbers(inherited.singlesRubbers);
+    setDoublesRubbers(inherited.doublesRubbers);
+  }, [inherited.singlesRubbers, inherited.doublesRubbers]);
+
+  const effectiveSinglesRubbers = questions.askSinglesRubbers
+    ? singlesRubbers
+    : questions.askPlayersPerMatch
+      ? perTeam
+      : inherited.discipline === "doubles"
+        ? 0
+        : inherited.singlesRubbers;
+  const effectiveDoublesRubbers = questions.askDoublesRubbers ? doublesRubbers : 0;
+  const singlesPerTeam = effectiveSinglesRubbers;
+  const effectivePairsPerTeam = effectiveDoublesRubbers;
+
 
 
 
@@ -217,6 +229,22 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     );
     return filterByGender(opted, gender);
   }, [members, associationId, gender, allocatedIds, activeAffiliatedSet]);
+
+  const requirements = useMemo(
+    () =>
+      computeTeamRequirements({
+        composition: {
+          singlesRubbers: effectiveSinglesRubbers,
+          doublesRubbers: effectiveDoublesRubbers,
+          allowDualParticipation: inherited.allowDualParticipation,
+        },
+        numTeams,
+        reservesPerTeam: reserves,
+        availablePlayers: eligiblePool.length,
+      }),
+    [effectiveSinglesRubbers, effectiveDoublesRubbers, inherited.allowDualParticipation, numTeams, reserves, eligiblePool.length],
+  );
+  const slotsPerTeam = requirements.startingPlayersPerTeam;
 
   // Sort eligible pool by ladder_position (nulls last), then name.
   // ladder_position already comes from useClubMembers (`select *`), so we don't
@@ -242,10 +270,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     const teamPlayers = numTeams * slotsPerTeam;
     const startIdx = questions.askLadderStart ? Math.max(0, (startPosition || 1) - 1) : 0;
     const available = sortedPool.slice(startIdx);
-    const totalToTake = Math.min(numMembers, available.length);
+    const totalToTake = Math.min(requirements.totalPlayersRequired, available.length);
     const top = available.slice(0, totalToTake);
     const teamPicks = top.slice(0, teamPlayers);
-    const reservePicks = top.slice(teamPlayers, teamPlayers + reserves);
+    const reservePicks = top.slice(teamPlayers, teamPlayers + reserves * numTeams);
 
     if (questions.allocationMode === "ladder") {
       const order = buildDraftOrder(numTeams, teamPicks.length, distribution);
@@ -276,7 +304,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
       pairs: t.pairs as Array<[typeof top[number], typeof top[number]]>,
     }));
     return { teams, reserves: reservePicks, taken: top.length };
-  }, [sortedPool, numMembers, numTeams, slotsPerTeam, singlesPerTeam, effectivePairsPerTeam, reserves, distribution, leagueNumber, startPosition, questions.allocationMode, questions.askLadderStart]);
+  }, [sortedPool, requirements.totalPlayersRequired, numTeams, slotsPerTeam, singlesPerTeam, effectivePairsPerTeam, reserves, distribution, leagueNumber, startPosition, questions.allocationMode, questions.askLadderStart]);
 
 
   // Detect existing league rows for this association+gender+number that we'd need
@@ -291,7 +319,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const canNext1 = !!associationId;
   const canNext2 = !!gender;
   const canNext3 = !!leagueNumber;
-  const canNext4 = numMembers > 0 && numTeams > 0 && slotsPerTeam > 0 && (numTeams * slotsPerTeam + reserves) <= numMembers;
+  const canNext4 = numTeams > 0 && slotsPerTeam > 0 && requirements.sufficient;
 
   const handleSubmit = async () => {
     if (!canNext4) return;
@@ -383,6 +411,9 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           association_id: associationId,
           team_size: slotsPerTeam,
           team_size_mode: "fixed" as const,
+          singles_rubbers: effectiveSinglesRubbers,
+          doubles_rubbers: effectiveDoublesRubbers,
+          reserves_per_team: reserves,
         }));
         const { error: rulesError } = await fromExt("league_rules").upsert(rulesRows, { onConflict: "league_id" });
         if (rulesError) throw rulesError;
@@ -480,7 +511,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     if (questions.askCategory) setGender("men");
     setLeagueNumber("1st");
     setStartPosition(1);
-    setNumMembers(0);
+    
     setNumTeams(1);
     setPerTeam(4);
     setReserves(0);
@@ -536,13 +567,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
             {inherited.category && (
               <Badge variant="secondary" className="h-5 text-[10px]">{CATEGORY_LABELS[inherited.category]}</Badge>
             )}
-            {inherited.singlesRubbers > 0 && (
-              <Badge variant="outline" className="h-5 text-[10px]">{inherited.singlesRubbers} singles rubber{inherited.singlesRubbers !== 1 ? "s" : ""}</Badge>
-            )}
-            {inherited.doublesRubbers > 0 && (
-              <Badge variant="outline" className="h-5 text-[10px]">{inherited.doublesRubbers} doubles rubber{inherited.doublesRubbers !== 1 ? "s" : ""}</Badge>
-            )}
-            {questions.askPairsPerTeam && (
+            {(questions.askDoublesRubbers) && (
               <Badge variant="outline" className="h-5 text-[10px]">
                 {inherited.pairingPolicy === "fixed" ? "Fixed season pairs" : "Pairs per fixture"}
               </Badge>
@@ -654,10 +679,6 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
                 </div>
               )}
               <div>
-                <Label className="text-xs">How many members?</Label>
-                <Input type="number" min={0} value={numMembers || ""} onChange={(e) => setNumMembers(parseInt(e.target.value) || 0)} />
-              </div>
-              <div>
                 <Label className="text-xs">How many teams?</Label>
                 <Input type="number" min={1} max={8} value={numTeams || ""} onChange={(e) => setNumTeams(parseInt(e.target.value) || 1)} />
               </div>
@@ -668,36 +689,50 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
                   <p className="text-[10px] text-muted-foreground mt-1">Saved as the league rule. Marker scorecard will use this number of rows for every team in this league.</p>
                 </div>
               )}
-              {questions.askPairsPerTeam && (
+              {questions.askSinglesRubbers && (
                 <div>
-                  <Label className="text-xs">Pairs per team</Label>
-                  <Input type="number" min={0} max={10} value={pairsPerTeam || ""} onChange={(e) => setPairsPerTeam(parseInt(e.target.value) || 0)} />
+                  <Label className="text-xs">Singles rubbers per fixture</Label>
+                  <Input type="number" min={0} max={20} value={singlesRubbers || 0} onChange={(e) => setSinglesRubbers(Math.max(0, parseInt(e.target.value) || 0))} />
+                </div>
+              )}
+              {questions.askDoublesRubbers && (
+                <div>
+                  <Label className="text-xs">Doubles rubbers per fixture</Label>
+                  <Input type="number" min={0} max={20} value={doublesRubbers || 0} onChange={(e) => setDoublesRubbers(Math.max(0, parseInt(e.target.value) || 0))} />
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Two real players per pair. The league plays {inherited.doublesRubbers} doubles rubber{inherited.doublesRubbers !== 1 ? "s" : ""} per fixture.
+                    Each doubles rubber is one pair — two real players.
+                    {inherited.pairingPolicy === "fixed"
+                      ? " Fixed season pairs are created per team."
+                      : " Pairs are chosen per fixture; this only fixes the number of doubles positions."}
                   </p>
                 </div>
               )}
               <div>
-                <Label className="text-xs">How many reserves?</Label>
+                <Label className="text-xs">Reserves per team</Label>
                 <Input type="number" min={0} value={reserves || 0} onChange={(e) => setReserves(parseInt(e.target.value) || 0)} />
               </div>
             </div>
 
             <div className="text-xs rounded-md bg-muted p-2.5 space-y-0.5">
               {questions.askLadderStart && <p>Starting from ladder position: <strong>{startPosition}</strong></p>}
-              {questions.askPairsPerTeam && (
-                <p>Per team: <strong>{singlesPerTeam}</strong> singles + <strong>{effectivePairsPerTeam}</strong> pair{effectivePairsPerTeam !== 1 ? "s" : ""} = <strong>{slotsPerTeam}</strong> players</p>
+              <p>Available eligible players: <strong>{requirements.availablePlayers}</strong></p>
+              <p>Teams: <strong>{requirements.numTeams}</strong></p>
+              {requirements.singlesRubbers > 0 && <p>Singles rubbers per fixture: <strong>{requirements.singlesRubbers}</strong></p>}
+              {requirements.doublesRubbers > 0 && <p>Doubles rubbers per fixture: <strong>{requirements.doublesRubbers}</strong></p>}
+              <p>Starting players per team: <strong>{requirements.startingPlayersPerTeam}</strong></p>
+              <p>Reserves per team: <strong>{requirements.reservesPerTeam}</strong></p>
+              <p>Players required per team: <strong>{requirements.playersRequiredPerTeam}</strong></p>
+              <p>Total players required: <strong>{requirements.totalPlayersRequired}</strong></p>
+              {!requirements.sufficient && (
+                <p className="text-destructive font-medium mt-1">
+                  ⚠ Short by {requirements.shortfall} player{requirements.shortfall !== 1 ? "s" : ""} — only {requirements.availablePlayers} eligible.
+                </p>
               )}
-              <p>Team players needed: <strong>{numTeams * slotsPerTeam}</strong></p>
-              <p>+ Reserves: <strong>{reserves}</strong></p>
-              <p>Total to allocate: <strong>{numTeams * slotsPerTeam + reserves}</strong> / {numMembers} requested</p>
-              {(numTeams * slotsPerTeam + reserves) > numMembers && (
-                <p className="text-destructive font-medium mt-1">⚠ Teams + reserves exceeds member count.</p>
-              )}
-              {questions.askLadderStart && (startPosition - 1 + numMembers) > eligiblePool.length && numMembers > 0 && (
-                <p className="text-destructive font-medium mt-1">⚠ Start position + members exceeds the eligible pool ({eligiblePool.length}).</p>
+              {questions.askLadderStart && (startPosition - 1 + requirements.totalPlayersRequired) > eligiblePool.length && requirements.totalPlayersRequired > 0 && (
+                <p className="text-destructive font-medium mt-1">⚠ Start position + required players exceeds the eligible pool ({eligiblePool.length}).</p>
               )}
             </div>
+
 
             {questions.askDistribution && (
               <div className="space-y-2">

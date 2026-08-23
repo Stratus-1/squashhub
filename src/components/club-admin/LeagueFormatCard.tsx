@@ -10,7 +10,7 @@ import {
   type CompetitionCategory,
   type CompetitionDiscipline,
 } from "@/lib/leagues/category";
-import { formatQuestions, resolveFormat, rubberSlots } from "@/lib/leagues/format";
+import { resolveFormat, rubberSlots, stepOneFormatQuestions } from "@/lib/leagues/format";
 
 /**
  * Adaptive league format settings. Discipline is chosen first (in the parent
@@ -30,7 +30,7 @@ export function LeagueFormatCard({
 }) {
   const { data: rules } = useAssociationRules(associationId);
   const update = useUpdateAssociationRules();
-  const q = formatQuestions(discipline);
+  const q = stepOneFormatQuestions(discipline);
 
   const resolved = resolveFormat(
     { discipline, category: category || null },
@@ -56,8 +56,6 @@ export function LeagueFormatCard({
     update.mutate({
       associationId,
       patch: {
-        singles_rubbers: q.askSinglesRubbers ? singles : null,
-        doubles_rubbers: q.askDoublesRubbers ? doubles : null,
         pairing_policy: q.askPairingPolicy ? policy : "fixed",
         allow_dual_participation: q.askDualParticipation ? dual : false,
       } as any,
@@ -72,32 +70,11 @@ export function LeagueFormatCard({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {q.askSinglesRubbers && (
-          <div className="space-y-1">
-            <Label className="text-xs">Singles rubbers per fixture</Label>
-            <Input
-              type="number"
-              min={0}
-              max={20}
-              value={singles}
-              onChange={(e) => setSingles(Math.max(0, Number(e.target.value) || 0))}
-            />
-          </div>
-        )}
-        {q.askDoublesRubbers && (
-          <div className="space-y-1">
-            <Label className="text-xs">Doubles rubbers per fixture</Label>
-            <Input
-              type="number"
-              min={0}
-              max={20}
-              value={doubles}
-              onChange={(e) => setDoubles(Math.max(0, Number(e.target.value) || 0))}
-            />
-          </div>
-        )}
-      </div>
+      <p className="text-[11px] text-muted-foreground">
+        League-wide rules only. Match composition (how many singles / doubles rubbers per fixture)
+        is set in Step 2 — Create League Teams.
+      </p>
+
 
       {q.askPairingPolicy && (
         <div className="space-y-1">
@@ -132,16 +109,17 @@ export function LeagueFormatCard({
         </label>
       )}
 
-      <div className="flex flex-wrap gap-1">
-        {preview.map((s) => (
-          <Badge key={s.position} variant="outline" className="text-[10px] h-5">
-            {s.position}. {s.label}
-          </Badge>
-        ))}
-        {!preview.length && (
-          <span className="text-xs text-muted-foreground">No rubbers configured yet.</span>
-        )}
-      </div>
+      {preview.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          <span className="text-[10px] text-muted-foreground mr-1">Current composition (Step 2):</span>
+          {preview.map((s) => (
+            <Badge key={s.position} variant="outline" className="text-[10px] h-5">
+              {s.position}. {s.label}
+            </Badge>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }

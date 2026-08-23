@@ -117,7 +117,11 @@ export function totalRubbers(cfg: LeagueFormatConfig): number {
   return cfg.singlesRubbers + cfg.doublesRubbers;
 }
 
-/** Which setup questions the adaptive UI should ask for this discipline. */
+/**
+ * Which setup questions the adaptive UI should ask for this discipline.
+ * NOTE: rubber counts are a Step 2 (team composition) concern — see
+ * `stepOneFormatQuestions` for what Step 1 may ask.
+ */
 export function formatQuestions(discipline: CompetitionDiscipline) {
   return {
     askSinglesRubbers: discipline === "singles" || discipline === "hybrid",
@@ -127,6 +131,21 @@ export function formatQuestions(discipline: CompetitionDiscipline) {
     askPairs: discipline === "doubles" || discipline === "hybrid",
   };
 }
+
+/**
+ * Step 1 (Create League) defines league identity and league-wide rules ONLY.
+ * Match composition (how many singles/doubles rubbers per fixture) belongs to
+ * Step 2, so Step 1 never asks for rubber counts.
+ */
+export function stepOneFormatQuestions(discipline: CompetitionDiscipline) {
+  return {
+    askSinglesRubbers: false,
+    askDoublesRubbers: false,
+    askPairingPolicy: discipline === "doubles" || discipline === "hybrid",
+    askDualParticipation: discipline === "doubles" || discipline === "hybrid",
+  };
+}
+
 
 /* ── Selection validation ────────────────────────────────────────────────── */
 

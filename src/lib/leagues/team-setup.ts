@@ -50,7 +50,14 @@ export interface TeamSetupQuestions {
   askDistribution: boolean;
   /** Rubbers-per-fixture is a Step 1 rule; only ask for legacy leagues. */
   askPlayersPerMatch: boolean;
-  /** Doubles / Hybrid: how many pairs each team fields. */
+  /** Step 2 owns match composition — how many singles rubbers per fixture. */
+  askSinglesRubbers: boolean;
+  /** Step 2 owns match composition — how many doubles rubbers per fixture. */
+  askDoublesRubbers: boolean;
+  /**
+   * Deprecated duplicate of `askDoublesRubbers`. Doubles rubbers per fixture is
+   * the single authoritative field; a team fields exactly that many pairs.
+   */
   askPairsPerTeam: boolean;
   askReserves: boolean;
   allocationMode: AllocationMode;
@@ -77,15 +84,85 @@ export function teamSetupQuestions(
   const allocationMode: AllocationMode =
     discipline === "singles" ? "ladder" : discipline === "hybrid" ? "hybrid" : "pairs";
 
+  const askDoublesRubbers = discipline === "doubles" || discipline === "hybrid";
+
   return {
     askCategory: !isCompetitionCategory(cfg.category),
     askLadderStart: usesLadder,
     askRankedPoolSize: usesLadder,
     askDistribution: usesLadder,
     askPlayersPerMatch: !cfg.rulesDefined && discipline === "singles",
-    askPairsPerTeam: discipline === "doubles" || discipline === "hybrid",
+    askSinglesRubbers: discipline === "hybrid",
+    askDoublesRubbers,
+    askPairsPerTeam: false,
     askReserves: true,
     allocationMode,
+  };
+}
+
+/* ── Step 2 composition maths ────────────────────────────────────────────── */
+
+export interface TeamComposition {
+  /** Singles rubbers per fixture (Singles / Hybrid). */
+  singlesRubbers: number;
+  /** Doubles rubbers per fixture — also the number of pairs a team fields. */
+  doublesRubbers: number;
+  /** May one player fill both a singles and a doubles slot in one fixture? */
+  allowDualParticipation: boolean;
+}
+
+export interface TeamRequirements {
+  singlesRubbers: number;
+  doublesRubbers: number;
+  /** Distinct players needed to start a fixture for ONE team. */
+  startingPlayersPerTeam: number;
+  reservesPerTeam: number;
+  /** starting + reserves, for ONE team. */
+  playersRequiredPerTeam: number;
+  numTeams: number;
+  /** numTeams x playersRequiredPerTeam. Reserves are ALWAYS per team. */
+  totalPlayersRequired: number;
+  availablePlayers: number;
+  shortfall: number;
+  sufficient: boolean;
+}
+
+/**
+ * How many distinct players one team needs to start a fixture.
+ * Doubles slots always need two real players each. When the league allows dual
+ * participation, singles players may double up, so the minimum is the larger of
+ * the two demands rather than their sum.
+ */
+export function startingPlayersPerTeam(cfg: TeamComposition): number {
+  const singles = Math.max(0, cfg.singlesRubbers);
+  const doublesPlayers = Math.max(0, cfg.doublesRubbers) * 2;
+  return cfg.allowDualParticipation ? Math.max(singles, doublesPlayers) : singles + doublesPlayers;
+}
+
+/** Full Step 2 requirement maths — reserves are per team, never global. */
+export function computeTeamRequirements(input: {
+  composition: TeamComposition;
+  numTeams: number;
+  reservesPerTeam: number;
+  availablePlayers: number;
+}): TeamRequirements {
+  const numTeams = Math.max(0, Math.trunc(input.numTeams));
+  const reservesPerTeam = Math.max(0, Math.trunc(input.reservesPerTeam));
+  const starting = startingPlayersPerTeam(input.composition);
+  const perTeam = starting + reservesPerTeam;
+  const total = numTeams * perTeam;
+  const available = Math.max(0, input.availablePlayers);
+  return {
+    singlesRubbers: Math.max(0, input.composition.singlesRubbers),
+    doublesRubbers: Math.max(0, input.composition.doublesRubbers),
+    startingPlayersPerTeam: starting,
+    reservesPerTeam,
+    playersRequiredPerTeam: perTeam,
+    numTeams,
+    totalPlayersRequired: total,
+    availablePlayers: available,
+    shortfall: Math.max(0, total - available),
+    sufficient: total <= available,
   };
 }
 
@@ -93,6 +170,7 @@ export function teamSetupQuestions(
 export function playersPerTeam(cfg: InheritedLeagueConfig, pairsPerTeam: number): number {
   return cfg.singlesRubbers + Math.max(0, pairsPerTeam) * 2;
 }
+
 
 export interface AllocatablePlayer {
   id: string;

@@ -19,6 +19,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Info } from "lucide-react";
 import { CalendarRange } from "lucide-react";
 import { LeagueSeasonsDialog } from "./LeagueSeasonsDialog";
+import {
+  CLUB_LEAGUE,
+  CLUB_LEAGUES,
+  CLUB_LEAGUE_STEPS,
+  SELECT_OR_CREATE_COPY,
+  SYSTEM_LEAGUE,
+  SYSTEM_LEAGUES,
+  isClubLeagueScope,
+  leagueKindLabel,
+} from "@/lib/leagues/terminology";
+
 import { DoublesPairsDialog } from "./DoublesPairsDialog";
 import { LeagueFormatCard } from "./LeagueFormatCard";
 
@@ -198,7 +209,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     teamNames: Record<number, string>;
     reservesName: string;
   }>(null);
-  const [step, setStep] = useState("affiliations");
+  const [step, setStep] = useState<string>("leagues");
   const { data: clubFillDefault } = useQuery({
     queryKey: ["club-fill-settings", clubId],
     queryFn: async () => {
@@ -345,23 +356,34 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       return numA - numB;
     });
 
-  const steps: SetupStep[] = [
-    { id: "affiliations", label: "League affiliations", description: "Step one — link your club to its regional league(s) or add your own internal league, and set how each one behaves.", complete: associations.length > 0 },
-    { id: "create", label: "League teams", description: "Step two — create the league teams (Men's, Ladies, Mixed) inside each affiliation and allocate your players.", complete: leagues.length > 0 },
-  ];
+  const clubLeagues = associations.filter((a: any) => isClubLeagueScope(a.scope));
+
+  const steps: SetupStep[] = CLUB_LEAGUE_STEPS.map((s) => ({
+    id: s.id,
+    label: s.label,
+    description: s.description,
+    complete:
+      s.id === "leagues"
+        ? associations.length > 0
+        : s.id === "teams"
+          ? leagues.length > 0
+          : false,
+  }));
+
 
   return (
     <div className="space-y-6 mt-4">
       <SetupSteps steps={steps} value={step} onChange={setStep} />
 
-      {/* Associations */}
-      {step === "affiliations" && (
+      {/* Step 1 — Create League */}
+      {step === "leagues" && (
       <div>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div>
             <h3 className="font-semibold">Your Leagues</h3>
-            <p className="text-xs text-muted-foreground">Each league (e.g. Singles, Doubles) has its own teams, rounds and fixtures. Fee settings are managed in the Fees tab.</p>
+            <p className="text-xs text-muted-foreground">{SELECT_OR_CREATE_COPY} Each league (e.g. Singles, Doubles) has its own format, teams, rounds and fixtures. Fee settings are managed in the Fees tab.</p>
           </div>
+
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setBulkBookOpen(true)}>
               <CalendarDays className="w-4 h-4 mr-1" />Bulk book home fixtures
@@ -383,11 +405,12 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                   <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">Platform</Badge>
                 )}
                 <Badge
-                  variant={a.scope === "internal" ? "outline" : "default"}
-                  className="text-[10px] h-5 flex-shrink-0"
+                  variant={isClubLeagueScope(a.scope) ? "outline" : "default"}
+                  className={`text-[10px] h-5 flex-shrink-0 ${isClubLeagueScope(a.scope) ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}
                 >
-                  {a.scope === "internal" ? "Internal" : "Regional"}
+                  {leagueKindLabel(a.scope)}
                 </Badge>
+
                 {(a as any).discipline && (a as any).discipline !== "singles" && (
                   <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0">{DISCIPLINE_LABELS[(a as any).discipline as CompetitionDiscipline] ?? (a as any).discipline}</Badge>
                 )}
@@ -437,19 +460,19 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       </div>
       )}
 
-      {/* Leagues in two columns with inline players */}
-      {step === "create" && (
+      {/* Step 2 — Create League Teams */}
+      {step === "teams" && (
       <div>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div className="flex items-center gap-1.5">
-            <h3 className="font-semibold">Select your Regional League or Create own Internal League</h3>
+            <h3 className="font-semibold">Create teams for your {SYSTEM_LEAGUES} and {CLUB_LEAGUES}</h3>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
-                  <p>If your regional league is not listed yet, please contact SquashHub through a support ticket.</p>
+                  <p>{SELECT_OR_CREATE_COPY} If your {SYSTEM_LEAGUE} is not listed yet, please contact SquashHub through a support ticket.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -460,19 +483,21 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1" />Create Internal League Teams
+                    <Plus className="w-4 h-4 mr-1" />Create {CLUB_LEAGUE} Teams
                     <Info className="w-3.5 h-3.5 ml-1.5 opacity-70" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs space-y-2">
-                  <p>Typical for internal leagues, not inter-club leagues. You can also use tournaments and call them leagues instead of just teams.</p>
+                  <p>Typical for {CLUB_LEAGUES}, not inter-club {SYSTEM_LEAGUES}. You can also use tournaments and call them leagues instead of just teams.</p>
                   <p>You can also create your league teams here and use them in tournaments.</p>
                   <p>Players in each league (e.g. 1st League) will play against each other.</p>
+                  <p>For Doubles and Hybrid leagues, allocate pairs from the league's <strong>Pairs</strong> button in Step 1.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
         </div>
+
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
 
@@ -557,7 +582,76 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       </div>
       )}
 
+      {/* Step 3 — Create Rounds & Fixtures */}
+      {step === "fixtures" && (
+        <div>
+          <div className="mb-3">
+            <h3 className="font-semibold">Create Rounds & Fixtures</h3>
+            <p className="text-xs text-muted-foreground">
+              Rounds and fixtures are created per league and belong to that league's current season.
+              {CLUB_LEAGUES} are scheduled here; {SYSTEM_LEAGUES} publish their own fixtures centrally.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {associations.map((a: any) => {
+              const teamCount = leagues.filter((l: any) => l.association_id === a.id).length;
+              const isClub = isClubLeagueScope(a.scope);
+              return (
+                <Card key={a.id} className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                    <p className="font-medium break-words min-w-0">{a.name}</p>
+                    <Badge
+                      variant={isClub ? "outline" : "default"}
+                      className={`text-[10px] h-5 ${isClub ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}
+                    >
+                      {leagueKindLabel(a.scope)}
+                    </Badge>
+                    {(a as any).discipline && (a as any).discipline !== "singles" && (
+                      <Badge variant="outline" className="text-[10px] h-5">
+                        {DISCIPLINE_LABELS[(a as any).discipline as CompetitionDiscipline] ?? (a as any).discipline}
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {teamCount} team{teamCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => setSeasonsAssoc(a)}>
+                      <CalendarRange className="w-4 h-4 mr-1" />Seasons
+                    </Button>
+                    {isClub ? (
+                      <Button asChild size="sm" disabled={teamCount === 0}>
+                        <Link to={`/league-games?tab=rounds&assoc=${a.id}`}>
+                          <CalendarDays className="w-4 h-4 mr-1" />Create Rounds & Fixtures
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/league-games?assoc=${a.id}`}>
+                          <CalendarDays className="w-4 h-4 mr-1" />View fixtures
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+            {associations.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Create a league in Step 1 first.
+              </p>
+            )}
+            {clubLeagues.length === 0 && associations.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                You have no {CLUB_LEAGUES} yet — only {SYSTEM_LEAGUES}, whose fixtures are published centrally.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       <SetupStepNav steps={steps} value={step} onChange={setStep} />
+
 
       {/* Allocate Players Dialog (per association+gender group) */}
       {allocateGroup && (
@@ -2438,8 +2532,8 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
         <DialogHeader><DialogTitle>Create or join a league</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="flex gap-2">
-            <Button variant={mode === "select" ? "default" : "outline"} size="sm" onClick={() => setMode("select")} className="flex-1">Join Regional League</Button>
-            <Button variant={mode === "create" ? "default" : "outline"} size="sm" onClick={() => setMode("create")} className="flex-1">Create Own League</Button>
+            <Button variant={mode === "select" ? "default" : "outline"} size="sm" onClick={() => setMode("select")} className="flex-1">Join System League</Button>
+            <Button variant={mode === "create" ? "default" : "outline"} size="sm" onClick={() => setMode("create")} className="flex-1">Create Club League</Button>
           </div>
 
           {mode === "select" ? (
@@ -2494,8 +2588,8 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
               </div>
 
               <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground">Scope: Internal only</p>
-                <p className="mt-0.5">Only your club's members participate. Regional/external leagues must be joined via <em>Select Existing</em> — clubs cannot create their own regional leagues.</p>
+                <p className="font-medium text-foreground">Scope: Club League only</p>
+                <p className="mt-0.5">Only your club's members participate. System Leagues must be joined via <em>Select Existing</em> — clubs cannot create their own System Leagues.</p>
                 <p className="mt-1 italic">National bodies (e.g. SSA) are not leagues — they auto-seed as fees on every club.</p>
               </div>
             </>
@@ -2564,7 +2658,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
           <div className="space-y-1">
             <Label>Name</Label>
             <Input value={name} onChange={e => setName(e.target.value)} disabled={!isInternalOwned} />
-            {!isInternalOwned && <p className="text-xs text-muted-foreground">Name is managed by the platform for regional leagues.</p>}
+            {!isInternalOwned && <p className="text-xs text-muted-foreground">Name is managed by the platform for System Leagues.</p>}
           </div>
           <div className="space-y-1">
             <Label>Abbreviation</Label>
@@ -2617,7 +2711,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
                 className="flex-1"
                 disabled={isPlatformLinked}
               >
-                Internal
+                Club League
               </Button>
               <Button
                 type="button"
@@ -2626,15 +2720,15 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
                 onClick={() => setScope("region")}
                 className="flex-1"
               >
-                Regional
+                System League
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               {isPlatformLinked
                 ? "Platform-linked associations are always regional."
                 : scope === "internal"
-                  ? "Internal: only your club's members participate. No external integration."
-                  : "Regional: external/regional league involving other clubs."}
+                  ? "Club League: only your club's members participate. No external integration."
+                  : "System League: a shared platform league involving other clubs."}
             </p>
           </div>
 
@@ -2656,7 +2750,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs">
                           <p className="text-xs">
-                            When <strong>ON</strong>, internal league rubbers from this association can leapfrog the club ladder: if a lower-ranked winner beats a higher-ranked loser, the winner takes the loser's slot and everyone between shifts down one rank. Subs and external players are ignored — only originally-registered club members count.
+                            When <strong>ON</strong>, Club League rubbers from this association can leapfrog the club ladder: if a lower-ranked winner beats a higher-ranked loser, the winner takes the loser's slot and everyone between shifts down one rank. Subs and external players are ignored — only originally-registered club members count.
                             <br /><br />
                             Admins review and apply changes from the "Preview ladder impact" button on each fixture.
                           </p>
@@ -2666,7 +2760,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     {affectsLadder
-                      ? "Internal league results will offer a ladder-impact preview on each fixture."
+                      ? "Club League results will offer a ladder-impact preview on each fixture."
                       : "Results from this association have no effect on the club ladder."}
                   </p>
                 </div>
@@ -2901,7 +2995,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Create Regional League Teams<Info className="w-3.5 h-3.5 ml-1.5 opacity-80" /></Button></DialogTrigger>
+            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Create System League Teams<Info className="w-3.5 h-3.5 ml-1.5 opacity-80" /></Button></DialogTrigger>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs space-y-2">
             <p>Typical for inter-club regional leagues like NSA.</p>
@@ -2911,7 +3005,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
         </Tooltip>
       </TooltipProvider>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Create Regional League Teams</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Create System League Teams</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>Association</Label>
@@ -2925,7 +3019,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
                   </select>
                   <p className="text-xs text-muted-foreground">
                     {regionalAssocs.length === 0
-                      ? "No regional associations linked yet. Add one via Select Existing above — internal leagues cannot be used here."
+                      ? "No System Leagues linked yet. Add one via Select Existing above — Club Leagues cannot be used here."
                       : "Only regional/external associations are shown. Members will be filtered by their affiliation to the selected association."}
                   </p>
                 </>
@@ -3021,13 +3115,13 @@ function AssociationRulesPenaltiesDialog({ association, open, onOpenChange }: { 
           <DialogTitle>
             {association.name} — Rules & Penalties
             <Badge variant={isInternal ? "outline" : "default"} className="ml-2 text-[10px] h-5 align-middle">
-              {isInternal ? "Internal" : "Regional"}
+              {isInternal ? "Club League" : "System League"}
             </Badge>
           </DialogTitle>
         </DialogHeader>
         {!isInternal && (
           <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            Regional leagues inherit defaults from the league organiser. Edits saved here become a club-level override that only applies to your club.
+            System Leagues inherit defaults from the league organiser. Edits saved here become a club-level override that only applies to your club.
           </div>
         )}
         <Tabs defaultValue="rules" className="w-full">

@@ -160,7 +160,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         </div>
       </div>
 
-      <ParticipationFeeStructure memberCount={memberCount} clubId={club.id} />
+      <ParticipationFeeStructure memberCount={memberCount} clubId={club.id} billingOption={c.sla_billing_option || "monthly"} />
 
 
 
@@ -173,10 +173,8 @@ export function ClubParticipationCard({ club }: { club: Club }) {
           <div className="text-muted-foreground text-xs space-y-0.5">
             {c.sla_accepted_name && <div>Accepted by <strong className="text-foreground">{c.sla_accepted_name}</strong>{c.sla_accepted_role ? `, ${c.sla_accepted_role}` : ""}</div>}
             {c.sla_accepted_at && <div>Accepted on {new Date(c.sla_accepted_at).toLocaleString()}</div>}
-            <div>
-              Billing: <strong className="text-foreground">{c.sla_billing_option === "annual_upfront" ? "Annual upfront" : c.sla_billing_option === "biannual_upfront" ? "6-monthly upfront" : "Monthly"}</strong>
-              {c.sla_version && <> · SLA v{c.sla_version}</>}
-            </div>
+            {c.sla_version && <div>SLA v{c.sla_version}</div>}
+
           </div>
           <details className="pt-2 group">
             <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none">
@@ -253,13 +251,9 @@ export function ClubParticipationCard({ club }: { club: Club }) {
 
             <div className="space-y-4">
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">
-                  Your club is invoiced monthly by default. Your preferred payment frequency
-                  (monthly, 6-monthly or annual upfront) is set under <strong>Billing frequency</strong>{" "}
-                  after signing, and can be changed at the end of any paid period.
-                </p>
                 <p className="text-xs text-amber-700 dark:text-amber-400">Fees commence {billingStart.startLabel}{billingStart.trialEndLabel ? ` (the day after your trial ends on ${billingStart.trialEndLabel})` : ""}.</p>
               </div>
+
 
 
 

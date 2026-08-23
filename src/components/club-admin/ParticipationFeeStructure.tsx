@@ -14,10 +14,14 @@ import { useClubBillingStart } from "@/hooks/use-billing-start";
 export function ParticipationFeeStructure({
   memberCount,
   clubId,
+  billingOption,
 }: {
   memberCount?: number | null;
   clubId?: string;
+  /** The club's chosen payment frequency — drives the invoicing copy below. */
+  billingOption?: "monthly" | "biannual_upfront" | "annual_upfront" | null;
 }) {
+
   const { code: clubCurrencyCode, name: clubCurrencyName } = useClubCurrency();
   const { startLabel, trialEndLabel } = useClubBillingStart(clubId);
   const { monthlyTiers, biannualTiers, annualTiers, monthlyMin, biannualMin, annualMin, cap, format: fmt } =
@@ -100,7 +104,14 @@ export function ParticipationFeeStructure({
 
 
       <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
-        Fees are invoiced <strong>monthly in advance</strong>
+        Fees are invoiced{" "}
+        <strong>
+          {billingOption === "annual_upfront"
+            ? "annually in advance"
+            : billingOption === "biannual_upfront"
+              ? "six-monthly in advance"
+              : "monthly in advance"}
+        </strong>
         {trialEndLabel ? (
           <>
             {" "}— your free trial runs to <strong>{trialEndLabel}</strong>, with the first invoice
@@ -111,9 +122,10 @@ export function ParticipationFeeStructure({
             , with the first invoice issued on <strong>{startLabel}</strong>.
           </>
         )}{" "}
-        Six-monthly or annual upfront payment can be requested on the Subscription tab. Payment can
-        be made by <strong>EFT</strong> or by <strong>card</strong> — set your preferred method on
-        the Subscription tab so we know how to bill you.
+        You can change this under <strong>Billing frequency</strong> at the end of any paid period.
+        Payment can be made by <strong>EFT</strong> or by <strong>card</strong> — set your preferred
+        method on the Subscription tab so we know how to bill you.
+
       </p>
 
 

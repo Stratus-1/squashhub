@@ -499,9 +499,16 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         </div>
 
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {/* Only render categories that actually have leagues so the populated
+            columns get the full width instead of being squeezed. */}
+        {(() => {
+          const filled = [menLeagues, ladiesLeagues, mixedLeagues, openLeagues].filter((l) => l.length > 0).length;
+          const cols = filled <= 1 ? "xl:grid-cols-1" : filled === 2 ? "xl:grid-cols-2" : filled === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4";
+          const mdCols = filled <= 1 ? "md:grid-cols-1" : "md:grid-cols-2";
+          return (
+        <div className={`grid grid-cols-1 ${mdCols} ${cols} gap-4`}>
 
-          <GenderColumn
+          {menLeagues.length > 0 && <GenderColumn
             title="Men's"
             gender="men"
             leagues={menLeagues}
@@ -513,8 +520,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "men", leagues: list })}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "men", leagues: list })}
             onEditSetup={(assocId, list) => openEditSetup(assocId, "men", list)}
-          />
-          <GenderColumn
+          />}
+          {ladiesLeagues.length > 0 && <GenderColumn
             title="Ladies"
             gender="ladies"
             leagues={ladiesLeagues}
@@ -526,8 +533,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "ladies", leagues: list })}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "ladies", leagues: list })}
             onEditSetup={(assocId, list) => openEditSetup(assocId, "ladies", list)}
-          />
-          <GenderColumn
+          />}
+          {mixedLeagues.length > 0 && <GenderColumn
             title="Mixed"
             gender="mixed"
             leagues={mixedLeagues}
@@ -539,8 +546,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "mixed", leagues: list })}
             onEditSetup={(assocId, list) => openEditSetup(assocId, "mixed", list)}
-          />
-          <GenderColumn
+          />}
+          {openLeagues.length > 0 && <GenderColumn
             title="Open"
             gender="open"
             leagues={openLeagues}
@@ -552,8 +559,13 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "open", leagues: list })}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "open", leagues: list })}
             onEditSetup={(assocId, list) => openEditSetup(assocId, "open", list)}
-          />
+          />}
+          {filled === 0 && (
+            <p className="text-xs text-muted-foreground">No league teams yet.</p>
+          )}
         </div>
+          );
+        })()}
 
 
         <SeasonArchiveCard clubId={clubId} />

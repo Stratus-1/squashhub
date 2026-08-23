@@ -196,18 +196,21 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
   );
 
   // Fetch fixtures + results for the selected tier(s)
-  const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["internal-standings", platformAssocId, seasonYear, allRoundIds.join(",")],
+  const { data: standings, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ["internal-standings", platformAssocId, seasonId, seasonYear, allRoundIds.join(",")],
     enabled: allRoundIds.length > 0 && !!platformAssocId,
     staleTime: 30 * 1000,
     queryFn: async () => {
       const { data: fixtures, error: fxErr } = await supabase
         .from("platform_league_fixtures")
-        .select("id, fixture_date, division, home_team_code, away_team_code, status, round_id")
+        .select(
+          "id, fixture_date, division, home_team_code, away_team_code, home_team_name_snapshot, away_team_name_snapshot, status, round_id",
+        )
         .eq("association_id", platformAssocId!)
         .in("round_id", allRoundIds)
         .order("fixture_date", { ascending: true });
       if (fxErr) throw fxErr;
+
 
       const fixtureIds = (fixtures || []).map((f) => f.id);
       let results: ResultRow[] = [];

@@ -234,29 +234,50 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
       });
   }, [eligiblePool]);
 
-  // Compute the proposed allocation
+  // Compute the proposed allocation.
+  // Singles (and hybrid singles slots) keep the ladder draft; Doubles allocates
+  // real players into real pairs — never ladder-ranked unless a league rule
+  // explicitly opts in.
   const allocation = useMemo(() => {
-    const teamPlayers = numTeams * perTeam;
-    const startIdx = Math.max(0, (startPosition || 1) - 1);
+    const teamPlayers = numTeams * slotsPerTeam;
+    const startIdx = questions.askLadderStart ? Math.max(0, (startPosition || 1) - 1) : 0;
     const available = sortedPool.slice(startIdx);
     const totalToTake = Math.min(numMembers, available.length);
     const top = available.slice(0, totalToTake);
     const teamPicks = top.slice(0, teamPlayers);
     const reservePicks = top.slice(teamPlayers, teamPlayers + reserves);
-    const order = buildDraftOrder(numTeams, teamPicks.length, distribution);
-    const teams: Array<{ name: string; picks: typeof top }> = Array.from({ length: numTeams }, (_, i) => ({
+
+    if (questions.allocationMode === "ladder") {
+      const order = buildDraftOrder(numTeams, teamPicks.length, distribution);
+      const teams: Array<{ name: string; picks: typeof top; pairs: Array<[typeof top[number], typeof top[number]]> }> =
+        Array.from({ length: numTeams }, (_, i) => ({
+          name: `${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`,
+          picks: [],
+          pairs: [],
+        }));
+      teamPicks.forEach((p, idx) => { teams[order[idx]].picks.push(p); });
+      // Sort each team by ladder_position so position 1 = strongest
+      teams.forEach(t => t.picks.sort((a, b) => {
+        const ap = a.ladder_position ?? Number.POSITIVE_INFINITY;
+        const bp = b.ladder_position ?? Number.POSITIVE_INFINITY;
+        return ap - bp;
+      }));
+      return { teams, reserves: reservePicks, taken: top.length };
+    }
+
+    const built = buildTeamAllocation(teamPicks, {
+      numTeams,
+      singlesPerTeam,
+      pairsPerTeam: effectivePairsPerTeam,
+    });
+    const teams = built.teams.map((t, i) => ({
       name: `${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`,
-      picks: [],
-    }));
-    teamPicks.forEach((p, idx) => { teams[order[idx]].picks.push(p); });
-    // Sort each team by ladder_position so position 1 = strongest
-    teams.forEach(t => t.picks.sort((a, b) => {
-      const ap = a.ladder_position ?? Number.POSITIVE_INFINITY;
-      const bp = b.ladder_position ?? Number.POSITIVE_INFINITY;
-      return ap - bp;
+      picks: [...t.singles, ...t.pairs.flat()],
+      pairs: t.pairs as Array<[typeof top[number], typeof top[number]]>,
     }));
     return { teams, reserves: reservePicks, taken: top.length };
-  }, [sortedPool, numMembers, numTeams, perTeam, reserves, distribution, leagueNumber, startPosition]);
+  }, [sortedPool, numMembers, numTeams, slotsPerTeam, singlesPerTeam, effectivePairsPerTeam, reserves, distribution, leagueNumber, startPosition, questions.allocationMode, questions.askLadderStart]);
+
 
   // Detect existing league rows for this association+gender+number that we'd need
   const existingLeagueNames = useMemo(() => {

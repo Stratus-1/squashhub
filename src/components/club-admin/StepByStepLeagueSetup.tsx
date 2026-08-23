@@ -646,60 +646,79 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
             </div>
 
             <div className="grid grid-cols-2 gap-3">
+              {questions.askLadderStart && (
+                <div>
+                  <Label className="text-xs">Starting ladder position</Label>
+                  <Input type="number" min={1} value={startPosition || ""} onChange={(e) => setStartPosition(parseInt(e.target.value) || 1)} />
+                  <p className="text-[10px] text-muted-foreground mt-1">Pick from position {startPosition} downward (e.g. 30 → 30, 31, 32…). Use higher numbers for lower leagues.</p>
+                </div>
+              )}
               <div>
-                <Label className="text-xs">a. Starting ladder position</Label>
-                <Input type="number" min={1} value={startPosition || ""} onChange={(e) => setStartPosition(parseInt(e.target.value) || 1)} />
-                <p className="text-[10px] text-muted-foreground mt-1">Pick from position {startPosition} downward (e.g. 30 → 30, 31, 32…). Use higher numbers for lower leagues.</p>
-              </div>
-              <div>
-                <Label className="text-xs">b. How many members?</Label>
+                <Label className="text-xs">How many members?</Label>
                 <Input type="number" min={0} value={numMembers || ""} onChange={(e) => setNumMembers(parseInt(e.target.value) || 0)} />
               </div>
               <div>
-                <Label className="text-xs">c. How many teams?</Label>
+                <Label className="text-xs">How many teams?</Label>
                 <Input type="number" min={1} max={8} value={numTeams || ""} onChange={(e) => setNumTeams(parseInt(e.target.value) || 1)} />
               </div>
+              {questions.askPlayersPerMatch && (
+                <div>
+                  <Label className="text-xs">Players per match (league rule)?</Label>
+                  <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => setPerTeam(parseInt(e.target.value) || 1)} />
+                  <p className="text-[10px] text-muted-foreground mt-1">Saved as the league rule. Marker scorecard will use this number of rows for every team in this league.</p>
+                </div>
+              )}
+              {questions.askPairsPerTeam && (
+                <div>
+                  <Label className="text-xs">Pairs per team</Label>
+                  <Input type="number" min={0} max={10} value={pairsPerTeam || ""} onChange={(e) => setPairsPerTeam(parseInt(e.target.value) || 0)} />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Two real players per pair. The league plays {inherited.doublesRubbers} doubles rubber{inherited.doublesRubbers !== 1 ? "s" : ""} per fixture.
+                  </p>
+                </div>
+              )}
               <div>
-                <Label className="text-xs">d. Players per match (league rule)?</Label>
-                <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => setPerTeam(parseInt(e.target.value) || 1)} />
-                <p className="text-[10px] text-muted-foreground mt-1">Saved as the league rule. Marker scorecard will use this number of rows for every team in this league.</p>
-              </div>
-              <div>
-                <Label className="text-xs">e. How many reserves?</Label>
+                <Label className="text-xs">How many reserves?</Label>
                 <Input type="number" min={0} value={reserves || 0} onChange={(e) => setReserves(parseInt(e.target.value) || 0)} />
               </div>
             </div>
 
             <div className="text-xs rounded-md bg-muted p-2.5 space-y-0.5">
-              <p>Starting from ladder position: <strong>{startPosition}</strong></p>
-              <p>Team players needed: <strong>{numTeams * perTeam}</strong></p>
+              {questions.askLadderStart && <p>Starting from ladder position: <strong>{startPosition}</strong></p>}
+              {questions.askPairsPerTeam && (
+                <p>Per team: <strong>{singlesPerTeam}</strong> singles + <strong>{effectivePairsPerTeam}</strong> pair{effectivePairsPerTeam !== 1 ? "s" : ""} = <strong>{slotsPerTeam}</strong> players</p>
+              )}
+              <p>Team players needed: <strong>{numTeams * slotsPerTeam}</strong></p>
               <p>+ Reserves: <strong>{reserves}</strong></p>
-              <p>Total to allocate: <strong>{numTeams * perTeam + reserves}</strong> / {numMembers} requested</p>
-              {(numTeams * perTeam + reserves) > numMembers && (
+              <p>Total to allocate: <strong>{numTeams * slotsPerTeam + reserves}</strong> / {numMembers} requested</p>
+              {(numTeams * slotsPerTeam + reserves) > numMembers && (
                 <p className="text-destructive font-medium mt-1">⚠ Teams + reserves exceeds member count.</p>
               )}
-              {(startPosition - 1 + numMembers) > eligiblePool.length && numMembers > 0 && (
+              {questions.askLadderStart && (startPosition - 1 + numMembers) > eligiblePool.length && numMembers > 0 && (
                 <p className="text-destructive font-medium mt-1">⚠ Start position + members exceeds the eligible pool ({eligiblePool.length}).</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs">f. Distribution method</Label>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Only affects the initial auto-draft of players into team slots from the ranked pool. It does <strong>not</strong> decide fixtures or which team plays which week — that's handled later by the fixture scheduler.
-              </p>
-              <RadioGroup value={distribution} onValueChange={(v) => setDistribution(v as Distribution)} className="space-y-2">
-                {DISTRIBUTIONS.map(d => (
-                  <label key={d.value} className={`flex items-start gap-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent ${distribution === d.value ? "border-primary bg-accent" : ""}`}>
-                    <RadioGroupItem value={d.value} className="mt-0.5" />
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium">{d.title}</p>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">{d.example}</p>
-                    </div>
-                  </label>
-                ))}
-              </RadioGroup>
-            </div>
+            {questions.askDistribution && (
+              <div className="space-y-2">
+                <Label className="text-xs">Distribution method</Label>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Only affects the initial auto-draft of players into team slots from the ranked pool. It does <strong>not</strong> decide fixtures or which team plays which week — that's handled later by the fixture scheduler.
+                </p>
+                <RadioGroup value={distribution} onValueChange={(v) => setDistribution(v as Distribution)} className="space-y-2">
+                  {DISTRIBUTIONS.map(d => (
+                    <label key={d.value} className={`flex items-start gap-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent ${distribution === d.value ? "border-primary bg-accent" : ""}`}>
+                      <RadioGroupItem value={d.value} className="mt-0.5" />
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium">{d.title}</p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">{d.example}</p>
+                      </div>
+                    </label>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
+
           </div>
         )}
 

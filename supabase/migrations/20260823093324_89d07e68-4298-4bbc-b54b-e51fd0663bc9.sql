@@ -1,0 +1,2 @@
+ALTER TABLE public.clubs DROP CONSTRAINT IF EXISTS clubs_sla_billing_option_check;
+ALTER TABLE public.clubs ADD CONSTRAINT clubs_sla_billing_option_check CHECK (sla_billing_option IS NULL OR sla_billing_option IN ('monthly','biannual_upfront','annual_upfront'));

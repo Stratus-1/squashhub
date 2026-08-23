@@ -4969,14 +4969,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Fail-closed audience filter: a bulk send only ever reaches registration
       // rows whose member is inside the chosen invitation audience.
       const allowedIds = audienceMemberIds.length > 0 ? new Set(audienceMemberIds) : null;
-      const regs =
+      let regs =
         !only && allowedIds
           ? ((allRegs || []) as any[]).filter((r) => allowedIds.has(r.club_member_id))
           : ((allRegs || []) as any[]);
-      if (!only && allowedIds && regs.length === 0) {
+
+      // Fail-closed VISITOR guard. Visitors may sit in the player pool, but
+      // they are never notified unless "Include visitors" is explicitly on.
+      if (!includeVisitors && regs.length > 0) {
+        const memberIds = Array.from(new Set(regs.map((r: any) => r.club_member_id).filter(Boolean)));
+        const { data: roleRows, error: roleErr } = await fromExt("club_members")
+          .select("id, role, club_member_number")
+          .in("id", memberIds);
+        if (roleErr) throw roleErr;
+        const { kept, removed } = filterVisitorRecipients(regs as any[], (roleRows || []) as any[], false);
+        regs = kept;
+        if (removed > 0) {
+          toast.info(`${removed} visitor${removed === 1 ? "" : "s"} skipped — turn on “Include visitors” to invite them.`);
+        }
+      }
+
+      if (!only && regs.length === 0) {
         toast.error("Nobody in the selected invitation audience — nothing was sent.");
         return;
       }
+
 
       // Fail-closed recipient resolution. A selective send resolves ONLY the
       // exact ids the organiser ticked; it never widens to the roster.

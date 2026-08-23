@@ -589,6 +589,70 @@ export default function LeagueGameDetail() {
   const teamLogosByCode = teamMeta?.logoByCode;
   const teamRulesByCode = teamMeta?.ruleByCode;
 
+  // ---- Doubles support -------------------------------------------------
+  // A doubles league plays RUBBERS (pairs), not one row per player. The
+  // scorecard must render one row per rubber and show both partner names.
+  const { data: doublesInfo } = useQuery({
+    queryKey: ["league-fixture-doubles", fixture?.home_team_code, fixture?.away_team_code],
+    enabled: !!(fixture?.home_team_code || fixture?.away_team_code),
+    queryFn: async () => {
+      const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
+      if (codes.length === 0) return null;
+      const { data: leagues } = await (supabase as any)
+        .from("leagues").select("id, code").in("code", codes);
+      if (!leagues?.length) return null;
+      const leagueIds = (leagues as any[]).map((l) => l.id);
+      const codeByLeagueId = new Map<string, string>(
+        (leagues as any[]).map((l) => [l.id, String(l.code || "").toUpperCase()]),
+      );
+
+      const { data: rules } = await (supabase as any)
+        .from("league_rules")
+        .select("league_id, discipline, doubles_rubbers")
+        .in("league_id", leagueIds);
+      const disciplines = (rules || []).map((r: any) => String(r.discipline || "singles"));
+      const isDoubles = disciplines.some((d) => d === "doubles" || d === "hybrid");
+      if (!isDoubles) return { isDoubles: false, rubbers: 0, pairsByCode: {} as Record<string, Array<{ code: string; name: string }>> };
+      const rubbers = Math.max(
+        1,
+        ...(rules || []).map((r: any) => Number(r.doubles_rubbers) || 0),
+      );
+
+      const { data: pairs } = await (supabase as any)
+        .from("league_team_pairs")
+        .select("league_id, pair_label, pair_order, player_one_member_id, player_two_member_id, is_active")
+        .in("league_id", leagueIds)
+        .eq("is_active", true)
+        .order("pair_order", { ascending: true });
+
+      const memberIds = new Set<string>();
+      for (const p of (pairs || []) as any[]) {
+        if (p.player_one_member_id) memberIds.add(p.player_one_member_id);
+        if (p.player_two_member_id) memberIds.add(p.player_two_member_id);
+      }
+      const nameById = new Map<string, string>();
+      if (memberIds.size) {
+        const { data: members } = await supabase
+          .from("club_members").select("id, name").in("id", [...memberIds]);
+        for (const m of (members || []) as any[]) nameById.set(m.id, m.name || "");
+      }
+
+      const pairsByCode: Record<string, Array<{ code: string; name: string }>> = {};
+      for (const p of (pairs || []) as any[]) {
+        const key = codeByLeagueId.get(p.league_id);
+        if (!key) continue;
+        const one = nameById.get(p.player_one_member_id) || "";
+        const two = nameById.get(p.player_two_member_id) || "";
+        const label = [one, two].filter(Boolean).join(" & ") || p.pair_label || "";
+        if (!label) continue;
+        (pairsByCode[key] ||= []).push({ code: "", name: label });
+      }
+      return { isDoubles: true, rubbers, pairsByCode };
+    },
+  });
+  const doublesRubbers = doublesInfo?.isDoubles ? doublesInfo.rubbers : 0;
+
+
   // NSF code -> overlay info from NSA roster
   const nsaRosterMap = useMemo(() => {
     const map = new Map<string, { name: string; won: number; lost: number; played: number; side: "home" | "away" }>();

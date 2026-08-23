@@ -38,7 +38,33 @@ interface Invoice {
   display_price_per_member?: number | null;
   display_total?: number | null;
   fx_rate_to_zar?: number | null;
+  billing_month?: string | null;
+  invoice_kind?: string | null;
+  line_items?: InvoiceLine[] | null;
+  subscription_amount?: number | null;
+  whatsapp_amount?: number | null;
+  whatsapp_message_count?: number | null;
 }
+
+interface InvoiceLine {
+  kind: "subscription" | "whatsapp";
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  period_start?: string;
+  period_end?: string;
+}
+
+/** Line items for consolidated invoices; empty for legacy subscription-only rows. */
+const lineItemsOf = (inv: Invoice): InvoiceLine[] =>
+  Array.isArray(inv.line_items) ? (inv.line_items as InvoiceLine[]) : [];
+
+const INVOICE_KIND_LABEL: Record<string, string> = {
+  subscription: "Subscription",
+  whatsapp: "WhatsApp usage",
+  combined: "Subscription + WhatsApp",
+};
 
 const STATUS_COLORS: Record<string, string> = {
   paid: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
@@ -73,7 +99,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
         .eq("club_id", clubId)
         .order("issued_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as Invoice[];
+      return (data || []) as unknown as Invoice[];
     },
   });
 
@@ -277,7 +303,16 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                   </TableCell>
                   <TableCell className="text-xs">
                     {fmtDate(inv.period_start)} → {fmtDate(inv.period_end)}
-                    <div className="text-[10px] uppercase text-muted-foreground">{inv.billing_cycle}</div>
+                    <div className="text-[10px] uppercase text-muted-foreground">
+                      {inv.invoice_kind ? INVOICE_KIND_LABEL[inv.invoice_kind] || inv.invoice_kind : inv.billing_cycle}
+                    </div>
+                    {lineItemsOf(inv).length > 1 && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {lineItemsOf(inv)
+                          .map((l) => `${l.kind === "whatsapp" ? "WhatsApp" : "Subscription"} ${fmtMoney(Number(l.amount), inv.currency)}`)
+                          .join(" · ")}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right text-xs">{inv.member_count}</TableCell>
                   <TableCell className="text-right font-semibold text-xs">
@@ -516,7 +551,18 @@ function SubscriptionSummaryPanel({
   return (
     <Card className="p-3 md:p-4 border-primary/30 bg-primary/5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SummaryCell label="Current plan" value={planName} />
+        <SummaryCell
+          label="Current plan"
+          value={
+            <span>
+              {planName}
+              <span className="block text-[10px] font-normal text-muted-foreground">
+                Subscription billing: {freqLabel.toLowerCase()} · WhatsApp usage: billed monthly
+              </span>
+            </span>
+          }
+        />
+
 
         <SummaryCell
           label="Status"
@@ -526,7 +572,19 @@ function SubscriptionSummaryPanel({
             </Badge>
           }
         />
-        <SummaryCell label={trialing ? "Trial ends" : "Next renewal"} value={fmtDate(nextRenewal)} />
+        <SummaryCell
+          label={trialing ? "Trial ends" : "Next subscription billing"}
+          value={
+            <span>
+              {fmtDate(nextRenewal)}
+              {!trialing && sub?.current_period_end && (
+                <span className="block text-[10px] font-normal text-muted-foreground">
+                  Subscription paid through {fmtDate(sub.current_period_end)}
+                </span>
+              )}
+            </span>
+          }
+        />
         <SummaryCell
           label="Amount due"
           value={
@@ -717,7 +775,22 @@ function renderInvoiceHtml(
   <table>
     <thead><tr><th>Description</th><th class="right">Qty</th><th class="right">Unit</th><th class="right">Amount</th></tr></thead>
     <tbody>
-      <tr>
+      ${
+        lineItemsOf(inv).length
+          ? lineItemsOf(inv)
+              .map(
+                (l) => `<tr>
+        <td>
+          <div style="font-weight:600">${escapeHtml(l.description)}</div>
+          ${l.period_start ? `<div class="muted">${fmtDate(l.period_start)} → ${fmtDate(l.period_end)}</div>` : ""}
+        </td>
+        <td class="right">${Number(l.quantity ?? 1)}</td>
+        <td class="right">${money(Number(l.unit_price || 0))}</td>
+        <td class="right">${money(Number(l.amount || 0))}</td>
+      </tr>`
+              )
+              .join("")
+          : `<tr>
         <td>
           <div style="font-weight:600">${escapeHtml(inv.plan_name)}</div>
           <div class="muted">Subscription — ${fmtDate(inv.period_start)} → ${fmtDate(inv.period_end)}</div>
@@ -725,7 +798,8 @@ function renderInvoiceHtml(
         <td class="right">${inv.member_count}</td>
         <td class="right">${money(Number(inv.price_per_member))}</td>
         <td class="right">${money(Number(inv.subtotal))}</td>
-      </tr>
+      </tr>`
+      }
     </tbody>
   </table>
 

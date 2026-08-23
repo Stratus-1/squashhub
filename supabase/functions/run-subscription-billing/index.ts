@@ -1,6 +1,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { addBillingMonths, CYCLE_MONTHS, cycleDiscount, type BillingCycle } from './billing-cycle.ts'
+import {
+  buildConsolidatedInvoice,
+  isSubscriptionDue,
+  monthStartIso,
+  previousMonthRange,
+} from './consolidated.ts'
 
 interface RequestBody {
   dryRun?: boolean
@@ -280,7 +286,53 @@ Deno.serve(async (req) => {
   const iso = (d: Date) => d.toISOString().slice(0, 10)
   const billingDay = iso(billingDate)
 
+  // --- Consolidated monthly billing -------------------------------------
+  // One invoice per club per billing month: subscription (renewal months only)
+  // + WhatsApp usage for the PREVIOUS calendar month (billed in arrears).
+  const billingMonth = monthStartIso(billingDate)
+  const waRange = previousMonthRange(billingDate)
 
+  // Existing invoice for this club + month → idempotency. A previously failed
+  // invoice is retried by reusing its row.
+  const existingByClub = new Map<string, any>()
+  if (clubIds.length) {
+    const { data: existing } = await supabase
+      .from('platform_subscription_invoices')
+      .select('id, club_id, invoice_number, status, billing_month')
+      .in('club_id', clubIds)
+      .eq('billing_month', billingMonth)
+    for (const e of existing || []) existingByClub.set(e.club_id, e)
+  }
+
+  // Unbilled WhatsApp usage per club for the previous month.
+  const waUsage = new Map<
+    string,
+    { count: number; amount: number; utility: number; service: number; marketing: number; ids: string[] }
+  >()
+  if (clubIds.length) {
+    const { data: waRows } = await supabase
+      .from('whatsapp_send_log')
+      .select('id, club_id, category, unit_cost')
+      .in('club_id', clubIds)
+      .eq('status', 'sent')
+      .eq('billable', true)
+      .is('platform_invoice_id', null)
+      .is('invoice_id', null)
+      .gte('created_at', `${waRange.start}T00:00:00Z`)
+      .lt('created_at', `${waRange.end}T23:59:59.999Z`)
+      .range(0, 99999)
+    for (const r of waRows || []) {
+      const cur =
+        waUsage.get(r.club_id) ?? { count: 0, amount: 0, utility: 0, service: 0, marketing: 0, ids: [] }
+      cur.count++
+      cur.amount += Number(r.unit_cost || 0)
+      if (r.category === 'utility') cur.utility++
+      else if (r.category === 'service') cur.service++
+      else if (r.category === 'marketing') cur.marketing++
+      cur.ids.push(r.id)
+      waUsage.set(r.club_id, cur)
+    }
+  }
 
   // Get current invoice count for this year to build sequential numbers
   const { count: existingCount } = await supabase
@@ -340,17 +392,12 @@ Deno.serve(async (req) => {
         ? +(subtotalLocal / billableMembers).toFixed(2)
         : +(flatRateLocal * months).toFixed(2)
 
-      const vatLocal = +(subtotalLocal * vatRate).toFixed(2)
-      const displayTotal = +(subtotalLocal + vatLocal).toFixed(2)
-
       // Convert to ZAR (actual charge currency).
       const fxRate = fxToZar(displayCurrency)
       const billingCurrency = 'ZAR'
       const pricePerMemberZar = +(pricePerMemberLocal * fxRate).toFixed(2)
       const minimumChargeZar = +(minimumChargeLocal * fxRate).toFixed(2)
-      const subtotal = +(subtotalLocal * fxRate).toFixed(2)
-      const vatAmount = +(vatLocal * fxRate).toFixed(2)
-      const total = +(displayTotal * fxRate).toFixed(2)
+      const subscriptionZar = +(subtotalLocal * fxRate).toFixed(2)
 
       // The first billable period starts the DAY AFTER the trial ends; afterwards
       // we continue from the last invoiced period_end.
@@ -366,35 +413,90 @@ Deno.serve(async (req) => {
         periodStart = new Date(Date.UTC(billingDate.getUTCFullYear(), billingDate.getUTCMonth(), billingDate.getUTCDate()))
       }
 
+      const periodEnd = addBillingMonths(periodStart, cycle)
 
-      // Nothing to bill until the period has actually started (invoiced in advance
-      // ON the 1st, never before).
-      if (!dryRun && billingDay < iso(periodStart)) {
+      // Subscription is charged only in a renewal month (monthly clubs: every
+      // month; 6-monthly / annual clubs: only when the next period has started).
+      // Dry runs always price the subscription so admins can preview it.
+      const subDue = dryRun || isSubscriptionDue(iso(periodStart), billingDay)
+
+      const usage = waUsage.get(sub.club_id)
+      const consolidated = buildConsolidatedInvoice({
+        subscription: {
+          due: subDue,
+          planName: plan.name,
+          billingCycle: cycle,
+          memberCount: billableMembers,
+          pricePerMember: pricePerMemberZar,
+          amount: subscriptionZar,
+          periodStart: iso(periodStart),
+          periodEnd: iso(periodEnd),
+        },
+        whatsapp: usage
+          ? {
+              messageCount: usage.count,
+              amount: +usage.amount.toFixed(2),
+              periodStart: waRange.start,
+              periodEnd: waRange.end,
+              utilityCount: usage.utility,
+              serviceCount: usage.service,
+              marketingCount: usage.marketing,
+            }
+          : null,
+        vatRate,
+      })
+
+      // Nothing to bill this month at all (no renewal, no WhatsApp usage).
+      if (consolidated.skip) {
         skipped++
         results.push({
           subscription_id: sub.id,
           club: club?.name,
           status: 'skipped',
-          reason: `Billing starts ${iso(periodStart)}`,
+          reason: subDue ? 'Nothing billable this month' : `Next renewal ${iso(periodStart)}`,
         })
         continue
       }
 
-      const periodEnd = addBillingMonths(periodStart, cycle)
+      const subtotal = consolidated.subtotal
+      const vatAmount = consolidated.vatAmount
+      const total = consolidated.total
+      const displayTotal = +((subtotal + vatAmount) / (fxRate || 1)).toFixed(2)
 
       const dueDate = new Date(billingDate)
       dueDate.setDate(dueDate.getDate() + 14)
 
-      const invoiceNumber = `${invoicePrefix}${yearStr}-${String(seq).padStart(5, '0')}`
+      // Idempotency: one invoice per club per billing month. An existing issued
+      // or paid invoice is left alone; a failed one is retried in place.
+      const prior = existingByClub.get(sub.club_id)
+      if (!dryRun && prior && prior.status !== 'failed') {
+        skipped++
+        results.push({
+          subscription_id: sub.id,
+          club: club?.name,
+          invoice_number: prior.invoice_number,
+          status: 'skipped',
+          reason: `Already invoiced for ${billingMonth}`,
+        })
+        continue
+      }
+
+      const invoiceNumber = prior?.invoice_number || `${invoicePrefix}${yearStr}-${String(seq).padStart(5, '0')}`
 
       if (dryRun) {
         results.push({
           subscription_id: sub.id,
           club: club?.name,
           invoice_number: invoiceNumber,
+          billing_month: billingMonth,
+          invoice_kind: consolidated.kind,
+          line_items: consolidated.lineItems,
           member_count: memberCount,
           currency: billingCurrency,
           price_per_member: pricePerMemberZar,
+          subscription_amount: consolidated.subscriptionAmount,
+          whatsapp_amount: consolidated.whatsappAmount,
+          whatsapp_message_count: consolidated.whatsappMessageCount,
           subtotal,
           vat: vatAmount,
           total,
@@ -410,39 +512,68 @@ Deno.serve(async (req) => {
 
       // Insert invoice record — stored in ZAR (what Stitch charges), with the
       // original local-currency amounts kept for display on the invoice/email.
-      const { data: inv, error: invErr } = await supabase
-        .from('platform_subscription_invoices')
-        .insert({
-          invoice_number: invoiceNumber,
-          club_id: sub.club_id,
-          subscription_id: sub.id,
-          plan_id: sub.plan_id,
-          plan_name: plan.name,
-          billing_cycle: cycle,
-          period_start: periodStart.toISOString().slice(0, 10),
-          period_end: periodEnd.toISOString().slice(0, 10),
-          member_count: billableMembers,
-          price_per_member: pricePerMemberZar,
-          minimum_charge: minimumChargeZar,
-          subtotal,
-          vat_amount: vatAmount,
-          total,
-          currency: billingCurrency,
-          display_currency: displayCurrency,
-          display_price_per_member: pricePerMemberLocal,
-          display_total: displayTotal,
-          fx_rate_to_zar: fxRate,
-          due_date: dueDate.toISOString().slice(0, 10),
-          snapshot: settings,
-          // Snapshot of the club's billing details at issue time so past
-          // invoices keep the address/VAT/PO that applied then.
-          billing_details: clubBillingProfiles.get(sub.club_id) ?? null,
-          status: 'issued',
-        })
-        .select()
-        .single()
+      const invoicePayload = {
+        invoice_number: invoiceNumber,
+        club_id: sub.club_id,
+        subscription_id: sub.id,
+        plan_id: sub.plan_id,
+        plan_name: plan.name,
+        billing_cycle: cycle,
+        billing_month: billingMonth,
+        invoice_kind: consolidated.kind,
+        line_items: consolidated.lineItems,
+        subscription_amount: consolidated.subscriptionAmount,
+        whatsapp_amount: consolidated.whatsappAmount,
+        whatsapp_message_count: consolidated.whatsappMessageCount,
+        period_start: consolidated.subscriptionAmount > 0 ? iso(periodStart) : waRange.start,
+        period_end: consolidated.subscriptionAmount > 0 ? iso(periodEnd) : waRange.end,
+        member_count: billableMembers,
+        price_per_member: pricePerMemberZar,
+        minimum_charge: minimumChargeZar,
+        subtotal,
+        vat_amount: vatAmount,
+        total,
+        currency: billingCurrency,
+        display_currency: displayCurrency,
+        display_price_per_member: pricePerMemberLocal,
+        display_total: displayTotal,
+        fx_rate_to_zar: fxRate,
+        due_date: dueDate.toISOString().slice(0, 10),
+        snapshot: settings,
+        // Snapshot of the club's billing details at issue time so past
+        // invoices keep the address/VAT/PO that applied then.
+        billing_details: clubBillingProfiles.get(sub.club_id) ?? null,
+        status: 'issued',
+      }
 
-      if (invErr) throw invErr
+      let inv: any
+      if (prior) {
+        const { data, error } = await supabase
+          .from('platform_subscription_invoices')
+          .update(invoicePayload)
+          .eq('id', prior.id)
+          .select()
+          .single()
+        if (error) throw error
+        inv = data
+      } else {
+        const { data, error } = await supabase
+          .from('platform_subscription_invoices')
+          .insert(invoicePayload)
+          .select()
+          .single()
+        if (error) throw error
+        inv = data
+      }
+
+      // Mark the WhatsApp usage as billed so it can never be charged twice.
+      if (usage?.ids.length) {
+        await supabase
+          .from('whatsapp_send_log')
+          .update({ platform_invoice_id: inv.id })
+          .in('id', usage.ids)
+      }
+
 
 
       // Build the club's subscription management URL (for the email fallback link
@@ -491,6 +622,11 @@ Deno.serve(async (req) => {
           memberCount: billableMembers,
           pricePerMember: pricePerMemberZar,
           minimumCharge: minimumChargeZar,
+          lineItems: consolidated.lineItems,
+          invoiceKind: consolidated.kind,
+          subscriptionAmount: consolidated.subscriptionAmount,
+          whatsappAmount: consolidated.whatsappAmount,
+          whatsappMessageCount: consolidated.whatsappMessageCount,
           subtotal,
           vatAmount,
           total,
@@ -545,24 +681,36 @@ Deno.serve(async (req) => {
         .eq('id', inv.id)
 
 
-      // Advance the subscription period
-      await supabase
-        .from('club_subscriptions')
-        .update({
-          current_period_start: periodStart.toISOString(),
-          current_period_end: periodEnd.toISOString(),
-          member_count: memberCount,
-          amount_due: total,
-          status: sub.status === 'trial' ? 'active' : sub.status,
-        })
-        .eq('id', sub.id)
+      // Advance the subscription period ONLY when the subscription was actually
+      // charged. WhatsApp-only invoices must not move a 6-monthly/annual club's
+      // renewal date forward.
+      if (consolidated.subscriptionAmount > 0) {
+        await supabase
+          .from('club_subscriptions')
+          .update({
+            current_period_start: periodStart.toISOString(),
+            current_period_end: periodEnd.toISOString(),
+            member_count: memberCount,
+            amount_due: total,
+            status: sub.status === 'trial' ? 'active' : sub.status,
+          })
+          .eq('id', sub.id)
+      } else {
+        await supabase
+          .from('club_subscriptions')
+          .update({ member_count: memberCount })
+          .eq('id', sub.id)
+      }
 
       issued++
-      seq++
+      if (!prior) seq++
       results.push({
         subscription_id: sub.id,
         club: club?.name,
         invoice_number: invoiceNumber,
+        invoice_kind: consolidated.kind,
+        subscription_amount: consolidated.subscriptionAmount,
+        whatsapp_amount: consolidated.whatsappAmount,
         total,
         email_status: emailStatus,
         status: 'issued',

@@ -198,7 +198,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     teamNames: Record<number, string>;
     reservesName: string;
   }>(null);
-  const [step, setStep] = useState("affiliations");
+  const [step, setStep] = useState<string>("leagues");
   const { data: clubFillDefault } = useQuery({
     queryKey: ["club-fill-settings", clubId],
     queryFn: async () => {

@@ -71,21 +71,41 @@ export function DoublesPairsDialog({
   const activeTeam = teamId || teams[0]?.id || "";
 
   const { data: roster = [] } = useQuery({
-    queryKey: ["doubles-pairs-roster", activeTeam],
-    enabled: open && !!activeTeam,
+    queryKey: ["doubles-pairs-roster", clubId, activeTeam],
+    enabled: open && !!clubId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("member_league_registrations")
-        .select("club_member_id, club_members!inner(id, name, gender)")
-        .eq("league_id", activeTeam);
+      // Team registrations (if any) are shown first, but pairs can be built
+      // from ANY club member — teams are usually filled after pairing.
+      const [{ data: regs }, { data: members, error }] = await Promise.all([
+        activeTeam
+          ? supabase
+              .from("member_league_registrations")
+              .select("club_member_id")
+              .eq("league_id", activeTeam)
+          : Promise.resolve({ data: [] as any[] } as any),
+        supabase
+          .from("club_members")
+          .select("id, name, gender, status")
+          .eq("club_id", clubId)
+          .order("name"),
+      ]);
       if (error) throw error;
-      return (data ?? []).map((r: any) => ({
-        id: r.club_member_id as string,
-        name: (r.club_members?.name as string) ?? "Unknown",
-        gender: (r.club_members?.gender as string) ?? null,
-      }));
+      const registered = new Set((regs ?? []).map((r: any) => r.club_member_id));
+      const list = (members ?? [])
+        .filter((m: any) => !m.status || m.status === "active")
+        .map((m: any) => ({
+          id: m.id as string,
+          name: (m.name as string) ?? "Unknown",
+          gender: (m.gender as string) ?? null,
+          inTeam: registered.has(m.id),
+        }));
+      list.sort((a, b) =>
+        a.inTeam === b.inTeam ? a.name.localeCompare(b.name) : a.inTeam ? -1 : 1,
+      );
+      return list;
     },
   });
+
 
   const { data: pairs = [] } = useQuery({
     queryKey: ["doubles-pairs", activeTeam, seasonId],
@@ -178,7 +198,9 @@ export function DoublesPairsDialog({
                 <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                 <SelectContent>
                   {roster.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}{r.inTeam ? "" : " · not in team"}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -189,7 +211,9 @@ export function DoublesPairsDialog({
                 <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                 <SelectContent>
                   {roster.filter((r) => r.id !== p1).map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}{r.inTeam ? "" : " · not in team"}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

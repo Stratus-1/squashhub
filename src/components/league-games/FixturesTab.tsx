@@ -831,6 +831,8 @@ function RoundCard({
   const [reverseFromPrev, setReverseFromPrev] = useState<boolean>(false);
   const [showTeamGrid, setShowTeamGrid] = useState<boolean>(false);
   const [postponeOpen, setPostponeOpen] = useState(false);
+  const [autoRun, setAutoRun] = useState(false);
+
 
   // Prior rounds in the same association (read-only — never mutated).
   const { data: priorFixtures } = useQuery({

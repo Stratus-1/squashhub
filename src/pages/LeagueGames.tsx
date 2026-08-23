@@ -154,11 +154,24 @@ export default function LeagueGames() {
     return [selectedAssoc.platform_association_id];
   }, [selectedAssoc]);
 
-  // Filter leagues to the selected association
+  // Season context for the selected association (Phase 3 read path).
+  const { currentSeasonId } = useLeagueSeasons({
+    associationId: selectedAssocId ?? undefined,
+    platformAssociationId: selectedAssoc?.platform_association_id ?? undefined,
+  });
+
+  // Filter leagues to the selected association, then to the active season.
+  // Teams that predate seasons (NULL season_id) are kept as the fallback set,
+  // so nothing changes for clubs that are not season-linked yet.
   const leaguesInScope = useMemo(
-    () => (clubLeagues || []).filter((l) => l.association_id === selectedAssocId),
-    [clubLeagues, selectedAssocId]
+    () =>
+      pickSeasonScoped(
+        (clubLeagues || []).filter((l) => l.association_id === selectedAssocId),
+        currentSeasonId,
+      ),
+    [clubLeagues, selectedAssocId, currentSeasonId]
   );
+
 
   const clubTeamCodes = useMemo<string[]>(() => {
     return leaguesInScope.map((l) => l.code).filter((c): c is string => typeof c === "string" && c.length > 0);

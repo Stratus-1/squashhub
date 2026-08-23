@@ -10367,6 +10367,10 @@ export type Database = {
       }
       auto_complete_past_tournaments: { Args: never; Returns: number }
       bill_wifi_monthly: { Args: never; Returns: Json }
+      can_access_champ_match: {
+        Args: { _match_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_access_league_fixture: {
         Args: { _fixture_id: string; _user_id: string }
         Returns: boolean

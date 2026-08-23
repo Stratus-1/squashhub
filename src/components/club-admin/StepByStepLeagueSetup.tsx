@@ -106,7 +106,6 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const [leagueNumber, setLeagueNumber] = useState<string>("1st");
   const [seasonYear, setSeasonYear] = useState<number>(new Date().getFullYear());
   const [startPosition, setStartPosition] = useState<number>(1);
-  const [numMembers, setNumMembers] = useState<number>(0);
   const [numTeams, setNumTeams] = useState<number>(1);
   const [perTeam, setPerTeam] = useState<number>(4);
   const [reserves, setReserves] = useState<number>(0);
@@ -137,7 +136,6 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         setNumTeams(editContext.numTeams);
         setPerTeam(editContext.perTeam);
         setReserves(editContext.reserves);
-        setNumMembers(editContext.numTeams * editContext.perTeam + editContext.reserves);
         setDistribution("snake");
         setAllocatedIds(new Set());
         setSessionSummary([]);
@@ -150,7 +148,6 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         setGender("men");
         setLeagueNumber("1st");
         setStartPosition(1);
-        setNumMembers(0);
         setNumTeams(1);
         setPerTeam(4);
         setReserves(0);
@@ -570,13 +567,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
             {inherited.category && (
               <Badge variant="secondary" className="h-5 text-[10px]">{CATEGORY_LABELS[inherited.category]}</Badge>
             )}
-            {inherited.singlesRubbers > 0 && (
-              <Badge variant="outline" className="h-5 text-[10px]">{inherited.singlesRubbers} singles rubber{inherited.singlesRubbers !== 1 ? "s" : ""}</Badge>
-            )}
-            {inherited.doublesRubbers > 0 && (
-              <Badge variant="outline" className="h-5 text-[10px]">{inherited.doublesRubbers} doubles rubber{inherited.doublesRubbers !== 1 ? "s" : ""}</Badge>
-            )}
-            {questions.askPairsPerTeam && (
+            {(questions.askDoublesRubbers) && (
               <Badge variant="outline" className="h-5 text-[10px]">
                 {inherited.pairingPolicy === "fixed" ? "Fixed season pairs" : "Pairs per fixture"}
               </Badge>

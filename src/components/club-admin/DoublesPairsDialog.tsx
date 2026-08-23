@@ -152,15 +152,23 @@ export function DoublesPairsDialog({
         return saved.has(p1) && saved.has(p2);
       });
       if (alreadySaved) throw new Error("This pair is already allocated to the selected team.");
-      const { error } = await (supabase as any).from("league_team_pairs").insert({
-        club_id: clubId,
-        league_id: activeTeam,
-        season_id: activeSeasonId,
-        player_one_member_id: p1,
-        player_two_member_id: p2,
-        pair_order: pairs.length + 1,
-      });
+      // Ask for the row back: a write that succeeds but is not readable means
+      // this account cannot see the club's pairs, which used to look exactly
+      // like "nothing saved". Surface it instead of a false success toast.
+      const { data: created, error } = await (supabase as any)
+        .from("league_team_pairs")
+        .insert({
+          club_id: clubId,
+          league_id: activeTeam,
+          season_id: activeSeasonId,
+          player_one_member_id: p1,
+          player_two_member_id: p2,
+          pair_order: pairs.length + 1,
+        })
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      if (!created?.id) throw new Error("Pair was saved but this club's pairs are not visible to your account.");
     },
     onSuccess: () => {
       toast.success("Pair created");
@@ -174,9 +182,15 @@ export function DoublesPairsDialog({
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from("league_team_pairs").delete().eq("id", id);
+      const { data: deleted, error } = await (supabase as any)
+        .from("league_team_pairs")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error) throw error;
+      if (!deleted || deleted.length === 0) throw new Error("Pair could not be removed — your account may not have access to this club's pairs.");
     },
+
     onSuccess: () => {
       toast.success("Pair removed");
       qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, activeSeasonId] });

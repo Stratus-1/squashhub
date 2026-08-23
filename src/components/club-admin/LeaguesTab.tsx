@@ -375,14 +375,15 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     <div className="space-y-6 mt-4">
       <SetupSteps steps={steps} value={step} onChange={setStep} />
 
-      {/* Associations */}
-      {step === "affiliations" && (
+      {/* Step 1 — Create League */}
+      {step === "leagues" && (
       <div>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div>
             <h3 className="font-semibold">Your Leagues</h3>
-            <p className="text-xs text-muted-foreground">Each league (e.g. Singles, Doubles) has its own teams, rounds and fixtures. Fee settings are managed in the Fees tab.</p>
+            <p className="text-xs text-muted-foreground">{SELECT_OR_CREATE_COPY} Each league (e.g. Singles, Doubles) has its own format, teams, rounds and fixtures. Fee settings are managed in the Fees tab.</p>
           </div>
+
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setBulkBookOpen(true)}>
               <CalendarDays className="w-4 h-4 mr-1" />Bulk book home fixtures

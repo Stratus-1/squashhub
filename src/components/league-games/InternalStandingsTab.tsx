@@ -365,18 +365,29 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
           </SelectContent>
         </Select>
 
-        <Select value={seasonYear} onValueChange={setSeasonYear}>
-          <SelectTrigger className="h-8 w-[110px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {[String(CURRENT_YEAR), String(CURRENT_YEAR - 1), String(CURRENT_YEAR - 2)].map((y) => (
-              <SelectItem key={y} value={y}>
-                {y}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {hasSeasons ? (
+          <Select
+            value={currentSeasonId ?? undefined}
+            onValueChange={(v) => setSelectedSeasonId(v)}
+          >
+            <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectValue placeholder="Season" />
+            </SelectTrigger>
+            <SelectContent>
+              {seasons.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {seasonLabel(s)}
+                  {s.is_current ? " · current" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <span className="h-8 inline-flex items-center rounded border px-2 text-xs text-muted-foreground">
+            {seasonYear}
+          </span>
+        )}
+
 
         <Button
           size="sm"

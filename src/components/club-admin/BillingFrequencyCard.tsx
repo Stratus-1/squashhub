@@ -355,7 +355,7 @@ export function BillingFrequencyCard({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" onClick={handleSave} disabled={saving || !dirty || (locked && choice !== persistedChoice)}>
+        <Button size="sm" onClick={handleSave} disabled={saving || freqLoading || !dirty || (locked && choice !== persistedChoice)}>
           {saving
             ? "Saving…"
             : !dirty

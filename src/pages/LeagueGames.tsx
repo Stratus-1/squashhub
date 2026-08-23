@@ -239,6 +239,11 @@ export default function LeagueGames() {
                       Internal
                     </Badge>
                   )}
+                  {(a as any).discipline === "doubles" && (
+                    <Badge variant={active ? "secondary" : "outline"} className="ml-1 text-[9px] px-1 py-0">
+                      Doubles
+                    </Badge>
+                  )}
                 </Button>
               );
             })}

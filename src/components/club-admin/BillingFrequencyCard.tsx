@@ -14,7 +14,7 @@ import { computeTieredCharge } from "@/lib/saas-tiers";
 import { useClubBillingStart } from "@/hooks/use-billing-start";
 
 
-import { normalizeBillingOption, optionToCycle, billingOptionLabel, type BillingOption } from "@/lib/billing/frequency";
+import { normalizeBillingOption, billingOptionLabel, type BillingOption } from "@/lib/billing/frequency";
 type PaymentMethod = "eft" | "card";
 
 

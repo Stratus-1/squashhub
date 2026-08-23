@@ -111,6 +111,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const [perTeam, setPerTeam] = useState<number>(4);
   const [reserves, setReserves] = useState<number>(0);
   const [distribution, setDistribution] = useState<Distribution>("snake");
+  const [pairsPerTeam, setPairsPerTeam] = useState<number>(2);
   const [submitting, setSubmitting] = useState(false);
   // Track member IDs allocated to a saved league this session (so they're excluded from later rounds)
   const [allocatedIds, setAllocatedIds] = useState<Set<string>>(new Set());

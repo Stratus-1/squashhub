@@ -255,6 +255,18 @@ export function MyChampionships() {
                   const markPerm = selfScheduled
                     ? canMarkChampMatch(m, memberId)
                     : { allowed: false as const };
+                  // Entering an already-played score is independent of both the
+                  // scheduling mode and any court booking.
+                  const resultPerm = canEnterChampResult(m, memberId);
+                  const openResult = (e: any) => {
+                    e.stopPropagation();
+                    setEntering({
+                      match: m,
+                      champ,
+                      a: isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a),
+                      b: isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b),
+                    });
+                  };
 
                   if (unscheduled) {
                     return (

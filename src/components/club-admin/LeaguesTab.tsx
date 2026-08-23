@@ -18,6 +18,15 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  COMPETITION_CATEGORIES,
+  COMPETITION_DISCIPLINES,
+  CATEGORY_LABELS,
+  DISCIPLINE_LABELS,
+  inferCategory,
+  type CompetitionCategory,
+  type CompetitionDiscipline,
+} from "@/lib/leagues/category";
 import { StepByStepLeagueSetup } from "./StepByStepLeagueSetup";
 import { AddReservesDialog } from "./AddReservesDialog";
 import { UserPlus } from "lucide-react";
@@ -173,7 +182,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
   const [editSetup, setEditSetup] = useState<null | {
     associationId: string;
-    gender: "men" | "ladies" | "mixed";
+    gender: "men" | "ladies" | "mixed" | "open";
     leagueNumber: string;
     numTeams: number;
     perTeam: number;
@@ -192,8 +201,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     enabled: !!clubId,
   });
   const clubDefaultFillUp = clubFillDefault?.fill_up_leagues_enabled ?? true;
-  const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
-  const [reservesGroup, setReservesGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
+  const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed" | "open"; leagues: League[] } | null>(null);
+  const [reservesGroup, setReservesGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed" | "open"; leagues: League[] } | null>(null);
   const qc = useQueryClient();
 
   const handleDeleteAssoc = async (id: string) => {
@@ -203,7 +212,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
   };
 
-  const openEditSetup = async (assocId: string | null, gender: "men" | "ladies" | "mixed", groupLeagues: League[]) => {
+  const openEditSetup = async (assocId: string | null, gender: "men" | "ladies" | "mixed" | "open", groupLeagues: League[]) => {
     if (!assocId) { toast.error("Edit Setup requires an association"); return; }
     if (groupLeagues.length === 0) return;
     // Detect league number from first non-reserves league
@@ -311,13 +320,15 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     qc.invalidateQueries({ queryKey: ["leagues"] });
   };
 
-  const menLeagues = leagues.filter(l => l.name.toLowerCase().includes("men's") || l.name.toLowerCase().startsWith("men"));
-  const ladiesLeagues = leagues.filter(l => l.name.toLowerCase().includes("ladies") || l.name.toLowerCase().includes("women"));
-  const mixedLeagues = leagues.filter(l => {
-    const n = l.name.toLowerCase();
-    return n.includes("mixed") && !menLeagues.includes(l) && !ladiesLeagues.includes(l);
-  });
-  const otherLeagues = leagues.filter(l => !menLeagues.includes(l) && !ladiesLeagues.includes(l) && !mixedLeagues.includes(l));
+  // Stored competition category is authoritative; the legacy name sniff is only
+  // a fallback for teams whose category could not be proven during backfill.
+  const categoryOf = (l: League): CompetitionCategory | null =>
+    (l as any).category ?? inferCategory((l as any).division) ?? inferCategory(l.name);
+  const menLeagues = leagues.filter(l => categoryOf(l) === "mens");
+  const ladiesLeagues = leagues.filter(l => categoryOf(l) === "ladies");
+  const mixedLeagues = leagues.filter(l => categoryOf(l) === "mixed");
+  const openLeagues = leagues.filter(l => categoryOf(l) === "open");
+  const otherLeagues = leagues.filter(l => categoryOf(l) === null);
 
   const sortLeagues = (list: League[]) =>
     [...list].sort((a, b) => {
@@ -369,8 +380,11 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 >
                   {a.scope === "internal" ? "Internal" : "Regional"}
                 </Badge>
-                {a.discipline === "doubles" && (
-                  <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0">Doubles</Badge>
+                {(a as any).discipline && (a as any).discipline !== "singles" && (
+                  <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0">{DISCIPLINE_LABELS[(a as any).discipline as CompetitionDiscipline] ?? (a as any).discipline}</Badge>
+                )}
+                {(a as any).category && (
+                  <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0">{CATEGORY_LABELS[(a as any).category as CompetitionCategory] ?? (a as any).category}</Badge>
                 )}
                 {a.external_source === "nsa" && (
                   <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0 border-emerald-300 text-emerald-700">NSA Live</Badge>
@@ -443,7 +457,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+
           <GenderColumn
             title="Men's"
             gender="men"
@@ -483,7 +498,21 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "mixed", leagues: list })}
             onEditSetup={(assocId, list) => openEditSetup(assocId, "mixed", list)}
           />
+          <GenderColumn
+            title="Open"
+            gender="open"
+            leagues={openLeagues}
+            associations={associations}
+            members={members}
+            sortLeagues={sortLeagues}
+            onDelete={handleDeleteLeague}
+            onDeleteGroup={handleDeleteGroup}
+            onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "open", leagues: list })}
+            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "open", leagues: list })}
+            onEditSetup={(assocId, list) => openEditSetup(assocId, "open", list)}
+          />
         </div>
+
 
         <SeasonArchiveCard clubId={clubId} />
 
@@ -575,7 +604,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 // ─── Gender Column: groups leagues by association, one Allocate button per association group ───
 function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onDeleteGroup, onAllocate, onAddReserves, onEditSetup }: {
   title: string;
-  gender: "men" | "ladies" | "mixed";
+  gender: "men" | "ladies" | "mixed" | "open";
   leagues: League[];
   associations: LeagueAssociation[];
   members: ClubMember[];
@@ -1342,7 +1371,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
 
 // ─── Allocate Players Dialog (drag & drop across leagues) ───
 function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenChange }: {
-  gender: "men" | "ladies" | "mixed";
+  gender: "men" | "ladies" | "mixed" | "open";
   leagues: League[];
   members: ClubMember[];
   clubId: string;
@@ -1522,7 +1551,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   // model). Legacy fallbacks (registration rows, regional tenant membership, profile
   // opt-in) are kept for historical members not yet migrated.
   const genderMembers = members
-    .filter(m => (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
+    .filter(m => ((gender === "mixed" || gender === "open") ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
     .filter(m => {
       if (!associationId) return true;
       if (permanentAffiliatedSet.has(m.id)) return true;
@@ -1568,7 +1597,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             shadow_player_rank: r.shadow_player_rank ?? null,
           }));
           const cleanRows = allRows.filter((row) => {
-            if (gender === "mixed") return true;
+            if ((gender === "mixed" || gender === "open")) return true;
             const g = (row.member?.gender || "").toLowerCase();
             const isLadies = g === "ladies" || g === "female" || g === "f";
             const matches = gender === "ladies" ? isLadies : !isLadies;
@@ -2292,7 +2321,7 @@ const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
 
 // ─── Association Dialog ───
 function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void; defaultMode?: "select" | "create" }) {
-  const [form, setForm] = useState<{ name: string; abbreviation: string; discipline: "singles" | "doubles" }>({ name: "", abbreviation: "", discipline: "singles" });
+  const [form, setForm] = useState<{ name: string; abbreviation: string; discipline: CompetitionDiscipline; category: CompetitionCategory; require_mixed_pair: boolean }>({ name: "", abbreviation: "", discipline: "singles", category: "mens", require_mixed_pair: false });
   const [mode, setMode] = useState<"select" | "create">(defaultMode);
   // Clubs may only create Internal leagues themselves. Regional/external leagues
   // must be joined via "Select Existing" (platform-managed by super admin).
@@ -2362,9 +2391,9 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
       else { toast.success(`Joined ${selectedOption.name}`); onOpenChange(false); setSelectedPlatformId(""); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     } else {
       if (!form.name.trim()) return;
-      const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId, scope });
+      const { error } = await fromExt("league_associations").insert({ ...form, require_mixed_pair: form.category === "mixed" ? form.require_mixed_pair : false, club_id: clubId, scope });
       if (error) toast.error(error.message);
-      else { toast.success("League created"); onOpenChange(false); setForm({ name: "", abbreviation: "", discipline: "singles" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
+      else { toast.success("League created"); onOpenChange(false); setForm({ name: "", abbreviation: "", discipline: "singles", category: "mens", require_mixed_pair: false }); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     }
   };
 
@@ -2408,11 +2437,28 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
               <div className="space-y-1">
                 <Label>Discipline</Label>
                 <div className="flex gap-2">
-                  <Button type="button" size="sm" className="flex-1" variant={form.discipline === "singles" ? "default" : "outline"} onClick={() => setForm(p => ({ ...p, discipline: "singles" }))}>Singles</Button>
-                  <Button type="button" size="sm" className="flex-1" variant={form.discipline === "doubles" ? "default" : "outline"} onClick={() => setForm(p => ({ ...p, discipline: "doubles" }))}>Doubles</Button>
+                  {COMPETITION_DISCIPLINES.map(d => (
+                    <Button key={d} type="button" size="sm" className="flex-1" variant={form.discipline === d ? "default" : "outline"} onClick={() => setForm(p => ({ ...p, discipline: d }))}>{DISCIPLINE_LABELS[d]}</Button>
+                  ))}
                 </div>
-                <p className="text-xs text-muted-foreground">Keeps Singles and Doubles leagues clearly separate — each has its own teams, rounds and fixtures.</p>
+                <p className="text-xs text-muted-foreground">Keeps Singles, Doubles and Hybrid leagues clearly separate — each has its own teams, rounds and fixtures.</p>
               </div>
+              <div className="space-y-1">
+                <Label>Category</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {COMPETITION_CATEGORIES.map(c => (
+                    <Button key={c} type="button" size="sm" className="flex-1" variant={form.category === c ? "default" : "outline"} onClick={() => setForm(p => ({ ...p, category: c }))}>{CATEGORY_LABELS[c]}</Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">Open allows any eligible players regardless of gender — it is not the same as Mixed.</p>
+                {form.category === "mixed" && (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                    <Checkbox checked={form.require_mixed_pair} onCheckedChange={v => setForm(p => ({ ...p, require_mixed_pair: !!v }))} />
+                    Require each pair/team to be mixed-gender
+                  </label>
+                )}
+              </div>
+
               <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground">Scope: Internal only</p>
                 <p className="mt-0.5">Only your club's members participate. Regional/external leagues must be joined via <em>Select Existing</em> — clubs cannot create their own regional leagues.</p>
@@ -2442,9 +2488,13 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
   // Club-owned internal leagues may be renamed by the club. Regional/platform
   // associations are shared across clubs, so their display name stays locked.
   const isInternalOwned = ((association.scope as any) || "") === "internal";
-  const [discipline, setDiscipline] = useState<"singles" | "doubles">(
-    ((association as any).discipline as "singles" | "doubles") || "singles",
+  const [discipline, setDiscipline] = useState<CompetitionDiscipline>(
+    ((association as any).discipline as CompetitionDiscipline) || "singles",
   );
+  const [category, setCategory] = useState<CompetitionCategory | "">(
+    ((association as any).category as CompetitionCategory) || "",
+  );
+  const [requireMixedPair, setRequireMixedPair] = useState<boolean>(!!(association as any).require_mixed_pair);
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -2458,7 +2508,12 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
       });
       if (rpcErr) { toast.error(rpcErr.message); return; }
     }
-    const payload: any = { scope, affects_ladder: scope === "internal" ? affectsLadder : false };
+    const payload: any = {
+      scope,
+      affects_ladder: scope === "internal" ? affectsLadder : false,
+      category: category || null,
+      require_mixed_pair: category === "mixed" ? requireMixedPair : false,
+    };
     const { error } = await fromExt("league_associations").update(payload).eq("id", association.id);
     if (error) { toast.error(error.message); return; }
     toast.success("League updated");
@@ -2486,11 +2541,28 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
             <div className="space-y-1">
               <Label>Discipline</Label>
               <div className="flex gap-2">
-                <Button type="button" size="sm" className="flex-1" variant={discipline === "singles" ? "default" : "outline"} onClick={() => setDiscipline("singles")}>Singles</Button>
-                <Button type="button" size="sm" className="flex-1" variant={discipline === "doubles" ? "default" : "outline"} onClick={() => setDiscipline("doubles")}>Doubles</Button>
+                {COMPETITION_DISCIPLINES.map(d => (
+                  <Button key={d} type="button" size="sm" className="flex-1" variant={discipline === d ? "default" : "outline"} onClick={() => setDiscipline(d)}>{DISCIPLINE_LABELS[d]}</Button>
+                ))}
               </div>
             </div>
           )}
+          <div className="space-y-1">
+            <Label>Category</Label>
+            <div className="flex gap-2 flex-wrap">
+              {COMPETITION_CATEGORIES.map(c => (
+                <Button key={c} type="button" size="sm" className="flex-1" variant={category === c ? "default" : "outline"} onClick={() => setCategory(c)}>{CATEGORY_LABELS[c]}</Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Open allows any eligible players regardless of gender — it is not the same as Mixed.</p>
+            {category === "mixed" && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                <Checkbox checked={requireMixedPair} onCheckedChange={v => setRequireMixedPair(!!v)} />
+                Require each pair/team to be mixed-gender
+              </label>
+            )}
+          </div>
+
           <div className="space-y-1">
             <Label>Scope</Label>
             <div className="flex gap-2">
@@ -2688,7 +2760,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
   const [affectsRanking, setAffectsRanking] = useState(false);
   const qc = useQueryClient();
 
-  const handleToggle = (league: string, gender: "men" | "ladies" | "mixed") => {
+  const handleToggle = (league: string, gender: "men" | "ladies" | "mixed" | "open") => {
     const setter = gender === "men" ? setSelectedMen : gender === "ladies" ? setSelectedLadies : setSelectedMixed;
     setter(prev => prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]);
   };

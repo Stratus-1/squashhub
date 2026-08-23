@@ -13,13 +13,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useLeagueAssociations, useLeagues, useClubMembers, type ClubMember } from "@/hooks/use-club";
 
-type Gender = "men" | "ladies" | "mixed";
+type Gender = "men" | "ladies" | "mixed" | "open";
 type Distribution = "snake" | "rotation" | "reverse_snake";
 
 const GENDERS: { value: Gender; label: string }[] = [
   { value: "men", label: "Men's" },
   { value: "ladies", label: "Ladies" },
   { value: "mixed", label: "Mixed" },
+  // Open = any eligible player regardless of gender; deliberately distinct from Mixed.
+  { value: "open", label: "Open" },
 ];
 
 const ORDINALS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
@@ -224,7 +226,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
 
   // Detect existing league rows for this association+gender+number that we'd need
   const existingLeagueNames = useMemo(() => {
-    const prefix = `${gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : "Mixed"} ${leagueNumber}`;
+    const prefix = `${gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : gender === "open" ? "Open" : "Mixed"} ${leagueNumber}`;
     return leagues
       .filter(l => l.association_id === associationId && l.name.startsWith(prefix))
       .map(l => l.name);
@@ -240,7 +242,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     if (!canNext4) return;
     setSubmitting(true);
     try {
-      const genderLabel = gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : "Mixed";
+      const genderLabel = gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : gender === "open" ? "Open" : "Mixed";
       // Determine code prefix: try to reuse existing league code prefix for that association (e.g. NSC001 → NSC)
       const sample = leagues.find(l => l.association_id === associationId);
       const codePrefix = sample?.code?.replace(/\d+$/, "") || (association?.abbreviation || "LG");
@@ -375,7 +377,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
       allocation.reserves.forEach(p => newlyAllocated.add(p.id));
       setAllocatedIds(newlyAllocated);
 
-      const genderLabelShort = gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : "Mixed";
+      const genderLabelShort = gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : gender === "open" ? "Open" : "Mixed";
       setSessionSummary(prev => [
         ...prev,
         { label: `${genderLabelShort} ${leagueNumber} — ${allocation.teams.length} team${allocation.teams.length !== 1 ? "s" : ""}${allocation.reserves.length ? ` + ${allocation.reserves.length} reserves` : ""}`, count: inserts.length },
@@ -412,7 +414,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editContext ? `Edit Setup — ${gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : "Mixed"} ${leagueNumber}` : "Step by Step League Setup"}</DialogTitle>
+          <DialogTitle>{editContext ? `Edit Setup — ${gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : gender === "open" ? "Open" : "Mixed"} ${leagueNumber}` : "Step by Step League Setup"}</DialogTitle>
           <DialogDescription>
             {editContext
               ? "Pre-filled from this league group. Adjust counts, team names or reserves; saving overwrites the group's registrations."
@@ -469,7 +471,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         {step === 2 && (
           <div className="space-y-3">
             <Label>Step 2 — Choose Category</Label>
-            <RadioGroup value={gender} onValueChange={(v) => setGender(v as Gender)} className="grid grid-cols-3 gap-2">
+            <RadioGroup value={gender} onValueChange={(v) => setGender(v as Gender)} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {GENDERS.map(g => (
                 <label key={g.value} className={`flex items-center gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent ${gender === g.value ? "border-primary bg-accent" : ""}`}>
                   <RadioGroupItem value={g.value} />

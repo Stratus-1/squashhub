@@ -148,8 +148,12 @@ export interface LeagueAssociation {
   fee_class: "club_income" | "pass_through";
   platform_association_id?: string | null;
   scope?: "internal" | "region";
-  /** Singles vs doubles league. Display/structural marker only — defaults to singles. */
-  discipline?: "singles" | "doubles";
+  /** Singles, doubles or hybrid league. Display/structural marker only — defaults to singles. */
+  discipline?: "singles" | "doubles" | "hybrid";
+  /** Competition category — mens | ladies | mixed | open. */
+  category?: "mens" | "ladies" | "mixed" | "open" | null;
+  /** Mixed only: require a mixed-gender pair/team. Never applies to Open. */
+  require_mixed_pair?: boolean;
   external_source?: string | null;
   external_club_id?: string | null;
 }
@@ -165,6 +169,10 @@ export interface League {
   season_year?: number | null;
   level?: number | null;
   is_reserve?: boolean | null;
+  /** NSA competition label, e.g. "Ladies 1st". */
+  division?: string | null;
+  /** Competition category — mens | ladies | mixed | open. */
+  category?: "mens" | "ladies" | "mixed" | "open" | null;
   /** Set when the season was explicitly archived by an admin. */
   archived_at?: string | null;
 }

@@ -60,11 +60,15 @@ export interface TeamNameIndexInput {
   nsa_team_code?: string | null;
   name?: string | null;
   division?: string | null;
+  /** Phase 3 competition category: mens | ladies | mixed | open. */
+  category?: string | null;
 }
 
 export interface TeamNameIndex {
   /** `${DIVISION}|${CODE}` -> name */
   byDivisionCode: Record<string, string>;
+  /** `${CATEGORY}|${CODE}` -> name, blanked when ambiguous inside a category. */
+  byCategoryCode: Record<string, string>;
   /** CODE -> name, only when that code is unambiguous across competitions. */
   byCode: Record<string, string>;
 }
@@ -73,6 +77,8 @@ const normDiv = (v?: string | null) => (v ?? "").trim().toUpperCase();
 
 export function buildTeamNameIndex(teams: TeamNameIndexInput[]): TeamNameIndex {
   const byDivisionCode: Record<string, string> = {};
+  const byCategoryCode: Record<string, string> = {};
+  const catAmbiguous = new Set<string>();
   const byCode: Record<string, string> = {};
   const seen: Record<string, string> = {};
   const ambiguous = new Set<string>();
@@ -84,27 +90,43 @@ export function buildTeamNameIndex(teams: TeamNameIndexInput[]): TeamNameIndex {
       const code = clean(raw)?.toUpperCase();
       if (!code) continue;
       if (t.division) byDivisionCode[`${normDiv(t.division)}|${code}`] = name;
+      if (t.category) {
+        const key = `${normDiv(t.category)}|${code}`;
+        if (byCategoryCode[key] === undefined) byCategoryCode[key] = name;
+        else if (byCategoryCode[key] !== name) catAmbiguous.add(key);
+      }
       if (seen[code] === undefined) seen[code] = name;
       else if (seen[code] !== name) ambiguous.add(code);
     }
   }
+  for (const key of catAmbiguous) delete byCategoryCode[key];
   for (const [code, name] of Object.entries(seen)) {
     if (!ambiguous.has(code)) byCode[code] = name;
   }
-  return { byDivisionCode, byCode };
+  return { byDivisionCode, byCategoryCode, byCode };
 }
 
 export type TeamNameLookup = Record<string, string> | TeamNameIndex | null | undefined;
 
-function lookupName(lookup: TeamNameLookup, code?: string | null, division?: string | null) {
+function lookupName(
+  lookup: TeamNameLookup,
+  code?: string | null,
+  division?: string | null,
+  category?: string | null,
+) {
   if (!lookup || !code) return undefined;
   const key = code.toUpperCase();
   if ("byDivisionCode" in (lookup as TeamNameIndex)) {
     const idx = lookup as TeamNameIndex;
-    return idx.byDivisionCode[`${normDiv(division)}|${key}`] ?? idx.byCode[key];
+    return (
+      idx.byDivisionCode[`${normDiv(division)}|${key}`] ??
+      (category ? idx.byCategoryCode?.[`${normDiv(category)}|${key}`] : undefined) ??
+      idx.byCode[key]
+    );
   }
   return (lookup as Record<string, string>)[key];
 }
+
 
 /** Convenience reader for a raw fixture row + a team-name lookup. */
 export function fixtureSideName(
@@ -114,13 +136,15 @@ export function fixtureSideName(
     home_team_name_snapshot?: string | null;
     away_team_name_snapshot?: string | null;
     division?: string | null;
+    /** Phase 3 competition category, when the fixture carries one. */
+    category?: string | null;
   },
   side: FixtureTeamSide,
   teamNames?: TeamNameLookup,
 ): string {
   const code = side === "home" ? fixture.home_team_code : fixture.away_team_code;
   const snapshot = side === "home" ? fixture.home_team_name_snapshot : fixture.away_team_name_snapshot;
-  const liveName = lookupName(teamNames, code, fixture.division);
+  const liveName = lookupName(teamNames, code, fixture.division, fixture.category);
   return fixtureTeamDisplayName({ snapshot, code, liveName });
 }
 

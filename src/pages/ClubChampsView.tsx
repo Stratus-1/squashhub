@@ -91,6 +91,8 @@ export default function ClubChampsView() {
     enabled: !!champId,
   });
 
+  const { data: champRounds = [] } = useChampRounds(champId);
+
   const { data: matches = [] } = useQuery({
     queryKey: ["club-champ-matches", champId],
     queryFn: async () => {

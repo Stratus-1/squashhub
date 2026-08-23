@@ -1349,14 +1349,21 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     },
   });
 
-  // Load the current saved "players per match" for this league
-  const { data: currentTeamSize } = useQuery({
+  // Load the current saved match composition for this league
+  const { data: ruleRow } = useQuery({
     queryKey: ["league-rules-team-size", league.id],
     queryFn: async () => {
-      const { data } = await fromExt("league_rules").select("team_size").eq("league_id", league.id).maybeSingle();
-      return (data as any)?.team_size ?? null;
+      const { data } = await fromExt("league_rules")
+        .select("team_size, singles_rubbers, doubles_rubbers")
+        .eq("league_id", league.id)
+        .maybeSingle();
+      return (data as any) ?? null;
     },
   });
+  const currentTeamSize = (ruleRow as any)?.team_size ?? null;
+  const doublesRubbers = (ruleRow as any)?.doubles_rubbers ?? null;
+  const singlesRubbers = (ruleRow as any)?.singles_rubbers ?? null;
+
 
   const getMemberName = (reg: any) => {
     const m = members.find(m => m.id === reg.club_member_id);

@@ -144,7 +144,7 @@ export default function RegisterClub() {
     if (slug !== form.subdomain) setForm(p => ({ ...p, subdomain: slug }));
 
     // Final server-side availability check before creating.
-    const { data: clash } = await supabase.from("clubs").select("id").eq("subdomain", slug).maybeSingle();
+    const clash = await getPublicClubBySubdomain(slug);
     if (clash) {
       setSlugStatus("taken");
       toast.error(`The abbreviation "${slug}" is already in use — please choose another.`);

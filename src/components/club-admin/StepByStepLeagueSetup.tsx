@@ -497,7 +497,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           <DialogDescription>
             {editContext
               ? "Pre-filled from this league group. Adjust counts, team names or reserves; saving overwrites the group's registrations."
-              : "Build one league number at a time — pick the association, gender, league number, then split players into teams. Members allocated in this session are removed from the pool for later rounds."}
+              : "Build one league number at a time — pick the league, gender, league number, then split players into teams. Members allocated in this session are removed from the pool for later rounds."}
           </DialogDescription>
         </DialogHeader>
 
@@ -555,7 +555,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         {/* Step 1: Association */}
         {step === 1 && (
           <div className="space-y-3">
-            <Label>Step 1 — Choose League Association</Label>
+            <Label>Step 1 — Choose League</Label>
             <Select value={associationId} onValueChange={setAssociationId}>
               <SelectTrigger><SelectValue placeholder="Pick an association (e.g. LS, NIL)" /></SelectTrigger>
               <SelectContent>

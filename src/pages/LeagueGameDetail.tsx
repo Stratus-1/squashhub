@@ -1043,6 +1043,15 @@ export default function LeagueGameDetail() {
   //   - This prevents 5-player NIL scorecards briefly rendering correctly, then
   //     shrinking back to 4 when saved results or rule metadata refresh later.
   useEffect(() => {
+    // Doubles: one row per RUBBER (pair vs pair) — never one row per player.
+    if (doublesRubbers > 0) {
+      const target = Math.min(
+        MAX_POSITIONS,
+        Math.max(doublesRubbers, getSavedMaxPosition(existingMatches)),
+      );
+      setPositionCount((prev) => (prev === target ? prev : target));
+      return;
+    }
     const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
     const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
     // Per-league rule wins over the association-wide fallback (which may be
@@ -1068,7 +1077,8 @@ export default function LeagueGameDetail() {
       Math.max(baseSize, getSavedMaxPosition(existingMatches), getLineupMaxPosition(lineup, [homeCode, awayCode])),
     );
     setPositionCount((prev) => (prev === maxFilled ? prev : maxFilled));
-  }, [fixture, prefillLineup, existingMatches, leagueRules, teamRulesByCode]);
+  }, [fixture, prefillLineup, existingMatches, leagueRules, teamRulesByCode, doublesRubbers]);
+
   useEffect(() => {
     if (leagueRules) {
       const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;

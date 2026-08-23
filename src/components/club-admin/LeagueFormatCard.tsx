@@ -109,16 +109,17 @@ export function LeagueFormatCard({
         </label>
       )}
 
-      <div className="flex flex-wrap gap-1">
-        {preview.map((s) => (
-          <Badge key={s.position} variant="outline" className="text-[10px] h-5">
-            {s.position}. {s.label}
-          </Badge>
-        ))}
-        {!preview.length && (
-          <span className="text-xs text-muted-foreground">No rubbers configured yet.</span>
-        )}
-      </div>
+      {preview.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          <span className="text-[10px] text-muted-foreground mr-1">Current composition (Step 2):</span>
+          {preview.map((s) => (
+            <Badge key={s.position} variant="outline" className="text-[10px] h-5">
+              {s.position}. {s.label}
+            </Badge>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }

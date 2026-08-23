@@ -303,7 +303,16 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                   </TableCell>
                   <TableCell className="text-xs">
                     {fmtDate(inv.period_start)} → {fmtDate(inv.period_end)}
-                    <div className="text-[10px] uppercase text-muted-foreground">{inv.billing_cycle}</div>
+                    <div className="text-[10px] uppercase text-muted-foreground">
+                      {inv.invoice_kind ? INVOICE_KIND_LABEL[inv.invoice_kind] || inv.invoice_kind : inv.billing_cycle}
+                    </div>
+                    {lineItemsOf(inv).length > 1 && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {lineItemsOf(inv)
+                          .map((l) => `${l.kind === "whatsapp" ? "WhatsApp" : "Subscription"} ${fmtMoney(Number(l.amount), inv.currency)}`)
+                          .join(" · ")}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right text-xs">{inv.member_count}</TableCell>
                   <TableCell className="text-right font-semibold text-xs">

@@ -47,7 +47,25 @@ export function BillingFrequencyCard({
   const pricing = useSaasPricing(currencyCode);
   const billingStart = useClubBillingStart(club.id);
 
-  const current: BillingOption = normalizeBillingOption(c.sla_billing_option);
+  // Authoritative read: always fetch clubs.sla_billing_option for THIS club id
+  // rather than trusting whatever club object was handed down (context clubs and
+  // cached memberships can carry a partial/stale row, which rendered "Monthly").
+  const { data: persistedOption, isLoading: freqLoading } = useQuery({
+    queryKey: ["club-billing-frequency", club.id],
+    refetchOnMount: "always",
+    staleTime: 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("clubs")
+        .select("sla_billing_option")
+        .eq("id", club.id)
+        .maybeSingle();
+      if (error) throw error;
+      return normalizeBillingOption(data?.sla_billing_option);
+    },
+  });
+
+  const current: BillingOption = persistedOption ?? normalizeBillingOption(c.sla_billing_option);
   const [choice, setChoice] = useState<BillingOption>(current);
   const [persistedChoice, setPersistedChoice] = useState<BillingOption>(current);
   // Re-sync only when fresh backend data changes. A render with stale club data
@@ -56,6 +74,7 @@ export function BillingFrequencyCard({
     setChoice(current);
     setPersistedChoice(current);
   }, [current]);
+
   const currentPay: PaymentMethod | null =
     c.sla_payment_method === "card" ? "card" : c.sla_payment_method === "eft" ? "eft" : null;
   const [payMethod, setPayMethod] = useState<PaymentMethod | null>(currentPay);
@@ -336,7 +355,7 @@ export function BillingFrequencyCard({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" onClick={handleSave} disabled={saving || !dirty || (locked && choice !== persistedChoice)}>
+        <Button size="sm" onClick={handleSave} disabled={saving || freqLoading || !dirty || (locked && choice !== persistedChoice)}>
           {saving
             ? "Saving…"
             : !dirty

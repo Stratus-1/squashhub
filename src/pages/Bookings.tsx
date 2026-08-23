@@ -1789,6 +1789,9 @@ export default function Bookings() {
                                 {!isBlocked && !isEventBooking && b ? <span className="font-normal text-muted-foreground"> v </span> : ""}
                                 {!isBlocked && !isEventBooking && b ? b : ""}
                               </p>
+                              {!isBlocked && champContext ? (
+                                <p className="text-[9px] text-muted-foreground truncate">{champContext}</p>
+                              ) : null}
                             </div>
                           ) : isPastSlot ? (
                             <span className="text-muted-foreground/20 text-[10px]">—</span>
@@ -1799,7 +1802,9 @@ export default function Bookings() {
                       </TooltipTrigger>
                       {booking && !isBlocked && (
                         <TooltipContent side="top" className="max-w-[220px] text-xs space-y-1 p-2.5">
-                          <p className="font-semibold">{isEventBooking ? eventLabel : `${(booking as any).player_name || "Unknown"}${b ? ` vs ${b}` : ""}`}</p>
+                          <p className="font-semibold">{champFull || (isEventBooking ? eventLabel : `${(booking as any).player_name || "Unknown"}${b ? ` vs ${b}` : ""}`)}</p>
+                          {champContext ? <p className="text-muted-foreground">{champContext}</p> : null}
+
                           <p className="text-muted-foreground">{String((booking as any).start_time || "").slice(0, 5)} – {String((booking as any).end_time || "").slice(0, 5)}</p>
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             {(booking as any).lights_requested ? (

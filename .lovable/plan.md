@@ -129,3 +129,32 @@ Required changes before implementation:
 Rollback: every step is additive. Rollback is `UPDATE … SET season_id = NULL` followed by dropping the new columns/table and restoring the old rounds unique constraint. No existing row is rewritten at any point, so there is no data to restore.
 
 Recommendation: **safe to implement**, in this order — (1) additive schema + backfill with the 18 exceptions reported to the admin, (2) snapshot/team-ID population, (3) constraint swap, (4) season-aware read paths, (5) only then the Singles/Doubles/Hybrid work. Do not begin discipline work until (4) is verified, because standings must be season-filtered before a second season can exist.
+
+## 7. Competition category/division — first-class requirement (added, applies to Phase 3+)
+
+Every league/competition — Singles, Doubles and Hybrid alike — carries a **competition category**: `mens`, `ladies`, `mixed`, `open`.
+
+- `open` is **not** a synonym for `mixed`. Open permits any eligible combination regardless of gender; Mixed only enforces mixed-gender composition when the league rules say so.
+- No gender assumption is hard-coded into Doubles: Men's Doubles, Ladies Doubles, Mixed Doubles and Open Doubles are all valid.
+
+### Model
+
+- `category` column (enum-like text, constrained to the four values) on the competition/division entity, alongside the existing `leagues.division` label and the planned `discipline` (singles/doubles/hybrid). `division` stays the NSA-facing competition label; `category` is the normalised, rule-bearing attribute.
+- Nullable and additive. **Backfill only where provable** (e.g. an unambiguous NSA division label such as `Ladies 1st` → `ladies`, `Mens 2nd` → `mens`); anything ambiguous stays NULL rather than being guessed. Legacy rows are never rewritten.
+
+### Where category participates
+
+1. **Uniqueness** — NSA team codes legitimately repeat across categories. Code uniqueness must be scoped by `(association_id, season_id, division/category, code)`, extending the Phase 2.1 index rather than replacing it. `nsa_team_code` uniqueness per association+season is unchanged.
+2. **Fixture/team resolution** — the division/category-scoped lookup in `src/lib/leagues/fixture-display.ts` (`buildTeamNameIndex`) becomes category-aware; the code-only fallback stays blanked whenever a code is ambiguous across categories.
+3. **Eligibility** — replaces ad-hoc gender gates: mens/ladies restrict by member gender; mixed validates pair/team composition **only if** the league rules require it; open never restricts by gender.
+4. **Filtering/UI** — category is a selectable attribute in the Singles/Doubles/Hybrid setup wizard and a filter on fixtures, standings, rosters and tournament division pickers.
+
+### Tests (gate for the phase that ships this)
+
+- Duplicate team codes across two categories in the same association+season are **accepted**; a duplicate within one category is **rejected**.
+- Fixture resolution returns the correct team when the same code exists in Men's and Ladies (extends the existing `CSI001`/`CSIL01` cases).
+- All four category options are offered and persisted for Singles, Doubles and Hybrid setup.
+- Mixed pair validation passes/fails per rules flag; Open accepts any gender combination; Men's/Ladies reject out-of-category players.
+- Existing integrity signatures and the 3465 standings-point total remain unchanged.
+
+Phase gates are unchanged: any failing gate blocks the phase, and nothing is published while a gate fails.

@@ -528,6 +528,30 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           ))}
         </div>
 
+        {/* Inherited league configuration — read-only context, never re-asked */}
+        {step > 1 && associationId && (
+          <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-muted/40 p-2 text-[11px]">
+            <span className="text-muted-foreground">Inherited from the league:</span>
+            <Badge variant="secondary" className="h-5 text-[10px]">{DISCIPLINE_LABELS[inherited.discipline]}</Badge>
+            {inherited.category && (
+              <Badge variant="secondary" className="h-5 text-[10px]">{CATEGORY_LABELS[inherited.category]}</Badge>
+            )}
+            {inherited.singlesRubbers > 0 && (
+              <Badge variant="outline" className="h-5 text-[10px]">{inherited.singlesRubbers} singles rubber{inherited.singlesRubbers !== 1 ? "s" : ""}</Badge>
+            )}
+            {inherited.doublesRubbers > 0 && (
+              <Badge variant="outline" className="h-5 text-[10px]">{inherited.doublesRubbers} doubles rubber{inherited.doublesRubbers !== 1 ? "s" : ""}</Badge>
+            )}
+            {questions.askPairsPerTeam && (
+              <Badge variant="outline" className="h-5 text-[10px]">
+                {inherited.pairingPolicy === "fixed" ? "Fixed season pairs" : "Pairs per fixture"}
+              </Badge>
+            )}
+          </div>
+        )}
+
+
+
         {/* Step 1: Association */}
         {step === 1 && (
           <div className="space-y-3">

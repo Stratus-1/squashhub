@@ -39,6 +39,7 @@ export function DoublesPairsDialog({
   seasonId,
   category,
   requireMixedPair,
+  onCreateTeams,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -47,37 +48,48 @@ export function DoublesPairsDialog({
   seasonId?: string | null;
   category: CompetitionCategory | null;
   requireMixedPair: boolean;
+  onCreateTeams?: () => void;
 }) {
   const qc = useQueryClient();
   const [teamId, setTeamId] = useState<string>("");
   const [p1, setP1] = useState<string>("");
   const [p2, setP2] = useState<string>("");
 
-  const { data: teams = [] } = useQuery({
+  const { data: teams = [], isLoading: teamsLoading, error: teamsError } = useQuery({
     queryKey: ["doubles-pairs-teams", associationId, seasonId],
     enabled: open && !!associationId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leagues")
         .select("id, name, code, season_id")
+        .eq("club_id", clubId)
         .eq("association_id", associationId)
         .is("archived_at", null)
         .order("name");
       if (error) throw error;
-      return (data ?? []).filter((t: any) => !seasonId || !t.season_id || t.season_id === seasonId);
+      // A team's own season is authoritative. Do not hide valid teams merely
+      // because the association's current-season pointer has moved on.
+      return [...(data ?? [])].sort((a: any, b: any) => {
+        const aCurrent = !!seasonId && a.season_id === seasonId;
+        const bCurrent = !!seasonId && b.season_id === seasonId;
+        return Number(bCurrent) - Number(aCurrent) || a.name.localeCompare(b.name);
+      });
     },
   });
 
-  const activeTeam = teamId || teams[0]?.id || "";
+  // `teamId` can still contain the previous association's selection when the
+  // same dialog instance is reopened. Only trust it while it belongs to the
+  // freshly loaded team list.
+  const activeTeam = teams.some((team: any) => team.id === teamId) ? teamId : teams[0]?.id || "";
   const activeSeasonId = teams.find((team: any) => team.id === activeTeam)?.season_id ?? null;
 
-  const { data: roster = [] } = useQuery({
+  const { data: roster = [], isLoading: rosterLoading, error: rosterError } = useQuery({
     queryKey: ["doubles-pairs-roster", clubId, activeTeam],
     enabled: open && !!clubId,
     queryFn: async () => {
       // Team registrations (if any) are shown first, but pairs can be built
       // from ANY club member — teams are usually filled after pairing.
-      const [{ data: regs }, { data: members, error }] = await Promise.all([
+      const [{ data: regs, error: regsError }, { data: members, error }] = await Promise.all([
         activeTeam
           ? supabase
               .from("member_league_registrations")
@@ -90,6 +102,7 @@ export function DoublesPairsDialog({
           .eq("club_id", clubId)
           .order("name"),
       ]);
+      if (regsError) throw regsError;
       if (error) throw error;
       const registered = new Set((regs ?? []).map((r: any) => r.club_member_id));
       const list = (members ?? [])
@@ -188,22 +201,50 @@ export function DoublesPairsDialog({
         <div className="space-y-3">
           <div className="space-y-1">
             <Label className="text-xs">Team</Label>
-            <Select value={activeTeam} onValueChange={setTeamId}>
+            <Select
+              value={activeTeam}
+              onValueChange={(value) => {
+                setTeamId(value);
+                setP1("");
+                setP2("");
+              }}
+              disabled={teamsLoading || teams.length === 0}
+            >
               <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
               <SelectContent>
                 {teams.map((t: any) => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.name}{t.code ? ` (${t.code})` : ""}
+                    {seasonId && t.season_id && t.season_id !== seasonId ? " · other season" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {teamsLoading && <p className="text-xs text-muted-foreground">Loading teams…</p>}
+            {teamsError && <p className="text-xs text-destructive">Could not load teams. Please close and try again.</p>}
+            {!teamsLoading && !teamsError && teams.length === 0 && (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-2">
+                <p className="text-xs text-muted-foreground">Create a team for this league before allocating pairs.</p>
+                {onCreateTeams && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onCreateTeams();
+                    }}
+                  >
+                    Create teams
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-xs">Player 1</Label>
-              <Select value={p1} onValueChange={setP1}>
+              <Select value={p1} onValueChange={setP1} disabled={!activeTeam || rosterLoading || roster.length === 0}>
                 <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                 <SelectContent>
                   {roster.map((r) => (
@@ -216,7 +257,7 @@ export function DoublesPairsDialog({
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Player 2</Label>
-              <Select value={p2} onValueChange={setP2}>
+              <Select value={p2} onValueChange={setP2} disabled={!activeTeam || rosterLoading || roster.length < 2}>
                 <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                 <SelectContent>
                   {roster.filter((r) => r.id !== p1).map((r) => (
@@ -228,6 +269,11 @@ export function DoublesPairsDialog({
               </Select>
             </div>
           </div>
+          {rosterLoading && <p className="text-xs text-muted-foreground">Loading club members…</p>}
+          {rosterError && <p className="text-xs text-destructive">Could not load club members. Please close and try again.</p>}
+          {!rosterLoading && !rosterError && activeTeam && roster.length === 0 && (
+            <p className="text-xs text-muted-foreground">No active club members are available.</p>
+          )}
 
           <Button
             size="sm"

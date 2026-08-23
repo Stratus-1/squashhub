@@ -1469,7 +1469,9 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
                 {associations.find(a => a.id === league.association_id)?.name || "No association"}
                 {regs.length > 0 && ` • ${regs.length} player${regs.length !== 1 ? "s" : ""}`}
                 {pairs.length > 0 && ` • ${pairs.length} pair${pairs.length !== 1 ? "s" : ""}`}
-                {typeof currentTeamSize === "number" && currentTeamSize > 0 && ` • ${currentTeamSize}/match`}
+                {typeof doublesRubbers === "number" && doublesRubbers > 0
+                  ? ` • ${doublesRubbers} doubles rubber${doublesRubbers !== 1 ? "s" : ""}/match${typeof singlesRubbers === "number" && singlesRubbers > 0 ? ` + ${singlesRubbers} singles` : ""}`
+                  : (typeof currentTeamSize === "number" && currentTeamSize > 0 ? ` • ${currentTeamSize}/match` : "")}
                 {(() => {
                   const captain = regs.find((r: any) => r.is_captain);
                   if (captain) return ` • Capt: ${getMemberName(captain)}`;

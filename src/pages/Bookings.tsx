@@ -1702,9 +1702,16 @@ export default function Bookings() {
                     const prefix = `${ord(leagueNum)} League${roundPart}`;
                     return matchup ? `${prefix} · ${matchup}` : prefix;
                   };
+                  // Tournament match bookings show the competitors; the
+                  // competition name/division moves to secondary text.
+                  const champCompact = (booking as any)?.champ_compact_title as string | undefined;
+                  const champFull = (booking as any)?.champ_title as string | undefined;
+                  const champContext = (booking as any)?.champ_context as string | undefined;
                   const eventLabel = isEventBooking
-                    ? (isLeagueBooking ? formatLeagueLabel(rawGuestName) : (rawGuestName || (booking as any)?.player_name || "Tournament"))
+                    ? (champCompact
+                        || (isLeagueBooking ? formatLeagueLabel(rawGuestName) : (rawGuestName || (booking as any)?.player_name || "Tournament")))
                     : null;
+
                   const a = (booking as any)?.player_name ? toInitialSurname(String((booking as any).player_name)) : null;
                   const b = !isEventBooking && (booking as any)?.opponent_name ? toInitialSurname(String((booking as any).opponent_name)) : null;
                   const isMine = booking && ((booking as any).user_id === user?.id || (booking as any).opponent_id === user?.id);

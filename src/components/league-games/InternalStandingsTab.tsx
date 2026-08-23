@@ -277,9 +277,28 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
         rows.sort((a, b) => b.total - a.total || a.team_code.localeCompare(b.team_code));
         out.push({ tier: t.tier, weeks: weekDates, rows });
       }
-      return out;
+
+      // Historical name snapshots taken when the fixture was created — these win
+      // over the current team name so past seasons never get relabelled.
+      const snapshots = new Map<string, string>();
+      (fixtures || []).forEach((f: any) => {
+        if (f.home_team_code && f.home_team_name_snapshot) {
+          snapshots.set(f.home_team_code, f.home_team_name_snapshot);
+        }
+        if (f.away_team_code && f.away_team_name_snapshot) {
+          snapshots.set(f.away_team_code, f.away_team_name_snapshot);
+        }
+      });
+
+      return { tiers: out, snapshots };
     },
   });
+
+  const data = standings?.tiers;
+  const snapshotNameByCode = standings?.snapshots;
+  const teamNameFor = (code: string) =>
+    snapshotNameByCode?.get(code) || teamInfoByCode?.get(code)?.name || code;
+
 
   // Realtime: refresh standings whenever results / fixtures change
   useEffect(() => {

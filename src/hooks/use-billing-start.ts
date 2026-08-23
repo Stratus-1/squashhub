@@ -37,8 +37,10 @@ export function useClubBillingStart(clubId?: string) {
 
   let startIso = DEFAULT_BILLING_START;
   if (trialEndIso) {
-    const d = new Date(`${trialEndIso}T00:00:00`);
-    d.setDate(d.getDate() + 1);
+    // Add one calendar day in UTC so local timezones (e.g. SAST, UTC+2) can't
+    // shift the result back onto the trial end date itself.
+    const d = new Date(`${trialEndIso}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
     startIso = d.toISOString().slice(0, 10);
   }
 

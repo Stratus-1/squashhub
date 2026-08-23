@@ -25,6 +25,7 @@ import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { KnockoutCard } from "@/components/tournaments/KnockoutCard";
+import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
@@ -89,6 +90,8 @@ export default function ClubChampsView() {
     },
     enabled: !!champId,
   });
+
+  const { data: champRounds = [] } = useChampRounds(champId);
 
   const { data: matches = [] } = useQuery({
     queryKey: ["club-champ-matches", champId],
@@ -2410,6 +2413,7 @@ export default function ClubChampsView() {
           champId={champId!}
           matches={matches as any[]}
           canManage={canManage}
+          rounds={champRounds}
           renderMatchRow={renderMatchRow}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}

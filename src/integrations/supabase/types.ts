@@ -10151,8 +10151,6 @@ export type Database = {
           chairman_member_id: string | null
           club_captain_member_id: string | null
           created_at: string | null
-          currency_code: string | null
-          currency_symbol: string | null
           email: string | null
           id: string | null
           logo_url: string | null
@@ -10169,8 +10167,6 @@ export type Database = {
           chairman_member_id?: string | null
           club_captain_member_id?: string | null
           created_at?: string | null
-          currency_code?: string | null
-          currency_symbol?: string | null
           email?: string | null
           id?: string | null
           logo_url?: string | null
@@ -10187,8 +10183,6 @@ export type Database = {
           chairman_member_id?: string | null
           club_captain_member_id?: string | null
           created_at?: string | null
-          currency_code?: string | null
-          currency_symbol?: string | null
           email?: string | null
           id?: string | null
           logo_url?: string | null

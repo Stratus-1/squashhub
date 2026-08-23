@@ -12,6 +12,9 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useLeagueAssociations, useLeagues, useClubMembers, type ClubMember } from "@/hooks/use-club";
+import { useAssociationRules } from "@/hooks/use-association-rules";
+import { inheritLeagueConfig, teamSetupQuestions, buildTeamAllocation } from "@/lib/leagues/team-setup";
+import { CATEGORY_LABELS, DISCIPLINE_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 
 type Gender = "men" | "ladies" | "mixed" | "open";
 type Distribution = "snake" | "rotation" | "reverse_snake";
@@ -108,6 +111,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const [perTeam, setPerTeam] = useState<number>(4);
   const [reserves, setReserves] = useState<number>(0);
   const [distribution, setDistribution] = useState<Distribution>("snake");
+  const [pairsPerTeam, setPairsPerTeam] = useState<number>(2);
   const [submitting, setSubmitting] = useState(false);
   // Track member IDs allocated to a saved league this session (so they're excluded from later rounds)
   const [allocatedIds, setAllocatedIds] = useState<Set<string>>(new Set());
@@ -175,6 +179,36 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   });
   const activeAffiliatedSet = useMemo(() => new Set<string>(activeAffiliatedIds), [activeAffiliatedIds]);
 
+  /* ── Step 1 inheritance ────────────────────────────────────────────────
+   * Discipline, competition category, rubber composition and pairing policy
+   * are defined ONCE when the league is created. This wizard inherits them
+   * and never re-asks those questions.                                     */
+  const associationRow = associations.find((a: any) => a.id === associationId) as any;
+  const { data: leagueRules } = useAssociationRules(associationId || undefined);
+  const inherited = useMemo(
+    () => inheritLeagueConfig(associationRow, leagueRules as any),
+    [associationRow, leagueRules],
+  );
+  const questions = useMemo(
+    () => teamSetupQuestions(inherited, leagueRules as any),
+    [inherited, leagueRules],
+  );
+
+  // Category is a league-level attribute — mirror it into the local pool filter.
+  useEffect(() => {
+    const c = inherited.category as CompetitionCategory | null;
+    if (!c) return;
+    setGender(c === "mens" ? "men" : c === "ladies" ? "ladies" : c === "mixed" ? "mixed" : "open");
+  }, [inherited.category]);
+
+  // Singles slots per team come from the league format unless it's a legacy
+  // league with no stored rules (then the admin is asked once, here).
+  const singlesPerTeam = questions.askPlayersPerMatch ? perTeam : inherited.singlesRubbers;
+  const effectivePairsPerTeam = questions.askPairsPerTeam ? pairsPerTeam : 0;
+  const slotsPerTeam = singlesPerTeam + effectivePairsPerTeam * 2;
+
+
+
   // Eligible pool = active affiliation + gender, MINUS anyone already allocated this session
   const eligiblePool = useMemo(() => {
     if (!associationId) return [];
@@ -200,29 +234,50 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
       });
   }, [eligiblePool]);
 
-  // Compute the proposed allocation
+  // Compute the proposed allocation.
+  // Singles (and hybrid singles slots) keep the ladder draft; Doubles allocates
+  // real players into real pairs — never ladder-ranked unless a league rule
+  // explicitly opts in.
   const allocation = useMemo(() => {
-    const teamPlayers = numTeams * perTeam;
-    const startIdx = Math.max(0, (startPosition || 1) - 1);
+    const teamPlayers = numTeams * slotsPerTeam;
+    const startIdx = questions.askLadderStart ? Math.max(0, (startPosition || 1) - 1) : 0;
     const available = sortedPool.slice(startIdx);
     const totalToTake = Math.min(numMembers, available.length);
     const top = available.slice(0, totalToTake);
     const teamPicks = top.slice(0, teamPlayers);
     const reservePicks = top.slice(teamPlayers, teamPlayers + reserves);
-    const order = buildDraftOrder(numTeams, teamPicks.length, distribution);
-    const teams: Array<{ name: string; picks: typeof top }> = Array.from({ length: numTeams }, (_, i) => ({
+
+    if (questions.allocationMode === "ladder") {
+      const order = buildDraftOrder(numTeams, teamPicks.length, distribution);
+      const teams: Array<{ name: string; picks: typeof top; pairs: Array<[typeof top[number], typeof top[number]]> }> =
+        Array.from({ length: numTeams }, (_, i) => ({
+          name: `${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`,
+          picks: [],
+          pairs: [],
+        }));
+      teamPicks.forEach((p, idx) => { teams[order[idx]].picks.push(p); });
+      // Sort each team by ladder_position so position 1 = strongest
+      teams.forEach(t => t.picks.sort((a, b) => {
+        const ap = a.ladder_position ?? Number.POSITIVE_INFINITY;
+        const bp = b.ladder_position ?? Number.POSITIVE_INFINITY;
+        return ap - bp;
+      }));
+      return { teams, reserves: reservePicks, taken: top.length };
+    }
+
+    const built = buildTeamAllocation(teamPicks, {
+      numTeams,
+      singlesPerTeam,
+      pairsPerTeam: effectivePairsPerTeam,
+    });
+    const teams = built.teams.map((t, i) => ({
       name: `${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`,
-      picks: [],
-    }));
-    teamPicks.forEach((p, idx) => { teams[order[idx]].picks.push(p); });
-    // Sort each team by ladder_position so position 1 = strongest
-    teams.forEach(t => t.picks.sort((a, b) => {
-      const ap = a.ladder_position ?? Number.POSITIVE_INFINITY;
-      const bp = b.ladder_position ?? Number.POSITIVE_INFINITY;
-      return ap - bp;
+      picks: [...t.singles, ...t.pairs.flat()],
+      pairs: t.pairs as Array<[typeof top[number], typeof top[number]]>,
     }));
     return { teams, reserves: reservePicks, taken: top.length };
-  }, [sortedPool, numMembers, numTeams, perTeam, reserves, distribution, leagueNumber, startPosition]);
+  }, [sortedPool, numMembers, numTeams, slotsPerTeam, singlesPerTeam, effectivePairsPerTeam, reserves, distribution, leagueNumber, startPosition, questions.allocationMode, questions.askLadderStart]);
+
 
   // Detect existing league rows for this association+gender+number that we'd need
   const existingLeagueNames = useMemo(() => {
@@ -236,7 +291,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const canNext1 = !!associationId;
   const canNext2 = !!gender;
   const canNext3 = !!leagueNumber;
-  const canNext4 = numMembers > 0 && numTeams > 0 && perTeam > 0 && (numTeams * perTeam + reserves) <= numMembers;
+  const canNext4 = numMembers > 0 && numTeams > 0 && slotsPerTeam > 0 && (numTeams * slotsPerTeam + reserves) <= numMembers;
 
   const handleSubmit = async () => {
     if (!canNext4) return;
@@ -326,7 +381,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           league_id: lid,
           club_id: clubId,
           association_id: associationId,
-          team_size: perTeam,
+          team_size: slotsPerTeam,
           team_size_mode: "fixed" as const,
         }));
         const { error: rulesError } = await fromExt("league_rules").upsert(rulesRows, { onConflict: "league_id" });
@@ -371,6 +426,30 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         if (error) throw error;
       }
 
+      // Doubles / Hybrid: persist the allocated pairs as REAL member pairs.
+      if (effectivePairsPerTeam > 0) {
+        const pairRows: any[] = [];
+        allocation.teams.forEach((team, i) => {
+          (team.pairs || []).forEach(([a, b], idx) => {
+            pairRows.push({
+              club_id: clubId,
+              league_id: createdLeagueIds[i],
+              player_one_member_id: a.id,
+              player_two_member_id: b.id,
+              pair_order: idx + 1,
+            });
+          });
+        });
+        if (pairRows.length > 0) {
+          for (const lid of createdLeagueIds) {
+            await fromExt("league_team_pairs").delete().eq("league_id", lid);
+          }
+          const { error: pairErr } = await fromExt("league_team_pairs").insert(pairRows);
+          if (pairErr) throw pairErr;
+        }
+      }
+
+
       // Track who got allocated this session
       const newlyAllocated = new Set(allocatedIds);
       allocation.teams.forEach(t => t.picks.forEach(p => newlyAllocated.add(p.id)));
@@ -397,8 +476,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   // Start another round of setup, keeping the association and the running allocated-ID list
   const handleSetupAnother = () => {
     setSavedLastRound(false);
-    setStep(2);
-    setGender("men");
+    setStep(questions.askCategory ? 2 : 3);
+    if (questions.askCategory) setGender("men");
     setLeagueNumber("1st");
     setStartPosition(1);
     setNumMembers(0);
@@ -449,6 +528,30 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           ))}
         </div>
 
+        {/* Inherited league configuration — read-only context, never re-asked */}
+        {step > 1 && associationId && (
+          <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-muted/40 p-2 text-[11px]">
+            <span className="text-muted-foreground">Inherited from the league:</span>
+            <Badge variant="secondary" className="h-5 text-[10px]">{DISCIPLINE_LABELS[inherited.discipline]}</Badge>
+            {inherited.category && (
+              <Badge variant="secondary" className="h-5 text-[10px]">{CATEGORY_LABELS[inherited.category]}</Badge>
+            )}
+            {inherited.singlesRubbers > 0 && (
+              <Badge variant="outline" className="h-5 text-[10px]">{inherited.singlesRubbers} singles rubber{inherited.singlesRubbers !== 1 ? "s" : ""}</Badge>
+            )}
+            {inherited.doublesRubbers > 0 && (
+              <Badge variant="outline" className="h-5 text-[10px]">{inherited.doublesRubbers} doubles rubber{inherited.doublesRubbers !== 1 ? "s" : ""}</Badge>
+            )}
+            {questions.askPairsPerTeam && (
+              <Badge variant="outline" className="h-5 text-[10px]">
+                {inherited.pairingPolicy === "fixed" ? "Fixed season pairs" : "Pairs per fixture"}
+              </Badge>
+            )}
+          </div>
+        )}
+
+
+
         {/* Step 1: Association */}
         {step === 1 && (
           <div className="space-y-3">
@@ -467,23 +570,38 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           </div>
         )}
 
-        {/* Step 2: Gender */}
+        {/* Step 2: Category — only when the league itself has none (legacy) */}
         {step === 2 && (
           <div className="space-y-3">
-            <Label>Step 2 — Choose Category</Label>
-            <RadioGroup value={gender} onValueChange={(v) => setGender(v as Gender)} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {GENDERS.map(g => (
-                <label key={g.value} className={`flex items-center gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent ${gender === g.value ? "border-primary bg-accent" : ""}`}>
-                  <RadioGroupItem value={g.value} />
-                  <span className="text-sm font-medium">{g.label}</span>
-                </label>
-              ))}
-            </RadioGroup>
+            {questions.askCategory ? (
+              <>
+                <Label>Step 2 — Choose Category</Label>
+                <RadioGroup value={gender} onValueChange={(v) => setGender(v as Gender)} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {GENDERS.map(g => (
+                    <label key={g.value} className={`flex items-center gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent ${gender === g.value ? "border-primary bg-accent" : ""}`}>
+                      <RadioGroupItem value={g.value} />
+                      <span className="text-sm font-medium">{g.label}</span>
+                    </label>
+                  ))}
+                </RadioGroup>
+                <p className="text-[11px] text-muted-foreground">
+                  This legacy league has no category saved. Newer leagues set this once when the league is created.
+                </p>
+              </>
+            ) : (
+              <>
+                <Label>Step 2 — League configuration (inherited)</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Defined when this league was created. Change it in Step 1 — Create League.
+                </p>
+              </>
+            )}
             <p className="text-xs text-muted-foreground">
               Eligible pool: <strong>{filterByGender(members.filter((m: any) => activeAffiliatedSet.has(m.id)), gender).length}</strong> members opted into {association?.abbreviation || association?.name || "this association"}.
             </p>
           </div>
         )}
+
 
         {/* Step 3: League number */}
         {step === 3 && (
@@ -528,60 +646,79 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
             </div>
 
             <div className="grid grid-cols-2 gap-3">
+              {questions.askLadderStart && (
+                <div>
+                  <Label className="text-xs">Starting ladder position</Label>
+                  <Input type="number" min={1} value={startPosition || ""} onChange={(e) => setStartPosition(parseInt(e.target.value) || 1)} />
+                  <p className="text-[10px] text-muted-foreground mt-1">Pick from position {startPosition} downward (e.g. 30 → 30, 31, 32…). Use higher numbers for lower leagues.</p>
+                </div>
+              )}
               <div>
-                <Label className="text-xs">a. Starting ladder position</Label>
-                <Input type="number" min={1} value={startPosition || ""} onChange={(e) => setStartPosition(parseInt(e.target.value) || 1)} />
-                <p className="text-[10px] text-muted-foreground mt-1">Pick from position {startPosition} downward (e.g. 30 → 30, 31, 32…). Use higher numbers for lower leagues.</p>
-              </div>
-              <div>
-                <Label className="text-xs">b. How many members?</Label>
+                <Label className="text-xs">How many members?</Label>
                 <Input type="number" min={0} value={numMembers || ""} onChange={(e) => setNumMembers(parseInt(e.target.value) || 0)} />
               </div>
               <div>
-                <Label className="text-xs">c. How many teams?</Label>
+                <Label className="text-xs">How many teams?</Label>
                 <Input type="number" min={1} max={8} value={numTeams || ""} onChange={(e) => setNumTeams(parseInt(e.target.value) || 1)} />
               </div>
+              {questions.askPlayersPerMatch && (
+                <div>
+                  <Label className="text-xs">Players per match (league rule)?</Label>
+                  <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => setPerTeam(parseInt(e.target.value) || 1)} />
+                  <p className="text-[10px] text-muted-foreground mt-1">Saved as the league rule. Marker scorecard will use this number of rows for every team in this league.</p>
+                </div>
+              )}
+              {questions.askPairsPerTeam && (
+                <div>
+                  <Label className="text-xs">Pairs per team</Label>
+                  <Input type="number" min={0} max={10} value={pairsPerTeam || ""} onChange={(e) => setPairsPerTeam(parseInt(e.target.value) || 0)} />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Two real players per pair. The league plays {inherited.doublesRubbers} doubles rubber{inherited.doublesRubbers !== 1 ? "s" : ""} per fixture.
+                  </p>
+                </div>
+              )}
               <div>
-                <Label className="text-xs">d. Players per match (league rule)?</Label>
-                <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => setPerTeam(parseInt(e.target.value) || 1)} />
-                <p className="text-[10px] text-muted-foreground mt-1">Saved as the league rule. Marker scorecard will use this number of rows for every team in this league.</p>
-              </div>
-              <div>
-                <Label className="text-xs">e. How many reserves?</Label>
+                <Label className="text-xs">How many reserves?</Label>
                 <Input type="number" min={0} value={reserves || 0} onChange={(e) => setReserves(parseInt(e.target.value) || 0)} />
               </div>
             </div>
 
             <div className="text-xs rounded-md bg-muted p-2.5 space-y-0.5">
-              <p>Starting from ladder position: <strong>{startPosition}</strong></p>
-              <p>Team players needed: <strong>{numTeams * perTeam}</strong></p>
+              {questions.askLadderStart && <p>Starting from ladder position: <strong>{startPosition}</strong></p>}
+              {questions.askPairsPerTeam && (
+                <p>Per team: <strong>{singlesPerTeam}</strong> singles + <strong>{effectivePairsPerTeam}</strong> pair{effectivePairsPerTeam !== 1 ? "s" : ""} = <strong>{slotsPerTeam}</strong> players</p>
+              )}
+              <p>Team players needed: <strong>{numTeams * slotsPerTeam}</strong></p>
               <p>+ Reserves: <strong>{reserves}</strong></p>
-              <p>Total to allocate: <strong>{numTeams * perTeam + reserves}</strong> / {numMembers} requested</p>
-              {(numTeams * perTeam + reserves) > numMembers && (
+              <p>Total to allocate: <strong>{numTeams * slotsPerTeam + reserves}</strong> / {numMembers} requested</p>
+              {(numTeams * slotsPerTeam + reserves) > numMembers && (
                 <p className="text-destructive font-medium mt-1">⚠ Teams + reserves exceeds member count.</p>
               )}
-              {(startPosition - 1 + numMembers) > eligiblePool.length && numMembers > 0 && (
+              {questions.askLadderStart && (startPosition - 1 + numMembers) > eligiblePool.length && numMembers > 0 && (
                 <p className="text-destructive font-medium mt-1">⚠ Start position + members exceeds the eligible pool ({eligiblePool.length}).</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs">f. Distribution method</Label>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Only affects the initial auto-draft of players into team slots from the ranked pool. It does <strong>not</strong> decide fixtures or which team plays which week — that's handled later by the fixture scheduler.
-              </p>
-              <RadioGroup value={distribution} onValueChange={(v) => setDistribution(v as Distribution)} className="space-y-2">
-                {DISTRIBUTIONS.map(d => (
-                  <label key={d.value} className={`flex items-start gap-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent ${distribution === d.value ? "border-primary bg-accent" : ""}`}>
-                    <RadioGroupItem value={d.value} className="mt-0.5" />
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium">{d.title}</p>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">{d.example}</p>
-                    </div>
-                  </label>
-                ))}
-              </RadioGroup>
-            </div>
+            {questions.askDistribution && (
+              <div className="space-y-2">
+                <Label className="text-xs">Distribution method</Label>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Only affects the initial auto-draft of players into team slots from the ranked pool. It does <strong>not</strong> decide fixtures or which team plays which week — that's handled later by the fixture scheduler.
+                </p>
+                <RadioGroup value={distribution} onValueChange={(v) => setDistribution(v as Distribution)} className="space-y-2">
+                  {DISTRIBUTIONS.map(d => (
+                    <label key={d.value} className={`flex items-start gap-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent ${distribution === d.value ? "border-primary bg-accent" : ""}`}>
+                      <RadioGroupItem value={d.value} className="mt-0.5" />
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium">{d.title}</p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">{d.example}</p>
+                      </div>
+                    </label>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
+
           </div>
         )}
 
@@ -590,8 +727,11 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-base flex items-center gap-2"><Shuffle className="w-4 h-4" />Step 5 — Preview Allocation</Label>
-              <Badge variant="outline" className="text-[10px]">{distribution === "snake" ? "Snake" : distribution === "rotation" ? "Rotation" : "Reverse snake"}</Badge>
+              {questions.askDistribution && (
+                <Badge variant="outline" className="text-[10px]">{distribution === "snake" ? "Snake" : distribution === "rotation" ? "Rotation" : "Reverse snake"}</Badge>
+              )}
             </div>
+
 
             <p className="text-[11px] text-muted-foreground -mb-1">
               Optional: name each team (e.g. <em>Warriors</em>, <em>Bulldogs</em>). Leave blank to use {leagueNumber} A, B, C…
@@ -622,9 +762,20 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
                       ))}
                       {team.picks.length === 0 && <li className="text-muted-foreground italic">empty</li>}
                     </ol>
+                    {(team.pairs?.length ?? 0) > 0 && (
+                      <div className="space-y-0.5 border-t border-dashed pt-1.5">
+                        <p className="text-[10px] font-medium text-muted-foreground">Pairs</p>
+                        {team.pairs.map(([a, b], idx) => (
+                          <p key={`${a.id}-${b.id}`} className="text-[11px] truncate">
+                            <span className="text-muted-foreground">{idx + 1}.</span> {a.name || "Unnamed"} &amp; {b.name || "Unnamed"}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </Card>
                 );
               })}
+
             </div>
 
             {allocation.reserves.length > 0 && (
@@ -673,14 +824,14 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
 
         {/* Footer nav */}
         <div className="flex items-center justify-between pt-2 border-t">
-          <Button variant="ghost" size="sm" disabled={step === 1 || submitting} onClick={() => setStep(s => Math.max(1, s - 1))}>
+          <Button variant="ghost" size="sm" disabled={step === 1 || submitting} onClick={() => setStep(s => (s === 3 && !questions.askCategory ? 1 : Math.max(1, s - 1)))}>
             <ArrowLeft className="w-4 h-4 mr-1" />Back
           </Button>
           {step < 5 ? (
             <Button
               size="sm"
               disabled={(step === 1 && !canNext1) || (step === 2 && !canNext2) || (step === 3 && !canNext3) || (step === 4 && !canNext4)}
-              onClick={() => setStep(s => Math.min(5, s + 1))}
+              onClick={() => setStep(s => (s === 1 && !questions.askCategory ? 3 : Math.min(5, s + 1)))}
             >
               Next<ArrowRight className="w-4 h-4 ml-1" />
             </Button>

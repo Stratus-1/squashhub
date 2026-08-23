@@ -2356,19 +2356,19 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
       if (!form.name.trim()) return;
       const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId, scope });
       if (error) toast.error(error.message);
-      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
+      else { toast.success("League created"); onOpenChange(false); setForm({ name: "", abbreviation: "", discipline: "singles" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Select your regional league or add your own</Button></DialogTrigger>
+      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Create New League</Button></DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add League Association</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Create or join a league</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="flex gap-2">
-            <Button variant={mode === "select" ? "default" : "outline"} size="sm" onClick={() => setMode("select")} className="flex-1">Select Existing</Button>
-            <Button variant={mode === "create" ? "default" : "outline"} size="sm" onClick={() => setMode("create")} className="flex-1">Create Own</Button>
+            <Button variant={mode === "select" ? "default" : "outline"} size="sm" onClick={() => setMode("select")} className="flex-1">Join Regional League</Button>
+            <Button variant={mode === "create" ? "default" : "outline"} size="sm" onClick={() => setMode("create")} className="flex-1">Create Own League</Button>
           </div>
 
           {mode === "select" ? (
@@ -2391,8 +2391,20 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
             </div>
           ) : (
             <>
-              <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. My Club League" /></div>
-              <div className="space-y-1"><Label>Abbreviation</Label><Input value={form.abbreviation} onChange={e => setForm(p => ({ ...p, abbreviation: e.target.value }))} placeholder="e.g. MCL" /></div>
+              <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Nelspruit Doubles League" /></div>
+              <div className="space-y-1">
+                <Label>Abbreviation</Label>
+                <Input value={form.abbreviation} onChange={e => setForm(p => ({ ...p, abbreviation: e.target.value }))} placeholder="e.g. NDL" />
+                <p className="text-xs text-muted-foreground">Used as the prefix for this league's team codes (e.g. NDL002). It can't be changed later.</p>
+              </div>
+              <div className="space-y-1">
+                <Label>Discipline</Label>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" className="flex-1" variant={form.discipline === "singles" ? "default" : "outline"} onClick={() => setForm(p => ({ ...p, discipline: "singles" }))}>Singles</Button>
+                  <Button type="button" size="sm" className="flex-1" variant={form.discipline === "doubles" ? "default" : "outline"} onClick={() => setForm(p => ({ ...p, discipline: "doubles" }))}>Doubles</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Keeps Singles and Doubles leagues clearly separate — each has its own teams, rounds and fixtures.</p>
+              </div>
               <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground">Scope: Internal only</p>
                 <p className="mt-0.5">Only your club's members participate. Regional/external leagues must be joined via <em>Select Existing</em> — clubs cannot create their own regional leagues.</p>
@@ -2401,7 +2413,7 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
             </>
           )}
           <Button onClick={handleSave} className="w-full" disabled={mode === "select" ? !selectedPlatformId : !form.name.trim()}>
-            {mode === "select" ? "Join Association" : "Create Association"}
+            {mode === "select" ? "Join League" : "Create League"}
           </Button>
         </div>
       </DialogContent>

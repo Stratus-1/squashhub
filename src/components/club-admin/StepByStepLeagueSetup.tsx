@@ -824,14 +824,14 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
 
         {/* Footer nav */}
         <div className="flex items-center justify-between pt-2 border-t">
-          <Button variant="ghost" size="sm" disabled={step === 1 || submitting} onClick={() => setStep(s => Math.max(1, s - 1))}>
+          <Button variant="ghost" size="sm" disabled={step === 1 || submitting} onClick={() => setStep(s => (s === 3 && !questions.askCategory ? 1 : Math.max(1, s - 1)))}>
             <ArrowLeft className="w-4 h-4 mr-1" />Back
           </Button>
           {step < 5 ? (
             <Button
               size="sm"
               disabled={(step === 1 && !canNext1) || (step === 2 && !canNext2) || (step === 3 && !canNext3) || (step === 4 && !canNext4)}
-              onClick={() => setStep(s => Math.min(5, s + 1))}
+              onClick={() => setStep(s => (s === 1 && !questions.askCategory ? 3 : Math.min(5, s + 1)))}
             >
               Next<ArrowRight className="w-4 h-4 ml-1" />
             </Button>

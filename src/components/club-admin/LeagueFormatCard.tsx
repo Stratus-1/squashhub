@@ -10,7 +10,7 @@ import {
   type CompetitionCategory,
   type CompetitionDiscipline,
 } from "@/lib/leagues/category";
-import { formatQuestions, resolveFormat, rubberSlots } from "@/lib/leagues/format";
+import { resolveFormat, rubberSlots, stepOneFormatQuestions } from "@/lib/leagues/format";
 
 /**
  * Adaptive league format settings. Discipline is chosen first (in the parent
@@ -30,7 +30,7 @@ export function LeagueFormatCard({
 }) {
   const { data: rules } = useAssociationRules(associationId);
   const update = useUpdateAssociationRules();
-  const q = formatQuestions(discipline);
+  const q = stepOneFormatQuestions(discipline);
 
   const resolved = resolveFormat(
     { discipline, category: category || null },
@@ -56,8 +56,6 @@ export function LeagueFormatCard({
     update.mutate({
       associationId,
       patch: {
-        singles_rubbers: q.askSinglesRubbers ? singles : null,
-        doubles_rubbers: q.askDoublesRubbers ? doubles : null,
         pairing_policy: q.askPairingPolicy ? policy : "fixed",
         allow_dual_participation: q.askDualParticipation ? dual : false,
       } as any,

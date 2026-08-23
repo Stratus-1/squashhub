@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canSelfScheduleMatch, canMarkChampMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
+import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
@@ -27,13 +29,14 @@ export function MyChampionships() {
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
   const [scheduling, setScheduling] = useState<{ match: any; opponent: string } | null>(null);
+  const [entering, setEntering] = useState<{ match: any; champ: any; a: string; b: string } | null>(null);
 
   // Get all active champs for the club
   const { data: allChamps = [] } = useQuery({
     queryKey: ["club-champs-active", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs")
-        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode, scheduling_mode, scoring_mode, round_play_by")
+        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode, scheduling_mode, scoring_mode, round_play_by, best_of, points_per_game")
         .eq("club_id", clubId!)
         .order("start_date");
       if (error) throw error;
@@ -252,6 +255,18 @@ export function MyChampionships() {
                   const markPerm = selfScheduled
                     ? canMarkChampMatch(m, memberId)
                     : { allowed: false as const };
+                  // Entering an already-played score is independent of both the
+                  // scheduling mode and any court booking.
+                  const resultPerm = canEnterChampResult(m, memberId);
+                  const openResult = (e: any) => {
+                    e.stopPropagation();
+                    setEntering({
+                      match: m,
+                      champ,
+                      a: isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a),
+                      b: isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b),
+                    });
+                  };
 
                   if (unscheduled) {
                     return (
@@ -299,6 +314,16 @@ export function MyChampionships() {
                               Set Up & Mark Game
                             </Button>
                           )}
+                          {resultPerm.allowed && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-6 text-[11px]"
+                              onClick={openResult}
+                            >
+                              Enter Result
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );
@@ -343,6 +368,16 @@ export function MyChampionships() {
                           Mark
                         </Button>
                       )}
+                      {resultPerm.allowed && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-6 text-[10px] px-1.5 shrink-0"
+                          onClick={openResult}
+                        >
+                          Enter Result
+                        </Button>
+                      )}
                     </div>
                   );
                 })}
@@ -376,6 +411,17 @@ export function MyChampionships() {
         clubId={clubId}
         match={scheduling?.match || null}
         opponentName={scheduling?.opponent}
+      />
+
+      <EnterResultDialog
+        open={!!entering}
+        onOpenChange={(v) => !v && setEntering(null)}
+        clubId={clubId}
+        match={entering?.match || null}
+        playerAName={entering?.a || ""}
+        playerBName={entering?.b || ""}
+        bestOf={entering?.champ?.best_of ?? null}
+        pointsTarget={entering?.champ?.points_per_game ?? null}
       />
     </div>
   );

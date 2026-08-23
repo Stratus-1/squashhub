@@ -26,6 +26,8 @@ import { KnockoutCard } from "@/components/tournaments/KnockoutCard";
 import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
+import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
+import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { UserX, Trophy, Shuffle, RotateCcw } from "lucide-react";
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 import { buildPlayoffMatches, type StandingEntity } from "@/lib/tournament-playoffs";
@@ -617,6 +619,7 @@ export default function ClubChampsView() {
   const navigate = useNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
+  const [resultMatch, setResultMatch] = useState<any | null>(null);
 
   const unassignedCount = matches.filter(
     (m: any) => !m.is_bye && m.status === "scheduled" && (!m.scheduled_date || !m.scheduled_time || !m.court_id),
@@ -1690,6 +1693,18 @@ export default function ClubChampsView() {
           return "Unknown";
         }}
       />
+
+      <EnterResultDialog
+        open={!!resultMatch}
+        onOpenChange={(o) => { if (!o) setResultMatch(null); }}
+        clubId={(champ as any)?.club_id}
+        match={resultMatch}
+        playerAName={resultMatch ? getPlayerName(resultMatch.player_a) : ""}
+        playerBName={resultMatch ? getPlayerName(resultMatch.player_b) : ""}
+        bestOf={(champ as any)?.best_of ?? null}
+        pointsTarget={(champ as any)?.points_per_game ?? null}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] })}
+      />
     </div>
   );
 
@@ -1910,6 +1925,25 @@ export default function ClubChampsView() {
             No show
           </Button>
         )}
+
+        {(() => {
+          // "Enter Result" for a match that was played away from the live
+          // marker. Same audience as marking — participants and officials.
+          const perm = canEnterChampResult(m, myMemberId, { canManage });
+          if (!perm.allowed) return null;
+          return (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setResultMatch(m)}
+              title="Capture the score of a match that has already been played"
+            >
+              Enter Result
+            </Button>
+          );
+        })()}
 
         {canManage && completed && !isBye && (
           <Button

@@ -110,11 +110,15 @@ export function useUpdateAssociationRules() {
         .maybeSingle();
 
       if (existing) {
-        const { error } = await supabase
+        const { data: updated, error } = await supabase
           .from("league_rules")
           .update(patch)
-          .eq("id", existing.id);
+          .eq("id", existing.id)
+          .select("id");
         if (error) throw error;
+        if (!updated || updated.length === 0) {
+          throw new Error("You don't have permission to change these league rules.");
+        }
       } else {
         const { error } = await supabase
           .from("league_rules")

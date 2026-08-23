@@ -1856,7 +1856,9 @@ export default function ClubChampsView() {
           "font-medium px-2 py-0.5 rounded",
           ((completed && winnerIsA) || liveAAhead) && "bg-green-500/20 text-green-700 dark:text-green-300",
           ((completed && winnerIsB) || liveBAhead) && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
-        )}>
+          koOut === "a" && ELIMINATED_NAME_CLASS,
+        )}
+        title={koOut === "a" ? "Knocked out of this division" : undefined}>
           {getMatchTeamA(m)}
         </span>
         <span className="text-muted-foreground text-xs">vs</span>
@@ -1864,9 +1866,12 @@ export default function ClubChampsView() {
           "font-medium px-2 py-0.5 rounded",
           ((completed && winnerIsB) || liveBAhead) && "bg-green-500/20 text-green-700 dark:text-green-300",
           ((completed && winnerIsA) || liveAAhead) && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
-        )}>
+          koOut === "b" && ELIMINATED_NAME_CLASS,
+        )}
+        title={koOut === "b" ? "Knocked out of this division" : undefined}>
           {getMatchTeamB(m)}
         </span>
+
 
         {gameBadges.length > 0 && (
           <div className="flex gap-1 ml-auto">

@@ -8557,34 +8557,64 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     <Input
                       value={audienceSearch}
                       onChange={(e) => setAudienceSearch(e.target.value)}
-                      placeholder="Search members (league membership not required)"
+                      placeholder="Search players by name or club (league membership not required)"
                       className="h-8 text-xs"
                     />
-                    <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-52 overflow-auto">
-                      {(members as any[])
-                        .filter((m) => String(m.status ?? "active").toLowerCase() === "active" && String(m.role ?? "member").toLowerCase() !== "visitor")
-                        .filter((m) => {
-                          const q = audienceSearch.trim().toLowerCase();
-                          if (!q) return true;
-                          return String(memberNameById.get(m.id) || m.name || "").toLowerCase().includes(q);
-                        })
-                        .slice(0, 300)
-                        .map((m) => (
-                          <label key={m.id} className="flex items-center gap-2 text-[11px] cursor-pointer">
-                            <Checkbox
-                              checked={audienceMemberIds.has(m.id)}
-                              onCheckedChange={(c) => {
-                                setAudienceMemberIds((prev) => {
-                                  const next = new Set(prev);
-                                  c ? next.add(m.id) : next.delete(m.id);
-                                  return next;
-                                });
-                              }}
-                            />
-                            <span className="truncate">{memberNameById.get(m.id) || m.name || "Unknown member"}</span>
-                          </label>
-                        ))}
+                    <p className="text-[11px] text-muted-foreground">
+                      {directoryScopeLabel(eligibilityScope)} — only name, club, category and ranking are shown. Contact
+                      details stay private; SquashHub delivers the invitation on your behalf.
+                    </p>
+                    {directoryError && (
+                      <p className="text-[11px] text-destructive">
+                        Player directory unavailable: {(directoryError as any)?.message || "not authorised"}
+                      </p>
+                    )}
+                    <div className="rounded border border-border/50 bg-background/60 p-2 space-y-1.5 max-h-52 overflow-auto">
+                      {directoryLoading && directoryPlayers.length === 0 && (
+                        <p className="text-[11px] text-muted-foreground">Searching…</p>
+                      )}
+                      {!directoryLoading && directoryPlayers.length === 0 && !directoryError && (
+                        <p className="text-[11px] text-muted-foreground">No eligible players match that search.</p>
+                      )}
+                      {directoryGroups.map((g) => (
+                        <div key={g.clubId} className="space-y-0.5">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {g.clubName}
+                            {g.players.some((p) => p.is_own_club) ? " (this club)" : ""}
+                          </div>
+                          {g.players.map((p) => (
+                            <label key={p.member_id} className="flex items-center gap-2 text-[11px] cursor-pointer">
+                              <Checkbox
+                                checked={audienceMemberIds.has(p.member_id)}
+                                onCheckedChange={(c) => {
+                                  setAudienceMemberIds((prev) => {
+                                    const next = new Set(prev);
+                                    c ? next.add(p.member_id) : next.delete(p.member_id);
+                                    return next;
+                                  });
+                                  setDirectoryPicked((prev) => {
+                                    const next = new Map(prev);
+                                    c ? next.set(p.member_id, p) : next.delete(p.member_id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                              <span className="truncate">{p.display_name}</span>
+                              {p.gender && (
+                                <span className="text-[10px] text-muted-foreground shrink-0">{p.gender}</span>
+                              )}
+                              {typeof p.ladder_position === "number" && (
+                                <span className="text-[10px] text-muted-foreground shrink-0">#{p.ladder_position}</span>
+                              )}
+                              {p.invite_status && (
+                                <span className="text-[10px] text-muted-foreground shrink-0">({p.invite_status})</span>
+                              )}
+                            </label>
+                          ))}
+                        </div>
+                      ))}
                     </div>
+
                   </div>
                 )}
 

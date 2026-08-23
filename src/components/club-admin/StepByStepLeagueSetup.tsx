@@ -329,15 +329,39 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     setSubmitting(true);
     try {
       const genderLabel = gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : gender === "open" ? "Open" : "Mixed";
+
+      // Always read fresh league rows: a previously failed/partial save may have created
+      // rows that are not yet in the cached list, which would collide on the unique code index.
+      const { data: freshRows, error: freshErr } = await fromExt("leagues")
+        .select("id, name, code")
+        .eq("association_id", associationId);
+      if (freshErr) throw freshErr;
+      const existingRows: { id: string; name: string; code: string | null }[] = freshRows || [];
+
       // Determine code prefix: try to reuse existing league code prefix for that association (e.g. NSC001 → NSC)
-      const sample = leagues.find(l => l.association_id === associationId);
+      const sample = existingRows.find(l => !!l.code);
       const codePrefix = sample?.code?.replace(/\d+$/, "") || (association?.abbreviation || "LG");
 
       // Find max existing numeric suffix to continue numbering
-      const existingNums = leagues
-        .filter(l => l.association_id === associationId && l.code?.startsWith(codePrefix))
+      const existingNums = existingRows
+        .filter(l => l.code?.startsWith(codePrefix))
         .map(l => parseInt(l.code!.match(/\d+$/)?.[0] || "0", 10));
       let nextCode = (existingNums.length ? Math.max(...existingNums) : 0) + 1;
+
+      const insertLeague = async (payload: Record<string, unknown>): Promise<string> => {
+        // Retry with the next code on a unique-code collision (concurrent/partial saves).
+        for (let attempt = 0; attempt < 25; attempt++) {
+          const code = `${codePrefix}${String(nextCode++).padStart(3, "0")}`;
+          const { data, error } = await fromExt("leagues")
+            .insert({ ...payload, code })
+            .select("id")
+            .single();
+          if (!error) return data.id as string;
+          const isDup = (error as any).code === "23505" || /duplicate key/i.test(error.message || "");
+          if (!isDup) throw error;
+        }
+        throw new Error("Could not allocate a unique league code — please try again.");
+      };
 
       // Ensure one league row exists per team
       const createdLeagueIds: string[] = [];
@@ -346,29 +370,22 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         const teamName = customName
           ? `${genderLabel} ${leagueNumber} ${customName}`
           : `${genderLabel} ${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`;
-        const existing = leagues.find(l => l.association_id === associationId && l.name === teamName);
+        const existing = existingRows.find(l => l.name === teamName);
         if (existing) {
           createdLeagueIds.push(existing.id);
         } else {
-          const code = `${codePrefix}${String(nextCode++).padStart(3, "0")}`;
-          const { data, error } = await fromExt("leagues")
-            .insert({
-              club_id: clubId,
-              association_id: associationId,
-              name: teamName,
-              code,
-              reserves_per_team: reserves,
-              // Canonical structure: season + level, independent of the display name.
-              level: parseInt(leagueNumber, 10) || null,
-              season_year: seasonYear,
-              is_reserve: false,
-              level_source: "manual",
-              season_source: "manual",
-            })
-            .select("id")
-            .single();
-          if (error) throw error;
-          createdLeagueIds.push(data.id);
+          createdLeagueIds.push(await insertLeague({
+            club_id: clubId,
+            association_id: associationId,
+            name: teamName,
+            reserves_per_team: reserves,
+            // Canonical structure: season + level, independent of the display name.
+            level: parseInt(leagueNumber, 10) || null,
+            season_year: seasonYear,
+            is_reserve: false,
+            level_source: "manual",
+            season_source: "manual",
+          }));
         }
       }
 
@@ -379,29 +396,23 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         const reservesNameFinal = customRes
           ? `${genderLabel} ${leagueNumber} ${customRes}`
           : `${genderLabel} ${leagueNumber} Reserves`;
-        const existing = leagues.find(l => l.association_id === associationId && l.name === reservesNameFinal);
+        const existing = existingRows.find(l => l.name === reservesNameFinal);
         if (existing) reservesLeagueId = existing.id;
         else {
-          const code = `${codePrefix}${String(nextCode++).padStart(3, "0")}`;
-          const { data, error } = await fromExt("leagues")
-            .insert({
-              club_id: clubId,
-              association_id: associationId,
-              name: reservesNameFinal,
-              code,
-              // Reserves inherit the same season + level as their teams.
-              level: parseInt(leagueNumber, 10) || null,
-              season_year: seasonYear,
-              is_reserve: true,
-              level_source: "manual",
-              season_source: "manual",
-            })
-            .select("id")
-            .single();
-          if (error) throw error;
-          reservesLeagueId = data.id;
+          reservesLeagueId = await insertLeague({
+            club_id: clubId,
+            association_id: associationId,
+            name: reservesNameFinal,
+            // Reserves inherit the same season + level as their teams.
+            level: parseInt(leagueNumber, 10) || null,
+            season_year: seasonYear,
+            is_reserve: true,
+            level_source: "manual",
+            season_source: "manual",
+          });
         }
       }
+
 
 
       // Persist the "players per match" rule for every league row in this batch

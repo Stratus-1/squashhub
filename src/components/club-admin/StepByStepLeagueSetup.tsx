@@ -511,7 +511,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     if (questions.askCategory) setGender("men");
     setLeagueNumber("1st");
     setStartPosition(1);
-    setNumMembers(0);
+    
     setNumTeams(1);
     setPerTeam(4);
     setReserves(0);

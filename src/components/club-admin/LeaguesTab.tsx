@@ -2283,9 +2283,9 @@ const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
 });
 
 // ─── Association Dialog ───
-function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
-  const [form, setForm] = useState({ name: "", abbreviation: "" });
-  const [mode, setMode] = useState<"select" | "create">("select");
+function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void; defaultMode?: "select" | "create" }) {
+  const [form, setForm] = useState<{ name: string; abbreviation: string; discipline: "singles" | "doubles" }>({ name: "", abbreviation: "", discipline: "singles" });
+  const [mode, setMode] = useState<"select" | "create">(defaultMode);
   // Clubs may only create Internal leagues themselves. Regional/external leagues
   // must be joined via "Select Existing" (platform-managed by super admin).
   const scope: "internal" = "internal";
@@ -2419,13 +2419,29 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
   const [affectsLadder, setAffectsLadder] = useState<boolean>(!!(association as any).affects_ladder);
 
   const isPlatformLinked = !!association.platform_association_id;
+  // Club-owned internal leagues may be renamed by the club. Regional/platform
+  // associations are shared across clubs, so their display name stays locked.
+  const isInternalOwned = ((association.scope as any) || "") === "internal";
+  const [discipline, setDiscipline] = useState<"singles" | "doubles">(
+    ((association as any).discipline as "singles" | "doubles") || "singles",
+  );
 
   const handleSave = async () => {
     if (!name.trim()) return;
-    const payload: any = { name, abbreviation, scope, affects_ladder: scope === "internal" ? affectsLadder : false };
+    if (isInternalOwned) {
+      // Renames the tenant row AND the platform mirror. Never touches the
+      // abbreviation — team codes (e.g. NIL002) depend on it.
+      const { error: rpcErr } = await (supabase as any).rpc("rename_internal_league_association", {
+        _association_id: association.id,
+        _name: name.trim(),
+        _discipline: discipline,
+      });
+      if (rpcErr) { toast.error(rpcErr.message); return; }
+    }
+    const payload: any = { scope, affects_ladder: scope === "internal" ? affectsLadder : false };
     const { error } = await fromExt("league_associations").update(payload).eq("id", association.id);
     if (error) { toast.error(error.message); return; }
-    toast.success("Association updated");
+    toast.success("League updated");
     qc.invalidateQueries({ queryKey: ["league-associations"] });
     qc.invalidateQueries({ queryKey: ["league-associations-linked"] });
     onOpenChange(false);
@@ -2434,17 +2450,27 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Edit Association</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Edit League</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
             <Label>Name</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} disabled={isPlatformLinked} />
-            {isPlatformLinked && <p className="text-xs text-muted-foreground">Name is managed by the platform.</p>}
+            <Input value={name} onChange={e => setName(e.target.value)} disabled={!isInternalOwned} />
+            {!isInternalOwned && <p className="text-xs text-muted-foreground">Name is managed by the platform for regional leagues.</p>}
           </div>
           <div className="space-y-1">
             <Label>Abbreviation</Label>
-            <Input value={abbreviation} onChange={e => setAbbreviation(e.target.value)} disabled={isPlatformLinked} />
+            <Input value={abbreviation} onChange={e => setAbbreviation(e.target.value)} disabled />
+            <p className="text-xs text-muted-foreground">Codes can't be changed — team codes (e.g. {(abbreviation || "ABC").toUpperCase()}002) and historical records depend on them.</p>
           </div>
+          {isInternalOwned && (
+            <div className="space-y-1">
+              <Label>Discipline</Label>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" className="flex-1" variant={discipline === "singles" ? "default" : "outline"} onClick={() => setDiscipline("singles")}>Singles</Button>
+                <Button type="button" size="sm" className="flex-1" variant={discipline === "doubles" ? "default" : "outline"} onClick={() => setDiscipline("doubles")}>Doubles</Button>
+              </div>
+            </div>
+          )}
           <div className="space-y-1">
             <Label>Scope</Label>
             <div className="flex gap-2">

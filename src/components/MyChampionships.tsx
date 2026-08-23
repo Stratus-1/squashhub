@@ -368,6 +368,16 @@ export function MyChampionships() {
                           Mark
                         </Button>
                       )}
+                      {resultPerm.allowed && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-6 text-[10px] px-1.5 shrink-0"
+                          onClick={openResult}
+                        >
+                          Enter Result
+                        </Button>
+                      )}
                     </div>
                   );
                 })}

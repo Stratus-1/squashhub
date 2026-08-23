@@ -1053,7 +1053,7 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
   }, [uniformPpg, ppgs.length]);
 
   const save = async () => {
-    const size = Math.max(1, Math.min(8, Math.floor(draft || 0)));
+    const size = Math.max(1, Math.min(24, Math.floor(draft || 0)));
     // ppg: blank = inherit (null). Otherwise must be 5..21.
     let ppgValue: number | null = null;
     const trimmed = ppgDraft.trim();
@@ -1114,7 +1114,7 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
               <Input
                 type="number"
                 min={1}
-                max={8}
+                max={24}
                 value={draft || ""}
                 onChange={(e) => setDraft(parseInt(e.target.value) || 1)}
                 onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
@@ -1397,7 +1397,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
 
   const saveName = async () => {
     const trimmed = nameDraft.trim();
-    const size = Math.max(1, Math.min(8, Math.floor(sizeDraft || 0)));
+    const size = Math.max(1, Math.min(24, Math.floor(sizeDraft || 0)));
     const nameChanged = trimmed && trimmed !== league.name;
     const sizeChanged = typeof currentTeamSize !== "number" || size !== currentTeamSize;
     if (!nameChanged && !sizeChanged) { setEditing(false); setNameDraft(league.name); return; }
@@ -1467,7 +1467,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
                 <Input
                   type="number"
                   min={1}
-                  max={8}
+                  max={24}
                   value={sizeDraft || ""}
                   onChange={(e) => setSizeDraft(parseInt(e.target.value) || 1)}
                   onKeyDown={(e) => {

@@ -38,7 +38,33 @@ interface Invoice {
   display_price_per_member?: number | null;
   display_total?: number | null;
   fx_rate_to_zar?: number | null;
+  billing_month?: string | null;
+  invoice_kind?: string | null;
+  line_items?: InvoiceLine[] | null;
+  subscription_amount?: number | null;
+  whatsapp_amount?: number | null;
+  whatsapp_message_count?: number | null;
 }
+
+interface InvoiceLine {
+  kind: "subscription" | "whatsapp";
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  period_start?: string;
+  period_end?: string;
+}
+
+/** Line items for consolidated invoices; empty for legacy subscription-only rows. */
+const lineItemsOf = (inv: Invoice): InvoiceLine[] =>
+  Array.isArray(inv.line_items) ? (inv.line_items as InvoiceLine[]) : [];
+
+const INVOICE_KIND_LABEL: Record<string, string> = {
+  subscription: "Subscription",
+  whatsapp: "WhatsApp usage",
+  combined: "Subscription + WhatsApp",
+};
 
 const STATUS_COLORS: Record<string, string> = {
   paid: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",

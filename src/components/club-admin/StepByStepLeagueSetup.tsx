@@ -13,7 +13,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useLeagueAssociations, useLeagues, useClubMembers, type ClubMember } from "@/hooks/use-club";
 import { useAssociationRules } from "@/hooks/use-association-rules";
-import { inheritLeagueConfig, teamSetupQuestions, buildTeamAllocation } from "@/lib/leagues/team-setup";
+import { inheritLeagueConfig, teamSetupQuestions, buildTeamAllocation, computeTeamRequirements } from "@/lib/leagues/team-setup";
 import { CATEGORY_LABELS, DISCIPLINE_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 
 type Gender = "men" | "ladies" | "mixed" | "open";
@@ -273,10 +273,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     const teamPlayers = numTeams * slotsPerTeam;
     const startIdx = questions.askLadderStart ? Math.max(0, (startPosition || 1) - 1) : 0;
     const available = sortedPool.slice(startIdx);
-    const totalToTake = Math.min(numMembers, available.length);
+    const totalToTake = Math.min(requirements.totalPlayersRequired, available.length);
     const top = available.slice(0, totalToTake);
     const teamPicks = top.slice(0, teamPlayers);
-    const reservePicks = top.slice(teamPlayers, teamPlayers + reserves);
+    const reservePicks = top.slice(teamPlayers, teamPlayers + reserves * numTeams);
 
     if (questions.allocationMode === "ladder") {
       const order = buildDraftOrder(numTeams, teamPicks.length, distribution);
@@ -307,7 +307,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
       pairs: t.pairs as Array<[typeof top[number], typeof top[number]]>,
     }));
     return { teams, reserves: reservePicks, taken: top.length };
-  }, [sortedPool, numMembers, numTeams, slotsPerTeam, singlesPerTeam, effectivePairsPerTeam, reserves, distribution, leagueNumber, startPosition, questions.allocationMode, questions.askLadderStart]);
+  }, [sortedPool, requirements.totalPlayersRequired, numTeams, slotsPerTeam, singlesPerTeam, effectivePairsPerTeam, reserves, distribution, leagueNumber, startPosition, questions.allocationMode, questions.askLadderStart]);
 
 
   // Detect existing league rows for this association+gender+number that we'd need
@@ -322,7 +322,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const canNext1 = !!associationId;
   const canNext2 = !!gender;
   const canNext3 = !!leagueNumber;
-  const canNext4 = numMembers > 0 && numTeams > 0 && slotsPerTeam > 0 && (numTeams * slotsPerTeam + reserves) <= numMembers;
+  const canNext4 = numTeams > 0 && slotsPerTeam > 0 && requirements.sufficient;
 
   const handleSubmit = async () => {
     if (!canNext4) return;
@@ -414,6 +414,9 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           association_id: associationId,
           team_size: slotsPerTeam,
           team_size_mode: "fixed" as const,
+          singles_rubbers: effectiveSinglesRubbers,
+          doubles_rubbers: effectiveDoublesRubbers,
+          reserves_per_team: reserves,
         }));
         const { error: rulesError } = await fromExt("league_rules").upsert(rulesRows, { onConflict: "league_id" });
         if (rulesError) throw rulesError;

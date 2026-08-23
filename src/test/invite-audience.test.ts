@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  filterVisitorRecipients,
+  visitorMemberIds,
   audienceLabel,
   partitionAcceptedEntrants,
   resolveInviteAudience,
@@ -111,5 +113,35 @@ describe("invite audience excludes non-members", () => {
       registrationsByLeague: new Map([["L1", ["a", "v", "p"]]]),
     });
     expect(res.memberIds).toEqual(["a"]);
+  });
+});
+
+describe("visitor guard on invite sends", () => {
+
+  const regs = [
+    { id: "r1", club_member_id: "m1" },
+    { id: "r2", club_member_id: "v1" },
+    { id: "r3", club_member_id: "v2" },
+  ];
+  const rows = [
+    { id: "m1", role: "member", club_member_number: "001" },
+    { id: "v1", role: "visitor", club_member_number: "visitor:abc" },
+    { id: "v2", role: "member", club_member_number: "visitor:def" },
+  ];
+
+  it("drops visitors when include-visitors is off", () => {
+    const { kept, removed } = filterVisitorRecipients(regs, rows, false);
+    expect(kept.map((r) => r.id)).toEqual(["r1"]);
+    expect(removed).toBe(2);
+  });
+
+  it("keeps everyone when the organiser opted visitors in", () => {
+    const { kept, removed } = filterVisitorRecipients(regs, rows, true);
+    expect(kept).toHaveLength(3);
+    expect(removed).toBe(0);
+  });
+
+  it("treats a promoted visitor:<id> number as a visitor even if the role was edited", () => {
+    expect(Array.from(visitorMemberIds(rows)).sort()).toEqual(["v1", "v2"]);
   });
 });

@@ -136,6 +136,7 @@ import {
   type RoundMatchRow,
 } from "@/lib/tournaments/self-scheduled-rounds";
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
+import { DoublesPairsPanel } from "@/components/club-admin/DoublesPairsPanel";
 import { z } from "zod";
 
 interface ClubChampsTabProps {
@@ -9162,9 +9163,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             <p className="text-xs text-muted-foreground">
               Use the <strong>Registrations</strong> button on the tournament card to manually pair or override entries.
             </p>
+            {editingChampId && (
+              <DoublesPairsPanel champId={editingChampId} groupLabels={groupLabels as any} />
+            )}
           </CardContent>
         </Card>
       )}
+
 
 
       {/* ── STEP: GROUPS ── */}

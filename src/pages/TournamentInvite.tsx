@@ -26,6 +26,8 @@ import {
   requiresDivisionChoice,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
+import { doublesDivisions } from "@/lib/tournaments/doubles";
+import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPicker";
 
 
 
@@ -111,7 +113,9 @@ export default function TournamentInvite() {
       } else {
         toast.success("You're entered. See you on court!");
       }
-      if (champId) navigate(path);
+      // Doubles entrants stay here so they can pick a partner right away.
+      if (champId && !hasDoublesChoice) navigate(path);
+
     },
     onError: (e: any) => {
       const msg = e?.message || "Could not update your invitation";
@@ -137,6 +141,29 @@ export default function TournamentInvite() {
     rows.push({ icon: CreditCard, label: feeCents > 0 ? `${money(feeCents)} entry fee` : "No entry fee" });
     return rows;
   }, [data, feeCents]);
+
+  // Doubles divisions this player has entered — they may pick a partner there.
+  const enteredDivisions = useMemo(() => {
+    const chosen = chosenDivisions.length > 0 ? chosenDivisions : (data?.selected_divisions || []).map(Number);
+    return doublesDivisions(divisions, chosen);
+  }, [divisions, chosenDivisions, data]);
+  const hasDoublesChoice = enteredDivisions.length > 0;
+
+  const partnerSection =
+    !isTest && data?.champ_id && hasDoublesChoice ? (
+      <div className="space-y-2 pt-1">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Doubles partner
+        </p>
+        <DoublesPartnerPicker
+          champId={String(data.champ_id)}
+          divisions={enteredDivisions}
+          token={token || null}
+          verify={verify.trim() || null}
+        />
+      </div>
+    ) : null;
+
 
   if (isLoading || authLoading) {
     return (
@@ -204,6 +231,7 @@ export default function TournamentInvite() {
         <Badge className="bg-emerald-600 hover:bg-emerald-600">
           <CheckCircle2 className="w-3 h-3 mr-1" /> You're entered
         </Badge>
+        {partnerSection}
         {data?.champ_id && (
           <Button className="w-full" onClick={() => navigate(`/club-champs/${data.champ_id}`)}>
             View tournament
@@ -213,18 +241,21 @@ export default function TournamentInvite() {
     );
   }
 
+
   if (state === "payment_pending") {
     return shell(
       <>
         {header}
         {detailList}
         <Badge variant="secondary">Accepted — entry fee outstanding</Badge>
+        {partnerSection}
         <Button
           className="w-full"
           onClick={() => data?.champ_id && navigate(afterAcceptPath(data.champ_id, "pending_payment"))}
         >
           <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
         </Button>
+
       </>,
     );
   }

@@ -29,13 +29,14 @@ export function MyChampionships() {
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
   const [scheduling, setScheduling] = useState<{ match: any; opponent: string } | null>(null);
+  const [entering, setEntering] = useState<{ match: any; champ: any; a: string; b: string } | null>(null);
 
   // Get all active champs for the club
   const { data: allChamps = [] } = useQuery({
     queryKey: ["club-champs-active", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs")
-        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode, scheduling_mode, scoring_mode, round_play_by")
+        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode, scheduling_mode, scoring_mode, round_play_by, best_of, points_per_game")
         .eq("club_id", clubId!)
         .order("start_date");
       if (error) throw error;

@@ -43,20 +43,84 @@ export function fixtureTeamDisplayName({ snapshot, code, liveName }: FixtureTeam
   return clean(snapshot) ?? clean(liveName) ?? clean(code) ?? "";
 }
 
-/** Convenience reader for a raw fixture row + a code→name map. */
+/**
+ * Phase 2.1 — competition-aware team lookup.
+ *
+ * NSA team codes are NOT globally unique: the same code (e.g. `CSI001`) can
+ * legitimately belong to two different competitions/divisions in the same
+ * association+season (Men's 2nd vs Ladies 1st). A plain `code -> name` map
+ * therefore silently overwrites one of them.
+ *
+ * `TeamNameIndex` keeps a division-scoped map (the authoritative one) plus a
+ * code-only map that is deliberately blanked when a code is ambiguous.
+ */
+export interface TeamNameIndexInput {
+  code?: string | null;
+  /** NSA's per-competition team code — the stable discriminator when present. */
+  nsa_team_code?: string | null;
+  name?: string | null;
+  division?: string | null;
+}
+
+export interface TeamNameIndex {
+  /** `${DIVISION}|${CODE}` -> name */
+  byDivisionCode: Record<string, string>;
+  /** CODE -> name, only when that code is unambiguous across competitions. */
+  byCode: Record<string, string>;
+}
+
+const normDiv = (v?: string | null) => (v ?? "").trim().toUpperCase();
+
+export function buildTeamNameIndex(teams: TeamNameIndexInput[]): TeamNameIndex {
+  const byDivisionCode: Record<string, string> = {};
+  const byCode: Record<string, string> = {};
+  const seen: Record<string, string> = {};
+  const ambiguous = new Set<string>();
+
+  for (const t of teams) {
+    const name = clean(t.name);
+    if (!name) continue;
+    for (const raw of [t.nsa_team_code, t.code]) {
+      const code = clean(raw)?.toUpperCase();
+      if (!code) continue;
+      if (t.division) byDivisionCode[`${normDiv(t.division)}|${code}`] = name;
+      if (seen[code] === undefined) seen[code] = name;
+      else if (seen[code] !== name) ambiguous.add(code);
+    }
+  }
+  for (const [code, name] of Object.entries(seen)) {
+    if (!ambiguous.has(code)) byCode[code] = name;
+  }
+  return { byDivisionCode, byCode };
+}
+
+export type TeamNameLookup = Record<string, string> | TeamNameIndex | null | undefined;
+
+function lookupName(lookup: TeamNameLookup, code?: string | null, division?: string | null) {
+  if (!lookup || !code) return undefined;
+  const key = code.toUpperCase();
+  if ("byDivisionCode" in (lookup as TeamNameIndex)) {
+    const idx = lookup as TeamNameIndex;
+    return idx.byDivisionCode[`${normDiv(division)}|${key}`] ?? idx.byCode[key];
+  }
+  return (lookup as Record<string, string>)[key];
+}
+
+/** Convenience reader for a raw fixture row + a team-name lookup. */
 export function fixtureSideName(
   fixture: {
     home_team_code?: string | null;
     away_team_code?: string | null;
     home_team_name_snapshot?: string | null;
     away_team_name_snapshot?: string | null;
+    division?: string | null;
   },
   side: FixtureTeamSide,
-  teamNameByCode?: Record<string, string> | null,
+  teamNames?: TeamNameLookup,
 ): string {
   const code = side === "home" ? fixture.home_team_code : fixture.away_team_code;
   const snapshot = side === "home" ? fixture.home_team_name_snapshot : fixture.away_team_name_snapshot;
-  const liveName = code ? teamNameByCode?.[code.toUpperCase()] : undefined;
+  const liveName = lookupName(teamNames, code, fixture.division);
   return fixtureTeamDisplayName({ snapshot, code, liveName });
 }
 
@@ -64,9 +128,10 @@ export function fixtureSideName(
 export function hasFixtureTeamName(
   fixture: Parameters<typeof fixtureSideName>[0],
   side: FixtureTeamSide,
-  teamNameByCode?: Record<string, string> | null,
+  teamNames?: TeamNameLookup,
 ): boolean {
   const code = side === "home" ? fixture.home_team_code : fixture.away_team_code;
-  const name = fixtureSideName(fixture, side, teamNameByCode);
+  const name = fixtureSideName(fixture, side, teamNames);
   return name.length > 0 && name !== (code ?? "").trim() && !isByeCode(code);
 }
+

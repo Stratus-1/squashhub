@@ -1037,7 +1037,33 @@ export default function LeagueGameDetail() {
       }
       return next;
     });
-  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount]);
+  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount, doublesRubbers]);
+
+  // Doubles prefill — each rubber row shows the team's registered PAIR
+  // ("Player one & Player two") instead of a single player name.
+  useEffect(() => {
+    if (!doublesInfo?.isDoubles || !fixture) return;
+    const byCode = doublesInfo.pairsByCode || {};
+    const homePairs = byCode[String(fixture.home_team_code || "").toUpperCase()] || [];
+    const awayPairs = byCode[String(fixture.away_team_code || "").toUpperCase()] || [];
+    if (homePairs.length === 0 && awayPairs.length === 0) return;
+
+    setPositions((prev) =>
+      prev.map((p, i) => {
+        const slotHasPlay = (Array.isArray(p.scores) && p.scores.length > 0) || !!p.isForfeit;
+        if (slotHasPlay) return p;
+        const home = homePairs[i];
+        const away = awayPairs[i];
+        return {
+          ...p,
+          homeName: p.homeName || home?.name || "",
+          awayName: p.awayName || away?.name || "",
+        };
+      }),
+    );
+  }, [doublesInfo, fixture, positionCount, existingMatches]);
+
+
 
   // (leagueRules fetched above near positionCount declaration)
 

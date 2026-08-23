@@ -291,7 +291,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const canNext1 = !!associationId;
   const canNext2 = !!gender;
   const canNext3 = !!leagueNumber;
-  const canNext4 = numMembers > 0 && numTeams > 0 && perTeam > 0 && (numTeams * perTeam + reserves) <= numMembers;
+  const canNext4 = numMembers > 0 && numTeams > 0 && slotsPerTeam > 0 && (numTeams * slotsPerTeam + reserves) <= numMembers;
 
   const handleSubmit = async () => {
     if (!canNext4) return;

@@ -774,7 +774,7 @@ export default function LeagueGameDetail() {
       }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules, fixture, teamRulesByCode]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules, fixture, teamRulesByCode, doublesRubbers]);
 
   useEffect(() => {
     const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;

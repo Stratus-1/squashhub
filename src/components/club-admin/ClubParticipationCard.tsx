@@ -220,7 +220,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
           <DialogHeader>
             <DialogTitle>Activate Club Participation</DialogTitle>
             <DialogDescription>
-              Review the Service Level Agreement, choose a billing option, and sign on behalf of {club.name}.
+              Review the Service Level Agreement and sign on behalf of {club.name}.
             </DialogDescription>
           </DialogHeader>
 

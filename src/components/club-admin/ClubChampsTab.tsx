@@ -52,6 +52,11 @@ import {
 } from "@/lib/tournaments/divisions";
 import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
 import { distributeIntoPools, flattenPools, poolBlocks, poolCounts, poolLetter } from "@/lib/tournaments/pools";
+import {
+  collectProtectedSchedules,
+  orphanedScheduleMessage,
+  reconcileProtectedSchedules,
+} from "@/lib/tournaments/preserve-schedules";
 import { describeSectionSizes, totalByes } from "@/lib/tournaments/knockout-sections";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
 import {

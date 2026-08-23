@@ -340,14 +340,19 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       <div>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div>
-            <h3 className="font-semibold">League Associations</h3>
-            <p className="text-xs text-muted-foreground">Fee settings are managed in the Fees tab</p>
+            <h3 className="font-semibold">Your Leagues</h3>
+            <p className="text-xs text-muted-foreground">Each league (e.g. Singles, Doubles) has its own teams, rounds and fixtures. Fee settings are managed in the Fees tab.</p>
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setBulkBookOpen(true)}>
               <CalendarDays className="w-4 h-4 mr-1" />Bulk book home fixtures
             </Button>
-            <AssociationDialog clubId={clubId} open={addAssocOpen} onOpenChange={setAddAssocOpen} />
+            <AssociationDialog
+              clubId={clubId}
+              open={addAssocOpen}
+              onOpenChange={setAddAssocOpen}
+              defaultMode={associations.length > 0 ? "create" : "select"}
+            />
           </div>
         </div>
         <div className="space-y-2">

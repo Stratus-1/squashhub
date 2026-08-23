@@ -27,7 +27,7 @@ type Props = {
   clubTeamCodes: string[];
   myTeamCodes: Set<string>;
   /** Optional map of team code -> custom team/league display name (e.g. "Cobras"). */
-  teamNameByCode?: Record<string, string>;
+  teamNameByCode?: TeamNameLookup;
   /** Optional map of team code -> logo URL. */
   teamLogoByCode?: Record<string, string>;
   /** Start of the configured squash week (yyyy-MM-dd). Falls back to today. */

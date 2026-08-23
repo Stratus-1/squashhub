@@ -148,6 +148,8 @@ export interface LeagueAssociation {
   fee_class: "club_income" | "pass_through";
   platform_association_id?: string | null;
   scope?: "internal" | "region";
+  /** Singles vs doubles league. Display/structural marker only — defaults to singles. */
+  discipline?: "singles" | "doubles";
   external_source?: string | null;
   external_club_id?: string | null;
 }

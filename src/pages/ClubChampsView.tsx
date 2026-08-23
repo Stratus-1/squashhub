@@ -26,6 +26,8 @@ import { KnockoutCard } from "@/components/tournaments/KnockoutCard";
 import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
+import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
+import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { UserX, Trophy, Shuffle, RotateCcw } from "lucide-react";
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 import { buildPlayoffMatches, type StandingEntity } from "@/lib/tournament-playoffs";

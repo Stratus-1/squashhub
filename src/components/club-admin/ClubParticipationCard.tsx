@@ -21,7 +21,7 @@ import { SquashHubSlaContent, SLA_VERSION } from "@/components/SquashHubSlaConte
 import { ParticipationFeeStructure } from "@/components/club-admin/ParticipationFeeStructure";
 import { useClubBillingStart } from "@/hooks/use-billing-start";
 
-type BillingOption = "monthly" | "biannual_upfront" | "annual_upfront";
+import { normalizeBillingOption, optionToCycle, billingOptionLabel } from "@/lib/billing/frequency";
 
 export function ClubParticipationCard({ club }: { club: Club }) {
   const { user } = useAuth();
@@ -32,7 +32,9 @@ export function ClubParticipationCard({ club }: { club: Club }) {
 
   const isActive = !!c.participation_active;
   const [open, setOpen] = useState(false);
-  const [billing, setBilling] = useState<BillingOption>(c.sla_billing_option || "monthly");
+  // READ-ONLY here. The sole editable source of truth is the "Billing frequency"
+  // control below the SLA agreement (BillingFrequencyCard).
+  const billing = normalizeBillingOption(c.sla_billing_option);
   const [name, setName] = useState(c.sla_accepted_name || "");
   const [role, setRole] = useState(c.sla_accepted_role || "Chairman");
   const [agreed, setAgreed] = useState(false);
@@ -79,7 +81,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
 
   const chosenAmount =
     billing === "annual_upfront" ? annualTotal : billing === "biannual_upfront" ? biannualTotal : monthlyTotal;
-  const chosenCycle = billing === "annual_upfront" ? "annual" : billing === "biannual_upfront" ? "biannual" : "monthly";
+  const chosenCycle = optionToCycle(billing);
 
   const handleAccept = async () => {
     if (!agreed || !name.trim() || !role.trim()) {
@@ -96,7 +98,6 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         sla_accepted_name: name.trim(),
         sla_accepted_role: role.trim(),
         sla_version: SLA_VERSION,
-        sla_billing_option: billing,
       } as any);
 
       // Lock in the baseline member count + amount agreed at signature time.

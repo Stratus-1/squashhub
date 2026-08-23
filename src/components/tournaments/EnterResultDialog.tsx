@@ -131,6 +131,9 @@ export function EnterResultDialog({
       toast.success("Result saved");
       qc.invalidateQueries({ queryKey: ["club-champ-matches"] });
       qc.invalidateQueries({ queryKey: ["my-champ-matches"] });
+      qc.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["my-champ-matches-events"] });
+      qc.invalidateQueries({ queryKey: ["club-champs-all-entries"] });
       qc.invalidateQueries({ queryKey: ["matches"] });
       onSaved?.();
       onOpenChange(false);

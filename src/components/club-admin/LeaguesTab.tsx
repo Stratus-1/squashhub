@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
+import { CalendarRange } from "lucide-react";
+import { LeagueSeasonsDialog } from "./LeagueSeasonsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   COMPETITION_CATEGORIES,

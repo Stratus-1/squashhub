@@ -426,6 +426,30 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         if (error) throw error;
       }
 
+      // Doubles / Hybrid: persist the allocated pairs as REAL member pairs.
+      if (effectivePairsPerTeam > 0) {
+        const pairRows: any[] = [];
+        allocation.teams.forEach((team, i) => {
+          (team.pairs || []).forEach(([a, b], idx) => {
+            pairRows.push({
+              club_id: clubId,
+              league_id: createdLeagueIds[i],
+              player_one_member_id: a.id,
+              player_two_member_id: b.id,
+              pair_order: idx + 1,
+            });
+          });
+        });
+        if (pairRows.length > 0) {
+          for (const lid of createdLeagueIds) {
+            await fromExt("league_team_pairs").delete().eq("league_id", lid);
+          }
+          const { error: pairErr } = await fromExt("league_team_pairs").insert(pairRows);
+          if (pairErr) throw pairErr;
+        }
+      }
+
+
       // Track who got allocated this session
       const newlyAllocated = new Set(allocatedIds);
       allocation.teams.forEach(t => t.picks.forEach(p => newlyAllocated.add(p.id)));

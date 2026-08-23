@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Trophy, ChevronRight, Loader2, Calendar, User, BarChart3, Gavel, Settings2, Printer, BellRing, GripVertical, MoreVertical, Plus, Trash2, Eraser, PauseCircle } from "lucide-react";
+import { ClipboardCheck } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AddSlotDialog } from "@/components/tournaments/AddSlotDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +33,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchChampMarkerLock, isLockFresh, useChampMarkerLocks } from "@/hooks/use-champ-marker-lock";
 import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDialog";
 import { splitTournamentsByLifecycle, todayISO, isCancelledTournament } from "@/lib/tournaments/lifecycle";
+import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
+import { canEnterChampResult } from "@/lib/tournaments/quick-result";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
@@ -44,6 +48,10 @@ export default function Tournaments() {
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
   const [finalizeChamp, setFinalizeChamp] = useState<any | null>(null);
+  // Club/tournament officials and super admins may capture any result;
+  // everyone else only their own matches.
+  const canManageChamps = useHasPermission("champs");
+  const [resultMatch, setResultMatch] = useState<any | null>(null);
   const { user } = useAuth();
   const [takeover, setTakeover] = useState<
     { matchId: string; markRoute: string; label: string; markerName: string } | null
@@ -824,6 +832,26 @@ export default function Tournaments() {
           </Button>
         )}
 
+        {(() => {
+          // Capture a score for a game already played away from the marker.
+          // Allowed for the two players in THIS match, club/tournament admins
+          // and super admins — never for an uninvolved player.
+          if (isPlaceholder) return null;
+          const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps });
+          if (!perm.allowed) return null;
+          return (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto"
+              title="Capture the score of a match that has already been played"
+              onClick={(e) => { e.stopPropagation(); setResultMatch(m); }}
+            >
+              <ClipboardCheck className="w-3 h-3" /> Enter Result
+            </Button>
+          );
+        })()}
+
         {isClubAdmin && m.scheduled_date && m.scheduled_time && (
           <SwapFixtureButton
             match={m}
@@ -1432,6 +1460,21 @@ export default function Tournaments() {
         markerName={takeover?.markerName}
         requesterName={activeMember?.name || user?.email || "A marker"}
         isAdmin={isClubAdmin}
+      />
+
+      <EnterResultDialog
+        open={!!resultMatch}
+        onOpenChange={(o) => { if (!o) setResultMatch(null); }}
+        clubId={clubId}
+        match={resultMatch}
+        playerAName={resultMatch ? sideLabel(resultMatch.player_a, resultMatch.partner_a, resultMatch.placeholder_a, allChamps.find((c: any) => c.id === resultMatch.champ_id)?.match_type === "doubles") : ""}
+        playerBName={resultMatch ? sideLabel(resultMatch.player_b, resultMatch.partner_b, resultMatch.placeholder_b, allChamps.find((c: any) => c.id === resultMatch.champ_id)?.match_type === "doubles") : ""}
+        bestOf={allChamps.find((c: any) => c.id === resultMatch?.champ_id)?.best_of}
+        pointsTarget={allChamps.find((c: any) => c.id === resultMatch?.champ_id)?.points_per_game}
+        onSaved={() => {
+          setResultMatch(null);
+          queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
+        }}
       />
 
 

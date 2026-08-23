@@ -688,10 +688,6 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
                 </div>
               )}
               <div>
-                <Label className="text-xs">How many members?</Label>
-                <Input type="number" min={0} value={numMembers || ""} onChange={(e) => setNumMembers(parseInt(e.target.value) || 0)} />
-              </div>
-              <div>
                 <Label className="text-xs">How many teams?</Label>
                 <Input type="number" min={1} max={8} value={numTeams || ""} onChange={(e) => setNumTeams(parseInt(e.target.value) || 1)} />
               </div>
@@ -702,36 +698,50 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
                   <p className="text-[10px] text-muted-foreground mt-1">Saved as the league rule. Marker scorecard will use this number of rows for every team in this league.</p>
                 </div>
               )}
-              {questions.askPairsPerTeam && (
+              {questions.askSinglesRubbers && (
                 <div>
-                  <Label className="text-xs">Pairs per team</Label>
-                  <Input type="number" min={0} max={10} value={pairsPerTeam || ""} onChange={(e) => setPairsPerTeam(parseInt(e.target.value) || 0)} />
+                  <Label className="text-xs">Singles rubbers per fixture</Label>
+                  <Input type="number" min={0} max={20} value={singlesRubbers || 0} onChange={(e) => setSinglesRubbers(Math.max(0, parseInt(e.target.value) || 0))} />
+                </div>
+              )}
+              {questions.askDoublesRubbers && (
+                <div>
+                  <Label className="text-xs">Doubles rubbers per fixture</Label>
+                  <Input type="number" min={0} max={20} value={doublesRubbers || 0} onChange={(e) => setDoublesRubbers(Math.max(0, parseInt(e.target.value) || 0))} />
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Two real players per pair. The league plays {inherited.doublesRubbers} doubles rubber{inherited.doublesRubbers !== 1 ? "s" : ""} per fixture.
+                    Each doubles rubber is one pair — two real players.
+                    {inherited.pairingPolicy === "fixed"
+                      ? " Fixed season pairs are created per team."
+                      : " Pairs are chosen per fixture; this only fixes the number of doubles positions."}
                   </p>
                 </div>
               )}
               <div>
-                <Label className="text-xs">How many reserves?</Label>
+                <Label className="text-xs">Reserves per team</Label>
                 <Input type="number" min={0} value={reserves || 0} onChange={(e) => setReserves(parseInt(e.target.value) || 0)} />
               </div>
             </div>
 
             <div className="text-xs rounded-md bg-muted p-2.5 space-y-0.5">
               {questions.askLadderStart && <p>Starting from ladder position: <strong>{startPosition}</strong></p>}
-              {questions.askPairsPerTeam && (
-                <p>Per team: <strong>{singlesPerTeam}</strong> singles + <strong>{effectivePairsPerTeam}</strong> pair{effectivePairsPerTeam !== 1 ? "s" : ""} = <strong>{slotsPerTeam}</strong> players</p>
+              <p>Available eligible players: <strong>{requirements.availablePlayers}</strong></p>
+              <p>Teams: <strong>{requirements.numTeams}</strong></p>
+              {requirements.singlesRubbers > 0 && <p>Singles rubbers per fixture: <strong>{requirements.singlesRubbers}</strong></p>}
+              {requirements.doublesRubbers > 0 && <p>Doubles rubbers per fixture: <strong>{requirements.doublesRubbers}</strong></p>}
+              <p>Starting players per team: <strong>{requirements.startingPlayersPerTeam}</strong></p>
+              <p>Reserves per team: <strong>{requirements.reservesPerTeam}</strong></p>
+              <p>Players required per team: <strong>{requirements.playersRequiredPerTeam}</strong></p>
+              <p>Total players required: <strong>{requirements.totalPlayersRequired}</strong></p>
+              {!requirements.sufficient && (
+                <p className="text-destructive font-medium mt-1">
+                  ⚠ Short by {requirements.shortfall} player{requirements.shortfall !== 1 ? "s" : ""} — only {requirements.availablePlayers} eligible.
+                </p>
               )}
-              <p>Team players needed: <strong>{numTeams * slotsPerTeam}</strong></p>
-              <p>+ Reserves: <strong>{reserves}</strong></p>
-              <p>Total to allocate: <strong>{numTeams * slotsPerTeam + reserves}</strong> / {numMembers} requested</p>
-              {(numTeams * slotsPerTeam + reserves) > numMembers && (
-                <p className="text-destructive font-medium mt-1">⚠ Teams + reserves exceeds member count.</p>
-              )}
-              {questions.askLadderStart && (startPosition - 1 + numMembers) > eligiblePool.length && numMembers > 0 && (
-                <p className="text-destructive font-medium mt-1">⚠ Start position + members exceeds the eligible pool ({eligiblePool.length}).</p>
+              {questions.askLadderStart && (startPosition - 1 + requirements.totalPlayersRequired) > eligiblePool.length && requirements.totalPlayersRequired > 0 && (
+                <p className="text-destructive font-medium mt-1">⚠ Start position + required players exceeds the eligible pool ({eligiblePool.length}).</p>
               )}
             </div>
+
 
             {questions.askDistribution && (
               <div className="space-y-2">

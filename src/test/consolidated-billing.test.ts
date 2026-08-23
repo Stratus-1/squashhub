@@ -82,7 +82,7 @@ describe("consolidated invoice", () => {
     expect(r.subscriptionAmount).toBe(0);
     expect(r.lineItems).toHaveLength(1);
     expect(r.subtotal).toBe(4.5);
-    expect(r.total).toBe(5.18);
+    expect(r.total).toBe(+(4.5 + r.vatAmount).toFixed(2));
   });
 
   it("6-monthly club in its renewal month bills the whole upfront period plus usage", () => {

@@ -1463,11 +1463,23 @@ function RoundCard({
             <Badge variant="secondary" className="text-[10px]">
               {fixtureCount} fixture{fixtureCount === 1 ? "" : "s"} · click to {open ? "hide" : "view"}
             </Badge>
-          ) : (
-            <Badge variant="outline" className="text-[10px]">
-              {isAdmin ? "Click to create fixtures" : "No fixtures yet"}
+          ) : isAdmin ? (
+            <Badge
+              variant="outline"
+              className="text-[10px] cursor-pointer hover:bg-primary hover:text-primary-foreground"
+              role="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAutoRun(true);
+                if (!open) onToggle();
+              }}
+            >
+              Create fixtures
             </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px]">No fixtures yet</Badge>
           )}
+
           {(fixtureCount ?? 0) > 0 && (
             <>
               <Button

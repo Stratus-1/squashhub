@@ -846,6 +846,94 @@ export type Database = {
           },
         ]
       }
+      champ_doubles_pairs: {
+        Row: {
+          champ_id: string
+          created_at: string
+          group_number: number
+          id: string
+          member_a: string
+          member_b: string
+          note: string | null
+          proposed_by: string
+          responded_at: string | null
+          responded_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          champ_id: string
+          created_at?: string
+          group_number: number
+          id?: string
+          member_a: string
+          member_b: string
+          note?: string | null
+          proposed_by: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          champ_id?: string
+          created_at?: string
+          group_number?: number
+          id?: string
+          member_a?: string
+          member_b?: string
+          note?: string | null
+          proposed_by?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "champ_doubles_pairs_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "champ_doubles_pairs_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "champ_doubles_pairs_member_a_fkey"
+            columns: ["member_a"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "champ_doubles_pairs_member_b_fkey"
+            columns: ["member_b"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "champ_doubles_pairs_proposed_by_fkey"
+            columns: ["proposed_by"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "champ_doubles_pairs_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       champ_marker_locks: {
         Row: {
           created_at: string
@@ -8898,6 +8986,7 @@ export type Database = {
           day_schedules: Json
           default_break_minutes: number
           description: string | null
+          doubles_pairing_locked: boolean
           draw_locked: boolean
           draw_locked_at: string | null
           draw_locked_by: string | null
@@ -8974,6 +9063,7 @@ export type Database = {
           day_schedules?: Json
           default_break_minutes?: number
           description?: string | null
+          doubles_pairing_locked?: boolean
           draw_locked?: boolean
           draw_locked_at?: string | null
           draw_locked_by?: string | null
@@ -9050,6 +9140,7 @@ export type Database = {
           day_schedules?: Json
           default_break_minutes?: number
           description?: string | null
+          doubles_pairing_locked?: boolean
           draw_locked?: boolean
           draw_locked_at?: string | null
           draw_locked_by?: string | null
@@ -9833,6 +9924,10 @@ export type Database = {
         Args: { _tournament_id: string; _user_id: string }
         Returns: boolean
       }
+      cancel_doubles_pair: {
+        Args: { p_pair_id: string; p_token?: string; p_verify?: string }
+        Returns: Json
+      }
       cancel_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       captain_list_unclaimed_teammates: {
         Args: { _club_member_id: string }
@@ -9845,6 +9940,32 @@ export type Database = {
           nsa_number: string
           phone: string
         }[]
+      }
+      champ_actor_member: {
+        Args: { p_champ_id: string; p_token: string; p_verify: string }
+        Returns: string
+      }
+      champ_division_is_doubles: {
+        Args: { p_champ_id: string; p_group_number: number }
+        Returns: boolean
+      }
+      champ_member_accepted: {
+        Args: {
+          p_champ_id: string
+          p_group_number: number
+          p_member_id: string
+        }
+        Returns: boolean
+      }
+      champ_pairing_locked: { Args: { p_champ_id: string }; Returns: boolean }
+      champ_sync_pair_entries: {
+        Args: {
+          p_a: string
+          p_b: string
+          p_champ_id: string
+          p_group_number: number
+        }
+        Returns: undefined
       }
       check_ledger_integrity: {
         Args: { p_club_id?: string }
@@ -10074,6 +10195,10 @@ export type Database = {
           club_id: string
         }[]
       }
+      get_doubles_pairing_state: {
+        Args: { p_champ_id: string; p_token?: string; p_verify?: string }
+        Returns: Json
+      }
       get_head_to_head: {
         Args: { limit_count?: number; target_user_id: string }
         Returns: {
@@ -10274,6 +10399,17 @@ export type Database = {
       is_person_self: { Args: { _person_id: string }; Returns: boolean }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
+      list_doubles_partner_options: {
+        Args: {
+          p_champ_id: string
+          p_group_number: number
+          p_limit?: number
+          p_search?: string
+          p_token?: string
+          p_verify?: string
+        }
+        Returns: Json
+      }
       list_public_clubs: {
         Args: never
         Returns: {
@@ -10432,6 +10568,16 @@ export type Database = {
         }
         Returns: string
       }
+      propose_doubles_partner: {
+        Args: {
+          p_champ_id: string
+          p_group_number: number
+          p_partner_member_id: string
+          p_token?: string
+          p_verify?: string
+        }
+        Returns: Json
+      }
       purchase_data_bundle: {
         Args: {
           _club_id: string
@@ -10510,6 +10656,15 @@ export type Database = {
       request_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
       resolve_qr_short_code: { Args: { _code: string }; Returns: Json }
+      respond_doubles_pair: {
+        Args: {
+          p_accept: boolean
+          p_pair_id: string
+          p_token?: string
+          p_verify?: string
+        }
+        Returns: Json
+      }
       respond_league_week_availability: {
         Args: {
           _club_member_id: string
@@ -10683,6 +10838,10 @@ export type Database = {
         }
         Returns: string
       }
+      set_doubles_pairing_locked: {
+        Args: { p_champ_id: string; p_locked: boolean }
+        Returns: boolean
+      }
       sync_bells_match_state: {
         Args: {
           _bell_ends_at?: string
@@ -10743,6 +10902,7 @@ export type Database = {
         Args: { p_champ_id: string; p_member_id?: string }
         Returns: Json
       }
+      tournament_doubles_pairs: { Args: { p_champ_id: string }; Returns: Json }
       tournament_eligibility_summary: {
         Args: { _tournament_id: string }
         Returns: {

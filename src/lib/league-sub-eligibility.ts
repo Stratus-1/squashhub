@@ -37,13 +37,13 @@ export interface PlayerCtx {
   /** Last-played position 1-4. Null if unknown — caller should treat result.warn=true. */
   homePosition: number | null;
   /** 'men' | 'ladies' | 'mixed' (or null if unknown). */
-  gender: "men" | "ladies" | "mixed" | null;
+  gender: "men" | "ladies" | "mixed" | "open" | null;
 }
 
 export interface TargetCtx {
   leagueNumber: number;
   position: number; // 1-4
-  gender: "men" | "ladies" | "mixed";
+  gender: "men" | "ladies" | "mixed" | "open";
 }
 
 export interface EligibilityResult {
@@ -86,7 +86,7 @@ export function checkSubEligibility(
   const playerGender = normaliseGender(player.gender as any);
 
   // 1. Cross-gender check (always relevant when target is gendered)
-  if (target.gender !== "mixed" && playerGender && playerGender !== target.gender) {
+  if (target.gender !== "mixed" && target.gender !== "open" && playerGender && playerGender !== target.gender) {
     if (!rules.cross_gender_subs_allowed) {
       return {
         ok: false,

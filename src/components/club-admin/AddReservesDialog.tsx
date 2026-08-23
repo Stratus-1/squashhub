@@ -14,7 +14,7 @@ import { useClubMembers } from "@/hooks/use-club";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 import { checkSubEligibility, parseLeagueNumber } from "@/lib/league-sub-eligibility";
 
-type Gender = "men" | "ladies" | "mixed";
+type Gender = "men" | "ladies" | "mixed" | "open";
 
 function isMaleGender(g?: string | null) { return (g || "").toLowerCase().startsWith("m") || (g || "").toLowerCase() === "male"; }
 function isFemaleGender(g?: string | null) { return (g || "").toLowerCase().startsWith("f") || (g || "").toLowerCase() === "female"; }
@@ -55,7 +55,7 @@ export function AddReservesDialog({
     return "1st";
   }, [groupLeagues]);
 
-  const genderLabel = gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : "Mixed";
+  const genderLabel = gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : gender === "open" ? "Open" : "Mixed";
 
   // Existing reserves row in the group (name contains "Reserves")
   const existingReservesLeague = useMemo(
@@ -142,7 +142,7 @@ export function AddReservesDialog({
           // Evaluate against the target team's #1 slot (most lenient slot in that league)
           const result = checkSubEligibility(
             subRules,
-            { homeLeagueNumber, homePosition: null, gender: gender === "mixed" ? null : (gender as any) },
+            { homeLeagueNumber, homePosition: null, gender: (gender === "mixed" || gender === "open") ? null : (gender as any) },
             { leagueNumber: targetLeagueNumber, position: 1, gender },
           );
           if (!result.ok) blocked = result.reason || "rule violation";

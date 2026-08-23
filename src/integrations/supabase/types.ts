@@ -4510,6 +4510,7 @@ export type Database = {
           abbreviation: string | null
           active: boolean
           affects_ladder: boolean
+          category: string | null
           club_id: string
           contact_email: string | null
           contact_phone: string | null
@@ -4531,6 +4532,7 @@ export type Database = {
           name: string
           platform_association_id: string | null
           pro_rate: boolean
+          require_mixed_pair: boolean
           scope: string
           tenant_association_id: string | null
           updated_at: string
@@ -4541,6 +4543,7 @@ export type Database = {
           abbreviation?: string | null
           active?: boolean
           affects_ladder?: boolean
+          category?: string | null
           club_id: string
           contact_email?: string | null
           contact_phone?: string | null
@@ -4562,6 +4565,7 @@ export type Database = {
           name: string
           platform_association_id?: string | null
           pro_rate?: boolean
+          require_mixed_pair?: boolean
           scope?: string
           tenant_association_id?: string | null
           updated_at?: string
@@ -4572,6 +4576,7 @@ export type Database = {
           abbreviation?: string | null
           active?: boolean
           affects_ladder?: boolean
+          category?: string | null
           club_id?: string
           contact_email?: string | null
           contact_phone?: string | null
@@ -4593,6 +4598,7 @@ export type Database = {
           name?: string
           platform_association_id?: string | null
           pro_rate?: boolean
+          require_mixed_pair?: boolean
           scope?: string
           tenant_association_id?: string | null
           updated_at?: string
@@ -5427,6 +5433,7 @@ export type Database = {
           archived_by: string | null
           association_id: string | null
           captain_member_id: string | null
+          category: string | null
           club_id: string
           code: string | null
           created_at: string
@@ -5453,6 +5460,7 @@ export type Database = {
           archived_by?: string | null
           association_id?: string | null
           captain_member_id?: string | null
+          category?: string | null
           club_id: string
           code?: string | null
           created_at?: string
@@ -5479,6 +5487,7 @@ export type Database = {
           archived_by?: string | null
           association_id?: string | null
           captain_member_id?: string | null
+          category?: string | null
           club_id?: string
           code?: string | null
           created_at?: string

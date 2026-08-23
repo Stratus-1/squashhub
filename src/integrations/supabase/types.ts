@@ -10454,6 +10454,10 @@ export type Database = {
         Args: { _club_id: string; _permission: string; _user_id: string }
         Returns: boolean
       }
+      is_club_captain: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_club_league_player: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean

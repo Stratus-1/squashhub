@@ -69,6 +69,7 @@ export function DoublesPairsDialog({
   });
 
   const activeTeam = teamId || teams[0]?.id || "";
+  const activeSeasonId = teams.find((team: any) => team.id === activeTeam)?.season_id ?? null;
 
   const { data: roster = [] } = useQuery({
     queryKey: ["doubles-pairs-roster", clubId, activeTeam],
@@ -108,13 +109,14 @@ export function DoublesPairsDialog({
 
 
   const { data: pairs = [] } = useQuery({
-    queryKey: ["doubles-pairs", activeTeam, seasonId],
+    queryKey: ["doubles-pairs", activeTeam, activeSeasonId],
     enabled: open && !!activeTeam,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("league_team_pairs")
         .select("*")
         .eq("league_id", activeTeam)
+        .eq("is_active", true)
         .order("pair_order", { nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as any[];
@@ -132,10 +134,15 @@ export function DoublesPairsDialog({
       const genders = [p1, p2].map((id) => roster.find((r) => r.id === id)?.gender);
       const check = validatePairComposition(genders, category, { requireMixedPair });
       if (!check.valid) throw new Error(check.reason!);
+      const alreadySaved = pairs.some((pair) => {
+        const saved = new Set([pair.player_one_member_id, pair.player_two_member_id]);
+        return saved.has(p1) && saved.has(p2);
+      });
+      if (alreadySaved) throw new Error("This pair is already allocated to the selected team.");
       const { error } = await (supabase as any).from("league_team_pairs").insert({
         club_id: clubId,
         league_id: activeTeam,
-        season_id: seasonId ?? null,
+        season_id: activeSeasonId,
         player_one_member_id: p1,
         player_two_member_id: p2,
         pair_order: pairs.length + 1,
@@ -146,7 +153,7 @@ export function DoublesPairsDialog({
       toast.success("Pair created");
       setP1("");
       setP2("");
-      qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, seasonId] });
+      qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, activeSeasonId] });
       qc.invalidateQueries({ queryKey: ["league-team-pairs-summary", activeTeam] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -159,7 +166,7 @@ export function DoublesPairsDialog({
     },
     onSuccess: () => {
       toast.success("Pair removed");
-      qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, seasonId] });
+      qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, activeSeasonId] });
       qc.invalidateQueries({ queryKey: ["league-team-pairs-summary", activeTeam] });
     },
     onError: (e: any) => toast.error(e.message),

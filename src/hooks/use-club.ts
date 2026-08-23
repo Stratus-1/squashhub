@@ -175,6 +175,8 @@ export interface League {
   category?: "mens" | "ladies" | "mixed" | "open" | null;
   /** Set when the season was explicitly archived by an admin. */
   archived_at?: string | null;
+  /** Owning season for this team; pair and fixture data inherit this value. */
+  season_id?: string | null;
 }
 
 export interface NationalBodyFee {

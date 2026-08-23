@@ -232,7 +232,7 @@ export function DoublesPairsDialog({
           <Button
             size="sm"
             className="w-full"
-            disabled={!p1 || !p2 || create.isPending}
+            disabled={!activeTeam || !p1 || !p2 || create.isPending}
             onClick={() => create.mutate()}
           >
             {create.isPending ? "Adding..." : "Add pair"}

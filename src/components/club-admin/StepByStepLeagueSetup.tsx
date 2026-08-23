@@ -93,6 +93,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     reserves: number;
     teamNames: Record<number, string>;
     reservesName: string;
+    teamLeagueIds: string[];
+    reservesLeagueId: string | null;
   } | null;
 }) {
   const qc = useQueryClient();
@@ -370,8 +372,21 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         const teamName = customName
           ? `${genderLabel} ${leagueNumber} ${customName}`
           : `${genderLabel} ${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`;
-        const existing = existingRows.find(l => l.name === teamName);
+        const stableEditId = editContext?.teamLeagueIds[i];
+        const existing = stableEditId
+          ? existingRows.find((league) => league.id === stableEditId)
+          : existingRows.find((league) => league.name === teamName);
         if (existing) {
+          const { error: updateError } = await fromExt("leagues")
+            .update({
+              name: teamName,
+              reserves_per_team: reserves,
+              level: parseInt(leagueNumber, 10) || null,
+              season_year: seasonYear,
+              is_reserve: false,
+            })
+            .eq("id", existing.id);
+          if (updateError) throw updateError;
           createdLeagueIds.push(existing.id);
         } else {
           createdLeagueIds.push(await insertLeague({
@@ -396,8 +411,21 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         const reservesNameFinal = customRes
           ? `${genderLabel} ${leagueNumber} ${customRes}`
           : `${genderLabel} ${leagueNumber} Reserves`;
-        const existing = existingRows.find(l => l.name === reservesNameFinal);
-        if (existing) reservesLeagueId = existing.id;
+        const existing = editContext?.reservesLeagueId
+          ? existingRows.find((league) => league.id === editContext.reservesLeagueId)
+          : existingRows.find((league) => league.name === reservesNameFinal);
+        if (existing) {
+          const { error: updateError } = await fromExt("leagues")
+            .update({
+              name: reservesNameFinal,
+              level: parseInt(leagueNumber, 10) || null,
+              season_year: seasonYear,
+              is_reserve: true,
+            })
+            .eq("id", existing.id);
+          if (updateError) throw updateError;
+          reservesLeagueId = existing.id;
+        }
         else {
           reservesLeagueId = await insertLeague({
             club_id: clubId,
@@ -479,6 +507,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
             pairRows.push({
               club_id: clubId,
               league_id: createdLeagueIds[i],
+              season_id: existingRows.find((league) => league.id === createdLeagueIds[i])?.season_id ?? null,
               player_one_member_id: a.id,
               player_two_member_id: b.id,
               pair_order: idx + 1,

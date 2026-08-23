@@ -90,9 +90,9 @@ Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
 ### 2026-08-23 · Doubles pair allocation could be duplicated or lose season scope
 - **Symptom:** An admin could add the same two players repeatedly, while some saved pairs had no season and could appear inconsistently after reopening team management.
-- **Finding:** The pair dialog trusted the association season prop rather than the selected team's season, and the database allowed reversed or repeated copies of the same pair.
-- **Fix:** Pair reads now use active rows, writes inherit the selected team's season, duplicate selection is rejected in the dialog, and the database normalises club/season ownership while enforcing one unordered member pair per team.
-- **Guard:** A doubles pair is uniquely owned by one team; derive its club and season from that team and never accept duplicate member combinations.
+- **Finding:** The pair dialog trusted the association season prop rather than the selected team's season, the setup editor identified teams by mutable display names, and the database allowed reversed or repeated copies of the same pair.
+- **Fix:** Editing now carries stable team IDs and renames those same rows, pair reads use active rows, writes inherit the selected team's season, duplicate selection is rejected in the dialog, and the database normalises club/season ownership while enforcing one unordered member pair per team.
+- **Guard:** A doubles pair is uniquely owned by one stable team ID; never derive team identity from its display name, derive pair club/season from that team, and never accept duplicate member combinations.
 
 ### 2026-08-23 · Saved doubles pairs appeared unallocated
 - **Symptom:** Doubles pairs were saved against teams, but Step 2 still showed an individual-player Allocate action and team cards appeared empty.

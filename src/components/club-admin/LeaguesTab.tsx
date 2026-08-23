@@ -209,6 +209,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     reserves: number;
     teamNames: Record<number, string>;
     reservesName: string;
+    teamLeagueIds: string[];
+    reservesLeagueId: string | null;
   }>(null);
   const [step, setStep] = useState<string>("leagues");
   const { data: clubFillDefault } = useQuery({
@@ -243,7 +245,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     const leagueNumber = ordMatch ? ordMatch[1] : "1st";
     // Pull team names (strip the "Men's 1st " prefix)
     const teamNames: Record<number, string> = {};
-    const stripPrefix = (n: string) => n.replace(/^(Men's|Ladies|Mixed)\s+\d+(?:st|nd|rd|th)\s*/i, "");
+    const stripPrefix = (n: string) => n.replace(/^(Men's|Ladies|Mixed|Open)\s+\d+(?:st|nd|rd|th)\s*/i, "");
     teamLeagues.forEach((l, i) => {
       const tail = stripPrefix(l.name).trim();
       // Treat single-letter A/B/C as default — leave blank
@@ -288,6 +290,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       reserves: reservesCount,
       teamNames,
       reservesName,
+      teamLeagueIds: teamLeagues.map((league) => league.id),
+      reservesLeagueId: reservesLeague?.id ?? null,
     });
   };
 

@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useMyClub } from "@/hooks/use-club";
 import { ClubParticipationCard } from "@/components/club-admin/ClubParticipationCard";
 import { BillingFrequencyCard } from "@/components/club-admin/BillingFrequencyCard";
+import { billingOptionLabel } from "@/lib/billing/frequency";
 import { openStitchCheckout, buildStitchReturnUrl } from "@/lib/stitch-checkout";
 
 interface Invoice {
@@ -502,8 +503,7 @@ function SubscriptionSummaryPanel({
       return (data?.sla_billing_option as string | null) ?? null;
     },
   });
-  const freqLabel =
-    freq === "annual_upfront" ? "Annual upfront" : freq === "biannual_upfront" ? "6-monthly upfront" : "Monthly";
+  const freqLabel = billingOptionLabel(freq);
   const basePlan = (sub?.subscription_plans?.name || "SquashHub subscription").replace(
     /\s*(monthly|annual|6-monthly|biannual)(\s+upfront)?$/i,
     ""

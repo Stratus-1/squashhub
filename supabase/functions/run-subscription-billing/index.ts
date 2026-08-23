@@ -197,14 +197,12 @@ Deno.serve(async (req) => {
       // The club's chosen billing frequency wins over the plan default, but annual
       // upfront only applies when the platform has enabled it for that club.
       if ((c as any).sla_billing_option) {
+        // clubs.sla_billing_option is the single source of truth for invoice
+        // frequency — every club may choose monthly / 6-monthly / annual.
         const opt = String((c as any).sla_billing_option)
-        const annualAllowed = (c as any).allow_annual_billing === true
-        const biannualAllowed = (c as any).allow_biannual_billing === true
         const wanted: BillingCycle =
           opt === 'annual_upfront' ? 'annual' : opt === 'biannual_upfront' ? 'biannual' : 'monthly'
-        const allowed =
-          wanted === 'annual' ? annualAllowed : wanted === 'biannual' ? biannualAllowed : true
-        clubCycles.set(c.id, allowed ? wanted : 'monthly')
+        clubCycles.set(c.id, wanted)
       }
       const ids = [
         (c as any).chairman_member_id,

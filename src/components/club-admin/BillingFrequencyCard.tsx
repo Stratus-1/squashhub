@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { computeTieredCharge } from "@/lib/saas-tiers";
 import { useClubBillingStart } from "@/hooks/use-billing-start";
 
 
-type BillingOption = "monthly" | "biannual_upfront" | "annual_upfront";
+import { normalizeBillingOption, optionToCycle, billingOptionLabel, type BillingOption } from "@/lib/billing/frequency";
 type PaymentMethod = "eft" | "card";
 
 
@@ -46,13 +46,11 @@ export function BillingFrequencyCard({
   const pricing = useSaasPricing(currencyCode);
   const billingStart = useClubBillingStart(club.id);
 
-  const current: BillingOption =
-    c.sla_billing_option === "annual_upfront"
-      ? "annual_upfront"
-      : c.sla_billing_option === "biannual_upfront"
-        ? "biannual_upfront"
-        : "monthly";
+  const current: BillingOption = normalizeBillingOption(c.sla_billing_option);
   const [choice, setChoice] = useState<BillingOption>(current);
+  // Keep the radio in sync with the persisted value after a save/refetch so the
+  // control never drifts back to a stale default.
+  useEffect(() => setChoice(current), [current]);
   const currentPay: PaymentMethod | null =
     c.sla_payment_method === "card" ? "card" : c.sla_payment_method === "eft" ? "eft" : null;
   const [payMethod, setPayMethod] = useState<PaymentMethod | null>(currentPay);
@@ -135,6 +133,11 @@ export function BillingFrequencyCard({
         sla_billing_option: choice,
         sla_payment_method: payMethod,
       } as any);
+      // Keep the subscription baseline cycle aligned with the canonical choice
+      // so the plan summary and invoice scheduler agree.
+      await (supabase as any)
+        .rpc("set_club_subscription_baseline_cycle", { _club_id: club.id, _cycle: optionToCycle(choice) })
+        .then(() => undefined, () => undefined);
       toast.success(
         choice === "annual_upfront"
           ? "Set to annual upfront — your next invoice will cover 12 months."
@@ -156,11 +159,7 @@ export function BillingFrequencyCard({
         <CalendarClock className="w-4 h-4 text-primary" />
         <h3 className="font-semibold text-sm">Billing frequency</h3>
         <Badge variant="outline" className="text-[10px]">
-          {current === "annual_upfront"
-            ? "Annual upfront"
-            : current === "biannual_upfront"
-              ? "6-monthly upfront"
-              : "Monthly"}
+          {billingOptionLabel(current)}
         </Badge>
         {locked && (
           <Badge variant="secondary" className="text-[10px]">

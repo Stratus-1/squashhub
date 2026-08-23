@@ -10290,6 +10290,18 @@ export type Database = {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number
       }
+      create_league_season: {
+        Args: {
+          p_association_id: string
+          p_copy_teams?: boolean
+          p_ends_on?: string
+          p_label?: string
+          p_make_current?: boolean
+          p_season_year: number
+          p_starts_on?: string
+        }
+        Returns: string
+      }
       create_subscription_adjustment_invoice: {
         Args: {
           _amount: number

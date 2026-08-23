@@ -252,50 +252,15 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Billing option</Label>
-                <RadioGroup value={billing} onValueChange={(v) => setBilling(v as BillingOption)} className={`grid grid-cols-1 gap-2 ${allowBiannual && allowAnnual ? "md:grid-cols-3" : allowBiannual || allowAnnual ? "md:grid-cols-2" : ""}`}>
-                  <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "monthly" ? "border-primary bg-primary/5" : ""}`}>
-                    <RadioGroupItem value="monthly" id="bill-monthly" />
-                    <div className="text-sm">
-                      <div className="font-medium">Monthly</div>
-                      {monthlyTotal != null && (
-                        <div className="font-bold">{pricing.format(monthlyTotal)} <span className="text-[10px] font-normal text-muted-foreground">/ month</span></div>
-                      )}
-                      <div className="text-xs text-muted-foreground">Billed monthly in advance in your club currency</div>
-                    </div>
-                  </label>
-                  {allowBiannual && (
-                    <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "biannual_upfront" ? "border-primary bg-primary/5" : ""}`}>
-                      <RadioGroupItem value="biannual_upfront" id="bill-biannual" />
-                      <div className="text-sm">
-                        <div className="font-medium">6-monthly upfront</div>
-                        {biannualTotal != null && (
-                          <div className="font-bold">{pricing.format(biannualTotal)} <span className="text-[10px] font-normal text-muted-foreground">/ 6 months</span></div>
-                        )}
-                        <div className="text-xs text-muted-foreground">Paid six months in advance — 5% off the monthly scale</div>
-                      </div>
-                    </label>
-                  )}
-                  {allowAnnual && (
-                    <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}>
-                      <RadioGroupItem value="annual_upfront" id="bill-annual" />
-                      <div className="text-sm">
-                        <div className="font-medium">Annual upfront</div>
-                        {annualTotal != null && (
-                          <div className="font-bold">{pricing.format(annualTotal)} <span className="text-[10px] font-normal text-muted-foreground">/ year</span></div>
-                        )}
-                        <div className="text-xs text-muted-foreground">Paid yearly in advance — 10% off the monthly scale</div>
-                      </div>
-                    </label>
-                  )}
-                </RadioGroup>
+              <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">
-                  Your choice here sets how SquashHub invoices the club. You can change it later under
-                  Billing frequency{allowBiannual || allowAnnual ? "" : " — upfront options are enabled per club by SquashHub"}.
+                  Your club is invoiced monthly by default. Your preferred payment frequency
+                  (monthly, 6-monthly or annual upfront) is set under <strong>Billing frequency</strong>{" "}
+                  after signing, and can be changed at the end of any paid period.
                 </p>
-                <p className="text-xs text-amber-700 dark:text-amber-400">Fees commence {billingStart.startLabel}{billingStart.trialEndLabel ? ` (the day after your trial ends on ${billingStart.trialEndLabel})` : ""}, and annually thereafter.</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Fees commence {billingStart.startLabel}{billingStart.trialEndLabel ? ` (the day after your trial ends on ${billingStart.trialEndLabel})` : ""}.</p>
               </div>
+
 
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

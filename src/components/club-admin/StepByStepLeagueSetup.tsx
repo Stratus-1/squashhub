@@ -762,9 +762,20 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
                       ))}
                       {team.picks.length === 0 && <li className="text-muted-foreground italic">empty</li>}
                     </ol>
+                    {(team.pairs?.length ?? 0) > 0 && (
+                      <div className="space-y-0.5 border-t border-dashed pt-1.5">
+                        <p className="text-[10px] font-medium text-muted-foreground">Pairs</p>
+                        {team.pairs.map(([a, b], idx) => (
+                          <p key={`${a.id}-${b.id}`} className="text-[11px] truncate">
+                            <span className="text-muted-foreground">{idx + 1}.</span> {a.name || "Unnamed"} &amp; {b.name || "Unnamed"}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </Card>
                 );
               })}
+
             </div>
 
             {allocation.reserves.length > 0 && (

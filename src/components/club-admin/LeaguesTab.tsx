@@ -19,6 +19,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Info } from "lucide-react";
 import { CalendarRange } from "lucide-react";
 import { LeagueSeasonsDialog } from "./LeagueSeasonsDialog";
+import { DoublesPairsDialog } from "./DoublesPairsDialog";
+import { LeagueFormatCard } from "./LeagueFormatCard";
+
 import { supabase } from "@/integrations/supabase/client";
 import {
   COMPETITION_CATEGORIES,
@@ -173,6 +176,8 @@ interface LeagueWithPlayers extends League {
 // ─── Main Tab ───
 export function LeaguesTab({ clubId }: { clubId: string }) {
   const [seasonsAssoc, setSeasonsAssoc] = useState<any | null>(null);
+  const [pairsAssoc, setPairsAssoc] = useState<any | null>(null);
+
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: leagues = [] } = useLeagues(clubId);
   const { data: members = [] } = useClubMembers(clubId);
@@ -405,7 +410,13 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 <Button size="sm" variant="outline" onClick={() => setSeasonsAssoc(a)}>
                   <CalendarRange className="w-4 h-4 mr-1" />Seasons
                 </Button>
+                {((a as any).discipline === "doubles" || (a as any).discipline === "hybrid") && (
+                  <Button size="sm" variant="outline" onClick={() => setPairsAssoc(a)}>
+                    <Users className="w-4 h-4 mr-1" />Pairs
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" onClick={() => setRulesAssoc(a)}>
+
                   <Settings2 className="w-4 h-4 mr-1" />Rules & Penalties
                 </Button>
                 {a.scope !== "internal" && (
@@ -599,6 +610,18 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         open={!!seasonsAssoc}
         onOpenChange={(o) => !o && setSeasonsAssoc(null)}
       />
+      {pairsAssoc && (
+        <DoublesPairsDialog
+          open={!!pairsAssoc}
+          onOpenChange={(o) => !o && setPairsAssoc(null)}
+          clubId={clubId}
+          associationId={pairsAssoc.id}
+          seasonId={pairsAssoc.current_season_id ?? null}
+          category={(pairsAssoc.category as any) ?? null}
+          requireMixedPair={!!pairsAssoc.require_mixed_pair}
+        />
+      )}
+
       <BulkLeagueBookingsDialog open={bulkBookOpen} onOpenChange={setBulkBookOpen} clubId={clubId} />
       {exportAssoc && (
         <ExportTeamsToNsaDialog
@@ -2573,6 +2596,15 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
               </label>
             )}
           </div>
+
+          <LeagueFormatCard
+            associationId={association.id}
+            discipline={discipline}
+            category={category}
+            requireMixedPair={requireMixedPair}
+          />
+
+
 
           <div className="space-y-1">
             <Label>Scope</Label>

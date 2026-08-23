@@ -42,9 +42,17 @@ export interface LeagueRules {
   // same week as a substitute, without being registered in that team.
   allow_multi_fixture_per_night: boolean;
 
+  // Phase 4 — adaptive format engine (Singles / Doubles / Hybrid).
+  // Nullable: legacy singles leagues fall back to team_size.
+  singles_rubbers: number | null;
+  doubles_rubbers: number | null;
+  pairing_policy: "fixed" | "per_fixture";
+  allow_dual_participation: boolean;
+
   // Feature toggles per association
   fill_up_leagues_enabled: boolean;
 }
+
 
 export function useAssociationRules(associationId: string | null | undefined) {
   return useQuery({

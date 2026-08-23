@@ -723,9 +723,11 @@ export default function LeagueGameDetail() {
       const mode = hasTeamRule
         ? ((homeRule?.team_size_mode ?? awayRule?.team_size_mode) as "fixed" | "flexible")
         : (leagueRules?.team_size_mode ?? "fixed");
-      const baseSize = hasTeamRule
-        ? resolveFixtureBaseSize(homeRule, awayRule, mode)
-        : (leagueRules?.team_size ?? DEFAULT_POSITIONS);
+      const baseSize = doublesRubbers > 0
+        ? doublesRubbers
+        : (hasTeamRule
+          ? resolveFixtureBaseSize(homeRule, awayRule, mode)
+          : (leagueRules?.team_size ?? DEFAULT_POSITIONS));
       const targetCount = Math.min(MAX_POSITIONS, Math.max(1, baseSize, getSavedMaxPosition(existingMatches), positionCount));
       const loaded = Array.from({ length: targetCount }, (_, i) => {
         const pos = i + 1;

@@ -344,10 +344,18 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     qc.invalidateQueries({ queryKey: ["leagues"] });
   };
 
-  // Stored competition category is authoritative; the legacy name sniff is only
-  // a fallback for teams whose category could not be proven during backfill.
-  const categoryOf = (l: League): CompetitionCategory | null =>
-    (l as any).category ?? inferCategory((l as any).division) ?? inferCategory(l.name);
+  // Stored competition category is authoritative; then the owning league's own
+  // category (a team always belongs to its league), then a legacy name sniff.
+  const categoryOf = (l: League): CompetitionCategory | null => {
+    const assoc = associations.find((a: any) => a.id === (l as any).association_id) as any;
+    return (
+      (l as any).category ??
+      inferCategory((l as any).division) ??
+      inferCategory(l.name) ??
+      (assoc?.category as CompetitionCategory | undefined) ??
+      null
+    );
+  };
   const menLeagues = leagues.filter(l => categoryOf(l) === "mens");
   const ladiesLeagues = leagues.filter(l => categoryOf(l) === "ladies");
   const mixedLeagues = leagues.filter(l => categoryOf(l) === "mixed");

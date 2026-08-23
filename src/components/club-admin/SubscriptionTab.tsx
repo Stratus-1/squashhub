@@ -572,7 +572,19 @@ function SubscriptionSummaryPanel({
             </Badge>
           }
         />
-        <SummaryCell label={trialing ? "Trial ends" : "Next renewal"} value={fmtDate(nextRenewal)} />
+        <SummaryCell
+          label={trialing ? "Trial ends" : "Next subscription billing"}
+          value={
+            <span>
+              {fmtDate(nextRenewal)}
+              {!trialing && sub?.current_period_end && (
+                <span className="block text-[10px] font-normal text-muted-foreground">
+                  Subscription paid through {fmtDate(sub.current_period_end)}
+                </span>
+              )}
+            </span>
+          }
+        />
         <SummaryCell
           label="Amount due"
           value={

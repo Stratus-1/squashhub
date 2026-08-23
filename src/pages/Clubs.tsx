@@ -4,9 +4,9 @@ import { SEO } from "@/components/SEO";
 import { Building2, ChevronRight, Trophy, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import shLogoFull from "@/assets/shub-logo-white.png";
 import heroBg from "@/assets/hero-court.jpg";
+import { listPublicClubs } from "@/lib/public-clubs";
 
 interface TenantPublic {
   id: string;
@@ -25,13 +25,7 @@ export default function Clubs() {
   const { data: tenants, isLoading } = useQuery({
     queryKey: ["public-tenants"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clubs")
-        .select("id, name, subdomain, logo_url, address, tenant_type, nsa_club_id, chairman_member_id")
-        .not("subdomain", "is", null)
-        .order("name");
-      if (error) throw error;
-      return (data || []) as TenantPublic[];
+      return (await listPublicClubs()) as TenantPublic[];
     },
     staleTime: 60_000,
   });

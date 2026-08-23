@@ -9,8 +9,8 @@
  * PWAs will keep the old "SquashHub" label until the user removes and
  * re-installs the app. New installs pick up the club name immediately.
  */
-import { supabase } from "@/integrations/supabase/client";
 import { getClubSubdomain } from "@/lib/subdomain";
+import { getPublicClubBySubdomain } from "@/lib/public-clubs";
 
 const BASE_MANIFEST_URL = "/manifest.webmanifest";
 
@@ -20,18 +20,14 @@ export async function applyDynamicManifest(): Promise<void> {
     if (!sub) return; // root host — keep default SquashHub manifest
 
     // Fetch base manifest + club name in parallel
-    const [baseRes, clubRes] = await Promise.all([
+    const [baseRes, club] = await Promise.all([
       fetch(BASE_MANIFEST_URL, { cache: "no-cache" }),
-      supabase
-        .from("clubs")
-        .select("name, subdomain")
-        .eq("subdomain", sub)
-        .maybeSingle(),
+      getPublicClubBySubdomain(sub),
     ]);
 
     if (!baseRes.ok) return;
     const base = await baseRes.json();
-    const clubName = (clubRes.data as { name?: string } | null)?.name?.trim();
+    const clubName = club?.name?.trim();
     if (!clubName) return;
 
     // short_name has ~12 char practical limit on Android launchers

@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { getClubSubdomain } from "@/lib/subdomain";
 import { useAuth } from "@/contexts/AuthContext";
+import { getPublicClubBySubdomain } from "@/lib/public-clubs";
 
 interface ClubContextType {
   /** The subdomain detected from hostname, or null if on root */
@@ -47,15 +48,10 @@ const ClubContext = createContext<ClubContextType>({
   isLoading: false,
 });
 
-// Columns readable by anon (grant-safe). Used for logged-out tenant pages so
-// the club name/logo render on the auth screen and club landing.
-const PUBLIC_CLUB_COLS =
-  "id, name, subdomain, logo_url, address, phone, email, tenant_type, nsa_club_id, chairman_member_id, secretary_member_id, club_captain_member_id, contact_person_name, show_delegates_on_landing, currency_code, currency_symbol, participation_active, visitors_can_book, visitor_booking_fee, external_booking_provider, external_booking_url, external_booking_label, uses_gobook, gobook_url, created_at";
-
 // Restricted columns (payments, honesty bar, face enrolment) — only granted to
 // authenticated users. Fetched separately and merged into the club object.
 const RESTRICTED_CLUB_COLS =
-  "id, payment_gateway, payment_gateway_public_key, payment_gateway_fee_percent, gateway_fee_pct_card_local, gateway_fee_pct_card_intl, gateway_fee_pct_wallet, gateway_fee_pct_capitec, honesty_bar_enabled, face_enrolment_required, booking_slot_minutes, booking_open_time, booking_last_slot_time, peak_weekday_start, peak_weekday_end, peak_weekend_start, peak_weekend_end, max_peak_bookings_per_day, max_bookings_per_day, lights_integration_enabled, light_fee_per_hour";
+  "id, contact_person_name, currency_code, currency_symbol, participation_active, visitors_can_book, visitor_booking_fee, external_booking_provider, external_booking_url, external_booking_label, uses_gobook, gobook_url, payment_gateway, payment_gateway_public_key, payment_gateway_fee_percent, gateway_fee_pct_card_local, gateway_fee_pct_card_intl, gateway_fee_pct_wallet, gateway_fee_pct_capitec, honesty_bar_enabled, face_enrolment_required, booking_slot_minutes, booking_open_time, booking_last_slot_time, peak_weekday_start, peak_weekday_end, peak_weekend_start, peak_weekend_end, max_peak_bookings_per_day, max_bookings_per_day, lights_integration_enabled, light_fee_per_hour";
 
 export function ClubProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -67,14 +63,7 @@ export function ClubProvider({ children }: { children: ReactNode }) {
 
   const { data: publicClub = null, isLoading } = useQuery({
     queryKey: ["club-by-subdomain", subdomain],
-    queryFn: async () => {
-      const { data, error } = await fromExt("clubs")
-        .select(PUBLIC_CLUB_COLS)
-        .eq("subdomain", subdomain!)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => getPublicClubBySubdomain(subdomain as string),
     enabled: !!subdomain,
     staleTime: 5 * 60 * 1000,
   });

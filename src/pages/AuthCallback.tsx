@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getClubSubdomain } from "@/lib/subdomain";
+import { getPublicClubBySubdomain } from "@/lib/public-clubs";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -71,11 +72,7 @@ export default function AuthCallback() {
             // Idempotent provisioning: only call create-club if this user doesn't
             // already own a club at this subdomain. This heals signups where the
             // initial provisioning attempt failed (e.g. previous unauthenticated path).
-            const { data: existingClub } = await supabase
-              .from("clubs")
-              .select("id")
-              .eq("subdomain", metadataClubSubdomain)
-              .maybeSingle();
+            const existingClub = await getPublicClubBySubdomain(metadataClubSubdomain);
 
             let provisioned = !!existingClub;
             if (!existingClub) {

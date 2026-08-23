@@ -1149,3 +1149,10 @@ Tests: `src/test/booking-label.test.ts`.
 - SELECT, INSERT (claim), UPDATE (takeover request / stale takeover) and DELETE (stale release) all now require club access; own-lock behaviour (`user_id = auth.uid()`) unchanged.
 - Revoked anon table grants and anon EXECUTE on the helper.
 - **Verified:** club member true, unrelated club false, platform admin true, anon false. 456 tests pass, build OK.
+
+## 2026-08-23 — Anonymous full `clubs` table access removed
+
+- **Symptom:** the backend security scan flagged the anonymous `clubs` read policy as unrestricted (`USING (true)`), leaving the sensitive base table reachable even though column grants attempted to limit returned fields.
+- **Finding:** public landing, directory, registration, PWA manifest, and TV routes still queried `public.clubs` directly. The existing invoker view depended on that base-table access and could not be the security boundary.
+- **Fix:** revoked all anonymous privileges on `public.clubs` and removed its anonymous policy. Public discovery now uses only `get_public_club_by_subdomain(text)` and `list_public_clubs()`, fixed-column `SECURITY DEFINER` functions with an explicit `search_path`. Their projection contains public identity/branding/contact and landing delegate references only; gateway credentials, fees, billing/SLA, subscription, banking, secret, and internal operational fields are excluded. Authenticated member and super-admin base-table policies are unchanged.
+- **Guard:** all unauthenticated frontend call sites use `src/lib/public-clubs.ts`; anonymous base-table privilege is verified false, and the security scan no longer reports the critical `clubs` exposure.

@@ -15,6 +15,9 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TeamLogo } from "./TeamLogo";
 import { rankTint } from "@/lib/rank-tint";
+import { useLeagueSeasons } from "@/hooks/use-league-seasons";
+import { pickSeasonScoped, seasonLabel } from "@/lib/leagues/seasons";
+
 
 type ClubLeague = {
   id: string;

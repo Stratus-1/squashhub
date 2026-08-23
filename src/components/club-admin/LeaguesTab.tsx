@@ -1136,6 +1136,12 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
           ) : (
             <>
               <span className="text-[11px] text-muted-foreground">
+                {displayRubbers != null && (
+                  <>
+                    Doubles rubbers/match: <span className="font-semibold text-foreground">{displayRubbers}</span>
+                    <span className="mx-1.5">•</span>
+                  </>
+                )}
                 Players/match: <span className="font-semibold text-foreground">{displaySize}</span>
                 <span className="mx-1.5">•</span>
                 Play to: <span className="font-semibold text-foreground">{displayPpg}</span>

@@ -37,7 +37,8 @@ export function possibleGameTallies(bestOf: number): Array<{ won: number; lost: 
 
 /**
  * Default per-game scores for a tally, from the winner's perspective:
- * the winner takes `won` games 11-x and drops `lost` games x-11.
+ * the dropped games are listed first, then the games the winner took, so the
+ * sequence is always a legal, decisive match.
  */
 export function defaultGameScores(
   winner: Side,
@@ -45,12 +46,14 @@ export function defaultGameScores(
   lost: number,
   pointsTarget = 11,
 ): GameScore[] {
+  // Dropped games come first so the winner's final game is genuinely the
+  // decider — a match can never contain games played after it was won.
   const games: GameScore[] = [];
-  for (let i = 0; i < won; i++) {
-    games.push(winner === "a" ? { a: pointsTarget, b: 0 } : { a: 0, b: pointsTarget });
-  }
   for (let i = 0; i < lost; i++) {
     games.push(winner === "a" ? { a: 0, b: pointsTarget } : { a: pointsTarget, b: 0 });
+  }
+  for (let i = 0; i < won; i++) {
+    games.push(winner === "a" ? { a: pointsTarget, b: 0 } : { a: 0, b: pointsTarget });
   }
   return games;
 }

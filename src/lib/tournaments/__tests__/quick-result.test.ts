@@ -38,11 +38,18 @@ describe("best-of maths", () => {
 
   it("prefills per-game scores for a tally", () => {
     expect(defaultGameScores("a", 3, 1, 11)).toEqual([
-      { a: 11, b: 0 },
-      { a: 11, b: 0 },
-      { a: 11, b: 0 },
       { a: 0, b: 11 },
+      { a: 11, b: 0 },
+      { a: 11, b: 0 },
+      { a: 11, b: 0 },
     ]);
+    // Every quick-pick tally must itself be a valid, decisive match.
+    for (const bo of [3, 5]) {
+      for (const t of possibleGameTallies(bo)) {
+        expect(validateQuickResult(defaultGameScores("a", t.won, t.lost), bo).valid).toBe(true);
+        expect(validateQuickResult(defaultGameScores("b", t.won, t.lost), bo).valid).toBe(true);
+      }
+    }
   });
 });
 
@@ -75,7 +82,7 @@ describe("validateQuickResult", () => {
   });
 
   it("rejects dead rubbers played after the match was decided", () => {
-    const games = [...defaultGameScores("a", 3, 0), { a: 3, b: 11 }];
+    const games = [...defaultGameScores("a", 3, 0, 11), { a: 3, b: 11 }];
     expect(validateQuickResult(games, 5).valid).toBe(false);
   });
 

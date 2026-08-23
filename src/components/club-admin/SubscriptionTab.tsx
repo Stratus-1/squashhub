@@ -717,7 +717,22 @@ function renderInvoiceHtml(
   <table>
     <thead><tr><th>Description</th><th class="right">Qty</th><th class="right">Unit</th><th class="right">Amount</th></tr></thead>
     <tbody>
-      <tr>
+      ${
+        lineItemsOf(inv).length
+          ? lineItemsOf(inv)
+              .map(
+                (l) => `<tr>
+        <td>
+          <div style="font-weight:600">${escapeHtml(l.description)}</div>
+          ${l.period_start ? `<div class="muted">${fmtDate(l.period_start)} → ${fmtDate(l.period_end)}</div>` : ""}
+        </td>
+        <td class="right">${Number(l.quantity ?? 1)}</td>
+        <td class="right">${money(Number(l.unit_price || 0))}</td>
+        <td class="right">${money(Number(l.amount || 0))}</td>
+      </tr>`
+              )
+              .join("")
+          : `<tr>
         <td>
           <div style="font-weight:600">${escapeHtml(inv.plan_name)}</div>
           <div class="muted">Subscription — ${fmtDate(inv.period_start)} → ${fmtDate(inv.period_end)}</div>
@@ -725,7 +740,8 @@ function renderInvoiceHtml(
         <td class="right">${inv.member_count}</td>
         <td class="right">${money(Number(inv.price_per_member))}</td>
         <td class="right">${money(Number(inv.subtotal))}</td>
-      </tr>
+      </tr>`
+      }
     </tbody>
   </table>
 

@@ -7549,6 +7549,8 @@ export type Database = {
         Row: {
           association_id: string
           away_team_code: string
+          away_team_id: string | null
+          away_team_name_snapshot: string | null
           booking_id: string | null
           court_id: number | null
           created_at: string
@@ -7558,6 +7560,8 @@ export type Database = {
           fixture_date: string
           game_scores: string | null
           home_team_code: string
+          home_team_id: string | null
+          home_team_name_snapshot: string | null
           id: string
           notes: string | null
           nsa_fixture_id: number | null
@@ -7576,6 +7580,8 @@ export type Database = {
         Insert: {
           association_id: string
           away_team_code: string
+          away_team_id?: string | null
+          away_team_name_snapshot?: string | null
           booking_id?: string | null
           court_id?: number | null
           created_at?: string
@@ -7585,6 +7591,8 @@ export type Database = {
           fixture_date: string
           game_scores?: string | null
           home_team_code: string
+          home_team_id?: string | null
+          home_team_name_snapshot?: string | null
           id?: string
           notes?: string | null
           nsa_fixture_id?: number | null
@@ -7603,6 +7611,8 @@ export type Database = {
         Update: {
           association_id?: string
           away_team_code?: string
+          away_team_id?: string | null
+          away_team_name_snapshot?: string | null
           booking_id?: string | null
           court_id?: number | null
           created_at?: string
@@ -7612,6 +7622,8 @@ export type Database = {
           fixture_date?: string
           game_scores?: string | null
           home_team_code?: string
+          home_team_id?: string | null
+          home_team_name_snapshot?: string | null
           id?: string
           notes?: string | null
           nsa_fixture_id?: number | null
@@ -7636,6 +7648,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "platform_league_fixtures_away_team_id_fkey"
+            columns: ["away_team_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "platform_league_fixtures_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
@@ -7647,6 +7666,13 @@ export type Database = {
             columns: ["court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_league_fixtures_home_team_id_fkey"
+            columns: ["home_team_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
             referencedColumns: ["id"]
           },
           {

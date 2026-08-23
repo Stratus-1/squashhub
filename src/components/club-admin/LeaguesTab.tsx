@@ -369,6 +369,9 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 >
                   {a.scope === "internal" ? "Internal" : "Regional"}
                 </Badge>
+                {a.discipline === "doubles" && (
+                  <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0">Doubles</Badge>
+                )}
                 {a.external_source === "nsa" && (
                   <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0 border-emerald-300 text-emerald-700">NSA Live</Badge>
                 )}

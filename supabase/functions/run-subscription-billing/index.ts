@@ -681,24 +681,36 @@ Deno.serve(async (req) => {
         .eq('id', inv.id)
 
 
-      // Advance the subscription period
-      await supabase
-        .from('club_subscriptions')
-        .update({
-          current_period_start: periodStart.toISOString(),
-          current_period_end: periodEnd.toISOString(),
-          member_count: memberCount,
-          amount_due: total,
-          status: sub.status === 'trial' ? 'active' : sub.status,
-        })
-        .eq('id', sub.id)
+      // Advance the subscription period ONLY when the subscription was actually
+      // charged. WhatsApp-only invoices must not move a 6-monthly/annual club's
+      // renewal date forward.
+      if (consolidated.subscriptionAmount > 0) {
+        await supabase
+          .from('club_subscriptions')
+          .update({
+            current_period_start: periodStart.toISOString(),
+            current_period_end: periodEnd.toISOString(),
+            member_count: memberCount,
+            amount_due: total,
+            status: sub.status === 'trial' ? 'active' : sub.status,
+          })
+          .eq('id', sub.id)
+      } else {
+        await supabase
+          .from('club_subscriptions')
+          .update({ member_count: memberCount })
+          .eq('id', sub.id)
+      }
 
       issued++
-      seq++
+      if (!prior) seq++
       results.push({
         subscription_id: sub.id,
         club: club?.name,
         invoice_number: invoiceNumber,
+        invoice_kind: consolidated.kind,
+        subscription_amount: consolidated.subscriptionAmount,
+        whatsapp_amount: consolidated.whatsappAmount,
         total,
         email_status: emailStatus,
         status: 'issued',

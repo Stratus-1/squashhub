@@ -1473,7 +1473,7 @@ export default function Tournaments() {
         pointsTarget={allChamps.find((c: any) => c.id === resultMatch?.champ_id)?.points_per_game}
         onSaved={() => {
           setResultMatch(null);
-          queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
+          qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
         }}
       />
 

@@ -11,7 +11,7 @@ import {
   buildLeagueFinals,
   buildNextRound,
   sectionLetter,
-  winnerOf,
+  
   type KnockoutMatchLike,
 } from "@/lib/tournaments/knockout";
 import {

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyClub, useCreateClub } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicClubBySubdomain, listPublicClubs } from "@/lib/public-clubs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,13 +71,12 @@ export default function RegisterClub() {
     if (!/^[a-z0-9]{2,5}$/.test(slug)) { setSlugStatus("invalid"); return; }
     setSlugStatus("checking");
     const handle = setTimeout(async () => {
-      const { data, error } = await supabase
-        .from("clubs")
-        .select("id")
-        .eq("subdomain", slug)
-        .maybeSingle();
-      if (error) { setSlugStatus("idle"); return; }
-      setSlugStatus(data ? "taken" : "available");
+      try {
+        const data = await getPublicClubBySubdomain(slug);
+        setSlugStatus(data ? "taken" : "available");
+      } catch {
+        setSlugStatus("idle");
+      }
     }, 350);
     return () => clearTimeout(handle);
   }, [form.subdomain]);
@@ -90,21 +90,15 @@ export default function RegisterClub() {
       return;
     }
     const handle = setTimeout(async () => {
-      const orFilter = tokens
-        .slice(0, 4)
-        .map((t) => `name.ilike.%${t}%`)
-        .join(",");
-      const { data, error } = await supabase
-        .from("clubs")
-        .select("id, name, subdomain, nsa_club_id, tenant_type")
-        .eq("tenant_type", "nsa_seeded")
-        .or(orFilter)
-        .limit(5);
-      if (error) {
+      try {
+        const data = (await listPublicClubs())
+          .filter((club) => club.tenant_type === "nsa_seeded")
+          .filter((club) => tokens.slice(0, 4).some((token) => club.name.toLowerCase().includes(token)))
+          .slice(0, 5);
+        setSeededMatches(data as SeededMatch[]);
+      } catch (error) {
         console.warn("Seeded club lookup failed:", error);
-        return;
       }
-      setSeededMatches((data || []) as SeededMatch[]);
     }, 350);
     return () => clearTimeout(handle);
   }, [form.name]);

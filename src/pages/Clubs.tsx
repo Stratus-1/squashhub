@@ -4,7 +4,6 @@ import { SEO } from "@/components/SEO";
 import { Building2, ChevronRight, Trophy, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import shLogoFull from "@/assets/shub-logo-white.png";
 import heroBg from "@/assets/hero-court.jpg";
 import { listPublicClubs } from "@/lib/public-clubs";

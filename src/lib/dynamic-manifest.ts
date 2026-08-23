@@ -9,7 +9,6 @@
  * PWAs will keep the old "SquashHub" label until the user removes and
  * re-installs the app. New installs pick up the club name immediately.
  */
-import { supabase } from "@/integrations/supabase/client";
 import { getClubSubdomain } from "@/lib/subdomain";
 import { getPublicClubBySubdomain } from "@/lib/public-clubs";
 

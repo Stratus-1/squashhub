@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicClubBySubdomain } from "@/lib/public-clubs";
 import type { MarkerCastState } from "@/hooks/use-marker-cast";
 import { Tv, WifiOff, Circle, ArrowLeft, Home } from "lucide-react";
 import { SEO } from "@/components/SEO";
@@ -314,11 +315,13 @@ function CourtPickerMode({ subdomain }: { subdomain: string }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error: err } = await supabase
-        .from("clubs")
-        .select("id, name, logo_url")
-        .eq("subdomain", subdomain.toLowerCase())
-        .maybeSingle();
+      let data = null;
+      let err: unknown = null;
+      try {
+        data = await getPublicClubBySubdomain(subdomain);
+      } catch (cause) {
+        err = cause;
+      }
       if (cancelled) return;
       if (err || !data) {
         setError(`Club "${subdomain}" not found.`);
@@ -462,11 +465,13 @@ function FixedCourtMode({ subdomain, court }: { subdomain: string; court: string
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error: err } = await supabase
-        .from("clubs")
-        .select("id, name")
-        .eq("subdomain", subdomain.toLowerCase())
-        .maybeSingle();
+      let data = null;
+      let err: unknown = null;
+      try {
+        data = await getPublicClubBySubdomain(subdomain);
+      } catch (cause) {
+        err = cause;
+      }
       if (cancelled) return;
       if (err || !data) {
         setError(`Club "${subdomain}" not found.`);

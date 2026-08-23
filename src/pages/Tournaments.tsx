@@ -35,6 +35,8 @@ import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDia
 import { splitTournamentsByLifecycle, todayISO, isCancelledTournament } from "@/lib/tournaments/lifecycle";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
+import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
+
 import { useHasPermission } from "@/hooks/use-club-permissions";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -632,16 +634,26 @@ export default function Tournaments() {
     const bPts = m.side_b_points ?? 0;
     const aAhead = live && aPts > bPts;
     const bAhead = live && bPts > aPts;
-    const teamAClass = aAhead
-      ? "bg-green-500/20 text-green-700 dark:text-green-300 px-1 rounded"
-      : bAhead
-        ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 px-1 rounded"
-        : "";
-    const teamBClass = bAhead
-      ? "bg-green-500/20 text-green-700 dark:text-green-300 px-1 rounded"
-      : aAhead
-        ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 px-1 rounded"
-        : "";
+    // A knockout / play-off loss ends that player's run in the division: keep
+    // the name visible in the draw, but strike it through.
+    const koOut = eliminatedSide(m);
+    const teamAClass = cn(
+      aAhead
+        ? "bg-green-500/20 text-green-700 dark:text-green-300 px-1 rounded"
+        : bAhead
+          ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 px-1 rounded"
+          : "",
+      koOut === "a" && ELIMINATED_NAME_CLASS,
+    );
+    const teamBClass = cn(
+      bAhead
+        ? "bg-green-500/20 text-green-700 dark:text-green-300 px-1 rounded"
+        : aAhead
+          ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 px-1 rounded"
+          : "",
+      koOut === "b" && ELIMINATED_NAME_CLASS,
+    );
+
 
     const bKey = bucketKeyOf(m);
     const bMeta = buckets.find((x) => x.key === bKey) || null;

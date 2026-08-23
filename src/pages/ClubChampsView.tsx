@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { isVoidResult } from "@/lib/tournaments/forfeit";
 import { classifyEntrant, type EntrantCategory } from "@/lib/tournaments/entrant-status";
 import { cn } from "@/lib/utils";
+import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
+
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
@@ -1809,6 +1811,9 @@ export default function ClubChampsView() {
     const isBye = !!m.is_bye;
     const winnerIsA = !isBye && completed && m.winner_member_id === m.player_a_member_id;
     const winnerIsB = !isBye && completed && m.winner_member_id === m.player_b_member_id;
+    // Knockout / play-off loser stays listed but is struck through.
+    const koOut = eliminatedSide(m);
+
 
     let gameBadges: { a: number; b: number }[] = [];
     if (!isBye && m.game_scores) {
@@ -1856,7 +1861,9 @@ export default function ClubChampsView() {
           "font-medium px-2 py-0.5 rounded",
           ((completed && winnerIsA) || liveAAhead) && "bg-green-500/20 text-green-700 dark:text-green-300",
           ((completed && winnerIsB) || liveBAhead) && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
-        )}>
+          koOut === "a" && ELIMINATED_NAME_CLASS,
+        )}
+        title={koOut === "a" ? "Knocked out of this division" : undefined}>
           {getMatchTeamA(m)}
         </span>
         <span className="text-muted-foreground text-xs">vs</span>
@@ -1864,9 +1871,12 @@ export default function ClubChampsView() {
           "font-medium px-2 py-0.5 rounded",
           ((completed && winnerIsB) || liveBAhead) && "bg-green-500/20 text-green-700 dark:text-green-300",
           ((completed && winnerIsA) || liveAAhead) && "bg-rose-500/15 text-rose-700 dark:text-rose-300",
-        )}>
+          koOut === "b" && ELIMINATED_NAME_CLASS,
+        )}
+        title={koOut === "b" ? "Knocked out of this division" : undefined}>
           {getMatchTeamB(m)}
         </span>
+
 
         {gameBadges.length > 0 && (
           <div className="flex gap-1 ml-auto">

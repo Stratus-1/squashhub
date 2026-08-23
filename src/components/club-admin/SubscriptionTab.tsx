@@ -488,7 +488,27 @@ function SubscriptionSummaryPanel({
     },
   });
 
-  const planName = sub?.subscription_plans?.name || "SquashHub subscription";
+  // The club's chosen payment frequency is the source of truth for how we bill —
+  // the plan row's name may still say "Monthly" from the original signup.
+  const { data: freq } = useQuery({
+    queryKey: ["club-billing-frequency", clubId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("clubs")
+        .select("sla_billing_option")
+        .eq("id", clubId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.sla_billing_option as string | null) ?? null;
+    },
+  });
+  const freqLabel =
+    freq === "annual_upfront" ? "Annual upfront" : freq === "biannual_upfront" ? "6-monthly upfront" : "Monthly";
+  const basePlan = (sub?.subscription_plans?.name || "SquashHub subscription").replace(
+    /\s*(monthly|annual|6-monthly|biannual)(\s+upfront)?$/i,
+    ""
+  );
+  const planName = `${basePlan.trim() || "SquashHub"} — ${freqLabel}`;
   const status = sub?.status || "—";
   const trialing = sub?.trial_ends_at && new Date(sub.trial_ends_at) > new Date();
   const nextRenewal = trialing ? sub?.trial_ends_at : sub?.current_period_end;
@@ -497,6 +517,7 @@ function SubscriptionSummaryPanel({
     <Card className="p-3 md:p-4 border-primary/30 bg-primary/5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCell label="Current plan" value={planName} />
+
         <SummaryCell
           label="Status"
           value={

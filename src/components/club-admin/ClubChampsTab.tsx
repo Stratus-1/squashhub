@@ -5,7 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
-import { audienceLabel, resolveInviteAudience, type InviteAudienceMode } from "@/lib/tournaments/invite-audience";
+import { audienceLabel, filterVisitorRecipients, resolveInviteAudience, type InviteAudienceMode } from "@/lib/tournaments/invite-audience";
 import {
   fetchInviteDirectory,
   groupByClub,

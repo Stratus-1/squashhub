@@ -551,7 +551,18 @@ function SubscriptionSummaryPanel({
   return (
     <Card className="p-3 md:p-4 border-primary/30 bg-primary/5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SummaryCell label="Current plan" value={planName} />
+        <SummaryCell
+          label="Current plan"
+          value={
+            <span>
+              {planName}
+              <span className="block text-[10px] font-normal text-muted-foreground">
+                Subscription billing: {freqLabel.toLowerCase()} · WhatsApp usage: billed monthly
+              </span>
+            </span>
+          }
+        />
+
 
         <SummaryCell
           label="Status"

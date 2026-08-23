@@ -2777,6 +2777,10 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
               </div>
             </div>
           )}
+          </div>
+          </div>
+
+
 
           {/* Linked national bodies (e.g. SSA) */}
           <LinkedNationalBodiesSection associationId={association.id} clubId={(association as any).club_id} />

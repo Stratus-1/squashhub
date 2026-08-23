@@ -111,7 +111,9 @@ export default function TournamentInvite() {
       } else {
         toast.success("You're entered. See you on court!");
       }
-      if (champId) navigate(path);
+      // Doubles entrants stay here so they can pick a partner right away.
+      if (champId && !hasDoublesChoice) navigate(path);
+
     },
     onError: (e: any) => {
       const msg = e?.message || "Could not update your invitation";

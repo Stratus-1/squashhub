@@ -69,6 +69,8 @@ import { checkBookingBalance } from "@/lib/booking-balance-gate";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
+import { champMatchToBookingLabel } from "@/lib/tournaments/booking-label";
+import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 
 function timeToMinutes(t: string) {
   const [hh, mm] = t.split(":").map((x) => Number(x));
@@ -553,10 +555,13 @@ export default function Bookings() {
           court_id,
           scheduled_time,
           scheduled_date,
+          is_bye,
           player_a:player_a_member_id(name, user_id, profiles:user_id(name)),
           player_b:player_b_member_id(name, user_id, profiles:user_id(name)),
+          partner_a:partner_a_member_id(name, user_id, profiles:user_id(name)),
+          partner_b:partner_b_member_id(name, user_id, profiles:user_id(name)),
           group_number,
-          champ:champ_id(name, match_duration_minutes, group_durations, rules:tournament_rules(scoring_mode))
+          champ:champ_id(name, group_labels, match_duration_minutes, group_durations, rules:tournament_rules(scoring_mode))
         `)
         .eq("scheduled_date", dateStr)
         .not("court_id", "is", null)
@@ -574,6 +579,12 @@ export default function Bookings() {
           ? Number(groupDurations[String(m.group_number)] || m.champ?.match_duration_minutes) || 30
           : Number(m.champ?.match_duration_minutes) || 30;
         const end = addMinutesToTime(start, duration);
+        // Names come from the linked match, so they stay correct even if a
+        // member is renamed after the booking was made.
+        const label = champMatchToBookingLabel(m, {
+          champName: tournamentName,
+          divisionLabel: m.group_number != null ? getGroupLabel(m.champ, m.group_number) : null,
+        });
 
         return {
           id: `champ-${m.id}`,
@@ -586,8 +597,12 @@ export default function Bookings() {
           opponent_id: null,
           is_friendly: false,
           is_champ: true,
-          guest_name: tournamentName,
-          player_name: tournamentName,
+          champ_match_id: m.id,
+          champ_title: label.title,
+          champ_compact_title: label.compactTitle,
+          champ_context: label.context,
+          guest_name: label.title,
+          player_name: label.title,
           opponent_name: null,
           source: "club_event",
           player_rank: null,
@@ -598,6 +613,7 @@ export default function Bookings() {
     },
     enabled: !!dateStr,
   });
+
 
   const allCourtBookings = useMemo(() => {
     const normalBookings = ((bookings as any[] | undefined) || []).filter(
@@ -615,12 +631,36 @@ export default function Bookings() {
 
     for (const b of normalBookings) {
       const key = `${b.court_id}-${String(b.start_time || "").slice(0, 5)}-${String(b.end_time || "").slice(0, 5)}`;
-      const isSavedTournamentBlock = b.source === "club_event" && String(b.external_id || "").startsWith("champ:");
+      const extId = String(b.external_id || "");
+      const isSavedTournamentBlock = b.source === "club_event" && extId.startsWith("champ:");
+      // Player-scheduled tournament bookings carry the match id
+      // (`champ:<champId>:match:<matchId>`) — resolve those by id first so the
+      // names always belong to the right fixture, then fall back to overlap.
+      const linkedMatchId = extId.includes(":match:") ? extId.split(":match:")[1] : null;
       const matchingTournament = isSavedTournamentBlock
-        ? (champsBookings as any[]).find((cb: any) => overlaps(b, cb))
+        ? (linkedMatchId
+            ? (champsBookings as any[]).find((cb: any) => cb.champ_match_id === linkedMatchId)
+            : null) || (champsBookings as any[]).find((cb: any) => overlaps(b, cb))
         : null;
-      merged.set(key, matchingTournament && !b.guest_name ? { ...b, guest_name: matchingTournament.guest_name, player_name: matchingTournament.guest_name, is_champ: true } : b);
+      if (!matchingTournament) {
+        merged.set(key, b);
+        continue;
+      }
+      // A directly linked match is authoritative; an overlapping court block
+      // only fills in a title when the booking has none of its own.
+      const adoptNames = !!linkedMatchId || !b.guest_name;
+      merged.set(key, {
+        ...b,
+        is_champ: true,
+        champ_match_id: matchingTournament.champ_match_id,
+        champ_title: matchingTournament.champ_title,
+        champ_compact_title: matchingTournament.champ_compact_title,
+        champ_context: matchingTournament.champ_context,
+        guest_name: adoptNames ? matchingTournament.champ_title : b.guest_name,
+        player_name: b.player_name || matchingTournament.champ_title,
+      });
     }
+
 
     for (const cb of champsBookings as any[]) {
       const key = `${cb.court_id}-${String(cb.start_time || "").slice(0, 5)}-${String(cb.end_time || "").slice(0, 5)}`;
@@ -1664,9 +1704,16 @@ export default function Bookings() {
                     const prefix = `${ord(leagueNum)} League${roundPart}`;
                     return matchup ? `${prefix} · ${matchup}` : prefix;
                   };
+                  // Tournament match bookings show the competitors; the
+                  // competition name/division moves to secondary text.
+                  const champCompact = (booking as any)?.champ_compact_title as string | undefined;
+                  const champFull = (booking as any)?.champ_title as string | undefined;
+                  const champContext = (booking as any)?.champ_context as string | undefined;
                   const eventLabel = isEventBooking
-                    ? (isLeagueBooking ? formatLeagueLabel(rawGuestName) : (rawGuestName || (booking as any)?.player_name || "Tournament"))
+                    ? (champCompact
+                        || (isLeagueBooking ? formatLeagueLabel(rawGuestName) : (rawGuestName || (booking as any)?.player_name || "Tournament")))
                     : null;
+
                   const a = (booking as any)?.player_name ? toInitialSurname(String((booking as any).player_name)) : null;
                   const b = !isEventBooking && (booking as any)?.opponent_name ? toInitialSurname(String((booking as any).opponent_name)) : null;
                   const isMine = booking && ((booking as any).user_id === user?.id || (booking as any).opponent_id === user?.id);
@@ -1744,6 +1791,9 @@ export default function Bookings() {
                                 {!isBlocked && !isEventBooking && b ? <span className="font-normal text-muted-foreground"> v </span> : ""}
                                 {!isBlocked && !isEventBooking && b ? b : ""}
                               </p>
+                              {!isBlocked && champContext ? (
+                                <p className="text-[9px] text-muted-foreground truncate">{champContext}</p>
+                              ) : null}
                             </div>
                           ) : isPastSlot ? (
                             <span className="text-muted-foreground/20 text-[10px]">—</span>
@@ -1754,7 +1804,9 @@ export default function Bookings() {
                       </TooltipTrigger>
                       {booking && !isBlocked && (
                         <TooltipContent side="top" className="max-w-[220px] text-xs space-y-1 p-2.5">
-                          <p className="font-semibold">{isEventBooking ? eventLabel : `${(booking as any).player_name || "Unknown"}${b ? ` vs ${b}` : ""}`}</p>
+                          <p className="font-semibold">{champFull || (isEventBooking ? eventLabel : `${(booking as any).player_name || "Unknown"}${b ? ` vs ${b}` : ""}`)}</p>
+                          {champContext ? <p className="text-muted-foreground">{champContext}</p> : null}
+
                           <p className="text-muted-foreground">{String((booking as any).start_time || "").slice(0, 5)} – {String((booking as any).end_time || "").slice(0, 5)}</p>
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             {(booking as any).lights_requested ? (
@@ -1794,7 +1846,18 @@ export default function Bookings() {
           </DialogHeader>
           {bookingDetails && (
             <div className="space-y-3 py-2">
+              {(bookingDetails as any).champ_title ? (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  <p className="text-sm font-semibold">{(bookingDetails as any).champ_title}</p>
+                  {(bookingDetails as any).champ_context ? (
+                    <Badge variant="secondary" className="mt-1.5 text-[10px] bg-primary/15 text-primary border-0">
+                      {(bookingDetails as any).champ_context}
+                    </Badge>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/20 p-3">
+
                 <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
                   <MapPin className="w-4 h-4 text-primary" />
                 </div>

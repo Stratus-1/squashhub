@@ -1120,3 +1120,16 @@ against the new draw by participants (not row id), aborts before deleting
 anything if a protected fixture is gone, carries court/date/time/booking onto the
 new row, only deletes `:block:` bookings, and re-points surviving bookings'
 external ids at the new match ids. Tests: `src/test/preserve-schedules.test.ts`.
+
+## 2026-08-23 — Tournament court bookings show player names
+
+Tournament match bookings rendered only the competition name ("Men's Singles").
+New `src/lib/tournaments/booking-label.ts` derives the label dynamically from the
+linked match's player ids (no snapshot stored, so renames stay correct):
+`Willem Pretorius vs Craig Nieuwoudt` with `Riverside … · Men's Singles` as
+secondary context, `A / B vs C / D` for doubles, `X (bye)` for byes and
+`X vs TBD` for undecided opponents. `Bookings.tsx` now joins partners + is_bye +
+group_labels, matches player bookings by the `champ:<champ>:match:<id>` external
+id (falling back to court/time overlap), and shows the names in the grid cell,
+tooltip and details modal. Non-tournament bookings are untouched.
+Tests: `src/test/booking-label.test.ts`.

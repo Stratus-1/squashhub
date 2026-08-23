@@ -68,4 +68,15 @@ describe("billing frequency canonical mapping", () => {
     expect(billingOptionLabel(persisted)).toBe("6-monthly upfront");
     expect(optionToCycle(persisted)).toBe("biannual");
   });
+
+  it.each([
+    ["monthly", "Monthly", "2026-10-01"],
+    ["biannual_upfront", "6-monthly upfront", "2027-03-01"],
+    ["annual_upfront", "Annual upfront", "2027-09-01"],
+  ] as const)("reloads persisted %s with the correct badge and invoice date", (saved, label, nextDate) => {
+    const reloaded = normalizeBillingOption(saved);
+    expect(reloaded).toBe(saved);
+    expect(billingOptionLabel(reloaded)).toBe(label);
+    expect(nextInvoiceDate("2026-09-01", reloaded).toISOString().slice(0, 10)).toBe(nextDate);
+  });
 });

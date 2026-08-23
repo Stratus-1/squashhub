@@ -1,8 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
-
-type BillingCycle = 'monthly' | 'biannual' | 'annual'
-const CYCLE_MONTHS: Record<BillingCycle, number> = { monthly: 1, biannual: 6, annual: 12 }
+import { addBillingMonths, CYCLE_MONTHS, cycleDiscount, type BillingCycle } from './billing-cycle.ts'
 
 interface RequestBody {
   dryRun?: boolean
@@ -35,9 +33,9 @@ Deno.serve(async (req) => {
     .in('key', [
       'platform_invoice_settings',
       'platform_stitch_private_settings',
-      'saas_rate_zar_monthly', 'saas_rate_zar_annual',
-      'saas_rate_usd_monthly', 'saas_rate_usd_annual',
-      'saas_rate_eur_monthly', 'saas_rate_eur_annual',
+       'saas_rate_zar_monthly', 'saas_rate_zar_biannual', 'saas_rate_zar_annual',
+       'saas_rate_usd_monthly', 'saas_rate_usd_biannual', 'saas_rate_usd_annual',
+       'saas_rate_eur_monthly', 'saas_rate_eur_biannual', 'saas_rate_eur_annual',
       'saas_min_charge_monthly', 'saas_min_charge_biannual', 'saas_min_charge_annual',
       'fx_usd_to_zar', 'fx_eur_to_zar',
       // Graduated ("sliding scale") pricing — when enabled these override the flat rates.
@@ -74,10 +72,10 @@ Deno.serve(async (req) => {
   }
   const rateFor = (ccy: string, cycle: BillingCycle, fallback: number): number => {
     const c = (ccy || 'ZAR').toUpperCase()
-    const disc = cycle === 'annual' ? 0.9 : cycle === 'biannual' ? 0.95 : 1
+    const disc = cycleDiscount(cycle)
     if (c === 'USD') return num(`saas_rate_usd_${cycle}`, +(0.35 * disc).toFixed(2))
     if (c === 'EUR') return num(`saas_rate_eur_${cycle}`, +(0.32 * disc).toFixed(2))
-    return num(`saas_rate_zar_${cycle}`, fallback)
+    return num(`saas_rate_zar_${cycle}`, +(fallback * disc).toFixed(2))
   }
   const minChargeFor = (cycle: BillingCycle, fallback: number): number =>
     num(`saas_min_charge_${cycle}`, fallback)
@@ -382,9 +380,7 @@ Deno.serve(async (req) => {
         continue
       }
 
-      const periodEnd = new Date(
-        Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() + months, periodStart.getUTCDate()),
-      )
+      const periodEnd = addBillingMonths(periodStart, cycle)
 
       const dueDate = new Date(billingDate)
       dueDate.setDate(dueDate.getDate() + 14)

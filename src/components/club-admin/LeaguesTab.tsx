@@ -19,6 +19,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Info } from "lucide-react";
 import { CalendarRange } from "lucide-react";
 import { LeagueSeasonsDialog } from "./LeagueSeasonsDialog";
+import {
+  CLUB_LEAGUE,
+  CLUB_LEAGUES,
+  CLUB_LEAGUE_STEPS,
+  SELECT_OR_CREATE_COPY,
+  SYSTEM_LEAGUE,
+  SYSTEM_LEAGUES,
+  isClubLeagueScope,
+  leagueKindLabel,
+} from "@/lib/leagues/terminology";
+
 import { DoublesPairsDialog } from "./DoublesPairsDialog";
 import { LeagueFormatCard } from "./LeagueFormatCard";
 

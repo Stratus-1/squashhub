@@ -1133,3 +1133,11 @@ group_labels, matches player bookings by the `champ:<champ>:match:<id>` external
 id (falling back to court/time overlap), and shows the names in the grid cell,
 tooltip and details modal. Non-tournament bookings are untouched.
 Tests: `src/test/booking-label.test.ts`.
+
+##  — league_marker_locks cross-tenant read (RLS)
+
+- **Issue:** SELECT policy on `league_marker_locks` was `USING (true)`, so any authenticated user could read marker locks from any club.
+- **Fix:** new SECURITY DEFINER helper `public.can_access_league_fixture(_user_id, _fixture_id)` resolves fixture -> `platform_league_fixtures.association_id` -> `league_associations.platform_association_id` -> association tenant club + `association_affiliated_clubs` (active) and checks `is_club_member`. Super admins (`is_platform_admin` / `has_role(admin)`) bypass scoping.
+- SELECT policy replaced with the helper; stale-lock takeover (UPDATE/DELETE) now also requires fixture access; own-lock behaviour unchanged.
+- Revoked anon table grants and anon EXECUTE on the helper.
+- **Verified:** club member true, unrelated club false, platform admin true, anon/null false. 415 tests pass, build OK.

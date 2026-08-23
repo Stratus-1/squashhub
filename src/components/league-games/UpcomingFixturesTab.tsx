@@ -19,6 +19,8 @@ import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { TeamLogo } from "./TeamLogo";
 import { useFixtureLiveMarkers } from "@/hooks/use-fixture-live-markers";
+import { fixtureSideName, hasFixtureTeamName } from "@/lib/leagues/fixture-display";
+
 
 type Props = {
   platformAssocIds: string[];

@@ -32,6 +32,7 @@ import {
 
 import { DoublesPairsDialog } from "./DoublesPairsDialog";
 import { LeagueFormatCard } from "./LeagueFormatCard";
+import { pairDisplayName } from "@/lib/leagues/format";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -518,6 +519,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDelete={handleDeleteLeague}
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "men", leagues: list })}
+            onManagePairs={(association) => setPairsAssoc(association)}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "men", leagues: list })}
             onEditSetup={(assocId, list) => openEditSetup(assocId, "men", list)}
           />}
@@ -531,6 +533,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDelete={handleDeleteLeague}
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "ladies", leagues: list })}
+            onManagePairs={(association) => setPairsAssoc(association)}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "ladies", leagues: list })}
             onEditSetup={(assocId, list) => openEditSetup(assocId, "ladies", list)}
           />}
@@ -544,6 +547,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDelete={handleDeleteLeague}
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
+            onManagePairs={(association) => setPairsAssoc(association)}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "mixed", leagues: list })}
             onEditSetup={(assocId, list) => openEditSetup(assocId, "mixed", list)}
           />}
@@ -557,6 +561,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDelete={handleDeleteLeague}
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "open", leagues: list })}
+            onManagePairs={(association) => setPairsAssoc(association)}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "open", leagues: list })}
             onEditSetup={(assocId, list) => openEditSetup(assocId, "open", list)}
           />}
@@ -742,7 +747,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 }
 
 // ─── Gender Column: groups leagues by association, one Allocate button per association group ───
-function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onDeleteGroup, onAllocate, onAddReserves, onEditSetup }: {
+function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onDeleteGroup, onAllocate, onManagePairs, onAddReserves, onEditSetup }: {
   title: string;
   gender: "men" | "ladies" | "mixed" | "open";
   leagues: League[];
@@ -752,6 +757,7 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
   onDelete: (id: string) => void;
   onDeleteGroup: (groupLeagues: League[], label: string) => void;
   onAllocate: (associationId: string | null, leagues: League[]) => void;
+  onManagePairs: (association: LeagueAssociation) => void;
   onAddReserves: (associationId: string | null, leagues: League[]) => void;
   onEditSetup: (associationId: string | null, leagues: League[]) => void;
 }) {
@@ -787,9 +793,16 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
                 <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onEditSetup(g.assocId, g.leagues)} title="Edit Step-by-Step setup for this group">
                   <Pencil className="w-3 h-3" />Edit setup
                 </Button>
-                <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
-                  <Users className="w-3 h-3" />Allocate
-                </Button>
+                {g.assoc?.discipline !== "doubles" && (
+                  <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
+                    <Users className="w-3 h-3" />Allocate players
+                  </Button>
+                )}
+                {(g.assoc?.discipline === "doubles" || g.assoc?.discipline === "hybrid") && (
+                  <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onManagePairs(g.assoc)}>
+                    <Users className="w-3 h-3" />Manage pairs
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -1306,6 +1319,22 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     },
   });
 
+  const assocForLeague = associations.find(a => a.id === league.association_id);
+  const usesPairs = assocForLeague?.discipline === "doubles" || assocForLeague?.discipline === "hybrid";
+  const { data: pairs = [] } = useQuery({
+    queryKey: ["league-team-pairs-summary", league.id],
+    enabled: usesPairs,
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_team_pairs")
+        .select("id, player_one_member_id, player_two_member_id, pair_order")
+        .eq("league_id", league.id)
+        .eq("is_active", true)
+        .order("pair_order", { nullsFirst: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   // Load the current saved "players per match" for this league
   const { data: currentTeamSize } = useQuery({
     queryKey: ["league-rules-team-size", league.id],
@@ -1370,7 +1399,6 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     }
   };
 
-  const assocForLeague = associations.find(a => a.id === league.association_id);
   const isInternalLeague = assocForLeague?.scope === "internal";
 
   return (
@@ -1419,6 +1447,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
               <p className="text-xs text-muted-foreground">
                 {associations.find(a => a.id === league.association_id)?.name || "No association"}
                 {regs.length > 0 && ` • ${regs.length} player${regs.length !== 1 ? "s" : ""}`}
+                {pairs.length > 0 && ` • ${pairs.length} pair${pairs.length !== 1 ? "s" : ""}`}
                 {typeof currentTeamSize === "number" && currentTeamSize > 0 && ` • ${currentTeamSize}/match`}
                 {(() => {
                   const captain = regs.find((r: any) => r.is_captain);
@@ -1489,7 +1518,22 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
           })}
         </div>
       )}
-      {expanded && regs.length === 0 && (
+      {expanded && pairs.length > 0 && (
+        <div className="mt-2 border-t pt-2 space-y-0.5">
+          {pairs.map((pair: any, index: number) => (
+            <div key={pair.id} className="flex items-center gap-2 text-xs py-0.5">
+              <Badge variant="outline" className="h-4 px-1 text-[9px]">Pair {index + 1}</Badge>
+              <span className="truncate">
+                {pairDisplayName(
+                  getMemberName({ club_member_id: pair.player_one_member_id }),
+                  getMemberName({ club_member_id: pair.player_two_member_id }),
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {expanded && regs.length === 0 && pairs.length === 0 && (
         <p className="mt-2 border-t pt-2 text-xs text-muted-foreground text-center">No players allocated</p>
       )}
       {expanded && (() => {

@@ -147,6 +147,7 @@ export function DoublesPairsDialog({
       setP1("");
       setP2("");
       qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, seasonId] });
+      qc.invalidateQueries({ queryKey: ["league-team-pairs-summary", activeTeam] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -159,6 +160,7 @@ export function DoublesPairsDialog({
     onSuccess: () => {
       toast.success("Pair removed");
       qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, seasonId] });
+      qc.invalidateQueries({ queryKey: ["league-team-pairs-summary", activeTeam] });
     },
     onError: (e: any) => toast.error(e.message),
   });

@@ -5203,13 +5203,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "league_rules_association_id_fkey"
-            columns: ["association_id"]
-            isOneToOne: false
-            referencedRelation: "platform_league_associations"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "league_rules_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false

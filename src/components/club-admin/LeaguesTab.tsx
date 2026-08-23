@@ -1018,14 +1018,21 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
     queryKey: ["league-rules-subgroup", leagueIds.join(",")],
     enabled: leagueIds.length > 0,
     queryFn: async () => {
-      const { data } = await fromExt("league_rules").select("league_id, team_size, points_per_game").in("league_id", leagueIds);
-      return (data || []) as Array<{ league_id: string; team_size: number | null; points_per_game: number | null }>;
+      const { data } = await fromExt("league_rules").select("league_id, team_size, points_per_game, singles_rubbers, doubles_rubbers").in("league_id", leagueIds);
+      return (data || []) as Array<{ league_id: string; team_size: number | null; points_per_game: number | null; singles_rubbers: number | null; doubles_rubbers: number | null }>;
     },
   });
 
   const sizes = rules.map(r => r.team_size).filter((n): n is number => typeof n === "number" && n > 0);
   const uniformSize = sizes.length === leagueIds.length && new Set(sizes).size === 1 ? sizes[0] : null;
   const displaySize = uniformSize ?? (sizes.length > 0 ? `${Math.min(...sizes)}–${Math.max(...sizes)}` : "—");
+
+  // Doubles/hybrid leagues are described by rubbers per fixture, not raw player count.
+  const dbl = rules.map(r => r.doubles_rubbers).filter((n): n is number => typeof n === "number" && n > 0);
+  const uniformDoubles = dbl.length === leagueIds.length && new Set(dbl).size === 1 ? dbl[0] : null;
+  const displayRubbers: string | number | null =
+    dbl.length === 0 ? null : (uniformDoubles ?? `${Math.min(...dbl)}–${Math.max(...dbl)}`);
+
 
   const ppgs = rules.map(r => r.points_per_game).filter((n): n is number => typeof n === "number" && n > 0);
   // If every team in the level has the same override, show it. If none have an override → "Default".

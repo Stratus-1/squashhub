@@ -70,32 +70,11 @@ export function LeagueFormatCard({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {q.askSinglesRubbers && (
-          <div className="space-y-1">
-            <Label className="text-xs">Singles rubbers per fixture</Label>
-            <Input
-              type="number"
-              min={0}
-              max={20}
-              value={singles}
-              onChange={(e) => setSingles(Math.max(0, Number(e.target.value) || 0))}
-            />
-          </div>
-        )}
-        {q.askDoublesRubbers && (
-          <div className="space-y-1">
-            <Label className="text-xs">Doubles rubbers per fixture</Label>
-            <Input
-              type="number"
-              min={0}
-              max={20}
-              value={doubles}
-              onChange={(e) => setDoubles(Math.max(0, Number(e.target.value) || 0))}
-            />
-          </div>
-        )}
-      </div>
+      <p className="text-[11px] text-muted-foreground">
+        League-wide rules only. Match composition (how many singles / doubles rubbers per fixture)
+        is set in Step 2 — Create League Teams.
+      </p>
+
 
       {q.askPairingPolicy && (
         <div className="space-y-1">

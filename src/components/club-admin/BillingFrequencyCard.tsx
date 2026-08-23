@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { computeTieredCharge } from "@/lib/saas-tiers";
 import { useClubBillingStart } from "@/hooks/use-billing-start";
 
 
-import { normalizeBillingOption, optionToCycle, billingOptionLabel, type BillingOption } from "@/lib/billing/frequency";
+import { normalizeBillingOption, billingOptionLabel, type BillingOption } from "@/lib/billing/frequency";
 type PaymentMethod = "eft" | "card";
 
 
@@ -42,15 +42,20 @@ export function BillingFrequencyCard({
 }) {
   const c = club as any;
   const updateClub = useUpdateClub();
+  const queryClient = useQueryClient();
   const { code: currencyCode } = useClubCurrency();
   const pricing = useSaasPricing(currencyCode);
   const billingStart = useClubBillingStart(club.id);
 
   const current: BillingOption = normalizeBillingOption(c.sla_billing_option);
   const [choice, setChoice] = useState<BillingOption>(current);
-  // Keep the radio in sync with the persisted value after a save/refetch so the
-  // control never drifts back to a stale default.
-  useEffect(() => setChoice(current), [current]);
+  const [persistedChoice, setPersistedChoice] = useState<BillingOption>(current);
+  // Re-sync only when fresh backend data changes. A render with stale club data
+  // must not undo the option the user has just clicked or successfully saved.
+  useEffect(() => {
+    setChoice(current);
+    setPersistedChoice(current);
+  }, [current]);
   const currentPay: PaymentMethod | null =
     c.sla_payment_method === "card" ? "card" : c.sla_payment_method === "eft" ? "eft" : null;
   const [payMethod, setPayMethod] = useState<PaymentMethod | null>(currentPay);
@@ -123,21 +128,32 @@ export function BillingFrequencyCard({
 
 
 
-  const dirty = choice !== current || payMethod !== currentPay;
+  const dirty = choice !== persistedChoice || payMethod !== currentPay;
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateClub.mutateAsync({
-        id: club.id,
-        sla_billing_option: choice,
-        sla_payment_method: payMethod,
-      } as any);
-      // Keep the subscription baseline cycle aligned with the canonical choice
-      // so the plan summary and invoice scheduler agree.
-      await (supabase as any)
-        .rpc("set_club_subscription_baseline_cycle", { _club_id: club.id, _cycle: optionToCycle(choice) })
-        .then(() => undefined, () => undefined);
+      if (choice !== persistedChoice) {
+        const { error } = await (supabase as any).rpc("set_club_billing_frequency", {
+          _club_id: club.id,
+          _billing_option: choice,
+        });
+        if (error) throw error;
+        setPersistedChoice(choice);
+      }
+      // Payment method remains an independent preference and is never rewritten
+      // merely because the billing frequency changed.
+      if (payMethod !== currentPay) {
+        await updateClub.mutateAsync({
+          id: club.id,
+          sla_payment_method: payMethod,
+        } as any);
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["my-club"] }),
+        queryClient.invalidateQueries({ queryKey: ["club-billing-frequency", club.id] }),
+        queryClient.invalidateQueries({ queryKey: ["club-subscription-summary", club.id] }),
+      ]);
       toast.success(
         choice === "annual_upfront"
           ? "Set to annual upfront — your next invoice will cover 12 months."
@@ -159,7 +175,7 @@ export function BillingFrequencyCard({
         <CalendarClock className="w-4 h-4 text-primary" />
         <h3 className="font-semibold text-sm">Billing frequency</h3>
         <Badge variant="outline" className="text-[10px]">
-          {billingOptionLabel(current)}
+          {billingOptionLabel(persistedChoice)}
         </Badge>
         {locked && (
           <Badge variant="secondary" className="text-[10px]">
@@ -320,7 +336,7 @@ export function BillingFrequencyCard({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" onClick={handleSave} disabled={saving || !dirty || (locked && choice !== current)}>
+        <Button size="sm" onClick={handleSave} disabled={saving || !dirty || (locked && choice !== persistedChoice)}>
           {saving
             ? "Saving…"
             : !dirty

@@ -88,6 +88,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-23 · Billing-frequency selector reverted to Monthly
+- **Symptom:** Selecting 6-monthly or annual appeared not to save, the radio reverted to Monthly, and summary labels disagreed.
+- **Finding:** The UI performed two separate writes. The second baseline RPC called non-existent one-argument admin helpers and its error was swallowed, while separate cached club queries could continue rendering the old value. The invoice scheduler also omitted flat biannual rate settings and did not clamp month-end period dates.
+- **Fix:** Added one authorised atomic RPC whose canonical field is `clubs.sla_billing_option`; it aligns the latest baseline cycle and writes an audit entry without touching issued invoices. The selector now surfaces errors, preserves immediate selection, and invalidates every billing display query. Billing periods and discounts now share tested cycle helpers.
+- **Guard:** Billing frequency has one writer and one canonical field. Never swallow persistence errors or derive future invoice frequency from plan names/baseline history.
+
 ### 2026-08-21 · Shelly Bluetooth fallback could not discover its RPC service
 - **Symptom:** BLE-only door tests reported no device found, or failed immediately after selecting the nearby
   Shelly 1 Mini Gen3, while the relay was powered and Bluetooth was enabled.

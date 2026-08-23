@@ -590,22 +590,19 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 
         {otherLeagues.length > 0 && (
           <div className="mt-4">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <h4 className="text-sm font-semibold text-muted-foreground">Other ({otherLeagues.length})</h4>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={() => setAllocateGroup({ associationId: null, gender: "mixed", leagues: sortLeagues(otherLeagues) })}
-              >
-                <Users className="w-3.5 h-3.5" />Allocate
-              </Button>
-            </div>
-            <LeagueNumberSubGroups
-              groupLeagues={sortLeagues(otherLeagues)}
+            <GenderColumn
+              title="Other"
+              gender="mixed"
+              leagues={otherLeagues}
               associations={associations}
               members={members}
+              sortLeagues={sortLeagues}
               onDelete={handleDeleteLeague}
+              onDeleteGroup={handleDeleteGroup}
+              onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
+              onManagePairs={(association) => setPairsAssoc(association)}
+              onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "mixed", leagues: list })}
+              onEditSetup={(assocId, list) => openEditSetup(assocId, "mixed", list)}
             />
           </div>
         )}

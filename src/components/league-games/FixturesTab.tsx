@@ -998,6 +998,16 @@ function RoundCard({
     );
   };
 
+  // "Create fixtures" on the collapsed row: expand, then generate straight away
+  // instead of leaving the organiser on an empty table wondering what happened.
+  useEffect(() => {
+    if (!autoRun || !open || fixtures === undefined) return;
+    setAutoRun(false);
+    autoDistribute();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun, open, fixtures]);
+
+
   /**
    * Re-balance courts on the current fixtures using a fairness scorer that
    * considers prior-round usage. Only court_id changes; pairings/dates/times

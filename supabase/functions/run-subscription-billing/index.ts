@@ -286,7 +286,53 @@ Deno.serve(async (req) => {
   const iso = (d: Date) => d.toISOString().slice(0, 10)
   const billingDay = iso(billingDate)
 
+  // --- Consolidated monthly billing -------------------------------------
+  // One invoice per club per billing month: subscription (renewal months only)
+  // + WhatsApp usage for the PREVIOUS calendar month (billed in arrears).
+  const billingMonth = monthStartIso(billingDate)
+  const waRange = previousMonthRange(billingDate)
 
+  // Existing invoice for this club + month → idempotency. A previously failed
+  // invoice is retried by reusing its row.
+  const existingByClub = new Map<string, any>()
+  if (clubIds.length) {
+    const { data: existing } = await supabase
+      .from('platform_subscription_invoices')
+      .select('id, club_id, invoice_number, status, billing_month')
+      .in('club_id', clubIds)
+      .eq('billing_month', billingMonth)
+    for (const e of existing || []) existingByClub.set(e.club_id, e)
+  }
+
+  // Unbilled WhatsApp usage per club for the previous month.
+  const waUsage = new Map<
+    string,
+    { count: number; amount: number; utility: number; service: number; marketing: number; ids: string[] }
+  >()
+  if (clubIds.length) {
+    const { data: waRows } = await supabase
+      .from('whatsapp_send_log')
+      .select('id, club_id, category, unit_cost')
+      .in('club_id', clubIds)
+      .eq('status', 'sent')
+      .eq('billable', true)
+      .is('platform_invoice_id', null)
+      .is('invoice_id', null)
+      .gte('created_at', `${waRange.start}T00:00:00Z`)
+      .lt('created_at', `${waRange.end}T23:59:59.999Z`)
+      .range(0, 99999)
+    for (const r of waRows || []) {
+      const cur =
+        waUsage.get(r.club_id) ?? { count: 0, amount: 0, utility: 0, service: 0, marketing: 0, ids: [] }
+      cur.count++
+      cur.amount += Number(r.unit_cost || 0)
+      if (r.category === 'utility') cur.utility++
+      else if (r.category === 'service') cur.service++
+      else if (r.category === 'marketing') cur.marketing++
+      cur.ids.push(r.id)
+      waUsage.set(r.club_id, cur)
+    }
+  }
 
   // Get current invoice count for this year to build sequential numbers
   const { count: existingCount } = await supabase

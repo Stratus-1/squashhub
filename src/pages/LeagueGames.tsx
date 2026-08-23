@@ -18,6 +18,8 @@ import { FixturesTab } from "@/components/league-games/FixturesTab";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, startOfWeek, addDays } from "date-fns";
+import { buildTeamNameIndex } from "@/lib/leagues/fixture-display";
+
 
 type AssocRow = {
   id: string;

@@ -629,12 +629,36 @@ export default function Bookings() {
 
     for (const b of normalBookings) {
       const key = `${b.court_id}-${String(b.start_time || "").slice(0, 5)}-${String(b.end_time || "").slice(0, 5)}`;
-      const isSavedTournamentBlock = b.source === "club_event" && String(b.external_id || "").startsWith("champ:");
+      const extId = String(b.external_id || "");
+      const isSavedTournamentBlock = b.source === "club_event" && extId.startsWith("champ:");
+      // Player-scheduled tournament bookings carry the match id
+      // (`champ:<champId>:match:<matchId>`) — resolve those by id first so the
+      // names always belong to the right fixture, then fall back to overlap.
+      const linkedMatchId = extId.includes(":match:") ? extId.split(":match:")[1] : null;
       const matchingTournament = isSavedTournamentBlock
-        ? (champsBookings as any[]).find((cb: any) => overlaps(b, cb))
+        ? (linkedMatchId
+            ? (champsBookings as any[]).find((cb: any) => cb.champ_match_id === linkedMatchId)
+            : null) || (champsBookings as any[]).find((cb: any) => overlaps(b, cb))
         : null;
-      merged.set(key, matchingTournament && !b.guest_name ? { ...b, guest_name: matchingTournament.guest_name, player_name: matchingTournament.guest_name, is_champ: true } : b);
+      if (!matchingTournament) {
+        merged.set(key, b);
+        continue;
+      }
+      // A directly linked match is authoritative; an overlapping court block
+      // only fills in a title when the booking has none of its own.
+      const adoptNames = !!linkedMatchId || !b.guest_name;
+      merged.set(key, {
+        ...b,
+        is_champ: true,
+        champ_match_id: matchingTournament.champ_match_id,
+        champ_title: matchingTournament.champ_title,
+        champ_compact_title: matchingTournament.champ_compact_title,
+        champ_context: matchingTournament.champ_context,
+        guest_name: adoptNames ? matchingTournament.champ_title : b.guest_name,
+        player_name: b.player_name || matchingTournament.champ_title,
+      });
     }
+
 
     for (const cb of champsBookings as any[]) {
       const key = `${cb.court_id}-${String(cb.start_time || "").slice(0, 5)}-${String(cb.end_time || "").slice(0, 5)}`;

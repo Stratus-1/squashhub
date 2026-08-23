@@ -1349,6 +1349,7 @@ export type Database = {
           player_a_member_id: string | null
           player_b_member_id: string | null
           pool_number: number | null
+          round_id: string | null
           round_number: number
           scheduled_date: string | null
           scheduled_time: string | null
@@ -1388,6 +1389,7 @@ export type Database = {
           player_a_member_id?: string | null
           player_b_member_id?: string | null
           pool_number?: number | null
+          round_id?: string | null
           round_number?: number
           scheduled_date?: string | null
           scheduled_time?: string | null
@@ -1427,6 +1429,7 @@ export type Database = {
           player_a_member_id?: string | null
           player_b_member_id?: string | null
           pool_number?: number | null
+          round_id?: string | null
           round_number?: number
           scheduled_date?: string | null
           scheduled_time?: string | null
@@ -1502,6 +1505,13 @@ export type Database = {
             columns: ["player_b_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs_rounds"
             referencedColumns: ["id"]
           },
           {
@@ -1632,6 +1642,75 @@ export type Database = {
             columns: ["partner_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_champs_rounds: {
+        Row: {
+          champ_id: string
+          created_at: string
+          generated_at: string | null
+          generated_by: string | null
+          group_number: number
+          id: string
+          label: string | null
+          notes: string | null
+          play_by: string | null
+          round_number: number
+          round_type: string
+          scheduling_mode: string
+          section_number: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          champ_id: string
+          created_at?: string
+          generated_at?: string | null
+          generated_by?: string | null
+          group_number?: number
+          id?: string
+          label?: string | null
+          notes?: string | null
+          play_by?: string | null
+          round_number: number
+          round_type?: string
+          scheduling_mode?: string
+          section_number?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          champ_id?: string
+          created_at?: string
+          generated_at?: string | null
+          generated_by?: string | null
+          group_number?: number
+          id?: string
+          label?: string | null
+          notes?: string | null
+          play_by?: string | null
+          round_number?: number
+          round_type?: string
+          scheduling_mode?: string
+          section_number?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_champs_rounds_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_rounds_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
         ]
@@ -10722,6 +10801,7 @@ export type Database = {
           player_a_member_id: string | null
           player_b_member_id: string | null
           pool_number: number | null
+          round_id: string | null
           round_number: number
           scheduled_date: string | null
           scheduled_time: string | null
@@ -10878,6 +10958,7 @@ export type Database = {
           player_a_member_id: string | null
           player_b_member_id: string | null
           pool_number: number | null
+          round_id: string | null
           round_number: number
           scheduled_date: string | null
           scheduled_time: string | null

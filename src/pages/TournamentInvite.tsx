@@ -140,6 +140,29 @@ export default function TournamentInvite() {
     return rows;
   }, [data, feeCents]);
 
+  // Doubles divisions this player has entered — they may pick a partner there.
+  const enteredDivisions = useMemo(() => {
+    const chosen = chosenDivisions.length > 0 ? chosenDivisions : (data?.selected_divisions || []).map(Number);
+    return doublesDivisions(divisions, chosen);
+  }, [divisions, chosenDivisions, data]);
+  const hasDoublesChoice = enteredDivisions.length > 0;
+
+  const partnerSection =
+    !isTest && data?.champ_id && hasDoublesChoice ? (
+      <div className="space-y-2 pt-1">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Doubles partner
+        </p>
+        <DoublesPartnerPicker
+          champId={String(data.champ_id)}
+          divisions={enteredDivisions}
+          token={token || null}
+          verify={verify.trim() || null}
+        />
+      </div>
+    ) : null;
+
+
   if (isLoading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

@@ -136,6 +136,7 @@ import {
   type RoundMatchRow,
 } from "@/lib/tournaments/self-scheduled-rounds";
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
+import { DoublesPairsPanel } from "@/components/club-admin/DoublesPairsPanel";
 import { z } from "zod";
 
 interface ClubChampsTabProps {

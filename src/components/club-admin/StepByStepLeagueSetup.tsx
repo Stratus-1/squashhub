@@ -221,21 +221,6 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const singlesPerTeam = effectiveSinglesRubbers;
   const effectivePairsPerTeam = effectiveDoublesRubbers;
 
-  const requirements = useMemo(
-    () =>
-      computeTeamRequirements({
-        composition: {
-          singlesRubbers: effectiveSinglesRubbers,
-          doublesRubbers: effectiveDoublesRubbers,
-          allowDualParticipation: inherited.allowDualParticipation,
-        },
-        numTeams,
-        reservesPerTeam: reserves,
-        availablePlayers: eligiblePoolCount,
-      }),
-    [effectiveSinglesRubbers, effectiveDoublesRubbers, inherited.allowDualParticipation, numTeams, reserves, eligiblePoolCount],
-  );
-  const slotsPerTeam = requirements.startingPlayersPerTeam;
 
 
 
@@ -247,6 +232,22 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     );
     return filterByGender(opted, gender);
   }, [members, associationId, gender, allocatedIds, activeAffiliatedSet]);
+
+  const requirements = useMemo(
+    () =>
+      computeTeamRequirements({
+        composition: {
+          singlesRubbers: effectiveSinglesRubbers,
+          doublesRubbers: effectiveDoublesRubbers,
+          allowDualParticipation: inherited.allowDualParticipation,
+        },
+        numTeams,
+        reservesPerTeam: reserves,
+        availablePlayers: eligiblePool.length,
+      }),
+    [effectiveSinglesRubbers, effectiveDoublesRubbers, inherited.allowDualParticipation, numTeams, reserves, eligiblePool.length],
+  );
+  const slotsPerTeam = requirements.startingPlayersPerTeam;
 
   // Sort eligible pool by ladder_position (nulls last), then name.
   // ladder_position already comes from useClubMembers (`select *`), so we don't

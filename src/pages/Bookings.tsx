@@ -553,10 +553,13 @@ export default function Bookings() {
           court_id,
           scheduled_time,
           scheduled_date,
+          is_bye,
           player_a:player_a_member_id(name, user_id, profiles:user_id(name)),
           player_b:player_b_member_id(name, user_id, profiles:user_id(name)),
+          partner_a:partner_a_member_id(name, user_id, profiles:user_id(name)),
+          partner_b:partner_b_member_id(name, user_id, profiles:user_id(name)),
           group_number,
-          champ:champ_id(name, match_duration_minutes, group_durations, rules:tournament_rules(scoring_mode))
+          champ:champ_id(name, group_labels, match_duration_minutes, group_durations, rules:tournament_rules(scoring_mode))
         `)
         .eq("scheduled_date", dateStr)
         .not("court_id", "is", null)
@@ -574,6 +577,12 @@ export default function Bookings() {
           ? Number(groupDurations[String(m.group_number)] || m.champ?.match_duration_minutes) || 30
           : Number(m.champ?.match_duration_minutes) || 30;
         const end = addMinutesToTime(start, duration);
+        // Names come from the linked match, so they stay correct even if a
+        // member is renamed after the booking was made.
+        const label = champMatchToBookingLabel(m, {
+          champName: tournamentName,
+          divisionLabel: m.group_number != null ? getGroupLabel(m.champ, m.group_number) : null,
+        });
 
         return {
           id: `champ-${m.id}`,
@@ -586,8 +595,12 @@ export default function Bookings() {
           opponent_id: null,
           is_friendly: false,
           is_champ: true,
-          guest_name: tournamentName,
-          player_name: tournamentName,
+          champ_match_id: m.id,
+          champ_title: label.title,
+          champ_compact_title: label.compactTitle,
+          champ_context: label.context,
+          guest_name: label.title,
+          player_name: label.title,
           opponent_name: null,
           source: "club_event",
           player_rank: null,
@@ -598,6 +611,7 @@ export default function Bookings() {
     },
     enabled: !!dateStr,
   });
+
 
   const allCourtBookings = useMemo(() => {
     const normalBookings = ((bookings as any[] | undefined) || []).filter(

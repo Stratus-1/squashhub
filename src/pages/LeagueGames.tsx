@@ -164,19 +164,25 @@ export default function LeagueGames() {
 
   // Map of team code -> custom league name (only when admin renamed it from the
   // auto-generated "Men's Nth League YYYY" / "Ladies Nth League YYYY" pattern).
-  // This lets fixtures + standings show fun team names like "Cobras vs Penguins".
-  const teamNameByCode = useMemo<Record<string, string>>(() => {
+  // Phase 2.1: codes are NOT unique across competitions (e.g. CSI001 exists in
+  // Men's 2nd AND Ladies 1st), so the index is division-scoped and falls back to
+  // a code-only map only when that code is unambiguous.
+  const teamNameByCode = useMemo(() => {
     const isDefaultName = (n: string) =>
       /^\s*(?:men'?s?|ladies|ladie|women|mixed)\b.*\bleague\b/i.test(n || "") ||
       /reserves?/i.test(n || "");
-    const map: Record<string, string> = {};
-    for (const l of leaguesInScope) {
-      if (l.code && l.name && !isDefaultName(l.name)) {
-        map[l.code.toUpperCase()] = l.name;
-      }
-    }
-    return map;
+    return buildTeamNameIndex(
+      leaguesInScope
+        .filter((l) => l.name && !isDefaultName(l.name))
+        .map((l) => ({
+          code: l.code,
+          nsa_team_code: l.nsa_team_code,
+          name: l.name,
+          division: (l as any).division ?? null,
+        })),
+    );
   }, [leaguesInScope]);
+
 
   const teamLogoByCode = useMemo<Record<string, string>>(() => {
     const map: Record<string, string> = {};

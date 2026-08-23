@@ -412,6 +412,17 @@ export function MyChampionships() {
         match={scheduling?.match || null}
         opponentName={scheduling?.opponent}
       />
+
+      <EnterResultDialog
+        open={!!entering}
+        onOpenChange={(v) => !v && setEntering(null)}
+        clubId={clubId}
+        match={entering?.match || null}
+        playerAName={entering?.a || ""}
+        playerBName={entering?.b || ""}
+        bestOf={entering?.champ?.best_of ?? null}
+        pointsTarget={entering?.champ?.points_per_game ?? null}
+      />
     </div>
   );
 }

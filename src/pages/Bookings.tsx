@@ -1844,7 +1844,18 @@ export default function Bookings() {
           </DialogHeader>
           {bookingDetails && (
             <div className="space-y-3 py-2">
+              {(bookingDetails as any).champ_title ? (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  <p className="text-sm font-semibold">{(bookingDetails as any).champ_title}</p>
+                  {(bookingDetails as any).champ_context ? (
+                    <Badge variant="secondary" className="mt-1.5 text-[10px] bg-primary/15 text-primary border-0">
+                      {(bookingDetails as any).champ_context}
+                    </Badge>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/20 p-3">
+
                 <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
                   <MapPin className="w-4 h-4 text-primary" />
                 </div>

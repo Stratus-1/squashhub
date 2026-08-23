@@ -743,6 +743,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           seasonId={pairsAssoc.current_season_id ?? null}
           category={(pairsAssoc.category as any) ?? null}
           requireMixedPair={!!pairsAssoc.require_mixed_pair}
+          onCreateTeams={() => setStep("teams")}
         />
       )}
 

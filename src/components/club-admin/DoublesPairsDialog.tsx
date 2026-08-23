@@ -39,6 +39,7 @@ export function DoublesPairsDialog({
   seasonId,
   category,
   requireMixedPair,
+  onCreateTeams,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -47,6 +48,7 @@ export function DoublesPairsDialog({
   seasonId?: string | null;
   category: CompetitionCategory | null;
   requireMixedPair: boolean;
+  onCreateTeams?: () => void;
 }) {
   const qc = useQueryClient();
   const [teamId, setTeamId] = useState<string>("");
@@ -87,7 +89,7 @@ export function DoublesPairsDialog({
     queryFn: async () => {
       // Team registrations (if any) are shown first, but pairs can be built
       // from ANY club member — teams are usually filled after pairing.
-      const [{ data: regs }, { data: members, error }] = await Promise.all([
+      const [{ data: regs, error: regsError }, { data: members, error }] = await Promise.all([
         activeTeam
           ? supabase
               .from("member_league_registrations")
@@ -100,6 +102,7 @@ export function DoublesPairsDialog({
           .eq("club_id", clubId)
           .order("name"),
       ]);
+      if (regsError) throw regsError;
       if (error) throw error;
       const registered = new Set((regs ?? []).map((r: any) => r.club_member_id));
       const list = (members ?? [])
@@ -220,7 +223,21 @@ export function DoublesPairsDialog({
             {teamsLoading && <p className="text-xs text-muted-foreground">Loading teams…</p>}
             {teamsError && <p className="text-xs text-destructive">Could not load teams. Please close and try again.</p>}
             {!teamsLoading && !teamsError && teams.length === 0 && (
-              <p className="text-xs text-muted-foreground">Create a team for this league before allocating pairs.</p>
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-2">
+                <p className="text-xs text-muted-foreground">Create a team for this league before allocating pairs.</p>
+                {onCreateTeams && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onCreateTeams();
+                    }}
+                  >
+                    Create teams
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 

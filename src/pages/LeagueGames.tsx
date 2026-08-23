@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, startOfWeek, addDays } from "date-fns";
 import { buildTeamNameIndex } from "@/lib/leagues/fixture-display";
+import { useLeagueSeasons } from "@/hooks/use-league-seasons";
+import { pickSeasonScoped } from "@/lib/leagues/seasons";
 
 
 type AssocRow = {
@@ -81,7 +83,7 @@ export default function LeagueGames() {
         .select("id, code, name, association_id, nsa_team_code, division, category, season_id, logo_url")
         .eq("club_id", clubId!);
       if (error) throw error;
-      return (data || []) as Array<{ id: string; code: string | null; name: string; association_id: string | null; nsa_team_code: string | null }>;
+      return (data || []) as Array<{ id: string; code: string | null; name: string; association_id: string | null; nsa_team_code: string | null; season_id?: string | null }>;
     },
     enabled: !!clubId,
   });

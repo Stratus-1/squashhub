@@ -4,6 +4,7 @@ import {
   fixtureSideName,
   hasFixtureTeamName,
   isByeCode,
+  buildTeamNameIndex,
 } from "@/lib/leagues/fixture-display";
 
 describe("fixture-display (Phase 2 season-safe names)", () => {
@@ -63,5 +64,51 @@ describe("fixture-display (Phase 2 season-safe names)", () => {
     const before = fixtureSideName(fixture, "home", { NIL004: "Old Legends 2026" });
     const after = fixtureSideName(fixture, "home", { NIL004: "Brand New Name 2027" });
     expect(before).toBe(after);
+  });
+});
+
+describe("Phase 2.1 competition-aware team lookup", () => {
+  const teams = [
+    { code: "CSI001", nsa_team_code: "CSI001", name: "Men's 2nd League 2026", division: "Mens 2nd" },
+    { code: "CSI001", nsa_team_code: "CSIL01", name: "Ladies 1st League 2026", division: "Ladies 1st" },
+    { code: "NIL004", nsa_team_code: null, name: "Cobras", division: null },
+  ];
+
+  it("keeps both competitions for a shared code", () => {
+    const idx = buildTeamNameIndex(teams);
+    expect(idx.byDivisionCode["MENS 2ND|CSI001"]).toBe("Men's 2nd League 2026");
+    expect(idx.byDivisionCode["LADIES 1ST|CSI001"]).toBe("Ladies 1st League 2026");
+    expect(idx.byDivisionCode["LADIES 1ST|CSIL01"]).toBe("Ladies 1st League 2026");
+  });
+
+  it("blanks the code-only map when a code is ambiguous", () => {
+    const idx = buildTeamNameIndex(teams);
+    expect(idx.byCode["CSI001"]).toBeUndefined();
+    expect(idx.byCode["CSIL01"]).toBe("Ladies 1st League 2026");
+    expect(idx.byCode["NIL004"]).toBe("Cobras");
+  });
+
+  it("resolves a fixture side using its division", () => {
+    const idx = buildTeamNameIndex(teams);
+    const mens = { home_team_code: "CSI001", away_team_code: "ADE001", division: "Mens 2nd" };
+    const ladies = { home_team_code: "CSI001", away_team_code: "TUKL01", division: "Ladies 1st" };
+    expect(fixtureSideName(mens, "home", idx)).toBe("Men's 2nd League 2026");
+    expect(fixtureSideName(ladies, "home", idx)).toBe("Ladies 1st League 2026");
+  });
+
+  it("still prefers the historical snapshot over the live index", () => {
+    const idx = buildTeamNameIndex(teams);
+    const f = {
+      home_team_code: "CSI001",
+      away_team_code: "ADE001",
+      division: "Mens 2nd",
+      home_team_name_snapshot: "Men's 2nd League 2026",
+    };
+    expect(fixtureSideName(f, "home", idx)).toBe("Men's 2nd League 2026");
+  });
+
+  it("accepts a legacy plain code->name record", () => {
+    const f = { home_team_code: "NIL004", away_team_code: "NIL009" };
+    expect(fixtureSideName(f, "home", { NIL004: "Cobras" })).toBe("Cobras");
   });
 });

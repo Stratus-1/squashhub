@@ -99,7 +99,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
         .eq("club_id", clubId)
         .order("issued_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as Invoice[];
+      return (data || []) as unknown as Invoice[];
     },
   });
 

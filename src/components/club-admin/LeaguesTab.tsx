@@ -1067,14 +1067,20 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
     }
     setSaving(true);
     try {
-      const rows = leagues.map(l => ({
-        league_id: l.id,
-        club_id: (l as any).club_id,
-        association_id: null, // per-league rule: scope CHECK requires association_id NULL when league_id set
-        team_size: size,
-        team_size_mode: "fixed" as const,
-        points_per_game: ppgValue ?? null, // null = inherit from league/super-admin
-      }));
+      const rows = leagues.map(l => {
+        const existing = rules.find(r => r.league_id === l.id);
+        return {
+          league_id: l.id,
+          club_id: (l as any).club_id,
+          association_id: null, // per-league rule: scope CHECK requires association_id NULL when league_id set
+          team_size: size,
+          team_size_mode: "fixed" as const,
+          points_per_game: ppgValue ?? null, // null = inherit from league/super-admin
+          // Preserve match composition — upsert rewrites the whole row.
+          singles_rubbers: existing?.singles_rubbers ?? null,
+          doubles_rubbers: existing?.doubles_rubbers ?? null,
+        };
+      });
       const { error } = await fromExt("league_rules").upsert(rows, { onConflict: "league_id" });
       if (error) throw error;
       toast.success(

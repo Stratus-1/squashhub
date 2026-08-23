@@ -476,8 +476,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   // Start another round of setup, keeping the association and the running allocated-ID list
   const handleSetupAnother = () => {
     setSavedLastRound(false);
-    setStep(2);
-    setGender("men");
+    setStep(questions.askCategory ? 2 : 3);
+    if (questions.askCategory) setGender("men");
     setLeagueNumber("1st");
     setStartPosition(1);
     setNumMembers(0);

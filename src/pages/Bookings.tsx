@@ -69,6 +69,8 @@ import { checkBookingBalance } from "@/lib/booking-balance-gate";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
+import { champMatchToBookingLabel } from "@/lib/tournaments/booking-label";
+import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 
 function timeToMinutes(t: string) {
   const [hh, mm] = t.split(":").map((x) => Number(x));

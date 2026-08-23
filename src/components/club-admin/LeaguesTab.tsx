@@ -2532,7 +2532,7 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
         <DialogHeader><DialogTitle>Create or join a league</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="flex gap-2">
-            <Button variant={mode === "select" ? "default" : "outline"} size="sm" onClick={() => setMode("select")} className="flex-1">Join Regional League</Button>
+            <Button variant={mode === "select" ? "default" : "outline"} size="sm" onClick={() => setMode("select")} className="flex-1">Join System League</Button>
             <Button variant={mode === "create" ? "default" : "outline"} size="sm" onClick={() => setMode("create")} className="flex-1">Create Own League</Button>
           </div>
 
@@ -2588,8 +2588,8 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
               </div>
 
               <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground">Scope: Internal only</p>
-                <p className="mt-0.5">Only your club's members participate. Regional/external leagues must be joined via <em>Select Existing</em> — clubs cannot create their own regional leagues.</p>
+                <p className="font-medium text-foreground">Scope: Club League only</p>
+                <p className="mt-0.5">Only your club's members participate. System Leagues must be joined via <em>Select Existing</em> — clubs cannot create their own System Leagues.</p>
                 <p className="mt-1 italic">National bodies (e.g. SSA) are not leagues — they auto-seed as fees on every club.</p>
               </div>
             </>
@@ -2658,7 +2658,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
           <div className="space-y-1">
             <Label>Name</Label>
             <Input value={name} onChange={e => setName(e.target.value)} disabled={!isInternalOwned} />
-            {!isInternalOwned && <p className="text-xs text-muted-foreground">Name is managed by the platform for regional leagues.</p>}
+            {!isInternalOwned && <p className="text-xs text-muted-foreground">Name is managed by the platform for System Leagues.</p>}
           </div>
           <div className="space-y-1">
             <Label>Abbreviation</Label>
@@ -2711,7 +2711,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
                 className="flex-1"
                 disabled={isPlatformLinked}
               >
-                Internal
+                Club League
               </Button>
               <Button
                 type="button"
@@ -2720,15 +2720,15 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
                 onClick={() => setScope("region")}
                 className="flex-1"
               >
-                Regional
+                System League
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               {isPlatformLinked
                 ? "Platform-linked associations are always regional."
                 : scope === "internal"
-                  ? "Internal: only your club's members participate. No external integration."
-                  : "Regional: external/regional league involving other clubs."}
+                  ? "Club League: only your club's members participate. No external integration."
+                  : "System League: a shared platform league involving other clubs."}
             </p>
           </div>
 
@@ -2750,7 +2750,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs">
                           <p className="text-xs">
-                            When <strong>ON</strong>, internal league rubbers from this association can leapfrog the club ladder: if a lower-ranked winner beats a higher-ranked loser, the winner takes the loser's slot and everyone between shifts down one rank. Subs and external players are ignored — only originally-registered club members count.
+                            When <strong>ON</strong>, Club League rubbers from this association can leapfrog the club ladder: if a lower-ranked winner beats a higher-ranked loser, the winner takes the loser's slot and everyone between shifts down one rank. Subs and external players are ignored — only originally-registered club members count.
                             <br /><br />
                             Admins review and apply changes from the "Preview ladder impact" button on each fixture.
                           </p>
@@ -2760,7 +2760,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     {affectsLadder
-                      ? "Internal league results will offer a ladder-impact preview on each fixture."
+                      ? "Club League results will offer a ladder-impact preview on each fixture."
                       : "Results from this association have no effect on the club ladder."}
                   </p>
                 </div>
@@ -2995,7 +2995,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Create Regional League Teams<Info className="w-3.5 h-3.5 ml-1.5 opacity-80" /></Button></DialogTrigger>
+            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Create System League Teams<Info className="w-3.5 h-3.5 ml-1.5 opacity-80" /></Button></DialogTrigger>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs space-y-2">
             <p>Typical for inter-club regional leagues like NSA.</p>
@@ -3005,7 +3005,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
         </Tooltip>
       </TooltipProvider>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Create Regional League Teams</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Create System League Teams</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>Association</Label>
@@ -3019,7 +3019,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
                   </select>
                   <p className="text-xs text-muted-foreground">
                     {regionalAssocs.length === 0
-                      ? "No regional associations linked yet. Add one via Select Existing above — internal leagues cannot be used here."
+                      ? "No System Leagues linked yet. Add one via Select Existing above — Club Leagues cannot be used here."
                       : "Only regional/external associations are shown. Members will be filtered by their affiliation to the selected association."}
                   </p>
                 </>
@@ -3115,13 +3115,13 @@ function AssociationRulesPenaltiesDialog({ association, open, onOpenChange }: { 
           <DialogTitle>
             {association.name} — Rules & Penalties
             <Badge variant={isInternal ? "outline" : "default"} className="ml-2 text-[10px] h-5 align-middle">
-              {isInternal ? "Internal" : "Regional"}
+              {isInternal ? "Club League" : "System League"}
             </Badge>
           </DialogTitle>
         </DialogHeader>
         {!isInternal && (
           <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            Regional leagues inherit defaults from the league organiser. Edits saved here become a club-level override that only applies to your club.
+            System Leagues inherit defaults from the league organiser. Edits saved here become a club-level override that only applies to your club.
           </div>
         )}
         <Tabs defaultValue="rules" className="w-full">

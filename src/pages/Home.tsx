@@ -36,6 +36,7 @@ import appShowcaseImg from "@/assets/app-showcase.png.asset.json";
 import appHomePhoneImg from "@/assets/app-home-phone.png.asset.json";
 import shLogoFull from "@/assets/shub-logo-white.png";
 import featuresCourtBg from "@/assets/features-court-bg.jpg";
+import { listPublicClubs } from "@/lib/public-clubs";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -111,13 +112,7 @@ export default function Home() {
   const { data: tenants, isLoading: tenantsLoading } = useQuery({
     queryKey: ["public-tenants"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clubs")
-        .select("id, name, subdomain, logo_url, address, tenant_type, nsa_club_id, chairman_member_id")
-        .not("subdomain", "is", null)
-        .order("name");
-      if (error) throw error;
-      return (data || []) as TenantPublic[];
+      return (await listPublicClubs()) as TenantPublic[];
     },
     staleTime: 60_000,
   });

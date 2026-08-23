@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Trophy, Search, CheckCircle2, Loader2, Crown, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import shLogo from "@/assets/shub-logo-full.png";
+import { listPublicClubs } from "@/lib/public-clubs";
 
 type LookupHit = {
   member_id: string;
@@ -77,13 +78,7 @@ export default function LeagueSignup() {
     queryKey: ["league-signup-clubs"],
     enabled: signInOpen,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clubs")
-        .select("id, name, subdomain, logo_url, tenant_type")
-        .not("subdomain", "is", null)
-        .order("name", { ascending: true });
-      if (error) throw error;
-      return (data || []) as Array<{ id: string; name: string; subdomain: string | null; logo_url: string | null; tenant_type: string | null }>;
+      return (await listPublicClubs()) as Array<{ id: string; name: string; subdomain: string | null; logo_url: string | null; tenant_type: string | null }>;
     },
   });
   const filteredClubs = useMemo(() => {

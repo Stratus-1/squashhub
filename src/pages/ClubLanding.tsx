@@ -8,6 +8,7 @@ import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
+import { getPublicClubBySubdomain } from "@/lib/public-clubs";
 
 
 
@@ -54,15 +55,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
 
   const { data: queriedClub, isLoading } = useQuery({
     queryKey: ["club-by-subdomain", effectiveSubdomain],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id, show_delegates_on_landing")
-        .eq("subdomain", effectiveSubdomain!)
-        .maybeSingle();
-      if (error) throw error;
-      return data as ClubData | null;
-    },
+    queryFn: () => getPublicClubBySubdomain(effectiveSubdomain as string) as Promise<ClubData | null>,
     enabled: needsQuery,
   });
 

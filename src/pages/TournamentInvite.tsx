@@ -223,12 +223,14 @@ export default function TournamentInvite() {
         {header}
         {detailList}
         <Badge variant="secondary">Accepted — entry fee outstanding</Badge>
+        {partnerSection}
         <Button
           className="w-full"
           onClick={() => data?.champ_id && navigate(afterAcceptPath(data.champ_id, "pending_payment"))}
         >
           <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
         </Button>
+
       </>,
     );
   }

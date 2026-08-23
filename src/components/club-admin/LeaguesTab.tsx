@@ -582,7 +582,76 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       </div>
       )}
 
+      {/* Step 3 — Create Rounds & Fixtures */}
+      {step === "fixtures" && (
+        <div>
+          <div className="mb-3">
+            <h3 className="font-semibold">Create Rounds & Fixtures</h3>
+            <p className="text-xs text-muted-foreground">
+              Rounds and fixtures are created per league and belong to that league's current season.
+              {CLUB_LEAGUES} are scheduled here; {SYSTEM_LEAGUES} publish their own fixtures centrally.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {associations.map((a: any) => {
+              const teamCount = leagues.filter((l: any) => l.association_id === a.id).length;
+              const isClub = isClubLeagueScope(a.scope);
+              return (
+                <Card key={a.id} className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                    <p className="font-medium break-words min-w-0">{a.name}</p>
+                    <Badge
+                      variant={isClub ? "outline" : "default"}
+                      className={`text-[10px] h-5 ${isClub ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}
+                    >
+                      {leagueKindLabel(a.scope)}
+                    </Badge>
+                    {(a as any).discipline && (a as any).discipline !== "singles" && (
+                      <Badge variant="outline" className="text-[10px] h-5">
+                        {DISCIPLINE_LABELS[(a as any).discipline as CompetitionDiscipline] ?? (a as any).discipline}
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {teamCount} team{teamCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => setSeasonsAssoc(a)}>
+                      <CalendarRange className="w-4 h-4 mr-1" />Seasons
+                    </Button>
+                    {isClub ? (
+                      <Button asChild size="sm" disabled={teamCount === 0}>
+                        <Link to={`/league-games?tab=rounds&assoc=${a.id}`}>
+                          <CalendarDays className="w-4 h-4 mr-1" />Create Rounds & Fixtures
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/league-games?assoc=${a.id}`}>
+                          <CalendarDays className="w-4 h-4 mr-1" />View fixtures
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+            {associations.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Create a league in Step 1 first.
+              </p>
+            )}
+            {clubLeagues.length === 0 && associations.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                You have no {CLUB_LEAGUES} yet — only {SYSTEM_LEAGUES}, whose fixtures are published centrally.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       <SetupStepNav steps={steps} value={step} onChange={setStep} />
+
 
       {/* Allocate Players Dialog (per association+gender group) */}
       {allocateGroup && (

@@ -198,7 +198,9 @@ export function DoublesPairsDialog({
                 <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                 <SelectContent>
                   {roster.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}{r.inTeam ? "" : " · not in team"}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -209,7 +211,9 @@ export function DoublesPairsDialog({
                 <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                 <SelectContent>
                   {roster.filter((r) => r.id !== p1).map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}{r.inTeam ? "" : " · not in team"}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

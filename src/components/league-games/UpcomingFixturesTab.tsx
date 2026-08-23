@@ -497,13 +497,13 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                       <div className="flex items-center gap-2 text-sm">
                         <TeamLogo
                           logoUrl={teamLogoByCode?.[(f.home_team_code || "").toUpperCase()]}
-                          name={teamNameByCode?.[(f.home_team_code || "").toUpperCase()] || f.home_team_code}
+                          name={fixtureSideName(f, "home", teamNameByCode)}
                           size={20}
                         />
                         <span className="font-bold flex flex-col leading-tight">
                           <span>{f.home_team_code}</span>
-                          {teamNameByCode?.[(f.home_team_code || "").toUpperCase()] && (
-                            <span className="text-[11px] font-medium text-primary">{teamNameByCode[(f.home_team_code || "").toUpperCase()]}</span>
+                          {hasFixtureTeamName(f, "home", teamNameByCode) && (
+                            <span className="text-[11px] font-medium text-primary">{fixtureSideName(f, "home", teamNameByCode)}</span>
                           )}
                         </span>
                         {result && (result.status === "submitted" || result.status === "confirmed") ? (
@@ -517,16 +517,17 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         )}
                         <TeamLogo
                           logoUrl={teamLogoByCode?.[(f.away_team_code || "").toUpperCase()]}
-                          name={teamNameByCode?.[(f.away_team_code || "").toUpperCase()] || f.away_team_code}
+                          name={fixtureSideName(f, "away", teamNameByCode)}
                           size={20}
                         />
                         <span className="font-bold flex flex-col leading-tight">
                           <span>{f.away_team_code}</span>
-                          {teamNameByCode?.[(f.away_team_code || "").toUpperCase()] && (
-                            <span className="text-[11px] font-medium text-primary">{teamNameByCode[(f.away_team_code || "").toUpperCase()]}</span>
+                          {hasFixtureTeamName(f, "away", teamNameByCode) && (
+                            <span className="text-[11px] font-medium text-primary">{fixtureSideName(f, "away", teamNameByCode)}</span>
                           )}
                         </span>
                       </div>
+
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3 h-3" /> {f.venue_name}

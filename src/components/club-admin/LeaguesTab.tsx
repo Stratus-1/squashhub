@@ -2533,7 +2533,7 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
         <div className="space-y-3">
           <div className="flex gap-2">
             <Button variant={mode === "select" ? "default" : "outline"} size="sm" onClick={() => setMode("select")} className="flex-1">Join System League</Button>
-            <Button variant={mode === "create" ? "default" : "outline"} size="sm" onClick={() => setMode("create")} className="flex-1">Create Own League</Button>
+            <Button variant={mode === "create" ? "default" : "outline"} size="sm" onClick={() => setMode("create")} className="flex-1">Create Club League</Button>
           </div>
 
           {mode === "select" ? (

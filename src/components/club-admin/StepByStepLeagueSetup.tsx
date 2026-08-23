@@ -319,7 +319,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const canNext1 = !!associationId;
   const canNext2 = !!gender;
   const canNext3 = !!leagueNumber;
-  const canNext4 = numTeams > 0 && slotsPerTeam > 0 && requirements.sufficient;
+  // Players/pairs are selected AFTER teams are created, so an empty eligible pool
+  // must not block the wizard. We only validate that the composition makes sense.
+  const canNext4 = numTeams > 0 && slotsPerTeam > 0;
+
 
   const handleSubmit = async () => {
     if (!canNext4) return;
@@ -714,24 +717,19 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
             </div>
 
             <div className="text-xs rounded-md bg-muted p-2.5 space-y-0.5">
-              {questions.askLadderStart && <p>Starting from ladder position: <strong>{startPosition}</strong></p>}
-              <p>Available eligible players: <strong>{requirements.availablePlayers}</strong></p>
-              <p>Teams: <strong>{requirements.numTeams}</strong></p>
-              {requirements.singlesRubbers > 0 && <p>Singles rubbers per fixture: <strong>{requirements.singlesRubbers}</strong></p>}
-              {requirements.doublesRubbers > 0 && <p>Doubles rubbers per fixture: <strong>{requirements.doublesRubbers}</strong></p>}
-              <p>Starting players per team: <strong>{requirements.startingPlayersPerTeam}</strong></p>
-              <p>Reserves per team: <strong>{requirements.reservesPerTeam}</strong></p>
-              <p>Players required per team: <strong>{requirements.playersRequiredPerTeam}</strong></p>
-              <p>Total players required: <strong>{requirements.totalPlayersRequired}</strong></p>
-              {!requirements.sufficient && (
-                <p className="text-destructive font-medium mt-1">
-                  ⚠ Short by {requirements.shortfall} player{requirements.shortfall !== 1 ? "s" : ""} — only {requirements.availablePlayers} eligible.
+              <p className="font-medium">
+                {requirements.totalPlayersRequired} player{requirements.totalPlayersRequired !== 1 ? "s" : ""} required in total.
+              </p>
+              <p className="text-muted-foreground">
+                Players and pairs are selected after the teams have been created.
+              </p>
+              {requirements.availablePlayers > 0 && (
+                <p className="text-muted-foreground">
+                  {requirements.availablePlayers} eligible {gender} player{requirements.availablePlayers !== 1 ? "s" : ""} are currently available to pre-fill.
                 </p>
               )}
-              {questions.askLadderStart && (startPosition - 1 + requirements.totalPlayersRequired) > eligiblePool.length && requirements.totalPlayersRequired > 0 && (
-                <p className="text-destructive font-medium mt-1">⚠ Start position + required players exceeds the eligible pool ({eligiblePool.length}).</p>
-              )}
             </div>
+
 
 
             {questions.askDistribution && (
@@ -767,10 +765,14 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
               )}
             </div>
 
+            <p className="text-[11px] text-muted-foreground">
+              Teams are created first. Players and pairs are assigned afterwards — empty slots are expected if no eligible players were pre-filled.
+            </p>
 
             <p className="text-[11px] text-muted-foreground -mb-1">
               Optional: name each team (e.g. <em>Warriors</em>, <em>Bulldogs</em>). Leave blank to use {leagueNumber} A, B, C…
             </p>
+
             <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(allocation.teams.length, 3)}, minmax(0, 1fr))` }}>
               {allocation.teams.map((team, i) => {
                 const customName = (teamNames[i] || "").trim();

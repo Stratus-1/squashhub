@@ -314,6 +314,16 @@ export function MyChampionships() {
                               Set Up & Mark Game
                             </Button>
                           )}
+                          {resultPerm.allowed && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-6 text-[11px]"
+                              onClick={openResult}
+                            >
+                              Enter Result
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );

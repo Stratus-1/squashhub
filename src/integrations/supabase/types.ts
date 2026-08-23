@@ -7622,6 +7622,7 @@ export type Database = {
         Row: {
           billing_cycle: string
           billing_details: Json | null
+          billing_month: string | null
           club_id: string
           created_at: string
           currency: string
@@ -7633,8 +7634,10 @@ export type Database = {
           email_status: string | null
           fx_rate_to_zar: number | null
           id: string
+          invoice_kind: string
           invoice_number: string
           issued_at: string
+          line_items: Json
           member_count: number
           minimum_charge: number
           paid_at: string | null
@@ -7647,15 +7650,19 @@ export type Database = {
           status: string
           stitch_payment_id: string | null
           stitch_payment_link: string | null
+          subscription_amount: number
           subscription_id: string | null
           subtotal: number
           total: number
           updated_at: string
           vat_amount: number
+          whatsapp_amount: number
+          whatsapp_message_count: number
         }
         Insert: {
           billing_cycle: string
           billing_details?: Json | null
+          billing_month?: string | null
           club_id: string
           created_at?: string
           currency?: string
@@ -7667,8 +7674,10 @@ export type Database = {
           email_status?: string | null
           fx_rate_to_zar?: number | null
           id?: string
+          invoice_kind?: string
           invoice_number: string
           issued_at?: string
+          line_items?: Json
           member_count?: number
           minimum_charge?: number
           paid_at?: string | null
@@ -7681,15 +7690,19 @@ export type Database = {
           status?: string
           stitch_payment_id?: string | null
           stitch_payment_link?: string | null
+          subscription_amount?: number
           subscription_id?: string | null
           subtotal?: number
           total?: number
           updated_at?: string
           vat_amount?: number
+          whatsapp_amount?: number
+          whatsapp_message_count?: number
         }
         Update: {
           billing_cycle?: string
           billing_details?: Json | null
+          billing_month?: string | null
           club_id?: string
           created_at?: string
           currency?: string
@@ -7701,8 +7714,10 @@ export type Database = {
           email_status?: string | null
           fx_rate_to_zar?: number | null
           id?: string
+          invoice_kind?: string
           invoice_number?: string
           issued_at?: string
+          line_items?: Json
           member_count?: number
           minimum_charge?: number
           paid_at?: string | null
@@ -7715,11 +7730,14 @@ export type Database = {
           status?: string
           stitch_payment_id?: string | null
           stitch_payment_link?: string | null
+          subscription_amount?: number
           subscription_id?: string | null
           subtotal?: number
           total?: number
           updated_at?: string
           vat_amount?: number
+          whatsapp_amount?: number
+          whatsapp_message_count?: number
         }
         Relationships: [
           {
@@ -9469,6 +9487,7 @@ export type Database = {
           kind: string
           member_id: string | null
           payload: Json | null
+          platform_invoice_id: string | null
           provider_sid: string | null
           sent_by: string | null
           status: string
@@ -9489,6 +9508,7 @@ export type Database = {
           kind?: string
           member_id?: string | null
           payload?: Json | null
+          platform_invoice_id?: string | null
           provider_sid?: string | null
           sent_by?: string | null
           status?: string
@@ -9509,6 +9529,7 @@ export type Database = {
           kind?: string
           member_id?: string | null
           payload?: Json | null
+          platform_invoice_id?: string | null
           provider_sid?: string | null
           sent_by?: string | null
           status?: string
@@ -9528,6 +9549,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_send_log_platform_invoice_id_fkey"
+            columns: ["platform_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "platform_subscription_invoices"
             referencedColumns: ["id"]
           },
         ]

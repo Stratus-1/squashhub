@@ -546,23 +546,38 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           </div>
         )}
 
-        {/* Step 2: Gender */}
+        {/* Step 2: Category — only when the league itself has none (legacy) */}
         {step === 2 && (
           <div className="space-y-3">
-            <Label>Step 2 — Choose Category</Label>
-            <RadioGroup value={gender} onValueChange={(v) => setGender(v as Gender)} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {GENDERS.map(g => (
-                <label key={g.value} className={`flex items-center gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent ${gender === g.value ? "border-primary bg-accent" : ""}`}>
-                  <RadioGroupItem value={g.value} />
-                  <span className="text-sm font-medium">{g.label}</span>
-                </label>
-              ))}
-            </RadioGroup>
+            {questions.askCategory ? (
+              <>
+                <Label>Step 2 — Choose Category</Label>
+                <RadioGroup value={gender} onValueChange={(v) => setGender(v as Gender)} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {GENDERS.map(g => (
+                    <label key={g.value} className={`flex items-center gap-2 border rounded-md p-3 cursor-pointer hover:bg-accent ${gender === g.value ? "border-primary bg-accent" : ""}`}>
+                      <RadioGroupItem value={g.value} />
+                      <span className="text-sm font-medium">{g.label}</span>
+                    </label>
+                  ))}
+                </RadioGroup>
+                <p className="text-[11px] text-muted-foreground">
+                  This legacy league has no category saved. Newer leagues set this once when the league is created.
+                </p>
+              </>
+            ) : (
+              <>
+                <Label>Step 2 — League configuration (inherited)</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Defined when this league was created. Change it in Step 1 — Create League.
+                </p>
+              </>
+            )}
             <p className="text-xs text-muted-foreground">
               Eligible pool: <strong>{filterByGender(members.filter((m: any) => activeAffiliatedSet.has(m.id)), gender).length}</strong> members opted into {association?.abbreviation || association?.name || "this association"}.
             </p>
           </div>
         )}
+
 
         {/* Step 3: League number */}
         {step === 3 && (

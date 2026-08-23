@@ -335,10 +335,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
       // Always read fresh league rows: a previously failed/partial save may have created
       // rows that are not yet in the cached list, which would collide on the unique code index.
       const { data: freshRows, error: freshErr } = await fromExt("leagues")
-        .select("id, name, code")
+        .select("id, name, code, season_id")
         .eq("association_id", associationId);
       if (freshErr) throw freshErr;
-      const existingRows: { id: string; name: string; code: string | null }[] = freshRows || [];
+      const existingRows: { id: string; name: string; code: string | null; season_id: string | null }[] = freshRows || [];
 
       // Determine code prefix: try to reuse existing league code prefix for that association (e.g. NSC001 → NSC)
       const sample = existingRows.find(l => !!l.code);

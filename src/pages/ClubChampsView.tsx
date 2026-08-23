@@ -1691,6 +1691,18 @@ export default function ClubChampsView() {
           return "Unknown";
         }}
       />
+
+      <EnterResultDialog
+        open={!!resultMatch}
+        onOpenChange={(o) => { if (!o) setResultMatch(null); }}
+        clubId={(champ as any)?.club_id}
+        match={resultMatch}
+        playerAName={resultMatch ? getPlayerName(resultMatch.player_a) : ""}
+        playerBName={resultMatch ? getPlayerName(resultMatch.player_b) : ""}
+        bestOf={(champ as any)?.best_of ?? null}
+        pointsTarget={(champ as any)?.points_per_game ?? null}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] })}
+      />
     </div>
   );
 

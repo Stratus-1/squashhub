@@ -179,6 +179,36 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   });
   const activeAffiliatedSet = useMemo(() => new Set<string>(activeAffiliatedIds), [activeAffiliatedIds]);
 
+  /* ── Step 1 inheritance ────────────────────────────────────────────────
+   * Discipline, competition category, rubber composition and pairing policy
+   * are defined ONCE when the league is created. This wizard inherits them
+   * and never re-asks those questions.                                     */
+  const associationRow = associations.find((a: any) => a.id === associationId) as any;
+  const { data: leagueRules } = useAssociationRules(associationId || undefined);
+  const inherited = useMemo(
+    () => inheritLeagueConfig(associationRow, leagueRules as any),
+    [associationRow, leagueRules],
+  );
+  const questions = useMemo(
+    () => teamSetupQuestions(inherited, leagueRules as any),
+    [inherited, leagueRules],
+  );
+
+  // Category is a league-level attribute — mirror it into the local pool filter.
+  useEffect(() => {
+    const c = inherited.category as CompetitionCategory | null;
+    if (!c) return;
+    setGender(c === "mens" ? "men" : c === "ladies" ? "ladies" : c === "mixed" ? "mixed" : "open");
+  }, [inherited.category]);
+
+  // Singles slots per team come from the league format unless it's a legacy
+  // league with no stored rules (then the admin is asked once, here).
+  const singlesPerTeam = questions.askPlayersPerMatch ? perTeam : inherited.singlesRubbers;
+  const effectivePairsPerTeam = questions.askPairsPerTeam ? pairsPerTeam : 0;
+  const slotsPerTeam = singlesPerTeam + effectivePairsPerTeam * 2;
+
+
+
   // Eligible pool = active affiliation + gender, MINUS anyone already allocated this session
   const eligiblePool = useMemo(() => {
     if (!associationId) return [];

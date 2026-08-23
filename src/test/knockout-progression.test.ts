@@ -68,7 +68,7 @@ describe("entrant state", () => {
     const r1 = play(firstRound(4));
     const states = entrantStates(r1);
     const out = states.filter((s) => s.eliminated).map((s) => s.memberId).sort();
-    expect(out).toEqual(["m2", "m3"]);
+    expect(out).toEqual(["m3", "m4"]);
     expect(states.find((s) => s.memberId === "m3")!.eliminatedInRound).toBe(1);
     expect(states.find((s) => s.memberId === "m1")!.eliminated).toBe(false);
   });

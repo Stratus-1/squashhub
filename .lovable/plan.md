@@ -1,45 +1,31 @@
-# One reserve pool per league level (instead of "reserves per team")
+# Fix: doubles pairs look like they aren't saving (super admin can't see them)
 
-## What happens today
+## What's actually happening
 
-Checked the current Club League setup code and the saved data model:
+Your pairs **are** being saved. The database currently holds 29 pair rows, all on Riverside Squash Club, the most recent written at 17:42 today ("Doubles Captains"). None of them are duplicates.
 
-- Step 2 of the setup asks **"Reserves per team"**. The number is multiplied by the number of teams when players are drafted (`reserves x numTeams`).
-- When you save, the wizard already creates **one single "Reserves" league row** for that level (for example "Men's 1st Reserves"), and every drafted reserve goes into that one row. So the shared pool already exists in the data — it is the *question and the counting* that are per team, not the storage.
-- The reserves preview card shows "X filled / N slots" where N is the *team* size, which makes a shared pool look wrongly capped and shows misleading "(empty slot)" rows.
-- The number is also stored as `reserves_per_team` on the league rows and on the league rules, so re-opening the setup keeps asking the per-team question.
-- The separate "Add reserves" dialog already behaves as a pool: it finds the group's single Reserves row (or creates it) and adds people to it.
+The problem is reading them back, not writing them:
 
-So this is mostly a wording, counting and display change — no restructuring of how reserves are stored.
+- The access rule for viewing pairs requires you to be a **member of that club**. The rules for creating, editing and deleting pairs additionally allow platform-level admins.
+- You are the platform super admin and not a `club_members` row of Riverside, so the write succeeds and the read-back returns nothing.
+- The dialog inserts without asking for the row back, so it gets no error, shows "Pair created", then refreshes the list — which comes back empty. It looks exactly like "nothing saved".
 
-## Proposed change
+## The fix
 
-1. **Ask for a pool, not a per-team count.**
-   Step 2 field becomes **"Reserve pool size (shared by all teams in this league)"** with helper text explaining one pool serves every team at that level, and that it is a target, not a hard cap. The drafted reserves become exactly that many players (no multiplication by team count).
+1. **Let platform admins view pairs, not just write them.**
+   Align the view rule with the create/edit/delete rules so a super admin sees the same pairs a club admin sees. Club members' visibility is unchanged — no widening for ordinary users.
 
-2. **Requirement maths follows the pool.**
-   Total players required = (teams x starting players per team) + reserve pool size. The summary line and the shortfall warning use that.
+2. **Make a silent write impossible in future.**
+   The Manage Pairs dialog will ask the database to return the created row and treat "saved but not readable" as an error with a clear message, instead of a false success toast. Same for removing a pair.
 
-3. **Reserves card shows a pool.**
-   Header shows "Reserve pool — N players"; the list shows only real people (no phantom empty slots); the footnote explains any reserve can be called up into any team at that level, subject to the association's substitution rules. Ordering (reserve 1, 2, 3...) is kept because call-up order is useful.
+3. **Audit the same blind spot on the neighbouring league tables.**
+   Check the view rules on the other tables the league setup writes (team registrations, league rules, season rows) for the same pattern — write allowed for platform admins, read restricted to club members — and align them the same way. Only rules that already grant platform admins write access get their read aligned; nothing else is loosened.
 
-4. **Doubles / hybrid leagues.**
-   The reserve pool holds **individual players**, not fixed pairs — a reserve pairs up with whoever needs them on the night. Fixed season pairs stay a team-level concept only (the wizard already never creates pairs on the reserves row). This is what makes one pool work for the doubles league.
-
-5. **Persist the pool size properly.**
-   Store the pool size once per league level, and stop writing a per-team reserve number. Existing leagues are backfilled so nothing is lost: current pool size = number of players already in that level's Reserves row, falling back to `reserves_per_team x number of teams`.
-
-6. **Re-opening / editing a league group** prefills the pool size from the saved value, and the Reserves row stays the same row (no duplicate "Reserves" leagues created on re-save).
-
-Nothing changes for: substitution eligibility rules, the "Add reserves" dialog, lineup swaps, or how reserves appear on a fixture.
+4. **No data cleanup needed.** The 29 existing pairs are valid and duplicate-free; they will simply become visible.
 
 ## Technical detail
 
-- `src/lib/leagues/team-setup.ts`: add `reservePoolSize` to `computeTeamRequirements` (`total = numTeams * startingPlayersPerTeam + reservePoolSize`), keeping `startingPlayersPerTeam` unchanged. Keep the existing `reservesPerTeam` input accepted as a deprecated alias so old callers/tests don't break, then migrate callers.
-- `src/components/club-admin/StepByStepLeagueSetup.tsx`:
-  - rename state/label to `reservePoolSize`; `reservePicks = top.slice(teamPlayers, teamPlayers + reservePoolSize)`;
-  - reserves card rendering (currently `Math.max(perTeam, allocation.reserves.length)` slots) renders only `allocation.reserves`;
-  - save path writes `reserve_pool_size` to `league_rules` for the level's rows and stops writing `reserves_per_team`.
-- Migration: `ALTER TABLE public.league_rules ADD COLUMN IF NOT EXISTS reserve_pool_size integer;` plus a data backfill from existing reserves registrations. `leagues.reserves_per_team` and `league_rules.reserves_per_team` are left in place (unused) so nothing that still reads them breaks.
-- `src/components/club-admin/LeaguesTab.tsx`: edit-context prefill reads `reserve_pool_size` (fallback: count of `is_reserve` registrations in the group); reserve badges/labels updated to pool wording.
-- Tests: extend `src/test/team-setup.test.ts` with pool maths (0 pool, pool independent of team count, shortfall) and a doubles case asserting the pool is player-based, not pair-based.
+- Migration: replace the `Club members can view their club pairs` policy on `public.league_team_pairs` with `USING (public.is_club_member(auth.uid(), club_id) OR public.is_club_admin(auth.uid(), club_id))`. `is_club_admin` already covers the `user_roles` admin/moderator platform roles, so no new helper is required.
+- Same review/migration pass for `member_league_registrations`, `league_rules`, `league_seasons`, `leagues` SELECT policies where the write policy uses `is_club_admin` but the read policy uses `is_club_member`.
+- `src/components/club-admin/DoublesPairsDialog.tsx`: `insert(...).select("id").single()` and `delete(...).select("id")`, throwing when zero rows come back ("Saved, but this club's pairs aren't visible to your account"), so RLS read gaps surface immediately.
+- No change to `validate_league_team_pair_scope` — it correctly derives `club_id`/`season_id` from the league row.

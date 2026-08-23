@@ -5111,6 +5111,7 @@ export type Database = {
           original_player_bonus_value: number
           pairing_policy: string
           points_per_game: number | null
+          reserves_per_team: number | null
           share_bonus_on_tie: boolean
           singles_rubbers: number | null
           sub_direction: string
@@ -5150,6 +5151,7 @@ export type Database = {
           original_player_bonus_value?: number
           pairing_policy?: string
           points_per_game?: number | null
+          reserves_per_team?: number | null
           share_bonus_on_tie?: boolean
           singles_rubbers?: number | null
           sub_direction?: string
@@ -5189,6 +5191,7 @@ export type Database = {
           original_player_bonus_value?: number
           pairing_policy?: string
           points_per_game?: number | null
+          reserves_per_team?: number | null
           share_bonus_on_tie?: boolean
           singles_rubbers?: number | null
           sub_direction?: string

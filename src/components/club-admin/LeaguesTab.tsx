@@ -1018,14 +1018,21 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
     queryKey: ["league-rules-subgroup", leagueIds.join(",")],
     enabled: leagueIds.length > 0,
     queryFn: async () => {
-      const { data } = await fromExt("league_rules").select("league_id, team_size, points_per_game").in("league_id", leagueIds);
-      return (data || []) as Array<{ league_id: string; team_size: number | null; points_per_game: number | null }>;
+      const { data } = await fromExt("league_rules").select("league_id, team_size, points_per_game, singles_rubbers, doubles_rubbers").in("league_id", leagueIds);
+      return (data || []) as Array<{ league_id: string; team_size: number | null; points_per_game: number | null; singles_rubbers: number | null; doubles_rubbers: number | null }>;
     },
   });
 
   const sizes = rules.map(r => r.team_size).filter((n): n is number => typeof n === "number" && n > 0);
   const uniformSize = sizes.length === leagueIds.length && new Set(sizes).size === 1 ? sizes[0] : null;
   const displaySize = uniformSize ?? (sizes.length > 0 ? `${Math.min(...sizes)}–${Math.max(...sizes)}` : "—");
+
+  // Doubles/hybrid leagues are described by rubbers per fixture, not raw player count.
+  const dbl = rules.map(r => r.doubles_rubbers).filter((n): n is number => typeof n === "number" && n > 0);
+  const uniformDoubles = dbl.length === leagueIds.length && new Set(dbl).size === 1 ? dbl[0] : null;
+  const displayRubbers: string | number | null =
+    dbl.length === 0 ? null : (uniformDoubles ?? `${Math.min(...dbl)}–${Math.max(...dbl)}`);
+
 
   const ppgs = rules.map(r => r.points_per_game).filter((n): n is number => typeof n === "number" && n > 0);
   // If every team in the level has the same override, show it. If none have an override → "Default".
@@ -1046,7 +1053,7 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
   }, [uniformPpg, ppgs.length]);
 
   const save = async () => {
-    const size = Math.max(1, Math.min(8, Math.floor(draft || 0)));
+    const size = Math.max(1, Math.min(24, Math.floor(draft || 0)));
     // ppg: blank = inherit (null). Otherwise must be 5..21.
     let ppgValue: number | null = null;
     const trimmed = ppgDraft.trim();
@@ -1060,14 +1067,20 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
     }
     setSaving(true);
     try {
-      const rows = leagues.map(l => ({
-        league_id: l.id,
-        club_id: (l as any).club_id,
-        association_id: null, // per-league rule: scope CHECK requires association_id NULL when league_id set
-        team_size: size,
-        team_size_mode: "fixed" as const,
-        points_per_game: ppgValue ?? null, // null = inherit from league/super-admin
-      }));
+      const rows = leagues.map(l => {
+        const existing = rules.find(r => r.league_id === l.id);
+        return {
+          league_id: l.id,
+          club_id: (l as any).club_id,
+          association_id: null, // per-league rule: scope CHECK requires association_id NULL when league_id set
+          team_size: size,
+          team_size_mode: "fixed" as const,
+          points_per_game: ppgValue ?? null, // null = inherit from league/super-admin
+          // Preserve match composition — upsert rewrites the whole row.
+          singles_rubbers: existing?.singles_rubbers ?? null,
+          doubles_rubbers: existing?.doubles_rubbers ?? null,
+        };
+      });
       const { error } = await fromExt("league_rules").upsert(rows, { onConflict: "league_id" });
       if (error) throw error;
       toast.success(
@@ -1101,7 +1114,7 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
               <Input
                 type="number"
                 min={1}
-                max={8}
+                max={24}
                 value={draft || ""}
                 onChange={(e) => setDraft(parseInt(e.target.value) || 1)}
                 onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
@@ -1129,6 +1142,12 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
           ) : (
             <>
               <span className="text-[11px] text-muted-foreground">
+                {displayRubbers != null && (
+                  <>
+                    Doubles rubbers/match: <span className="font-semibold text-foreground">{displayRubbers}</span>
+                    <span className="mx-1.5">•</span>
+                  </>
+                )}
                 Players/match: <span className="font-semibold text-foreground">{displaySize}</span>
                 <span className="mx-1.5">•</span>
                 Play to: <span className="font-semibold text-foreground">{displayPpg}</span>
@@ -1349,14 +1368,21 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     },
   });
 
-  // Load the current saved "players per match" for this league
-  const { data: currentTeamSize } = useQuery({
+  // Load the current saved match composition for this league
+  const { data: ruleRow } = useQuery({
     queryKey: ["league-rules-team-size", league.id],
     queryFn: async () => {
-      const { data } = await fromExt("league_rules").select("team_size").eq("league_id", league.id).maybeSingle();
-      return (data as any)?.team_size ?? null;
+      const { data } = await fromExt("league_rules")
+        .select("team_size, singles_rubbers, doubles_rubbers")
+        .eq("league_id", league.id)
+        .maybeSingle();
+      return (data as any) ?? null;
     },
   });
+  const currentTeamSize = (ruleRow as any)?.team_size ?? null;
+  const doublesRubbers = (ruleRow as any)?.doubles_rubbers ?? null;
+  const singlesRubbers = (ruleRow as any)?.singles_rubbers ?? null;
+
 
   const getMemberName = (reg: any) => {
     const m = members.find(m => m.id === reg.club_member_id);
@@ -1371,7 +1397,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
 
   const saveName = async () => {
     const trimmed = nameDraft.trim();
-    const size = Math.max(1, Math.min(8, Math.floor(sizeDraft || 0)));
+    const size = Math.max(1, Math.min(24, Math.floor(sizeDraft || 0)));
     const nameChanged = trimmed && trimmed !== league.name;
     const sizeChanged = typeof currentTeamSize !== "number" || size !== currentTeamSize;
     if (!nameChanged && !sizeChanged) { setEditing(false); setNameDraft(league.name); return; }
@@ -1393,6 +1419,9 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
             association_id: null, // per-league rule: scope CHECK requires association_id NULL when league_id set
             team_size: size,
             team_size_mode: "fixed" as const,
+            // Preserve match composition — upsert rewrites the whole row.
+            singles_rubbers: singlesRubbers,
+            doubles_rubbers: doublesRubbers,
           },
           { onConflict: "league_id" }
         );
@@ -1438,7 +1467,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
                 <Input
                   type="number"
                   min={1}
-                  max={8}
+                  max={24}
                   value={sizeDraft || ""}
                   onChange={(e) => setSizeDraft(parseInt(e.target.value) || 1)}
                   onKeyDown={(e) => {
@@ -1462,7 +1491,9 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
                 {associations.find(a => a.id === league.association_id)?.name || "No association"}
                 {regs.length > 0 && ` • ${regs.length} player${regs.length !== 1 ? "s" : ""}`}
                 {pairs.length > 0 && ` • ${pairs.length} pair${pairs.length !== 1 ? "s" : ""}`}
-                {typeof currentTeamSize === "number" && currentTeamSize > 0 && ` • ${currentTeamSize}/match`}
+                {typeof doublesRubbers === "number" && doublesRubbers > 0
+                  ? ` • ${doublesRubbers} doubles rubber${doublesRubbers !== 1 ? "s" : ""}/match${typeof singlesRubbers === "number" && singlesRubbers > 0 ? ` + ${singlesRubbers} singles` : ""}`
+                  : (typeof currentTeamSize === "number" && currentTeamSize > 0 ? ` • ${currentTeamSize}/match` : "")}
                 {(() => {
                   const captain = regs.find((r: any) => r.is_captain);
                   if (captain) return ` • Capt: ${getMemberName(captain)}`;

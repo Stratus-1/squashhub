@@ -1,0 +1,1 @@
+ALTER TABLE public.league_rules ADD COLUMN IF NOT EXISTS reserves_per_team integer;

@@ -6,6 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
 import { audienceLabel, resolveInviteAudience, type InviteAudienceMode } from "@/lib/tournaments/invite-audience";
+import {
+  fetchInviteDirectory,
+  groupByClub,
+  directoryScopeLabel,
+  type DirectoryPlayer,
+} from "@/lib/tournaments/invite-directory";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
   classifyEntrant,
@@ -1746,7 +1752,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     () =>
       resolveInviteAudience({
         mode: inviteAudience,
-        members: (members || []) as any[],
+        members: audienceMemberPool as any[],
         leagueIds: Array.from(audienceLeagueIds),
         registrationsByLeague,
         individualIds: Array.from(audienceMemberIds),
@@ -1755,7 +1761,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }),
     [
       inviteAudience,
-      members,
+      audienceMemberPool,
       audienceLeagueIds,
       registrationsByLeague,
       audienceMemberIds,

@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, startOfWeek, addDays } from "date-fns";
 import { buildTeamNameIndex } from "@/lib/leagues/fixture-display";
+import { useLeagueSeasons } from "@/hooks/use-league-seasons";
+import { pickSeasonScoped } from "@/lib/leagues/seasons";
 
 
 type AssocRow = {
@@ -78,10 +80,10 @@ export default function LeagueGames() {
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await fromExt("leagues")
-        .select("id, code, name, association_id, nsa_team_code, division, logo_url")
+        .select("id, code, name, association_id, nsa_team_code, division, category, season_id, logo_url")
         .eq("club_id", clubId!);
       if (error) throw error;
-      return (data || []) as Array<{ id: string; code: string | null; name: string; association_id: string | null; nsa_team_code: string | null }>;
+      return (data || []) as Array<{ id: string; code: string | null; name: string; association_id: string | null; nsa_team_code: string | null; season_id?: string | null }>;
     },
     enabled: !!clubId,
   });
@@ -154,11 +156,24 @@ export default function LeagueGames() {
     return [selectedAssoc.platform_association_id];
   }, [selectedAssoc]);
 
-  // Filter leagues to the selected association
+  // Season context for the selected association (Phase 3 read path).
+  const { currentSeasonId } = useLeagueSeasons({
+    associationId: selectedAssocId ?? undefined,
+    platformAssociationId: selectedAssoc?.platform_association_id ?? undefined,
+  });
+
+  // Filter leagues to the selected association, then to the active season.
+  // Teams that predate seasons (NULL season_id) are kept as the fallback set,
+  // so nothing changes for clubs that are not season-linked yet.
   const leaguesInScope = useMemo(
-    () => (clubLeagues || []).filter((l) => l.association_id === selectedAssocId),
-    [clubLeagues, selectedAssocId]
+    () =>
+      pickSeasonScoped(
+        (clubLeagues || []).filter((l) => l.association_id === selectedAssocId),
+        currentSeasonId,
+      ),
+    [clubLeagues, selectedAssocId, currentSeasonId]
   );
+
 
   const clubTeamCodes = useMemo<string[]>(() => {
     return leaguesInScope.map((l) => l.code).filter((c): c is string => typeof c === "string" && c.length > 0);

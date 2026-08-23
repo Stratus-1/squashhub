@@ -15,6 +15,9 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TeamLogo } from "./TeamLogo";
 import { rankTint } from "@/lib/rank-tint";
+import { useLeagueSeasons } from "@/hooks/use-league-seasons";
+import { pickSeasonScoped, seasonLabel } from "@/lib/leagues/seasons";
+
 
 type ClubLeague = {
   id: string;
@@ -98,23 +101,35 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     },
   });
 
-  const [seasonYear, setSeasonYear] = useState<string>(String(CURRENT_YEAR));
+  // Season context (Phase 3): the season, not the calendar year, scopes reads.
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+  const { seasons, currentSeason, currentSeasonId } = useLeagueSeasons({
+    associationId,
+    selectedSeasonId,
+  });
+  const seasonYear = String(currentSeason?.season_year ?? CURRENT_YEAR);
+  const seasonId = currentSeasonId;
+  const hasSeasons = seasons.length > 0;
 
   // Fetch all rounds for this tenant association → derive tiers
   const { data: tiers = [] } = useQuery({
-    queryKey: ["internal-standings-tiers", associationId, seasonYear],
+    queryKey: ["internal-standings-tiers", associationId, seasonId, seasonYear],
     enabled: !!associationId,
     staleTime: 60 * 1000,
     queryFn: async () => {
-      const yearStart = `${seasonYear}-01-01`;
-      const yearEnd = `${seasonYear}-12-31`;
-      const { data, error } = await supabase
+      let request = supabase
         .from("league_rounds")
-        .select("id, name, round_number, round_date")
-        .eq("association_id", associationId)
-        .gte("round_date", yearStart)
-        .lte("round_date", yearEnd)
-        .order("round_number", { ascending: true });
+        .select("id, name, round_number, round_date, season_id")
+        .eq("association_id", associationId);
+      if (seasonId) {
+        // Season-scoped: identical set to the legacy year filter for 2026.
+        request = request.eq("season_id", seasonId);
+      } else {
+        request = request
+          .gte("round_date", `${seasonYear}-01-01`)
+          .lte("round_date", `${seasonYear}-12-31`);
+      }
+      const { data, error } = await request.order("round_number", { ascending: true });
       if (error) throw error;
       const grouped = new Map<string, { tier: string; roundIds: string[]; firstNumber: number }>();
       (data || []).forEach((r: any) => {
@@ -130,27 +145,26 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     },
   });
 
-  // Map team_code -> { name, logo_url } (from leagues table for this association)
+  // Map team_code -> { name, logo_url }, scoped to the selected season so a
+  // future season's team cannot relabel historical standings rows.
   const { data: teamInfoByCode } = useQuery({
-    queryKey: ["team-logos-by-code", associationId],
+    queryKey: ["team-logos-by-code", associationId, seasonId],
     enabled: !!associationId,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leagues")
-        .select("code, name, logo_url")
+        .select("code, name, logo_url, season_id")
         .eq("association_id", associationId);
       if (error) throw error;
       const map = new Map<string, { name: string; logo_url: string | null }>();
-      (data || []).forEach((l: any) => {
+      pickSeasonScoped((data || []) as any[], seasonId).forEach((l: any) => {
         if (l.code) map.set(l.code, { name: l.name || l.code, logo_url: l.logo_url || null });
       });
       return map;
     },
   });
-  const teamNameByCode = teamInfoByCode
-    ? new Map(Array.from(teamInfoByCode.entries()).map(([k, v]) => [k, v.name]))
-    : undefined;
+
 
   // Selection: a tier label or "ALL" — persisted in URL
   const [searchParams, setSearchParams] = useSearchParams();
@@ -182,18 +196,21 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
   );
 
   // Fetch fixtures + results for the selected tier(s)
-  const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["internal-standings", platformAssocId, seasonYear, allRoundIds.join(",")],
+  const { data: standings, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ["internal-standings", platformAssocId, seasonId, seasonYear, allRoundIds.join(",")],
     enabled: allRoundIds.length > 0 && !!platformAssocId,
     staleTime: 30 * 1000,
     queryFn: async () => {
       const { data: fixtures, error: fxErr } = await supabase
         .from("platform_league_fixtures")
-        .select("id, fixture_date, division, home_team_code, away_team_code, status, round_id")
+        .select(
+          "id, fixture_date, division, home_team_code, away_team_code, home_team_name_snapshot, away_team_name_snapshot, status, round_id",
+        )
         .eq("association_id", platformAssocId!)
         .in("round_id", allRoundIds)
         .order("fixture_date", { ascending: true });
       if (fxErr) throw fxErr;
+
 
       const fixtureIds = (fixtures || []).map((f) => f.id);
       let results: ResultRow[] = [];
@@ -260,9 +277,28 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
         rows.sort((a, b) => b.total - a.total || a.team_code.localeCompare(b.team_code));
         out.push({ tier: t.tier, weeks: weekDates, rows });
       }
-      return out;
+
+      // Historical name snapshots taken when the fixture was created — these win
+      // over the current team name so past seasons never get relabelled.
+      const snapshots = new Map<string, string>();
+      (fixtures || []).forEach((f: any) => {
+        if (f.home_team_code && f.home_team_name_snapshot) {
+          snapshots.set(f.home_team_code, f.home_team_name_snapshot);
+        }
+        if (f.away_team_code && f.away_team_name_snapshot) {
+          snapshots.set(f.away_team_code, f.away_team_name_snapshot);
+        }
+      });
+
+      return { tiers: out, snapshots };
     },
   });
+
+  const data = standings?.tiers;
+  const snapshotNameByCode = standings?.snapshots;
+  const teamNameFor = (code: string) =>
+    snapshotNameByCode?.get(code) || teamInfoByCode?.get(code)?.name || code;
+
 
   // Realtime: refresh standings whenever results / fixtures change
   useEffect(() => {
@@ -329,18 +365,29 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
           </SelectContent>
         </Select>
 
-        <Select value={seasonYear} onValueChange={setSeasonYear}>
-          <SelectTrigger className="h-8 w-[110px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {[String(CURRENT_YEAR), String(CURRENT_YEAR - 1), String(CURRENT_YEAR - 2)].map((y) => (
-              <SelectItem key={y} value={y}>
-                {y}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {hasSeasons ? (
+          <Select
+            value={currentSeasonId ?? undefined}
+            onValueChange={(v) => setSelectedSeasonId(v)}
+          >
+            <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectValue placeholder="Season" />
+            </SelectTrigger>
+            <SelectContent>
+              {seasons.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {seasonLabel(s)}
+                  {s.is_current ? " · current" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <span className="h-8 inline-flex items-center rounded border px-2 text-xs text-muted-foreground">
+            {seasonYear}
+          </span>
+        )}
+
 
         <Button
           size="sm"
@@ -422,11 +469,12 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                               <div className="flex items-center gap-2">
                                 <TeamLogo
                                   logoUrl={teamInfoByCode?.get(s.team_code)?.logo_url}
-                                  name={teamInfoByCode?.get(s.team_code)?.name || s.team_code}
+                                  name={teamNameFor(s.team_code)}
                                   size={22}
                                 />
                                 <span className="font-medium">
-                                  {teamInfoByCode?.get(s.team_code)?.name || s.team_code}
+                                  {teamNameFor(s.team_code)}
+
                                 </span>
                                 <span className="font-mono text-[10px] text-muted-foreground">
                                   {s.team_code}

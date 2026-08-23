@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
+import { CalendarRange } from "lucide-react";
+import { LeagueSeasonsDialog } from "./LeagueSeasonsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   COMPETITION_CATEGORIES,
@@ -170,6 +172,7 @@ interface LeagueWithPlayers extends League {
 
 // ─── Main Tab ───
 export function LeaguesTab({ clubId }: { clubId: string }) {
+  const [seasonsAssoc, setSeasonsAssoc] = useState<any | null>(null);
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: leagues = [] } = useLeagues(clubId);
   const { data: members = [] } = useClubMembers(clubId);
@@ -399,6 +402,9 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                     </Link>
                   </Button>
                 )}
+                <Button size="sm" variant="outline" onClick={() => setSeasonsAssoc(a)}>
+                  <CalendarRange className="w-4 h-4 mr-1" />Seasons
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => setRulesAssoc(a)}>
                   <Settings2 className="w-4 h-4 mr-1" />Rules & Penalties
                 </Button>
@@ -588,6 +594,11 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           onOpenChange={(o) => !o && setRulesAssoc(null)}
         />
       )}
+      <LeagueSeasonsDialog
+        association={seasonsAssoc}
+        open={!!seasonsAssoc}
+        onOpenChange={(o) => !o && setSeasonsAssoc(null)}
+      />
       <BulkLeagueBookingsDialog open={bulkBookOpen} onOpenChange={setBulkBookOpen} clubId={clubId} />
       {exportAssoc && (
         <ExportTeamsToNsaDialog

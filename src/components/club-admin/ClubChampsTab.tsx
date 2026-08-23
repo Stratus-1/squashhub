@@ -1362,6 +1362,56 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [audienceIncludeIndividuals, setAudienceIncludeIndividuals] = useState(false);
   const [audienceSearch, setAudienceSearch] = useState("");
 
+  /**
+   * Cross-club invitation directory. A tournament opened to an association or
+   * to the whole federation must let the organiser find players from other
+   * clubs — but only through the privacy-safe RPC projection (name, club,
+   * category, ladder/ranking). Contact details are never returned here; the
+   * invite itself is delivered server-side.
+   */
+  const [directoryPicked, setDirectoryPicked] = useState<Map<string, DirectoryPlayer>>(new Map());
+  const {
+    data: directoryPlayers = [],
+    isFetching: directoryLoading,
+    error: directoryError,
+  } = useQuery({
+    queryKey: [
+      "tournament-invite-directory",
+      editingChampId,
+      clubId,
+      eligibilityScope,
+      audienceSearch.trim().toLowerCase(),
+    ],
+    queryFn: () =>
+      fetchInviteDirectory({
+        tournamentId: editingChampId,
+        clubId,
+        scope: eligibilityScope,
+        search: audienceSearch,
+        limit: 300,
+      }),
+    enabled: !!clubId && showWizard,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  const directoryGroups = useMemo(() => groupByClub(directoryPlayers), [directoryPlayers]);
+
+  /**
+   * Invitable pool for audience resolution: the club roster plus any external
+   * player the organiser deliberately picked from the directory.
+   */
+  const audienceMemberPool = useMemo(() => {
+    const pool = [...((members || []) as any[])];
+    const known = new Set(pool.map((m: any) => m.id));
+    directoryPicked.forEach((p) => {
+      if (!known.has(p.member_id)) {
+        pool.push({ id: p.member_id, status: "active", role: "member", gender: p.gender, name: p.display_name });
+      }
+    });
+    return pool;
+  }, [members, directoryPicked]);
+
 
   // Who puts a player on the entry list, and whether an admin must accept it.
   const [entrySource, setEntrySource] = useState<"self" | "admin" | "team_manager">("self");

@@ -10603,6 +10603,12 @@ export type Database = {
         }
         Returns: string
       }
+      scope_eligible_club_ids: {
+        Args: { _club_id: string; _owner_org_id: string; _scope: string }
+        Returns: {
+          club_id: string
+        }[]
+      }
       search_league_players_by_name: {
         Args: { _club_subdomain?: string; _query: string }
         Returns: {
@@ -10766,6 +10772,26 @@ export type Database = {
           owner_net_cents: number
           owner_org_id: string
           platform_fee_cents: number
+        }[]
+      }
+      tournament_invite_directory: {
+        Args: {
+          p_club_id?: string
+          p_limit?: number
+          p_scope?: string
+          p_search?: string
+          p_tournament_id?: string
+        }
+        Returns: {
+          club_id: string
+          club_name: string
+          display_name: string
+          gender: string
+          invite_status: string
+          is_own_club: boolean
+          ladder_position: number
+          member_id: string
+          ranking_points: number
         }[]
       }
       tournament_owner_entity: {

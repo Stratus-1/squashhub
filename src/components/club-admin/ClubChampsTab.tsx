@@ -6,6 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
 import { audienceLabel, resolveInviteAudience, type InviteAudienceMode } from "@/lib/tournaments/invite-audience";
+import {
+  fetchInviteDirectory,
+  groupByClub,
+  directoryScopeLabel,
+  type DirectoryPlayer,
+} from "@/lib/tournaments/invite-directory";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
   classifyEntrant,
@@ -1362,6 +1368,56 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [audienceIncludeIndividuals, setAudienceIncludeIndividuals] = useState(false);
   const [audienceSearch, setAudienceSearch] = useState("");
 
+  /**
+   * Cross-club invitation directory. A tournament opened to an association or
+   * to the whole federation must let the organiser find players from other
+   * clubs — but only through the privacy-safe RPC projection (name, club,
+   * category, ladder/ranking). Contact details are never returned here; the
+   * invite itself is delivered server-side.
+   */
+  const [directoryPicked, setDirectoryPicked] = useState<Map<string, DirectoryPlayer>>(new Map());
+  const {
+    data: directoryPlayers = [],
+    isFetching: directoryLoading,
+    error: directoryError,
+  } = useQuery({
+    queryKey: [
+      "tournament-invite-directory",
+      editingChampId,
+      clubId,
+      eligibilityScope,
+      audienceSearch.trim().toLowerCase(),
+    ],
+    queryFn: () =>
+      fetchInviteDirectory({
+        tournamentId: editingChampId,
+        clubId,
+        scope: eligibilityScope,
+        search: audienceSearch,
+        limit: 300,
+      }),
+    enabled: !!clubId && showWizard,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  const directoryGroups = useMemo(() => groupByClub(directoryPlayers), [directoryPlayers]);
+
+  /**
+   * Invitable pool for audience resolution: the club roster plus any external
+   * player the organiser deliberately picked from the directory.
+   */
+  const audienceMemberPool = useMemo(() => {
+    const pool = [...((members || []) as any[])];
+    const known = new Set(pool.map((m: any) => m.id));
+    directoryPicked.forEach((p) => {
+      if (!known.has(p.member_id)) {
+        pool.push({ id: p.member_id, status: "active", role: "member", gender: p.gender, name: p.display_name });
+      }
+    });
+    return pool;
+  }, [members, directoryPicked]);
+
 
   // Who puts a player on the entry list, and whether an admin must accept it.
   const [entrySource, setEntrySource] = useState<"self" | "admin" | "team_manager">("self");
@@ -1696,7 +1752,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     () =>
       resolveInviteAudience({
         mode: inviteAudience,
-        members: (members || []) as any[],
+        members: audienceMemberPool as any[],
         leagueIds: Array.from(audienceLeagueIds),
         registrationsByLeague,
         individualIds: Array.from(audienceMemberIds),
@@ -1705,7 +1761,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }),
     [
       inviteAudience,
-      members,
+      audienceMemberPool,
       audienceLeagueIds,
       registrationsByLeague,
       audienceMemberIds,
@@ -8501,34 +8557,64 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     <Input
                       value={audienceSearch}
                       onChange={(e) => setAudienceSearch(e.target.value)}
-                      placeholder="Search members (league membership not required)"
+                      placeholder="Search players by name or club (league membership not required)"
                       className="h-8 text-xs"
                     />
-                    <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-52 overflow-auto">
-                      {(members as any[])
-                        .filter((m) => String(m.status ?? "active").toLowerCase() === "active" && String(m.role ?? "member").toLowerCase() !== "visitor")
-                        .filter((m) => {
-                          const q = audienceSearch.trim().toLowerCase();
-                          if (!q) return true;
-                          return String(memberNameById.get(m.id) || m.name || "").toLowerCase().includes(q);
-                        })
-                        .slice(0, 300)
-                        .map((m) => (
-                          <label key={m.id} className="flex items-center gap-2 text-[11px] cursor-pointer">
-                            <Checkbox
-                              checked={audienceMemberIds.has(m.id)}
-                              onCheckedChange={(c) => {
-                                setAudienceMemberIds((prev) => {
-                                  const next = new Set(prev);
-                                  c ? next.add(m.id) : next.delete(m.id);
-                                  return next;
-                                });
-                              }}
-                            />
-                            <span className="truncate">{memberNameById.get(m.id) || m.name || "Unknown member"}</span>
-                          </label>
-                        ))}
+                    <p className="text-[11px] text-muted-foreground">
+                      {directoryScopeLabel(eligibilityScope)} — only name, club, category and ranking are shown. Contact
+                      details stay private; SquashHub delivers the invitation on your behalf.
+                    </p>
+                    {directoryError && (
+                      <p className="text-[11px] text-destructive">
+                        Player directory unavailable: {(directoryError as any)?.message || "not authorised"}
+                      </p>
+                    )}
+                    <div className="rounded border border-border/50 bg-background/60 p-2 space-y-1.5 max-h-52 overflow-auto">
+                      {directoryLoading && directoryPlayers.length === 0 && (
+                        <p className="text-[11px] text-muted-foreground">Searching…</p>
+                      )}
+                      {!directoryLoading && directoryPlayers.length === 0 && !directoryError && (
+                        <p className="text-[11px] text-muted-foreground">No eligible players match that search.</p>
+                      )}
+                      {directoryGroups.map((g) => (
+                        <div key={g.clubId} className="space-y-0.5">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {g.clubName}
+                            {g.players.some((p) => p.is_own_club) ? " (this club)" : ""}
+                          </div>
+                          {g.players.map((p) => (
+                            <label key={p.member_id} className="flex items-center gap-2 text-[11px] cursor-pointer">
+                              <Checkbox
+                                checked={audienceMemberIds.has(p.member_id)}
+                                onCheckedChange={(c) => {
+                                  setAudienceMemberIds((prev) => {
+                                    const next = new Set(prev);
+                                    c ? next.add(p.member_id) : next.delete(p.member_id);
+                                    return next;
+                                  });
+                                  setDirectoryPicked((prev) => {
+                                    const next = new Map(prev);
+                                    c ? next.set(p.member_id, p) : next.delete(p.member_id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                              <span className="truncate">{p.display_name}</span>
+                              {p.gender && (
+                                <span className="text-[10px] text-muted-foreground shrink-0">{p.gender}</span>
+                              )}
+                              {typeof p.ladder_position === "number" && (
+                                <span className="text-[10px] text-muted-foreground shrink-0">#{p.ladder_position}</span>
+                              )}
+                              {p.invite_status && (
+                                <span className="text-[10px] text-muted-foreground shrink-0">({p.invite_status})</span>
+                              )}
+                            </label>
+                          ))}
+                        </div>
+                      ))}
                     </div>
+
                   </div>
                 )}
 

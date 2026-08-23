@@ -1,115 +1,131 @@
-# League Architecture: Permanent Leagues, Seasons, and Singles / Doubles / Hybrid
+# Season Architecture — Non-Destructive Validation Report
 
-Investigation only so far — nothing was changed, and the earlier publish call was interrupted, so nothing was deployed.
+Read-only validation. Nothing was migrated, changed or deployed. All rehearsal numbers below come from read-only queries against live data (simulated joins, no writes).
 
-## A. Current state (verified against the live schema and data)
+## 1. Text-code dependency audit
 
-Entities as they exist today:
+`home_team_code` / `away_team_code` / team codes / names appear in 331 code locations. Classified:
 
-- `league_associations` — this is what the UI calls a "league" (e.g. `Nelspruit Singles League` / `NIL`, `Nelspruit Doubles` / `NDL`, `Northern Squash Association` / `NSA`). It already has `scope` (internal/region), `discipline` (`singles`/`doubles`, added in the approved NIL work), `platform_association_id` mirror link.
-- `leagues` — despite the name these are **teams / divisions** (`name`, `code`, `season_year`, `level`, `is_reserve`, `captain_member_id`, `archived_at`). 190 rows: 28 have `season_year = 2026`, **162 have `season_year = NULL`**.
-- `league_rounds` — round/week definitions, keyed to `association_id` + `round_number`, with a **unique constraint `(association_id, round_number)`**. No season column. 10 rows.
-- `member_league_registrations` — player-to-team roster, unique `(club_member_id, league_id)`. 1196 rows. Season comes only implicitly from the team row.
-- `platform_league_fixtures` — 1216 rows. Keyed by `association_id` + **text `home_team_code` / `away_team_code`** and `division` text; optional `round_id`.
-- `league_fixture_results` (142) — one aggregate result per fixture; `league_match_results` (658) — the individual rubbers, addressed by `position` + `home_player_code` / `away_player_code` **text**, not member IDs.
-- `league_fixture_lineups` (0 rows, unused so far) and `league_week_lineups` — position → single `club_member_id`.
-- `league_rules` (194) — per-league(-team)/association config: `team_size`, bonus points, sub rules. No doubles concepts.
-- `seasons` table exists but is **empty and unused** (generic name/start/end only).
-- `src/lib/leagues/season-level.ts` derives season/level from stored `season_year`/`level`, falling back to parsing the team **name** and `code` prefix (e.g. `NIL002`).
-- `StepByStepLeagueSetup.tsx` is the current wizard: Association → Gender → League number → "How many?" (teams / players per team) → Preview allocation. Entirely singles-shaped.
+| Path | Usage | Class |
+|---|---|---|
+| `nsa-sync-fixtures`, `nsa-proxy` (import + result posting) | fixtures matched and upserted by `external_id` + upper-cased codes; codes parsed out of NSA titles | **C + B** — functional key and export field |
+| `platform_league_fixtures` rows | the *only* team reference on a fixture is the text code; there is no team FK | **C** |
+| `LeagueGameDetail` (lineups, rules, prefill, squads, scorecard) | `teamRulesByCode[code.toUpperCase()]`, `lineup[home_team_code]`, `originalsMap[code]`, `codesFromLive(code)` | **C** |
+| `league_match_results` rubbers | `home_player_code` / `away_player_code` text, `position` int | **C** (player-level, same class of risk) |
+| `InternalStandingsTab` | groups by `home/away_team_code`, maps code → `leagues.name`/`logo_url` for display; season implied by `round_date` year filter | **C for grouping, A for name** |
+| `StandingsTab` (NSA) | rows keyed by `team_code`, "my team" match on `nsa_team_code || code` | **C** |
+| `league-awards.ts` (stats/history) | per-team and per-player aggregation keyed by code | **C** |
+| `season-level.ts` | falls back to parsing `leagues.name` and the `code` prefix (e.g. `NIL002`) when `season_year`/`level` are null | **D** — hard-coded parsing |
+| `Ladder.tsx` / `ladder-impact.ts` | ladder effects gated by `league_associations.affects_ladder`, joined via team rows | **C**, but association-level, not code-level |
+| `LeagueGames.tsx` | `"NIL"` hard-coded fallback abbreviation | **D** |
+| Notifications / bulk bookings / marker setup | code shown in labels | **A** |
 
-## B. Gaps and risks
+Places where a rename or a season change alters historical behaviour: every **C** row above. Because a fixture stores only a code, and the code→name map is a live lookup into `leagues`, **renaming a team rewrites the displayed name of all its past fixtures, standings rows and awards**, in every season.
 
-1. **No season entity.** Season is an integer on the team row only, and 162 of 190 team rows have it `NULL`. Rounds, fixtures and results have no season at all.
-2. **`league_rounds` unique `(association_id, round_number)`** makes a 2027 "Round 1" impossible alongside 2026 Round 1. This is the single hardest blocker.
-3. **Fixtures and rubbers are keyed by text codes/names**, not IDs. If a 2027 team reuses the `NIL002` code with a new name, historical 2026 fixture displays will resolve to the new name. History must be name-snapshotted.
-4. **`NIL` and team codes are load-bearing** — `season-level.ts`, `Ladder.tsx`, NSA posting and `LeagueGames.tsx` all parse them. Codes must not change.
-5. **Rubbers assume singles**: one player code per side per position. There is no way to record two players per side, so doubles cannot be represented today without faking a pair as a member — explicitly out of scope.
-6. `member_league_registrations` unique `(club_member_id, league_id)` is fine per season team, but there is no roster-level notion of "eligible squad" vs "selected for this fixture".
-7. `discipline` currently allows only `singles`/`doubles`; `hybrid` is not permitted by the check constraint.
+## 2. Team rename safety test — **FAIL** under current schema
 
-## C. Target hierarchy
+Simulated on the real data model (Nelspruit platform association `3b0c…`, 152 fixtures, 8 rounds, 28 season-2026 teams):
 
-```text
-Club
- └── League                (league_associations — PERMANENT: name, code, discipline)
-      └── Season           (league_seasons — NEW: year/label, status, structure config)
-           ├── Season Team (leagues rows, season_id set — name may change per season)
-           │    ├── Roster (member_league_registrations, season-scoped via team)
-           │    └── Pairs  (league_season_pairs — NEW, doubles/hybrid only)
-           ├── Round       (league_rounds, season_id set)
-           └── Fixture     (platform_league_fixtures, season_id + team IDs + snapshot names)
-                └── Rubber (league_match_results, + kind singles|doubles, + explicit player IDs)
-```
+- 2026 fixture rows hold `home_team_code = 'NIL002'`; the display name comes from `leagues.name` where `code = 'NIL002'`.
+- Renaming that row `Cobras → Harlequins` immediately relabels the 2026 fixtures, standings and awards — history does **not** stay stable.
+- Creating a *second* team row for 2027 with the same code makes the code→team lookup return two rows. The lookup code (`InternalStandingsTab` map by code, `teamRulesByCode`, `useNsaTeamByCode`) takes whichever row wins — silently ambiguous.
+- Evidence that the code space is currently assumed unique: exactly **one** duplicate code exists today (`CSI001`, two differently-named teams, both `season_year NULL`) and it is already a latent ambiguity bug.
 
-Permanent: league identity, code/abbreviation, discipline.
-Season-scoped: teams, names, rosters, pairs, rounds, fixtures, rubbers, standings, rules overrides.
+Conclusion: **team-ID references on fixtures plus historical team-name snapshots are necessary.** There is no configuration of the current schema that passes this test.
 
-**Discipline** lives permanently on the league (a Doubles League stays a doubles league). Add an optional `discipline_override` on the season only as an escape hatch — the real-world case is a league that adds a doubles rubber to a previously all-singles format, which is better expressed as the season's *format config* (number of singles vs doubles rubbers), not a different discipline.
+## 3. Season-scoping validation
 
-## D. Minimal safe schema changes
+| Entity | Season-scoped today? | Evidence |
+|---|---|---|
+| `league_associations` | No — and correctly so (permanent league) | 24 rows, no season column |
+| `leagues` (season teams) | Partially | `season_year`: 28 rows = 2026, **162 rows NULL** (16 associations) |
+| `league_rounds` | No | no season column; 10 rows, all `round_date` in 2026; unique `(association_id, round_number)` |
+| `member_league_registrations` | Indirect only (via team) | 1196 rows; unique `(club_member_id, league_id)`; 176 attach to 2026 teams |
+| `platform_league_fixtures` | No | 1216 rows; season only inferable from `fixture_date` (all 2026: 2026-04-13 → 2026-09-15) |
+| `league_fixture_results` | No | 142 rows, keyed only by `fixture_id` |
+| `league_match_results` | No | 658 rows, keyed by `fixture_id` + `position` |
+| `league_fixture_lineups` / `league_week_lineups` | No | 0 / n rows, keyed by `league_id` (team) + `week_start_date` |
+| `league_rules` | No | 194 rows, per team/association |
+| Standings | Pseudo-scoped by date | `InternalStandingsTab` filters rounds `round_date` between `YYYY-01-01` and `YYYY-12-31` |
+| Standings DB functions/views | None exist | no Postgres function references `league_fixture_results` or `home_team_code` |
 
-New:
-- `league_seasons(id, club_id, association_id, season_year int, label text, status, starts_on, ends_on, format jsonb, is_current bool, archived_at)`; unique `(association_id, season_year)`; RLS mirroring `league_associations` (club members read, club admins write); GRANTs for `authenticated` + `service_role`.
-- `league_season_pairs(id, season_id, team_id, player_a_member_id, player_b_member_id, label, active)` — explicit member IDs, never fake members.
-- Season format config (in `league_seasons.format` or a small `league_season_format` table): `singles_rubbers`, `doubles_rubbers`, `team_size`, `pairing_policy` = `fixed_season` | `per_fixture`.
+**Round-number collision — confirmed FAIL.** `league_rounds_association_id_round_number_key` is `UNIQUE (association_id, round_number)`. A 2027 "Round 1" for the same association is rejected outright. Replacing it with `UNIQUE (association_id, season_id, round_number)` permits 2026 Round 1 and 2027 Round 1 to coexist while still preventing duplicates within one season.
 
-Altered (all additive, nullable-first):
-- `leagues.season_id`, `league_rounds.season_id`, `platform_league_fixtures.season_id` — all nullable at first, backfilled, then made required for new rows only.
-- `league_rounds`: drop unique `(association_id, round_number)`, replace with unique `(association_id, season_id, round_number)`.
-- `platform_league_fixtures`: add `home_team_id`, `away_team_id` (FK to `leagues`) and `home_team_name_snapshot`, `away_team_name_snapshot`. Keep the existing text codes untouched for NSA compatibility.
-- `league_match_results`: add `rubber_kind` (`singles`|`doubles`, default `singles`) and `home_player_ids uuid[]` / `away_player_ids uuid[]` alongside the existing text codes.
-- `league_associations.discipline` check constraint extended to include `hybrid`.
-- Indexes on every new `season_id` column and on the new team-ID columns.
+**Additional finding not in the earlier plan:** `platform_league_fixtures.association_id` points at the *platform* association, which is shared by many clubs (19 tenant `league_associations` rows mirror the single NSA platform row `b1cb…`). A naive tenant-scoped season join fans out 1216 fixtures into 16112. **Seasons for fixtures must be platform-association-scoped, not club-scoped**, or the backfill will duplicate rows.
 
-Nothing is dropped or renamed. Existing columns keep working, so old code paths continue to function during rollout.
+## 4. Migration rehearsal (read-only simulation)
 
-## E. Adaptive wizard flow
+BEFORE (live, integrity signatures):
 
-Create New League: Name, abbreviation/code, discipline (Singles / Doubles / Hybrid), initial season (defaults 2026).
-Open existing league: current-season selector + status badge + **Create New Season** (defaults to next year, editable, with "Copy structure from <prev>" that copies team shells/format but never edits the historical season).
+| Signal | Count |
+|---|---|
+| league associations | 24 (2 platform associations carry fixtures) |
+| season teams (`leagues`) | 190 — 28 tagged 2026, 162 NULL, 0 archived |
+| rounds | 10 (all `round_date` in 2026; 2 associations) |
+| registrations | 1196 (176 on 2026 teams) |
+| fixtures | 1216 (Nelspruit platform 152, NSA platform 1064) |
+| lineups (`league_fixture_lineups`) | 0 |
+| aggregate fixture results | 142 · id-signature `f4fa443c…` |
+| rubbers (`league_match_results`) | 658 · id-signature `eb567364…` |
+| standings points signature (sum home+away total points) | 3465 |
 
-Season setup wizard, one engine with discipline-driven questions:
+Simulated additive backfill (2 seasons created, one per platform association, `season_year = 2026`):
 
-| Step | Singles | Doubles | Hybrid |
-|---|---|---|---|
-| Structure | teams, players per team | teams, pairs per team | teams, singles rubbers, doubles rubbers, squad size |
-| Teams | create/rename season teams | same | same |
-| Allocation | players → teams | build pairs, pairs → teams | players → squad, then mark singles/doubles availability |
-| Pairing policy | n/a | fixed for season vs per fixture | per component |
-| Rounds | unchanged | unchanged | unchanged |
+| Step | Result |
+|---|---|
+| attach teams to 2026 | 28 direct; 162 NULL-season teams belong to 16 NSA club associations with **no fixtures and no rounds** — left untouched and reported, not guessed |
+| attach rounds | 10 / 10 resolve by `round_date` year |
+| attach fixtures | 1216 / 1216 fall inside 2026 (min 2026-04-13, max 2026-09-15) — 100% resolvable by date |
+| resolve `home_team_id` | 1206 / 1216 |
+| resolve `away_team_id` | 1181 / 1216 |
+| BYE placeholders (`__BYE__`) | 27 — expected, no team, skip |
+| **unresolved real codes** | **18 occurrences**: `CSIL01` ×9 (NSA platform), `LG001` ×3, `LG002` ×3, `LG003` ×3 (Nelspruit platform) — no matching `leagues.code`; left NULL and reported |
+| fixtures with no `round_id` | 1070 (1064 NSA + 6 Nelspruit) — season comes from date, rounds stay NULL |
 
-Singles behaviour, including the existing "How many?" step and preview allocation, is preserved exactly.
+AFTER assertions (all additive, so provable by construction):
 
-## F. Doubles and hybrid selection model
+- records lost: **0** — no DELETE, no INSERT into existing tables, only new nullable columns
+- historical IDs changed: **0**
+- scores/results changed: **0** — `league_fixture_results` and `league_match_results` are not written at all; signatures `f4fa443c…` / `eb567364…` and points total 3465 unchanged
+- standings totals: unchanged — standings derive from those same untouched rows
+- player stats / ladder effects: unchanged — no writes to registrations, ladder, or `affects_ladder`
+- historical fixture names: stable **only after** the snapshot columns are populated; until then names remain live lookups (see §2)
+- mis-scoped records: **0** — every scoped row is assigned from its own association + its own date, never inferred across associations
 
-- A pair is two real member IDs. Pairs never become members.
-- `pairing_policy = fixed_season`: pairs are created up-front and default into every fixture.
-- `pairing_policy = per_fixture`: pairs are chosen at team-selection time.
-- At selection, each fixture rubber records its resolved player IDs into `league_match_results.home_player_ids` / `away_player_ids` and is **locked with the result**, so later pairing changes never rewrite history.
-- Hybrid eligibility: one person, one member row, appearing in the squad once. Selection validation blocks the same member from being in two rubbers of the same fixture unless the season format explicitly permits it.
-- Standings derive from the sum of all rubbers of a fixture regardless of kind — no separate doubles points path.
+## 5. Season-aware UX requirements
 
-## G. 2026 backfill plan
+Season selector at the league module level, defaulting to the current season, persisted in the URL (`?season=`) and in the league module context so navigating Standings → Fixtures → Rosters cannot mix years.
 
-1. Snapshot counts: teams 190, rounds 10, registrations 1196, fixtures 1216, fixture results 142, rubbers 658.
-2. For each internal/region association with activity, create one `league_seasons` row for 2026 (`is_current = true`).
-3. Set `leagues.season_id` for the 28 rows already marked 2026, then for the 162 `NULL` rows — these are backfilled to 2026 **only** where the association has 2026 activity; otherwise flagged for admin review rather than guessed.
-4. Backfill `league_rounds.season_id` and `platform_league_fixtures.season_id` from their association's 2026 season.
-5. Resolve `home_team_id`/`away_team_id` from the existing team codes and write name snapshots. Any fixture whose code does not resolve is reported, not silently dropped.
-6. Re-run the same counts and assert identical totals plus zero remaining `season_id IS NULL` rows in scope. Every step is additive, so rollback is `UPDATE ... SET season_id = NULL` / dropping the new columns — no data is rewritten or recreated.
+Views to make season-aware: Standings, Fixtures list, Results/history, Team rosters/registrations, Round management, Team selection/lineups, league-context stats and awards.
 
-## H. Phased order
+**Standings specifically** (`InternalStandingsTab`): today it derives tiers from `league_rounds` filtered on `round_date` between `<year>-01-01` and `<year>-12-31`, then loads fixtures by `round_id`, then maps codes → names via a `leagues` query filtered only on `association_id`. Required changes, none of which alter 2026 totals:
 
-1. Phase 0 — extend `discipline` to include `hybrid`; no behaviour change.
-2. Phase 1 — `league_seasons` table + backfill 2026 + validation query (read-only UI shows current season).
-3. Phase 2 — season_id on rounds/fixtures, round unique-constraint swap, team IDs and name snapshots on fixtures.
-4. Phase 3 — Create New Season UI + season selector; wizard refactor to the single engine (singles output byte-identical to today).
-5. Phase 4 — doubles: pairs table, pairing policy, selection UI.
-6. Phase 5 — hybrid: format config, mixed rubbers, standings from all rubbers.
+1. Replace the `round_date` year filter with `.eq("season_id", seasonId)` — for 2026 this selects exactly the same 10 rounds.
+2. Filter the code→name map query by `season_id` too, so a 2027 team named Harlequins cannot relabel 2026 rows.
+3. Prefer the fixture's `home_team_name_snapshot` when present, falling back to the current lookup — identical output for 2026 because snapshots are backfilled from the current names.
+4. Replace the hard-coded `CURRENT_YEAR ± 2` season dropdown with the league's real season list.
 
-Each phase has its own migration and its own rollback point; tests cover season derivation, round uniqueness per season, historical-name stability after a rename, singles-parity regression, pair locking, and hybrid standings math.
+`StandingsTab` (NSA) needs the same season filter on its team-code map; its aggregation itself is unchanged.
 
-## I. Interaction with the Nelspruit work
+## 6. Safety sign-off
 
-No conflict. The rename to "Nelspruit Singles League", the `NDL` doubles league and the `discipline` column already exist in the database and are exactly the permanent-league shape this plan assumes. Safest order is: publish the pending Nelspruit UI work first (it is preview-only right now), then start Phase 0. `NIL` and all team codes stay untouched throughout.
+| Check | Verdict |
+|---|---|
+| Team rename safety under current schema | **FAIL** — rename rewrites history; reused codes become ambiguous |
+| Round reuse across seasons under current schema | **FAIL** — `UNIQUE (association_id, round_number)` blocks 2027 Round 1 |
+| Historical standings preservation in the rehearsed additive migration | **PASS** — zero writes to results/rubbers; signatures and 3465-point total unchanged |
+| Additive backfill resolvability | **PASS with 18 reported exceptions** (`CSIL01`, `LG001-003`) |
+
+Hard-coded / text-key dependencies to fix before or during implementation: fixture team codes as the only team reference; `teamRulesByCode`; lineup maps keyed by code; awards aggregation by code; `season-level.ts` name/code parsing; `"NIL"` fallback in `LeagueGames.tsx`; NSA sync's upper-cased code matching (must stay, it is the export contract).
+
+Required changes before implementation:
+- `league_seasons` table keyed to the **platform** association for fixtures and to the tenant association for teams/rounds.
+- Nullable `season_id` on `leagues`, `league_rounds`, `platform_league_fixtures`; indexes on each.
+- Swap the rounds unique constraint to `(association_id, season_id, round_number)`.
+- `home_team_id` / `away_team_id` + `home_team_name_snapshot` / `away_team_name_snapshot` on fixtures; keep the text codes untouched for NSA.
+- Unique `(association_id, season_id, code)` on season teams — this also surfaces the existing `CSI001` duplicate for manual cleanup rather than fixing it silently.
+- RLS + GRANTs on `league_seasons` mirroring `league_associations`.
+
+Rollback: every step is additive. Rollback is `UPDATE … SET season_id = NULL` followed by dropping the new columns/table and restoring the old rounds unique constraint. No existing row is rewritten at any point, so there is no data to restore.
+
+Recommendation: **safe to implement**, in this order — (1) additive schema + backfill with the 18 exceptions reported to the admin, (2) snapshot/team-ID population, (3) constraint swap, (4) season-aware read paths, (5) only then the Singles/Doubles/Hybrid work. Do not begin discipline work until (4) is verified, because standings must be season-filtered before a second season can exist.

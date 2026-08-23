@@ -1413,6 +1413,9 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
             association_id: null, // per-league rule: scope CHECK requires association_id NULL when league_id set
             team_size: size,
             team_size_mode: "fixed" as const,
+            // Preserve match composition — upsert rewrites the whole row.
+            singles_rubbers: singlesRubbers,
+            doubles_rubbers: doublesRubbers,
           },
           { onConflict: "league_id" }
         );

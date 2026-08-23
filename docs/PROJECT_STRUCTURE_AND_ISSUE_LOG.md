@@ -1141,3 +1141,11 @@ Tests: `src/test/booking-label.test.ts`.
 - SELECT policy replaced with the helper; stale-lock takeover (UPDATE/DELETE) now also requires fixture access; own-lock behaviour unchanged.
 - Revoked anon table grants and anon EXECUTE on the helper.
 - **Verified:** club member true, unrelated club false, platform admin true, anon/null false. 415 tests pass, build OK.
+
+## 2026-08-23 — champ_marker_locks cross-tenant read (RLS)
+
+- **Issue:** SELECT on `champ_marker_locks` was `USING (true)`; UPDATE was also `USING (true)` — any authenticated user could read or take over championship marker locks from any club.
+- **Fix:** new SECURITY DEFINER helper `public.can_access_champ_match(_user_id, _match_id)` resolves `club_champs_matches.champ_id` -> `tournaments.club_id` -> `is_club_member`, with `is_platform_admin` / `has_role(admin)` super-admin bypass.
+- SELECT, INSERT (claim), UPDATE (takeover request / stale takeover) and DELETE (stale release) all now require club access; own-lock behaviour (`user_id = auth.uid()`) unchanged.
+- Revoked anon table grants and anon EXECUTE on the helper.
+- **Verified:** club member true, unrelated club false, platform admin true, anon false. 456 tests pass, build OK.

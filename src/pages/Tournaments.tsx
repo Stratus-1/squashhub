@@ -35,6 +35,8 @@ import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDia
 import { splitTournamentsByLifecycle, todayISO, isCancelledTournament } from "@/lib/tournaments/lifecycle";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
+import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
+
 import { useHasPermission } from "@/hooks/use-club-permissions";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };

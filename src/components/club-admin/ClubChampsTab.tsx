@@ -31,6 +31,13 @@ import {
   type ForfeitRuleMap,
 } from "@/lib/tournaments/forfeit";
 import { buildLeagueFirstRound, suggestSectionCount } from "@/lib/tournaments/knockout";
+import { ConfirmDrawDialog } from "@/components/tournaments/ConfirmDrawDialog";
+import {
+  drawToMatchRows,
+  suggestDrawBoard,
+  type DrawBoard as DrawBoardModel,
+  type DrawEntrant,
+} from "@/lib/tournaments/draw-board";
 import {
   DEFAULT_DIVISION_SOURCE,
   allocateEntrantsToDivisions,

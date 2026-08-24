@@ -62,6 +62,11 @@
     --win: 142 70% 45%;
     --loss: 0 72% 51%;
 
+    /* Draw board seeding bands */
+    --seed-top: 142 62% 38%;
+    --seed-lower: 205 75% 42%;
+    --seed-out: 0 72% 51%;
+
     --sidebar-background: 223 65% 15%;
     --sidebar-foreground: 40 30% 92%;
     --sidebar-primary: 38 95% 55%;
@@ -105,6 +110,10 @@
     --border: 220 20% 18%;
     --input: 220 20% 18%;
     --ring: 220 55% 45%;
+
+    --seed-top: 142 55% 52%;
+    --seed-lower: 205 75% 58%;
+    --seed-out: 0 75% 62%;
   }
 }
 

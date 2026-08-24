@@ -7,6 +7,7 @@
  */
 import { useMemo, useState } from "react";
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, GripVertical, RotateCcw, Undo2, X } from "lucide-react";
@@ -37,25 +38,41 @@ interface Props {
 
 const BENCH_ID = "draw-bench";
 
-function EntrantCard({ entrant, dragging }: { entrant: DrawEntrant; dragging?: boolean }) {
+type SeedTone = "top" | "lower" | "out";
+
+const TONE_CLASS: Record<SeedTone, string> = {
+  top: "border-seed-top/50 bg-seed-top/10",
+  lower: "border-seed-lower/50 bg-seed-lower/10",
+  out: "border-seed-out/50 bg-seed-out/10",
+};
+
+const TONE_BADGE: Record<SeedTone, string> = {
+  top: "border-seed-top/60 text-seed-top",
+  lower: "border-seed-lower/60 text-seed-lower",
+  out: "border-seed-out/60 text-seed-out",
+};
+
+function EntrantCard({ entrant, tone }: { entrant: DrawEntrant; tone: SeedTone }) {
   return (
-    <div className={cn("flex items-center gap-1.5 min-w-0", dragging && "opacity-90")}>
-      <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <span className="truncate text-[13px]">
+    <div className="flex min-w-0 items-center gap-1">
+      <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" />
+      <span className="truncate text-[11px] leading-tight">
         {entrant.name}
         {entrant.partnerName ? <span className="text-muted-foreground"> &amp; {entrant.partnerName}</span> : null}
       </span>
       {entrant.seed ? (
-        <Badge variant="outline" className="ml-auto shrink-0 text-[10px]">#{entrant.seed}</Badge>
+        <Badge variant="outline" className={cn("ml-auto shrink-0 px-1 py-0 text-[9px]", TONE_BADGE[tone])}>
+          #{entrant.seed}
+        </Badge>
       ) : null}
       {entrant.rankLabel ? (
-        <span className="shrink-0 text-[10px] text-muted-foreground">{entrant.rankLabel}</span>
+        <span className="shrink-0 text-[9px] text-muted-foreground">{entrant.rankLabel}</span>
       ) : null}
     </div>
   );
 }
 
-function DraggableEntrant({ entrant, disabled }: { entrant: DrawEntrant; disabled?: boolean }) {
+function DraggableEntrant({ entrant, tone, disabled }: { entrant: DrawEntrant; tone: SeedTone; disabled?: boolean }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `entrant:${entrant.id}`, disabled });
   return (
     <div
@@ -63,12 +80,13 @@ function DraggableEntrant({ entrant, disabled }: { entrant: DrawEntrant; disable
       {...attributes}
       {...listeners}
       className={cn(
-        "cursor-grab rounded-md border bg-card px-2 py-1",
+        "cursor-grab rounded border px-1.5 py-0.5",
+        TONE_CLASS[tone],
         isDragging && "opacity-40",
         disabled && "cursor-default",
       )}
     >
-      <EntrantCard entrant={entrant} />
+      <EntrantCard entrant={entrant} tone={tone} />
     </div>
   );
 }
@@ -76,11 +94,13 @@ function DraggableEntrant({ entrant, disabled }: { entrant: DrawEntrant; disable
 function Slot({
   refSlot,
   entrant,
+  tone,
   onClear,
   readOnly,
 }: {
   refSlot: DrawSlotRef;
   entrant: DrawEntrant | null;
+  tone: SeedTone;
   onClear: () => void;
   readOnly?: boolean;
 }) {
@@ -90,7 +110,7 @@ function Slot({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-h-[34px] items-center gap-1 rounded-md border px-1.5 py-1",
+        "flex min-h-[26px] items-center gap-1 rounded border px-1 py-0.5",
         entrant ? "bg-card" : "border-dashed bg-muted/30",
         isOver && "border-primary bg-primary/10 ring-1 ring-primary/40",
       )}
@@ -98,16 +118,16 @@ function Slot({
       {entrant ? (
         <>
           <div className="min-w-0 flex-1">
-            <DraggableEntrant entrant={entrant} disabled={readOnly} />
+            <DraggableEntrant entrant={entrant} tone={tone} disabled={readOnly} />
           </div>
           {!readOnly && (
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" title="Leave empty (bye)" onClick={onClear}>
-              <X className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" title="Leave empty (bye)" onClick={onClear}>
+              <X className="h-3 w-3" />
             </Button>
           )}
         </>
       ) : (
-        <span className="px-1 text-[11px] italic text-muted-foreground">Empty — bye</span>
+        <span className="px-1 text-[10px] italic text-muted-foreground">Empty — bye</span>
       )}
     </div>
   );
@@ -124,6 +144,15 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
     [board],
   );
   const multi = sections.length > 1;
+
+  /** Top half of the seeding list reads green, the rest blue, benched players red. */
+  const seedCut = useMemo(() => {
+    const seeds = entrants.map((e) => e.seed ?? 0).filter((n) => n > 0);
+    if (seeds.length === 0) return 0;
+    return Math.ceil(Math.max(...seeds) / 2);
+  }, [entrants]);
+  const toneOf = (e: DrawEntrant | null): SeedTone =>
+    !e ? "lower" : !e.seed || !seedCut ? "lower" : e.seed <= seedCut ? "top" : "lower";
 
   const { setNodeRef: benchRef, isOver: benchOver } = useDroppable({ id: BENCH_ID, disabled: readOnly });
 
@@ -152,6 +181,7 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
       onDragStart={(e: DragStartEvent) => setActiveId(String(e.active.id))}
       onDragEnd={onDragEnd}
       onDragCancel={() => setActiveId(null)}
+      modifiers={[snapCenterToCursor]}
     >
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -159,6 +189,11 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
             {validation.playable} match{validation.playable === 1 ? "" : "es"} · {validation.byes} bye
             {validation.byes === 1 ? "" : "s"}
           </Badge>
+          <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-seed-top" /> Higher seed</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-seed-lower" /> Lower seed</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-seed-out" /> Not in draw</span>
+          </span>
           <div className="ml-auto flex gap-1">
             {onUndo && (
               <Button size="sm" variant="ghost" disabled={!canUndo || readOnly} onClick={onUndo}>
@@ -178,7 +213,7 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
                 {multi && (
                   <div className="mb-2 text-xs font-medium">{sectionLabelOf(section)}</div>
                 )}
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
                   {board.matches
                     .filter((m) => m.section === section)
                     .sort((a, b) => a.position - b.position)
@@ -187,26 +222,28 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
                       const b = m.b ? byId.get(m.b) ?? null : null;
                       const incomplete = (!a || !b) && (a || b);
                       return (
-                        <div key={`${m.section}-${m.position}`} className="rounded-md border bg-muted/20 p-1.5">
-                          <div className="mb-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <div key={`${m.section}-${m.position}`} className="rounded border bg-muted/20 p-1">
+                          <div className="mb-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
                             Match {m.position}
                             {incomplete ? (
                               <Badge variant="outline" className="text-[10px]">Bye</Badge>
                             ) : null}
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-0.5">
                             <Slot
                               refSlot={{ section: m.section, round: m.round, position: m.position, side: "a" }}
                               entrant={a}
+                              tone={toneOf(a)}
                               readOnly={readOnly}
                               onClear={() =>
                                 onChange(clearSlot(board, { section: m.section, round: m.round, position: m.position, side: "a" }))
                               }
                             />
-                            <div className="text-center text-[10px] uppercase text-muted-foreground">v</div>
+                            <div className="text-center text-[9px] uppercase text-muted-foreground">v</div>
                             <Slot
                               refSlot={{ section: m.section, round: m.round, position: m.position, side: "b" }}
                               entrant={b}
+                              tone={toneOf(b)}
                               readOnly={readOnly}
                               onClear={() =>
                                 onChange(clearSlot(board, { section: m.section, round: m.round, position: m.position, side: "b" }))
@@ -232,7 +269,7 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
             {bench.length === 0 ? (
               <p className="text-[11px] italic text-muted-foreground">Everyone has a slot.</p>
             ) : (
-              bench.map((e) => <DraggableEntrant key={e.id} entrant={e} disabled={readOnly} />)
+              bench.map((e) => <DraggableEntrant key={e.id} entrant={e} tone="out" disabled={readOnly} />)
             )}
             <p className="pt-1 text-[10px] text-muted-foreground">
               Drop a player here to take them out of a matchup — the slot becomes a bye.
@@ -258,8 +295,8 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
 
       <DragOverlay>
         {active ? (
-          <div className="rounded-md border bg-card px-2 py-1 shadow-lg">
-            <EntrantCard entrant={active} dragging />
+          <div className={cn("rounded border px-1.5 py-0.5 shadow-lg", TONE_CLASS[toneOf(active)])}>
+            <EntrantCard entrant={active} tone={toneOf(active)} />
           </div>
         ) : null}
       </DragOverlay>

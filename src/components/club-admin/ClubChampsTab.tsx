@@ -2208,7 +2208,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       league_source_modes: Object.fromEntries(
         Object.entries(leagueSources).map(([k, v]) => [k, v.mode]),
       ),
+      // Manual seeding: the confirmed draw boards, the organiser's player
+      // order and which divisions were arranged by hand. Without these the
+      // wizard would re-seed automatically on the next open.
+      manual_draws: Object.keys(manualDraws).length > 0 ? manualDraws : null,
+      seed_order: playerOrder.length > 0 ? playerOrder : null,
+      manual_seed_divisions: manualSeedGroups.size > 0 ? Array.from(manualSeedGroups) : null,
     };
+
     const saveExtras = async (id: string) => {
       const { error } = await fromExt("tournaments").update(sanitizeExtrasPayload(extras)).eq("id", id);
       if (error) console.warn("Tournament extras save failed:", error.message);

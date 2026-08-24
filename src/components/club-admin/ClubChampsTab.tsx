@@ -2208,7 +2208,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       league_source_modes: Object.fromEntries(
         Object.entries(leagueSources).map(([k, v]) => [k, v.mode]),
       ),
+      // Manual seeding: the confirmed draw boards, the organiser's player
+      // order and which divisions were arranged by hand. Without these the
+      // wizard would re-seed automatically on the next open.
+      manual_draws: Object.keys(manualDraws).length > 0 ? manualDraws : null,
+      seed_order: playerOrder.length > 0 ? playerOrder : null,
+      manual_seed_divisions: manualSeedGroups.size > 0 ? Array.from(manualSeedGroups) : null,
     };
+
     const saveExtras = async (id: string) => {
       const { error } = await fromExt("tournaments").update(sanitizeExtrasPayload(extras)).eq("id", id);
       if (error) console.warn("Tournament extras save failed:", error.message);
@@ -2601,6 +2608,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     customizeDailySchedule, daySchedules, selectedCourtIds,
     // Selection / pair / group assignment state — persist immediately when changed
     selectedPlayerIds, doublesPairs, groupAssignments, pairGroupAssignments,
+    // Manual seeding / confirmed draw boards must persist as soon as they change.
+    manualDraws, playerOrder, manualSeedGroups,
+
   ]);
 
 
@@ -5790,6 +5800,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     ));
     setSwissRounds(((champ as any).swiss_rounds as Record<string, number>) || {});
     setPoolSizeOverrides(((champ as any).pool_sizes as Record<string, number[]>) || {});
+    // A confirmed manual draw and the hand-arranged divisions are part of the
+    // saved tournament — never re-seed them automatically on reopen.
+    setManualDraws(((champ as any).manual_draws as Record<string, DrawBoardModel>) || {});
+    setManualSeedGroups(new Set(((champ as any).manual_seed_divisions as number[]) || []));
+
     setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
     setPlayAllGames(!!(champ as any).play_all_games);
@@ -6044,6 +6059,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         setExtraDivisions(extras);
       }
     }
+
+    // The organiser's saved seeding order wins over the order the entry rows
+    // happened to come back in — new entrants are appended at the end.
+    const savedOrder = (champ as any).seed_order as string[] | null;
+    if (Array.isArray(savedOrder) && savedOrder.length > 0) {
+      setPlayerOrder((prev) => [
+        ...savedOrder.filter((id) => prev.includes(id)),
+        ...prev.filter((id) => !savedOrder.includes(id)),
+      ]);
+    }
+
+
 
 
     const savedCourtIds = (champ as any).court_ids as number[] | null;

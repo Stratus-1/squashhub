@@ -9392,6 +9392,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               );
             })()}
 
+            {/* How the automatic split fills the pools. Manual drags always win. */}
+            <div className="mt-3 rounded-md border bg-muted/30 p-2 space-y-2">
+              <div className="text-xs font-medium">Pool allocation</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {([
+                  {
+                    v: "snake" as const,
+                    t: "Even pools (snake)",
+                    d: "Seeds zig-zag across the pools (A: 1, 4, 5… B: 2, 3, 6…) so every pool is of similar overall strength.",
+                  },
+                  {
+                    v: "banded" as const,
+                    t: "Strength bands",
+                    d: "Pool A gets the strongest players, Pool B the next band, Pool C the weakest — each ranked 1…n inside its own pool.",
+                  },
+                ]).map((o) => (
+                  <label
+                    key={o.v}
+                    className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${poolAllocation === o.v ? "border-primary bg-primary/5" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="pool-allocation"
+                      className="mt-1"
+                      checked={poolAllocation === o.v}
+                      onChange={() => setPoolAllocation(o.v)}
+                    />
+                    <span className="text-xs">
+                      <span className="font-medium block">{o.t}</span>
+                      <span className="text-muted-foreground">{o.d}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Applies to every league that runs more than one pool. Players you drag by hand keep their spot.
+              </p>
+            </div>
           </CardHeader>
 
           <CardContent className="space-y-4">

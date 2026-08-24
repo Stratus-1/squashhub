@@ -5828,6 +5828,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // saved tournament — never re-seed them automatically on reopen.
     setManualDraws(((champ as any).manual_draws as Record<string, DrawBoardModel>) || {});
     setManualSeedGroups(new Set(((champ as any).manual_seed_divisions as number[]) || []));
+    // The list row can be a stale cache entry (draw confirmed in another tab or
+    // repaired server-side). Re-read the authoritative draw state so the editor
+    // never opens on an auto-seeded board and then overwrites the real one.
+    void (async () => {
+      const { data: fresh } = await fromExt("tournaments")
+        .select("manual_draws, manual_seed_divisions")
+        .eq("id", champ.id)
+        .maybeSingle();
+      if (!fresh) return;
+      const freshDraws = ((fresh as any).manual_draws as Record<string, DrawBoardModel>) || {};
+      if (Object.keys(freshDraws).length > 0) setManualDraws(freshDraws);
+      const freshSeeded = ((fresh as any).manual_seed_divisions as number[]) || [];
+      if (freshSeeded.length > 0) setManualSeedGroups(new Set(freshSeeded));
+    })();
+
 
     setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));

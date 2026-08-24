@@ -552,6 +552,14 @@ export function allocateEntrantsToDivisions(args: {
   existing?: Map<string, number>;
   /** Ids the admin explicitly kept in a division despite not qualifying. */
   overrides?: Set<string>;
+  /**
+   * Entrants whose division decision is final ("locked in"). They are never
+   * re-allocated by the auto-seeder — only an admin moving or removing them
+   * changes their division. A locked entrant whose division no longer exists
+   * (division count shrank) is surfaced as unassigned for the admin to place,
+   * never silently redrafted somewhere else.
+   */
+  locked?: Set<string>;
 }): AllocationResult {
   const { entrantIds, numDivisions, sources, registrationsByLeague } = args;
   const assignments = new Map<string, number>();
@@ -574,8 +582,14 @@ export function allocateEntrantsToDivisions(args: {
   for (const id of entrantIds) {
     if (!id) continue;
     const existing = args.existing?.get(id);
-    if (existing !== undefined && existing >= 0 && existing < numDivisions) {
-      assignments.set(id, existing);
+    const isValid = existing !== undefined && existing >= 0 && existing < numDivisions;
+    if (isValid) {
+      assignments.set(id, existing as number);
+      continue;
+    }
+    if (args.locked?.has(id)) {
+      // Locked decision, but the division is gone — leave it to the admin.
+      unassigned.push(id);
       continue;
     }
     let target = divisions.findIndex((d) => !d.catchAll && d.eligible.has(id));

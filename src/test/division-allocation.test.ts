@@ -57,3 +57,45 @@ describe("allocateEntrantsToDivisions", () => {
     expect(r.unassigned).toEqual([]);
   });
 });
+
+describe("locked entrants", () => {
+  const sources = { "1": { mode: "selected", leagueIds: ["L1"] }, "2": { mode: "selected", leagueIds: ["L2"] } } as any;
+  const regs = new Map<string, string[]>([["L1", ["a"]], ["L2", ["b"]]]);
+
+  it("keeps a locked entrant in their chosen division even if not eligible there", () => {
+    const { assignments, unassigned } = allocateEntrantsToDivisions({
+      entrantIds: ["a"],
+      numDivisions: 2,
+      sources,
+      registrationsByLeague: regs,
+      existing: new Map([["a", 1]]),
+      locked: new Set(["a"]),
+    });
+    expect(assignments.get("a")).toBe(1);
+    expect(unassigned).toEqual([]);
+  });
+
+  it("never redrafts a locked entrant whose division disappeared", () => {
+    const { assignments, unassigned } = allocateEntrantsToDivisions({
+      entrantIds: ["b"],
+      numDivisions: 1,
+      sources,
+      registrationsByLeague: regs,
+      existing: new Map([["b", 1]]),
+      locked: new Set(["b"]),
+    });
+    expect(assignments.has("b")).toBe(false);
+    expect(unassigned).toEqual(["b"]);
+  });
+
+  it("still auto-allocates unlocked entrants", () => {
+    const { assignments } = allocateEntrantsToDivisions({
+      entrantIds: ["b"],
+      numDivisions: 2,
+      sources,
+      registrationsByLeague: regs,
+      locked: new Set(["a"]),
+    });
+    expect(assignments.get("b")).toBe(1);
+  });
+});

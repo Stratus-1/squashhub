@@ -460,9 +460,15 @@ export default function ClubChampsView() {
 
 
   // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
-  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean }) => {
+  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string> }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
+    const poolLabels = opts?.poolLabels;
+    const poolFor = (s: any): string | null =>
+      poolLabels
+        ? poolLabels.get(s.club_member_id) || (s.partner_member_id ? poolLabels.get(s.partner_member_id) : null) || null
+        : null;
+    const showPool = !!poolLabels && standings.some((s) => !!poolFor(s));
     // Everyone who played is a competitor.
     const competitors = standings;
     const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
@@ -474,6 +480,8 @@ export default function ClubChampsView() {
             <tr className="border-b text-left">
               <th className="pb-2 font-medium">#</th>
               <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
+              {showPool && <th className="pb-2 font-medium text-center" title="Pool / section">Pool</th>}
+
               {isBells ? (
                 <>
                   <th className="pb-2 font-medium text-center" title="Games played">GP</th>
@@ -509,6 +517,11 @@ export default function ClubChampsView() {
                 <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
                   <td className="py-2 text-muted-foreground">{i + 1}</td>
                   <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && <Badge className="text-[9px] ml-1">🏆 Winner</Badge>}{isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}</td>
+                  {showPool && (
+                    <td className="py-2 text-center">
+                      <Badge variant="outline" className="text-[10px]">{poolFor(s) || "–"}</Badge>
+                    </td>
+                  )}
 
                   {isBells ? (
                     <>
@@ -618,9 +631,23 @@ export default function ClubChampsView() {
     const ko = renderKnockoutStandings(gn);
     if (ko) return ko;
     const pc = poolCountFor(gn);
+    // Pool / section badge per player, derived from the matches they appear in,
+    // so a single stacked table still shows who sits in which pool.
+    const poolLabels = new Map<string, string>();
+    (matches as any[]).forEach((m: any) => {
+      if (!isCrossLeague && m.group_number !== gn) return;
+      const p = resolvePoolNumber(m, gn);
+      if (p == null) return;
+      [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id]
+        .filter(Boolean)
+        .forEach((mid: string) => {
+          if (!poolLabels.has(mid)) poolLabels.set(mid, poolLabel(p));
+        });
+    });
     if (pc <= 1 || isCrossLeague) {
-      return renderStandingsTable(getGroupStandings(gn));
+      return renderStandingsTable(getGroupStandings(gn), { poolLabels });
     }
+
     return (
       <div className="space-y-4">
         {Array.from({ length: pc }).map((_, i) => {

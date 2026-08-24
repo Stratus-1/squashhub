@@ -1884,14 +1884,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [availableLeagues, leagueSources]);
 
   /**
-   * The source selection is an invariant of a division: only players from the
-   * chosen league(s) (or explicitly overridden ones) may be seeded into it.
+   * The source selection ("Players from") guides who gets PREFILLED into a
+   * division. It must never silently delete somebody who is already allocated
+   * there: a player entered by hand, or with no league registration at all,
+   * would otherwise vanish from the draw without a word. Allocation is the
+   * truth — mismatches are surfaced as warnings elsewhere, not by dropping.
    */
   const eligibleIdsForDivision = (gn: number, ids: string[]): string[] => {
     const src = divisionSource(leagueSources, gn);
     if (src.mode === "all" || src.leagueIds.length === 0) return ids;
-    return constrainIds(ids, divisionEligibleIds(gn, eligibilityCtx), eligibilityOverrides);
+    return constrainIds(ids, divisionEligibleIds(gn, eligibilityCtx), [
+      ...eligibilityOverrides,
+      ...ids,
+    ]);
   };
+
 
 
 

@@ -2608,6 +2608,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     customizeDailySchedule, daySchedules, selectedCourtIds,
     // Selection / pair / group assignment state — persist immediately when changed
     selectedPlayerIds, doublesPairs, groupAssignments, pairGroupAssignments,
+    // Manual seeding / confirmed draw boards must persist as soon as they change.
+    manualDraws, playerOrder, manualSeedGroups,
+
   ]);
 
 

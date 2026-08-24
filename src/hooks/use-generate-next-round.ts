@@ -1,0 +1,116 @@
+/**
+ * The ONE way a later knockout round is created.
+ *
+ * Every surface (knockout card, progress card, standings) calls this hook, so
+ * there is a single code path, a single toast and a single cache invalidation.
+ * It never rebuilds the tournament: it only inserts the fixtures of the next
+ * round, and it refuses to run twice by re-checking the database first.
+ */
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { fromExt } from "@/lib/supabase-ext";
+import { buildLeagueFinals, buildNextRound, sectionLetter } from "@/lib/tournaments/knockout";
+import type { SectionProgression } from "@/lib/tournaments/knockout-progression";
+
+export type GenerateNextRoundVars = { groupNumber: number; section?: number };
+
+export function useGenerateNextRound(opts: {
+  champId: string;
+  states: SectionProgression[];
+  selfScheduled?: boolean;
+  playByForRound?: (round: number) => string | null;
+  onGenerated?: (count: number, vars: GenerateNextRoundVars) => void;
+}) {
+  const { champId, states, selfScheduled = false, playByForRound, onGenerated } = opts;
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ groupNumber, section }: GenerateNextRoundVars) => {
+      const mine = states.filter((s) => s.groupNumber === groupNumber);
+
+      if (section !== undefined) {
+        const st = mine.find((s) => s.section === section);
+        if (!st) throw new Error("This section has no draw yet");
+        if (!st.canGenerateNext) throw new Error(st.blockedReason || "This round is not finished yet");
+        const nextNumber = st.nextRound!.round_number;
+
+        // Idempotency: the round may already have been created from another
+        // surface (or a double click) since this component last rendered.
+        const { data: existing, error: exErr } = await fromExt("club_champs_matches")
+          .select("id")
+          .eq("champ_id", champId)
+          .eq("group_number", groupNumber)
+          .eq("section_number", section)
+          .eq("round_number", nextNumber)
+          .limit(1);
+        if (exErr) throw exErr;
+        if (existing && existing.length > 0) {
+          throw new Error(`${st.nextRound?.label || "The next round"} already exists`);
+        }
+
+        const multi = mine.filter((s) => s.section > 0).length > 1;
+        const rows = buildNextRound({
+          champId,
+          groupNumber,
+          section,
+          roundMatches: st.currentRoundMatches,
+          sectionLabel: multi ? `Section ${sectionLetter(section)}` : undefined,
+          playBy: selfScheduled
+            ? st.nextRound?.play_by ?? playByForRound?.(nextNumber) ?? null
+            : null,
+        });
+        if (rows.length === 0) throw new Error("Nothing to generate");
+        const withRound = st.nextRound?.id ? rows.map((r) => ({ ...r, round_id: st.nextRound!.id })) : rows;
+        const { error } = await fromExt("club_champs_matches").insert(withRound as any);
+        if (error) throw error;
+        return rows.length;
+      }
+
+      // League final between section winners.
+      const sections = mine.filter((s) => s.section > 0);
+      if (sections.length < 2) throw new Error("This league only has one section");
+      if (!sections.every((s) => s.complete)) throw new Error("Every section must be decided first");
+      if (mine.some((s) => s.section === 0)) throw new Error("The league final already exists");
+      const deepest = Math.max(...sections.map((s) => s.currentRound));
+      const { data: existingFinal, error: fErr } = await fromExt("club_champs_matches")
+        .select("id")
+        .eq("champ_id", champId)
+        .eq("group_number", groupNumber)
+        .eq("section_number", 0)
+        .limit(1);
+      if (fErr) throw fErr;
+      if (existingFinal && existingFinal.length > 0) throw new Error("The league final already exists");
+      const rows = buildLeagueFinals({
+        champId,
+        groupNumber,
+        round: deepest + 1,
+        sectionWinners: sections.map((s) => {
+          const m = s.currentRoundMatches[0];
+          const w = s.winner!;
+          const partner =
+            m?.player_a_member_id === w
+              ? m?.partner_a_member_id
+              : m?.player_b_member_id === w
+                ? m?.partner_b_member_id
+                : null;
+          return { section: s.section, memberId: w, partnerId: partner ?? null };
+        }),
+      });
+      if (rows.length === 0) throw new Error("Nothing to generate");
+      const { error } = await fromExt("club_champs_matches").insert(rows as any);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (n, vars) => {
+      toast.success(
+        selfScheduled
+          ? `Created ${n} match${n === 1 ? "" : "es"}. Players arrange their own court and time.`
+          : `Created ${n} match${n === 1 ? "" : "es"}. Next: set dates and courts.`,
+      );
+      qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+      qc.invalidateQueries({ queryKey: ["club-champ-rounds", champId] });
+      onGenerated?.(n, vars);
+    },
+    onError: (e: any) => toast.error(e.message || "Could not generate the next round"),
+  });
+}

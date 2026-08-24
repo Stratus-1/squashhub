@@ -10090,6 +10090,7 @@ export type Database = {
           playoff_break_minutes: number | null
           playoff_date: string | null
           points_per_game: number | null
+          pool_sizes: Json | null
           refund_cutoff_date: string | null
           refund_policy: string | null
           registration_closes_at: string | null

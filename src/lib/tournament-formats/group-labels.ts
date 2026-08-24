@@ -2,9 +2,9 @@
  * Resolve the display label for a tournament league/group.
  *
  * Admins can rename leagues via `club_champs.group_labels` (a JSON map keyed
- * by group number, e.g. `{ "1": "6", "2": "7" }` or `{ "1": "A" }`). When
- * the label is a bare number/string we render it as `League {label}`; when
- * it already contains "League" or "Div" we render it as-is. Falls back to
+ * by group number, e.g. `{ "1": "6", "2": "Ladies" }`). Whatever the admin
+ * typed is shown verbatim — only bare numbers get the `League ` prefix so
+ * `"6"` reads as `League 6` while `"Ladies"` stays `Ladies`. Falls back to
  * `League {groupNumber}` when no label is configured.
  */
 export function getGroupLabel(
@@ -18,7 +18,9 @@ export function getGroupLabel(
       : undefined;
   const v = (raw || "").trim();
   if (!v) return `League ${groupNumber}`;
-  // If user already typed something like "Div A" or "League 6", show as-is
-  if (/league|div|pool|grp|group/i.test(v)) return v;
-  return `League ${v}`;
+  // Bare numbers ("6") read better as "League 6"; anything the admin named
+  // (e.g. "Ladies", "Div A", "League 6") is shown exactly as entered.
+  if (/^\d+$/.test(v)) return `League ${v}`;
+  return v;
 }
+

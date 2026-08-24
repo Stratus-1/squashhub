@@ -82,14 +82,30 @@ export interface PoolAssignOptions {
    * 14 -> 8 + 6) instead of equal headcount. Ignored by every other format.
    */
   knockout?: boolean;
+  /**
+   * Organiser-owned pool sizes (one entry per pool, summing to the entrant
+   * count). Set once an admin drags an entrant across a pool boundary, which
+   * legitimately makes pools uneven (5/4 -> 4/5, or 6/3). Ignored when the
+   * numbers don't line up with the current entrant count.
+   */
+  sizes?: number[];
+}
+
+/** True when `opts.sizes` is a usable override for this entrant count. */
+export function hasCustomSizes(total: number, pools: number, opts?: PoolAssignOptions): boolean {
+  const n = Math.max(1, Math.floor(pools) || 1);
+  const s = opts?.sizes;
+  return !!s && s.length === n && s.every((v) => Number.isFinite(v) && v >= 0) &&
+    s.reduce((a, b) => a + b, 0) === total;
 }
 
 /** Pool index per row, aligned with the given (already ordered) list. */
 export function poolIndexes(total: number, pools: number, opts?: PoolAssignOptions): number[] {
   const n = Math.max(1, Math.floor(pools) || 1);
-  if (opts?.manual) {
+  if (opts?.manual || hasCustomSizes(total, n, opts)) {
     return Array.from({ length: total }, (_, i) => blockPoolIndex(i, n, total, opts));
   }
+
   if (n <= 1) return new Array(total).fill(0);
   // Serpentine deal, but never beyond a pool's target capacity: for knockout
   // those capacities are the bracket-optimised sizes, for everything else they

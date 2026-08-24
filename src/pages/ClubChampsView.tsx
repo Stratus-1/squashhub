@@ -26,6 +26,8 @@ import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { KnockoutCard } from "@/components/tournaments/KnockoutCard";
+import { TournamentProgressCard } from "@/components/tournaments/TournamentProgressCard";
+
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
@@ -2466,7 +2468,15 @@ export default function ClubChampsView() {
     return (
       <>
         {summary}
+        <TournamentProgressCard
+          champId={champId!}
+          canManage={canManage}
+          selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
+          groupLabel={(gn) => getGroupLabel(champ, gn)}
+          onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
+        />
         {winnersCard}
+
         {woodenSpoonsCard}
         {standingsCards}
         {isHandicapChamp && champ?.club_id && (

@@ -1,26 +1,19 @@
 import { useMemo, type ReactNode } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fromExt } from "@/lib/supabase-ext";
-import {
-  buildLeagueFinals,
-  buildNextRound,
-  sectionLetter,
-  
-  type KnockoutMatchLike,
-} from "@/lib/tournaments/knockout";
+import { sectionLetter, type KnockoutMatchLike } from "@/lib/tournaments/knockout";
 import {
   generateActionLabel,
   progressSummary,
   sectionProgression,
   type ChampRound,
 } from "@/lib/tournaments/knockout-progression";
+import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
+
 
 interface KnockoutCardProps {
   champId: string;
@@ -74,7 +67,6 @@ export function KnockoutCard({
   selfScheduled = false,
   playByForRound,
 }: KnockoutCardProps) {
-  const qc = useQueryClient();
   const koMatches: KnockoutMatchLike[] = useMemo(
     () => (matches || []).filter((m: any) => (m.stage || "") === "ko"),
     [matches],
@@ -91,71 +83,8 @@ export function KnockoutCard({
     return Array.from(byLeague.entries()).sort((a, b) => a[0] - b[0]);
   }, [states]);
 
-  const generate = useMutation({
-    mutationFn: async (opts: { groupNumber: number; section?: number }) => {
-      const { groupNumber, section } = opts;
-      const mine = states.filter((s) => s.groupNumber === groupNumber);
+  const generate = useGenerateNextRound({ champId, states, selfScheduled, playByForRound });
 
-      // Next configured round of one section.
-      if (section !== undefined) {
-        const st = mine.find((s) => s.section === section);
-        if (!st) throw new Error("This section has no draw yet");
-        if (!st.canGenerateNext) throw new Error(st.blockedReason || "This round is not finished yet");
-        const multi = mine.filter((s) => s.section > 0).length > 1;
-        const nextNumber = st.nextRound!.round_number;
-        const rows = buildNextRound({
-          champId,
-          groupNumber,
-          section,
-          roundMatches: st.currentRoundMatches,
-          sectionLabel: multi ? `Section ${sectionLetter(section)}` : undefined,
-          playBy: selfScheduled
-            ? st.nextRound?.play_by ?? playByForRound?.(nextNumber) ?? null
-            : null,
-        });
-        if (rows.length === 0) throw new Error("Nothing to generate");
-        const withRound = st.nextRound?.id
-          ? rows.map((r) => ({ ...r, round_id: st.nextRound!.id }))
-          : rows;
-        const { error } = await fromExt("club_champs_matches").insert(withRound as any);
-        if (error) throw error;
-        return rows.length;
-      }
-
-      // League final between section winners.
-      const sections = mine.filter((s) => s.section > 0);
-      if (sections.length < 2) throw new Error("This league only has one section");
-      if (!sections.every((s) => s.complete)) throw new Error("Every section must be decided first");
-      if (mine.some((s) => s.section === 0)) throw new Error("The league final already exists");
-      const deepest = Math.max(...sections.map((s) => s.currentRound));
-      const rows = buildLeagueFinals({
-        champId,
-        groupNumber,
-        round: deepest + 1,
-        sectionWinners: sections.map((s) => {
-          const m = s.currentRoundMatches[0];
-          const w = s.winner!;
-          const partner =
-            m?.player_a_member_id === w ? m?.partner_a_member_id : m?.player_b_member_id === w ? m?.partner_b_member_id : null;
-          return { section: s.section, memberId: w, partnerId: partner ?? null };
-        }),
-      });
-      if (rows.length === 0) throw new Error("Nothing to generate");
-      const { error } = await fromExt("club_champs_matches").insert(rows as any);
-      if (error) throw error;
-      return rows.length;
-    },
-    onSuccess: (n) => {
-      toast.success(
-        selfScheduled
-          ? `Created ${n} match${n === 1 ? "" : "es"}. Players arrange their own court and time.`
-          : `Created ${n} match${n === 1 ? "" : "es"}. Assign courts and times from the fixture list.`,
-      );
-      qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
-      qc.invalidateQueries({ queryKey: ["club-champ-rounds", champId] });
-    },
-    onError: (e: any) => toast.error(e.message || "Could not generate the next round"),
-  });
 
   if (koMatches.length === 0) return null;
 

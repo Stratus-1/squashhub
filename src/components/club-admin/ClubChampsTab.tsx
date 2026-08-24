@@ -80,6 +80,8 @@ import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFrom
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { DrawLockCard } from "@/components/tournaments/DrawLockCard";
+import { TournamentProgressCard } from "@/components/tournaments/TournamentProgressCard";
+
 import { useClubMembers, useIsSuperAdmin, useMyClubMember, type ClubMember } from "@/hooks/use-club";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { sendWhatsApp } from "@/lib/whatsapp-send";
@@ -9984,11 +9986,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
             {!awaitingPlayerPairs && editingChampId && (
               <p className="text-xs text-muted-foreground rounded-lg border p-2 bg-muted/30">
-                <strong>Rebuild Schedule</strong> recreates the fixture list and tournament page entries using the leagues/pairs shown above — it does <em>not</em> change who's paired with whom or which league they're in. Court bookings are written separately via <strong>Make Court Bookings</strong>.
+                <strong>Rebuild Schedule</strong> recreates the <em>first</em> fixture list and tournament page entries using the leagues/pairs shown above — it does <em>not</em> change who's paired with whom or which league they're in, and it is <em>not</em> how you advance the draw. Later rounds are generated from <strong>Tournament progress</strong> below (and on the tournament page) once the current round is played. Court bookings are written separately via <strong>Make Court Bookings</strong>.
               </p>
             )}
 
+            {editingChampId && (
+              <TournamentProgressCard
+                champId={editingChampId}
+                canManage
+                selfScheduled={schedulingMode === "self"}
+                groupLabel={(gn) => groupLabels[String(gn)] || `League ${gn}`}
+              />
+            )}
+
             {editingChampId && <DrawLockCard champId={editingChampId} />}
+
 
 
             {entitiesChangedSinceLoad && (

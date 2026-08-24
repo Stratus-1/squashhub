@@ -6300,7 +6300,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     );
                   })()}
                 </div>
+              </div>
+              <TournamentNextActionBar
+                champId={c.id}
+                canManage
+                status={c.status}
+                selfScheduled={String(c.scheduling_mode || "") === "self"}
+                mode="card"
+                onSetup={() => loadChampForEdit(c)}
+              />
               </CardContent>
+
             </Card>
           );
           return (

@@ -27,8 +27,12 @@ export function useGenerateNextRound(opts: {
   return useMutation({
     mutationFn: async ({ groupNumber, section }: GenerateNextRoundVars) => {
       const mine = states.filter((s) => s.groupNumber === groupNumber);
+      // Section 0 is the league finals bracket. Asking for it before it exists
+      // means "create the cross-pool decider", which is the branch below.
+      const wantsLeagueFinal = section === 0 && !mine.some((s) => s.section === 0);
 
-      if (section !== undefined) {
+      if (section !== undefined && !wantsLeagueFinal) {
+
         const st = mine.find((s) => s.section === section);
         if (!st) throw new Error("This section has no draw yet");
         if (!st.canGenerateNext) throw new Error(st.blockedReason || "This round is not finished yet");

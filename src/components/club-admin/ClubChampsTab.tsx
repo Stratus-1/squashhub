@@ -81,6 +81,8 @@ import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { DrawLockCard } from "@/components/tournaments/DrawLockCard";
 import { TournamentProgressCard } from "@/components/tournaments/TournamentProgressCard";
+import { TournamentNextActionBar } from "@/components/tournaments/TournamentNextActionBar";
+
 
 import { useClubMembers, useIsSuperAdmin, useMyClubMember, type ClubMember } from "@/hooks/use-club";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";

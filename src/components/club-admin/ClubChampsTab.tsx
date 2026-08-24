@@ -1356,6 +1356,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    */
   const [manualSeedGroups, setManualSeedGroups] = useState<Set<number>>(new Set());
 
+  /**
+   * Hand-arranged first-round draws, keyed by league (division) number.
+   * When present the visual draw board — not the automatic bracket — decides
+   * the round-1 pairings for that league. Cleared whenever the entrant set of
+   * that league changes, so a stale draw can never produce a ghost fixture.
+   */
+  const [manualDraws, setManualDraws] = useState<Record<string, DrawBoardModel>>({});
+  const [drawEditor, setDrawEditor] = useState<number | null>(null);
+
+
+
   // Doubles-specific state
   const [doublesPairs, setDoublesPairs] = useState<DoublePair[]>([]);
   const [pairGroupAssignments, setPairGroupAssignments] = useState<Map<string, number>>(new Map());

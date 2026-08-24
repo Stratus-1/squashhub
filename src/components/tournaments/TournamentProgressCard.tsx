@@ -145,7 +145,13 @@ export function TournamentProgressCard({
             <Badge variant="secondary" className="text-[10px]">Pool {sectionLetter(s.section)}</Badge>
           )}
           {s.section === 0 && <Badge variant="secondary" className="text-[10px]">Finals</Badge>}
+          {readyScopes.length > 1 && queuePosition(keyOf(s)) >= 0 && (
+            <Badge variant="outline" className="text-[10px]">
+              Draw {queuePosition(keyOf(s)) + 1} of {readyScopes.length}
+            </Badge>
+          )}
           {s.decided && <Badge className="text-[10px]"><Trophy className="mr-1 h-3 w-3" />Decided</Badge>}
+
         </div>
         <p className="text-xs text-foreground">{s.headline}</p>
         {!s.decided && s.action === "await_results" && s.blockedReason && (

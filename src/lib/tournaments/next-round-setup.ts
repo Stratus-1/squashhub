@@ -1,0 +1,151 @@
+/**
+ * The lightweight "define the next round" step that sits between the tournament
+ * card's next action and the visual draw.
+ *
+ * The organiser is asked for the minimum a round needs to exist — what it is
+ * called and when it must be played by — and nothing else. Everything else
+ * (who is in it, when each match is, which court) is decided by the steps that
+ * follow: Visual Draw -> Confirm -> Dates & Courts -> Results.
+ *
+ * Also holds the adaptive-layout rules for the draw board: a small round keeps
+ * the bracket cards, a large round (e.g. 50 pairings) switches to a compact
+ * editable list that is filtered to one division/section at a time.
+ *
+ * Pure logic: no React, no network.
+ */
+import type { DrawBoard } from "./draw-board";
+
+/* ------------------------------------------------------------------ *
+ * Stage naming
+ * ------------------------------------------------------------------ */
+
+/** Contextual stage name from how many qualifiers start the round. */
+export function stageNameForQualifiers(qualifiers: number, roundNumber: number): string {
+  if (qualifiers === 2) return "Final";
+  if (qualifiers === 3 || qualifiers === 4) return "Semi-final";
+  if (qualifiers > 4 && qualifiers <= 8) return "Quarter-final";
+  return `Round ${roundNumber}`;
+}
+
+/**
+ * What the popup pre-fills. A label the organiser already configured in the
+ * round plan always wins — we never rename their plan behind their back.
+ */
+export function suggestStageName(opts: {
+  plannedLabel?: string | null;
+  roundNumber: number;
+  qualifiers: number;
+}): string {
+  const planned = String(opts.plannedLabel || "").trim();
+  if (planned) return planned;
+  return stageNameForQualifiers(opts.qualifiers, opts.roundNumber);
+}
+
+/** Alternatives offered as one-click chips in the popup. */
+export function stageNameOptions(qualifiers: number, roundNumber: number): string[] {
+  const out = [stageNameForQualifiers(qualifiers, roundNumber), `Round ${roundNumber}`];
+  for (const extra of ["Quarter-final", "Semi-final", "Final"]) {
+    if (!out.includes(extra)) out.push(extra);
+  }
+  return Array.from(new Set(out));
+}
+
+/* ------------------------------------------------------------------ *
+ * The setup payload
+ * ------------------------------------------------------------------ */
+
+export type NextRoundSetup = {
+  /** Stage/round name shown everywhere for this round. */
+  label: string;
+  /** ISO date (yyyy-mm-dd) the round must be completed by, or null. */
+  playBy: string | null;
+};
+
+/** Default play-by suggestion: `days` from today, as yyyy-mm-dd. */
+export function defaultPlayBy(from: Date = new Date(), days = 7): string {
+  const d = new Date(from.getTime());
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Organiser-facing validation. Returns problems, [] = ok to continue. */
+export function validateNextRoundSetup(
+  setup: NextRoundSetup,
+  opts: { requirePlayBy?: boolean; today?: string } = {},
+): string[] {
+  const problems: string[] = [];
+  if (!String(setup.label || "").trim()) problems.push("Give this round a name.");
+  if (String(setup.label || "").trim().length > 60) problems.push("Round name is too long (60 characters max).");
+  if (opts.requirePlayBy && !setup.playBy) problems.push("Set the date this round must be played by.");
+  if (setup.playBy && !/^\d{4}-\d{2}-\d{2}$/.test(setup.playBy)) problems.push("Play-by date is not a valid date.");
+  if (setup.playBy && opts.today && /^\d{4}-\d{2}-\d{2}$/.test(setup.playBy) && setup.playBy < opts.today) {
+    problems.push("Play-by date is in the past.");
+  }
+  return problems;
+}
+
+/* ------------------------------------------------------------------ *
+ * Adaptive draw layout
+ * ------------------------------------------------------------------ */
+
+export type DrawLayout = "bracket" | "list";
+
+/** Rounds up to `threshold` matchups keep the bracket cards; bigger rounds list. */
+export const LARGE_ROUND_THRESHOLD = 16;
+
+export function drawLayout(matchCount: number, threshold: number = LARGE_ROUND_THRESHOLD): DrawLayout {
+  return matchCount > threshold ? "list" : "bracket";
+}
+
+export type BoardProgress = {
+  matches: number;
+  /** Both slots filled — a real playable matchup. */
+  complete: number;
+  /** Missing a player (bye or still to be filled). */
+  incomplete: number;
+  byes: number;
+  empty: number;
+  /** "32 matches in this round · 8 incomplete" */
+  summary: string;
+};
+
+export function boardProgress(board: Pick<DrawBoard, "matches">): BoardProgress {
+  const rows = board.matches || [];
+  let complete = 0;
+  let byes = 0;
+  let empty = 0;
+  for (const m of rows) {
+    if (m.a && m.b) complete += 1;
+    else if (m.a || m.b) byes += 1;
+    else empty += 1;
+  }
+  const incomplete = byes + empty;
+  return {
+    matches: rows.length,
+    complete,
+    incomplete,
+    byes,
+    empty,
+    summary: `${rows.length} match${rows.length === 1 ? "" : "es"} in this round · ${incomplete} incomplete`,
+  };
+}
+
+/** Section numbers present on a board, ascending. */
+export function sectionsOf(board: Pick<DrawBoard, "matches">): number[] {
+  return Array.from(new Set((board.matches || []).map((m) => m.section))).sort((a, b) => a - b);
+}
+
+/**
+ * The slice the organiser is editing. Filtering is what keeps a huge round
+ * manageable — and because out-of-scope slots are not rendered, a drag can
+ * never cross into another division/section.
+ */
+export function matchesInScope(
+  board: Pick<DrawBoard, "matches">,
+  section: number | "all",
+): DrawBoard["matches"] {
+  const rows = [...(board.matches || [])].sort(
+    (a, b) => a.section - b.section || a.position - b.position,
+  );
+  return section === "all" ? rows : rows.filter((m) => m.section === section);
+}

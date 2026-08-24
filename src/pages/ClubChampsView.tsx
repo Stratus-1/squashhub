@@ -1907,7 +1907,20 @@ export default function ClubChampsView() {
     );
   }
 
+  /** Detach the court booking from a fixture — the fixture and any result stay. */
+  async function clearFixtureSchedule(m: any) {
+    const { error } = await rpcExt("unschedule_champ_match", { p_match_id: m.id });
+    if (error) {
+      toast.error(error.message || "Could not clear this match's court and time.");
+      return;
+    }
+    toast.success("Court and time cleared — the fixture is kept and can be rescheduled.");
+    qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+    qc.invalidateQueries({ queryKey: ["bookings"] });
+  }
+
   function renderMatchRow(m: any) {
+
     const mine = isMyMatch(m);
     const completed = m.status === "completed";
     const isBye = !!m.is_bye;

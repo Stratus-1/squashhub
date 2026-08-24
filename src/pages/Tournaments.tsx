@@ -252,7 +252,11 @@ export default function Tournaments() {
     return out;
   }, [allChamps, allEntries, allMatches]);
 
-  const poolOf = (m: any): number | null => (m.pool_number ?? poolByMatchId.get(m.id) ?? null);
+  // `section_number` is what the draw engine persists for pool/section branches
+  // (knockout rows), so it is authoritative whenever `pool_number` is absent.
+  // Only fall back to the derived map when neither column is set.
+  const poolOf = (m: any): number | null =>
+    m.pool_number ?? m.section_number ?? poolByMatchId.get(m.id) ?? null;
   const isPlayoff = (m: any) => typeof m?.stage === "string" && m.stage.startsWith("playoff");
 
   // Which champ+league still has unplayed pool games? Seeds in those play-off

@@ -117,7 +117,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
-import { Users as UsersIcon, ShieldCheck, ScrollText } from "lucide-react";
+import { Users as UsersIcon, ShieldCheck, ScrollText, RefreshCw } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
 import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
@@ -697,6 +697,23 @@ async function edgeErrorMessage(error: any, data: any, fallback: string): Promis
 export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  // Pull the latest club-ladder positions (and entrant list) on demand — the
+  // seed order shown in Allocate is only as fresh as the cached roster.
+  const [refreshingRanking, setRefreshingRanking] = useState(false);
+  const refreshRanking = async () => {
+    setRefreshingRanking(true);
+    try {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["club-members"] }),
+        qc.invalidateQueries({ queryKey: ["tournament-member-pool"] }),
+        qc.invalidateQueries({ queryKey: ["champ-registrations"] }),
+        qc.invalidateQueries({ queryKey: ["club-champs-entries"] }),
+      ]);
+      toast.success("Ranking refreshed", { description: "Seed order now reflects the current club ladder." });
+    } finally {
+      setRefreshingRanking(false);
+    }
+  };
   // Clubs whose courts are available to this tournament. At club level this is
   // just the club itself, so behaviour is identical to before.
   const venueClubIds = useMemo(() => {
@@ -9324,7 +9341,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       {step === "groups" && (
         <Card>
           <CardHeader>
-            <CardTitle>Allocate players</CardTitle>
+            <div className="flex items-start justify-between gap-3">
+              <CardTitle>Allocate players</CardTitle>
+              {/* Ladder positions change while a tournament is being set up.
+                  This re-pulls the roster so the seed order on screen matches
+                  the club ladder right now — without losing manual placements. */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs shrink-0"
+                disabled={refreshingRanking}
+                onClick={refreshRanking}
+              >
+                <RefreshCw className={`h-3 w-3 mr-1 ${refreshingRanking ? "animate-spin" : ""}`} />
+                {refreshingRanking ? "Refreshing…" : "Refresh ranking"}
+              </Button>
+            </div>
             {(() => {
               const counts = countAllocatedEntries(
                 (groups as ClubMember[][]).map((g) => g.map((p) => p.id)),
@@ -9346,6 +9379,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             })()}
 
           </CardHeader>
+
           <CardContent className="space-y-4">
             {/* Read-only echo of the structure decision — Structure is the single
                 authority for how many leagues exist and what they are called. */}

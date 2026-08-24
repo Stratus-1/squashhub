@@ -82,6 +82,9 @@ import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { DrawLockCard } from "@/components/tournaments/DrawLockCard";
 import { TournamentProgressCard } from "@/components/tournaments/TournamentProgressCard";
 import { TournamentNextActionBar } from "@/components/tournaments/TournamentNextActionBar";
+import { TournamentEntryCounts } from "@/components/tournaments/TournamentEntryCounts";
+import { countAllocatedEntries } from "@/lib/tournaments/entry-counts";
+
 
 
 import { useClubMembers, useIsSuperAdmin, useMyClubMember, type ClubMember } from "@/hooks/use-club";
@@ -6243,6 +6246,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <p className="text-xs text-muted-foreground">
                     {c.start_date && c.end_date ? `${c.start_date} to ${c.end_date}` : "Dates not set yet"}
                   </p>
+                  <TournamentEntryCounts champId={c.id} className="mt-0.5" />
+
                 </div>
                 <div className="flex gap-1">
                   <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
@@ -9249,9 +9254,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         <Card>
           <CardHeader>
             <CardTitle>Allocate players</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Move {entityCount} {isDoubles ? "pairs" : "players"} between the leagues you defined in Structure.
-            </p>
+            {(() => {
+              const counts = countAllocatedEntries(
+                (groups as ClubMember[][]).map((g) => g.map((p) => p.id)),
+                isDoubles ? [] : unassignedEntrantIds,
+              );
+              return (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Move {entityCount} {isDoubles ? "pairs" : "players"} between the leagues you defined in Structure.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong className="text-foreground">{counts.uniquePlayers}</strong> unique{" "}
+                    {isDoubles ? (counts.uniquePlayers === 1 ? "pair" : "pairs") : counts.uniquePlayers === 1 ? "player" : "players"} entered ·{" "}
+                    <strong className="text-foreground">{counts.totalEntries}</strong>{" "}
+                    {counts.totalEntries === 1 ? "entry" : "entries"} in total across all leagues
+                  </p>
+                </>
+              );
+            })()}
+
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Read-only echo of the structure decision — Structure is the single

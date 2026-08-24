@@ -140,10 +140,23 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
   const bench = useMemo(() => benchedEntrants(board, entrants), [board, entrants]);
   const validation = useMemo(() => validateDrawBoard(board, entrants), [board, entrants]);
   const sections = useMemo(
-    () => Array.from(new Set(board.matches.map((m) => m.section))).sort((a, b) => a - b),
+    () => sectionsOf(board),
     [board],
   );
   const multi = sections.length > 1;
+  const progress = useMemo(() => boardProgress(board), [board]);
+  /**
+   * Adaptive layout: a small round keeps the bracket cards, a large round
+   * (many pairings) switches to a compact editable list. Filtering to one
+   * pool at a time also means a drag can never cross into another scope.
+   */
+  const layout = drawLayout(board.matches.length);
+  const [scope, setScope] = useState<number | "all">("all");
+  const visibleSections = useMemo(
+    () => (scope === "all" ? sections : sections.filter((s) => s === scope)),
+    [scope, sections],
+  );
+
 
   /** Top half of the seeding list reads green, the rest blue, benched players red. */
   const seedCut = useMemo(() => {

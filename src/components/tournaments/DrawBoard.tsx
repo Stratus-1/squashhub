@@ -208,6 +208,31 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
           </div>
         </div>
 
+        {multi && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[10px] text-muted-foreground">Working on:</span>
+            <Badge
+              variant={scope === "all" ? "default" : "outline"}
+              className="cursor-pointer text-[10px]"
+              onClick={() => setScope("all")}
+            >
+              All pools
+            </Badge>
+            {sections.map((s) => (
+              <Badge
+                key={s}
+                variant={scope === s ? "default" : "outline"}
+                className="cursor-pointer text-[10px]"
+                onClick={() => setScope(s)}
+              >
+                {sectionLabelOf(s)}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+
+
         <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
           <div className="space-y-3">
             {visibleSections.map((section) => {

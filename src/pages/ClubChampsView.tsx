@@ -27,6 +27,8 @@ import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { KnockoutCard } from "@/components/tournaments/KnockoutCard";
 import { TournamentProgressCard } from "@/components/tournaments/TournamentProgressCard";
+import { TournamentNextActionBar } from "@/components/tournaments/TournamentNextActionBar";
+
 
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";
@@ -2558,7 +2560,18 @@ export default function ClubChampsView() {
     return (
       <>
         {summary}
+        <TournamentNextActionBar
+          champId={champId!}
+          canManage={canManage}
+          status={(champ as any)?.status}
+          selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
+          mode="detail"
+          onFocusFixtures={() =>
+            document.getElementById("tournament-fixtures")?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }
+        />
         <TournamentProgressCard
+
           champId={champId!}
           canManage={canManage}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
@@ -2576,8 +2589,11 @@ export default function ClubChampsView() {
             isAdmin={canManage}
           />
         )}
-        {fixtureCards}
-        {combinedFixtures}
+        <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
+          {fixtureCards}
+          {combinedFixtures}
+        </div>
+
         <KnockoutCard
           champId={champId!}
           matches={matches as any[]}

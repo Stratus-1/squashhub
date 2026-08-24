@@ -240,3 +240,209 @@ export function groupStageControl(
     actionLabel: !hasKo && complete ? "Generate knockout round" : null,
   };
 }
+
+/* ------------------------------------------------------------------ *
+ * Tournament-level "next action"
+ *
+ * The card in the admin list and the banner on the tournament page must
+ * agree, so both ask THIS function: given every match row plus the round
+ * plan, what is the single next operational step for the whole event?
+ * ------------------------------------------------------------------ */
+
+export type TournamentStage =
+  | "no_draw"
+  | "pool_play"
+  | "pool_complete"
+  | "round_unscheduled"
+  | "round_partially_scheduled"
+  | "round_in_progress"
+  | "round_complete"
+  | "complete";
+
+export type TournamentNextAction = {
+  stage: TournamentStage;
+  /** Short status chip, e.g. "Semi-finals in progress". */
+  status: string;
+  /** One-line explanation of the state. */
+  headline: string;
+  /** Primary CTA text, null when there is nothing to do. */
+  ctaLabel: string | null;
+  /** What the CTA does — drives deep-linking. */
+  action: RoundAction | "setup";
+  /** CTA is shown but not clickable while prerequisites are outstanding. */
+  disabled: boolean;
+  /** Why the CTA is disabled. */
+  blockedReason: string | null;
+  /** Division/section the CTA applies to (null for whole-event actions). */
+  groupNumber: number | null;
+  section: number | null;
+  /** Whole event decided. */
+  complete: boolean;
+};
+
+/**
+ * Reduce every division/section to one prompt for the event.
+ * Priority: generate > schedule > await results > done.
+ */
+export function tournamentNextAction(
+  matches: KnockoutMatchLike[],
+  rounds: ChampRound[] = [],
+  opts: { selfScheduled?: boolean; status?: string | null } = {},
+): TournamentNextAction {
+  const ko = (matches as any[]).filter((m) => (m.stage || "") === "ko") as KnockoutMatchLike[];
+  const divisions = divisionControls(ko, rounds, opts);
+  const sections = divisions.flatMap((d) => d.sections);
+
+  if (String(opts.status || "").toLowerCase() === "completed") {
+    return {
+      stage: "complete",
+      status: "Tournament complete",
+      headline: "This tournament is closed — no further progression.",
+      ctaLabel: null,
+      action: "none",
+      disabled: false,
+      blockedReason: null,
+      groupNumber: null,
+      section: null,
+      complete: true,
+    };
+  }
+
+  if (sections.length === 0) {
+    // No knockout yet — fall back to the pool stage of each division.
+    const gns = Array.from(
+      new Set(
+        (matches as any[])
+          .filter((m) => (m.stage || "group") === "group")
+          .map((m) => Number(m.group_number)),
+      ),
+    ).sort((a, b) => a - b);
+    const pools = gns
+      .map((gn) => groupStageControl(matches, gn))
+      .filter(Boolean) as GroupStageControl[];
+
+    if (pools.length === 0) {
+      return {
+        stage: "no_draw",
+        status: "Not started",
+        headline: "The draw has not been generated yet.",
+        ctaLabel: "Review & Generate",
+        action: "setup",
+        disabled: false,
+        blockedReason: null,
+        groupNumber: null,
+        section: null,
+        complete: false,
+      };
+    }
+
+    const ready = pools.find((p) => p.action === "generate");
+    if (ready) {
+      return {
+        stage: "pool_complete",
+        status: "Pool stage complete",
+        headline: ready.headline,
+        ctaLabel: "Generate knockout round",
+        action: "generate",
+        disabled: false,
+        blockedReason: null,
+        groupNumber: ready.groupNumber,
+        section: null,
+        complete: false,
+      };
+    }
+    const played = pools.reduce((n, p) => n + p.played, 0);
+    const total = pools.reduce((n, p) => n + p.total, 0);
+    return {
+      stage: "pool_play",
+      status: "Pool stage in progress",
+      headline: `Pool stage — ${played} of ${total} results entered.`,
+      ctaLabel: "Enter remaining results",
+      action: "await_results",
+      disabled: false,
+      blockedReason: null,
+      groupNumber: pools[0].groupNumber,
+      section: null,
+      complete: false,
+    };
+  }
+
+  if (sections.every((s) => s.decided)) {
+    return {
+      stage: "complete",
+      status: "Tournament complete",
+      headline: "Every division is decided. Close the tournament when you are ready.",
+      ctaLabel: null,
+      action: "none",
+      disabled: false,
+      blockedReason: null,
+      groupNumber: null,
+      section: null,
+      complete: true,
+    };
+  }
+
+  const live = sections.filter((s) => !s.decided);
+  const focus =
+    [...live].sort(
+      (a, b) =>
+        PRIORITY[a.action] - PRIORITY[b.action] ||
+        a.groupNumber - b.groupNumber ||
+        a.section - b.section,
+    )[0];
+
+  const stageName = focus.stageLabel;
+
+  if (focus.action === "generate") {
+    return {
+      stage: "round_complete",
+      status: `${stageName} complete`,
+      headline: focus.headline,
+      ctaLabel: focus.actionLabel || "Generate next round",
+      action: "generate",
+      disabled: false,
+      blockedReason: null,
+      groupNumber: focus.groupNumber,
+      section: focus.section,
+      complete: false,
+    };
+  }
+
+  if (focus.action === "schedule") {
+    const partial = focus.unscheduled < focus.total;
+    return {
+      stage: partial ? "round_partially_scheduled" : "round_unscheduled",
+      status: `${stageName} — scheduling`,
+      headline: focus.headline,
+      ctaLabel: partial
+        ? `Finish scheduling ${stageName}`
+        : `Set dates & courts for ${stageName}`,
+      action: "schedule",
+      disabled: false,
+      blockedReason: null,
+      groupNumber: focus.groupNumber,
+      section: focus.section,
+      complete: false,
+    };
+  }
+
+  // Waiting on results. If the next round exists in the plan, say why it can't
+  // be generated yet instead of hiding the button.
+  const blocked = focus.progression.nextRound && !focus.canGenerate;
+  return {
+    stage: "round_in_progress",
+    status: `${stageName} in progress`,
+    headline: focus.headline,
+    ctaLabel: blocked
+      ? `Generate ${focus.nextStageLabel ?? "next round"}`
+      : "Enter remaining results",
+    action: blocked ? "generate" : "await_results",
+    disabled: !!blocked,
+    blockedReason: blocked
+      ? focus.blockedReason || `${stageName} must be played out first.`
+      : null,
+    groupNumber: focus.groupNumber,
+    section: focus.section,
+    complete: false,
+  };
+}

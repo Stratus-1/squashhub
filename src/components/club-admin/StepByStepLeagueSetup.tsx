@@ -134,6 +134,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   // Reset state when dialog re-opens
   useEffect(() => {
     if (open) {
+      setCompositionDirty(false);
       if (editContext) {
         // Edit mode: jump straight to step 4 with values pre-filled.
         setStep(4);
@@ -570,6 +571,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     
     setNumTeams(1);
     setPerTeam(4);
+    setCompositionDirty(false);
     setReserves(0);
     setDistribution("snake");
     setTeamNames({});

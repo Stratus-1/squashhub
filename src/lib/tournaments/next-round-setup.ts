@@ -14,6 +14,8 @@
  * Pure logic: no React, no network.
  */
 import type { DrawBoard } from "./draw-board";
+import { winnerOf } from "./knockout";
+import type { SectionProgression } from "./knockout-progression";
 
 /* ------------------------------------------------------------------ *
  * Stage naming
@@ -24,6 +26,11 @@ export function stageNameForQualifiers(qualifiers: number, roundNumber: number):
   if (qualifiers === 2) return "Final";
   if (qualifiers === 3 || qualifiers === 4) return "Semi-final";
   if (qualifiers > 4 && qualifiers <= 8) return "Quarter-final";
+  if (qualifiers > 8) {
+    let bracket = 2;
+    while (bracket < qualifiers) bracket *= 2;
+    return `Round of ${bracket}`;
+  }
   return `Round ${roundNumber}`;
 }
 
@@ -60,6 +67,40 @@ export type NextRoundSetup = {
   /** ISO date (yyyy-mm-dd) the round must be completed by, or null. */
   playBy: string | null;
 };
+
+export type NextRoundScope = {
+  key: string;
+  groupNumber: number;
+  section: number;
+  roundNumber: number;
+  qualifierIds: string[];
+  qualifiers: number;
+  matchups: number;
+  stageLabel: string;
+};
+
+/** Every independently confirmable next-round draw that is ready now. */
+export function readyNextRoundScopes(states: SectionProgression[]): NextRoundScope[] {
+  return states
+    .filter((state) => state.section > 0 && state.canGenerateNext && state.currentRoundComplete)
+    .map((state) => {
+      const qualifierIds = Array.from(
+        new Set(state.currentRoundMatches.map((match) => winnerOf(match)).filter(Boolean) as string[]),
+      );
+      const roundNumber = state.nextRound?.round_number ?? state.currentRound + 1;
+      return {
+        key: `${state.groupNumber}-${state.section}`,
+        groupNumber: state.groupNumber,
+        section: state.section,
+        roundNumber,
+        qualifierIds,
+        qualifiers: qualifierIds.length,
+        matchups: Math.ceil(qualifierIds.length / 2),
+        stageLabel: stageNameForQualifiers(qualifierIds.length, roundNumber),
+      };
+    })
+    .sort((a, b) => a.groupNumber - b.groupNumber || a.section - b.section);
+}
 
 /** Default play-by suggestion: `days` from today, as yyyy-mm-dd. */
 export function defaultPlayBy(from: Date = new Date(), days = 7): string {

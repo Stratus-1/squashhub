@@ -6447,6 +6447,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 status={c.status}
                 selfScheduled={String(c.scheduling_mode || "") === "self"}
                 championScope={(c as any).champion_scope || undefined}
+                groupLabel={(gn) => (c as any)?.group_labels?.[String(gn)] || `Division ${gn}`}
                 mode="card"
                 onSetup={() => loadChampForEdit(c)}
               />

@@ -2578,6 +2578,7 @@ export default function ClubChampsView() {
           status={(champ as any)?.status}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
           championScope={(champ as any)?.champion_scope || undefined}
+          groupLabel={(gn) => getGroupLabel(champ, gn)}
           mode="detail"
           onFocusFixtures={() =>
             document.getElementById("tournament-fixtures")?.scrollIntoView({ behavior: "smooth", block: "start" })

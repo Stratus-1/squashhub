@@ -215,7 +215,7 @@ export function KnockoutCard({
             state={setupState}
             qualifiers={setupState.activeCount}
             selfScheduled={selfScheduled}
-            divisionLabel={groupLabel(setupState.groupNumber)}
+            divisionLabel={`${groupLabel(setupState.groupNumber)} · Pool ${sectionLetter(setupState.section)}`}
             onReady={(v) => {
               setSetup(v);
               setSetupKey(null);
@@ -235,7 +235,7 @@ export function KnockoutCard({
               states.filter((s) => s.groupNumber === drawState.groupNumber && s.section > 0).length > 1
             }
             selfScheduled={selfScheduled}
-            divisionLabel={groupLabel(drawState.groupNumber)}
+            divisionLabel={`${groupLabel(drawState.groupNumber)} · Pool ${sectionLetter(drawState.section)}`}
             setup={draw.mode === "prepare" ? setup : null}
             onConfirmed={() => {
               setDraw(null);

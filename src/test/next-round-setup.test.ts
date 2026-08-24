@@ -5,6 +5,7 @@ import {
   drawLayout,
   LARGE_ROUND_THRESHOLD,
   matchesInScope,
+  readyNextRoundScopes,
   sectionsOf,
   stageNameForQualifiers,
   stageNameOptions,
@@ -23,7 +24,7 @@ describe("contextual stage suggestion", () => {
     expect(stageNameForQualifiers(2, 4)).toBe("Final");
     expect(stageNameForQualifiers(4, 3)).toBe("Semi-final");
     expect(stageNameForQualifiers(8, 2)).toBe("Quarter-final");
-    expect(stageNameForQualifiers(16, 2)).toBe("Round 2");
+    expect(stageNameForQualifiers(16, 2)).toBe("Round of 16");
   });
 
   it("prefers the label the organiser already configured", () => {
@@ -105,5 +106,52 @@ describe("scoped editing", () => {
 
   it("never leaks another section into the working slice", () => {
     expect(matchesInScope(b, 1).every((m) => m.section === 1)).toBe(true);
+  });
+});
+
+describe("multi-division next-round scope inventory", () => {
+  const completedSection = (groupNumber: number, section: number, qualifiers: number) =>
+    Array.from({ length: qualifiers }, (_, i) => ({
+      id: `r1-${groupNumber}-${section}-${i}`,
+      stage: "ko",
+      group_number: groupNumber,
+      section_number: section,
+      round_number: 1,
+      bracket_position: i + 1,
+      status: "completed",
+      player_a_member_id: `g${groupNumber}s${section}w${i}`,
+      player_b_member_id: `g${groupNumber}s${section}l${i}`,
+      winner_member_id: `g${groupNumber}s${section}w${i}`,
+    }));
+
+  it("exposes every ready division/pool with exact unique qualifier and matchup counts", async () => {
+    const { sectionProgression } = await import("@/lib/tournaments/knockout-progression");
+    const r1 = [
+      ...completedSection(1, 1, 34),
+      ...completedSection(1, 2, 5),
+      ...completedSection(2, 1, 4),
+      ...completedSection(2, 2, 3),
+    ];
+    const scopes = readyNextRoundScopes(sectionProgression(r1 as any));
+
+    expect(scopes.map((scope) => scope.key)).toEqual(["1-1", "1-2", "2-1", "2-2"]);
+    expect(scopes.map((scope) => [scope.qualifiers, scope.matchups])).toEqual([
+      [34, 17], [5, 3], [4, 2], [3, 2],
+    ]);
+    expect(scopes.map((scope) => scope.stageLabel)).toEqual([
+      "Round of 64", "Quarter-final", "Semi-final", "Semi-final",
+    ]);
+    expect(new Set(scopes.flatMap((scope) => scope.qualifierIds)).size).toBe(46);
+    expect(drawLayout(scopes[0].matchups)).toBe("list");
+    expect(r1.every((match) => match.round_number === 1 && match.status === "completed")).toBe(true);
+  });
+
+  it("de-duplicates a repeated winner instead of silently creating two slots", async () => {
+    const { sectionProgression } = await import("@/lib/tournaments/knockout-progression");
+    const rows = completedSection(1, 1, 4);
+    rows[1].winner_member_id = rows[0].winner_member_id;
+    const [scope] = readyNextRoundScopes(sectionProgression(rows as any));
+    expect(scope.qualifiers).toBe(3);
+    expect(new Set(scope.qualifierIds).size).toBe(scope.qualifiers);
   });
 });

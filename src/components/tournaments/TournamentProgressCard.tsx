@@ -199,6 +199,12 @@ export function TournamentProgressCard({
 
   const body = (
     <div className="space-y-2">
+      {canManage && readyScopes.length > 1 && (
+        <p className="rounded-md border border-dashed px-3 py-1.5 text-[11px] font-medium text-foreground">
+          {outstandingDrawsHeadline(readyScopes.length)} Prepare each one below — they are all part of the same queue.
+        </p>
+      )}
+
       {shown.map((d) => {
         const multi = d.sections.filter((s) => s.section > 0).length > 1;
         return d.sections.map((s) => renderSection(s, multi));

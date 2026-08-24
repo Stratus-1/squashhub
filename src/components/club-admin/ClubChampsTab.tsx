@@ -138,6 +138,7 @@ import {
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
 import { DoublesPairsPanel } from "@/components/club-admin/DoublesPairsPanel";
 import { z } from "zod";
+import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-input";
 
 interface ClubChampsTabProps {
   /** Primary host club — its courts are the default venue and new events are filed under it. */

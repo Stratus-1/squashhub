@@ -74,7 +74,7 @@ const FIELD_LABELS: Record<string, string> = {
   refund_cutoff_date: "Refund cut-off",
 };
 
-const toLocalInput = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
+const toLocalInput = (iso: string | null) => toLocalInputValue(iso);
 
 
 export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "federation" }: Props) {

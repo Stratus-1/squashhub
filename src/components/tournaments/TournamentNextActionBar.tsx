@@ -161,39 +161,61 @@ export function TournamentNextActionBar({
   };
 
 
+  const opensDrawBoard = mode === "detail" && na.action === "generate" && (na.section ?? 0) > 0;
+  const ctaLabel = opensDrawBoard ? `Review draw — ${na.ctaLabel}` : na.ctaLabel;
+
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 rounded-md border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between",
-        className,
-      )}
-    >
-      <div className="min-w-0 space-y-0.5">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant={na.complete ? "default" : "secondary"} className="text-[10px]">
-            <Icon className="mr-1 h-3 w-3" />
-            {na.status}
-          </Badge>
+    <>
+      <div
+        className={cn(
+          "flex flex-col gap-2 rounded-md border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between",
+          className,
+        )}
+      >
+        <div className="min-w-0 space-y-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant={na.complete ? "default" : "secondary"} className="text-[10px]">
+              <Icon className="mr-1 h-3 w-3" />
+              {na.status}
+            </Badge>
+          </div>
+          <p className="text-xs text-foreground">{na.headline}</p>
+          {na.disabled && na.blockedReason && (
+            <p className="text-[11px] text-muted-foreground">Outstanding: {na.blockedReason}</p>
+          )}
         </div>
-        <p className="text-xs text-foreground">{na.headline}</p>
-        {na.disabled && na.blockedReason && (
-          <p className="text-[11px] text-muted-foreground">Outstanding: {na.blockedReason}</p>
+
+        {canManage && na.ctaLabel && (
+          <Button
+            size="sm"
+            variant={na.action === "generate" && !na.disabled ? "default" : "secondary"}
+            disabled={na.disabled || generate.isPending}
+            title={na.disabled ? na.blockedReason || undefined : undefined}
+            onClick={onClick}
+            className="shrink-0"
+          >
+            {generate.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Icon className="mr-1 h-4 w-4" />}
+            {ctaLabel}
+          </Button>
         )}
       </div>
 
-      {canManage && na.ctaLabel && (
-        <Button
-          size="sm"
-          variant={na.action === "generate" && !na.disabled ? "default" : "secondary"}
-          disabled={na.disabled || generate.isPending}
-          title={na.disabled ? na.blockedReason || undefined : undefined}
-          onClick={onClick}
-          className="shrink-0"
-        >
-          {generate.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Icon className="mr-1 h-4 w-4" />}
-          {na.ctaLabel}
-        </Button>
+      {suggestedBoard && reviewState && (
+        <ConfirmDrawDialog
+          open={reviewOpen}
+          onOpenChange={setReviewOpen}
+          champId={champId}
+          suggested={suggestedBoard}
+          entrants={reviewEntrants}
+          multiSection={states.filter((s) => s.groupNumber === reviewState.groupNumber && s.section > 0).length > 1}
+          divisionLabel={`Division ${reviewState.groupNumber} · ${sectionLabelOf(reviewState.section)}`}
+          roundId={reviewState.nextRound?.id ?? null}
+          playBy={selfScheduled ? reviewState.nextRound?.play_by ?? null : null}
+          title={`${reviewState.nextRound?.label || "Next round"} — confirm the draw`}
+          description="Winners are placed automatically. Drag anyone into a different matchup, or empty a slot to give a bye. Played matches are never changed."
+        />
       )}
-    </div>
+    </>
   );
 }
+

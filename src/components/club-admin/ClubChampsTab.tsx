@@ -2259,6 +2259,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
       let allocatedMemberIds: string[] = [];
+      /** member_id → 1-based division numbers the organiser allocated them to. */
+      let divisionChoicesToSync: Map<string, number[]> | null = null;
+
       // Collect every visitor-* ID that will hit the DB so we can promote them
       // to real club_members rows in one batch and build a lookup map.
       const visitorRawIds: string[] = isDoubles

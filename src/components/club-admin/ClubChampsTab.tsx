@@ -2825,7 +2825,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     leagueSources,
     registrationsByLeague,
     eligibilityOverrides,
+    extraDivisions,
   ]);
+
 
   // Number of "entities" (players for singles, pairs for doubles)
   const entityCount = isDoubles ? doublesPairs.length : selectedPlayerIds.size;
